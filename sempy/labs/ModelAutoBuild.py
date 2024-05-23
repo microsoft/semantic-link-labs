@@ -1,0 +1,89 @@
+import sempy
+import sempy.fabric as fabric
+import pandas as pd
+from .TOM import connect_semantic_model
+from .CreateBlankSemanticModel import create_blank_semantic_model
+from .GetSharedExpression import get_shared_expression
+
+def model_auto_build(dataset: str, file_path: str, workspace: str | None = None, lakehouse: str | None = None, lakehouse_workspace: str | None = None):
+
+    if workspace is None:
+        workspace_id = fabric.get_workspace_id()
+        workspace = fabric.resolve_workspace_name(workspace_id)
+
+    if lakehouse_workspace is None:
+        lakehouse_workspace = workspace
+
+    sheets = ['Model', 'Tables', 'Measures', 'Columns', 'Roles', 'Hierarchies', 'Relationships']
+
+    create_blank_semantic_model(dataset=dataset, workspace = workspace)
+
+    with connect_semantic_model(dataset = dataset, workspace = workspace) as tom:
+
+        #DL Only
+        expr = get_shared_expression(lakehouse=lakehouse, workspace=lakehouse_workspace)
+        tom.add_expression(name = 'DatbaseQuery', expression = expr)
+
+        for sheet in sheets:
+            df = pd.read_excel(file_path, sheet_name= sheet)
+
+            if sheet == 'Tables':
+                for i, r in df.iterrows():
+                    tName = r['Table Name']
+                    desc = r['Description']
+                    dc = r['Data Category']
+                    mode = r['Mode']
+                    hidden = bool(r['Hidden'])
+                    
+                    tom.add_table(name = tName, description = desc, data_category=dc, hidden = hidden)
+                    if mode == 'DirectLake':
+                        tom.add_entity_partition(table_name = tName, entity_name=tName)
+            elif sheet == 'Columns':
+                for i, r in df.iterrows():
+                    tName = r['Table Name']
+                    cName = r['Column Name']
+                    scName = r['Source Column']
+                    dataType = r['Data Type']
+                    hidden = bool(r['Hidden'])
+                    key = bool(r['Key'])
+                    if dataType == 'Integer':
+                        dataType = 'Int64'
+                    desc = r['Description']
+
+                    tom.add_data_column(
+                        table_name = tName, column_name=cName, source_column=scName, 
+                        data_type=dataType, description = desc, hidden=hidden, key=key)
+            elif sheet == 'Measures':
+                for i, r in df.iterrows():
+                    tName = r['Table Name']
+                    mName = r['Measure Name']
+                    expr = r['Expression']
+                    desc = r['Description']
+                    format = r['Format String']
+                    hidden = bool(r['Hidden'])
+
+                    tom.add_measure(
+                        table_name = tName, measure_name=mName, 
+                        expression=expr, format_string=format, description=desc, hidden=hidden)
+            elif sheet == 'Relationships':
+                for i, r in df.iterrows():
+                    fromTable = r['From Table']
+                    fromColumn = r['From Column']
+                    toTable = r['To Table']
+                    toColumn = r['To Column']
+                    fromCard = r['From Cardinality']
+                    toCard = r['To Cardinality']
+
+                    tom.add_relationship(
+                        from_table=fromTable, from_column= fromColumn,
+                        to_table=toTable, to_column = toColumn,
+                        from_cardinality=fromCard, to_cardinality=toCard)
+            elif sheet == 'Roles':
+                print('hi')
+            elif sheet == 'Hierarchies':
+                print('hi')        
+            
+
+
+
+        
