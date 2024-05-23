@@ -9,7 +9,7 @@ def get_object_level_security(dataset: str, workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#get_object_level_security
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_object_level_security
 
     """
 
@@ -42,7 +42,7 @@ def list_tables(dataset: str, workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#list_tables
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#list_tables
 
     """
 
@@ -78,7 +78,7 @@ def list_annotations(dataset: str, workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#list_annotations
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#list_annotations
 
     """
 
@@ -193,7 +193,7 @@ def list_columns(dataset: str, workspace: str | None = None, lakehouse: str | No
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#list_columns
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#list_columns
 
     """
 
@@ -254,7 +254,7 @@ def list_dashboards(workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#list_dashboards
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#list_dashboards
 
     """
 
@@ -290,7 +290,7 @@ def list_lakehouses(workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#list_lakehouses
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#list_lakehouses
 
     """
 
@@ -326,7 +326,7 @@ def list_warehouses(workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#list_warehouses
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#list_warehouses
 
     """
 
@@ -359,7 +359,7 @@ def list_sqlendpoints(workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#list_sqlendpoints
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#list_sqlendpoints
 
     """
 
@@ -577,7 +577,7 @@ def create_warehouse(warehouse: str, description: str | None = None, workspace: 
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#create_warehouse
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#create_warehouse
 
     """
 
@@ -619,7 +619,7 @@ def update_item(item_type: str, current_name: str, new_name: str, description: s
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#update_item
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#update_item
 
     """
 
@@ -733,7 +733,7 @@ def list_dataflow_storage_accounts():
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#list_dataflow_storage_accounts
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#list_dataflow_storage_accounts
 
     """
 

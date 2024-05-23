@@ -11,7 +11,7 @@ def clear_cache(dataset: str, workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#clear_cache
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#clear_cache
 
     """
 

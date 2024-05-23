@@ -3,17 +3,19 @@ import sempy.fabric as fabric
 import pandas as pd
 from .GetLakehouseColumns import get_lakehouse_columns
 from .HelperFunctions import format_dax_object_name, resolve_lakehouse_name, get_direct_lake_sql_endpoint
-sempy.fabric._client._utils._init_analysis_services()
-import Microsoft.AnalysisServices.Tabular as TOM
-import System
 
 def direct_lake_schema_sync(dataset: str, workspace: str | None = None, add_to_model: bool = False, lakehouse: str | None = None, lakehouse_workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#direct_lake_schema_sync
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#direct_lake_schema_sync
 
     """
+
+    sempy.fabric._client._utils._init_analysis_services()
+    import Microsoft.AnalysisServices.Tabular as TOM
+    import System
+
 
     if workspace == None:
         workspace_id = fabric.get_workspace_id()

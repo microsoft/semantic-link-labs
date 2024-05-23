@@ -6,9 +6,9 @@ def update_direct_lake_partition_entity(dataset: str, table_name: str | list, en
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#update_direct_lake_partition_entity
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#update_direct_lake_partition_entity
 
-    """
+    """    
 
     if workspace == None:
         workspace_id = fabric.get_workspace_id()

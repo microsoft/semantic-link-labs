@@ -8,9 +8,7 @@ from .ListFunctions import list_relationships
 from .RefreshSemanticModel import refresh_semantic_model
 from .Fallback import check_fallback_reason
 from contextlib import contextmanager
-sempy.fabric._client._utils._init_analysis_services()
-import Microsoft.AnalysisServices.Tabular as TOM
-import System
+from sempy._utils._log import log
 
 green_dot = '\U0001F7E2'
 yellow_dot = '\U0001F7E1'
@@ -21,8 +19,13 @@ unchecked = '\u2610'
 start_bold = '\033[1m'
 end_bold = '\033[0m'
 
+@log
 @contextmanager
 def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str | None = None):
+
+    sempy.fabric._client._utils._init_analysis_services()
+    import Microsoft.AnalysisServices.Tabular as TOM
+    import System
 
     if workspace is None:
         workspace_id = fabric.get_workspace_id()
@@ -41,7 +44,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#all_columns
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#all_columns
             
             """
 
@@ -54,7 +57,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#all_calculated_columns
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#all_calculated_columns
             
             """
 
@@ -67,7 +70,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#all_calculated_tables
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#all_calculated_tables
             
             """
 
@@ -79,7 +82,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#all_calculation_groups
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#all_calculation_groups
 
             """
 
@@ -91,7 +94,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#all_measures
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#all_measures
             
             """
 
@@ -103,7 +106,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#all_partitions
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#all_partitions
             
             """
 
@@ -115,7 +118,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#all_hierarchies
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#all_hierarchies
             
             """
 
@@ -127,7 +130,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#all_levels
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#all_levels
             
             """
 
@@ -140,7 +143,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#all_calculationitems
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#all_calculationitems
             
             """
 
@@ -153,7 +156,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#all_rls
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#all_rls
             
             """
 
@@ -165,7 +168,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
             
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#add_measure
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_measure
             
             """
 
@@ -186,7 +189,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#add_calculated_table_column
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_calculated_table_column
             
             """
 
@@ -216,7 +219,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
             
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#add_data_column
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_data_column
             
             """
 
@@ -246,7 +249,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
             
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#add_calculated_column
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_calculated_column
             
             """
 
@@ -276,7 +279,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#add_calculation_item
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_calculation_item
             
             """
 
@@ -296,7 +299,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#add_role
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_role
             
             """
 
@@ -314,7 +317,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#set_rls
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_rls
             
             """
 
@@ -331,7 +334,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#set_ols
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_ols
             
             """
 
@@ -353,7 +356,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#add_hierarchy
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_hierarchy
             
             """
 
@@ -389,7 +392,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#add_relationship
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_relationship
             
             """
 
@@ -421,7 +424,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#add_calculation_group
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_calculation_group
             
             """
 
@@ -462,7 +465,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#add_expression
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_expression
             
             """
 
@@ -479,7 +482,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#add_translation
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_translation
             
             """
 
@@ -495,7 +498,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#add_perspective
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_perspective
             
             """
 
@@ -507,7 +510,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#add_m_partition
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_m_partition
             
             """
 
@@ -530,7 +533,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#add_entity_partition
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_entity_partition
             
             """
 
@@ -554,7 +557,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#set_alternate_of        
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_alternate_of        
             
             """
             
@@ -587,7 +590,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#remove_alternate_of
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#remove_alternate_of
             
             """
 
@@ -597,7 +600,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#get_annotations
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_annotations
 
             """
 
@@ -612,7 +615,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
             
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#set_annotation
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_annotation
             
             """
 
@@ -629,7 +632,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#get_annotation_value
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_annotation_value
             
             """
 
@@ -639,7 +642,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#remove_annotation
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#remove_annotation
             
             
             """
@@ -650,7 +653,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#clear_annotations
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#clear_annotations
             
             """
 
@@ -660,7 +663,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#get_extended_properties
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_extended_properties
 
             """
 
@@ -677,7 +680,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#set_extended_property
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_extended_property
             
             """
 
@@ -700,7 +703,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#get_extended_property_value
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_extended_property_value
             
             """
 
@@ -710,7 +713,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#remove_extended_property
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#remove_extended_property
             
             """
 
@@ -720,7 +723,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
             
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#clear_extended_properties
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#clear_extended_properties
             
             """
 
@@ -730,7 +733,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
             
             """
             
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#in_perspective
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#in_perspective
 
             """
             validObjects = ['Table', 'Column', 'Measure', 'Hierarchy']
@@ -759,7 +762,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
             
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#add_to_perspective
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_to_perspective
             
             """
 
@@ -799,7 +802,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#remove_from_perspective
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#remove_from_perspective
             
             """
 
@@ -835,7 +838,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#set_translation
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_translation
             
             """
 
@@ -870,7 +873,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#remove_translation
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#remove_translation
 
             """
 
@@ -881,7 +884,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#remove_object
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#remove_object
 
             """
 
@@ -926,7 +929,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#used_in_relationships
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#used_in_relationships
             
             """
 
@@ -946,7 +949,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#used_in_levels
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#used_in_levels
             
             """
 
@@ -961,7 +964,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#used_in_hierarchies
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#used_in_hierarchies
             
             """
 
@@ -976,7 +979,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#used_in_sort_by
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#used_in_sort_by
             
             """
 
@@ -991,7 +994,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#used_in_rls
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#used_in_rls
             
             """
 
@@ -1022,7 +1025,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#used_in_data_coverage_definition
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#used_in_data_coverage_definition
             
             """
 
@@ -1053,7 +1056,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#used_in_calc_item
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#used_in_calc_item
             
             """
 
@@ -1187,7 +1190,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#is_direct_lake
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#is_direct_lake
             
             """
 
@@ -1197,7 +1200,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#is_field_parameter
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#is_field_parameter
             
             """
 
@@ -1209,7 +1212,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#is_auto_date_table
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#is_auto_date_table
             
             """
 
@@ -1227,7 +1230,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#set_kpi
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_kpi
             
             """
 
@@ -1324,7 +1327,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#set_aggregations
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_aggregations
             
             """
 
@@ -1343,7 +1346,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#set_is_available_in_mdx
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_is_available_in_mdx
             
             """
 
@@ -1353,7 +1356,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#set_summarize_by
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_summarize_by
             
             """
 
@@ -1374,7 +1377,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#set_direct_lake_behavior
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_direct_lake_behavior
             
             """
 
@@ -1398,7 +1401,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#add_table
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_table
 
             """
 
@@ -1415,7 +1418,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#add_calculated_table
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_calculated_table
 
             """
 
@@ -1440,7 +1443,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#add_field_parameter
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_field_parameter
 
             """
 
@@ -1502,7 +1505,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#remove_vertipaq_annotations
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#remove_vertipaq_annotations
 
             """
 
@@ -1531,7 +1534,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#set_vertipaq_annotations
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_vertipaq_annotations
 
             """
 
@@ -1591,7 +1594,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#row_count
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#row_count
             
             """
             
@@ -1608,7 +1611,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#records_per_segment
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#records_per_segment
             
             """
             
@@ -1623,7 +1626,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#used_size
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#used_size
             
             """
             
@@ -1640,7 +1643,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#data_size
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#data_size
             
             """
             
@@ -1655,7 +1658,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#dictionary_size
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#dictionary_size
             
             """
 
@@ -1670,7 +1673,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#total_size
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#total_size
 
             """
 
@@ -1687,7 +1690,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#cardinality
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#cardinality
             
             """
             
@@ -1702,7 +1705,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#depends_on
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#depends_on
 
             """
 
@@ -1731,7 +1734,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#referenced_by
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#referenced_by
             
             """
 
@@ -1760,7 +1763,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#fully_qualified_measures
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#fully_qualified_measures
 
             """
     
@@ -1773,7 +1776,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#unqualified_columns
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#unqualified_columns
             
             """
     
@@ -1789,7 +1792,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#is_direct_lake_using_view
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#is_direct_lake_using_view
 
             """
 
@@ -1808,7 +1811,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#has_incremental_refresh_policy
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#has_incremental_refresh_policy
 
             """
 
@@ -1824,7 +1827,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#show_incremental_refresh_policy
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#show_incremental_refresh_policy
 
             """
 
@@ -1867,7 +1870,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#update_incremental_refresh_policy
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#update_incremental_refresh_policy
 
             """
 
@@ -1931,7 +1934,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#add_incremental_refresh_policy
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_incremental_refresh_policy
 
             """
 
@@ -2051,7 +2054,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#apply_refresh_policy
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#apply_refresh_policy
 
             """
 
@@ -2061,7 +2064,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#set_data_coverage_definition
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_data_coverage_definition
 
             """
 
@@ -2088,7 +2091,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#set_encoding_hint
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_encoding_hint
 
             """
 
@@ -2105,7 +2108,7 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             """
 
-            Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#set_data_type
+            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_data_type
 
             """
 

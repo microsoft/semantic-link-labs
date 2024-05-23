@@ -8,7 +8,7 @@ def get_direct_lake_lakehouse(dataset: str, workspace: str | None = None, lakeho
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#get_direct_lake_lakehouse
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_direct_lake_lakehouse
 
     """    
 

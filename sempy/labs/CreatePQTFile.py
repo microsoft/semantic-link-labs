@@ -5,17 +5,19 @@ import json, os, shutil
 import xml.etree.ElementTree as ET
 from .ListFunctions import list_tables
 from .Lakehouse import lakehouse_attached
+from sempy._utils._log import log
 
 green_dot = '\U0001F7E2'
 yellow_dot = '\U0001F7E1'
 red_dot = '\U0001F534'
 in_progress = '⌛'
 
+@log
 def create_pqt_file(dataset: str, workspace: str | None = None, file_name: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#create_pqt_file
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#create_pqt_file
 
     """
 

@@ -1,10 +1,11 @@
 import sempy
 import sempy.fabric as fabric
 import pandas as pd
-sempy.fabric._client._utils._init_analysis_services()
-import Microsoft.AnalysisServices.Tabular as TOM
 
 def set_data_coverage_definition(dataset: str, filter_column: str, filterOperation: str, filterValue: str, workspaceName: str | None = None):
+
+    sempy.fabric._client._utils._init_analysis_services()
+    import Microsoft.AnalysisServices.Tabular as TOM
 
     if workspaceName == None:
         workspaceId = fabric.get_workspace_id()

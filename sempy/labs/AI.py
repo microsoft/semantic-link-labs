@@ -4,9 +4,6 @@ import pandas as pd
 from synapse.ml.services.openai import OpenAICompletion
 from pyspark.sql.functions import col
 from pyspark.sql import SparkSession
-sempy.fabric._client._utils._init_analysis_services()
-import Microsoft.AnalysisServices.Tabular as TOM
-import System
 
 def optimize_semantic_model(dataset: str, workspace: str | None = None):
 
@@ -105,6 +102,9 @@ def generate_aggs(dataset: str, table_name: str, columns: str | list, workspace:
     from .HelperFunctions import resolve_lakehouse_id
     from .HelperFunctions import create_abfss_path
     from .HelperFunctions import format_dax_object_name
+    sempy.fabric._client._utils._init_analysis_services()
+    import Microsoft.AnalysisServices.Tabular as TOM
+    import System
 
     #columns = {
     #'SalesAmount': 'Sum',
@@ -203,9 +203,8 @@ def generate_aggs(dataset: str, table_name: str, columns: str | list, workspace:
     df = spark.read.format("delta").load(fromTablePath)
     tempTableName = 'delta_table_' + lakeTName
     df.createOrReplaceTempView(tempTableName)
-    query = query + f"\nFROM {tempTableName}"
-    sqlQuery = query + groupBy
-
+    sqlQuery = f"{query} \n FROM {tempTableName} {groupBy}"
+    
     sqlQuery = sqlQuery[:-1]
     print(sqlQuery)
 

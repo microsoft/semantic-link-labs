@@ -5,20 +5,20 @@ import re, datetime, time
 from .GetLakehouseTables import get_lakehouse_tables
 from .HelperFunctions import resolve_lakehouse_name, resolve_lakehouse_id, create_abfss_path
 from .TOM import connect_semantic_model
-sempy.fabric._client._utils._init_analysis_services()
-import Microsoft.AnalysisServices.Tabular as TOM
 from pyspark.sql import SparkSession
+from sempy._utils._log import log
 
 green_dot = '\U0001F7E2'
 yellow_dot = '\U0001F7E1'
 red_dot = '\U0001F534'
 in_progress = '⌛'
 
+@log
 def migrate_calc_tables_to_lakehouse(dataset: str, new_dataset: str, workspace: str | None = None, new_dataset_workspace: str | None = None, lakehouse: str | None = None, lakehouse_workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#migrate_calc_tables_to_lakehouse
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#migrate_calc_tables_to_lakehouse
 
     """
 
@@ -153,6 +153,7 @@ def migrate_calc_tables_to_lakehouse(dataset: str, new_dataset: str, workspace: 
                 break
             time.sleep(1)
 
+@log
 def migrate_field_parameters(dataset: str, new_dataset: str, workspace: str | None = None, new_dataset_workspace: str | None = None):
 
     """
@@ -172,8 +173,9 @@ def migrate_field_parameters(dataset: str, new_dataset: str, workspace: str | No
         This function returns a printout stating the success/failure of this operation.
     """
 
-    from .HelperFunctions import format_dax_object_name
-    from .TOM import connect_semantic_model
+    from .HelperFunctions import format_dax_object_name    
+    sempy.fabric._client._utils._init_analysis_services()
+    import Microsoft.AnalysisServices.Tabular as TOM
 
     if workspace == None:
         workspace_id = fabric.get_workspace_id()

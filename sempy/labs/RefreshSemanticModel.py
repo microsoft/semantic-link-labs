@@ -2,17 +2,19 @@ import sempy
 import sempy.fabric as fabric
 import time
 from .HelperFunctions import resolve_dataset_id
+from sempy._utils._log import log
 
 green_dot = '\U0001F7E2'
 yellow_dot = '\U0001F7E1'
 red_dot = '\U0001F534'
 in_progress = '⌛'
 
+@log
 def refresh_semantic_model(dataset: str, tables: str | list | None = None, partitions: str | list | None = None, refresh_type: str | None = None, retry_count: int = 0, workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#refresh_semantic_model
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#refresh_semantic_model
 
     """
 
@@ -79,7 +81,7 @@ def cancel_dataset_refresh(dataset, request_id = None, workspace = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#cancel_dataset_refresh
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#cancel_dataset_refresh
 
     """    
 

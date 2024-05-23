@@ -2,12 +2,14 @@ import sempy
 import sempy.fabric as fabric
 from anytree import Node, RenderTree
 from .GetMeasureDependencies import get_measure_dependencies
+from sempy._utils._log import log
 
+@log
 def measure_dependency_tree(dataset: str, measure_name: str, workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#measure_dependency_tree
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#measure_dependency_tree
 
     """
 

@@ -17,7 +17,7 @@ If you have ideas for new features/functions, please [request a feature](https:/
 
 ## Once installed, run this code to import the library into your notebook
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 ```
 
@@ -218,8 +218,8 @@ An even better way to ensure the semantic-link-labs library is available in your
 ## cancel_dataset_refresh
 #### Cancels the refresh of a semantic model which was executed via the [Enhanced Refresh API](https://learn.microsoft.com/power-bi/connect-data/asynchronous-refresh).
 ```python
-import semantic-link-labs as fct
-fct.cancel_dataset_refresh(
+import semantic-link-labs as labs
+labs.cancel_dataset_refresh(
             dataset = 'MyReport',
             #request_id = None,
             #workspace = None
@@ -246,8 +246,8 @@ fct.cancel_dataset_refresh(
 > [!NOTE]
 > This function is only relevant to semantic models in Direct Lake mode.
 ```python
-import semantic-link-labs as fct
-fct.check_fallback_reason(
+import semantic-link-labs as labs
+labs.check_fallback_reason(
             dataset = 'AdventureWorks',
             #workspace = None
             )
@@ -267,8 +267,8 @@ fct.check_fallback_reason(
 ## clear_cache
 #### Clears the cache of a semantic model.
 ```python
-import semantic-link-labs as fct
-fct.clear_cache(
+import semantic-link-labs as labs
+labs.clear_cache(
             dataset = 'AdventureWorks',
             #workspace = '' 
             )
@@ -288,8 +288,8 @@ fct.clear_cache(
 ## clone_report
 #### Makes a clone of a Power BI report
 ```python
-import semantic-link-labs as fct
-fct.clone_report(
+import semantic-link-labs as labs
+labs.clone_report(
             report = 'MyReport',
             cloned_report = 'MyNewReport',
             #workspace = None,
@@ -326,8 +326,8 @@ fct.clone_report(
 > [!NOTE]
 > This function is only relevant to semantic models in Direct Lake mode.
 ```python
-import semantic-link-labs as fct
-fct.control_fallback(
+import semantic-link-labs as labs
+labs.control_fallback(
             dataset = 'AdventureWorks',
             direct_lake_behavior = 'DirectLakeOnly',
             #workspace = None
@@ -352,8 +352,8 @@ fct.control_fallback(
 ## create_blank_semantic_model
 #### Creates a new blank semantic model (no tables/columns etc.).
 ```python
-import semantic-link-labs as fct
-fct.create_blank_semantic_model(
+import semantic-link-labs as labs
+labs.create_blank_semantic_model(
             dataset = 'AdventureWorks',
             #workspace = None
             )
@@ -377,8 +377,8 @@ fct.create_blank_semantic_model(
 ## create_pqt_file
 #### Dynamically generates a [Power Query Template](https://learn.microsoft.com/power-query/power-query-template) file based on the semantic model. The .pqt file is saved within the Files section of your lakehouse.
 ```python
-import semantic-link-labs as fct
-fct.create_pqt_file(
+import semantic-link-labs as labs
+labs.create_pqt_file(
             dataset = 'AdventureWorks',
             #file_name = 'PowerQueryTemplate',
             #workspace = None
@@ -403,8 +403,8 @@ fct.create_pqt_file(
 ## create_report_from_reportjson
 #### Creates a report based on a report.json file (and an optional themes.json file).
 ```python
-import semantic-link-labs as fct
-fct.create_report_from_reportjson(
+import semantic-link-labs as labs
+labs.create_report_from_reportjson(
             report = 'MyReport',
             dataset = 'AdventureWorks',
             report_json = '',
@@ -439,8 +439,8 @@ fct.create_report_from_reportjson(
 ## create_semantic_model_from_bim
 #### Creates a new semantic model based on a Model.bim file.
 ```python
-import semantic-link-labs as fct
-fct.create_semantic_model_from_bim(
+import semantic-link-labs as labs
+labs.create_semantic_model_from_bim(
             dataset = 'AdventureWorks',
             bim_file = '',
             #workspace = ''
@@ -465,8 +465,8 @@ fct.create_semantic_model_from_bim(
 ## create_shortcut_onelake
 #### Creates a [shortcut](https://learn.microsoft.com/fabric/onelake/onelake-shortcuts) to a delta table in OneLake.
 ```python
-import semantic-link-labs as fct
-fct.create_shortcut_onelake(
+import semantic-link-labs as labs
+labs.create_shortcut_onelake(
             table_name = 'DimCalendar',
             source_lakehouse = 'Lakehouse1',
             source_workspace = 'Workspace1',
@@ -507,8 +507,8 @@ fct.create_shortcut_onelake(
 ## create_warehouse
 #### Creates a warehouse in Fabric.
 ```python
-import semantic-link-labs as fct
-fct.create_warehouse(
+import semantic-link-labs as labs
+labs.create_warehouse(
             warehouse = 'MyWarehouse',
             workspace = None
             )
@@ -532,8 +532,8 @@ fct.create_warehouse(
 ## delete_shortcut
 #### Deletes a [OneLake shortcut](https://learn.microsoft.com/fabric/onelake/onelake-shortcuts).
 ```python
-import semantic-link-labs as fct
-fct.delete_shortcut(
+import semantic-link-labs as labs
+labs.delete_shortcut(
             shortcut_name = 'DimCalendar',
             lakehouse = 'Lakehouse1',
             workspace = 'Workspace1'
@@ -561,8 +561,8 @@ fct.delete_shortcut(
 > [!NOTE]
 > This function is only relevant to semantic models in Direct Lake mode.
 ```python
-import semantic-link-labs as fct
-fct.direct_lake_schema_compare(
+import semantic-link-labs as labs
+labs.direct_lake_schema_compare(
             dataset = 'AdventureWorks',
             workspace = '',
             #lakehouse = '',
@@ -595,8 +595,8 @@ fct.direct_lake_schema_compare(
 > [!NOTE]
 > This function is only relevant to semantic models in Direct Lake mode.
 ```python
-import semantic-link-labs as fct
-fct.direct_lake_schema_sync(
+import semantic-link-labs as labs
+labs.direct_lake_schema_sync(
      dataset = 'AdvWorks',
      add_to_model = True,
     #workspace = '',
@@ -638,8 +638,8 @@ fct.direct_lake_schema_sync(
 > 
 > [OneLake Integration](https://learn.microsoft.com/power-bi/enterprise/onelake-integration-overview#enable-onelake-integration) feature to be enabled within the semantic model settings.
 ```python
-import semantic-link-labs as fct
-fct.export_model_to_onelake(
+import semantic-link-labs as labs
+labs.export_model_to_onelake(
             dataset = 'AdventureWorks',
             workspace = None,
             destination_lakehouse = 'Lakehouse2',
@@ -670,8 +670,8 @@ fct.export_model_to_onelake(
 ## export_report
 #### Exports a Power BI report to a file in your lakehouse.
 ```python
-import semantic-link-labs as fct
-fct.export_report(
+import semantic-link-labs as labs
+labs.export_report(
             report = 'AdventureWorks',
             export_format = 'PDF',
             #file_name = None,
@@ -682,8 +682,8 @@ fct.export_report(
             )
 ```
 ```python
-import semantic-link-labs as fct
-fct.export_report(
+import semantic-link-labs as labs
+labs.export_report(
             report = 'AdventureWorks',
             export_format = 'PDF',
             #file_name = 'Exports\MyReport',
@@ -694,8 +694,8 @@ fct.export_report(
             )
 ```
 ```python
-import semantic-link-labs as fct
-fct.export_report(
+import semantic-link-labs as labs
+labs.export_report(
             report = 'AdventureWorks',
             export_format = 'PDF',
             #page_name = 'ReportSection293847182375',
@@ -704,8 +704,8 @@ fct.export_report(
             )
 ```
 ```python
-import semantic-link-labs as fct
-fct.export_report(
+import semantic-link-labs as labs
+labs.export_report(
             report = 'AdventureWorks',
             export_format = 'PDF',
             #page_name = ['ReportSection293847182375', 'ReportSection4818372483347'],
@@ -713,8 +713,8 @@ fct.export_report(
             )
 ```
 ```python
-import semantic-link-labs as fct
-fct.export_report(
+import semantic-link-labs as labs
+labs.export_report(
             report = 'AdventureWorks',
             export_format = 'PDF',
             #page_name = ['ReportSection293847182375', 'ReportSection4818372483347'],
@@ -762,8 +762,8 @@ fct.export_report(
 ## generate_embedded_filter
 #### Runs a DAX query against a semantic model.
 ```python
-import semantic-link-labs as fct
-fct.generate_embedded_filter(
+import semantic-link-labs as labs
+labs.generate_embedded_filter(
             filter = "'Product'[Product Category] = 'Bikes' and 'Geography'[Country Code] in (3, 6, 10)"       
             )
 ```
@@ -776,8 +776,8 @@ fct.generate_embedded_filter(
 ## get_direct_lake_guardrails
 #### Shows the guardrails for when Direct Lake semantic models will fallback to Direct Query based on Microsoft's online documentation.
 ```python
-import semantic-link-labs as fct
-fct.get_direct_lake_guardrails()
+import semantic-link-labs as labs
+labs.get_direct_lake_guardrails()
 ```
 ### Parameters
 None
@@ -789,8 +789,8 @@ None
 #### Shows the guardrails for Direct Lake based on the SKU used by your workspace's capacity.
 *Use the result of the 'get_sku_size' function as an input for this function's skuSize parameter.*
 ```python
-import semantic-link-labs as fct
-fct.get_directlake_guardrails_for_sku(
+import semantic-link-labs as labs
+labs.get_directlake_guardrails_for_sku(
             sku_size = ''
             )
 ```
@@ -807,8 +807,8 @@ fct.get_directlake_guardrails_for_sku(
 > [!NOTE]
 > This function is only relevant to semantic models in Direct Lake mode.
 ```python
-import semantic-link-labs as fct
-fct.get_direct_lake_lakehouse(
+import semantic-link-labs as labs
+labs.get_direct_lake_lakehouse(
             dataset = 'AdventureWorks',
             #workspace = '',
             #lakehouse = '',
@@ -838,8 +838,8 @@ fct.get_direct_lake_lakehouse(
 > [!NOTE]
 > This function is only relevant to semantic models in Direct Lake mode.
 ```python
-import semantic-link-labs as fct
-fct.get_direct_lake_sql_endpoint(
+import semantic-link-labs as labs
+labs.get_direct_lake_sql_endpoint(
             dataset = 'AdventureWorks',
             #workspace = None
             )
@@ -859,8 +859,8 @@ fct.get_direct_lake_sql_endpoint(
 ## get_lakehouse_columns
 #### Shows the tables and columns of a lakehouse and their respective properties.
 ```python
-import semantic-link-labs as fct
-fct.get_lakehouse_columns(
+import semantic-link-labs as labs
+labs.get_lakehouse_columns(
             lakehouse = 'AdventureWorks',
             #workspace = None
             )
@@ -880,8 +880,8 @@ fct.get_lakehouse_columns(
 ## get_lakehouse_tables
 #### Shows the tables of a lakehouse and their respective properties. Option to include additional properties relevant to Direct Lake guardrails.
 ```python
-import semantic-link-labs as fct
-fct.get_lakehouse_tables(
+import semantic-link-labs as labs
+labs.get_lakehouse_tables(
         lakehouse = 'MyLakehouse',
         workspace = 'NewWorkspace',
         extended = True,
@@ -914,8 +914,8 @@ fct.get_lakehouse_tables(
 ## get_measure_dependencies
 #### Shows all dependencies for all measures in a semantic model
 ```python
-import semantic-link-labs as fct
-fct.get_measure_dependencies(
+import semantic-link-labs as labs
+labs.get_measure_dependencies(
             dataset = 'AdventureWorks',
             #workspace = None
             )
@@ -935,8 +935,8 @@ fct.get_measure_dependencies(
 ## get_model_calc_dependencies
 #### Shows all dependencies for all objects in a semantic model
 ```python
-import semantic-link-labs as fct
-fct.get_model_calc_dependencies(
+import semantic-link-labs as labs
+labs.get_model_calc_dependencies(
             dataset = 'AdventureWorks',
             #workspace = None
             )
@@ -956,8 +956,8 @@ fct.get_model_calc_dependencies(
 ## get_object_level_security
 #### Shows a list of columns used in object level security.
 ```python
-import semantic-link-labs as fct
-fct.get_object_level_security(
+import semantic-link-labs as labs
+labs.get_object_level_security(
         dataset = 'AdventureWorks',
         workspace = '')
 ```
@@ -976,15 +976,15 @@ fct.get_object_level_security(
 ## get_report_json
 #### Gets the report.json file content of a Power BI report.
 ```python
-import semantic-link-labs as fct
-fct.get_report_json(
+import semantic-link-labs as labs
+labs.get_report_json(
             report = 'MyReport',
             #workspace = None
             )
 ```
 ```python
-import semantic-link-labs as fct
-fct.get_report_json(
+import semantic-link-labs as labs
+labs.get_report_json(
             report = 'MyReport',
             #workspace = None,
             save_to_file_name = 'MyFileName'
@@ -1009,15 +1009,15 @@ fct.get_report_json(
 ## get_semantic_model_bim
 #### Extracts the Model.bim file for a given semantic model.
 ```python
-import semantic-link-labs as fct
-fct.get_semantic_model_bim(
+import semantic-link-labs as labs
+labs.get_semantic_model_bim(
             dataset = 'AdventureWorks',
             #workspace = None
             )
 ```
 ```python
-import semantic-link-labs as fct
-fct.get_semantic_model_bim(
+import semantic-link-labs as labs
+labs.get_semantic_model_bim(
             dataset = 'AdventureWorks',
             #workspace = None,
             save_to_file_name = 'MyFileName'
@@ -1042,8 +1042,8 @@ fct.get_semantic_model_bim(
 ## get_shared_expression
 #### Dynamically generates the M expression used by a Direct Lake model for a given lakehouse.
 ```python
-import semantic-link-labs as fct
-fct.get_shared_expression(
+import semantic-link-labs as labs
+labs.get_shared_expression(
             lakehouse = '',
             #workspace = '' 
             )
@@ -1063,8 +1063,8 @@ fct.get_shared_expression(
 ## get_sku_size
 #### Shows the SKU size for a workspace.
 ```python
-import semantic-link-labs as fct
-fct.get_sku_size(
+import semantic-link-labs as labs
+labs.get_sku_size(
             workspace = '' 
             )
 ```
@@ -1079,8 +1079,8 @@ fct.get_sku_size(
 ## import_vertipaq_analyzer
 #### Imports and visualizes the vertipaq analyzer info from a saved .zip file in your lakehouse.
 ```python
-import semantic-link-labs as fct
-fct.import_vertipaq_analyzer(
+import semantic-link-labs as labs
+labs.import_vertipaq_analyzer(
           folder_path = '/lakehouse/default/Files/VertipaqAnalyzer',
           file_name = 'Workspace Name-DatasetName.zip'
           )
@@ -1098,8 +1098,8 @@ fct.import_vertipaq_analyzer(
 ## launch_report
 #### Shows a Power BI report within a Fabric notebook.
 ```python
-import semantic-link-labs as fct
-fct.launch_report(
+import semantic-link-labs as labs
+labs.launch_report(
           report = 'MyReport',
           #workspace = None
           )
@@ -1117,8 +1117,8 @@ fct.launch_report(
 ## list_dashboards
 #### Shows the dashboards within the workspace.
 ```python
-import semantic-link-labs as fct
-fct.list_dashboards(
+import semantic-link-labs as labs
+labs.list_dashboards(
             #workspace = '' 
             )
 ```
@@ -1133,8 +1133,8 @@ fct.list_dashboards(
 ## list_dataflow_storage_accounts
 #### Shows the dataflow storage accounts.
 ```python
-import semantic-link-labs as fct
-fct.list_dataflow_storage_accounts()
+import semantic-link-labs as labs
+labs.list_dataflow_storage_accounts()
 ```
 ### Parameters
 None
@@ -1147,8 +1147,8 @@ None
 > [!NOTE]
 > This function is only relevant to semantic models in Direct Lake mode.
 ```python
-import semantic-link-labs as fct
-fct.list_direct_lake_model_calc_tables(
+import semantic-link-labs as labs
+labs.list_direct_lake_model_calc_tables(
             dataset = 'AdventureWorks',
             #workspace = '' 
             )
@@ -1168,8 +1168,8 @@ fct.list_direct_lake_model_calc_tables(
 ## list_lakehouses
 #### Shows the properties associated with lakehouses in a workspace.
 ```python
-import semantic-link-labs as fct
-fct.list_lakehouses(
+import semantic-link-labs as labs
+labs.list_lakehouses(
             workspace = None
             )
 ```
@@ -1184,8 +1184,8 @@ fct.list_lakehouses(
 ## list_semantic_model_objects
 #### Shows a list of semantic model objects.
 ```python
-import semantic-link-labs as fct
-fct.list_semantic_model_objects(
+import semantic-link-labs as labs
+labs.list_semantic_model_objects(
             dataset = 'AdvWorks',
             workspace = None
             )
@@ -1205,8 +1205,8 @@ fct.list_semantic_model_objects(
 ## list_shortcuts
 #### Shows the shortcuts within a lakehouse (*note: the API behind this function is not yet available. The function will work as expected once the API is officially released*)
 ```python
-import semantic-link-labs as fct
-fct.list_shortcuts(
+import semantic-link-labs as labs
+labs.list_shortcuts(
             lakehouse = 'MyLakehouse',
             #workspace = '' 
             )
@@ -1226,8 +1226,8 @@ fct.list_shortcuts(
 ## list_warehouses
 #### Shows the warehouss within a workspace.
 ```python
-import semantic-link-labs as fct
-fct.list_warehouses(
+import semantic-link-labs as labs
+labs.list_warehouses(
             #workspace = None
             )
 ```
@@ -1242,8 +1242,8 @@ fct.list_warehouses(
 ## measure_dependency_tree
 #### Shows a measure dependency tree of all dependent objects for a measure in a semantic model.
 ```python
-import semantic-link-labs as fct
-fct.measure_dependency_tree(
+import semantic-link-labs as labs
+labs.measure_dependency_tree(
             dataset = 'AdventureWorks',
             measure_name = 'Sales Amount',
             #workspace = '' 
@@ -1270,8 +1270,8 @@ fct.measure_dependency_tree(
 > [!NOTE]
 > This function is specifically relevant for import/DirectQuery migration to Direct Lake
 ```python
-import semantic-link-labs as fct
-fct.migrate_calc_tables_to_lakehouse(
+import semantic-link-labs as labs
+labs.migrate_calc_tables_to_lakehouse(
             dataset = 'AdventureWorks',
             new_dataset = 'AdventureWorksDL',
             #workspace = '',
@@ -1313,8 +1313,8 @@ fct.migrate_calc_tables_to_lakehouse(
 > [!NOTE]
 > This function is specifically relevant for import/DirectQuery migration to Direct Lake
 ```python
-import semantic-link-labs as fct
-fct.migrate_calc_tables_to_semantic_model(
+import semantic-link-labs as labs
+labs.migrate_calc_tables_to_semantic_model(
             dataset = 'AdventureWorks',
             new_dataset = 'AdventureWorksDL',
             #workspace = '',
@@ -1356,8 +1356,8 @@ fct.migrate_calc_tables_to_semantic_model(
 > [!NOTE]
 > This function is specifically relevant for import/DirectQuery migration to Direct Lake
 ```python
-import semantic-link-labs as fct
-fct.migrate_field_parameters(
+import semantic-link-labs as labs
+labs.migrate_field_parameters(
             dataset = 'AdventureWorks',
             new_dataset = '',
             #workspace = '',
@@ -1389,8 +1389,8 @@ fct.migrate_field_parameters(
 > [!NOTE]
 > This function is specifically relevant for import/DirectQuery migration to Direct Lake
 ```python
-import semantic-link-labs as fct
-fct.migrate_model_objects_to_semantic_model(
+import semantic-link-labs as labs
+labs.migrate_model_objects_to_semantic_model(
             dataset = 'AdventureWorks',
             new_dataset = '',
             #workspace = '',
@@ -1422,8 +1422,8 @@ fct.migrate_model_objects_to_semantic_model(
 > [!NOTE]
 > This function is specifically relevant for import/DirectQuery migration to Direct Lake
 ```python
-import semantic-link-labs as fct
-fct.migrate_tables_columns_to_semantic_model(
+import semantic-link-labs as labs
+labs.migrate_tables_columns_to_semantic_model(
             dataset = 'AdventureWorks',
             new_dataset = 'AdventureWorksDL',
             #workspace = '',
@@ -1463,8 +1463,8 @@ fct.migrate_tables_columns_to_semantic_model(
 ## migration_validation
 #### Shows the objects in the original semantic model and whether then were migrated successfully or not.
 ```python
-import semantic-link-labs as fct
-fct.migration_validation(
+import semantic-link-labs as labs
+labs.migration_validation(
             dataset = 'AdvWorks',
             new_dataset = 'AdvWorksDL',
             workspace = None,
@@ -1494,8 +1494,8 @@ fct.migration_validation(
 ## model_bpa_rules
 #### Shows the default Best Practice Rules for the semantic model used by the [run_model_bpa](https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#run_model_bpa) function
 ```python
-import semantic-link-labs as fct
-fct.model_bpa_rules()
+import semantic-link-labs as labs
+labs.model_bpa_rules()
 ```
 ### Returns
 > A pandas dataframe showing the default semantic model best practice rules.
@@ -1504,16 +1504,16 @@ fct.model_bpa_rules()
 ## optimize_lakehouse_tables
 #### Runs the [OPTIMIZE](https://docs.delta.io/latest/optimizations-oss.html) function over the specified lakehouse tables.
 ```python
-import semantic-link-labs as fct
-fct.optimize_lakehouse_tables(
+import semantic-link-labs as labs
+labs.optimize_lakehouse_tables(
             tables = ['Sales', 'Calendar'],
             #lakehouse = None,
             #workspace = None
         )
 ```
 ```python
-import semantic-link-labs as fct
-fct.optimize_lakehouse_tables(
+import semantic-link-labs as labs
+labs.optimize_lakehouse_tables(
             tables = None,
             #lakehouse = 'MyLakehouse',
             #workspace = None
@@ -1540,8 +1540,8 @@ fct.optimize_lakehouse_tables(
 > [!NOTE]
 > This function is only relevant to semantic models in Direct Lake mode.
 ```python
-import semantic-link-labs as fct
-fct.refresh_calc_tables(
+import semantic-link-labs as labs
+labs.refresh_calc_tables(
             dataset = 'AdventureWorks',
             #workspace = None
             )
@@ -1561,32 +1561,32 @@ fct.refresh_calc_tables(
 ## refresh_semantic_model
 #### Performs a refresh on a semantic model.
 ```python
-import semantic-link-labs as fct
-fct.refresh_semantic_model(
+import semantic-link-labs as labs
+labs.refresh_semantic_model(
     dataset = 'AdventureWorks',
     refresh_type = 'full',
     workspace = None
 )
 ```
 ```python
-import semantic-link-labs as fct
-fct.refresh_semantic_model(
+import semantic-link-labs as labs
+labs.refresh_semantic_model(
     dataset = 'AdventureWorks',
     tables = ['Sales', 'Geography'],
     workspace = None
 )
 ```
 ```python
-import semantic-link-labs as fct
-fct.refresh_semantic_model(
+import semantic-link-labs as labs
+labs.refresh_semantic_model(
     dataset = 'AdventureWorks',
     partitions = ["'Sales'[Sales - 2024]", "'Sales'[Sales - 2023]"],
     workspace = None
 )
 ```
 ```python
-import semantic-link-labs as fct
-fct.refresh_semantic_model(
+import semantic-link-labs as labs
+labs.refresh_semantic_model(
     dataset = 'AdventureWorks',
     tables = ['Geography'],
     partitions = ["'Sales'[Sales - 2024]", "'Sales'[Sales - 2023]"],
@@ -1624,8 +1624,8 @@ fct.refresh_semantic_model(
 ## report_rebind
 #### Rebinds a report to a semantic model.
 ```python
-import semantic-link-labs as fct
-fct.report_rebind(
+import semantic-link-labs as labs
+labs.report_rebind(
             report = '',
             dataset = '',
             #report_workspace = '',
@@ -1655,8 +1655,8 @@ fct.report_rebind(
 ## report_rebind_all
 #### Rebinds all reports in a workspace which are bound to a specific semantic model to a new semantic model.
 ```python
-import semantic-link-labs as fct
-fct.report_rebind_all(
+import semantic-link-labs as labs
+labs.report_rebind_all(
             dataset = '',
             new_dataset = '',
             #dataset_workspace = '' ,
@@ -1691,8 +1691,8 @@ fct.report_rebind_all(
 ## resolve_lakehouse_name
 #### Returns the name of the lakehouse for a given lakehouse Id.
 ```python
-import semantic-link-labs as fct
-fct.resolve_lakehouse_name(
+import semantic-link-labs as labs
+labs.resolve_lakehouse_name(
         lakehouse_id = '',
         #workspace = '' 
         )
@@ -1712,8 +1712,8 @@ fct.resolve_lakehouse_name(
 ## resolve_lakehouse_id
 #### Returns the ID of a given lakehouse.
 ```python
-import semantic-link-labs as fct
-fct.resolve_lakehouse_id(
+import semantic-link-labs as labs
+labs.resolve_lakehouse_id(
         lakehouse = 'MyLakehouse',
         #workspace = '' 
         )
@@ -1733,8 +1733,8 @@ fct.resolve_lakehouse_id(
 ## resolve_dataset_id
 #### Returns the ID of a given semantic model.
 ```python
-import semantic-link-labs as fct
-fct.resolve_dataset_id(
+import semantic-link-labs as labs
+labs.resolve_dataset_id(
         dataset = 'MyReport',
         #workspace = '' 
         )
@@ -1754,8 +1754,8 @@ fct.resolve_dataset_id(
 ## resolve_dataset_name
 #### Returns the name of a given semantic model ID.
 ```python
-import semantic-link-labs as fct
-fct.resolve_dataset_name(
+import semantic-link-labs as labs
+labs.resolve_dataset_name(
         dataset_id = '',
         #workspace = '' 
         )
@@ -1775,8 +1775,8 @@ fct.resolve_dataset_name(
 ## resolve_report_id
 #### Returns the ID of a given report.
 ```python
-import semantic-link-labs as fct
-fct.resolve_report_id(
+import semantic-link-labs as labs
+labs.resolve_report_id(
         report = 'MyReport',
         #workspace = '' 
         )
@@ -1796,8 +1796,8 @@ fct.resolve_report_id(
 ## resolve_report_name
 #### Returns the name of a given report ID.
 ```python
-import semantic-link-labs as fct
-fct.resolve_report_name(
+import semantic-link-labs as labs
+labs.resolve_report_name(
         report_id = '',
         #workspace = '' 
         )
@@ -1817,8 +1817,8 @@ fct.resolve_report_name(
 ## run_dax
 #### Runs a DAX query against a semantic model.
 ```python
-import semantic-link-labs as fct
-fct.run_dax(
+import semantic-link-labs as labs
+labs.run_dax(
             dataset = 'AdventureWorks',
             dax_query = 'Internet Sales',
             user_name = 'FACT_InternetSales',
@@ -1848,8 +1848,8 @@ fct.run_dax(
 ## run_model_bpa
 #### Runs the Best Practice Rules against a semantic model.
 ```python
-import semantic-link-labs as fct
-fct.run_model_bpa(
+import semantic-link-labs as labs
+labs.run_model_bpa(
         dataset = 'AdventureWorks',
         #workspace = None
         )
@@ -1881,8 +1881,8 @@ fct.run_model_bpa(
 ## save_as_delta_table
 #### Saves a dataframe as a delta table in the lakehouse
 ```python
-import semantic-link-labs as fct
-fct.save_as_delta_table(
+import semantic-link-labs as labs
+labs.save_as_delta_table(
             dataframe = df,
             delta_table_name = 'MyNewTable',
             write_mode = 'overwrite',
@@ -1891,8 +1891,8 @@ fct.save_as_delta_table(
             )
 ```
 ```python
-import semantic-link-labs as fct
-fct.save_as_delta_table(
+import semantic-link-labs as labs
+labs.save_as_delta_table(
             dataframe = df,
             delta_table_name = 'MyNewTable',
             write_mode = 'append',
@@ -1927,8 +1927,8 @@ fct.save_as_delta_table(
 ## show_unsupported_direct_lake_objects
 #### Returns a list of a semantic model's objects which are not supported by Direct Lake based on [official documentation](https://learn.microsoft.com/power-bi/enterprise/directlake-overview#known-issues-and-limitations).
 ```python
-import semantic-link-labs as fct
-fct.show_unsupported_direct_lake_objects(
+import semantic-link-labs as labs
+labs.show_unsupported_direct_lake_objects(
         dataset = 'AdventureWorks',
         #workspace = None
         )
@@ -1948,16 +1948,16 @@ fct.show_unsupported_direct_lake_objects(
 ## translate_semantic_model
 #### Translates names, descriptions, display folders for all objects in a semantic model.
 ```python
-import semantic-link-labs as fct
-fct.translate_semantic_model(
+import semantic-link-labs as labs
+labs.translate_semantic_model(
             dataset = 'AdventureWorks',
             languages = ['it_IT', 'fr-FR'],
             #workspace = None
             )
 ```
 ```python
-import semantic-link-labs as fct
-fct.translate_semantic_model(
+import semantic-link-labs as labs
+labs.translate_semantic_model(
             dataset = 'AdventureWorks',
             languages = ['it_IT', 'fr-FR'],
             exclude_characters = '_-',
@@ -1989,8 +1989,8 @@ fct.translate_semantic_model(
 > [!NOTE]
 > This function is only relevant to semantic models in Direct Lake mode.
 ```python
-import semantic-link-labs as fct
-fct.update_direct_lake_model_lakehouse_connection(
+import semantic-link-labs as labs
+labs.update_direct_lake_model_lakehouse_connection(
             dataset = '',
             #lakehouse = '',
             #workspace = ''
@@ -2021,8 +2021,8 @@ fct.update_direct_lake_model_lakehouse_connection(
 > [!NOTE]
 > This function is only relevant to semantic models in Direct Lake mode.
 ```python
-import semantic-link-labs as fct
-fct.update_direct_lake_partition_entity(
+import semantic-link-labs as labs
+labs.update_direct_lake_partition_entity(
             dataset = 'AdventureWorks',
             table_name = 'Internet Sales',
             entity_name = 'FACT_InternetSales',
@@ -2032,8 +2032,8 @@ fct.update_direct_lake_partition_entity(
             )
 ```
 ```python
-import semantic-link-labs as fct
-fct.update_direct_lake_partition_entity(
+import semantic-link-labs as labs
+labs.update_direct_lake_partition_entity(
             dataset = 'AdventureWorks',
             table_name = ['Internet Sales', 'Geography'],
             entity_name = ['FACT_InternetSales', 'DimGeography'],
@@ -2073,8 +2073,8 @@ fct.update_direct_lake_partition_entity(
 ## update_item
 #### Creates a warehouse in Fabric.
 ```python
-import semantic-link-labs as fct
-fct.update_item(
+import semantic-link-labs as labs
+labs.update_item(
             item_type = 'Lakehouse',
             current_name = 'MyLakehouse',
             new_name = 'MyNewLakehouse',
@@ -2109,8 +2109,8 @@ fct.update_item(
 ## vertipaq_analyzer
 #### Extracts the vertipaq analyzer statistics from a semantic model.
 ```python
-import semantic-link-labs as fct
-fct.vertipaq_analyzer(
+import semantic-link-labs as labs
+labs.vertipaq_analyzer(
         dataset = 'AdventureWorks',
         #workspace = '',
         export = None
@@ -2118,8 +2118,8 @@ fct.vertipaq_analyzer(
 ```
 
 ```python
-import semantic-link-labs as fct
-fct.vertipaq_analyzer(
+import semantic-link-labs as labs
+labs.vertipaq_analyzer(
         dataset = 'AdventureWorks',
         #workspace = '',
         export = 'zip'
@@ -2127,8 +2127,8 @@ fct.vertipaq_analyzer(
 ```
 
 ```python
-import semantic-link-labs as fct
-fct.vertipaq_analyzer(
+import semantic-link-labs as labs
+labs.vertipaq_analyzer(
         dataset = 'AdventureWorks',
         #workspace = '',
         export = 'table'
@@ -2163,8 +2163,8 @@ fct.vertipaq_analyzer(
 > [!NOTE]
 > This function is only relevant to semantic models in Direct Lake mode.
 ```python
-import semantic-link-labs as fct
-fct.warm_direct_lake_cache_perspective(
+import semantic-link-labs as labs
+labs.warm_direct_lake_cache_perspective(
         dataset = 'AdventureWorks',
         perspective = 'WarmCache',
         add_dependencies = True,
@@ -2196,8 +2196,8 @@ fct.warm_direct_lake_cache_perspective(
 > [!NOTE]
 > This function is only relevant to semantic models in Direct Lake mode.
 ```python
-import semantic-link-labs as fct
-fct.warm_direct_lake_cache_isresident(
+import semantic-link-labs as labs
+labs.warm_direct_lake_cache_isresident(
         dataset = 'AdventureWorks',
         #workspace = None
         )
@@ -2240,7 +2240,7 @@ with connect_semantic_model(dataset ='AdventureWorks', workspace = None, readonl
 ## add_calculated_column
 #### Adds a calculated column to a table within a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -2303,7 +2303,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## add_calculated_table
 #### Adds a calculated table to a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -2340,7 +2340,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## add_calculated_table_column
 #### Adds a calculated table column to a calculated table within a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -2403,7 +2403,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## add_calculation_group
 #### Adds a calculation group to a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -2436,7 +2436,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## add_calculation_item
 #### Adds a calculation item to a calculation group within a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -2478,7 +2478,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## add_data_column
 #### Adds a data column to a table within a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -2541,7 +2541,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## add_entity_partition
 #### Adds an entity partition to a table in a semantic model. Entity partitions are used for tables within Direct Lake semantic models.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -2574,7 +2574,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## add_expression
 #### Adds an expression to a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -2603,7 +2603,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## add_field_parameter
 #### Adds a field parameter to a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -2628,7 +2628,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## add_hierarchy
 #### Adds a hierarchy to a table within a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -2670,7 +2670,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## add_m_partition
 #### Adds an M-partition to a table within a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -2709,7 +2709,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## add_measure
 #### Adds a measure to the semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -2756,7 +2756,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## add_perspective
 #### Adds a perspective to the semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -2776,7 +2776,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## add_relationship
 #### Adds a relationship to the semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -2838,7 +2838,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## add_role
 #### Adds a role to the semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -2866,7 +2866,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## add_table
 #### Adds a table to the semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -2900,7 +2900,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## add_to_perspective
 #### Adds an object to a perspective.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -2925,7 +2925,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## add_translation
 #### Adds a translation language to the semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -2945,7 +2945,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## all_calculation_items
 #### Outputs a list of all calculation items within all calculation groups in the semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
@@ -2961,7 +2961,7 @@ None
 ## all_columns
 #### Outputs a list of all columns within all tables in the semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
@@ -2977,7 +2977,7 @@ None
 ## all_hierarchies
 #### Outputs a list of all hierarchies within all tables in the semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
@@ -2993,7 +2993,7 @@ None
 ## all_levels
 #### Outputs a list of all levels within all hierarchies within all tables in the semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
@@ -3009,7 +3009,7 @@ None
 ## all_measures
 #### Outputs a list of all measures within all tables in the semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
@@ -3025,7 +3025,7 @@ None
 ## all_partitions
 #### Outputs a list of all partitions within all tables in the semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
@@ -3041,7 +3041,7 @@ None
 ## all_rls
 #### Outputs a list of all row level security objects within all roles of the semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
@@ -3057,7 +3057,7 @@ None
 ## cardinality
 #### Obtains the cardinality of a column within a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
@@ -3075,14 +3075,14 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## clear_annotations
 #### Removes all annotations on a given object within a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
     tom.clear_annotations(object = tom.model.Tables['Product'].Columns['Color'])
 ```
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -3100,7 +3100,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## clear_extended_properties
 #### Removes all extended properties on a given object witihn a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_smantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -3118,7 +3118,7 @@ with connect_smantic_model(dataset = 'AdventureWorks', workspace = None, readonl
 ## data_size
 #### Obtains the data size of a column within a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
@@ -3136,12 +3136,12 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## depends_on
 ####
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
 
-    dep = fct.get_model_calc_dependencies(dataset = 'AdventureWorks', workspace = None)
+    dep = labs.get_model_calc_dependencies(dataset = 'AdventureWorks', workspace = None)
     tom.depends_on(
         object = tom.model.Tables['Product'].Columns['Color'],
         dependencies = dep
@@ -3163,7 +3163,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## dictionary_size
 #### Obtains the 
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
@@ -3181,12 +3181,12 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## fully_qualified_measures
 #### Shows all fully-qualified measures referenced by a given measure's DAX expression.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
 
-    dep = fct.get_model_calc_dependencies(dataset = 'AdventureWorks', workspace = None)
+    dep = labs.get_model_calc_dependencies(dataset = 'AdventureWorks', workspace = None)
     tom.fully_qualified_measuress(
         object = tom.model.Tables['Product'].Columns['Color'],
         dependencies = dep
@@ -3208,7 +3208,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## get_annotation_value
 #### Obtains the annotation value for a given object's annotation in a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
@@ -3233,7 +3233,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## get_annotations
 #### Obtains all of the annotations for a given object in a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
@@ -3253,7 +3253,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## get_extended_properties
 #### Obtains all of the extended properties for a given object in a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
@@ -3273,7 +3273,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## get_extended_property_value
 #### Obtains the extended property value for an object's extended property.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
@@ -3298,7 +3298,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## in_perspective
 #### Identifies whether an object is in a given perspective.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
@@ -3323,7 +3323,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## is_direct_lake
 #### Identifies whether a semantic model is in Direct Lake mode.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
@@ -3338,7 +3338,7 @@ None
 ## is_field_parameter
 #### Identifies whether a table is a field parameter.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
@@ -3358,7 +3358,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## records_per_segment
 #### Obtains the records per segment of a partition within a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
@@ -3378,12 +3378,12 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## referenced_by
 #### Shows the objects referenced by a given object in a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
 
-    dep = fct.get_model_calc_dependencies(dataset = 'AdventureWorks', workspace = None)
+    dep = labs.get_model_calc_dependencies(dataset = 'AdventureWorks', workspace = None)
     tom.referenced_by(
         object = tom.model.Tables['Product'].Columns['Color'],
         dependencies = dep
@@ -3405,7 +3405,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## remove_annotation
 #### Removes the annotation from an object in a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -3430,7 +3430,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## remove_extended_property
 #### Removes the extended property from an object in a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -3455,7 +3455,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## remove_from_perspective
 #### Removes an object (table, column, measure or hierarchy) from a perspective.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -3480,7 +3480,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## remove_object
 #### Removes an object from a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -3500,7 +3500,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## remove_translation
 #### Removes a translation for an object in a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -3525,7 +3525,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## remove_vertipaq_annotations
 #### Removes the annotations set using the [set_vertipaq_annotations] function.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -3540,7 +3540,7 @@ None
 ## row_count
 #### Obtains the row count of a table or partition within a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
@@ -3560,7 +3560,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## set_annotation
 #### Sets an annotation on an object within a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -3590,7 +3590,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## set_direct_lake_behavior
 #### Sets the [DirectLakeBehavior](https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.directlakebehavior?view=analysisservices-dotnet) property for a Direct Lake semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -3610,7 +3610,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## set_extended_property
 #### Sets an extended property on an object within the semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -3645,7 +3645,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## set_is_available_in_mdx
 ####
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -3675,7 +3675,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## set_ols
 #### Sets object level security for a given role/column within a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -3710,7 +3710,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## set_rls
 #### Sets the row level security expression for a given role/table within a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -3740,7 +3740,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## set_summarize_by
 #### Sets the [Summarize By](https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.column.summarizeby?view=analysisservices-dotnet#microsoft-analysisservices-tabular-column-summarizeby) property on a column in a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -3770,7 +3770,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## set_translation
 #### Sets the translation value for an object in a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -3805,7 +3805,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## set_vertipaq_annotations
 #### Saves Vertipaq Analyzer statistics as annotations on objects in the semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = False) as tom:
@@ -3820,7 +3820,7 @@ None
 ## total_size
 #### Obtains the total size (in bytes) of a table or column within a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
@@ -3840,12 +3840,12 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## unqualified_columns
 #### Shows all unqalified columns referenced by a given measure's DAX expression.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
 
-    dep = fct.get_model_calc_dependencies(dataset = 'AdventureWorks', workspace = None)
+    dep = labs.get_model_calc_dependencies(dataset = 'AdventureWorks', workspace = None)
     tom.unqualified_columns(
         object = tom.model.Tables['Product'].Columns['Color'],
         dependencies = dep
@@ -3867,12 +3867,12 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## used_in_calc_item
 #### Identifies the calculation items which reference a given object.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
 
-    dep = fct.get_model_calc_dependencies(dataset = 'AdventureWorks', workspace = None)
+    dep = labs.get_model_calc_dependencies(dataset = 'AdventureWorks', workspace = None)
     tom.used_in_calc_item(
         object = tom.model.Tables['Product'].Columns['Color'],
         dependencies = dep
@@ -3894,7 +3894,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## used_in_hierarchies
 #### Identifies the hierarchies which reference a given column.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
@@ -3914,7 +3914,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## used_in_levels
 #### Identifies the levels which reference a given column.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
@@ -3934,7 +3934,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## used_in_relationships
 #### Identifies the relationships which use a given table/column.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
@@ -3943,7 +3943,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
     )
 ```
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
@@ -3963,12 +3963,12 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## used_in_rls
 #### Identifies the filter expressions which reference a given object.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
 
-    dep = fct.get_model_calc_dependencies(dataset = 'AdventureWorks', workspace = None)
+    dep = labs.get_model_calc_dependencies(dataset = 'AdventureWorks', workspace = None)
     tom.used_in_rls(
         object = tom.model.Tables['Product'].Columns['Color'],
         dependencies = dep
@@ -3990,7 +3990,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## used_in_sort_by
 #### Identifies the column used for sorting a given column.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:
@@ -4010,7 +4010,7 @@ with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readon
 ## used_size
 #### Obtains the used of a hierarchy or relationship within a semantic model.
 ```python
-import semantic-link-labs as fct
+import semantic-link-labs as labs
 from semantic-link-labs.TOM import connect_semantic_model
 
 with connect_semantic_model(dataset = 'AdventureWorks', workspace = None, readonly = True) as tom:

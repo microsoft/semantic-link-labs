@@ -9,12 +9,14 @@ from .GetMeasureDependencies import get_measure_dependencies
 from .HelperFunctions import format_dax_object_name, resolve_lakehouse_name
 from .Lakehouse import lakehouse_attached
 from .GetLakehouseTables import get_lakehouse_tables
+from sempy._utils._log import log
 
+@log
 def model_bpa_rules():
 
   """
     
-  Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#model_bpa_rules
+  Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#model_bpa_rules
 
   """
 
@@ -297,11 +299,12 @@ def model_bpa_rules():
 
   return df_rules
 
+@log
 def run_model_bpa(dataset: str, rules_dataframe: str | None = None, workspace: str | None = None, export: bool = False, return_dataframe: bool = False, **kwargs):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#run_model_bpa
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#run_model_bpa
 
     """
 

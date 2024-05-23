@@ -1,25 +1,28 @@
 import sempy
 import sempy.fabric as fabric
 import re, datetime, time
-sempy.fabric._client._utils._init_analysis_services()
 from .ListFunctions import list_tables
 from .HelperFunctions import create_relationship_name
 from .TOM import connect_semantic_model
-import Microsoft.AnalysisServices.Tabular as TOM
-import System
+from sempy._utils._log import log
 
 green_dot = '\U0001F7E2'
 yellow_dot = '\U0001F7E1'
 red_dot = '\U0001F534'
 in_progress = '⌛'
 
+@log
 def migrate_model_objects_to_semantic_model(dataset: str, new_dataset: str, workspace: str | None = None, new_dataset_workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#migrate_model_objects_to_semantic_model
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#migrate_model_objects_to_semantic_model
 
     """
+    
+    sempy.fabric._client._utils._init_analysis_services()
+    import Microsoft.AnalysisServices.Tabular as TOM
+    import System
 
     if workspace == None:
         workspace_id = fabric.get_workspace_id()

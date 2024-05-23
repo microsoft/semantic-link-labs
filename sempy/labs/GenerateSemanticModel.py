@@ -2,12 +2,13 @@ import sempy
 import sempy.fabric as fabric
 import json, base64, time
 from .GetSemanticModelBim import get_semantic_model_bim
+from sempy._utils._log import log
 
 def create_semantic_model_from_bim(dataset: str, bim_file, workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#create_semantic_model_from_bim
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#create_semantic_model_from_bim
 
     """
 
@@ -83,7 +84,7 @@ def deploy_semantic_model(dataset: str, new_dataset: str | None = None, workspac
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#deploy_semantic_model
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#deploy_semantic_model
 
     """    
 

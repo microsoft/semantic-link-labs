@@ -6,7 +6,7 @@ def export_model_to_onelake(dataset: str, workspace: str | None = None, destinat
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#export_model_to_onelake
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#export_model_to_onelake
 
     """
 

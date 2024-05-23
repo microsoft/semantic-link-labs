@@ -7,7 +7,7 @@ def create_report_from_reportjson(report: str, dataset: str, report_json, theme_
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#create_report_from_reportjson
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#create_report_from_reportjson
 
     """
 
@@ -130,7 +130,7 @@ def update_report_from_reportjson(report, report_json, workspace = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#update_report_from_reportjson
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#update_report_from_reportjson
 
     """
 

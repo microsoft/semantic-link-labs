@@ -12,7 +12,7 @@ def get_lakehouse_tables(lakehouse: str | None = None, workspace: str | None = N
 
     """
 
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#get_lakehouse_tables
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_lakehouse_tables
 
     """
 

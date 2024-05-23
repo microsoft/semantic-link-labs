@@ -7,7 +7,7 @@ def list_direct_lake_model_calc_tables(dataset: str, workspace: str | None = Non
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#list_direct_lake_model_calc_tables
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#list_direct_lake_model_calc_tables
 
     """
 

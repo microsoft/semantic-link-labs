@@ -9,7 +9,7 @@ def direct_lake_schema_compare(dataset: str, workspace: str | None = None, lakeh
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#direct_lake_schema_compare
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#direct_lake_schema_compare
 
     """
 

@@ -6,7 +6,7 @@ def get_direct_lake_guardrails():
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#get_direct_lake_guardrails
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_direct_lake_guardrails
 
     """
 
@@ -23,7 +23,7 @@ def get_sku_size(workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#get_sku_size
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_sku_size
 
     """
 
@@ -43,7 +43,7 @@ def get_directlake_guardrails_for_sku(sku_size: str):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#get_directlake_guardrails_for_sku
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_directlake_guardrails_for_sku
 
     """
 

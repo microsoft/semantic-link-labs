@@ -7,7 +7,7 @@ def get_shared_expression(lakehouse: str | None = None, workspace: str | None = 
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#get_shared_expression
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_shared_expression
 
     """
 

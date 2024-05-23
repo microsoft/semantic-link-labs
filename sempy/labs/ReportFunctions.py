@@ -21,7 +21,7 @@ def get_report_json(report: str, workspace: str | None = None, save_to_file_name
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#get_report_json
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_report_json
 
     """
 
@@ -72,7 +72,7 @@ def report_dependency_tree(workspaceName: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#report_dependency_tree
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#report_dependency_tree
 
     """
 
@@ -115,7 +115,7 @@ def export_report(report: str, export_format: str, file_name: str | None = None,
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#export_report
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#export_report
 
     """
 
@@ -304,7 +304,7 @@ def clone_report(report: str, cloned_report: str, workspace: str | None = None, 
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#clone_report
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#clone_report
 
     """
 
@@ -385,7 +385,7 @@ def launch_report(report: str, workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#launch_report
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#launch_report
 
     """
 
@@ -407,7 +407,7 @@ def list_report_pages(report: str, workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#list_report_pages
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#list_report_pages
 
     """
 
@@ -450,7 +450,7 @@ def list_report_visuals(report: str, workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#list_report_visuals
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#list_report_visuals
 
     """
 
@@ -486,7 +486,7 @@ def list_report_bookmarks(report: str, workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#list_report_bookmarks
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#list_report_bookmarks
 
     """
 
@@ -533,7 +533,7 @@ def translate_report_titles(report: str, languages: str | list, workspace: str |
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#translate_report_titles
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#translate_report_titles
 
     """    
 

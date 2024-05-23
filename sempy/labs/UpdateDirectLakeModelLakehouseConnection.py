@@ -8,7 +8,7 @@ def update_direct_lake_model_lakehouse_connection(dataset: str, workspace: str |
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#update_direct_lake_model_lakehouse_connection
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#update_direct_lake_model_lakehouse_connection
 
     """    
 

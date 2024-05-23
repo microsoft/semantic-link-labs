@@ -7,17 +7,19 @@ from .GetSharedExpression import get_shared_expression
 from .HelperFunctions import resolve_lakehouse_name
 from .Lakehouse import lakehouse_attached
 from .TOM import connect_semantic_model
+from sempy._utils._log import log
 
 green_dot = '\U0001F7E2'
 yellow_dot = '\U0001F7E1'
 red_dot = '\U0001F534'
 in_progress = '⌛'
 
+@log
 def migrate_tables_columns_to_semantic_model(dataset: str, new_dataset: str, workspace: str | None = None, new_dataset_workspace: str | None = None, lakehouse: str | None = None, lakehouse_workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#migrate_tables_columns_to_semantic_model
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#migrate_tables_columns_to_semantic_model
 
     """
 

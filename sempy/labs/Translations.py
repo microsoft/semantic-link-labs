@@ -1,8 +1,5 @@
 import pandas as pd
-from synapse.ml.services import Translate
-from pyspark.sql.functions import col, flatten
-from pyspark.sql import SparkSession
-from .TOM import connect_semantic_model
+from sempy._utils._log import log
 
 green_dot = '\U0001F7E2'
 yellow_dot = '\U0001F7E1'
@@ -13,7 +10,7 @@ def language_validate(language: str):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#language_validate
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#language_validate
 
     """
     
@@ -36,13 +33,19 @@ def language_validate(language: str):
 
     return lang
 
+@log
 def translate_semantic_model(dataset: str, languages: str | list, exclude_characters: str | None = None, workspace: str | None = None):
 
     """
 
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#translate_semantic_model
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#translate_semantic_model
 
-    """    
+    """
+
+    from synapse.ml.services import Translate
+    from pyspark.sql.functions import col, flatten
+    from pyspark.sql import SparkSession
+    from .TOM import connect_semantic_model
 
     if isinstance(languages, str):
         languages = [languages]

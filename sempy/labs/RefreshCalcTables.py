@@ -4,17 +4,19 @@ import pandas as pd
 import re, datetime, time
 from pyspark.sql import SparkSession
 from .TOM import connect_semantic_model
+from sempy._utils._log import log
 
 green_dot = '\U0001F7E2'
 yellow_dot = '\U0001F7E1'
 red_dot = '\U0001F534'
 in_progress = '⌛'
 
+@log
 def refresh_calc_tables(dataset: str, workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#refresh_calc_tables
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#refresh_calc_tables
 
     """
 

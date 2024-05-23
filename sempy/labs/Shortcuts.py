@@ -12,7 +12,7 @@ def create_shortcut_onelake(table_name: str, source_lakehouse: str, source_works
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#create_shortcut_onelake
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#create_shortcut_onelake
 
     """
 
@@ -55,7 +55,7 @@ def create_shortcut(shortcut_name: str, location: str, subpath: str, source: str
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#create_shortcut
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#create_shortcut
 
     """
 
@@ -110,7 +110,7 @@ def list_shortcuts(lakehouse: str | None = None, workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#list_shortcuts
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#list_shortcuts
 
     """
 
@@ -157,7 +157,7 @@ def delete_shortcut(shortcut_name: str, lakehouse: str | None = None, workspace:
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#delete_shortcut
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#delete_shortcut
 
     """    
 

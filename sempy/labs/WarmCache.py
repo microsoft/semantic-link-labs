@@ -7,17 +7,19 @@ import time
 from .HelperFunctions import format_dax_object_name
 from .RefreshSemanticModel import refresh_semantic_model
 from .GetMeasureDependencies import get_measure_dependencies
+from sempy._utils._log import log
 
 green_dot = '\U0001F7E2'
 yellow_dot = '\U0001F7E1'
 red_dot = '\U0001F534'
 in_progress = '⌛'
 
+@log
 def warm_direct_lake_cache_perspective(dataset: str, perspective: str, add_dependencies: bool = False, workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#warm_direct_lake_cache_perspective
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#warm_direct_lake_cache_perspective
 
     """
 
@@ -97,11 +99,12 @@ def warm_direct_lake_cache_perspective(dataset: str, perspective: str, add_depen
     
     return df
 
+@log
 def warm_direct_lake_cache_isresident(dataset: str, workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#warm_direct_lake_cache_isresident
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#warm_direct_lake_cache_isresident
 
     """    
 

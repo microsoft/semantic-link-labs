@@ -2,12 +2,13 @@ import sempy
 import sempy.fabric as fabric
 import pandas as pd
 from .HelperFunctions import format_dax_object_name
+from sempy._utils._log import log
 
 def get_measure_dependencies(dataset: str, workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#get_measure_dependencies
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_measure_dependencies
 
     """
 
@@ -66,7 +67,7 @@ def get_model_calc_dependencies(dataset: str, workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#get_model_calc_dependencies
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_model_calc_dependencies
 
     """
 

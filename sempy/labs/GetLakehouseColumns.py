@@ -5,12 +5,13 @@ from pyspark.sql import SparkSession
 from delta import DeltaTable
 from .HelperFunctions import resolve_lakehouse_name, format_dax_object_name, resolve_lakehouse_id
 from .GetLakehouseTables import get_lakehouse_tables
+from sempy._utils._log import log
 
 def get_lakehouse_columns(lakehouse: str | None = None, workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#get_lakehouse_columns
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_lakehouse_columns
 
     """
 

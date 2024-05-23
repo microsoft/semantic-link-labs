@@ -10,7 +10,7 @@ def create_blank_semantic_model(dataset: str, compatibility_level: int = 1605, w
 
   """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#create_blank_semantic_model
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#create_blank_semantic_model
 
     """
 

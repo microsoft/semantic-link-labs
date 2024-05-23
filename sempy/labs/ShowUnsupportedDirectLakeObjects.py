@@ -8,7 +8,7 @@ def show_unsupported_direct_lake_objects(dataset: str, workspace: str | None = N
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#show_unsupported_direct_lake_objects
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#show_unsupported_direct_lake_objects
 
     """
 

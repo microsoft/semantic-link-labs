@@ -7,7 +7,7 @@ def run_dax(dataset: str, dax_query: str, user_name: str | None = None, workspac
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#run_dax
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#run_dax
 
     """
 

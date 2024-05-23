@@ -12,7 +12,7 @@ def create_abfss_path(lakehouse_id: str, lakehouse_workspace_id, delta_table_nam
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#create_abfss_path
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#create_abfss_path
 
     """
 
@@ -30,7 +30,7 @@ def resolve_report_id(report: str, workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#resolve_report_id
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#resolve_report_id
 
     """
     
@@ -49,7 +49,7 @@ def resolve_report_name(report_id, workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#resolve_report_name
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#resolve_report_name
 
     """
     
@@ -69,7 +69,7 @@ def resolve_dataset_id(dataset: str, workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#resolve_dataset_id
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#resolve_dataset_id
 
     """
     
@@ -88,7 +88,7 @@ def resolve_dataset_name(dataset_id, workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#resolve_dataset_name
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#resolve_dataset_name
 
     """
     
@@ -107,7 +107,7 @@ def resolve_lakehouse_name(lakehouse_id, workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#resolve_lakehouse_name
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#resolve_lakehouse_name
 
     """
     
@@ -131,7 +131,7 @@ def resolve_lakehouse_id(lakehouse: str, workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#resolve_lakehouse_id
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#resolve_lakehouse_id
 
     """
     
@@ -155,7 +155,7 @@ def get_direct_lake_sql_endpoint(dataset: str, workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#get_direct_lake_sql_endpoint
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_direct_lake_sql_endpoint
 
     """
 
@@ -183,7 +183,7 @@ def generate_embedded_filter(filter: str):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#generate_embedded_filter
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#generate_embedded_filter
 
     """
 

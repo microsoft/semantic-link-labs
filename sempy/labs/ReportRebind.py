@@ -11,7 +11,7 @@ def report_rebind(report: str, dataset: str, report_workspace: str | None = None
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#report_rebind
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#report_rebind
 
     """
 
@@ -44,7 +44,7 @@ def report_rebind_all(dataset: str, new_dataset: str, dataset_workspace: str | N
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#report_rebind_all
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#report_rebind_all
 
     """    
 

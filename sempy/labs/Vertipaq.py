@@ -8,12 +8,14 @@ from .HelperFunctions import format_dax_object_name, get_direct_lake_sql_endpoin
 from .ListFunctions import list_relationships
 from .GetLakehouseTables import get_lakehouse_tables
 from .Lakehouse import lakehouse_attached
+from sempy._utils._log import log
 
+@log
 def vertipaq_analyzer(dataset: str, workspace: str | None = None, export: str | None = None, lakehouse_workspace: str | None = None, read_stats_from_data: bool = False):
     
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#vertipaq_analyzer
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#vertipaq_analyzer
 
     """
 
@@ -508,11 +510,12 @@ def visualize_vertipaq(dataframes):
     # Default to open the first tab
     display(HTML("<script>document.getElementsByClassName('tablinks')[0].click();</script>"))
 
+@log
 def import_vertipaq_analyzer(folder_path: str, file_name: str):
 
   """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#import_vertipaq_analyzer
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#import_vertipaq_analyzer
 
     """
   

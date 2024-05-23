@@ -6,7 +6,7 @@ def check_fallback_reason(dataset: str, workspace: str | None = None):
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#check_fallback_reason
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#check_fallback_reason
 
     """
 

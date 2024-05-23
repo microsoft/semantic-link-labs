@@ -9,7 +9,7 @@ def lakehouse_attached():
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#lakehouse_attached
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#lakehouse_attached
 
     """
 
@@ -25,7 +25,7 @@ def optimize_lakehouse_tables(tables: str | list | None = None, lakehouse: str |
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#optimize_lakehouse_tables
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#optimize_lakehouse_tables
 
     """
 

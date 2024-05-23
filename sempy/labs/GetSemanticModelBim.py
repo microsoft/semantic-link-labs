@@ -9,7 +9,7 @@ def get_semantic_model_bim(dataset: str, workspace: str | None = None, save_to_f
 
     """
     
-    Documentation is available here: https://github.com/m-kovalsky/fabric_cat_tools?tab=readme-ov-file#get_semantic_model_bim
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_semantic_model_bim
 
     """
 

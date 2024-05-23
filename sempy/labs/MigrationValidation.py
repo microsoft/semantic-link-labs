@@ -6,6 +6,12 @@ from .TOM import connect_semantic_model
 
 def list_semantic_model_objects(dataset: str, workspace: str | None = None):
 
+    """
+    
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#list_semantic_model_objects
+
+    """
+
     if workspace is None:
         workspace = fabric.resolve_workspace_name()
 
@@ -64,6 +70,12 @@ def list_semantic_model_objects(dataset: str, workspace: str | None = None):
     return df
 
 def migration_validation(dataset: str, new_dataset: str, workspace: str | None = None, new_dataset_workspace: str | None = None):
+
+    """
+    
+    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#migration_validation
+
+    """
 
     dfA = list_semantic_model_objects(dataset = dataset, workspace = workspace)
     dfB = list_semantic_model_objects(dataset = new_dataset, workspace = new_dataset_workspace)
