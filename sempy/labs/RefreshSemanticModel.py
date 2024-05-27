@@ -10,7 +10,7 @@ red_dot = '\U0001F534'
 in_progress = '⌛'
 
 @log
-def refresh_semantic_model(dataset: str, tables: str | list | None = None, partitions: str | list | None = None, refresh_type: str | None = None, retry_count: int = 0, workspace: str | None = None):
+def refresh_semantic_model(dataset: str, tables: str | list | None = None, partitions: str | list | None = None, refresh_type: str | None = None, retry_count: int = 0, apply_refresh_policy: bool = True, workspace: str | None = None):
 
     """
     
@@ -52,9 +52,9 @@ def refresh_semantic_model(dataset: str, tables: str | list | None = None, parti
         return
         
     if len(objects) == 0:
-        requestID = fabric.refresh_dataset(dataset = dataset, workspace = workspace, refresh_type = refresh_type, retry_count = retry_count)
+        requestID = fabric.refresh_dataset(dataset = dataset, workspace = workspace, refresh_type = refresh_type, retry_count = retry_count, apply_refresh_policy = apply_refresh_policy)
     else:
-        requestID = fabric.refresh_dataset(dataset = dataset, workspace = workspace, refresh_type = refresh_type, retry_count = retry_count, objects = objects)
+        requestID = fabric.refresh_dataset(dataset = dataset, workspace = workspace, refresh_type = refresh_type, retry_count = retry_count, apply_refresh_policy = apply_refresh_policy, objects = objects)
     print(f"{in_progress} Refresh of the '{dataset}' semantic model within the '{workspace}' workspace is in progress...")
     if len(objects) != 0:
         print(objects)
