@@ -74,7 +74,7 @@ extends:
 
         steps:
         - checkout: self
-        - checkout: semantic-link-functions
+        - checkout: microsoft/semantic-link-functions
 
         # CFS
         - task: PipAuthenticate@1
