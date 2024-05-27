@@ -14,10 +14,6 @@ parameters:
   displayName: 'Dry run (does not publish to ESRP)'
   type: boolean
   default: true
-- name: semantic_link_labs_ref
-  displayName: 'semantic-link-labs ref'
-  type: string
-  default: 'ref/heads/main'
 
 resources:
   repositories:
@@ -25,12 +21,6 @@ resources:
       type: git
       name: OneBranch.Pipelines/GovernedTemplates
       ref: refs/heads/main
-
-    - repository: semantic-link-labs
-      type: github
-      endpoint: GitHub.com/Microsoft
-      name: microsoft/semantic-link-labs
-      ref: ${{ variables['semantic_link_labs_ref'] }}
 
 extends:
   template: v2/OneBranch.NonOfficial.CrossPlat.yml@templates # https://aka.ms/obpipelines/templates
@@ -74,7 +64,6 @@ extends:
 
         steps:
         - checkout: self
-        - checkout: microsoft/semantic-link-functions
 
         # CFS
         - task: PipAuthenticate@1
