@@ -2128,7 +2128,47 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
             
             self.model.Tables[table_name].Columns[column_name].DataType = System.Enum.Parse(TOM.DataType, value)
 
+        def add_time_intelligence(self, measure_name: str, date_table: str, time_intel: str | list):
 
+            table_name = None
+            time_intel_options = ['MTD', 'QTD', 'YTD']
+
+            if isinstance(time_intel, str):
+                time_intel = [time_intel]
+            
+            # Validate time intelligence variations
+            for t in time_intel:
+                t = t.capitalize()
+                if t not in [time_intel_options]:
+                    print(f"The '{t}' time intelligence variation is not supported. Valid options: {time_intel_options}.")
+                    return
+
+            # Validate measure and extract table name
+            for m in self.all_measures():
+                if m.Name == measure_name:
+                    table_name = m.Parent.Name
+
+            if table_name is None:
+                print(f"The '{measure_name}' is not a valid measure in the '{dataset}' semantic model within the '{workspace}' workspace.")
+                return
+            
+            # Validate date table
+            if not self.is_date_table(date_table):
+                print(f"{red_dot} The '{date_table}' table is not a valid date table in the '{dataset}' wemantic model within the '{workspace}' workspace.")
+                return
+            
+            # Extract date key from date table
+            for c in self.all_columns():
+                if c.Parent.Name == date_table and c.IsKey:
+                    date_key = c.Name
+
+            # Create the new time intelligence measures
+            for t in time_intel:
+                if t == 'MTD':
+                    expr = f"CALCULATE([{measure_name}],DATES{time_intel}('{date_table}'[{date_key}]))"
+                    new_meas_name = f"{measure_name} {t}"
+                    self.add_measure(table_name = table_name, measure_name = new_meas_name, expression = expr)
+            
         def close(self):
             if not readonly and self.model is not None:
                 self.model.SaveChanges()
