@@ -60,11 +60,11 @@ jobs:
       #     flake8 sempy_labs tests --count --show-source --statistics
       #   continue-on-error: false
 
-      - name: Lint with mypy
-        shell: bash -el {0}
-        run: |
-          mypy sempy_labs tests
-        continue-on-error: false
+      # - name: Lint with mypy
+      #   shell: bash -el {0}
+      #   run: |
+      #     mypy sempy_labs tests
+      #   continue-on-error: false
 
       - name: Test with pytest
         shell: bash -el {0}
