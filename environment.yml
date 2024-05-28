@@ -1,6 +1,7 @@
 name: fabric
 dependencies:
 - flake8
+- mypy
 - pytest
 - pytest-cov
 - pytest-mock
@@ -8,3 +9,4 @@ dependencies:
   - semantic-link-sempy>=0.7.5
   - azure-identity==1.7.1
   - azure-storage-blob>=12.9.0
+  - pandas-stubs
