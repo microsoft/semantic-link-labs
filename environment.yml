@@ -1,0 +1,10 @@
+name: fabric
+dependencies:
+- flake8
+- pytest
+- pytest-cov
+- pytest-mock
+- pip:
+  - semantic-link-sempy>=0.7.5
+  - azure-identity==1.7.1
+  - azure-storage-blob>=12.9.0
