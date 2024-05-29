@@ -21,8 +21,8 @@ def get_semantic_model_bim(dataset: str, workspace: str | None = None, save_to_f
     
     objType = 'SemanticModel'
     client = fabric.FabricRestClient()
-    itemList = fabric.list_items(workspace = workspace)
-    itemListFilt = itemList[(itemList['Display Name'] == dataset) & (itemList['Type'] == objType)]
+    itemList = fabric.list_items(workspace = workspace, type = objType)
+    itemListFilt = itemList[(itemList['Display Name'] == dataset)]
     itemId = itemListFilt['Id'].iloc[0]
     response = client.post(f"/v1/workspaces/{workspace_id}/items/{itemId}/getDefinition")
         

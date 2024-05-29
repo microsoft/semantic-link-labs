@@ -33,7 +33,7 @@ def get_direct_lake_lakehouse(dataset: str, workspace: str | None = None, lakeho
     else:
         sqlEndpointId = get_direct_lake_sql_endpoint(dataset, workspace)
 
-        dfI = fabric.list_items(workspace = lakehouse_workspace)
+        dfI = fabric.list_items(workspace = lakehouse_workspace, type = 'SQLEndpoint')
         dfI_filt = dfI[dfI['Id'] == sqlEndpointId]
         lakehouseName = dfI_filt['Display Name'].iloc[0]
 

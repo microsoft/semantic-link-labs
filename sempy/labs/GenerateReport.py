@@ -19,8 +19,8 @@ def create_report_from_reportjson(report: str, dataset: str, report_json, theme_
 
     objectType = 'Report'
 
-    dfI = fabric.list_items(workspace = workspace)
-    dfI_model = dfI[(dfI['Display Name'] == dataset) & (dfI['Type'] == 'SemanticModel')]
+    dfI_m = fabric.list_items(workspace = workspace, type = 'SemanticModel')
+    dfI_model = dfI_m[(dfI_m['Display Name'] == dataset)]
 
     if len(dfI_model) == 0:
         print(f"ERROR: The '{dataset}' semantic model does not exist in the '{workspace}' workspace.")
@@ -28,7 +28,8 @@ def create_report_from_reportjson(report: str, dataset: str, report_json, theme_
     
     datasetId = dfI_model['Id'].iloc[0]
 
-    dfI_rpt = dfI[(dfI['Display Name'] == report) & (dfI['Type'] == 'Report')]
+    dfI_r = fabric.list_items(workspace = workspace, type = 'Report')
+    dfI_rpt = dfI_r[(dfI_r['Display Name'] == report)]
 
     if len(dfI_rpt) > 0:
         print(f"WARNING: '{report}' already exists as a report in the '{workspace}' workspace.")

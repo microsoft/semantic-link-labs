@@ -30,8 +30,8 @@ def direct_lake_schema_sync(dataset: str, workspace: str | None = None, add_to_m
 
     sqlEndpointId = get_direct_lake_sql_endpoint(dataset, workspace)
 
-    dfI = fabric.list_items(workspace = lakehouse_workspace)
-    dfI_filt = dfI[(dfI['Type'] == 'SQLEndpoint') & (dfI['Id'] == sqlEndpointId)]
+    dfI = fabric.list_items(workspace = lakehouse_workspace, type = 'SQLEndpoint')
+    dfI_filt = dfI[(dfI['Id'] == sqlEndpointId)]
 
     if len(dfI_filt) == 0:
         print(f"The SQL Endpoint in the '{dataset}' semantic model in the '{workspace} workspace does not point to the '{lakehouse}' lakehouse in the '{lakehouse_workspace}' workspace as specified.")

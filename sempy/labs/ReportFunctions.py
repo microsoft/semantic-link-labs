@@ -33,8 +33,8 @@ def get_report_json(report: str, workspace: str | None = None, save_to_file_name
 
     client = fabric.FabricRestClient()
 
-    dfI = fabric.list_items(workspace = workspace)
-    dfI_filt = dfI[(dfI['Display Name'] == report) & (dfI['Type'] == 'Report')]
+    dfI = fabric.list_items(workspace = workspace, type = 'Report')
+    dfI_filt = dfI[(dfI['Display Name'] == report)]
 
     if len(dfI_filt) == 0:
         print(f"{red_dot} The '{report}' report does not exist in the '{workspace}' workspace.")
@@ -316,8 +316,8 @@ def clone_report(report: str, cloned_report: str, workspace: str | None = None, 
     else:
         workspace_id = fabric.resolve_workspace_id(workspace)
 
-    dfI = fabric.list_items(workspace = workspace)
-    dfI_filt = dfI[(dfI['Type'] == 'Report') & (dfI['Display Name'] == report)]    
+    dfI = fabric.list_items(workspace = workspace, type = 'Report')
+    dfI_filt = dfI[(dfI['Display Name'] == report)]    
 
     if len(dfI_filt) == 0:
         print(f"{red_dot} The '{report}' report does not exist within the '{workspace}' workspace.")

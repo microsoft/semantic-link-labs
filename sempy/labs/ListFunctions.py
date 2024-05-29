@@ -649,8 +649,8 @@ def update_item(item_type: str, current_name: str, new_name: str, description: s
     
     itemType = itemTypes[item_type]
 
-    dfI = fabric.list_items(workspace = workspace)
-    dfI_filt = dfI[(dfI['Type'] == item_type) & (dfI['Display Name'] == current_name)]
+    dfI = fabric.list_items(workspace = workspace, type = item_type)
+    dfI_filt = dfI[(dfI['Display Name'] == current_name)]
 
     if len(dfI_filt) == 0:
         print(f"The '{current_name}' {item_type} does not exist within the '{workspace}' workspace.")

@@ -39,8 +39,8 @@ def resolve_report_id(report: str, workspace: str | None = None):
         workspace = fabric.resolve_workspace_name(workspace_id)
 
     objectType = 'Report'
-    dfI = fabric.list_items(workspace = workspace)
-    dfI_filt = dfI[(dfI['Display Name'] == report) & (dfI['Type'] == objectType)]
+    dfI = fabric.list_items(workspace = workspace, type = objectType)
+    dfI_filt = dfI[(dfI['Display Name'] == report)]
     obj = dfI_filt['Id'].iloc[0]
 
     return obj
@@ -59,8 +59,8 @@ def resolve_report_name(report_id, workspace: str | None = None):
         workspace = fabric.resolve_workspace_name(workspace_id)
 
     objectType = 'Report'
-    dfI = fabric.list_items(workspace = workspace)
-    dfI_filt = dfI[(dfI['Id'] == report_id) & (dfI['Type'] == objectType)]
+    dfI = fabric.list_items(workspace = workspace, type = objectType)
+    dfI_filt = dfI[(dfI['Id'] == report_id)]
     obj = dfI_filt['Display Name'].iloc[0]
 
     return obj
@@ -78,8 +78,8 @@ def resolve_dataset_id(dataset: str, workspace: str | None = None):
         workspace = fabric.resolve_workspace_name(workspace_id)
 
     objectType = 'SemanticModel'
-    dfI = fabric.list_items(workspace = workspace)
-    dfI_filt = dfI[(dfI['Display Name'] == dataset) & (dfI['Type'] == objectType)]
+    dfI = fabric.list_items(workspace = workspace, type = objectType)
+    dfI_filt = dfI[(dfI['Display Name'] == dataset)]
     obj = dfI_filt['Id'].iloc[0]
 
     return obj
@@ -97,8 +97,8 @@ def resolve_dataset_name(dataset_id, workspace: str | None = None):
         workspace = fabric.resolve_workspace_name(workspace_id)
 
     objectType = 'SemanticModel'
-    dfI = fabric.list_items(workspace = workspace)
-    dfI_filt = dfI[(dfI['Id'] == dataset_id) & (dfI['Type'] == objectType)]
+    dfI = fabric.list_items(workspace = workspace, type = objectType)
+    dfI_filt = dfI[(dfI['Id'] == dataset_id)]
     obj = dfI_filt['Display Name'].iloc[0]
 
     return obj
@@ -116,8 +116,8 @@ def resolve_lakehouse_name(lakehouse_id, workspace: str | None = None):
         workspace = fabric.resolve_workspace_name(workspace_id)
 
     objectType = 'Lakehouse'
-    dfI = fabric.list_items(workspace = workspace)
-    dfI_filt = dfI[(dfI['Id'] == lakehouse_id) & (dfI['Type'] == objectType)]
+    dfI = fabric.list_items(workspace = workspace, type = objectType)
+    dfI_filt = dfI[(dfI['Id'] == lakehouse_id)]
 
     if len(dfI_filt) == 0:
         print(f"The '{lakehouse_id}' Lakehouse Id does not exist within the '{workspace}' workspace.")
@@ -140,8 +140,8 @@ def resolve_lakehouse_id(lakehouse: str, workspace: str | None = None):
         workspace = fabric.resolve_workspace_name(workspace_id)
 
     objectType = 'Lakehouse'    
-    dfI = fabric.list_items(workspace = workspace)
-    dfI_filt = dfI[(dfI['Display Name'] == lakehouse) & (dfI['Type'] == objectType)]
+    dfI = fabric.list_items(workspace = workspace, type = objectType)
+    dfI_filt = dfI[(dfI['Display Name'] == lakehouse)]
 
     if len(dfI_filt) == 0:
         print(f"The '{lakehouse}' lakehouse does not exist within the '{workspace}' workspace.")

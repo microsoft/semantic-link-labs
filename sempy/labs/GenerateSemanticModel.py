@@ -20,8 +20,8 @@ def create_semantic_model_from_bim(dataset: str, bim_file, workspace: str | None
 
     objectType = 'SemanticModel'
 
-    dfI = fabric.list_items(workspace = workspace)
-    dfI_filt = dfI[(dfI['Display Name'] == dataset) & (dfI['Type'] == objectType)]
+    dfI = fabric.list_items(workspace = workspace, type = objectType)
+    dfI_filt = dfI[(dfI['Display Name'] == dataset)]
 
     if len(dfI_filt) > 0:
         print(f"WARNING: '{dataset}' already exists as a semantic model in the '{workspace}' workspace.")

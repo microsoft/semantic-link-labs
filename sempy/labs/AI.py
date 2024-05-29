@@ -173,8 +173,8 @@ def generate_aggs(dataset: str, table_name: str, columns: str | list, workspace:
 
     sqlEndpointId = get_direct_lake_sql_endpoint(dataset = dataset, workspace = workspace)
 
-    dfI = fabric.list_items(workspace = lakehouse_workspace)
-    dfI_filt = dfI[(dfI['Id'] == sqlEndpointId) & (dfI['Type'] == 'SQLEndpoint')]
+    dfI = fabric.list_items(workspace = lakehouse_workspace, type = 'SQLEndpoint')
+    dfI_filt = dfI[(dfI['Id'] == sqlEndpointId)]
 
     if len(dfI_filt) == 0:
         print(f"The lakehouse (SQL Endpoint) used by the '{dataset}' semantic model does not reside in the '{lakehouse_workspace}' workspace. Please update the lakehouse_workspace parameter.")

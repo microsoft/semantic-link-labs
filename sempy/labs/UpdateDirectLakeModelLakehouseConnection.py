@@ -26,8 +26,8 @@ def update_direct_lake_model_lakehouse_connection(dataset: str, workspace: str |
         lakehouse = resolve_lakehouse_name(lakehouse_id, lakehouse_workspace)
 
     # Check if lakehouse is valid
-    dfI = fabric.list_items(workspace = lakehouse_workspace)
-    dfI_filt = dfI[(dfI['Type'] == 'Lakehouse') & (dfI['Display Name'] == lakehouse)]
+    dfI = fabric.list_items(workspace = lakehouse_workspace, type = 'Lakehouse')
+    dfI_filt = dfI[(dfI['Display Name'] == lakehouse)]
 
     if len(dfI_filt) == 0:
         print(f"The '{lakehouse}' lakehouse does not exist within the '{lakehouse_workspace}' workspace. Therefore it cannot be used to support the '{dataset}' semantic model within the '{workspace}' workspace.")
