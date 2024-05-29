@@ -768,3 +768,27 @@ def list_kpis(dataset, workspace = None):
                     df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
         return df
+    
+def list_workspace_role_assignments(workspace: str | None = None):
+
+    if workspace == None:
+        workspace_id = fabric.get_workspace_id()
+        workspace = fabric.resolve_workspace_name(workspace_id)
+    else:
+        workspace_id = fabric.resolve_workspace_id(workspace)
+
+    df = pd.DataFrame(columns=['User Name', 'User Email', 'Role Name', 'Type'])
+
+    client = fabric.FabricRestClient()
+    response = client.get(f"/v1/workspaces/{workspace_id}/roleAssignments")
+
+    for i in response.json()['value']:
+        user_name = i['principal']['displayName']
+        role_name = i['role']
+        user_email = i['principal']['userDetails']['userPrincipalName']
+        user_type = i['principal']['type']
+
+        new_data = {'User Name': user_name, 'Role Name': role_name, 'Type': user_type, 'User Email': user_email}
+        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    return df
