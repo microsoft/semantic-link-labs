@@ -139,9 +139,8 @@ def resolve_lakehouse_id(lakehouse: str, workspace: str | None = None):
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
-    objectType = 'Lakehouse'    
-    dfI = fabric.list_items(workspace = workspace)
-    dfI_filt = dfI[(dfI['Display Name'] == lakehouse) & (dfI['Type'] == objectType)]
+    dfI = fabric.list_items('Lakehouse', workspace = workspace)
+    dfI_filt = dfI[(dfI['Display Name'] == lakehouse)]
 
     if len(dfI_filt) == 0:
         print(f"The '{lakehouse}' lakehouse does not exist within the '{workspace}' workspace.")
