@@ -1,4 +1,5 @@
 import pandas as pd
+from typing import List, Optional, Union
 from sempy._utils._log import log
 
 green_dot = '\U0001F7E2'
@@ -9,9 +10,17 @@ in_progress = '⌛'
 def language_validate(language: str):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#language_validate
+    Validateds that the language specified exists within the supported langauges.
 
+    Parameters
+    ----------
+    language : str
+        The language code.
+
+    Returns
+    -------
+    bool
+        A True/False indication as to whether the language code is supported.
     """
     
     url = 'https://learn.microsoft.com/azure/ai-services/translator/language-support'
@@ -34,12 +43,28 @@ def language_validate(language: str):
     return lang
 
 @log
-def translate_semantic_model(dataset: str, languages: str | list, exclude_characters: str | None = None, workspace: str | None = None):
+def translate_semantic_model(dataset: str, languages: Union[str, List[str]], exclude_characters: Optional[str] = None, workspace: Optional[str] = None):
 
     """
+    Translates names, descriptions, display folders for all objects in a semantic model.
 
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#translate_semantic_model
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    languages : str, List[str]
+        The language code(s) in which to translate the semantic model.
+    exclude_characters : str
+        A string specifying characters which will be replaced by a space in the translation text when sent to the translation service.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
 
+    Returns
+    -------
+    str
+        A printout stating the success/failure of the operation.
     """
 
     from synapse.ml.services import Translate

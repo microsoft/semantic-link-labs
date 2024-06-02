@@ -8,6 +8,7 @@ from .ListFunctions import list_relationships
 from .RefreshSemanticModel import refresh_semantic_model
 from .Fallback import check_fallback_reason
 from contextlib import contextmanager
+from typing import List, Optional, Union
 from sempy._utils._log import log
 
 green_dot = '\U0001F7E2'
@@ -21,7 +22,27 @@ end_bold = '\033[0m'
 
 @log
 @contextmanager
-def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str | None = None):
+def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, workspace: Optional[str] = None):
+
+    """
+    Connects to the Tabular Object Model (TOM) within a semantic model.
+
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    readonly: bool, default=True
+        Whether the connection is read-only or read/write. Setting this to False enables read/write which saves the changes made back to the server.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    str
+        A connection to the semantic model's Tabular Object Model.
+    """
 
     sempy.fabric._client._utils._init_analysis_services()
     import Microsoft.AnalysisServices.Tabular as TOM
@@ -43,9 +64,15 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def all_columns(self):
 
             """
+            Outputs a list of all columns within all tables in the semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#all_columns
-            
+            Parameters
+            ----------
+
+            Returns
+            -------
+            str
+                All columns within the semantic model.
             """
 
             for t in self.model.Tables:
@@ -56,9 +83,15 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def all_calculated_columns(self):
 
             """
+            Outputs a list of all calculated columns within all tables in the semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#all_calculated_columns
-            
+            Parameters
+            ----------
+
+            Returns
+            -------
+            str
+                All calculated columns within the semantic model.
             """
 
             for t in self.model.Tables:
@@ -69,9 +102,15 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def all_calculated_tables(self):
 
             """
+            Outputs a list of all calculated tables in the semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#all_calculated_tables
-            
+            Parameters
+            ----------
+
+            Returns
+            -------
+            str
+                All calculated tables within the semantic model.
             """
 
             for t in self.model.Tables:
@@ -81,9 +120,15 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def all_calculation_groups(self):
 
             """
+            Outputs a list of all calculation groups in the semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#all_calculation_groups
+            Parameters
+            ----------
 
+            Returns
+            -------
+            str
+                All calculation groups within the semantic model.
             """
 
             for t in self.model.Tables:
@@ -93,9 +138,15 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def all_measures(self):
 
             """
+            Outputs a list of all measures in the semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#all_measures
-            
+            Parameters
+            ----------
+
+            Returns
+            -------
+            str
+                All measures within the semantic model.
             """
 
             for t in self.model.Tables:
@@ -105,9 +156,15 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def all_partitions(self):
 
             """
+            Outputs a list of all partitions in the semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#all_partitions
-            
+            Parameters
+            ----------
+
+            Returns
+            -------
+            str
+                All partitions within the semantic model.
             """
 
             for t in self.model.Tables:
@@ -117,9 +174,15 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def all_hierarchies(self):
 
             """
+            Outputs a list of all hierarchies in the semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#all_hierarchies
-            
+            Parameters
+            ----------
+
+            Returns
+            -------
+            str
+                All hierarchies within the semantic model.
             """
 
             for t in self.model.Tables:
@@ -129,9 +192,15 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def all_levels(self):
 
             """
+            Outputs a list of all levels in the semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#all_levels
-            
+            Parameters
+            ----------
+
+            Returns
+            -------
+            str
+                All levels within the semantic model.
             """
 
             for t in self.model.Tables:
@@ -142,9 +211,15 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def all_calculation_items(self):
 
             """
+            Outputs a list of all calculation items in the semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#all_calculationitems
-            
+            Parameters
+            ----------
+
+            Returns
+            -------
+            str
+                All calculation items within the semantic model.
             """
 
             for t in self.model.Tables:
@@ -155,21 +230,47 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def all_rls(self):
 
             """
+            Outputs a list of all row level security expressions in the semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#all_rls
-            
+            Parameters
+            ----------
+
+            Returns
+            -------
+            str
+                All row level security expressions within the semantic model.
             """
 
             for r in self.model.Roles:
                 for tp in r.TablePermissions:
                     yield tp
 
-        def add_measure(self, table_name: str, measure_name: str, expression: str, format_string: str | None = None, hidden: bool = False, description: str | None = None, display_folder: str | None = None):
+        def add_measure(self, table_name: str, measure_name: str, expression: str, format_string: Optional[str] = None, hidden: Optional[bool] = False, description: Optional[str] = None, display_folder: Optional[str] = None):
 
             """
-            
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_measure
-            
+            Adds a measure to the semantic model.
+
+            Parameters
+            ----------
+            table_name : str
+                Name of the table in which the measure will be created.
+            measure_name : str
+                Name of the measure.
+            expression : str
+                DAX expression of the measure.
+            format_string : str, default=None
+                Format string of the measure.
+            hidden : bool, default=False
+                Whether the measure will be hidden or visible.
+            description : str, default=None
+                A description of the measure.
+            display_folder : str, default=None
+                The display folder in which the measure will reside.
+
+            Returns
+            -------
+            str
+                None
             """
 
             obj = TOM.Measure()
@@ -185,12 +286,41 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             self.model.Tables[table_name].Measures.Add(obj)
 
-        def add_calculated_table_column(self, table_name: str, column_name: str, source_column: str, data_type: str, format_string: str | None = None, hidden: bool = False, description: str | None = None, display_folder: str | None = None, data_category: str | None = None, key: bool = False, summarize_by: str | None = None):
+        def add_calculated_table_column(self, table_name: str, column_name: str, source_column: str, data_type: str, format_string: Optional[str] = None, hidden: Optional[bool] = False, description: Optional[str] = None, display_folder: Optional[str] = None, data_category: Optional[str] = None, key: Optional[bool] = False, summarize_by: Optional[str] = None):
 
             """
+            Adds a calculated table column to a calculated table within a semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_calculated_table_column
-            
+            Parameters
+            ----------
+            table_name : str
+                Name of the table in which the column will be created.
+            column_name : str
+                Name of the column.
+            source_column : str
+                The source column for the column.
+            data_type : str
+                The data type of the column.
+            format_string : str, default=None
+                Format string of the column.
+            hidden : bool, default=False
+                Whether the column will be hidden or visible.
+            description : str, default=None
+                A description of the column.
+            display_folder : str, default=None
+                The display folder in which the column will reside.
+            data_category : str, default=None
+                The data category of the column.
+            key : bool, default=False
+                Marks the column as the primary key of the table.
+            summarize_by : str, default=None
+                Sets the value for the Summarize By property of the column.
+                Defaults to None resolves to 'Default'.
+
+            Returns
+            -------
+            str
+                None
             """
 
             data_type = data_type.capitalize().replace('Integer', 'Int64').replace('Datetime', 'DateTime')
@@ -215,12 +345,41 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
                 obj.DataCategory = data_category
             self.model.Tables[table_name].Columns.Add(obj)
 
-        def add_data_column(self, table_name: str, column_name: str, source_column: str, data_type: str, format_string: str | None = None, hidden: bool = False, description: str | None = None, display_folder: str | None = None, data_category: str | None = None, key: bool = False, summarize_by: str | None = None):
+        def add_data_column(self, table_name: str, column_name: str, source_column: str, data_type: str, format_string: Optional[str] = None, hidden: Optional[bool] = False, description: Optional[str] = None, display_folder: Optional[str] = None, data_category: Optional[str] = None, key: Optional[bool] = False, summarize_by: Optional[str] = None):
 
             """
-            
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_data_column
-            
+            Adds a data column to a table within a semantic model.
+
+            Parameters
+            ----------
+            table_name : str
+                Name of the table in which the column will be created.
+            column_name : str
+                Name of the column.
+            source_column : str
+                The source column for the column.
+            data_type : str
+                The data type of the column.
+            format_string : str, default=None
+                Format string of the column.
+            hidden : bool, default=False
+                Whether the column will be hidden or visible.
+            description : str, default=None
+                A description of the column.
+            display_folder : str, default=None
+                The display folder in which the column will reside.
+            data_category : str, default=None
+                The data category of the column.
+            key : bool, default=False
+                Marks the column as the primary key of the table.
+            summarize_by : str, default=None
+                Sets the value for the Summarize By property of the column.
+                Defaults to None resolves to 'Default'.
+
+            Returns
+            -------
+            str
+                None
             """
 
             data_type = data_type.capitalize().replace('Integer', 'Int64').replace('Datetime', 'DateTime')
@@ -245,12 +404,41 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
                 obj.DataCategory = data_category
             self.model.Tables[table_name].Columns.Add(obj)
 
-        def add_calculated_column(self, table_name: str, column_name: str, expression: str, data_type: str, format_string: str | None = None, hidden: bool = False, description: str | None = None, display_folder: str | None = None, data_category: str | None = None, key: bool = False, summarize_by: str | None = None):
+        def add_calculated_column(self, table_name: str, column_name: str, expression: str, data_type: str, format_string: Optional[str] = None, hidden: Optional[bool] = False, description: Optional[str] = None, display_folder: Optional[str] = None, data_category: Optional[str] = None, key: Optional[bool] = False, summarize_by: Optional[str] = None):
 
             """
-            
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_calculated_column
-            
+            Adds a calculated column to a table within a semantic model.
+
+            Parameters
+            ----------
+            table_name : str
+                Name of the table in which the column will be created.
+            column_name : str
+                Name of the column.
+            expression : str
+                The DAX expression for the column.
+            data_type : str
+                The data type of the column.
+            format_string : str, default=None
+                Format string of the column.
+            hidden : bool, default=False
+                Whether the column will be hidden or visible.
+            description : str, default=None
+                A description of the column.
+            display_folder : str, default=None
+                The display folder in which the column will reside.
+            data_category : str, default=None
+                The data category of the column.
+            key : bool, default=False
+                Marks the column as the primary key of the table.
+            summarize_by : str, default=None
+                Sets the value for the Summarize By property of the column.
+                Defaults to None resolves to 'Default'.
+
+            Returns
+            -------
+            str
+                None
             """
 
             data_type = data_type.capitalize().replace('Integer', 'Int64').replace('Datetime', 'DateTime')
@@ -275,12 +463,30 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
                 obj.DataCategory = data_category
             self.model.Tables[table_name].Columns.Add(obj)
 
-        def add_calculation_item(self, table_name: str, calculation_item_name: str, expression: str, ordinal:int | None = None, format_string_expression: str | None = None, description: str | None = None):
+        def add_calculation_item(self, table_name: str, calculation_item_name: str, expression: str, ordinal: Optional[int] = None, format_string_expression: Optional[str] = None, description: Optional[str] = None):
 
             """
+            Adds a calculation item to a calculation group within a semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_calculation_item
-            
+            Parameters
+            ----------
+            table_name : str
+                Name of the table in which the calculation item will be created.
+            calculation_item_name : str
+                Name of the calculation item.
+            expression : str
+                The DAX expression for the calculation item.
+            ordinal : int, default=None
+                The ordinal of the calculation item.
+            format_string_expression : str, default=None
+                The format string expression for the calculation item.
+            description : str, default=None
+                A description of the calculation item.
+
+            Returns
+            -------
+            str
+                None
             """
 
             obj = TOM.CalculationItem()
@@ -295,12 +501,25 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
                 obj.FormatStringDefinition = fsd.Expression = format_string_expression
             self.model.Tables[table_name].CalculationGroup.CalculationItems.Add(obj)
 
-        def add_role(self, role_name: str, model_permission: str | None = None, description: str | None = None):
+        def add_role(self, role_name: str, model_permission: Optional[str] = None, description: Optional[str] = None):
 
             """
+            Adds a role to a semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_role
-            
+            Parameters
+            ----------
+            role_name : str
+                Name of the role.
+            model_permission : str, default=None
+                The model permission for the role.
+                Defaults to None which resolves to 'Read'.
+            description : str, default=None
+                A description of the role.
+
+            Returns
+            -------
+            str
+                None
             """
 
             if model_permission is None:
@@ -316,9 +535,21 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def set_rls(self, role_name: str, table_name: str, filter_expression: str):
 
             """
+            Sets the row level security permissions for a table within a role.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_rls
-            
+            Parameters
+            ----------
+            role_name : str
+                Name of the role.
+            table_name : str
+                Name of the table.
+            filter_expression : str
+                The DAX expression containing the row level security filter expression logic.
+
+            Returns
+            -------
+            str
+                None
             """
 
             tp = TOM.TablePermission()
@@ -333,9 +564,23 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def set_ols(self, role_name: str, table_name: str, column_name: str, permission: str):
 
             """
+            Sets the object level security permissions for a column within a role.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_ols
-            
+            Parameters
+            ----------
+            role_name : str
+                Name of the role.
+            table_name : str
+                Name of the table.
+            column_name : str
+                Name of the column.
+            permission : str
+                The object level security permission for the column.
+
+            Returns
+            -------
+            str
+                None
             """
 
             permission = permission.capitalize()
@@ -352,12 +597,30 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
             except:
                 self.model.Roles[role_name].TablePermissions[table_name].ColumnPermissions.Add(cp)
 
-        def add_hierarchy(self, table_name: str, hierarchy_name: str, columns: list, levels: list = None, hierarchy_description: str | None = None, hierarchy_hidden: bool = False):
+        def add_hierarchy(self, table_name: str, hierarchy_name: str, columns: List[str], levels: Optional[List[str]] = None, hierarchy_description: Optional[str] = None, hierarchy_hidden: Optional[bool] = False):
 
             """
+            Adds a hierarchy to a table within a semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_hierarchy
-            
+            Parameters
+            ----------
+            table_name : str
+                Name of the table.
+            hierarchy_name : str
+                Name of the hierarchy.
+            columns : List[str]
+                Names of the columns to use within the hierarchy.
+            levels : List[str], default=None
+                Names of the levels to use within the hierarhcy (instead of the column names).
+            hierarchy_description : str, default=None
+                A description of the hierarchy.
+            hierarchy_hidden : bool, default=False
+                Whether the hierarchy is visible or hidden.
+
+            Returns
+            -------
+            str
+                None
             """
 
             if isinstance(columns, str):
@@ -388,12 +651,40 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
                 lvl.Ordinal = columns.index(col)
                 self.model.Tables[table_name].Hierarchies[hierarchy_name].Levels.Add(lvl)
 
-        def add_relationship(self, from_table: str, from_column: str, to_table: str, to_column: str, from_cardinality: str, to_cardinality: str, cross_filtering_behavior: str | None = None, is_active: bool = True, security_filtering_behavior: str | None = None, rely_on_referential_integrity: bool = False):
+        def add_relationship(self, from_table: str, from_column: str, to_table: str, to_column: str, from_cardinality: str, to_cardinality: str, cross_filtering_behavior: Optional[str] = None, is_active: Optional[bool] = True, security_filtering_behavior: Optional[str] = None, rely_on_referential_integrity: Optional[bool] = False):
 
             """
+            Adds a relationship to a semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_relationship
-            
+            Parameters
+            ----------
+            from_table : str
+                Name of the table on the 'from' side of the relationship.
+            from_column : str
+                Name of the column on the 'from' side of the relationship.
+            to_table : str
+                Name of the table on the 'to' side of the relationship.
+            to_column : str
+                Name of the column on the 'to' side of the relationship.
+            from_cardinality : str
+                The cardinality of the 'from' side of the relationship. Options: ['Many', 'One', 'None'].
+            to_cardinality : str
+                 The cardinality of the 'to' side of the relationship. Options: ['Many', 'One', 'None'].
+            cross_filtering_behavior : str, default=None
+                Setting for the cross filtering behavior of the relationship. Options: ('Automatic', 'OneDirection', 'BothDirections').
+                Defaults to None which resolves to 'Automatic'.
+            is_active : bool, default=True
+                Setting for whether the relationship is active or not.
+            security_filtering_behavior : str, default=None
+                Setting for the security filtering behavior of the relationship. Options: ('None', 'OneDirection', 'BothDirections'). 
+                Defaults to None which resolves to 'OneDirection'.
+            rely_on_referential_integrity : bool, default=False
+                Setting for the rely on referential integrity of the relationship.
+
+            Returns
+            -------
+            str
+                None
             """
 
             if cross_filtering_behavior is None:
@@ -420,12 +711,26 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             self.model.Relationships.Add(rel)
 
-        def add_calculation_group(self, name: str, precedence: int, description: str | None = None, hidden: bool = False):
+        def add_calculation_group(self, name: str, precedence: int, description: Optional[str] = None, hidden: Optional[bool] = False):
 
             """
+            Adds a calculation group to a semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_calculation_group
-            
+            Parameters
+            ----------
+            name : str
+                Name of the calculation group.
+            precedence : int
+                The precedence of the calculation group.
+            description : str, default=None
+                A description of the calculation group.
+            hidden : bool, default=False
+                Whether the calculation group is hidden/visible.            
+
+            Returns
+            -------
+            str
+                None
             """
 
             tbl = TOM.Table()
@@ -461,12 +766,24 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
             self.model.DiscourageImplicitMeasures = True
             self.model.Tables.Add(tbl)
 
-        def add_expression(self, name: str, expression: str, description: str | None = None):
+        def add_expression(self, name: str, expression: str, description: Optional[str] = None):
 
             """
+            Adds an expression to a semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_expression
-            
+            Parameters
+            ----------
+            name : str
+                Name of the expression.
+            expression: str
+                The M expression of the expression.
+            description : str, default=None
+                A description of the expression.        
+
+            Returns
+            -------
+            str
+                None
             """
 
             exp = TOM.NamedExpression()
@@ -481,9 +798,17 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def add_translation(self, language: str):
 
             """
+            Adds a translation language (culture) to a semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_translation
-            
+            Parameters
+            ----------
+            language : str
+                The language code (i.e. 'it-IT' for Italian).
+
+            Returns
+            -------
+            str
+                None
             """
 
             cul = TOM.Culture()
@@ -497,21 +822,46 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def add_perspective(self, perspective_name: str):
 
             """
+            Adds a perspective to a semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_perspective
-            
+            Parameters
+            ----------
+            perspective_name : str
+                Name of the perspective.
+
+            Returns
+            -------
+            str
+                None
             """
 
             persp = TOM.Perspective()
             persp.Name = perspective_name
             self.model.Perspectives.Add(persp)
 
-        def add_m_partition(self, table_name: str, partition_name: str, expression: str, mode: str | None = None, description: str | None = None):
+        def add_m_partition(self, table_name: str, partition_name: str, expression: str, mode: Optional[str] = None, description: Optional[str] = None):
 
             """
+            Adds an M-partition to a table within a semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_m_partition
+            Parameters
+            ----------
+            table_name : str
+                Name of the table.
+            partition_name : str
+                Name of the partition.
+            expression : str
+                The M expression encapsulating the logic for the partition.
+            mode : str, default=None
+                The query mode for the partition.
+                Defaults to None which resolves to 'Import'.
+            description : str, default=None
+                A description for the partition.
             
+            Returns
+            -------
+            str
+                None
             """
 
             mode = mode.title().replace('query', 'Query').replace(' ','').replace('lake', 'Lake')
@@ -529,12 +879,27 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             self.model.Tables[table_name].Partitions.Add(p)
 
-        def add_entity_partition(self, table_name: str, entity_name: str, expression: str | None = None, description: str | None = None):
+        def add_entity_partition(self, table_name: str, entity_name: str, expression: Optional[str] = None, description: Optional[str] = None):
 
             """
+            Adds an entity partition to a table within a semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_entity_partition
+            Parameters
+            ----------
+            table_name : str
+                Name of the table.
+            entity_name : str
+                Name of the lakehouse table.
+            expression : TOM Object, default=None
+                The expression used by the table.
+                Defaults to None which resolves to the 'DatabaseQuery' expression.
+            description : str, default=None
+                A description for the partition.
             
+            Returns
+            -------
+            str
+                None
             """
 
             ep = TOM.EntityPartitionSource()
@@ -553,12 +918,28 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
             
             self.model.Tables[table_name].Partitions.Add(p)
 
-        def set_alternate_of(self, table_name: str, column_name: str, base_table: str, base_column: str, summarization_type: str):
+        def set_alternate_of(self, table_name: str, column_name: str, summarization_type: str, base_table: str, base_column: Optional[str] = None):
 
             """
+            Sets the 'alternate of' property on a column.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_alternate_of        
+            Parameters
+            ----------
+            table_name : str
+                Name of the table.
+            column_name : str
+                Name of the column.
+            summarization_type : str
+                The summarization type for the column.
+            base_table : str
+                Name of the base table for aggregation.
+            base_column : str
+                Name of the base column for aggregation
             
+            Returns
+            -------
+            str
+                None
             """
             
             if base_column is not None and base_table is None:
@@ -589,9 +970,19 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def remove_alternate_of(self, table_name: str, column_name: str):
 
             """
+            Removes the 'alternate of' property on a column.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#remove_alternate_of
+            Parameters
+            ----------
+            table_name : str
+                Name of the table.
+            column_name : str
+                Name of the column.
             
+            Returns
+            -------
+            str
+                None
             """
 
             self.model.Tables[table_name].Columns[column_name].AlternateOf = None
@@ -599,9 +990,17 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def get_annotations(self, object):
 
             """
+            Shows all annotations for a given object within a semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_annotations
-
+            Parameters
+            ----------
+            object : TOM Object
+                An object (i.e. table/column/measure) within a semantic model.
+            
+            Returns
+            -------
+            str
+                TOM objects of all the annotations on a particular object within the semantic model.
             """
 
             #df = pd.DataFrame(columns=['Name', 'Value'])
@@ -614,9 +1013,21 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def set_annotation(self, object, name: str, value: str):
 
             """
+            Sets an annotation on an object within the semantic model.
+
+            Parameters
+            ----------
+            object : TOM Object
+                An object (i.e. table/column/measure) within a semantic model.
+            name : str
+                Name of the annotation.
+            value : str
+                Value of the annotation.
             
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_annotation
-            
+            Returns
+            -------
+            str
+                None
             """
 
             ann = TOM.Annotation()
@@ -631,9 +1042,19 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def get_annotation_value(self, object, name: str):
 
             """
+            Obtains the annotation value for a given annotation on an object within the semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_annotation_value
+            Parameters
+            ----------
+            object : TOM Object
+                An object (i.e. table/column/measure) within a semantic model.
+            name : str
+                Name of the annotation.
             
+            Returns
+            -------
+            str
+                The annotation value.
             """
 
             return object.Annotations[name].Value
@@ -641,10 +1062,19 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def remove_annotation(self, object, name: str):
 
             """
+            Removes an annotation on an object within the semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#remove_annotation
+            Parameters
+            ----------
+            object : TOM Object
+                An object (i.e. table/column/measure) within a semantic model.
+            name : str
+                Name of the annotation.
             
-            
+            Returns
+            -------
+            str
+                None
             """
 
             object.Annotations.Remove(name)
@@ -652,9 +1082,17 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def clear_annotations(self, object):
 
             """
+            Removes all annotations on an object within the semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#clear_annotations
+            Parameters
+            ----------
+            object : TOM Object
+                An object (i.e. table/column/measure) within a semantic model.
             
+            Returns
+            -------
+            str
+                None
             """
 
             object.Annotations.Clear()
@@ -662,9 +1100,17 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def get_extended_properties(self, object):
 
             """
+            Retrieves all extended properties on an object within the semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_extended_properties
-
+            Parameters
+            ----------
+            object : TOM Object
+                An object (i.e. table/column/measure) within a semantic model.
+            
+            Returns
+            -------
+            str
+                TOM Objects
             """
 
             #df = pd.DataFrame(columns=['Name', 'Value', 'Type'])
@@ -679,9 +1125,23 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def set_extended_property(self, object, extended_property_type: str, name: str, value: str):
 
             """
+            Sets an extended property on an object within the semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_extended_property
+            Parameters
+            ----------
+            object : TOM Object
+                An object (i.e. table/column/measure) within a semantic model.
+            extended_property_type : str
+                The extended property type. Options: 'Json', 'String'.
+            name : str
+                Name of the extended property.
+            value : str
+                Value of the extended property.
             
+            Returns
+            -------
+            str
+                None
             """
 
             extended_property_type = extended_property_type.title()
@@ -702,9 +1162,19 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def get_extended_property_value(self, object, name: str):
 
             """
+            Retrieves the value of an extended property for an object within the semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_extended_property_value
+            Parameters
+            ----------
+            object : TOM Object
+                An object (i.e. table/column/measure) within a semantic model.
+            name : str
+                Name of the annotation.
             
+            Returns
+            -------
+            str
+                The extended property value
             """
 
             return object.ExtendedProperties[name].Value
@@ -712,9 +1182,19 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def remove_extended_property(self, object, name: str):
 
             """
+            Removes an extended property on an object within the semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#remove_extended_property
+            Parameters
+            ----------
+            object : TOM Object
+                An object (i.e. table/column/measure) within a semantic model.
+            name : str
+                Name of the annotation.
             
+            Returns
+            -------
+            str
+                None
             """
 
             object.ExtendedProperties.Remove(name)
@@ -722,9 +1202,17 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def clear_extended_properties(self, object):
 
             """
+            Removes all extended properties on an object within the semantic model.
+
+            Parameters
+            ----------
+            object : TOM Object
+                An object (i.e. table/column/measure) within a semantic model.
             
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#clear_extended_properties
-            
+            Returns
+            -------
+            str
+                None
             """
 
             object.ExtendedProperties.Clear()
@@ -732,10 +1220,21 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def in_perspective(self, object, perspective_name: str):
             
             """
-            
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#in_perspective
+            Indicates whether an object is contained within a given perspective.
 
+            Parameters
+            ----------
+            object : TOM Object
+                An object (i.e. table/column/measure) within a semantic model.
+            perspecitve_name : str
+                Name of the perspective.
+            
+            Returns
+            -------
+            bool
+                An indication as to whether the object is contained within the given perspective.
             """
+
             validObjects = ['Table', 'Column', 'Measure', 'Hierarchy']
             objectType = str(object.ObjectType)
 
@@ -761,9 +1260,19 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def add_to_perspective(self, object, perspective_name: str):
 
             """
+            Adds an object to a perspective.
+
+            Parameters
+            ----------
+            object : TOM Object
+                An object (i.e. table/column/measure) within a semantic model.
+            perspective_name : str
+                Name of the perspective.
             
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_to_perspective
-            
+            Returns
+            -------
+            str
+                None
             """
 
             validObjects = ['Table', 'Column', 'Measure', 'Hierarchy']
@@ -801,9 +1310,19 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def remove_from_perspective(self, object, perspective_name: str):
 
             """
+            Removes an object from a perspective.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#remove_from_perspective
+            Parameters
+            ----------
+            object : TOM Object
+                An object (i.e. table/column/measure) within a semantic model.
+            perspective_name : str
+                Name of the perspective.
             
+            Returns
+            -------
+            str
+                None
             """
 
             validObjects = ['Table', 'Column', 'Measure', 'Hierarchy']
@@ -837,9 +1356,23 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def set_translation(self, object, language: str, property: str, value: str):
 
             """
+            Sets a translation value for an object's property.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_translation
+            Parameters
+            ----------
+            object : TOM Object
+                An object (i.e. table/column/measure) within a semantic model.
+            language : str
+                The language code.
+            property : str
+                The property to set. Options: 'Name', 'Description', 'Display Folder'.
+            value : str
+                The transation value.
             
+            Returns
+            -------
+            str
+                None
             """
 
             self.add_translation(language = language)
@@ -872,9 +1405,19 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def remove_translation(self, object, language: str):
 
             """
+            Removes an object's translation value.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#remove_translation
-
+            Parameters
+            ----------
+            object : TOM Object
+                An object (i.e. table/column/measure) within a semantic model.
+            language : str
+                The language code.
+            
+            Returns
+            -------
+            str
+                None
             """
 
             o = object.Model.Cultures[language].ObjectTranslations[object, TOM.TranslatedProperty.Caption]
@@ -883,9 +1426,17 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def remove_object(self, object):
 
             """
+            Removes an object from a semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#remove_object
-
+            Parameters
+            ----------
+            object : TOM Object
+                An object (i.e. table/column/measure) within a semantic model.
+            
+            Returns
+            -------
+            str
+                None
             """
 
             objType = str(object.ObjectType)
@@ -928,9 +1479,17 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def used_in_relationships(self, object):
 
             """
+            Shows all relationships in which a table/column is used.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#used_in_relationships
+            Parameters
+            ----------
+            object : TOM Object
+                An object (i.e. table/column) within a semantic model.
             
+            Returns
+            -------
+            TOM Object
+                All relationships in which the table/column is used.
             """
 
             objType = str(object.ObjectType)
@@ -948,9 +1507,17 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def used_in_levels(self, column):
 
             """
+            Shows all levels in which a column is used.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#used_in_levels
+            Parameters
+            ----------
+            object : TOM Object
+                An column object within a semantic model.
             
+            Returns
+            -------
+            TOM Object
+                All levels in which the column is used.
             """
 
             objType = str(column.ObjectType)
@@ -963,9 +1530,17 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def used_in_hierarchies(self, column):
 
             """
+            Shows all hierarchies in which a column is used.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#used_in_hierarchies
+            Parameters
+            ----------
+            object : TOM Object
+                An column object within a semantic model.
             
+            Returns
+            -------
+            TOM Object
+                All levels in which the column is used.
             """
 
             objType = str(column.ObjectType)
@@ -978,9 +1553,17 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def used_in_sort_by(self, column):
 
             """
+            Shows all columns in which a column is used for sorting.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#used_in_sort_by
+            Parameters
+            ----------
+            object : TOM Object
+                An column object within a semantic model.
             
+            Returns
+            -------
+            TOM Object
+                All columns in which the column is used for sorting.
             """
 
             objType = str(column.ObjectType)
@@ -990,12 +1573,22 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
                     if c.SortByColumn == column:
                         yield c
 
-        def used_in_rls(self, object, dependencies):
+        def used_in_rls(self, object, dependencies: pd.DataFrame):
 
             """
+            Identifies the filter expressions which reference a given object.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#used_in_rls
+            Parameters
+            ----------
+            object : TOM Object
+                An object (i.e. table/column) within a semantic model.
+            dependencies : pandas.DataFrame
+                A pandas dataframe with the output of the 'get_model_calc_dependencies' function.
             
+            Returns
+            -------
+            TOM Object
+                None
             """
 
             objType = str(object.ObjectType)
@@ -1021,12 +1614,22 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
                     if m.Name in meas:
                         yield m
 
-        def used_in_data_coverage_definition(self, object, dependencies):
+        def used_in_data_coverage_definition(self, object, dependencies: pd.DataFrame):
 
             """
+            Identifies the ... which reference a given object.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#used_in_data_coverage_definition
+            Parameters
+            ----------
+            object : TOM Object
+                An object (i.e. table/column) within a semantic model.
+            dependencies : pandas.DataFrame
+                A pandas dataframe with the output of the 'get_model_calc_dependencies' function.
             
+            Returns
+            -------
+            TOM Object
+                None
             """
 
             objType = str(object.ObjectType)
@@ -1052,17 +1655,27 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
                     if m.Name in meas:
                         yield m
             
-        def used_in_calc_item(self, object, dependencies):
+        def used_in_calc_item(self, object, dependencies: pd.DataFrame):
 
             """
+            Identifies the ... which reference a given object.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#used_in_calc_item
+            Parameters
+            ----------
+            object : TOM Object
+                An object (i.e. table/column) within a semantic model.
+            dependencies : pandas.DataFrame
+                A pandas dataframe with the output of the 'get_model_calc_dependencies' function.
             
+            Returns
+            -------
+            TOM Object
+                None
             """
 
             objType = str(object.ObjectType)
             
-            df_filt = dependencies[dependencies['Object Type'] == 'Calculation_item']
+            df_filt = dependencies[dependencies['Object Type'] == 'Calculation Item']
 
             if objType == 'Table':
                 fil = df_filt[(df_filt['Referenced Object Type'] == 'Table') & (df_filt['Referenced Table'] == object.Name)]
@@ -1085,6 +1698,18 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
         def hybrid_tables(self):
 
+            """
+            Outputs the hybrid tables within a semantic model.
+
+            Parameters
+            ----------
+            
+            Returns
+            -------
+            TOM Object
+                All hybrid tables within a semantic model.
+            """
+
             for t in self.model.Tables:
                 if any(str(p.Mode) == 'Import' for p in t.Partitions):
                     if any(str(p.Mode) == 'DirectQuery' for p in t.Partitions):
@@ -1092,12 +1717,38 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
         def date_tables(self):
 
+            """
+            Outputs the tables which are marked as date tables within a semantic model.
+
+            Parameters
+            ----------
+            
+            Returns
+            -------
+            TOM Object
+                All tables marked as date tables within a semantic model.
+            """
+
             for t in self.model.Tables:
                 if t.DataCategory == 'Time':
                     if any(c.IsKey and str(c.DataType) == 'DateTime'for c in t.Columns):
                         yield t
 
         def is_hybrid_table(self, table_name: str):
+
+            """
+            Identifies if a table is a hybrid table.
+
+            Parameters
+            ----------
+            table_name : str
+                Name of the table.
+            
+            Returns
+            -------
+            bool
+                Indicates if the table is a hybrid table.
+            """
 
             isHybridTable = False
 
@@ -1109,6 +1760,20 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
         def is_date_table(self, table_name: str):
 
+            """
+            Identifies if a table is marked as a date table.
+
+            Parameters
+            ----------
+            table_name : str
+                Name of the table.
+            
+            Returns
+            -------
+            bool
+                Indicates if the table is marked as a date table.
+            """
+
             isDateTable = False
             t = self.model.Tables[table_name]
 
@@ -1119,6 +1784,22 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
             return isDateTable
         
         def mark_as_date_table(self, table_name: str, column_name: str):
+
+            """
+            Marks a table as a date table.
+
+            Parameters
+            ----------
+            table_name : str
+                Name of the table.
+            column_name : str
+                Name of the date column in the table.
+            
+            Returns
+            -------
+            str
+                None
+            """
 
             t = self.model.Tables[table_name]
             c = t.Columns[column_name]
@@ -1152,6 +1833,18 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         
         def has_aggs(self):
 
+            """
+            Identifies if a semantic model has any aggregations.
+
+            Parameters
+            ----------
+            
+            Returns
+            -------
+            bool
+                Indicates if the semantic model has any aggregations.
+            """
+
             hasAggs = False
 
             for c in self.all_columns():
@@ -1162,11 +1855,37 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         
         def is_agg_table(self, table_name: str):
 
+            """
+            Identifies if a table has aggregations.
+
+            Parameters
+            ----------
+            table_name : str
+                Name of the table.
+            
+            Returns
+            -------
+            bool
+                Indicates if the table has any aggregations.
+            """
+
             t = self.model.Tables[table_name]
 
             return any(c.AlternateOf is not None for c in t.Columns)
 
         def has_hybrid_table(self):
+
+            """
+            Identifies if a semantic model has a hybrid table.
+
+            Parameters
+            ----------
+            
+            Returns
+            -------
+            bool
+                Indicates if the semantic model has a hybrid table.
+            """
 
             hasHybridTable = False
 
@@ -1177,6 +1896,18 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
             return hasHybridTable
 
         def has_date_table(self):
+
+            """
+            Identifies if a semantic model has a table marked as a date table.
+
+            Parameters
+            ----------
+            
+            Returns
+            -------
+            bool
+                Indicates if the semantic model has a table marked as a date table.
+            """
 
             hasDateTable = False
 
@@ -1189,9 +1920,15 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def is_direct_lake(self):
 
             """
+            Identifies if a semantic model is in Direct Lake mode.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#is_direct_lake
+            Parameters
+            ----------
             
+            Returns
+            -------
+            bool
+                Indicates if the semantic model is in Direct Lake mode.
             """
 
             return any(str(p.Mode) == 'DirectLake' for t in self.model.Tables for p in t.Partitions)
@@ -1199,9 +1936,17 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def is_field_parameter(self, table_name: str):
 
             """
+            Identifies if a table is a field parameter.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#is_field_parameter
+            Parameters
+            ----------
+            table_name : str
+                Name of the table.
             
+            Returns
+            -------
+            bool
+                Indicates if the table is a field parameter.
             """
 
             t = self.model.Tables[table_name]
@@ -1211,9 +1956,17 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def is_auto_date_table(self, table_name: str):
 
             """
+            Identifies if a table is an auto-date table.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#is_auto_date_table
+            Parameters
+            ----------
+            table_name : str
+                Name of the table.
             
+            Returns
+            -------
+            bool
+                Indicates if the table is an auto-date table.
             """
 
             isAutoDate = False
@@ -1226,12 +1979,36 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             return isAutoDate
 
-        def set_kpi(self, measure_name: str, target: int | float | str, lower_bound: float, upper_bound: float, lower_mid_bound: float | None = None, upper_mid_bound: float | None = None, status_type: str| None = None, status_graphic: str | None = None):
+        def set_kpi(self, measure_name: str, target: Union[int,float,str], lower_bound: float, upper_bound: float, lower_mid_bound: Optional[float] = None, upper_mid_bound: Optional[float] = None, status_type: Optional[str] = None, status_graphic: Optional[str] = None):
 
             """
+            Sets the properties to add/update a KPI for a measure.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_kpi
+            Parameters
+            ----------
+            measure_name : str
+                Name of the measure.
+            target : str, int, float
+                The target for the KPI. This can either be a number or the name of a different measure in the semantic model.
+            lower_bound: float
+                The lower bound for the KPI.
+            upper_bound : float
+                The upper bound for the KPI.
+            lower_mid_bound : float, default=None
+                The lower-mid bound for the KPI. Set this if status_type is 'Centered' or 'CenteredReversed'.
+            upper_mid_bound : float, default=None
+                The upper-mid bound for the KPI. Set this if status_type is 'Centered' or 'CenteredReversed'.
+            status_type : str, default=None
+                The status type of the KPI. Options: 'Linear', 'LinearReversed', 'Centered', 'CenteredReversed'.
+                Defaults to None which resolvs to 'Linear'.
+            status_graphic : str, default=None
+                The status graphic for the KPI.
+                Defaults to 'Three Circles Colored'.
             
+            Returns
+            -------
+            str
+                None
             """
 
             #https://github.com/m-kovalsky/Tabular/blob/master/KPI%20Graphics.md
@@ -1326,9 +2103,19 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def set_aggregations(self, table_name: str, agg_table_name: str):
 
             """
+            Sets the aggregations (alternate of) for all the columns in an aggregation table based on a base table.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_aggregations
+            Parameters
+            ----------
+            table_name : str
+                Name of the base table.
+            agg_table_name : str
+                Name of the aggregation table.
             
+            Returns
+            -------
+            str
+                None
             """
 
             for c in self.model.Tables[agg_table_name].Columns:
@@ -1342,22 +2129,47 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
                 self.set_alternate_of(table_name = agg_table_name, column_name = c.Name, base_table = table_name, base_column = c.Name, summarization_type = sumType)
 
-        def set_is_available_in_mdx(self, table_name: str, column_name: str, value: bool = False):
+        def set_is_available_in_mdx(self, table_name: str, column_name: str, value: Optional[bool] = False):
 
             """
+            Sets the IsAvailableInMdx property on a column.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_is_available_in_mdx
+            Parameters
+            ----------
+            table_name : str
+                Name of the table.
+            column_name : str
+                Name of the column.
+            value : bool, default=False
+                The IsAvailableInMdx property value.
             
+            Returns
+            -------
+            str
+                None
             """
 
             self.model.Tables[table_name].Columns[column_name].IsAvailableInMdx = value
 
-        def set_summarize_by(self, table_name: str, column_name: str, value: str | None = None):
+        def set_summarize_by(self, table_name: str, column_name: str, value: Optional[str] = None):
 
             """
+            Sets the SummarizeBy property on a column.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_summarize_by
+            Parameters
+            ----------
+            table_name : str
+                Name of the table.
+            column_name : str
+                Name of the column.
+            value : bool, default=None
+                The SummarizeBy property value.
+                Defaults to none which resolves to 'Default'.
             
+            Returns
+            -------
+            str
+                None
             """
 
             values = ['Default', 'None', 'Sum', 'Min', 'Max', 'Count', 'Average', 'DistinctCount']
@@ -1376,9 +2188,17 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def set_direct_lake_behavior(self, direct_lake_behavior: str):
 
             """
+            Sets the Direct Lake Behavior property for a semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_direct_lake_behavior
+            Parameters
+            ----------
+            direct_lake_behavior : str
+                The DirectLakeBehavior property value.
             
+            Returns
+            -------
+            str
+                None
             """
 
             direct_lake_behavior = direct_lake_behavior.capitalize()
@@ -1397,12 +2217,26 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             self.model.DirectLakeBehavior = System.Enum.Parse(TOM.DirectLakeBehavior, direct_lake_behavior)
 
-        def add_table(self, name: str, description: str | None = None, data_category: str | None = None, hidden: bool = False):
+        def add_table(self, name: str, description: Optional[str] = None, data_category: Optional[str] = None, hidden: Optional[bool] = False):
 
             """
+            Adds a table to the semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_table
-
+            Parameters
+            ----------
+            name : str
+                Name of the table.
+            description : str, default=None
+                A description of the table.
+            data_catgegory : str, default=None
+                The data category for the table.
+            hidden : bool, default=False
+                Whether the table is hidden or visible.
+            
+            Returns
+            -------
+            str
+                None
             """
 
             t = TOM.Table()
@@ -1414,12 +2248,28 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
             t.Hidden = hidden
             self.model.Tables.Add(t)
 
-        def add_calculated_table(self, name: str, expression: str, description: str | None = None, data_category: str | None = None, hidden: bool = False):
+        def add_calculated_table(self, name: str, expression: str, description: Optional[str] = None, data_category: Optional[str] = None, hidden: Optional[bool] = False):
 
             """
+            Adds a calculated table to the semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_calculated_table
-
+            Parameters
+            ----------
+            name : str
+                Name of the table.
+            expression : str
+                The DAX expression for the calculated table.
+            description : str, default=None
+                A description of the table.
+            data_catgegory : str, default=None
+                The data category for the table.
+            hidden : bool, default=False
+                Whether the table is hidden or visible.
+            
+            Returns
+            -------
+            str
+                None
             """
 
             par = TOM.Partition()
@@ -1439,12 +2289,24 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
             t.Partitions.Add(par)
             self.model.Tables.Add(t)
 
-        def add_field_parameter(self, table_name: str, objects: list):
+        def add_field_parameter(self, table_name: str, objects: List[str]):
 
             """
+            Adds a table to the semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_field_parameter
-
+            Parameters
+            ----------
+            table_name : str
+                Name of the table.
+            objects : List[str]
+                The columns/measures to be included in the field parameter. 
+                Columns must be specified as such : 'Table Name'[Column Name].
+                Measures may be formatted as '[Measure Name]' or 'Measure Name'.
+            
+            Returns
+            -------
+            str
+                None
             """
 
             if isinstance(objects, str):
@@ -1504,9 +2366,15 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def remove_vertipaq_annotations(self):
 
             """
+            Removes the annotations set using the [set_vertipaq_annotations] function.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#remove_vertipaq_annotations
-
+            Parameters
+            ----------
+            
+            Returns
+            -------
+            str
+                None
             """
 
             for t in self.model.Tables:
@@ -1533,9 +2401,15 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def set_vertipaq_annotations(self):
 
             """
+            Saves Vertipaq Analyzer statistics as annotations on objects in the semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_vertipaq_annotations
-
+            Parameters
+            ----------
+            
+            Returns
+            -------
+            str
+                None
             """
 
             dfT = fabric.list_tables(dataset = dataset, workspace = workspace, extended=True)
@@ -1593,9 +2467,17 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def row_count(self, object):
 
             """
+            Obtains the row count of a table or partition within a semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#row_count
+            Parameters
+            ----------
+            object : TOM Object
+                The table/partition object within the semantic model.
             
+            Returns
+            -------
+            int
+                Number of rows within the TOM object.
             """
             
             objType = str(object.ObjectType)
@@ -1610,9 +2492,17 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def records_per_segment(self, object):
 
             """
+            Obtains the records per segment of a partition within a semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#records_per_segment
+            Parameters
+            ----------
+            object : TOM Object
+                The partition object within the semantic model.
             
+            Returns
+            -------
+            float
+                Number of records per segment within the partition.
             """
             
             objType = str(object.ObjectType)
@@ -1625,9 +2515,17 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def used_size(self, object):
 
             """
+            Obtains the used size of a hierarchy or relationship within a semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#used_size
+            Parameters
+            ----------
+            object : TOM Object
+                The hierarhcy/relationship object within the semantic model.
             
+            Returns
+            -------
+            int
+                Used size of the TOM object.
             """
             
             objType = str(object.ObjectType)
@@ -1642,9 +2540,17 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def data_size(self, column):
 
             """
+            Obtains the data size of a column within a semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#data_size
+            Parameters
+            ----------
+            column : TOM Object
+                The column object within the semantic model.
             
+            Returns
+            -------
+            int
+                Data size of the TOM column.
             """
             
             objType = str(column.ObjectType)
@@ -1657,9 +2563,17 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def dictionary_size(self, column):
 
             """
+            Obtains the dictionary size of a column within a semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#dictionary_size
+            Parameters
+            ----------
+            column : TOM Object
+                The column object within the semantic model.
             
+            Returns
+            -------
+            int
+                Dictionary size of the TOM column.
             """
 
             objType = str(column.ObjectType)
@@ -1672,9 +2586,17 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def total_size(self, object):
 
             """
+            Obtains the data size of a table/column within a semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#total_size
-
+            Parameters
+            ----------
+            object : TOM Object
+                The table/column object within the semantic model.
+            
+            Returns
+            -------
+            int
+                Total size of the TOM table/column.
             """
 
             objType = str(object.ObjectType)
@@ -1689,9 +2611,17 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def cardinality(self, column):
 
             """
+            Obtains the cardinality of a column within a semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#cardinality
+            Parameters
+            ----------
+            column : TOM Object
+                The column object within the semantic model.
             
+            Returns
+            -------
+            int
+                Cardinality of the TOM column.
             """
             
             objType = str(column.ObjectType)
@@ -1701,12 +2631,22 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             return int(result)                
             
-        def depends_on(self, object, dependencies):
+        def depends_on(self, object, dependencies: pd.DataFrame):
 
             """
+            Obtains the objects on which the specified object depends.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#depends_on
-
+            Parameters
+            ----------
+            object : TOM Object
+                The TOM object within the semantic model.
+            dependencies : pandas.DataFrame
+                A pandas dataframe with the output of the 'get_model_calc_dependencies' function.
+            
+            Returns
+            -------
+            TOM Object
+                Objects on which the specified object depends.
             """
 
             objType = str(object.ObjectType)
@@ -1730,12 +2670,22 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
                 if t.Name in tbls:
                     yield t
 
-        def referenced_by(self, object, dependencies):
+        def referenced_by(self, object, dependencies: pd.DataFrame):
 
             """
+            Obtains the objects which reference the specified object.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#referenced_by
+            Parameters
+            ----------
+            object : TOM Object
+                The TOM object within the semantic model.
+            dependencies : pandas.DataFrame
+                A pandas dataframe with the output of the 'get_model_calc_dependencies' function.
             
+            Returns
+            -------
+            TOM Object
+                Objects which reference the specified object.
             """
 
             objType = str(object.ObjectType)
@@ -1759,12 +2709,22 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
                 if t.Name in tbls:
                     yield t
 
-        def fully_qualified_measures(self, object, dependencies):
+        def fully_qualified_measures(self, object, dependencies: pd.DataFrame):
 
             """
+            Obtains all fully qualified measure references for a given object.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#fully_qualified_measures
-
+            Parameters
+            ----------
+            object : TOM Object
+                The TOM object within the semantic model.
+            dependencies : pandas.DataFrame
+                A pandas dataframe with the output of the 'get_model_calc_dependencies' function.
+            
+            Returns
+            -------
+            TOM Object
+                All fully qualified measure references for a given object.
             """
     
             for obj in self.depends_on(object = object, dependencies=dependencies):            
@@ -1772,12 +2732,22 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
                     if (obj.Parent.Name + obj.Name in object.Expression) or (format_dax_object_name(obj.Parent.Name, obj.Name) in object.Expression):
                         yield obj
 
-        def unqualified_columns(self, object, dependencies):
+        def unqualified_columns(self, object, dependencies: pd.DataFrame):
 
             """
+            Obtains all unqualified column references for a given object.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#unqualified_columns
+            Parameters
+            ----------
+            object : TOM Object
+                The TOM object within the semantic model.
+            dependencies : pandas.DataFrame
+                A pandas dataframe with the output of the 'get_model_calc_dependencies' function.
             
+            Returns
+            -------
+            TOM Object
+                All unqualified column references for a given object.
             """
     
             def create_pattern(a, b):
@@ -1791,9 +2761,15 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def is_direct_lake_using_view(self):
 
             """
+            Identifies whether a semantic model is in Direct lake mode and uses views from the lakehouse.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#is_direct_lake_using_view
-
+            Parameters
+            ----------
+            
+            Returns
+            -------
+            bool
+                An indicator whether a semantic model is in Direct lake mode and uses views from the lakehouse.
             """
 
             usingView = False
@@ -1810,9 +2786,17 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def has_incremental_refresh_policy(self, table_name: str):
 
             """
+            Identifies whether a table has an incremental refresh policy.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#has_incremental_refresh_policy
-
+            Parameters
+            ----------
+            table_name : str
+                Name of the table.
+            
+            Returns
+            -------
+            bool
+                An indicator whether a table has an incremental refresh policy.
             """
 
             hasRP = False
@@ -1826,9 +2810,17 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def show_incremental_refresh_policy(self, table_name: str):
 
             """
+            Shows the incremental refresh policy for a table.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#show_incremental_refresh_policy
-
+            Parameters
+            ----------
+            table_name : str
+                Name of the table.
+            
+            Returns
+            -------
+            str
+                A printout showing the incremental refresh policy for the table.
             """
 
             rp = self.model.Tables[table_name].RefreshPolicy
@@ -1866,12 +2858,33 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
                 else:
                     print(f"{unchecked} Detect data changes")
 
-        def update_incremental_refresh_policy(self, table_name: str, incremental_granularity: str, incremental_periods: int, rolling_window_granularity: str, rolling_window_periods: int, only_refresh_complete_days: bool = False, detect_data_changes_column: str | None = None):
+        def update_incremental_refresh_policy(self, table_name: str, incremental_granularity: str, incremental_periods: int, rolling_window_granularity: str, rolling_window_periods: int, only_refresh_complete_days: Optional[bool] = False, detect_data_changes_column: Optional[str] = None):
 
             """
+            Updates the incremental refresh policy for a table within a semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#update_incremental_refresh_policy
+            Parameters
+            ----------
+            table_name : str
+                Name of the table.
+            incremental_granularity : str
+                Granularity of the (most recent) incremental refresh range.
+            incremental_periods : int
+                Number of periods for the incremental refresh range.
+            rolling_window_granularity : str
+                Target granularity of the rolling window for the whole semantic model.
+            rolling_window_periods : int
+                Number of periods for the rolling window for the whole semantic model.
+            only_refresh_complete_days : bool, default=False
+                Lag or leading periods from Now() to the rolling window head.
+            detect_data_changes_column : str, default=None
+                The column to use for detecting data changes.
+                Defaults to None which resolves to not detecting data changes.
 
+            Returns
+            -------
+            str
+                None
             """
 
             if not self.has_incremental_refresh_policy(table_name = table_name):
@@ -1930,12 +2943,39 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             self.show_incremental_refresh_policy(table_name=table_name)
 
-        def add_incremental_refresh_policy(self, table_name: str, column_name: str, start_date: str, end_date: str, incremental_granularity: str, incremental_periods: int, rolling_window_granularity: str, rolling_window_periods: int, only_refresh_complete_days: bool = False, detect_data_changes_column: str | None = None):
+        def add_incremental_refresh_policy(self, table_name: str, column_name: str, start_date: str, end_date: str, incremental_granularity: str, incremental_periods: int, rolling_window_granularity: str, rolling_window_periods: int, only_refresh_complete_days: Optional[bool] = False, detect_data_changes_column: Optional[str] = None):
 
             """
+            Adds anincremental refresh policy for a table within a semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#add_incremental_refresh_policy
+            Parameters
+            ----------
+            table_name : str
+                Name of the table.
+            column_name : str
+                The DateTime column to be used for the RangeStart and RangeEnd parameters.
+            start_date : str
+                The date to be used for the RangeStart parameter.
+            end_date : str
+                The date to be used for the RangeEnd parameter.
+            incremental_granularity : str
+                Granularity of the (most recent) incremental refresh range.
+            incremental_periods : int
+                Number of periods for the incremental refresh range.
+            rolling_window_granularity : str
+                Target granularity of the rolling window for the whole semantic model.
+            rolling_window_periods : int
+                Number of periods for the rolling window for the whole semantic model.
+            only_refresh_complete_days : bool, default=False
+                Lag or leading periods from Now() to the rolling window head.
+            detect_data_changes_column : str, default=None
+                The column to use for detecting data changes.
+                Defaults to None which resolves to not detecting data changes.
 
+            Returns
+            -------
+            str
+                None
             """
 
             #https://learn.microsoft.com/en-us/power-bi/connect-data/incremental-refresh-configure
@@ -2050,12 +3090,26 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
 
             self.show_incremental_refresh_policy(table_name=table_name)
 
-        def apply_refresh_policy(self, table_name: str, effective_date: datetime = None, refresh: bool = True, max_parallelism: int = 0):
+        def apply_refresh_policy(self, table_name: str, effective_date: Optional[datetime] = None, refresh: Optional[bool] = True, max_parallelism: Optional[int] = 0):
 
             """
+            Applies the incremental refresh policy for a table within a semantic model.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#apply_refresh_policy
+            Parameters
+            ----------
+            table_name : str
+                Name of the table.
+            effective_date : DateTime, default=None
+                The effective date that is used when calculating the partitioning scheme.
+            refresh : bool, default=True
+                An indication if partitions of the table should be refreshed or not; the default behavior is to do the refresh.
+            max_parallelism : int, default=0
+                The degree of parallelism during the refresh execution.
 
+            Returns
+            -------
+            str
+                None
             """
 
             self.model.Tables[table_name].ApplyRefreshPolicy(effectiveDate = effective_date, refresh = refresh, maxParallelism = max_parallelism)
@@ -2063,9 +3117,21 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def set_data_coverage_definition(self, table_name: str, partition_name: str, expression: str):
 
             """
+            Sets the data coverage definition for a partition.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_data_coverage_definition
+            Parameters
+            ----------
+            table_name : str
+                Name of the table.
+            partition_name : str
+                Name of the partition.
+            expression : str
+                DAX expression containing the logic for the data coverage definition.
 
+            Returns
+            -------
+            str
+                None
             """
 
             doc = 'https://learn.microsoft.com/analysis-services/tom/table-partitions?view=asallproducts-allversions'
@@ -2090,9 +3156,21 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def set_encoding_hint(self, table_name: str, column_name: str, value: str):
 
             """
+            Sets the encoding hint for a column.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_encoding_hint
+            Parameters
+            ----------
+            table_name : str
+                Name of the table.
+            column_name : str
+                Name of the column.
+            value : str
+                Encoding hint value. Options: 'Value', 'Hash', 'Default'.
 
+            Returns
+            -------
+            str
+                None
             """
 
             values = ['Default', 'Hash', 'Value']
@@ -2107,9 +3185,21 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
         def set_data_type(self, table_name: str, column_name: str, value: str):
 
             """
+            Sets the data type for a column.
 
-            Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#set_data_type
+            Parameters
+            ----------
+            table_name : str
+                Name of the table.
+            column_name : str
+                Name of the column.
+            value : str
+                The data type.
 
+            Returns
+            -------
+            str
+                None
             """
 
             values = ['Binary', 'Boolean', 'DateTime', 'Decimal', 'Double', 'Int64', 'String']
@@ -2128,7 +3218,25 @@ def connect_semantic_model(dataset: str, readonly: bool = True, workspace: str |
             
             self.model.Tables[table_name].Columns[column_name].DataType = System.Enum.Parse(TOM.DataType, value)
 
-        def add_time_intelligence(self, measure_name: str, date_table: str, time_intel: str | list):
+        def add_time_intelligence(self, measure_name: str, date_table: str, time_intel: Union[str, List[str]]):
+
+            """
+            Adds time intelligence measures 
+
+            Parameters
+            ----------
+            measure_name : str
+                Name of the measure
+            date_table : str
+                Name of the date table.
+            time_intel : str, List[str]
+                Time intelligence measures to create (i.e. MTD, YTD, QTD).
+
+            Returns
+            -------
+            str
+                None
+            """
 
             table_name = None
             time_intel_options = ['MTD', 'QTD', 'YTD']

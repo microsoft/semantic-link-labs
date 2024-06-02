@@ -4,6 +4,7 @@ import pandas as pd
 import re, datetime, time
 from pyspark.sql import SparkSession
 from .TOM import connect_semantic_model
+from typing import List, Optional, Union
 from sempy._utils._log import log
 
 green_dot = '\U0001F7E2'
@@ -12,12 +13,24 @@ red_dot = '\U0001F534'
 in_progress = '⌛'
 
 @log
-def refresh_calc_tables(dataset: str, workspace: str | None = None):
+def refresh_calc_tables(dataset: str, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#refresh_calc_tables
+    Recreates the delta tables in the lakehouse based on the DAX expressions stored as model annotations in the Direct Lake semantic model.
 
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    str
+        A printout stating the success/failure of the operation.
     """
 
     if workspace == None:

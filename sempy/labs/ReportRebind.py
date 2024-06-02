@@ -1,18 +1,39 @@
 import sempy
 import sempy.fabric as fabric
 from .HelperFunctions import resolve_dataset_id, resolve_report_id
+from typing import List, Optional, Union
+from sempy._utils._log import log
 
 green_dot = '\U0001F7E2'
 yellow_dot = '\U0001F7E1'
 red_dot = '\U0001F534'
 in_progress = '⌛'
 
-def report_rebind(report: str, dataset: str, report_workspace: str | None = None, dataset_workspace: str | None = None):
+@log
+def report_rebind(report: str, dataset: str, report_workspace: Optional[str] = None, dataset_workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#report_rebind
+    Rebinds a report to a semantic model.
 
+    Parameters
+    ----------
+    report : str
+        Name of the Power BI report.
+    dataset : str
+        Name of the semantic model.
+    report_workspace : str, default=None
+        The name of the Fabric workspace in which the report resides.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    dataset_workspace : str, default=None
+        The name of the Fabric workspace in which the semantic model resides.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    str
+        A printout stating the success/failure of the operation.
     """
 
     if report_workspace == None:
@@ -40,13 +61,38 @@ def report_rebind(report: str, dataset: str, report_workspace: str | None = None
     else:
         print(f"{red_dot} The '{report}' report within the '{report_workspace}' workspace failed to rebind to the '{dataset}' semantic model within the '{dataset_workspace}' workspace.")
 
-def report_rebind_all(dataset: str, new_dataset: str, dataset_workspace: str | None = None, new_dataset_workpace: str | None = None, report_workspace: str | None = None):
+@log
+def report_rebind_all(dataset: str, new_dataset: str, dataset_workspace: Optional[str] = None, new_dataset_workpace: Optional[str] = None, report_workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#report_rebind_all
+    Rebinds all reports in a workspace which are bound to a specific semantic model to a new semantic model.
 
-    """    
+    Parameters
+    ----------
+    report : str
+        Name of the Power BI report.
+    dataset : str
+        Name of the semantic model currently binded to the reports.
+    new_dataset : str
+        Name of the semantic model to rebind to the reports.
+    dataset_workspace : str, default=None
+        The name of the Fabric workspace in which the original semantic model resides.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    new_dataset_workspace : str, default=None
+        The name of the Fabric workspace in which the new semantic model resides.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    report_workspace : str, default=None
+        The name of the Fabric workspace in which the report resides.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    
+    Returns
+    -------
+    str
+        A printout stating the success/failure of the operation.
+    """
 
     if dataset_workspace == None:
         dataset_workspace_id = fabric.get_workspace_id()

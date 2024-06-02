@@ -5,14 +5,27 @@ from pyspark.sql import SparkSession
 from delta import DeltaTable
 from .HelperFunctions import resolve_lakehouse_name, format_dax_object_name, resolve_lakehouse_id
 from .GetLakehouseTables import get_lakehouse_tables
-from sempy._utils._log import log
+from typing import List, Optional, Union
 
-def get_lakehouse_columns(lakehouse: str | None = None, workspace: str | None = None):
+def get_lakehouse_columns(lakehouse: Optional[str] = None, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_lakehouse_columns
+    Shows the tables and columns of a lakehouse and their respective properties.
 
+    Parameters
+    ----------
+    lakehouse : str, default=None
+        The Fabric lakehouse.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    lakehouse_workspace : str, default=None
+        The Fabric workspace used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Shows the tables/columns within a lakehouse and their properties.
     """
 
     df = pd.DataFrame(columns=['Workspace Name', 'Lakehouse Name', 'Table Name', 'Column Name', 'Full Column Name', 'Data Type'])

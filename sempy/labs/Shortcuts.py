@@ -2,18 +2,39 @@ import sempy
 import sempy.fabric as fabric
 import pandas as pd
 from .HelperFunctions import resolve_lakehouse_name, resolve_lakehouse_id
+from typing import List, Optional, Union
 
 green_dot = '\U0001F7E2'
 yellow_dot = '\U0001F7E1'
 red_dot = '\U0001F534'
 in_progress = '⌛'
 
-def create_shortcut_onelake(table_name: str, source_lakehouse: str, source_workspace: str, destination_lakehouse: str, destination_workspace: str | None = None, shortcut_name: str | None = None):
+def create_shortcut_onelake(table_name: str, source_lakehouse: str, source_workspace: str, destination_lakehouse: str, destination_workspace: Optional[str] = None, shortcut_name: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#create_shortcut_onelake
+    Creates a [shortcut](https://learn.microsoft.com/fabric/onelake/onelake-shortcuts) to a delta table in OneLake.
 
+    Parameters
+    ----------
+    table_name : str
+        The table name for which a shortcut will be created.
+    source_lakehouse : str
+        The Fabric lakehouse in which the table resides.
+    source_workspace : str
+        The name of the Fabric workspace in which the source lakehouse exists.
+    destination_lakehouse : str
+        The Fabric lakehouse in which the shortcut will be created.
+    destination_workspace : str, default=None
+        The name of the Fabric workspace in which the shortcut will be created.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    shortcut_name : str, default=None 
+        The name of the shortcut 'table' to be created. This defaults to the 'table_name' parameter value.       
+    
+    Returns
+    -------
+    str
+        A printout stating the success/failure of the operation.
     """
 
     sourceWorkspaceId = fabric.resolve_workspace_id(source_workspace)
@@ -51,12 +72,29 @@ def create_shortcut_onelake(table_name: str, source_lakehouse: str, source_works
     except:
         print(f"{red_dot} Failed to create a shortcut for the '{table_name}' table.")
 
-def create_shortcut(shortcut_name: str, location: str, subpath: str, source: str, connection_id, lakehouse: str | None = None, workspace: str | None = None):
+def create_shortcut(shortcut_name: str, location: str, subpath: str, source: str, connection_id: str, lakehouse: Optional[str] = None, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#create_shortcut
+    Creates a [shortcut](https://learn.microsoft.com/fabric/onelake/onelake-shortcuts) to an ADLS Gen2 or Amazon S3 source.
 
+    Parameters
+    ----------
+    shortcut_name : str
+    location : str
+    subpath : str
+    source : str
+    connection_id: str
+    lakehouse : str
+        The Fabric lakehouse in which the shortcut will be created.
+    workspace : str, default=None
+        The name of the Fabric workspace in which the shortcut will be created.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.     
+    
+    Returns
+    -------
+    str
+        A printout stating the success/failure of the operation.
     """
 
     source_titles = {
@@ -106,12 +144,25 @@ def create_shortcut(shortcut_name: str, location: str, subpath: str, source: str
     except:
         print(f"{red_dot} Failed to create a shortcut for the '{shortcut_name}' table.")
 
-def list_shortcuts(lakehouse: str | None = None, workspace: str | None = None):
+def list_shortcuts(lakehouse: Optional[str] = None, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#list_shortcuts
+    Shows all shortcuts which exist in a Fabric lakehouse.
 
+    Parameters
+    ----------
+    lakehouse : str, default=None
+        The Fabric lakehouse name.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    workspace : str, default=None
+        The name of the Fabric workspace in which lakehouse resides.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.     
+    
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing all the shortcuts which exist in the specified lakehouse.
     """
 
     if workspace == None:
@@ -153,13 +204,28 @@ def list_shortcuts(lakehouse: str | None = None, workspace: str | None = None):
     print(f"This function relies on an API which is not yet official as of May 21, 2024. Once the API becomes official this function will work as expected.")
     return df
 
-def delete_shortcut(shortcut_name: str, lakehouse: str | None = None, workspace: str | None = None):
+def delete_shortcut(shortcut_name: str, lakehouse: Optional[str] = None, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#delete_shortcut
+    Deletes a shortcut.
 
-    """    
+    Parameters
+    ----------
+    shortcut_name : str
+        The name of the shortcut.
+    lakehouse : str, default=None
+        The Fabric lakehouse name in which the shortcut resides.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    workspace : str, default=None
+        The name of the Fabric workspace in which lakehouse resides.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.     
+    
+    Returns
+    -------
+    str
+        A printout stating the success/failure of the operation.
+    """   
 
     if workspace == None:
         workspace_id = fabric.get_workspace_id()

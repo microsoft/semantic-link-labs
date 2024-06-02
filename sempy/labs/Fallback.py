@@ -1,13 +1,26 @@
 import sempy
 import sempy.fabric as fabric
 import numpy as np
+from typing import List, Optional, Union
 
-def check_fallback_reason(dataset: str, workspace: str | None = None):
+def check_fallback_reason(dataset: str, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#check_fallback_reason
+    Shows the reason a table in a Direct Lake semantic model would fallback to DirectQuery.
 
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        The tables in the semantic model and their fallback reason.
     """
 
     if workspace == None:

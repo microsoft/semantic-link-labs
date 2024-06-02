@@ -4,8 +4,9 @@ import pandas as pd
 from synapse.ml.services.openai import OpenAICompletion
 from pyspark.sql.functions import col
 from pyspark.sql import SparkSession
+from typing import List, Optional, Union
 
-def optimize_semantic_model(dataset: str, workspace: str | None = None):
+def optimize_semantic_model(dataset: str, workspace: Optional[str] = None):
 
     from .ModelBPA import run_model_bpa
     from .Fallback import check_fallback_reason
@@ -43,7 +44,7 @@ def optimize_semantic_model(dataset: str, workspace: str | None = None):
             print(f"The '{rule}' rule has been followed.")
 
 
-def generate_measure_descriptions(dataset: str, measures: str | list, gpt_model: str = 'gpt-35-turbo', workspace: str | None = None):
+def generate_measure_descriptions(dataset: str, measures: Union[str,List[str]], gpt_model: Optional[str] = 'gpt-35-turbo', workspace: Optional[str] = None):
 
     service_name = 'synapseml-openai'
 
@@ -96,12 +97,10 @@ def generate_measure_descriptions(dataset: str, measures: str | list, gpt_model:
 
     #m.SaveChanges()
 
-def generate_aggs(dataset: str, table_name: str, columns: str | list, workspace: str | None = None, lakehouse_workspace: str | None = None):
+def generate_aggs(dataset: str, table_name: str, columns: Union[str,List[str]], workspace: Optional[str] = None, lakehouse_workspace: Optional[str] = None):
 
-    from .HelperFunctions import get_direct_lake_sql_endpoint
-    from .HelperFunctions import resolve_lakehouse_id
-    from .HelperFunctions import create_abfss_path
-    from .HelperFunctions import format_dax_object_name
+    from .HelperFunctions import get_direct_lake_sql_endpoint, create_abfss_path, format_dax_object_name, resolve_lakehouse_id
+    
     sempy.fabric._client._utils._init_analysis_services()
     import Microsoft.AnalysisServices.Tabular as TOM
     import System

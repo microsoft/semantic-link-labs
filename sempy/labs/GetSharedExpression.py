@@ -2,13 +2,27 @@ import sempy
 import sempy.fabric as fabric
 from .HelperFunctions import resolve_lakehouse_name
 from .ListFunctions import list_lakehouses
+from typing import List, Optional, Union
 
-def get_shared_expression(lakehouse: str | None = None, workspace: str | None = None):
+def get_shared_expression(lakehouse: Optional[str] = None, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_shared_expression
+    Dynamically generates the M expression used by a Direct Lake model for a given lakehouse.
 
+    Parameters
+    ----------
+    lakehouse : str, default=None
+        The Fabric lakehouse used by the Direct Lake semantic model.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    workspace : str, default=None
+        The Fabric workspace used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    str
+        Shows the expression which can be used to connect a Direct Lake semantic model to its SQL Endpoint.
     """
 
     if workspace == None:

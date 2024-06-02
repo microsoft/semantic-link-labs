@@ -2,6 +2,7 @@ import sempy
 import sempy.fabric as fabric
 import time
 from .HelperFunctions import resolve_dataset_id
+from typing import List, Optional, Union
 from sempy._utils._log import log
 
 green_dot = '\U0001F7E2'
@@ -10,12 +11,34 @@ red_dot = '\U0001F534'
 in_progress = '⌛'
 
 @log
-def refresh_semantic_model(dataset: str, tables: str | list | None = None, partitions: str | list | None = None, refresh_type: str | None = None, retry_count: int = 0, apply_refresh_policy: bool = True, workspace: str | None = None):
+def refresh_semantic_model(dataset: str, tables: Optional[Union[str, List[str]]] = None, partitions: Optional[Union[str, List[str]]] = None, refresh_type: Optional[str] = None, retry_count: Optional[int] = 0, apply_refresh_policy: Optional[bool] = True, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#refresh_semantic_model
+    Refreshes a semantic model.
 
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    tables : str, List[str], default=None
+        A string or a list of tables to refresh.
+    partitions: str, List[str], default=None
+        A string or a list of partitions to refresh. Partitions must be formatted as such: 'Table Name'[Partition Name].
+    refresh_type : str, default='full'
+        The type of processing to perform. Types align with the TMSL refresh command types: full, clearValues, calculate, dataOnly, automatic, and defragment. The add type isn't supported. Defaults to "full".
+    retry_count : int, default=0
+        Number of times the operation retries before failing.
+    apply_refresh_policy : bool, default=True
+        If an incremental refresh policy is defined, determines whether to apply the policy. Modes are true or false. If the policy isn't applied, the full process leaves partition definitions unchanged, and fully refreshes all partitions in the table. If commitMode is transactional, applyRefreshPolicy can be true or false. If commitMode is partialBatch, applyRefreshPolicy of true isn't supported, and applyRefreshPolicy must be set to false.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    str
+        A printout stating the success/failure of the operation.
     """
 
     if workspace == None:
@@ -77,13 +100,29 @@ def refresh_semantic_model(dataset: str, tables: str | list | None = None, parti
 
     print(f"{green_dot} Refresh of the '{dataset}' semantic model within the '{workspace}' workspace is complete.")
 
-def cancel_dataset_refresh(dataset, request_id = None, workspace = None):
+@log
+def cancel_dataset_refresh(dataset: str, request_id: Optional[str] = None, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#cancel_dataset_refresh
+    Cancels the refresh of a semantic model which was executed via the [Enhanced Refresh API](https://learn.microsoft.com/power-bi/connect-data/asynchronous-refresh).
 
-    """    
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    request_id : str, default=None
+        The request id of a semantic model refresh. 
+        Defaults to finding the latest active refresh of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    str
+        A printout stating the success/failure of the operation.
+    """ 
 
     if workspace == None:
         workspace_id = fabric.get_workspace_id()

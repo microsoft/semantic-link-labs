@@ -3,13 +3,37 @@ import sempy.fabric as fabric
 import pandas as pd
 from .GetLakehouseColumns import get_lakehouse_columns
 from .HelperFunctions import format_dax_object_name, resolve_lakehouse_name, get_direct_lake_sql_endpoint
+from typing import List, Optional, Union
+from sempy._utils._log import log
 
-def direct_lake_schema_sync(dataset: str, workspace: str | None = None, add_to_model: bool = False, lakehouse: str | None = None, lakehouse_workspace: str | None = None):
+@log
+def direct_lake_schema_sync(dataset: str, workspace: Optional[str] = None, add_to_model: Optional[bool] = False, lakehouse: Optional[str] = None, lakehouse_workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#direct_lake_schema_sync
+    Shows/adds columns which exist in the lakehouse but do not exist in the semantic model (only for tables in the semantic model).
 
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    add_to_model : bool, default=False
+        If set to True, columns which exist in the lakehouse but do not exist in the semantic model are added to the semantic model. No new tables are added.
+    lakehouse : str, default=None
+        The Fabric lakehouse used by the Direct Lake semantic model.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    lakehouse_workspace : str, default=None
+        The Fabric workspace used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    str
+        A list of columns which exist in the lakehouse but not in the Direct Lake semantic model. If 'add_to_model' is set to True, a printout stating the success/failure of the operation is returned.
     """
 
     sempy.fabric._client._utils._init_analysis_services()

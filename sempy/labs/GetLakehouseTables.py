@@ -7,13 +7,33 @@ import datetime
 from .HelperFunctions import resolve_lakehouse_id, resolve_lakehouse_name
 from .Guardrails import get_sku_size, get_directlake_guardrails_for_sku
 from .Lakehouse import lakehouse_attached
+from typing import List, Optional, Union
 
-def get_lakehouse_tables(lakehouse: str | None = None, workspace: str | None = None, extended: bool = False, count_rows: bool = False, export: bool = False):
+def get_lakehouse_tables(lakehouse: Optional[str] = None, workspace: Optional[str] = None, extended: Optional[bool] = False, count_rows: Optional[bool] = False, export: Optional[bool] = False):
 
     """
+    Shows the tables of a lakehouse and their respective properties. Option to include additional properties relevant to Direct Lake guardrails.
 
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_lakehouse_tables
+    Parameters
+    ----------
+    lakehouse : str, default=None
+        The Fabric lakehouse.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    lakehouse_workspace : str, default=None
+        The Fabric workspace used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    extended : bool, default=False
+        Obtains additional columns relevant to the size of each table.
+    count_rows : bool, default=False
+        Obtains a row count for each lakehouse table.
+    export : bool, default=False
+        Exports the resulting dataframe to a delta table in the lakehouse.
 
+    Returns
+    -------
+    pandas.DataFrame
+        Shows the tables/columns within a lakehouse and their properties.
     """
 
     df = pd.DataFrame(columns=['Workspace Name', 'Lakehouse Name', 'Table Name', 'Format', 'Type', 'Location'])

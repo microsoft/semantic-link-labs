@@ -2,14 +2,26 @@ import sempy
 import sempy.fabric as fabric
 import pandas as pd
 from .HelperFunctions import format_dax_object_name
-from sempy._utils._log import log
+from typing import List, Optional, Union
 
-def get_measure_dependencies(dataset: str, workspace: str | None = None):
+def get_measure_dependencies(dataset: str, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_measure_dependencies
+    Shows all dependencies for all measures in a semantic model.
 
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Shows all dependencies for all measures in the semantic model.
     """
 
     if workspace == None:
@@ -63,12 +75,24 @@ def get_measure_dependencies(dataset: str, workspace: str | None = None):
 
     return df
 
-def get_model_calc_dependencies(dataset: str, workspace: str | None = None):
+def get_model_calc_dependencies(dataset: str, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_model_calc_dependencies
+    Shows all dependencies for all objects in a semantic model.
 
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Shows all dependencies for all objects in the semantic model.
     """
 
     if workspace == None:

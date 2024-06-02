@@ -8,15 +8,38 @@ from .HelperFunctions import format_dax_object_name, get_direct_lake_sql_endpoin
 from .ListFunctions import list_relationships
 from .GetLakehouseTables import get_lakehouse_tables
 from .Lakehouse import lakehouse_attached
+from typing import List, Optional, Union
 from sempy._utils._log import log
 
 @log
-def vertipaq_analyzer(dataset: str, workspace: str | None = None, export: str | None = None, lakehouse_workspace: str | None = None, read_stats_from_data: bool = False):
+def vertipaq_analyzer(dataset: str, workspace: Optional[str] = None, export: Optional[str] = None, lakehouse_workspace: Optional[str] = None, read_stats_from_data: Optional[bool] = False):
     
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#vertipaq_analyzer
+    Extracts the vertipaq analyzer statistics from a semantic model.
 
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name in which the semantic model exists.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    export : str, default=None
+        Specifying 'zip' will export the results to a zip file in your lakehouse (which can be imported using the import_vertipaq_analyzer function. 
+        Specifying 'table' will export the results to delta tables (appended) in your lakehouse. 
+        Default value: None.
+    lakehouse_workspace : str, default=None
+        The Fabric workspace used by the lakehouse (for Direct Lake semantic models).
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    read_stats_from_data : bool, default=False
+        Setting this parameter to true has the function get Column Cardinality and Missing Rows using DAX (Direct Lake semantic models achieve this using a Spark query to the lakehouse).
+
+    Returns
+    -------
+    str
+       A visualization of the Vertipaq Analyzer statistics.
     """
 
     pd.options.mode.copy_on_write = True
@@ -284,7 +307,7 @@ def vertipaq_analyzer(dataset: str, workspace: str | None = None, export: str | 
     visualize_vertipaq(dfs)
 
     ### Export vertipaq to delta tables in lakehouse
-    if export == 'table' or 'zip':
+    if export in ['table','zip']:
        lakeAttach = lakehouse_attached()
        if lakeAttach == False:
             print(f"In order to save the Vertipaq Analyzer results, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook.")
@@ -512,11 +535,21 @@ def visualize_vertipaq(dataframes):
 
 @log
 def import_vertipaq_analyzer(folder_path: str, file_name: str):
-
+  
   """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#import_vertipaq_analyzer
+    Imports and visualizes the vertipaq analyzer info from a saved .zip file in your lakehouse.
 
+    Parameters
+    ----------
+    folder_path : str
+        The folder within your lakehouse in which the .zip file containing the vertipaq analyzer info has been saved.
+    file_name : str
+        The file name of the file which contains the vertipaq analyzer info.
+
+    Returns
+    -------
+    str
+       A visualization of the Vertipaq Analyzer statistics.
     """
   
   pd.options.mode.copy_on_write = True

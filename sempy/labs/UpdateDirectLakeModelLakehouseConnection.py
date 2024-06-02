@@ -3,14 +3,34 @@ import sempy.fabric as fabric
 from .GetSharedExpression import get_shared_expression
 from .HelperFunctions import resolve_lakehouse_name
 from .TOM import connect_semantic_model
+from typing import List, Optional, Union
 
-def update_direct_lake_model_lakehouse_connection(dataset: str, workspace: str | None = None, lakehouse: str | None = None, lakehouse_workspace: str | None = None):
+def update_direct_lake_model_lakehouse_connection(dataset: str, workspace: Optional[str] = None, lakehouse: Optional[str] = None, lakehouse_workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#update_direct_lake_model_lakehouse_connection
+    Remaps a Direct Lake semantic model's SQL Endpoint connection to a new lakehouse.
 
-    """    
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name in which the semantic model exists.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    lakehouse : str, default=None
+        The Fabric lakehouse used by the Direct Lake semantic model.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    lakehouse_workspace : str, default=None
+        The Fabric workspace used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    str
+       A printout stating the success/failure of the operation.
+    """ 
 
     if workspace == None:
         workspace_id = fabric.get_workspace_id()

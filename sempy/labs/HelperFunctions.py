@@ -2,161 +2,307 @@ import sempy
 import sempy.fabric as fabric
 import re
 from pyspark.sql import SparkSession
+from typing import List, Optional, Union
+from uuid import UUID
 
 green_dot = '\U0001F7E2'
 yellow_dot = '\U0001F7E1'
 red_dot = '\U0001F534'
 in_progress = '⌛'
 
-def create_abfss_path(lakehouse_id: str, lakehouse_workspace_id, delta_table_name):
+def create_abfss_path(lakehouse_id: UUID, lakehouse_workspace_id: UUID, delta_table_name: str):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#create_abfss_path
+    Creates an abfss path for a delta table in a Fabric lakehouse.
 
+    Parameters
+    ----------
+    lakehouse_id : UUID
+        ID of the Fabric lakehouse.
+    lakehouse_workspace_id : UUID
+        ID of the Fabric workspace.
+    delta_table_name : str
+        Name of the delta table name.
+
+    Returns
+    -------
+    str
+        An abfss path which can be used to save/reference a delta table in a Fabric lakehouse.
     """
 
     return f"abfss://{lakehouse_workspace_id}@onelake.dfs.fabric.microsoft.com/{lakehouse_id}/Tables/{delta_table_name}"
 
-def format_dax_object_name(a,b):
+def format_dax_object_name(a: str,b: str):
+
+    """
+    Formats a table/column combination to the 'Table Name'[Column Name] format.
+
+    Parameters
+    ----------
+    a : str
+        The name of the table.
+    b : str
+        The name of the column.
+
+    Returns
+    -------
+    str
+        The fully qualified object name.
+    """
     
     return "'" + a + "'[" + b + "]"
 
-def create_relationship_name(from_table, from_column, to_table, to_column):
+def create_relationship_name(from_table: str, from_column: str, to_table: str, to_column: str):
+
+    """
+    Formats a relationship's table/columns into a fully qualified name.
+
+    Parameters
+    ----------
+    from_table : str
+        The name of the table on the 'from' side of the relationship.
+    from_column : str
+        The name of the column on the 'from' side of the relationship.
+    to_table : str
+        The name of the table on the 'to' side of the relationship.
+    to_column : str
+        The name of the column on the 'to' side of the relationship.
+
+    Returns
+    -------
+    str
+        The fully qualified relationship name.       
+    """
 
     return format_dax_object_name(from_table, from_column) + ' -> ' + format_dax_object_name(to_table, to_column)
 
-def resolve_report_id(report: str, workspace: str | None = None):
+def resolve_report_id(report: str, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#resolve_report_id
+    Obtains the ID of the Power BI report.
 
-    """
-    
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
+    Parameters
+    ----------
+    report : str
+        The name of the Power BI report.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
 
-    objectType = 'Report'
-    dfI = fabric.list_items(workspace = workspace, type = objectType)
-    dfI_filt = dfI[(dfI['Display Name'] == report)]
-    obj = dfI_filt['Id'].iloc[0]
-
-    return obj
-
-def resolve_report_name(report_id, workspace: str | None = None):
-
-    """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#resolve_report_name
-
-    """
-    
-    
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-
-    objectType = 'Report'
-    dfI = fabric.list_items(workspace = workspace, type = objectType)
-    dfI_filt = dfI[(dfI['Id'] == report_id)]
-    obj = dfI_filt['Display Name'].iloc[0]
-
-    return obj
-
-def resolve_dataset_id(dataset: str, workspace: str | None = None):
-
-    """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#resolve_dataset_id
-
+    Returns
+    -------
+    UUID
+        The ID of the Power BI report.
     """
     
     if workspace == None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
-    objectType = 'SemanticModel'
-    dfI = fabric.list_items(workspace = workspace, type = objectType)
-    dfI_filt = dfI[(dfI['Display Name'] == dataset)]
-    obj = dfI_filt['Id'].iloc[0]
+    obj = fabric.resolve_item_id(item_name = report, type = 'Report', workspace = workspace)
+
+    #objectType = 'Report'
+    #dfI = fabric.list_items(workspace = workspace, type = objectType)
+    #dfI_filt = dfI[(dfI['Display Name'] == report)]
+    #obj = dfI_filt['Id'].iloc[0]
 
     return obj
 
-def resolve_dataset_name(dataset_id, workspace: str | None = None):
+def resolve_report_name(report_id: UUID, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#resolve_dataset_name
+    Obtains the name of the Power BI report.
 
+    Parameters
+    ----------
+    report_id : UUID
+        The name of the Power BI report.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    str
+        The name of the Power BI report.
+    """
+    
+    
+    if workspace == None:
+        workspace_id = fabric.get_workspace_id()
+        workspace = fabric.resolve_workspace_name(workspace_id)
+
+    obj = fabric.resolve_item_name(item_id = report_id, type = 'Report', workspace = workspace)
+
+    #objectType = 'Report'
+    #dfI = fabric.list_items(workspace = workspace, type = objectType)
+    #dfI_filt = dfI[(dfI['Id'] == report_id)]
+    #obj = dfI_filt['Display Name'].iloc[0]
+
+    return obj
+
+def resolve_dataset_id(dataset: str, workspace: Optional[str] = None):
+
+    """
+    Obtains the ID of the semantic model.
+
+    Parameters
+    ----------
+    dataset : str
+        The name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    UUID
+        The ID of the semantic model.
     """
     
     if workspace == None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
-    objectType = 'SemanticModel'
-    dfI = fabric.list_items(workspace = workspace, type = objectType)
-    dfI_filt = dfI[(dfI['Id'] == dataset_id)]
-    obj = dfI_filt['Display Name'].iloc[0]
+    obj = fabric.resolve_item_id(item_name = dataset, type = 'SemanticModel', workspace = workspace)
+
+    #objectType = 'SemanticModel'
+    #dfI = fabric.list_items(workspace = workspace, type = objectType)
+    #dfI_filt = dfI[(dfI['Display Name'] == dataset)]
+    #obj = dfI_filt['Id'].iloc[0]
 
     return obj
 
-def resolve_lakehouse_name(lakehouse_id, workspace: str | None = None):
+def resolve_dataset_name(dataset_id: UUID, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#resolve_lakehouse_name
+    Obtains the name of the semantic model.
 
+    Parameters
+    ----------
+    dataset_id : UUID
+        The name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    str
+        The name of the semantic model.
     """
     
     if workspace == None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
-    objectType = 'Lakehouse'
-    dfI = fabric.list_items(workspace = workspace, type = objectType)
-    dfI_filt = dfI[(dfI['Id'] == lakehouse_id)]
+    obj = fabric.resolve_item_name(item_id = dataset_id, type = 'SemanticModel', workspace = workspace)
 
-    if len(dfI_filt) == 0:
-        print(f"The '{lakehouse_id}' Lakehouse Id does not exist within the '{workspace}' workspace.")
-        return
-    
-    obj = dfI_filt['Display Name'].iloc[0]
+    #objectType = 'SemanticModel'
+    #dfI = fabric.list_items(workspace = workspace, type = objectType)
+    #dfI_filt = dfI[(dfI['Id'] == dataset_id)]
+    #obj = dfI_filt['Display Name'].iloc[0]
 
     return obj
 
-def resolve_lakehouse_id(lakehouse: str, workspace: str | None = None):
+def resolve_lakehouse_name(lakehouse_id: UUID, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#resolve_lakehouse_id
+    Obtains the name of the Fabric lakehouse.
 
+    Parameters
+    ----------
+    lakehouse_id : UUID
+        The name of the Fabric lakehouse.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    str
+        The name of the Fabric lakehouse.
     """
     
     if workspace == None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
-    objectType = 'Lakehouse'    
-    dfI = fabric.list_items(workspace = workspace, type = objectType)
-    dfI_filt = dfI[(dfI['Display Name'] == lakehouse)]
+    obj = fabric.resolve_item_name(item_id = lakehouse_id, type = 'Lakehouse', workspace = workspace)
 
-    if len(dfI_filt) == 0:
-        print(f"The '{lakehouse}' lakehouse does not exist within the '{workspace}' workspace.")
-        return
+    #objectType = 'Lakehouse'
+    #dfI = fabric.list_items(workspace = workspace, type = objectType)
+    #dfI_filt = dfI[(dfI['Id'] == lakehouse_id)]
+
+    #if len(dfI_filt) == 0:
+    #    print(f"The '{lakehouse_id}' Lakehouse Id does not exist within the '{workspace}' workspace.")
+    #    return
     
-    obj = dfI_filt['Id'].iloc[0]
+    #obj = dfI_filt['Display Name'].iloc[0]
 
     return obj
 
-def get_direct_lake_sql_endpoint(dataset: str, workspace: str | None = None):
+def resolve_lakehouse_id(lakehouse: str, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_direct_lake_sql_endpoint
+    Obtains the ID of the Fabric lakehouse.
 
+    Parameters
+    ----------
+    lakehouse : str
+        The name of the Fabric lakehouse.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    UUID
+        The ID of the Fabric lakehouse.
+    """
+    
+    if workspace == None:
+        workspace_id = fabric.get_workspace_id()
+        workspace = fabric.resolve_workspace_name(workspace_id)
+
+    obj = fabric.resolve_item_id(item_name = lakehouse, type = 'Lakehouse', workspace = workspace)
+
+    #objectType = 'Lakehouse'    
+    #dfI = fabric.list_items(workspace = workspace, type = objectType)
+    #dfI_filt = dfI[(dfI['Display Name'] == lakehouse)]
+
+    #if len(dfI_filt) == 0:
+    #    print(f"The '{lakehouse}' lakehouse does not exist within the '{workspace}' workspace.")
+    #    return
+    
+    #obj = dfI_filt['Id'].iloc[0]
+
+    return obj
+
+def get_direct_lake_sql_endpoint(dataset: str, workspace: Optional[str] = None):
+
+    """
+    Obtains the SQL Endpoint ID of the semantic model.
+
+    Parameters
+    ----------
+    dataset : str
+        The name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    UUID
+        The ID of SQL Endpoint.
     """
 
     if workspace == None:
@@ -182,9 +328,17 @@ def get_direct_lake_sql_endpoint(dataset: str, workspace: str | None = None):
 def generate_embedded_filter(filter: str):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#generate_embedded_filter
+    Converts the filter expression to a filter expression which can be used by a Power BI embedded URL.
 
+    Parameters
+    ----------
+    filter : str
+        The filter expression for an embedded Power BI report.
+
+    Returns
+    -------
+    str
+        A filter expression usable by a Power BI embedded URL.
     """
 
     pattern = r"'[^']+'\[[^\[]+\]"
@@ -209,7 +363,32 @@ def generate_embedded_filter(filter: str):
     
     return revised_filter
 
-def save_as_delta_table(dataframe, delta_table_name: str, write_mode: str, lakehouse: str | None = None, workspace: str | None = None):
+def save_as_delta_table(dataframe, delta_table_name: str, write_mode: str, lakehouse: Optional[str] = None, workspace: Optional[str] = None):
+
+    """
+    Saves a pandas dataframe as a delta table in a Fabric lakehouse.
+
+    Parameters
+    ----------
+    dataframe : pandas.DataFrame
+        The dataframe to be saved as a delta table.
+    delta_table_name : str
+        The name of the delta table.
+    write_mode : str
+        The write mode for the save operation. Options: 'append', 'overwrite'.
+    lakehouse : str, default=None
+        The Fabric lakehouse used by the Direct Lake semantic model.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    UUID
+        The ID of the Power BI report.
+    """
 
     if workspace is None:
         workspace_id = fabric.get_workspace_id()

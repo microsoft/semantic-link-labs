@@ -2,14 +2,28 @@ import sempy
 import sempy.fabric as fabric
 import json, base64, time
 from .GetSemanticModelBim import get_semantic_model_bim
-from sempy._utils._log import log
+from typing import List, Optional, Union
 
-def create_semantic_model_from_bim(dataset: str, bim_file, workspace: str | None = None):
+def create_semantic_model_from_bim(dataset: str, bim_file: str, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#create_semantic_model_from_bim
+    Creates a new semantic model based on a Model.bim file.
 
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    bim_file : str
+        The model.bim file.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    str
+        A printout stating the success/failure of the operation.
     """
 
     if workspace == None:
@@ -80,13 +94,31 @@ def create_semantic_model_from_bim(dataset: str, bim_file, workspace: str | None
         print(f"The '{dataset}' semantic model has been created within the '{workspace}' workspace.")
         print(response.json())
 
-def deploy_semantic_model(dataset: str, new_dataset: str | None = None, workspace: str | None = None, new_dataset_workspace: str | None = None):
+def deploy_semantic_model(dataset: str, new_dataset: Optional[str] = None, workspace: Optional[str] = None, new_dataset_workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#deploy_semantic_model
+    Deploys a semantic model based on an existing semantic model.
 
-    """    
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model to deploy.
+    new_dataset: str
+        Name of the new semantic model to be created.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    new_dataset_workspace : str, default=None
+        The Fabric workspace name in which the new semantic model will be deployed.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    str
+        A printout stating the success/failure of the operation.
+    """  
 
     if workspace == None:
         workspace_id = fabric.get_workspace_id()

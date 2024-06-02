@@ -2,13 +2,28 @@ import sempy
 import sempy.fabric as fabric
 import pandas as pd
 from .ListFunctions import list_tables, list_annotations
+from typing import List, Optional, Union
+from sempy._utils._log import log
 
-def list_direct_lake_model_calc_tables(dataset: str, workspace: str | None = None):
+@log
+def list_direct_lake_model_calc_tables(dataset: str, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#list_direct_lake_model_calc_tables
+    Shows the calculated tables and their respective DAX expression for a Direct Lake model (which has been migrated from import/DirectQuery.
 
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the calculated tables which were migrated to Direct Lake and whose DAX expressions are stored as model annotations.
     """
 
     if workspace == None:

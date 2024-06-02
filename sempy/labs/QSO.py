@@ -2,21 +2,35 @@ import sempy
 import sempy.fabric as fabric
 import pandas as pd
 from .HelperFunctions import resolve_dataset_id
+from typing import List, Optional, Union
 
 green_dot = '\U0001F7E2'
 yellow_dot = '\U0001F7E1'
 red_dot = '\U0001F534'
 in_progress = '⌛'
 
-def qso_sync(dataset: str, workspace: str | None = None):
+def qso_sync(dataset: str, workspace: Optional[str] = None):
+
+    """
+    Triggers a query scale-out sync of read-only replicas for the specified dataset from the specified workspace.
+
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    
+    Returns
+    -------
+    str
+        A printout stating the success/failure of the operation.
+    """
 
     #https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/trigger-query-scale-out-sync-in-group
 
-    """
-    
-    
-
-    """
 
     if workspace is None:
         workspace_id = fabric.get_workspace_id()
@@ -34,9 +48,27 @@ def qso_sync(dataset: str, workspace: str | None = None):
     else:
         print(f"{red_dot} QSO sync failed for the '{dataset}' semantic model within the '{workspace}' workspace.")
 
-def qso_sync_status(dataset: str, workspace: str | None = None):
+def qso_sync_status(dataset: str, workspace: Optional[str] = None):
 
-    #https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/trigger-query-scale-out-sync-in-group#datasetqueryscaleoutsyncstatus
+    """
+    Returns the query scale-out sync status for the specified dataset from the specified workspace.
+
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    str
+        A printout stating the success/failure of the operation.
+    """
+
+    #https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/get-query-scale-out-sync-status-in-group
 
     df = pd.DataFrame(columns=['Scale Out Status', 'Sync Start Time', 'Sync End Time', 'Commit Version', 'Commit Timestamp', 'Target Sync Version', 'Target Sync Timestamp', 'Trigger Reason', 'Min Active Read Version', 'Min Active Read Timestamp'])
     dfRep = pd.DataFrame(columns=['Replica ID', 'Replica Type', 'Replica Version', 'Replica Timestamp'])
@@ -82,7 +114,25 @@ def qso_sync_status(dataset: str, workspace: str | None = None):
     else:
         return response.status_code
 
-def disable_qso(dataset: str, workspace: str | None = None):
+def disable_qso(dataset: str, workspace: Optional[str] = None):
+
+    """
+    Sets the max read-only replicas to 0, disabling query scale out.
+
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    str
+        A printout stating the success/failure of the operation.
+    """
 
     if workspace is None:
         workspace_id = fabric.get_workspace_id()
@@ -107,7 +157,29 @@ def disable_qso(dataset: str, workspace: str | None = None):
     else:
         return f"{red_dot} {response.status_code}"
 
-def set_qso(dataset: str, auto_sync: bool = True, max_read_only_replicas: int = -1, workspace: str | None = None):
+def set_qso(dataset: str, auto_sync: Optional[bool] = True, max_read_only_replicas: Optional[int] = -1, workspace: Optional[str] = None):
+
+    """
+    Sets the query scale out settings for a semantic model.
+
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    auto_sync : bool, default=True
+        Whether the semantic model automatically syncs read-only replicas.
+    max_read_only_replicas : int, default=-1
+        To enable semantic model scale-out, set max_read_only_replicas to -1, or any non-0 value. A value of -1 allows Power BI to create as many read-only replicas as your Power BI capacity supports. You can also explicitly set the replica count to a value lower than that of the capacity maximum. Setting max_read_only_replicas to -1 is recommended.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    str
+        A printout stating the success/failure of the operation.
+    """
 
     #https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/update-dataset-in-group
 
@@ -146,7 +218,27 @@ def set_qso(dataset: str, auto_sync: bool = True, max_read_only_replicas: int = 
         return
 
     
-def set_semantic_model_storage_format(dataset: str, storage_format: str, workspace: str | None = None):
+def set_semantic_model_storage_format(dataset: str, storage_format: str, workspace: Optional[str] = None):
+
+    """
+    Sets the semantic model storage format.
+
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    storage_format : str
+        The storage format for the semantic model. Valid options: 'Large', 'Small'.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    str
+        A printout stating the success/failure of the operation.
+    """
 
     if workspace is None:
         workspace_id = fabric.get_workspace_id()
@@ -185,7 +277,25 @@ def set_semantic_model_storage_format(dataset: str, storage_format: str, workspa
     else:
         return f"{red_dot} {response.status_code}"
 
-def list_qso_settings(dataset: str | None = None, workspace: str | None = None):
+def list_qso_settings(dataset: Optional[str] = None, workspace: Optional[str] = None):
+
+    """
+    Shows the query scale out settings for a semantic model (or all semantic models within a workspace).
+
+    Parameters
+    ----------
+    dataset : str, default=None
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the query scale out settings.
+    """
 
     if workspace is None:
         workspace_id = fabric.get_workspace_id()
@@ -217,14 +327,27 @@ def list_qso_settings(dataset: str | None = None, workspace: str | None = None):
     
     return df
 
-def set_workspace_default_storage_format(storage_format: str, workspace: str | None = None):
+def set_workspace_default_storage_format(storage_format: str, workspace: Optional[str] = None):
+
+    """
+    Sets the default storage format for semantic models within a workspace.
+
+    Parameters
+    ----------
+    storage_format : str
+        The storage format for the semantic model. Valid options: 'Large', 'Small'.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    str
+        A printout stating the success/failure of the operation.
+    """
 
     #https://learn.microsoft.com/en-us/rest/api/power-bi/groups/update-group#defaultdatasetstorageformat
-
-    """
-
-
-    """
 
     storageFormats = ['Small', 'Large']
 

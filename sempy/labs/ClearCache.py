@@ -1,18 +1,31 @@
 import sempy
 import sempy.fabric as fabric
 from .HelperFunctions import resolve_dataset_id
+from typing import List, Optional, Union
 
 green_dot = '\U0001F7E2'
 yellow_dot = '\U0001F7E1'
 red_dot = '\U0001F534'
 in_progress = '⌛'
 
-def clear_cache(dataset: str, workspace: str | None = None):
+def clear_cache(dataset: str, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#clear_cache
+    Clears the cache of a semantic model.
 
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    str
+        A printout stating the success/failure of the operation.
     """
 
     if workspace == None:
