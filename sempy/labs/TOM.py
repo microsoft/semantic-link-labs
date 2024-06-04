@@ -1444,10 +1444,16 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             # Have to remove translations and perspectives on the object before removing it.
             if objType in ['Table', 'Column', 'Measure', 'Hierarchy', 'Level']:
                 for lang in object.Model.Cultures:
-                    self.remove_translation(object = object, language = lang.Name)
+                    try:
+                        self.remove_translation(object = object, language = lang.Name)
+                    except:
+                        pass
             if objType in ['Table', 'Column', 'Measure', 'Hierarchy']:
                 for persp in object.Model.Perspectives:
-                    self.remove_from_perspective(object = object, perspective_name = persp.Name)
+                    try:
+                        self.remove_from_perspective(object = object, perspective_name = persp.Name)
+                    except:
+                        pass
 
             if objType == 'Column':
                 object.Parent.Columns.Remove(object.Name)
