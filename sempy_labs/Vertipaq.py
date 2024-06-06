@@ -397,7 +397,7 @@ def vertipaq_analyzer(dataset: str, workspace: Optional[str] = None, export: Opt
           filePath = os.path.join(subFolderPath, fileName) + ext
           if os.path.exists(filePath):
              os.remove(filePath)
-      print(f"The Vertipaq Analyzer info for the '{dataset}' semantic model in the '{workspace}' workspace has been saved to the 'Vertipaq Analyzer\{zipFileName}' in the default lakehouse attached to this notebook.")
+      print(f"The Vertipaq Analyzer info for the '{dataset}' semantic model in the '{workspace}' workspace has been saved to the 'Vertipaq Analyzer/{zipFileName}' in the default lakehouse attached to this notebook.")
 
 def visualize_vertipaq(dataframes):
     
