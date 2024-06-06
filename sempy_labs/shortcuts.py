@@ -1,4 +1,4 @@
-import sempy
+import sempy_labs
 import sempy.fabric as fabric
 import pandas as pd
 from .HelperFunctions import resolve_lakehouse_name, resolve_lakehouse_id
@@ -69,8 +69,8 @@ def create_shortcut_onelake(table_name: str, source_lakehouse: str, source_works
             print(f"{green_dot} The shortcut '{shortcut_name}' was created in the '{destination_lakehouse}' lakehouse within the '{destination_workspace} workspace. It is based on the '{table_name}' table in the '{source_lakehouse}' lakehouse within the '{source_workspace}' workspace.")
         else:
             print(response.status_code)
-    except:
-        print(f"{red_dot} Failed to create a shortcut for the '{table_name}' table.")
+    except Exception as e:
+        print(f"{red_dot} Failed to create a shortcut for the '{table_name}' table: {e}")
 
 def create_shortcut(shortcut_name: str, location: str, subpath: str, source: str, connection_id: str, lakehouse: Optional[str] = None, workspace: Optional[str] = None):
 
