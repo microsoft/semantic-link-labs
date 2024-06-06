@@ -3,13 +3,26 @@ import sempy.fabric as fabric
 import pandas as pd
 from .ListFunctions import list_tables
 from .HelperFunctions import format_dax_object_name
+from typing import List, Optional, Union
 
-def show_unsupported_direct_lake_objects(dataset: str, workspace: str | None = None):
+def show_unsupported_direct_lake_objects(dataset: str, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#show_unsupported_direct_lake_objects
+    Returns a list of a semantic model's objects which are not supported by Direct Lake based on [official documentation](https://learn.microsoft.com/power-bi/enterprise/directlake-overview#known-issues-and-limitations).
 
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame, pandas.DataFrame, pandas.DataFrame
+        3 pandas dataframes showing objects in a semantic model which are not supported by Direct Lake.
     """
 
     pd.options.mode.chained_assignment = None

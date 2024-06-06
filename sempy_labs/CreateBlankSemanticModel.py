@@ -1,17 +1,32 @@
 import sempy
 import sempy.fabric as fabric
+from typing import List, Optional, Union
 
 green_dot = '\U0001F7E2'
 yellow_dot = '\U0001F7E1'
 red_dot = '\U0001F534'
 in_progress = '⌛'
 
-def create_blank_semantic_model(dataset: str, compatibility_level: int = 1605, workspace: str | None = None):
-
+def create_blank_semantic_model(dataset: str, compatibility_level: Optional[int] = 1605, workspace: Optional[str] = None):
+  
   """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#create_blank_semantic_model
+    Creates a new blank semantic model (no tables/columns etc.).
 
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    compatibility_level : int
+        The compatibility level of the semantic model.
+        Defaults to 1605.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    
+    Returns
+    -------
+    
     """
 
   if workspace == None:

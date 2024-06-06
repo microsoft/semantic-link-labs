@@ -4,8 +4,36 @@ import pandas as pd
 from .TOM import connect_semantic_model
 from .CreateBlankSemanticModel import create_blank_semantic_model
 from .GetSharedExpression import get_shared_expression
+from typing import List, Optional, Union
+from sempy._utils._log import log
 
-def model_auto_build(dataset: str, file_path: str, workspace: str | None = None, lakehouse: str | None = None, lakehouse_workspace: str | None = None):
+@log
+def model_auto_build(dataset: str, file_path: str, workspace: Optional[str] = None, lakehouse: Optional[str] = None, lakehouse_workspace: Optional[str] = None):
+
+    """
+    Dynamically generates a semantic model based on an Excel file template.
+
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    file_path : str
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    lakehouse : str, default=None
+        The Fabric lakehouse used by the Direct Lake semantic model.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    lakehouse_workspace : str, default=None
+        The Fabric workspace used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    
+    Returns
+    -------
+    
+    """
 
     if workspace is None:
         workspace_id = fabric.get_workspace_id()

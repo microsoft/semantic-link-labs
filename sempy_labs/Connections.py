@@ -1,6 +1,7 @@
 import sempy
 import sempy.fabric as fabric
 import pandas as pd
+from typing import List, Optional, Union
 
 def create_connection_cloud(name: str, server_name: str, database_name: str, user_name: str, password: str, privacy_level: str):
 

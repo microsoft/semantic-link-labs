@@ -4,13 +4,28 @@ import pandas as pd
 import json, os, time, base64
 from .HelperFunctions import resolve_lakehouse_name
 from .Lakehouse import lakehouse_attached
+from typing import List, Optional, Union
 
-def get_semantic_model_bim(dataset: str, workspace: str | None = None, save_to_file_name: str | None = None):
+def get_semantic_model_bim(dataset: str, workspace: Optional[str] = None, save_to_file_name: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_semantic_model_bim
+    Extracts the Model.bim file for a given semantic model.
 
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    save_to_file_name : str, default=None
+        If specified, saves the Model.bim as a file in the lakehouse attached to the notebook.
+
+    Returns
+    -------
+    str
+        The Model.bim file for the semantic model.
     """
 
     if workspace == None:
@@ -21,8 +36,8 @@ def get_semantic_model_bim(dataset: str, workspace: str | None = None, save_to_f
     
     objType = 'SemanticModel'
     client = fabric.FabricRestClient()
-    itemList = fabric.list_items(workspace = workspace)
-    itemListFilt = itemList[(itemList['Display Name'] == dataset) & (itemList['Type'] == objType)]
+    itemList = fabric.list_items(workspace = workspace, type = objType)
+    itemListFilt = itemList[(itemList['Display Name'] == dataset)]
     itemId = itemListFilt['Id'].iloc[0]
     response = client.post(f"/v1/workspaces/{workspace_id}/items/{itemId}/getDefinition")
         

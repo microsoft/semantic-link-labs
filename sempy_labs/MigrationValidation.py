@@ -3,13 +3,28 @@ import sempy.fabric as fabric
 import pandas as pd
 from .HelperFunctions import create_relationship_name
 from .TOM import connect_semantic_model
+from typing import List, Optional, Union
+from sempy._utils._log import log
 
-def list_semantic_model_objects(dataset: str, workspace: str | None = None):
+def list_semantic_model_objects(dataset: str, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#list_semantic_model_objects
+    Shows a list of semantic model objects.
 
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of objects in the semantic model
     """
 
     if workspace is None:
@@ -69,12 +84,31 @@ def list_semantic_model_objects(dataset: str, workspace: str | None = None):
 
     return df
 
-def migration_validation(dataset: str, new_dataset: str, workspace: str | None = None, new_dataset_workspace: str | None = None):
+@log
+def migration_validation(dataset: str, new_dataset: str, workspace: Optional[str] = None, new_dataset_workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#migration_validation
+    Shows the objects in the original semantic model and whether then were migrated successfully or not.
 
+    Parameters
+    ----------
+    dataset : str
+        Name of the import/DirectQuery semantic model.
+    new_dataset : str
+        Name of the Direct Lake semantic model.
+    workspace : str, default=None
+        The Fabric workspace name in which the import/DirectQuery semantic model exists.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    new_dataset_workspace : str
+        The Fabric workspace name in which the Direct Lake semantic model will be created.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+       A pandas dataframe showing a list of objects and whether they were successfully migrated. Also shows the % of objects which were migrated successfully.
     """
 
     dfA = list_semantic_model_objects(dataset = dataset, workspace = workspace)

@@ -4,13 +4,32 @@ import pandas as pd
 from .HelperFunctions import format_dax_object_name, resolve_lakehouse_name, get_direct_lake_sql_endpoint
 from .GetLakehouseColumns import get_lakehouse_columns
 from .ListFunctions import list_tables
+from typing import List, Optional, Union
 
-def direct_lake_schema_compare(dataset: str, workspace: str | None = None, lakehouse: str | None = None, lakehouse_workspace: str | None = None):
+def direct_lake_schema_compare(dataset: str, workspace: Optional[str] = None, lakehouse: Optional[str] = None, lakehouse_workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#direct_lake_schema_compare
+    Checks that all the tables in a Direct Lake semantic model map to tables in their corresponding lakehouse and that the columns in each table exist.
 
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    lakehouse : str, default=None
+        The Fabric lakehouse used by the Direct Lake semantic model.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    lakehouse_workspace : str, default=None
+        The Fabric workspace used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    
     """
 
     if workspace == None:
@@ -26,8 +45,8 @@ def direct_lake_schema_compare(dataset: str, workspace: str | None = None, lakeh
 
     dfP = fabric.list_partitions(dataset = dataset, workspace = workspace)
     sqlEndpointId = get_direct_lake_sql_endpoint(dataset, workspace)
-    dfI = fabric.list_items(workspace = lakehouse_workspace)
-    dfI_filt = dfI[(dfI['Type'] == 'SQLEndpoint') & (dfI['Id'] == sqlEndpointId)]
+    dfI = fabric.list_items(workspace = lakehouse_workspace, type = 'SQLEndpoint')
+    dfI_filt = dfI[(dfI['Id'] == sqlEndpointId)]
 
     if len(dfI_filt) == 0:
         print(f"The SQL Endpoint in the '{dataset}' semantic model in the '{workspace} workspace does not point to the '{lakehouse}' lakehouse in the '{lakehouse_workspace}' workspace as specified.")

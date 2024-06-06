@@ -7,6 +7,7 @@ import time
 from .HelperFunctions import format_dax_object_name
 from .RefreshSemanticModel import refresh_semantic_model
 from .GetMeasureDependencies import get_measure_dependencies
+from typing import List, Optional, Union
 from sempy._utils._log import log
 
 green_dot = '\U0001F7E2'
@@ -15,12 +16,27 @@ red_dot = '\U0001F534'
 in_progress = '⌛'
 
 @log
-def warm_direct_lake_cache_perspective(dataset: str, perspective: str, add_dependencies: bool = False, workspace: str | None = None):
+def warm_direct_lake_cache_perspective(dataset: str, perspective: str, add_dependencies: Optional[bool] = False, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#warm_direct_lake_cache_perspective
+    Warms the cache of a Direct Lake semantic model by running a simple DAX query against the columns in a perspective.
 
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    perspective : str
+        Name of the perspective which contains objects to be used for warming the cache.
+    add_dependencies : bool, default=False
+        Includes object dependencies in the cache warming process.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    
+    Returns
+    -------
+    
     """
 
     if workspace == None:
@@ -100,13 +116,24 @@ def warm_direct_lake_cache_perspective(dataset: str, perspective: str, add_depen
     return df
 
 @log
-def warm_direct_lake_cache_isresident(dataset: str, workspace: str | None = None):
+def warm_direct_lake_cache_isresident(dataset: str, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#warm_direct_lake_cache_isresident
+    Performs a refresh on the semantic model and puts the columns which were in memory prior to the refresh back into memory.
 
-    """    
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    
+    Returns
+    -------
+    
+    """   
 
     if workspace == None:
         workspace_id = fabric.get_workspace_id()

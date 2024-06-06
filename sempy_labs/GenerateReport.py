@@ -2,13 +2,31 @@ import sempy
 import sempy.fabric as fabric
 import pandas as pd
 import json, base64, time
+from typing import List, Optional, Union
 
-def create_report_from_reportjson(report: str, dataset: str, report_json, theme_json = None, workspace: str | None = None):
+def create_report_from_reportjson(report: str, dataset: str, report_json: str, theme_json: Optional[str] = None, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#create_report_from_reportjson
+    Creates a report based on a report.json file (and an optional themes.json file).
 
+    Parameters
+    ----------
+    report : str
+        Name of the report.
+    dataset : str
+        Name of the semantic model to connect to the report.
+    report_json : str
+        The report.json file to be used to create the report.
+    theme_json : str, default=None
+        The theme.json file to be used for the theme of the report.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    
     """
 
     if workspace == None:
@@ -19,8 +37,8 @@ def create_report_from_reportjson(report: str, dataset: str, report_json, theme_
 
     objectType = 'Report'
 
-    dfI = fabric.list_items(workspace = workspace)
-    dfI_model = dfI[(dfI['Display Name'] == dataset) & (dfI['Type'] == 'SemanticModel')]
+    dfI_m = fabric.list_items(workspace = workspace, type = 'SemanticModel')
+    dfI_model = dfI_m[(dfI_m['Display Name'] == dataset)]
 
     if len(dfI_model) == 0:
         print(f"ERROR: The '{dataset}' semantic model does not exist in the '{workspace}' workspace.")
@@ -28,7 +46,8 @@ def create_report_from_reportjson(report: str, dataset: str, report_json, theme_
     
     datasetId = dfI_model['Id'].iloc[0]
 
-    dfI_rpt = dfI[(dfI['Display Name'] == report) & (dfI['Type'] == 'Report')]
+    dfI_r = fabric.list_items(workspace = workspace, type = 'Report')
+    dfI_rpt = dfI_r[(dfI_r['Display Name'] == report)]
 
     if len(dfI_rpt) > 0:
         print(f"WARNING: '{report}' already exists as a report in the '{workspace}' workspace.")
@@ -126,12 +145,25 @@ def create_report_from_reportjson(report: str, dataset: str, report_json, theme_
         print('Report creation succeeded')
         print(response.json())
 
-def update_report_from_reportjson(report, report_json, workspace = None):
+def update_report_from_reportjson(report: str, report_json: str, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#update_report_from_reportjson
+    Updates a report based on a report.json file.
 
+    Parameters
+    ----------
+    report : str
+        Name of the report.
+    report_json : str
+        The report.json file to be used to update the report.
+    workspace : str, default=None
+        The Fabric workspace name in which the report resides.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    
     """
 
     if workspace == None:

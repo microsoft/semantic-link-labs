@@ -6,8 +6,9 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 @patch("sempy.fabric.list_items")
 @patch("sempy.fabric.resolve_workspace_id")
+@patch("sempy.fabric.resolve_item_id")
 @patch("sempy.fabric.FabricRestClient")
-def test_create_shortcut_onelake(fabric_rest_client_mock, resolve_workspace_id_mock, list_items_mock):
+def test_create_shortcut_onelake(fabric_rest_client_mock, resolve_item_id_mock, resolve_workspace_id_mock, list_items_mock):
     # prepare mocks
     def resolve_workspace_id_mock_side_effect(workspace_name):
         if workspace_name == "source_workspace":
@@ -19,6 +20,8 @@ def test_create_shortcut_onelake(fabric_rest_client_mock, resolve_workspace_id_m
         assert False, f"Unexpected workspace: {workspace_name}"
 
     resolve_workspace_id_mock.side_effect = resolve_workspace_id_mock_side_effect
+
+    resolve_item_id_mock.return_value = "00000000-0000-0000-0000-00000000000A"
 
     def list_items_side_effect(type, workspace):
         assert type == "Lakehouse"

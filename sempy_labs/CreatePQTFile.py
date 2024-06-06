@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 from .ListFunctions import list_tables
 from .Lakehouse import lakehouse_attached
 from sempy._utils._log import log
+from typing import List, Optional, Union
 
 green_dot = '\U0001F7E2'
 yellow_dot = '\U0001F7E1'
@@ -13,12 +14,26 @@ red_dot = '\U0001F534'
 in_progress = '⌛'
 
 @log
-def create_pqt_file(dataset: str, workspace: str | None = None, file_name: str | None = None):
+def create_pqt_file(dataset: str, workspace: Optional[str] = None, file_name: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#create_pqt_file
+    Dynamically generates a [Power Query Template](https://learn.microsoft.com/power-query/power-query-template) file based on the semantic model. The .pqt file is saved within the Files section of your lakehouse.
 
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    file_name : str, default=None
+        The name of the Power Query Template file to be generated.
+        Defaults to None which resolves to 'PowerQueryTemplate'.
+
+    Returns
+    -------
+    
     """
 
     if file_name is None:

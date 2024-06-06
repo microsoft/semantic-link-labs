@@ -1,13 +1,32 @@
 import sempy
 import sempy.fabric as fabric
 import pandas as pd
+from typing import List, Optional, Union
+from sempy._utils._log import log
 
-def export_model_to_onelake(dataset: str, workspace: str | None = None, destination_lakehouse: str | None = None, destination_workspace: str | None = None):
+@log
+def export_model_to_onelake(dataset: str, workspace: Optional[str] = None, destination_lakehouse: Optional[str] = None, destination_workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#export_model_to_onelake
+    Exports a semantic model's tables to delta tables in the lakehouse. Creates shortcuts to the tables if a lakehouse is specified.
 
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    destination_lakehouse : str, default=None
+        The name of the Fabric lakehouse where shortcuts will be created to access the delta tables created by the export. If the lakehouse specified does not exist, one will be created with that name. If no lakehouse is specified, shortcuts will not be created.
+    destination_workspace : str, default=None
+        The name of the Fabric workspace in which the lakehouse resides.
+    
+
+    Returns
+    -------
+    
     """
 
     if workspace == None:
@@ -55,8 +74,8 @@ def export_model_to_onelake(dataset: str, workspace: str | None = None, destinat
     # Create shortcuts if destination lakehouse is specified
     if destination_lakehouse is not None:
         # Destination...
-        dfI_Dest = fabric.list_items(workspace = destination_workspace)
-        dfI_filt = dfI_Dest[(dfI_Dest['Type'] == 'Lakehouse') & (dfI_Dest['Display Name'] == destination_lakehouse)]
+        dfI_Dest = fabric.list_items(workspace = destination_workspace, type = 'Lakehouse')
+        dfI_filt = dfI_Dest[(dfI_Dest['Display Name'] == destination_lakehouse)]
 
         if len(dfI_filt) == 0:
             print(f"The '{destination_lakehouse}' lakehouse does not exist within the '{destination_workspace}' workspace.")
@@ -67,8 +86,8 @@ def export_model_to_onelake(dataset: str, workspace: str | None = None, destinat
             destination_lakehouse_id = dfI_filt['Id'].iloc[0]
 
         # Source...
-        dfI_Source = fabric.list_items(workspace = workspace)
-        dfI_filtSource = dfI_Source[(dfI_Source['Type'] == 'SemanticModel') & (dfI_Source['Display Name'] == dataset)]
+        dfI_Source = fabric.list_items(workspace = workspace, type = 'SemanticModel')
+        dfI_filtSource = dfI_Source[(dfI_Source['Display Name'] == dataset)]
         sourceLakehouseId = dfI_filtSource['Id'].iloc[0]
 
         # Valid tables

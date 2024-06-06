@@ -9,16 +9,23 @@ from .GetMeasureDependencies import get_measure_dependencies
 from .HelperFunctions import format_dax_object_name, resolve_lakehouse_name
 from .Lakehouse import lakehouse_attached
 from .GetLakehouseTables import get_lakehouse_tables
+from typing import List, Optional, Union
 from sempy._utils._log import log
 
-@log
 def model_bpa_rules():
 
   """
-    
-  Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#model_bpa_rules
+    Shows the default rules for the semantic model BPA used by the run_model_bpa function.
 
-  """
+    Parameters
+    ----------
+
+    
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe containing the default rules for the run_model_bpa function.
+    """
 
   df_rules = pd.DataFrame([
       ('Performance', 'Column', 'Warning', 'Do not use floating point data types', 
@@ -300,12 +307,30 @@ def model_bpa_rules():
   return df_rules
 
 @log
-def run_model_bpa(dataset: str, rules_dataframe: str | None = None, workspace: str | None = None, export: bool = False, return_dataframe: bool = False, **kwargs):
+def run_model_bpa(dataset: str, rules_dataframe: Optional[pd.DataFrame] = None, workspace: Optional[str] = None, export: Optional[bool] = False, return_dataframe: Optional[bool] = False, **kwargs):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#run_model_bpa
+    Displays an HTML visualization of the results of the Best Practice Analyzer scan for a semantic model.
 
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    rules_dataframe : pandas.DataFrame, default=None
+        A pandas dataframe containing rules to be evaluated.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    export : bool, default=False
+        If True, exports the resulting dataframe to a delta table in the lakehouse attached to the notebook.
+    return_dataframe : bool, default=False
+        If True, returns a pandas dataframe instead of the visualization.
+    
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe in HTML format showing semantic model objects which violated the best practice analyzer rules.
     """
 
     if 'extend' in kwargs:

@@ -2,16 +2,31 @@ import sempy
 import sempy.fabric as fabric
 from anytree import Node, RenderTree
 from .GetMeasureDependencies import get_measure_dependencies
+from typing import List, Optional, Union
 from sempy._utils._log import log
 
 @log
-def measure_dependency_tree(dataset: str, measure_name: str, workspace: str | None = None):
+def measure_dependency_tree(dataset: str, measure_name: str, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#measure_dependency_tree
+    Prints a measure dependency tree of all dependent objects for a measure in a semantic model.
+
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    measure_name : str
+        Name of the measure.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
 
     """
+
 
     if workspace == None:
         workspace_id = fabric.get_workspace_id()

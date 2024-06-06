@@ -2,13 +2,32 @@ import sempy
 import sempy.fabric as fabric
 import pandas as pd
 from .HelperFunctions import resolve_dataset_id
+from typing import List, Optional, Union
+from sempy._utils._log import log
 
-def run_dax(dataset: str, dax_query: str, user_name: str | None = None, workspace: str | None = None):
+@log
+def run_dax(dataset: str, dax_query: str, user_name: Optional[str] = None, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#run_dax
+    Runs a DAX query against a semantic model.
 
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    dax_query : str
+        The DAX query.
+    user_name : str | None
+        The user name (i.e. hello@goodbye.com).
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe holding the result of the DAX query.
     """
 
     #https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/execute-queries-in-group

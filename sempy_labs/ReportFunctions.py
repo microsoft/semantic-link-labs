@@ -11,19 +11,35 @@ from .GenerateReport import update_report_from_reportjson
 from .Translations import language_validate
 from .Lakehouse import lakehouse_attached
 from .HelperFunctions import generate_embedded_filter, resolve_dataset_name, resolve_report_id, resolve_lakehouse_name
+from typing import List, Optional, Union
+from sempy._utils._log import log
 
 green_dot = '\U0001F7E2'
 yellow_dot = '\U0001F7E1'
 red_dot = '\U0001F534'
 in_progress = '⌛'
 
-def get_report_json(report: str, workspace: str | None = None, save_to_file_name: str | None = None):
+def get_report_json(report: str, workspace: Optional[str] = None, save_to_file_name: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_report_json
+    Gets the report.json file content of a Power BI report.
 
-    """
+    Parameters
+    ----------
+    report : str
+        Name of the Power BI report.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    save_to_file_name : str, default=None
+        Specifying this parameter will save the report.json file to the lakehouse attached to the notebook with the file name of this parameter.
+
+    Returns
+    -------
+    str
+        The report.json file for a given Power BI report.
+    """ 
 
     if workspace == None:
         workspace_id = fabric.get_workspace_id()
@@ -33,8 +49,8 @@ def get_report_json(report: str, workspace: str | None = None, save_to_file_name
 
     client = fabric.FabricRestClient()
 
-    dfI = fabric.list_items(workspace = workspace)
-    dfI_filt = dfI[(dfI['Display Name'] == report) & (dfI['Type'] == 'Report')]
+    dfI = fabric.list_items(workspace = workspace, type = 'Report')
+    dfI_filt = dfI[(dfI['Display Name'] == report)]
 
     if len(dfI_filt) == 0:
         print(f"{red_dot} The '{report}' report does not exist in the '{workspace}' workspace.")
@@ -68,20 +84,29 @@ def get_report_json(report: str, workspace: str | None = None, save_to_file_name
 
     return reportJson
 
-def report_dependency_tree(workspaceName: str | None = None):
+def report_dependency_tree(workspace: Optional[str] = None):
 
     """
+    Prints a dependency between reports and semantic models.
+
+    Parameters
+    ----------
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
     
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#report_dependency_tree
+    """ 
 
-    """
-
-    if workspaceName == None:
+    if workspace == None:
         workspaceId = fabric.get_workspace_id()
-        workspaceName = fabric.resolve_workspace_name(workspaceId)
+        workspace = fabric.resolve_workspace_name(workspaceId)
     
-    dfR = fabric.list_reports(workspace = workspaceName)
-    dfD = fabric.list_datasets(workspace = workspaceName)
+    dfR = fabric.list_reports(workspace = workspace)
+    dfD = fabric.list_datasets(workspace = workspace)
     dfR = pd.merge(dfR, dfD[['Dataset ID', 'Dataset Name']], left_on = 'Dataset Id', right_on = 'Dataset ID', how = 'left')
     dfR.rename(columns={'Name': 'Report Name'}, inplace=True)
     dfR = dfR[['Report Name', 'Dataset Name']]
@@ -91,8 +116,8 @@ def report_dependency_tree(workspaceName: str | None = None):
     workspace_icon = '\U0001F465'
 
     node_dict = {}
-    rootNode = Node(workspaceName)
-    node_dict[workspaceName] = rootNode
+    rootNode = Node(workspace)
+    node_dict[workspace] = rootNode
     rootNode.custom_property = workspace_icon + ' '
 
     for i, r in dfR.iterrows():
@@ -108,16 +133,40 @@ def report_dependency_tree(workspaceName: str | None = None):
         child_node.custom_property = report_icon + ' '
 
     # Print the tree structure
-    for pre, _, node in RenderTree(node_dict[workspaceName]):
+    for pre, _, node in RenderTree(node_dict[workspace]):
         print(f"{pre}{node.custom_property}'{node.name}'")
 
-def export_report(report: str, export_format: str, file_name: str | None = None, bookmark_name: str | None = None, page_name: str | None = None, visual_name: str | None = None, report_filter: str | None = None, workspace: str | None = None):
+@log
+def export_report(report: str, export_format: str, file_name: Optional[str] = None, bookmark_name: Optional[str] = None, page_name: Optional[str] = None, visual_name: Optional[str] = None, report_filter: Optional[str] = None, workspace: Optional[str] = None):
 
     """
+    Exports a Power BI report to a file in your lakehouse.
+
+    Parameters
+    ----------
+    report : str
+        Name of the Power BI report.
+    export_format : str
+        The format in which to export the report. See this link for valid formats: https://learn.microsoft.com/rest/api/power-bi/reports/export-to-file-in-group#fileformat. For image formats, enter the file extension in this parameter, not 'IMAGE'.
+    file_name : str, default=None
+        The name of the file to be saved within the lakehouse. Do not include the file extension. Defaults ot the reportName parameter value.
+    bookmark_name : str, default=None
+        The name (GUID) of a bookmark within the report.
+    page_name : str, default=None
+        The name (GUID) of the report page.
+    visual_name : str, default=None
+        The name (GUID) of a visual. If you specify this parameter you must also specify the page_name parameter.
+    report_filter : str, default=None
+        A report filter to be applied when exporting the report. Syntax is user-friendly. See above for examples.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
     
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#export_report
-
-    """
+    """ 
 
     #https://learn.microsoft.com/rest/api/power-bi/reports/export-to-file-in-group    
 
@@ -300,13 +349,33 @@ def export_report(report: str, export_format: str, file_name: str | None = None,
             print(f"{green_dot} The '{export_format}' export for the '{report}' report within the '{workspace}' workspace has been saved to the following location: '{filePath}'.")
 
 
-def clone_report(report: str, cloned_report: str, workspace: str | None = None, target_workspace: str | None = None, target_dataset: str | None = None):
+def clone_report(report: str, cloned_report: str, workspace: Optional[str] = None, target_workspace: Optional[str] = None, target_dataset: Optional[str] = None):
 
     """
+    Clones a Power BI report.
+
+    Parameters
+    ----------
+    report : str
+        Name of the Power BI report.
+    cloned_report : str
+        Name of the new Power BI report.    
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    target_workspace : str, default=None
+        The name of the Fabric workspace to place the cloned report.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    target_dataset : str, default=None
+        The name of the semantic model to be used by the cloned report.
+        Defaults to None which resolves to the semantic model used by the initial report.
+
+    Returns
+    -------
     
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#clone_report
-
-    """
+    """ 
 
     #https://learn.microsoft.com/rest/api/power-bi/reports/clone-report-in-group    
 
@@ -316,8 +385,8 @@ def clone_report(report: str, cloned_report: str, workspace: str | None = None, 
     else:
         workspace_id = fabric.resolve_workspace_id(workspace)
 
-    dfI = fabric.list_items(workspace = workspace)
-    dfI_filt = dfI[(dfI['Type'] == 'Report') & (dfI['Display Name'] == report)]    
+    dfI = fabric.list_items(workspace = workspace, type = 'Report')
+    dfI_filt = dfI[(dfI['Display Name'] == report)]    
 
     if len(dfI_filt) == 0:
         print(f"{red_dot} The '{report}' report does not exist within the '{workspace}' workspace.")
@@ -381,13 +450,25 @@ def clone_report(report: str, cloned_report: str, workspace: str | None = None, 
     else:
         print(f"{red_dot} POST request failed with status code: {response.status_code}")
 
-def launch_report(report: str, workspace: str | None = None):
+def launch_report(report: str, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#launch_report
+    Shows a Power BI report within a Fabric notebook.
 
-    """
+    Parameters
+    ----------
+    report : str
+        Name of the Power BI report.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    str
+        An embedded Power BI report within the notebook.
+    """ 
 
     from .HelperFunctions import resolve_report_id
 
@@ -403,13 +484,25 @@ def launch_report(report: str, workspace: str | None = None):
 
     return report
 
-def list_report_pages(report: str, workspace: str | None = None):
+def list_report_pages(report: str, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#list_report_pages
+    Shows the properties of all pages within a Power BI report.
 
-    """
+    Parameters
+    ----------
+    report : str
+        Name of the Power BI report.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the pages within a Power BI report and their properties.
+    """ 
 
     if workspace == None:
         workspace_id = fabric.get_workspace_id()
@@ -446,13 +539,25 @@ def list_report_pages(report: str, workspace: str | None = None):
 
     return df
 
-def list_report_visuals(report: str, workspace: str | None = None):
+def list_report_visuals(report: str, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#list_report_visuals
+    Shows the properties of all visuals within a Power BI report.
 
-    """
+    Parameters
+    ----------
+    report : str
+        Name of the Power BI report.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the visuals within a Power BI report and their properties.
+    """ 
 
     if workspace == None:
         workspace_id = fabric.get_workspace_id()
@@ -482,13 +587,25 @@ def list_report_visuals(report: str, workspace: str | None = None):
     
     return df
 
-def list_report_bookmarks(report: str, workspace: str | None = None):
+def list_report_bookmarks(report: str, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#list_report_bookmarks
+    Shows the properties of all bookmarks within a Power BI report.
 
-    """
+    Parameters
+    ----------
+    report : str
+        Name of the Power BI report.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the bookmarks within a Power BI report and their properties.
+    """ 
 
     if workspace == None:
         workspace_id = fabric.get_workspace_id()
@@ -529,13 +646,26 @@ def list_report_bookmarks(report: str, workspace: str | None = None):
     except:
         print(f"The '{report}' report within the '{workspace}' workspace has no bookmarks.")
 
-def translate_report_titles(report: str, languages: str | list, workspace: str | None = None):
+def translate_report_titles(report: str, languages: Union[str,List[str]], workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#translate_report_titles
+    Dynamically generates new Power BI reports which have report titles translated into the specified language(s).
 
-    """    
+    Parameters
+    ----------
+    report : str
+        Name of the Power BI report.
+    languages : str, List[str]
+        The language code(s) in which to translate the report titles.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    
+    """ 
 
     if isinstance(languages, str):
         languages = [languages]

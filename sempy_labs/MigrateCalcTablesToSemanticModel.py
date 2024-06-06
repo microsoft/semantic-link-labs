@@ -4,6 +4,7 @@ import re, datetime, time
 from .GetLakehouseTables import get_lakehouse_tables
 from .HelperFunctions import resolve_lakehouse_name
 from .TOM import connect_semantic_model
+from typing import List, Optional, Union
 from sempy._utils._log import log
 
 green_dot = '\U0001F7E2'
@@ -12,12 +13,36 @@ red_dot = '\U0001F534'
 in_progress = '⌛'
 
 @log
-def migrate_calc_tables_to_semantic_model(dataset: str, new_dataset: str, workspace: str | None = None, new_dataset_workspace: str | None = None, lakehouse: str | None = None, lakehouse_workspace: str | None = None ):
+def migrate_calc_tables_to_semantic_model(dataset: str, new_dataset: str, workspace: Optional[str] = None, new_dataset_workspace: Optional[str] = None, lakehouse: Optional[str] = None, lakehouse_workspace: Optional[str] = None ):
     
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#migrate_calc_tables_to_semantic_model
+    Creates new tables in the Direct Lake semantic model based on the lakehouse tables created using the 'migrate_calc_tables_to_lakehouse' function.
 
+    Parameters
+    ----------
+    dataset : str
+        Name of the import/DirectQuery semantic model.
+    new_dataset : str
+        Name of the Direct Lake semantic model.
+    workspace : str, default=None
+        The Fabric workspace name in which the import/DirectQuery semantic model exists.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    new_dataset_workspace : str
+        The Fabric workspace name in which the Direct Lake semantic model will be created.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    lakehouse : str, default=None
+        The Fabric lakehouse used by the Direct Lake semantic model.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    lakehouse_workspace : str, default=None
+        The Fabric workspace used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    
     """
 
     if workspace == None:

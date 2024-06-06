@@ -4,13 +4,26 @@ import pandas as pd
 import json, time
 from pyspark.sql import SparkSession
 from .GetDirectLakeLakehouse import get_direct_lake_lakehouse
+from typing import List, Optional, Union
 
-def get_object_level_security(dataset: str, workspace: str | None = None):
+def get_object_level_security(dataset: str, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_object_level_security
+    Shows the object level security for the semantic model.
 
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the object level security for the semantic model.
     """
 
     if workspace == None:
@@ -38,12 +51,24 @@ def get_object_level_security(dataset: str, workspace: str | None = None):
 
     return df
 
-def list_tables(dataset: str, workspace: str | None = None):
+def list_tables(dataset: str, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#list_tables
+    Shows a semantic model's tables and their properties.
 
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the semantic model's tables and their properties.
     """
 
     if workspace == None:
@@ -74,12 +99,24 @@ def list_tables(dataset: str, workspace: str | None = None):
 
     return df
 
-def list_annotations(dataset: str, workspace: str | None = None):
+def list_annotations(dataset: str, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#list_annotations
+    Shows a semantic model's annotations and their properties.
 
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the semantic model's annotations and their properties.
     """
 
     if workspace == None:
@@ -189,12 +226,31 @@ def list_annotations(dataset: str, workspace: str | None = None):
 
     return df
 
-def list_columns(dataset: str, workspace: str | None = None, lakehouse: str | None = None, lakehouse_workspace: str | None = None):
+def list_columns(dataset: str, workspace: Optional[str] = None, lakehouse: Optional[str] = None, lakehouse_workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#list_columns
+    Shows a semantic model's columns and their properties.
 
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    lakehouse : str, default=None
+        The Fabric lakehouse (for Direct Lake semantic models).
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    lakehouse_workspace : str, default=None
+        The Fabric workspace used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the semantic model's columns and their properties.
     """
 
     if workspace == None:
@@ -250,12 +306,22 @@ def list_columns(dataset: str, workspace: str | None = None, lakehouse: str | No
 
     return dfC
 
-def list_dashboards(workspace: str | None = None):
+def list_dashboards(workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#list_dashboards
+    Shows a list of the dashboards within a workspace.
 
+    Parameters
+    ----------
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the dashboards within a workspace.
     """
 
     df = pd.DataFrame(columns=['Dashboard ID', 'Dashboard Name', 'Read Only', 'Web URL', 'Embed URL', 'Data Classification', 'Users', 'Subscriptions'])
@@ -286,12 +352,22 @@ def list_dashboards(workspace: str | None = None):
 
     return df
 
-def list_lakehouses(workspace: str | None = None):
+def list_lakehouses(workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#list_lakehouses
+    Shows the lakehouses within a workspace.
 
+    Parameters
+    ----------
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the lakehouses within a workspace.
     """
 
     df = pd.DataFrame(columns=['Lakehouse Name', 'Lakehouse ID', 'Description', 'OneLake Tables Path', 'OneLake Files Path', 'SQL Endpoint Connection String', 'SQL Endpoint ID', 'SQL Endpoint Provisioning Status'])
@@ -322,12 +398,22 @@ def list_lakehouses(workspace: str | None = None):
 
     return df
 
-def list_warehouses(workspace: str | None = None):
+def list_warehouses(workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#list_warehouses
+    Shows the warehouses within a workspace.
 
+    Parameters
+    ----------
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the warehouses within a workspace.
     """
 
     df = pd.DataFrame(columns=['Warehouse Name', 'Warehouse ID', 'Description', 'Connection Info', 'Created Date', 'Last Updated Time'])
@@ -355,12 +441,22 @@ def list_warehouses(workspace: str | None = None):
 
     return df
 
-def list_sqlendpoints(workspace: str | None = None):
+def list_sqlendpoints(workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#list_sqlendpoints
+    Shows the SQL Endpoints within a workspace.
 
+    Parameters
+    ----------
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the SQL Endpoints within a workspace.
     """
 
     df = pd.DataFrame(columns=['SQL Endpoint ID', 'SQL Endpoint Name', 'Description'])
@@ -384,7 +480,23 @@ def list_sqlendpoints(workspace: str | None = None):
 
     return df
 
-def list_mirroredwarehouses(workspace: str | None = None):
+def list_mirroredwarehouses(workspace: Optional[str] = None):
+
+    """
+    Shows the mirrored warehouses within a workspace.
+
+    Parameters
+    ----------
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the mirrored warehouses within a workspace.
+    """
 
     df = pd.DataFrame(columns=['Mirrored Warehouse', 'Mirrored Warehouse ID', 'Description'])
 
@@ -407,7 +519,23 @@ def list_mirroredwarehouses(workspace: str | None = None):
 
     return df
 
-def list_kqldatabases(workspace: str | None = None):
+def list_kqldatabases(workspace: Optional[str] = None):
+
+    """
+    Shows the KQL databases within a workspace.
+
+    Parameters
+    ----------
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the KQL Databases within a workspace.
+    """
 
     df = pd.DataFrame(columns=['KQL Database Name', 'KQL Database ID', 'Description', 'Parent Eventhouse Item ID', 'Query Service URI', 'Ingestion Service URI', 'Kusto Database Type'])
 
@@ -435,7 +563,23 @@ def list_kqldatabases(workspace: str | None = None):
 
     return df
 
-def list_kqlquerysets(workspace: str | None = None):
+def list_kqlquerysets(workspace: Optional[str] = None):
+
+    """
+    Shows the KQL Querysets within a workspace.
+
+    Parameters
+    ----------
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the KQL Querysets within a workspace.
+    """
 
     df = pd.DataFrame(columns=['KQL Queryset Name', 'KQL Queryset ID', 'Description'])
 
@@ -458,7 +602,23 @@ def list_kqlquerysets(workspace: str | None = None):
 
     return df
 
-def list_mlmodels(workspace: str | None = None):
+def list_mlmodels(workspace: Optional[str] = None):
+
+    """
+    Shows the ML models within a workspace.
+
+    Parameters
+    ----------
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the ML models within a workspace.
+    """
 
     df = pd.DataFrame(columns=['ML Model Name', 'ML Model ID', 'Description'])
 
@@ -481,7 +641,23 @@ def list_mlmodels(workspace: str | None = None):
 
     return df
 
-def list_eventstreams(workspace: str | None = None):
+def list_eventstreams(workspace: Optional[str] = None):
+
+    """
+    Shows the eventstreams within a workspace.
+
+    Parameters
+    ----------
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the eventstreams within a workspace.
+    """
 
     df = pd.DataFrame(columns=['Eventstream Name', 'Eventstream ID', 'Description'])
 
@@ -504,7 +680,23 @@ def list_eventstreams(workspace: str | None = None):
 
     return df
 
-def list_datapipelines(workspace: str | None = None):
+def list_datapipelines(workspace: Optional[str] = None):
+
+    """
+    Shows the data pipelines within a workspace.
+
+    Parameters
+    ----------
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the data pipelines within a workspace.
+    """
 
     df = pd.DataFrame(columns=['Data Pipeline Name', 'Data Pipeline ID', 'Description'])
 
@@ -527,7 +719,23 @@ def list_datapipelines(workspace: str | None = None):
 
     return df
 
-def list_mlexperiments(workspace: str | None = None):
+def list_mlexperiments(workspace: Optional[str] = None):
+
+    """
+    Shows the ML experiments within a workspace.
+
+    Parameters
+    ----------
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the ML experiments within a workspace.
+    """
 
     df = pd.DataFrame(columns=['ML Experiment Name', 'ML Experiment ID', 'Description'])
 
@@ -550,7 +758,23 @@ def list_mlexperiments(workspace: str | None = None):
 
     return df
 
-def list_datamarts(workspace: str | None = None):
+def list_datamarts(workspace: Optional[str] = None):
+
+    """
+    Shows the datamarts within a workspace.
+
+    Parameters
+    ----------
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the datamarts within a workspace.
+    """
 
     df = pd.DataFrame(columns=['Datamart Name', 'Datamart ID', 'Description'])
 
@@ -573,12 +797,25 @@ def list_datamarts(workspace: str | None = None):
 
     return df
 
-def create_warehouse(warehouse: str, description: str | None = None, workspace: str | None = None):
+def create_warehouse(warehouse: str, description: Optional[str] = None, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#create_warehouse
+    Creates a Fabric warehouse.
 
+    Parameters
+    ----------
+    warehouse: str
+        Name of the warehouse.
+    description : str, default=None
+        A description of the warehouse.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    
+    Returns
+    -------
+    
     """
 
     if workspace == None:
@@ -615,12 +852,29 @@ def create_warehouse(warehouse: str, description: str | None = None, workspace: 
     else:
         print(f"ERROR: Failed to create the '{warehouse}' warehouse within the '{workspace}' workspace.")
 
-def update_item(item_type: str, current_name: str, new_name: str, description: str | None = None, workspace: str | None = None):
+def update_item(item_type: str, current_name: str, new_name: str, description: Optional[str] = None, workspace:Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#update_item
+    Updates the name/description of a Fabric item.
 
+    Parameters
+    ----------
+    item_type: str
+        Type of item to update.
+    current_name : str
+        The current name of the item.
+    new_name : str
+        The new name of the item.
+    description : str, default=None
+        A description of the item.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    
+    Returns
+    -------
+    
     """
 
     if workspace == None:
@@ -649,8 +903,8 @@ def update_item(item_type: str, current_name: str, new_name: str, description: s
     
     itemType = itemTypes[item_type]
 
-    dfI = fabric.list_items(workspace = workspace)
-    dfI_filt = dfI[(dfI['Type'] == item_type) & (dfI['Display Name'] == current_name)]
+    dfI = fabric.list_items(workspace = workspace, type = item_type)
+    dfI_filt = dfI[(dfI['Display Name'] == current_name)]
 
     if len(dfI_filt) == 0:
         print(f"The '{current_name}' {item_type} does not exist within the '{workspace}' workspace.")
@@ -679,7 +933,27 @@ def update_item(item_type: str, current_name: str, new_name: str, description: s
     else:
         print(f"ERROR: The '{current_name}' {item_type} within the '{workspace}' workspace was not updateds.")
 
-def list_relationships(dataset: str, workspace: str | None = None, extended: bool = False):
+def list_relationships(dataset: str, workspace: Optional[str] = None, extended: Optional[bool] = False):
+
+    """
+    Shows a semantic model's relationships and their properties.
+
+    Parameters
+    ----------
+    dataset: str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    extended : bool, default=False
+        Fetches extended column information.
+    
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the object level security for the semantic model.
+    """
 
     if workspace == None:
         workspace_id = fabric.get_workspace_id()
@@ -732,9 +1006,15 @@ def list_relationships(dataset: str, workspace: str | None = None, extended: boo
 def list_dataflow_storage_accounts():
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#list_dataflow_storage_accounts
+    Shows the accessible dataflow storage accounts.
 
+    Parameters
+    ----------
+    
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the accessible dataflow storage accounts.
     """
 
     df = pd.DataFrame(columns=['Dataflow Storage Account ID', 'Dataflow Storage Account Name', 'Enabled'])
@@ -753,7 +1033,25 @@ def list_dataflow_storage_accounts():
 
     return df
 
-def list_kpis(dataset, workspace = None):
+def list_kpis(dataset: str, workspace: Optional[str] = None):
+
+    """
+    Shows a semantic model's KPIs and their properties.
+
+    Parameters
+    ----------
+    dataset: str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the KPIs for the semantic model.
+    """
 
     from .TOM import connect_semantic_model
 
@@ -768,3 +1066,43 @@ def list_kpis(dataset, workspace = None):
                     df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
         return df
+    
+def list_workspace_role_assignments(workspace: Optional[str] = None):
+
+    """
+    Shows the members of a given workspace.
+
+    Parameters
+    ----------
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the members of a given workspace and their roles.
+    """
+
+    if workspace == None:
+        workspace_id = fabric.get_workspace_id()
+        workspace = fabric.resolve_workspace_name(workspace_id)
+    else:
+        workspace_id = fabric.resolve_workspace_id(workspace)
+
+    df = pd.DataFrame(columns=['User Name', 'User Email', 'Role Name', 'Type'])
+
+    client = fabric.FabricRestClient()
+    response = client.get(f"/v1/workspaces/{workspace_id}/roleAssignments")
+
+    for i in response.json()['value']:
+        user_name = i['principal']['displayName']
+        role_name = i['role']
+        user_email = i['principal']['userDetails']['userPrincipalName']
+        user_type = i['principal']['type']
+
+        new_data = {'User Name': user_name, 'Role Name': role_name, 'Type': user_type, 'User Email': user_email}
+        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    return df

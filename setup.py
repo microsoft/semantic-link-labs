@@ -13,7 +13,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     packages=setuptools.find_packages(),
     install_requires=[
-        'semantic-link-sempy>=0.7.4',
+        'semantic-link-sempy>=0.7.5',
         'anytree',
         'powerbiclient',
     ],

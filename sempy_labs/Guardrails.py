@@ -1,13 +1,20 @@
 import sempy
 import sempy.fabric as fabric
 import pandas as pd
+from typing import List, Optional, Union
 
 def get_direct_lake_guardrails():
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_direct_lake_guardrails
+    Shows the guardrails for when Direct Lake semantic models will fallback to Direct Query based on Microsoft's online documentation.
 
+    Parameters
+    ----------
+
+    Returns
+    -------
+    pandas.DataFrame
+        A table showing the Direct Lake guardrails by SKU.
     """
 
     url = 'https://learn.microsoft.com/power-bi/enterprise/directlake-overview'
@@ -19,12 +26,22 @@ def get_direct_lake_guardrails():
     
     return df
 
-def get_sku_size(workspace: str | None = None):
+def get_sku_size(workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_sku_size
+    Shows the SKU size for a workspace.
 
+    Parameters
+    ----------
+    workspace : str, default=None
+        The Fabric workspace.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    str
+        The SKU size for a workspace.
     """
 
     if workspace == None:
@@ -42,9 +59,18 @@ def get_sku_size(workspace: str | None = None):
 def get_directlake_guardrails_for_sku(sku_size: str):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_directlake_guardrails_for_sku
+    Shows the guardrails for Direct Lake based on the SKU used by your workspace's capacity.
+    *Use the result of the 'get_sku_size' function as an input for this function's skuSize parameter.*
 
+    Parameters
+    ----------
+    sku_size : str
+        Sku size of a workspace/capacity        
+
+    Returns
+    -------
+    pandas.DataFrame
+        A table showing the Direct Lake guardrails for the given SKU.
     """
 
     df = get_direct_lake_guardrails()

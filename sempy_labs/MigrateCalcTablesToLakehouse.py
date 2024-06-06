@@ -6,6 +6,7 @@ from .GetLakehouseTables import get_lakehouse_tables
 from .HelperFunctions import resolve_lakehouse_name, resolve_lakehouse_id, create_abfss_path
 from .TOM import connect_semantic_model
 from pyspark.sql import SparkSession
+from typing import List, Optional, Union
 from sempy._utils._log import log
 
 green_dot = '\U0001F7E2'
@@ -14,12 +15,36 @@ red_dot = '\U0001F534'
 in_progress = '⌛'
 
 @log
-def migrate_calc_tables_to_lakehouse(dataset: str, new_dataset: str, workspace: str | None = None, new_dataset_workspace: str | None = None, lakehouse: str | None = None, lakehouse_workspace: str | None = None):
+def migrate_calc_tables_to_lakehouse(dataset: str, new_dataset: str, workspace: Optional[str] = None, new_dataset_workspace: Optional[str] = None, lakehouse: Optional[str] = None, lakehouse_workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#migrate_calc_tables_to_lakehouse
+    Creates delta tables in your lakehouse based on the DAX expression of a calculated table in an import/DirectQuery semantic model. The DAX expression encapsulating the calculated table logic is stored in the new Direct Lake semantic model as model annotations.
 
+    Parameters
+    ----------
+    dataset : str
+        Name of the import/DirectQuery semantic model.
+    new_dataset : str
+        Name of the Direct Lake semantic model.
+    workspace : str, default=None
+        The Fabric workspace name in which the import/DirectQuery semantic model exists.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    new_dataset_workspace : str
+        The Fabric workspace name in which the Direct Lake semantic model will be created.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    lakehouse : str, default=None
+        The Fabric lakehouse used by the Direct Lake semantic model.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    lakehouse_workspace : str, default=None
+        The Fabric workspace used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    
     """
 
     if workspace == None:
@@ -154,23 +179,29 @@ def migrate_calc_tables_to_lakehouse(dataset: str, new_dataset: str, workspace: 
             time.sleep(1)
 
 @log
-def migrate_field_parameters(dataset: str, new_dataset: str, workspace: str | None = None, new_dataset_workspace: str | None = None):
+def migrate_field_parameters(dataset: str, new_dataset: str, workspace: Optional[str] = None, new_dataset_workspace: Optional[str] = None):
 
     """
+    Migrates field parameters from one semantic model to another.
+
+    Parameters
+    ----------
+    dataset : str
+        Name of the import/DirectQuery semantic model.
+    new_dataset : str
+        Name of the Direct Lake semantic model.
+    workspace : str, default=None
+        The Fabric workspace name in which the import/DirectQuery semantic model exists.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    new_dataset_workspace : str
+        The Fabric workspace name in which the Direct Lake semantic model will be created.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
     
-    This function migrates field parameters from one semantic model to another.
-
-    Parameters:
-
-        dataset: The original semantic model name.
-        new_dataset: The new semantic model name.
-        workspace: An optional parameter to set the workspace where the original semantic model exists. This defaults to the
-          workspace in which the notebook resides.
-        new_dataset_workspace: An optional parameter to set the workspace where the new semantic model resides. This defaults to thes same workspace as the original semantic model.
-
-    Returns:
-
-        This function returns a printout stating the success/failure of this operation.
     """
 
     from .HelperFunctions import format_dax_object_name    

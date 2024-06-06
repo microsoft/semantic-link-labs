@@ -4,14 +4,21 @@ from tqdm.auto import tqdm
 from pyspark.sql import SparkSession
 from delta import DeltaTable
 from .HelperFunctions import resolve_lakehouse_name
+from typing import List, Optional, Union
 
-def lakehouse_attached():
-
-    """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#lakehouse_attached
+def lakehouse_attached() -> bool:
 
     """
+    Identifies if a lakehouse is attached to the notebook.
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    bool
+        Returns True if a lakehouse is attached to the notebook.
+    """  
 
     spark = SparkSession.builder.getOrCreate()
     lakeId = spark.conf.get('trident.lakehouse.id')
@@ -21,12 +28,26 @@ def lakehouse_attached():
     else:
         return False
 
-def optimize_lakehouse_tables(tables: str | list | None = None, lakehouse: str | None = None, workspace: str | None = None):
+def optimize_lakehouse_tables(tables: Optional[Union[str, List[str]]] = None, lakehouse: Optional[str] = None, workspace: Optional[str] = None):
 
     """
-    
-    Documentation is available here: https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#optimize_lakehouse_tables
+    Runs the [OPTIMIZE](https://docs.delta.io/latest/optimizations-oss.html) function over the specified lakehouse tables.
 
+    Parameters
+    ----------
+    tables : str | List[str] | None
+        The table(s) to optimize. If no tables are specified, all tables in the lakehouse will be optimized.
+    lakehouse : str, default=None
+        The Fabric lakehouse.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    workspace : str, default=None
+        The Fabric workspace used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    
     """
 
     from .GetLakehouseTables import get_lakehouse_tables
