@@ -2,6 +2,8 @@
 
 [![PyPI version](https://badge.fury.io/py/semantic-link-labs.svg)](https://badge.fury.io/py/semantic-link-labs)
 
+[![Read The Docs](https://readthedocs.org/projects/<project-slug>/badge/?version=0.4.1&style=flat)](https://readthedocs.org/projects/semantic-link-labs/)
+
 This is a python library intended to be used in [Microsoft Fabric notebooks](https://learn.microsoft.com/fabric/data-engineering/how-to-use-notebook). This library was originally intended to contain functions used for [migrating semantic models to Direct Lake mode](https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#direct-lake-migration-1). However, it quickly became apparent that functions within such a library could support many other useful activities in the realm of semantic models, reports, lakehouses and really anything Fabric-related. As such, this library contains a variety of functions ranging from running [Vertipaq Analyzer](https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#vertipaq_analyzer) or the [Best Practice Analyzer](https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#run_model_bpa) against a semantic model to seeing if any [lakehouse tables hit Direct Lake guardrails](https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#get_lakehouse_tables) or accessing the [Tabular Object Model](https://github.com/microsoft/semantic-link-labs/#tabular-object-model-tom) and more!
 
 Instructions for migrating import/DirectQuery semantic models to Direct Lake mode can be found [here](https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#direct-lake-migration-1).
