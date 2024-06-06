@@ -74,13 +74,13 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            Microsoft.AnalysisServices.Tabular.ColumnCollection
+            Iterator[Microsoft.AnalysisServices.Tabular.Column]
                 All columns within the semantic model.
             """
 
             for t in self.model.Tables:
                 for c in t.Columns:
-                    if not str(c.Type) == 'RowNumber':
+                    if c.Type != TOM.ColumnType.RowNumber:
                         yield c
 
         def all_calculated_columns(self):
@@ -93,13 +93,13 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            Microsoft.AnalysisServices.Tabular.ColumnCollection
+            Iterator[Microsoft.AnalysisServices.Tabular.Column]
                 All calculated columns within the semantic model.
             """
 
             for t in self.model.Tables:
                 for c in t.Columns:
-                    if str(c.Type) == 'Calculated':
+                    if c.Type == TOM.ColumnType.Calculated:
                         yield c
 
         def all_calculated_tables(self):
@@ -112,12 +112,12 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            Microsoft.AnalysisServices.Tabular.TableCollection
+            Iterator[Microsoft.AnalysisServices.Tabular.Table]
                 All calculated tables within the semantic model.
             """
 
             for t in self.model.Tables:
-                if any(str(p.SourceType) == 'Calculated' for p in t.Partitions):
+                if any(p.SourceType == TOM.ColumnType.Calculated for p in t.Partitions):
                     yield t
 
         def all_calculation_groups(self):
@@ -202,7 +202,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            Microsoft.AnalysisServices.Tabular.LevelCollection
+            cMicrosoft.AnalysisServices.Tabular.Level]
                 All levels within the semantic model.
             """
 
@@ -1930,7 +1930,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             t = self.model.Tables[table_name]
 
-            return any(str(p.SourceType) == 'Calculated' and 'NAMEOF(' in p.Source.Expression for p in t.Partitions) and all('[Value' in c.SourceColumn for c in t.Columns if not str(c.Type) == 'RowNumber') and t.Columns.Count == 4
+            return any(p.SourceType == TOM.PartitionSourceType.Calculated and 'NAMEOF(' in p.Source.Expression for p in t.Partitions) and all('[Value' in c.SourceColumn for c in t.Columns if c.Type != TOM.ColumnType.RowNumber) and t.Columns.Count == 4
         
         def is_auto_date_table(self, table_name: str):
 
@@ -2433,7 +2433,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
                 runId = '1'
             self.set_annotation(object = self.model, name = 'Vertipaq_Run', value = runId)
 
-        def row_count(self, object):
+        def row_count(self, object: Union['TOM.Partition', 'TOM.Table']):
 
             """
             Obtains the row count of a table or partition within a semantic model.
@@ -2458,7 +2458,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             return int(result)
         
-        def records_per_segment(self, object):
+        def records_per_segment(self, object: 'TOM.Partition'):
 
             """
             Obtains the records per segment of a partition within a semantic model.
