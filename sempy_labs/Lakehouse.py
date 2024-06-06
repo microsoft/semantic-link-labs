@@ -6,7 +6,7 @@ from delta import DeltaTable
 from .HelperFunctions import resolve_lakehouse_name
 from typing import List, Optional, Union
 
-def lakehouse_attached():
+def lakehouse_attached() -> bool:
 
     """
     Identifies if a lakehouse is attached to the notebook.
