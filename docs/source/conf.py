@@ -31,6 +31,6 @@ html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 
 # List of packages we don't want to install in the environment
-autodoc_mock_imports = ['delta', 'synapse']
+autodoc_mock_imports = ['delta', 'synapse', 'pyspark']
 
 napoleon_numpy_docstring = True
