@@ -29,8 +29,7 @@ def direct_lake_schema_compare(dataset: str, workspace: Optional[str] = None, la
 
     Returns
     -------
-    str
-        Shows tables/columns which exist in the semantic model but do not exist in the corresponding lakehouse.
+    
     """
 
     if workspace == None:

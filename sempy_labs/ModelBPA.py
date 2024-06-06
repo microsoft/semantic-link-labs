@@ -310,7 +310,7 @@ def model_bpa_rules():
 def run_model_bpa(dataset: str, rules_dataframe: Optional[pd.DataFrame] = None, workspace: Optional[str] = None, export: Optional[bool] = False, return_dataframe: Optional[bool] = False, **kwargs):
 
     """
-    Runs the Best Practice Rules against a semantic model.
+    Displays an HTML visualization of the results of the Best Practice Analyzer scan for a semantic model.
 
     Parameters
     ----------

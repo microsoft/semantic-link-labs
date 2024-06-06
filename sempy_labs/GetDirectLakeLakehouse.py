@@ -2,6 +2,7 @@ import sempy
 import sempy.fabric as fabric
 from .HelperFunctions import resolve_lakehouse_id, resolve_lakehouse_name, get_direct_lake_sql_endpoint
 from typing import List, Optional, Union
+from uuid import UUID
 
 def get_direct_lake_lakehouse(dataset: str, workspace: Optional[str] = None, lakehouse: Optional[str] = None, lakehouse_workspace: Optional[str] = None):
 
@@ -26,7 +27,7 @@ def get_direct_lake_lakehouse(dataset: str, workspace: Optional[str] = None, lak
 
     Returns
     -------
-    str, str
+    str, UUID
         The lakehouse name and lakehouse ID.
     """  
 

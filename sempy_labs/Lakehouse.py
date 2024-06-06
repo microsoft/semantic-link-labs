@@ -47,9 +47,8 @@ def optimize_lakehouse_tables(tables: Optional[Union[str, List[str]]] = None, la
 
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
-    """  
+    
+    """
 
     from .GetLakehouseTables import get_lakehouse_tables
 

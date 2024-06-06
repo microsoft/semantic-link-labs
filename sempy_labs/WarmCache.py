@@ -36,8 +36,7 @@ def warm_direct_lake_cache_perspective(dataset: str, perspective: str, add_depen
     
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """
 
     if workspace == None:
@@ -133,8 +132,7 @@ def warm_direct_lake_cache_isresident(dataset: str, workspace: Optional[str] = N
     
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """   
 
     if workspace == None:

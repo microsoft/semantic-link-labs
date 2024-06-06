@@ -35,8 +35,7 @@ def migrate_model_objects_to_semantic_model(dataset: str, new_dataset: str, work
 
     Returns
     -------
-    str
-       A printout stating the success/failure of the operation.
+    
     """
     
     sempy.fabric._client._utils._init_analysis_services()

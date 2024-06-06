@@ -33,8 +33,7 @@ def create_pqt_file(dataset: str, workspace: Optional[str] = None, file_name: Op
 
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """
 
     if file_name is None:

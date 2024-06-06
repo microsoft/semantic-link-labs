@@ -87,7 +87,7 @@ def get_report_json(report: str, workspace: Optional[str] = None, save_to_file_n
 def report_dependency_tree(workspace: Optional[str] = None):
 
     """
-    Shows a dependency between reports and semantic models.
+    Prints a dependency between reports and semantic models.
 
     Parameters
     ----------
@@ -98,8 +98,7 @@ def report_dependency_tree(workspace: Optional[str] = None):
 
     Returns
     -------
-    str
-        A dependency tree showing the relationship between reports and semantic models.
+    
     """ 
 
     if workspace == None:
@@ -166,8 +165,7 @@ def export_report(report: str, export_format: str, file_name: Optional[str] = No
 
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """ 
 
     #https://learn.microsoft.com/rest/api/power-bi/reports/export-to-file-in-group    
@@ -376,8 +374,7 @@ def clone_report(report: str, cloned_report: str, workspace: Optional[str] = Non
 
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """ 
 
     #https://learn.microsoft.com/rest/api/power-bi/reports/clone-report-in-group    
@@ -667,8 +664,7 @@ def translate_report_titles(report: str, languages: Union[str,List[str]], worksp
 
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """ 
 
     if isinstance(languages, str):

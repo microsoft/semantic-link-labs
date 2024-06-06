@@ -37,8 +37,7 @@ def refresh_semantic_model(dataset: str, tables: Optional[Union[str, List[str]]]
 
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """
 
     if workspace == None:
@@ -120,8 +119,7 @@ def cancel_dataset_refresh(dataset: str, request_id: Optional[str] = None, works
 
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """ 
 
     if workspace == None:

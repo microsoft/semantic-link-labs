@@ -26,8 +26,7 @@ def export_model_to_onelake(dataset: str, workspace: Optional[str] = None, desti
 
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """
 
     if workspace == None:

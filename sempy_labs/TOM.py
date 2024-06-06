@@ -130,7 +130,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            Microsoft.AnalysisServices.Tabular.TableCollection
+            Iterator[Microsoft.AnalysisServices.Tabular.Table]
                 All calculation groups within the semantic model.
             """
 
@@ -148,7 +148,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            Microsoft.AnalysisServices.Tabular.MeasureCollection
+            Iterator[Microsoft.AnalysisServices.Tabular.Measure]
                 All measures within the semantic model.
             """
 
@@ -166,7 +166,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            Microsoft.AnalysisServices.Tabular.PartitionCollection
+            Iterator[Microsoft.AnalysisServices.Tabular.Partition]
                 All partitions within the semantic model.
             """
 
@@ -184,7 +184,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            Microsoft.AnalysisServices.Tabular.HierarchyCollection
+            Iterator[Microsoft.AnalysisServices.Tabular.Hierarchy]
                 All hierarchies within the semantic model.
             """
 
@@ -202,7 +202,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            cMicrosoft.AnalysisServices.Tabular.Level]
+            Iterator[Microsoft.AnalysisServices.Tabular.Level]
                 All levels within the semantic model.
             """
 
@@ -221,7 +221,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            Microsoft.AnalysisServices.Tabular.CalculationItemCollection
+            Iterator[Microsoft.AnalysisServices.Tabular.CalculationItem]
                 All calculation items within the semantic model.
             """
 
@@ -240,7 +240,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            Microsoft.AnalysisServices.Tabular.TablePermissionCollection
+            Iterator[Microsoft.AnalysisServices.Tabular.TablePermission]
                 All row level security expressions within the semantic model.
             """
 
@@ -1079,7 +1079,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             object.Annotations.Clear()
 
-        def get_extended_properties(self, object):
+        def get_extended_properties(self, object) -> 'Microsoft.AnalysisServices.Tabular.ExtendedProperty':
 
             """
             Retrieves all extended properties on an object within the semantic model.
@@ -1155,7 +1155,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             Returns
             -------
             str
-                The extended property value
+                The extended property value.
             """
 
             return object.ExtendedProperties[name].Value
@@ -1196,7 +1196,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             object.ExtendedProperties.Clear()
     
-        def in_perspective(self, object, perspective_name: str):
+        def in_perspective(self, object: Union['TOM.Table', 'TOM.Column', 'TOM.Measure', 'TOM.Hierarchy'], perspective_name: str):
             
             """
             Indicates whether an object is contained within a given perspective.
@@ -1214,8 +1214,8 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
                 An indication as to whether the object is contained within the given perspective.
             """
 
-            validObjects = ['Table', 'Column', 'Measure', 'Hierarchy']
-            objectType = str(object.ObjectType)
+            validObjects = [TOM.ObjectType.Table, TOM.ObjectType.Column, TOM.ObjectType.Measure, TOM.ObjectType.Hierarchy]
+            objectType = object.ObjectType
 
             if objectType not in validObjects:
                 print(f"Only the following object types are valid for perspectives: {validObjects}.")
@@ -1224,19 +1224,19 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             object.Model.Perspectives[perspective_name]
 
             try:        
-                if objectType == 'Table':
+                if objectType == TOM.ObjectType.Table:
                     object.Model.Perspectives[perspective_name].PerspectiveTables[object.Name]
-                elif objectType == 'Column':
+                elif objectType == TOM.ObjectType.Column:
                     object.Model.Perspectives[perspective_name].PerspectiveTables[object.Parent.Name].PerspectiveColumns[object.Name]
-                elif objectType == 'Measure':
+                elif objectType == TOM.ObjectType.Measure:
                     object.Model.Perspectives[perspective_name].PerspectiveTables[object.Parent.Name].PerspectiveMeasures[object.Name]
-                elif objectType == 'Hierarchy':
+                elif objectType == TOM.ObjectType.Hierarchy:
                     object.Model.Perspectives[perspective_name].PerspectiveTables[object.Parent.Name].PerspectiveHierarchies[object.Name]
                 return True
             except:
                 return False
 
-        def add_to_perspective(self, object, perspective_name: str):
+        def add_to_perspective(self, object: Union['TOM.Table', 'TOM.Column', 'TOM.Measure', 'TOM.Hierarchy'], perspective_name: str):
 
             """
             Adds an object to a perspective.
@@ -1253,8 +1253,8 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             """
 
-            validObjects = ['Table', 'Column', 'Measure', 'Hierarchy']
-            objectType = str(object.ObjectType)
+            validObjects = [TOM.ObjectType.Table, TOM.ObjectType.Column, TOM.ObjectType.Measure, TOM.ObjectType.Hierarchy]
+            objectType = object.ObjectType
 
             if objectType not in validObjects:
                 print(f"Only the following object types are valid for perspectives: {validObjects}.")
@@ -1266,26 +1266,26 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
                 return
 
             #try:
-            if objectType == 'Table':
+            if objectType == TOM.ObjectType.Table:
                 pt = TOM.PerspectiveTable()
                 pt.Table = object
                 object.Model.Perspectives[perspective_name].PerspectiveTables.Add(pt)
-            elif objectType == 'Column':
+            elif objectType == TOM.ObjectType.Column:
                 pc = TOM.PerspectiveColumn()
                 pc.Column = object
                 object.Model.Perspectives[perspective_name].PerspectiveTables[object.Parent.Name].PerspectiveColumns.Add(pc)
-            elif objectType == 'Measure':
+            elif objectType == TOM.ObjectType.Measure:
                 pm = TOM.PerspectiveMeasure()
                 pm.Measure = object
                 object.Model.Perspectives[perspective_name].PerspectiveTables[object.Parent.Name].PerspectiveMeasures.Add(pm)
-            elif objectType == 'Hierarchy':
+            elif objectType == TOM.ObjectType.Hierarchy:
                 ph = TOM.PerspectiveHierarchy()
                 ph.Hierarchy = object
                 object.Model.Perspectives[perspective_name].PerspectiveTables[object.Parent.Name].PerspectiveHierarchies.Add(ph)
             #except:
             #    pass
 
-        def remove_from_perspective(self, object, perspective_name: str):
+        def remove_from_perspective(self, object: Union['TOM.Table', 'TOM.Column', 'TOM.Measure', 'TOM.Hierarchy'], perspective_name: str):
 
             """
             Removes an object from a perspective.
@@ -1302,8 +1302,8 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             """
 
-            validObjects = ['Table', 'Column', 'Measure', 'Hierarchy']
-            objectType = str(object.ObjectType)
+            validObjects = [TOM.ObjectType.Table, TOM.ObjectType.Column, TOM.ObjectType.Measure, TOM.ObjectType.Hierarchy]
+            objectType = object.ObjectType
 
             if objectType not in validObjects:
                 print(f"Only the following object types are valid for perspectives: {validObjects}.")
@@ -1315,22 +1315,22 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
                 return
 
             #try:    
-            if objectType == 'Table':
+            if objectType == TOM.ObjectType.Table:
                 pt = object.Model.Perspectives[perspective_name].PerspectiveTables[object.Name]
                 object.Model.Perspectives[perspective_name].PerspectiveTables.Remove(pt)
-            elif objectType == 'Column':
+            elif objectType == TOM.ObjectType.Column:
                 pc = object.Model.Perspectives[perspective_name].PerspectiveTables[object.Parent.Name].PerspectiveColumns[object.Name]
                 object.Model.Perspectives[perspective_name].PerspectiveTables[object.Parent.Name].PerspectiveColumns.Remove(pc)
-            elif objectType == 'Measure':
+            elif objectType == TOM.ObjectType.Measure:
                 pm = object.Model.Perspectives[perspective_name].PerspectiveTables[object.Parent.Name].PerspectiveMeasures[object.Name]
                 object.Model.Perspectives[perspective_name].PerspectiveTables[object.Parent.Name].PerspectiveMeasures.Remove(pm)
-            elif objectType == 'Hierarchy':
+            elif objectType == TOM.ObjectType.Hierarchy:
                 ph = object.Model.Perspectives[perspective_name].PerspectiveTables[object.Parent.Name].PerspectiveHierarchies[object.Name]
                 object.Model.Perspectives[perspective_name].PerspectiveTables[object.Parent.Name].PerspectiveHierarchies.Remove(ph)
             #except:
             #    pass
 
-        def set_translation(self, object, language: str, property: str, value: str):
+        def set_translation(self, object: Union['TOM.Table', 'TOM.Column', 'TOM.Measure', 'TOM.Hierarchy'], language: str, property: str, value: str):
 
             """
             Sets a translation value for an object's property.
@@ -1355,9 +1355,9 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             property = property.title()
 
-            validObjects = ['Table', 'Column', 'Measure', 'Hierarchy'] #, 'Level'
+            validObjects = [TOM.ObjectType.Table, TOM.ObjectType.Column, TOM.ObjectType.Measure, TOM.ObjectType.Hierarchy] #, 'Level'
 
-            if str(object.ObjectType) not in validObjects:
+            if object.ObjectType not in validObjects:
                 print(f"Translations can only be set to {validObjects}.")
                 return
 
@@ -1378,7 +1378,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             object.Model.Cultures[language].ObjectTranslations.SetTranslation(object, prop, value)
 
 
-        def remove_translation(self, object, language: str):
+        def remove_translation(self, object: Union['TOM.Table', 'TOM.Column', 'TOM.Measure', 'TOM.Hierarchy'], language: str):
 
             """
             Removes an object's translation value.
@@ -1413,7 +1413,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             """
 
-            objType = str(object.ObjectType)
+            objType = object.ObjectType
 
             # Have to remove translations and perspectives on the object before removing it.
             if objType in ['Table', 'Column', 'Measure', 'Hierarchy', 'Level']:
@@ -1429,34 +1429,34 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
                     except:
                         pass
 
-            if objType == 'Column':
+            if objType == TOM.ObjectType.Column:
                 object.Parent.Columns.Remove(object.Name)
-            elif objType == 'Measure':
+            elif objType == TOM.ObjectType.Measure:
                 object.Parent.Measures.Remove(object.Name)
-            elif objType == 'Hierarchy':
+            elif objType == TOM.ObjectType.Hierarchy:
                 object.Parent.Hierarchies.Remove(object.Name)
-            elif objType == 'Level':
+            elif objType == TOM.ObjectType.Level:
                 object.Parent.Levels.Remove(object.Name)
-            elif objType == 'Partition':
+            elif objType == TOM.ObjectType.Partition:
                 object.Parent.Partitions.Remove(object.Name)
-            elif objType == 'Expression':
+            elif objType == TOM.ObjectType.Expression:
                 object.Parent.Expressions.Remove(object.Name)
-            elif objType == 'DataSource':
+            elif objType == TOM.ObjectType.DataSource:
                 object.Parent.DataSources.Remove(object.Name)
-            elif objType == 'Role':
+            elif objType == TOM.ObjectType.Role:
                 object.Parent.Roles.Remove(object.Name)
-            elif objType == 'Relationship':
+            elif objType == TOM.ObjectType.Relationship:
                 object.Parent.Relationships.Remove(object.Name)
-            elif objType == 'Culture':
+            elif objType == TOM.ObjectType.Culture:
                 object.Parent.Cultures.Remove(object.Name)
-            elif objType == 'Perspective':
+            elif objType == TOM.ObjectType.Perspective:
                 object.Parent.Perspectives.Remove(object.Name)
-            elif objType == 'CalculationItem':
+            elif objType == TOM.ObjectType.CalculationItem:
                 object.Parent.CalculationItems.Remove(object.Name)
-            elif objType == 'TablePermission':
+            elif objType == TOM.ObjectType.TablePermission:
                 object.Parent.TablePermissions.Remove(object.Name)
 
-        def used_in_relationships(self, object):
+        def used_in_relationships(self, object: Union['TOM.Table', 'TOM.Column']):
 
             """
             Shows all relationships in which a table/column is used.
@@ -1472,19 +1472,19 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
                 All relationships in which the table/column is used.
             """
 
-            objType = str(object.ObjectType)
+            objType = object.ObjectType
 
-            if objType == 'Table':
+            if objType == TOM.ObjectType.Table:
                 for r in self.model.Relationships:
                     if r.FromTable.Name == object.Name or r.ToTable.Name == object.Name:
                         yield r#, 'Table'
-            elif objType == 'Column':
+            elif objType == TOM.ObjectType.Column:
                 for r in self.model.Relationships:
                     if (r.FromTable.Name == object.Parent.Name and r.FromColumn.Name == object.Name) or \
                         (r.ToTable.Name == object.Parent.Name and r.ToColumn.Name == object.Name):
                         yield r#, 'Column'
                     
-        def used_in_levels(self, column):
+        def used_in_levels(self, column: 'TOM.Column'):
 
             """
             Shows all levels in which a column is used.
@@ -1500,14 +1500,14 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
                 All levels in which the column is used.
             """
 
-            objType = str(column.ObjectType)
+            objType = column.ObjectType
 
-            if objType == 'Column':
+            if objType == TOM.ObjectType.Column:
                 for l in self.all_levels():
                     if l.Parent.Table.Name == column.Parent.Name and l.Column.Name == column.Name:
                         yield l
                     
-        def used_in_hierarchies(self, column):
+        def used_in_hierarchies(self, column: 'TOM.Column'):
 
             """
             Shows all hierarchies in which a column is used.
@@ -1523,14 +1523,14 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
                 All hierarchies in which the column is used.
             """
 
-            objType = str(column.ObjectType)
+            objType = column.ObjectType
 
-            if objType == 'Column':
+            if objType == TOM.ObjectType.Column:
                 for l in self.all_levels():
                     if l.Parent.Table.Name == column.Parent.Name and l.Column.Name == column.Name:
                         yield l.Parent
 
-        def used_in_sort_by(self, column):
+        def used_in_sort_by(self, column: 'TOM.Column'):
 
             """
             Shows all columns in which a column is used for sorting.
@@ -1546,14 +1546,14 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
                 All columns in which the column is used for sorting.
             """
 
-            objType = str(column.ObjectType)
+            objType = column.ObjectType
 
-            if objType == 'Column':
+            if objType == TOM.ObjectType.Column:
                 for c in self.model.Tables[column.Parent.Name].Columns:
                     if c.SortByColumn == column:
                         yield c
 
-        def used_in_rls(self, object, dependencies: pd.DataFrame):
+        def used_in_rls(self, object: Union['TOM.Table', 'TOM.Column', 'TOM.Measure'], dependencies: pd.DataFrame):
 
             """
             Identifies the filter expressions which reference a given object.
@@ -1571,30 +1571,30 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
                 
             """
 
-            objType = str(object.ObjectType)
+            objType = object.ObjectType
             
             df_filt = dependencies[dependencies['Object Type'] == 'Rows Allowed']
 
-            if objType == 'Table':
+            if objType == TOM.ObjectType.Table:
                 fil = df_filt[(df_filt['Referenced Object Type'] == 'Table') & (df_filt['Referenced Table'] == object.Name)]
                 tbls = fil['Table Name'].unique().tolist()
                 for t in self.model.Tables:
                     if t.Name in tbls:
                         yield t
-            elif objType == 'Column':
+            elif objType == TOM.ObjectType.Column:
                 fil = df_filt[(df_filt['Referenced Object Type'] == 'Column') & (df_filt['Referenced Table'] == object.Parent.Name) & (df_filt['Referenced Object'] == object.Name)]
                 cols = fil['Full Object Name'].unique().tolist()
                 for c in self.all_columns():
                     if format_dax_object_name(c.Parent.Name, c.Name) in cols:
                         yield c
-            elif objType == 'Measure':
+            elif objType == TOM.ObjectType.Measure:
                 fil = df_filt[(df_filt['Referenced Object Type'] == 'Measure') & (df_filt['Referenced Table'] == object.Parent.Name) & (df_filt['Referenced Object'] == object.Name)]
                 meas = fil['Object Name'].unique().tolist()
                 for m in self.all_measures():
                     if m.Name in meas:
                         yield m
 
-        def used_in_data_coverage_definition(self, object, dependencies: pd.DataFrame):
+        def used_in_data_coverage_definition(self, object: Union['TOM.Table', 'TOM.Column', 'TOM.Measure'], dependencies: pd.DataFrame):
 
             """
             Identifies the ... which reference a given object.
@@ -1612,30 +1612,30 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
                 
             """
 
-            objType = str(object.ObjectType)
+            objType = object.ObjectType
             
             df_filt = dependencies[dependencies['Object Type'] == 'Data Coverage Definition']
 
-            if objType == 'Table':
+            if objType == TOM.ObjectType.Table:
                 fil = df_filt[(df_filt['Referenced Object Type'] == 'Table') & (df_filt['Referenced Table'] == object.Name)]
                 tbls = fil['Table Name'].unique().tolist()
                 for t in self.model.Tables:
                     if t.Name in tbls:
                         yield t
-            elif objType == 'Column':
+            elif objType == TOM.ObjectType.Column:
                 fil = df_filt[(df_filt['Referenced Object Type'] == 'Column') & (df_filt['Referenced Table'] == object.Parent.Name) & (df_filt['Referenced Object'] == object.Name)]
                 cols = fil['Full Object Name'].unique().tolist()
                 for c in self.all_columns():
                     if format_dax_object_name(c.Parent.Name, c.Name) in cols:
                         yield c
-            elif objType == 'Measure':
+            elif objType == TOM.ObjectType.Measure:
                 fil = df_filt[(df_filt['Referenced Object Type'] == 'Measure') & (df_filt['Referenced Table'] == object.Parent.Name) & (df_filt['Referenced Object'] == object.Name)]
                 meas = fil['Object Name'].unique().tolist()
                 for m in self.all_measures():
                     if m.Name in meas:
                         yield m
             
-        def used_in_calc_item(self, object, dependencies: pd.DataFrame):
+        def used_in_calc_item(self, object: Union['TOM.Table', 'TOM.Column', 'TOM.Measure'], dependencies: pd.DataFrame):
 
             """
             Identifies the ... which reference a given object.
@@ -1653,23 +1653,23 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
                 
             """
 
-            objType = str(object.ObjectType)
+            objType = object.ObjectType
             
             df_filt = dependencies[dependencies['Object Type'] == 'Calculation Item']
 
-            if objType == 'Table':
+            if objType == TOM.ObjectType.Table:
                 fil = df_filt[(df_filt['Referenced Object Type'] == 'Table') & (df_filt['Referenced Table'] == object.Name)]
                 tbls = fil['Table Name'].unique().tolist()
                 for t in self.model.Tables:
                     if t.Name in tbls:
                         yield t
-            elif objType == 'Column':
+            elif objType == TOM.ObjectType.Column:
                 fil = df_filt[(df_filt['Referenced Object Type'] == 'Column') & (df_filt['Referenced Table'] == object.Parent.Name) & (df_filt['Referenced Object'] == object.Name)]
                 cols = fil['Full Object Name'].unique().tolist()
                 for c in self.all_columns():
                     if format_dax_object_name(c.Parent.Name, c.Name) in cols:
                         yield c
-            elif objType == 'Measure':
+            elif objType == TOM.ObjectType.Measure:
                 fil = df_filt[(df_filt['Referenced Object Type'] == 'Measure') & (df_filt['Referenced Table'] == object.Parent.Name) & (df_filt['Referenced Object'] == object.Name)]
                 meas = fil['Object Name'].unique().tolist()
                 for m in self.all_measures():
@@ -1691,8 +1691,8 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             """
 
             for t in self.model.Tables:
-                if any(str(p.Mode) == 'Import' for p in t.Partitions):
-                    if any(str(p.Mode) == 'DirectQuery' for p in t.Partitions):
+                if any(p.Mode == TOM.ModeType.Import for p in t.Partitions):
+                    if any(p.Mode == TOM.ModeType.DirectQuery for p in t.Partitions):
                         yield t
 
         def date_tables(self):
@@ -1711,7 +1711,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             for t in self.model.Tables:
                 if t.DataCategory == 'Time':
-                    if any(c.IsKey and str(c.DataType) == 'DateTime'for c in t.Columns):
+                    if any(c.IsKey and c.DataType == TOM.DataType.DateTime for c in t.Columns):
                         yield t
 
         def is_hybrid_table(self, table_name: str):
@@ -1732,8 +1732,8 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             isHybridTable = False
 
-            if any(str(p.Mode) == 'Import' for p in self.model.Tables[table_name].Partitions):
-                if any(str(p.Mode) == 'DirectQuery' for p in self.model.Tables[table_name].Partitions):
+            if any(p.Mode == TOM.ModeType.Import for p in self.model.Tables[table_name].Partitions):
+                if any(p.Mode == TOM.ModeType.DirectQuery for p in self.model.Tables[table_name].Partitions):
                     isHybridTable = True
 
             return isHybridTable
@@ -1758,7 +1758,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             t = self.model.Tables[table_name]
 
             if t.DataCategory == 'Time':
-                if any(c.IsKey and str(c.DataType) == 'DateTime'for c in t.Columns):
+                if any(c.IsKey and c.DataType == TOM.DataType.DateTime for c in t.Columns):
                     isDateTable = True
 
             return isDateTable
@@ -1782,7 +1782,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             t = self.model.Tables[table_name]
             c = t.Columns[column_name]
-            if str(c.DataType) != 'DateTime':
+            if c.DataType != TOM.DataType.DateTime:
                 print(f"{red_dot} The column specified in the 'column_name' parameter in this function must be of DateTime data type.")
                 return
                 
@@ -1910,7 +1910,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
                 Indicates if the semantic model is in Direct Lake mode.
             """
 
-            return any(str(p.Mode) == 'DirectLake' for t in self.model.Tables for p in t.Partitions)
+            return any(p.Mode == TOM.ModeType.DirectLake for t in self.model.Tables for p in t.Partitions)
 
         def is_field_parameter(self, table_name: str):
 
@@ -1953,7 +1953,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             t = self.model.Tables[table_name]
 
             if t.Name.startswith('LocalDateTable_') or t.Name.startswith('DateTableTemplate_'):
-                if any(str(p.SourceType) == 'Calculated' for p in t.Partitions):
+                if any(p.SourceType == TOM.PartitionSourceType.Calculated for p in t.Partitions):
                     isAutoDate = True
 
             return isAutoDate
@@ -2097,9 +2097,9 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             for c in self.model.Tables[agg_table_name].Columns:
 
-                dataType = str(c.DataType)
+                dataType = c.DataType
 
-                if dataType in ['String', 'Boolean', 'DateTime']:
+                if dataType in [TOM.DataType.String, TOM.DataType.Boolean, TOM.DataType.DateTime]:
                     sumType = 'GroupBy'
                 else:
                     sumType = 'Sum'
@@ -2449,11 +2449,11 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
                 Number of rows within the TOM object.
             """
             
-            objType = str(object.ObjectType)
+            objType = object.ObjectType
             
-            if objType == 'Table':
+            if objType == TOM.ObjectType.Table:
                 result = self.get_annotation_value(object = object, name = 'Vertipaq_RowCount')
-            elif objType == 'Partition':
+            elif objType == TOM.ObjectType.Partition:
                 result = self.get_annotation_value(object = object, name = 'Vertipaq_RecordCount')
 
             return int(result)
@@ -2474,14 +2474,14 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
                 Number of records per segment within the partition.
             """
             
-            objType = str(object.ObjectType)
+            objType = object.ObjectType
             
-            if objType == 'Partition':
+            if objType == TOM.ObjectType.Partition:
                 result = self.get_annotation_value(object = object, name = 'Vertipaq_RecordsPerSegment')
 
             return float(result)
         
-        def used_size(self, object):
+        def used_size(self, object: Union['TOM.Hierarchy', 'TOM.Relationship']):
 
             """
             Obtains the used size of a hierarchy or relationship within a semantic model.
@@ -2497,16 +2497,16 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
                 Used size of the TOM object.
             """
             
-            objType = str(object.ObjectType)
+            objType = object.ObjectType
             
-            if objType == 'Hierarchy':
+            if objType == TOM.ObjectType.Hierarchy:
                 result = self.get_annotation_value(object = object, name = 'Vertipaq_UsedSize')
-            elif objType == 'Relationship':
+            elif objType == TOM.ObjectType.Relationship:
                 result = self.get_annotation_value(object = object, name = 'Vertipaq_UsedSize')
 
             return int(result)
 
-        def data_size(self, column):
+        def data_size(self, column: 'TOM.Column'):
 
             """
             Obtains the data size of a column within a semantic model.
@@ -2522,14 +2522,14 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
                 Data size of the TOM column.
             """
             
-            objType = str(column.ObjectType)
+            objType = column.ObjectType
             
-            if objType == 'Column':
+            if objType == TOM.ObjectType.Column:
                 result = self.get_annotation_value(object = column, name = 'Vertipaq_DataSize')
 
             return int(result)
 
-        def dictionary_size(self, column):
+        def dictionary_size(self, column: 'TOM.Column'):
 
             """
             Obtains the dictionary size of a column within a semantic model.
@@ -2545,14 +2545,14 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
                 Dictionary size of the TOM column.
             """
 
-            objType = str(column.ObjectType)
+            objType = column.ObjectType
 
-            if objType == 'Column':
+            if objType == TOM.ObjectType.Column:
                 result = self.get_annotation_value(object = column, name = 'Vertipaq_DictionarySize')
 
             return int(result)
         
-        def total_size(self, object):
+        def total_size(self, object: Union['TOM.Table', 'TOM.Column']):
 
             """
             Obtains the data size of a table/column within a semantic model.
@@ -2568,16 +2568,16 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
                 Total size of the TOM table/column.
             """
 
-            objType = str(object.ObjectType)
+            objType = object.ObjectType
             
-            if objType == 'Column':
+            if objType == TOM.ObjectType.Column:
                 result = self.get_annotation_value(object = object, name = 'Vertipaq_TotalSize')
-            elif objType == 'Table':
+            elif objType == TOM.ObjectType.Table:
                 result = self.get_annotation_value(object = object, name = 'Vertipaq_TotalSize')
 
             return int(result)
 
-        def cardinality(self, column):
+        def cardinality(self, column: 'TOM.Column'):
 
             """
             Obtains the cardinality of a column within a semantic model.
@@ -2593,9 +2593,9 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
                 Cardinality of the TOM column.
             """
             
-            objType = str(column.ObjectType)
+            objType = column.ObjectType
             
-            if objType == 'Column':
+            if objType == TOM.ObjectType.Column:
                 result = self.get_annotation_value(object = column, name = 'Vertipaq_Cardinality')            
 
             return int(result)                
@@ -2618,11 +2618,11 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
                 Objects on which the specified object depends.
             """
 
-            objType = str(object.ObjectType)
-            objName = str(object.Name)
-            objParentName = str(object.Parent.Name)
+            objType = object.ObjectType
+            objName = object.Name
+            objParentName = object.Parent.Name
 
-            if objType == 'Table':
+            if objType == TOM.ObjectType.Table:
                 objParentName = objName
 
             fil = dependencies[(dependencies['Object Type'] == objType) & (dependencies['Table Name'] == objParentName) & (dependencies['Object Name'] == objName)]
@@ -2657,11 +2657,11 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
                 Objects which reference the specified object.
             """
 
-            objType = str(object.ObjectType)
-            objName = str(object.Name)
-            objParentName = str(object.Parent.Name)
+            objType = object.ObjectType
+            objName = object.Name
+            objParentName = object.Parent.Name
 
-            if objType == 'Table':
+            if objType == TOM.ObjectType.Table:
                 objParentName = objName
 
             fil = dependencies[(dependencies['Referenced Object Type'] == objType) & (dependencies['Referenced Table'] == objParentName) & (dependencies['Referenced Object'] == objName)]
@@ -2678,7 +2678,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
                 if t.Name in tbls:
                     yield t
 
-        def fully_qualified_measures(self, object, dependencies: pd.DataFrame):
+        def fully_qualified_measures(self, object: 'TOM.Measure', dependencies: pd.DataFrame):
 
             """
             Obtains all fully qualified measure references for a given object.
@@ -2697,11 +2697,11 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             """
     
             for obj in self.depends_on(object = object, dependencies=dependencies):            
-                if str(obj.ObjectType) == 'Measure':
+                if obj.ObjectType == TOM.ObjectType.Measure:
                     if (obj.Parent.Name + obj.Name in object.Expression) or (format_dax_object_name(obj.Parent.Name, obj.Name) in object.Expression):
                         yield obj
 
-        def unqualified_columns(self, object, dependencies: pd.DataFrame):
+        def unqualified_columns(self, object: 'TOM.Column', dependencies: pd.DataFrame):
 
             """
             Obtains all unqualified column references for a given object.
@@ -2723,7 +2723,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
                 return r'(?<!'+a+'\[)(?<!' + a + "'\[)" + b
     
             for obj in self.depends_on(object = object, dependencies=dependencies):
-                if str(obj.ObjectType) == 'Column':
+                if obj.ObjectType == TOM.ObjectType.Column:
                     if re.search(create_pattern(obj.Parent.Name, obj.Name), object.Expression) is not None:
                         yield obj
 
@@ -2808,7 +2808,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
                 else:
                     print(f"Incrementally refresh data {start_bold}{rp.IncrementalPeriods} {icGran}{end_bold} before refresh date.")
 
-                if str(rp.Mode) == 'Hybrid':
+                if rp.Mode == TOM.RefreshPolicyMode.Hybrid:
                     print(f"{checked} Get the latest data in real time with DirectQuery (Premium only)")
                 else:
                     print(f"{unchecked} Get the latest data in real time with DirectQuery (Premium only)")
@@ -2881,9 +2881,8 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             if detect_data_changes_column is not None:
                 dc = t.Columns[detect_data_changes_column]
-                dcType = str(dc.DataType)
 
-                if dcType != 'DateTime':
+                if dc.DataType != TOM.DataType.DateTime:
                     print(f"{red_dot} Invalid 'detect_data_changes_column' parameter. This column must be of DateTime data type.")
                     return
 
@@ -2985,17 +2984,17 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             c = t.Columns[column_name]
             fcName = format_dax_object_name(table_name, column_name)
-            dType = str(c.DataType)
+            dType = c.DataType
 
-            if dType != 'DateTime':
+            if dType != TOM.DataType.DateTime:
                 print(f"{red_dot} The {fcName} column is of '{dType}' data type. The column chosen must be of DateTime data type.")
                 return
             
             if detect_data_changes_column is not None:
                 dc = t.Columns[detect_data_changes_column]
-                dcType = str(dc.DataType)
+                dcType = dc.DataType
 
-                if dcType != 'DateTime':
+                if dcType != TOM.DataType.DateTime:
                     print(f"{red_dot} Invalid 'detect_data_changes_column' parameter. This column must be of DateTime data type.")
                     return
 
@@ -3004,7 +3003,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             # Update partition expression
             i=0
             for p in t.Partitions:
-                if str(p.SourceType) != 'M':
+                if p.SourceType != TOM.PartitionSourceType.M:
                     print(f"{red_dot} Invalid partition source type. Incremental refresh can only be set up if the table's partition is an M-partition.")
                     return
                 elif i==0:
@@ -3104,12 +3103,11 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             p = t.Partitions[partition_name]
 
             ht = self.is_hybrid_table(table_name = table_name)
-            mode = str(p.Mode)
 
             if not ht:
                 print(f"The data coverage definition property is only applicable to hybrid tables. See the documentation: {doc}.")
                 return
-            if mode != 'DirectQuery':
+            if p.Mode != TOM.ModeType.DirectQuery:
                 print(f"The data coverage definition property is only applicable to the DirectQuery partition of a hybrid table. See the documentation: {doc}.")
                 return
 

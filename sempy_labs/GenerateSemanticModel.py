@@ -22,8 +22,7 @@ def create_semantic_model_from_bim(dataset: str, bim_file: str, workspace: Optio
 
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """
 
     if workspace == None:
@@ -116,8 +115,7 @@ def deploy_semantic_model(dataset: str, new_dataset: Optional[str] = None, works
 
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """  
 
     if workspace == None:

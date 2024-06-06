@@ -42,8 +42,7 @@ def migrate_calc_tables_to_semantic_model(dataset: str, new_dataset: str, worksp
 
     Returns
     -------
-    str
-       A printout stating the success/failure of the operation.
+    
     """
 
     if workspace == None:

@@ -26,8 +26,7 @@ def create_blank_semantic_model(dataset: str, compatibility_level: Optional[int]
     
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """
 
   if workspace == None:

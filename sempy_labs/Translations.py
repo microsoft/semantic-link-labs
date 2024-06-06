@@ -63,8 +63,7 @@ def translate_semantic_model(dataset: str, languages: Union[str, List[str]], exc
 
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """
 
     from synapse.ml.services import Translate

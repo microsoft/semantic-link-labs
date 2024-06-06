@@ -23,8 +23,7 @@ def update_direct_lake_partition_entity(dataset: str, table_name: Union[str, Lis
 
     Returns
     -------
-    str
-       A printout stating the success/failure of the operation.
+    
     """  
 
     if workspace == None:

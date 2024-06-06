@@ -26,8 +26,7 @@ def create_report_from_reportjson(report: str, dataset: str, report_json: str, t
 
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """
 
     if workspace == None:
@@ -164,8 +163,7 @@ def update_report_from_reportjson(report: str, report_json: str, workspace: Opti
 
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """
 
     if workspace == None:

@@ -815,8 +815,7 @@ def create_warehouse(warehouse: str, description: Optional[str] = None, workspac
     
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """
 
     if workspace == None:
@@ -875,8 +874,7 @@ def update_item(item_type: str, current_name: str, new_name: str, description: O
     
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """
 
     if workspace == None:

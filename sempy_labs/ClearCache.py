@@ -24,8 +24,7 @@ def clear_cache(dataset: str, workspace: Optional[str] = None):
 
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """
 
     if workspace == None:

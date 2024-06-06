@@ -33,8 +33,7 @@ def create_shortcut_onelake(table_name: str, source_lakehouse: str, source_works
     
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """
 
     sourceWorkspaceId = fabric.resolve_workspace_id(source_workspace)
@@ -93,8 +92,7 @@ def create_shortcut(shortcut_name: str, location: str, subpath: str, source: str
     
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """
 
     source_titles = {
@@ -223,8 +221,7 @@ def delete_shortcut(shortcut_name: str, lakehouse: Optional[str] = None, workspa
     
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """   
 
     if workspace == None:

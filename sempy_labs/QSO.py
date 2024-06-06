@@ -25,8 +25,7 @@ def qso_sync(dataset: str, workspace: Optional[str] = None):
     
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """
 
     #https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/trigger-query-scale-out-sync-in-group
@@ -64,8 +63,7 @@ def qso_sync_status(dataset: str, workspace: Optional[str] = None):
 
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """
 
     #https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/get-query-scale-out-sync-status-in-group
@@ -130,8 +128,7 @@ def disable_qso(dataset: str, workspace: Optional[str] = None):
 
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """
 
     if workspace is None:
@@ -177,8 +174,7 @@ def set_qso(dataset: str, auto_sync: Optional[bool] = True, max_read_only_replic
 
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """
 
     #https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/update-dataset-in-group
@@ -236,8 +232,7 @@ def set_semantic_model_storage_format(dataset: str, storage_format: str, workspa
 
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """
 
     if workspace is None:
@@ -343,8 +338,7 @@ def set_workspace_default_storage_format(storage_format: str, workspace: Optiona
 
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """
 
     #https://learn.microsoft.com/en-us/rest/api/power-bi/groups/update-group#defaultdatasetstorageformat

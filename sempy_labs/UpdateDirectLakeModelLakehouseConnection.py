@@ -28,8 +28,7 @@ def update_direct_lake_model_lakehouse_connection(dataset: str, workspace: Optio
 
     Returns
     -------
-    str
-       A printout stating the success/failure of the operation.
+
     """ 
 
     if workspace == None:

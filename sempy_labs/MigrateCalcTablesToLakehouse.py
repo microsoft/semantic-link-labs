@@ -44,8 +44,7 @@ def migrate_calc_tables_to_lakehouse(dataset: str, new_dataset: str, workspace: 
 
     Returns
     -------
-    str
-       A printout stating the success/failure of the operation.
+    
     """
 
     if workspace == None:
@@ -202,8 +201,7 @@ def migrate_field_parameters(dataset: str, new_dataset: str, workspace: Optional
 
     Returns
     -------
-    str
-       A printout stating the success/failure of the operation.
+    
     """
 
     from .HelperFunctions import format_dax_object_name    

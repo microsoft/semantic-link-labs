@@ -24,7 +24,7 @@ def get_semantic_model_bim(dataset: str, workspace: Optional[str] = None, save_t
 
     Returns
     -------
-    Model.bim
+    str
         The Model.bim file for the semantic model.
     """
 

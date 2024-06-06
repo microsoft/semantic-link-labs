@@ -15,7 +15,7 @@ from sempy._utils._log import log
 def vertipaq_analyzer(dataset: str, workspace: Optional[str] = None, export: Optional[str] = None, lakehouse_workspace: Optional[str] = None, read_stats_from_data: Optional[bool] = False):
     
     """
-    Extracts the vertipaq analyzer statistics from a semantic model.
+    Displays an HTML visualization of the Vertipaq Analyzer statistics from a semantic model.
 
     Parameters
     ----------
@@ -38,8 +38,7 @@ def vertipaq_analyzer(dataset: str, workspace: Optional[str] = None, export: Opt
 
     Returns
     -------
-    str
-       A visualization of the Vertipaq Analyzer statistics.
+
     """
 
     pd.options.mode.copy_on_write = True

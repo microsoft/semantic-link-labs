@@ -32,8 +32,7 @@ def direct_lake_schema_sync(dataset: str, workspace: Optional[str] = None, add_t
 
     Returns
     -------
-    str
-        A list of columns which exist in the lakehouse but not in the Direct Lake semantic model. If 'add_to_model' is set to True, a printout stating the success/failure of the operation is returned.
+    
     """
 
     sempy.fabric._client._utils._init_analysis_services()

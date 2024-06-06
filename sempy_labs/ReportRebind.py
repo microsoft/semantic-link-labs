@@ -32,8 +32,7 @@ def report_rebind(report: str, dataset: str, report_workspace: Optional[str] = N
 
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """
 
     if report_workspace == None:
@@ -90,8 +89,7 @@ def report_rebind_all(dataset: str, new_dataset: str, dataset_workspace: Optiona
     
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """
 
     if dataset_workspace == None:

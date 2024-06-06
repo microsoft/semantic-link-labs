@@ -45,8 +45,7 @@ def migrate_tables_columns_to_semantic_model(dataset: str, new_dataset: str, wor
 
     Returns
     -------
-    str
-       A printout stating the success/failure of the operation.
+    
     """
 
     if workspace == None:

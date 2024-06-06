@@ -32,8 +32,7 @@ def model_auto_build(dataset: str, file_path: str, workspace: Optional[str] = No
     
     Returns
     -------
-    str
-        A printout stating the success/failure of the operation.
+    
     """
 
     if workspace is None:
