@@ -9,7 +9,7 @@ from sempy._utils._log import log
 def measure_dependency_tree(dataset: str, measure_name: str, workspace: Optional[str] = None):
 
     """
-    Shows a measure dependency tree of all dependent objects for a measure in a semantic model.
+    Prints a measure dependency tree of all dependent objects for a measure in a semantic model.
 
     Parameters
     ----------
@@ -24,8 +24,7 @@ def measure_dependency_tree(dataset: str, measure_name: str, workspace: Optional
 
     Returns
     -------
-    str
-        A tree view showing the dependencies for a given measure within the semantic model.
+
     """
 
 

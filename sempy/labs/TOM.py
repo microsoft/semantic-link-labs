@@ -8,8 +8,11 @@ from .ListFunctions import list_relationships
 from .RefreshSemanticModel import refresh_semantic_model
 from .Fallback import check_fallback_reason
 from contextlib import contextmanager
-from typing import List, Optional, Union
+from typing import List, Optional, Union, TYPE_CHECKING
 from sempy._utils._log import log
+
+if TYPE_CHECKING:
+    import Microsoft.AnalysisServices.Tabular
 
 green_dot = '\U0001F7E2'
 yellow_dot = '\U0001F7E1'
@@ -71,7 +74,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
+            Microsoft.AnalysisServices.Tabular.ColumnCollection
                 All columns within the semantic model.
             """
 
@@ -90,7 +93,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
+            Microsoft.AnalysisServices.Tabular.ColumnCollection
                 All calculated columns within the semantic model.
             """
 
@@ -109,7 +112,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
+            Microsoft.AnalysisServices.Tabular.TableCollection
                 All calculated tables within the semantic model.
             """
 
@@ -127,7 +130,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
+            Microsoft.AnalysisServices.Tabular.TableCollection
                 All calculation groups within the semantic model.
             """
 
@@ -145,7 +148,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
+            Microsoft.AnalysisServices.Tabular.MeasureCollection
                 All measures within the semantic model.
             """
 
@@ -163,7 +166,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
+            Microsoft.AnalysisServices.Tabular.PartitionCollection
                 All partitions within the semantic model.
             """
 
@@ -181,7 +184,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
+            Microsoft.AnalysisServices.Tabular.HierarchyCollection
                 All hierarchies within the semantic model.
             """
 
@@ -199,7 +202,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
+            Microsoft.AnalysisServices.Tabular.LevelCollection
                 All levels within the semantic model.
             """
 
@@ -218,7 +221,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
+            Microsoft.AnalysisServices.Tabular.CalculationItemCollection
                 All calculation items within the semantic model.
             """
 
@@ -237,7 +240,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
+            Microsoft.AnalysisServices.Tabular.TablePermissionCollection
                 All row level security expressions within the semantic model.
             """
 
@@ -269,8 +272,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
-                None
+
             """
 
             obj = TOM.Measure()
@@ -319,8 +321,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
-                None
+
             """
 
             data_type = data_type.capitalize().replace('Integer', 'Int64').replace('Datetime', 'DateTime')
@@ -378,8 +379,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
-                None
+
             """
 
             data_type = data_type.capitalize().replace('Integer', 'Int64').replace('Datetime', 'DateTime')
@@ -437,8 +437,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
-                None
+
             """
 
             data_type = data_type.capitalize().replace('Integer', 'Int64').replace('Datetime', 'DateTime')
@@ -485,8 +484,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
-                None
+
             """
 
             obj = TOM.CalculationItem()
@@ -518,8 +516,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
-                None
+
             """
 
             if model_permission is None:
@@ -548,8 +545,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
-                None
+
             """
 
             tp = TOM.TablePermission()
@@ -579,8 +575,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
-                None
+
             """
 
             permission = permission.capitalize()
@@ -619,8 +614,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
-                None
+
             """
 
             if isinstance(columns, str):
@@ -683,8 +677,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
-                None
+
             """
 
             if cross_filtering_behavior is None:
@@ -729,8 +722,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
-                None
+
             """
 
             tbl = TOM.Table()
@@ -782,8 +774,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
-                None
+
             """
 
             exp = TOM.NamedExpression()
@@ -807,8 +798,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
-                None
+
             """
 
             cul = TOM.Culture()
@@ -831,8 +821,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
-                None
+
             """
 
             persp = TOM.Perspective()
@@ -860,8 +849,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            str
-                None
+
             """
 
             mode = mode.title().replace('query', 'Query').replace(' ','').replace('lake', 'Lake')
@@ -898,8 +886,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            str
-                None
+
             """
 
             ep = TOM.EntityPartitionSource()
@@ -938,8 +925,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            str
-                None
+
             """
             
             if base_column is not None and base_table is None:
@@ -981,13 +967,12 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            str
-                None
+
             """
 
             self.model.Tables[table_name].Columns[column_name].AlternateOf = None
 
-        def get_annotations(self, object):
+        def get_annotations(self, object) -> 'Microsoft.AnalysisServices.Tabular.Annotation':
 
             """
             Shows all annotations for a given object within a semantic model.
@@ -999,7 +984,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            str
+            Microsoft.AnalysisServices.Tabular.Annotation
                 TOM objects of all the annotations on a particular object within the semantic model.
             """
 
@@ -1026,8 +1011,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            str
-                None
+
             """
 
             ann = TOM.Annotation()
@@ -1073,8 +1057,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            str
-                None
+
             """
 
             object.Annotations.Remove(name)
@@ -1091,8 +1074,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            str
-                None
+
             """
 
             object.Annotations.Clear()
@@ -1109,8 +1091,8 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            str
-                TOM Objects
+            Microsoft.AnalysisServices.Tabular.ExtendedPropertiesCollection
+                TOM Objects of all the extended properties.
             """
 
             #df = pd.DataFrame(columns=['Name', 'Value', 'Type'])
@@ -1140,8 +1122,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            str
-                None
+
             """
 
             extended_property_type = extended_property_type.title()
@@ -1193,8 +1174,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            str
-                None
+
             """
 
             object.ExtendedProperties.Remove(name)
@@ -1211,8 +1191,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            str
-                None
+
             """
 
             object.ExtendedProperties.Clear()
@@ -1271,8 +1250,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            str
-                None
+
             """
 
             validObjects = ['Table', 'Column', 'Measure', 'Hierarchy']
@@ -1321,8 +1299,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            str
-                None
+
             """
 
             validObjects = ['Table', 'Column', 'Measure', 'Hierarchy']
@@ -1371,8 +1348,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            str
-                None
+
             """
 
             self.add_translation(language = language)
@@ -1416,8 +1392,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            str
-                None
+
             """
 
             o = object.Model.Cultures[language].ObjectTranslations[object, TOM.TranslatedProperty.Caption]
@@ -1435,8 +1410,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            str
-                None
+
             """
 
             objType = str(object.ObjectType)
@@ -1494,7 +1468,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            TOM Object
+            Microsoft.AnalysisServices.Tabular.RelationshipCollection
                 All relationships in which the table/column is used.
             """
 
@@ -1522,7 +1496,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            TOM Object
+            Microsoft.AnalysisServices.Tabular.LevelCollection
                 All levels in which the column is used.
             """
 
@@ -1545,8 +1519,8 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            TOM Object
-                All levels in which the column is used.
+            Microsoft.AnalysisServices.Tabular.HierarchyCollection
+                All hierarchies in which the column is used.
             """
 
             objType = str(column.ObjectType)
@@ -1568,7 +1542,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            TOM Object
+            Microsoft.AnalysisServices.Tabular.ColumnCollection
                 All columns in which the column is used for sorting.
             """
 
@@ -1593,8 +1567,8 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            TOM Object
-                None
+            Microsoft.AnalysisServices.Tabular.TableCollection, Microsoft.AnalysisServices.Tabular.ColumnCollection, Microsoft.AnalysisServices.Tabular.MeasureCollection
+                
             """
 
             objType = str(object.ObjectType)
@@ -1634,8 +1608,8 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            TOM Object
-                None
+            Microsoft.AnalysisServices.Tabular.TableCollection, Microsoft.AnalysisServices.Tabular.ColumnCollection, Microsoft.AnalysisServices.Tabular.MeasureCollection
+                
             """
 
             objType = str(object.ObjectType)
@@ -1675,8 +1649,8 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            TOM Object
-                None
+            Microsoft.AnalysisServices.Tabular.TableCollection, Microsoft.AnalysisServices.Tabular.ColumnCollection, Microsoft.AnalysisServices.Tabular.MeasureCollection
+                
             """
 
             objType = str(object.ObjectType)
@@ -1712,7 +1686,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            TOM Object
+            Microsoft.AnalysisServices.Tabular.TableCollection
                 All hybrid tables within a semantic model.
             """
 
@@ -1731,7 +1705,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            TOM Object
+            Microsoft.AnalysisServices.Tabular.TableCollection
                 All tables marked as date tables within a semantic model.
             """
 
@@ -1803,8 +1777,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            str
-                None
+
             """
 
             t = self.model.Tables[table_name]
@@ -2013,8 +1986,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            str
-                None
+
             """
 
             #https://github.com/m-kovalsky/Tabular/blob/master/KPI%20Graphics.md
@@ -2120,8 +2092,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            str
-                None
+
             """
 
             for c in self.model.Tables[agg_table_name].Columns:
@@ -2151,8 +2122,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            str
-                None
+
             """
 
             self.model.Tables[table_name].Columns[column_name].IsAvailableInMdx = value
@@ -2174,8 +2144,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            str
-                None
+
             """
 
             values = ['Default', 'None', 'Sum', 'Min', 'Max', 'Count', 'Average', 'DistinctCount']
@@ -2203,8 +2172,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            str
-                None
+
             """
 
             direct_lake_behavior = direct_lake_behavior.capitalize()
@@ -2241,8 +2209,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            str
-                None
+
             """
 
             t = TOM.Table()
@@ -2274,8 +2241,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            str
-                None
+
             """
 
             par = TOM.Partition()
@@ -2311,8 +2277,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            str
-                None
+
             """
 
             if isinstance(objects, str):
@@ -2379,8 +2344,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            str
-                None
+
             """
 
             for t in self.model.Tables:
@@ -2414,8 +2378,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            str
-                None
+
             """
 
             dfT = fabric.list_tables(dataset = dataset, workspace = workspace, extended=True)
@@ -2651,7 +2614,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            TOM Object
+            Microsoft.AnalysisServices.Tabular.TableCollection, Microsoft.AnalysisServices.Tabular.ColumnCollection, Microsoft.AnalysisServices.Tabular.MeasureCollection
                 Objects on which the specified object depends.
             """
 
@@ -2690,7 +2653,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            TOM Object
+            Microsoft.AnalysisServices.Tabular.TableCollection, Microsoft.AnalysisServices.Tabular.ColumnCollection, Microsoft.AnalysisServices.Tabular.MeasureCollection
                 Objects which reference the specified object.
             """
 
@@ -2729,7 +2692,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            TOM Object
+            Microsoft.AnalysisServices.Tabular.MeasureCollection
                 All fully qualified measure references for a given object.
             """
     
@@ -2752,7 +2715,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            TOM Object
+            Microsoft.AnalysisServices.Tabular.ColumnCollection
                 All unqualified column references for a given object.
             """
     
@@ -2816,7 +2779,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
         def show_incremental_refresh_policy(self, table_name: str):
 
             """
-            Shows the incremental refresh policy for a table.
+            Prints the incremental refresh policy for a table.
 
             Parameters
             ----------
@@ -2825,8 +2788,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
             
             Returns
             -------
-            str
-                A printout showing the incremental refresh policy for the table.
+
             """
 
             rp = self.model.Tables[table_name].RefreshPolicy
@@ -2889,8 +2851,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
-                None
+
             """
 
             if not self.has_incremental_refresh_policy(table_name = table_name):
@@ -2980,8 +2941,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
-                None
+
             """
 
             #https://learn.microsoft.com/en-us/power-bi/connect-data/incremental-refresh-configure
@@ -3114,8 +3074,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
-                None
+
             """
 
             self.model.Tables[table_name].ApplyRefreshPolicy(effectiveDate = effective_date, refresh = refresh, maxParallelism = max_parallelism)
@@ -3136,8 +3095,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
-                None
+
             """
 
             doc = 'https://learn.microsoft.com/analysis-services/tom/table-partitions?view=asallproducts-allversions'
@@ -3175,8 +3133,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
-                None
+
             """
 
             values = ['Default', 'Hash', 'Value']
@@ -3204,8 +3161,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
-                None
+
             """
 
             values = ['Binary', 'Boolean', 'DateTime', 'Decimal', 'Double', 'Int64', 'String']
@@ -3240,8 +3196,7 @@ def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, worksp
 
             Returns
             -------
-            str
-                None
+
             """
 
             table_name = None
