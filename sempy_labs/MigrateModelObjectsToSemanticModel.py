@@ -5,14 +5,14 @@ from .ListFunctions import list_tables
 from .HelperFunctions import create_relationship_name
 from .TOM import connect_semantic_model
 from typing import List, Optional, Union
-from sempy._utils._log import log
+
 
 green_dot = '\U0001F7E2'
 yellow_dot = '\U0001F7E1'
 red_dot = '\U0001F534'
 in_progress = '⌛'
 
-@log
+
 def migrate_model_objects_to_semantic_model(dataset: str, new_dataset: str, workspace: Optional[str] = None, new_dataset_workspace: Optional[str] = None):
 
     """

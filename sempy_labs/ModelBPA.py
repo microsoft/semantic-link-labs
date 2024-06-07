@@ -10,7 +10,7 @@ from .HelperFunctions import format_dax_object_name, resolve_lakehouse_name
 from .Lakehouse import lakehouse_attached
 from .GetLakehouseTables import get_lakehouse_tables
 from typing import List, Optional, Union
-from sempy._utils._log import log
+
 
 def model_bpa_rules():
 
@@ -306,7 +306,7 @@ def model_bpa_rules():
 
   return df_rules
 
-@log
+
 def run_model_bpa(dataset: str, rules_dataframe: Optional[pd.DataFrame] = None, workspace: Optional[str] = None, export: Optional[bool] = False, return_dataframe: Optional[bool] = False, **kwargs):
 
     """

@@ -12,7 +12,7 @@ from .Translations import language_validate
 from .Lakehouse import lakehouse_attached
 from .HelperFunctions import generate_embedded_filter, resolve_dataset_name, resolve_report_id, resolve_lakehouse_name
 from typing import List, Optional, Union
-from sempy._utils._log import log
+
 
 green_dot = '\U0001F7E2'
 yellow_dot = '\U0001F7E1'
@@ -136,7 +136,7 @@ def report_dependency_tree(workspace: Optional[str] = None):
     for pre, _, node in RenderTree(node_dict[workspace]):
         print(f"{pre}{node.custom_property}'{node.name}'")
 
-@log
+
 def export_report(report: str, export_format: str, file_name: Optional[str] = None, bookmark_name: Optional[str] = None, page_name: Optional[str] = None, visual_name: Optional[str] = None, report_filter: Optional[str] = None, workspace: Optional[str] = None):
 
     """

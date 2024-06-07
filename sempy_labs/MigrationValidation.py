@@ -4,7 +4,7 @@ import pandas as pd
 from .HelperFunctions import create_relationship_name
 from .TOM import connect_semantic_model
 from typing import List, Optional, Union
-from sempy._utils._log import log
+
 
 def list_semantic_model_objects(dataset: str, workspace: Optional[str] = None):
 
@@ -84,7 +84,7 @@ def list_semantic_model_objects(dataset: str, workspace: Optional[str] = None):
 
     return df
 
-@log
+
 def migration_validation(dataset: str, new_dataset: str, workspace: Optional[str] = None, new_dataset_workspace: Optional[str] = None):
 
     """

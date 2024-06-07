@@ -5,9 +5,9 @@ from .TOM import connect_semantic_model
 from .CreateBlankSemanticModel import create_blank_semantic_model
 from .GetSharedExpression import get_shared_expression
 from typing import List, Optional, Union
-from sempy._utils._log import log
 
-@log
+
+
 def model_auto_build(dataset: str, file_path: str, workspace: Optional[str] = None, lakehouse: Optional[str] = None, lakehouse_workspace: Optional[str] = None):
 
     """

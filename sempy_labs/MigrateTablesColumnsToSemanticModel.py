@@ -8,14 +8,14 @@ from .HelperFunctions import resolve_lakehouse_name
 from .Lakehouse import lakehouse_attached
 from .TOM import connect_semantic_model
 from typing import List, Optional, Union
-from sempy._utils._log import log
+
 
 green_dot = '\U0001F7E2'
 yellow_dot = '\U0001F7E1'
 red_dot = '\U0001F534'
 in_progress = '⌛'
 
-@log
+
 def migrate_tables_columns_to_semantic_model(dataset: str, new_dataset: str, workspace: Optional[str] = None, new_dataset_workspace: Optional[str] = None, lakehouse: Optional[str] = None, lakehouse_workspace: Optional[str] = None):
 
     """

@@ -9,9 +9,9 @@ from .ListFunctions import list_relationships
 from .GetLakehouseTables import get_lakehouse_tables
 from .Lakehouse import lakehouse_attached
 from typing import List, Optional, Union
-from sempy._utils._log import log
 
-@log
+
+
 def vertipaq_analyzer(dataset: str, workspace: Optional[str] = None, export: Optional[str] = None, lakehouse_workspace: Optional[str] = None, read_stats_from_data: Optional[bool] = False):
     
     """
@@ -532,7 +532,7 @@ def visualize_vertipaq(dataframes):
     # Default to open the first tab
     display(HTML("<script>document.getElementsByClassName('tablinks')[0].click();</script>"))
 
-@log
+
 def import_vertipaq_analyzer(folder_path: str, file_name: str):
   
   """

@@ -2,9 +2,9 @@ import sempy
 import sempy.fabric as fabric
 import pandas as pd
 from typing import List, Optional, Union
-from sempy._utils._log import log
 
-@log
+
+
 def export_model_to_onelake(dataset: str, workspace: Optional[str] = None, destination_lakehouse: Optional[str] = None, destination_workspace: Optional[str] = None):
 
     """
