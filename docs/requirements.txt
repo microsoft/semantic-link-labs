@@ -1,4 +1,4 @@
 semantic-link-sempy
 sphinx_rtd_theme
 pandas==2.0.3
-pyspark==3.5.0
+# pyspark==3.5.0
