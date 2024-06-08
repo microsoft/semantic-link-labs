@@ -18,7 +18,17 @@ release = '0.4.1'
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.napoleon']
+extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.napoleon',
+    "sphinx.ext.intersphinx",
+]
+
+intersphinx_mapping = {
+    'python': ('http://docs.python.org/', None),
+    'numpy': ('https://numpy.org/doc/stable/', None),
+    'pandas': ('http://pandas.pydata.org/pandas-docs/dev', None)
+}
 
 templates_path = ['_templates']
 exclude_patterns = []
