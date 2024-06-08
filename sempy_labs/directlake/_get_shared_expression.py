@@ -1,11 +1,12 @@
-import sempy
 import sempy.fabric as fabric
-from .HelperFunctions import resolve_lakehouse_name
-from .ListFunctions import list_lakehouses
-from typing import List, Optional, Union
+from sempy_labs._helper_functions import resolve_lakehouse_name
+from sempy_labs._list_functions import list_lakehouses
+from typing import Optional
 
-def get_shared_expression(lakehouse: Optional[str] = None, workspace: Optional[str] = None):
 
+def get_shared_expression(
+    lakehouse: Optional[str] = None, workspace: Optional[str] = None
+):
     """
     Dynamically generates the M expression used by a Direct Lake model for a given lakehouse.
 
@@ -34,17 +35,25 @@ def get_shared_expression(lakehouse: Optional[str] = None, workspace: Optional[s
         lakehouse_id = fabric.get_lakehouse_id()
         lakehouse = resolve_lakehouse_name(lakehouse_id)
 
-    dfL = list_lakehouses(workspace = workspace)
-    lakeDetail = dfL[dfL['Lakehouse Name'] == lakehouse]
+    dfL = list_lakehouses(workspace=workspace)
+    lakeDetail = dfL[dfL["Lakehouse Name"] == lakehouse]
 
-    sqlEPCS = lakeDetail['SQL Endpoint Connection String'].iloc[0]
-    sqlepid = lakeDetail['SQL Endpoint ID'].iloc[0]
-    provStatus = lakeDetail['SQL Endpoint Provisioning Status'].iloc[0]
+    sqlEPCS = lakeDetail["SQL Endpoint Connection String"].iloc[0]
+    sqlepid = lakeDetail["SQL Endpoint ID"].iloc[0]
+    provStatus = lakeDetail["SQL Endpoint Provisioning Status"].iloc[0]
 
-    if provStatus == 'InProgress':
-        print(f"The SQL Endpoint for the '{lakehouse}' lakehouse within the '{workspace}' workspace has not yet been provisioned. Please wait until it has been provisioned.")
+    if provStatus == "InProgress":
+        print(
+            f"The SQL Endpoint for the '{lakehouse}' lakehouse within the '{workspace}' workspace has not yet been provisioned. Please wait until it has been provisioned."
+        )
         return
-    
-    sh = 'let\n\tdatabase = Sql.Database("' + sqlEPCS + '", "' + sqlepid + '")\nin\n\tdatabase'
+
+    sh = (
+        'let\n\tdatabase = Sql.Database("'
+        + sqlEPCS
+        + '", "'
+        + sqlepid
+        + '")\nin\n\tdatabase'
+    )
 
     return sh

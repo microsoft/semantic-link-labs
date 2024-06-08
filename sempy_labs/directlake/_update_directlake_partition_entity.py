@@ -1,10 +1,14 @@
-import sempy
 import sempy.fabric as fabric
-from .TOM  import connect_semantic_model
+from sempy_labs.TOM import connect_semantic_model
 from typing import List, Optional, Union
 
-def update_direct_lake_partition_entity(dataset: str, table_name: Union[str, List[str]], entity_name: Union[str, List[str]], workspace: Optional[str] = None):
 
+def update_direct_lake_partition_entity(
+    dataset: str,
+    table_name: Union[str, List[str]],
+    entity_name: Union[str, List[str]],
+    workspace: Optional[str] = None,
+):
     """
     Remaps a table (or tables) in a Direct Lake semantic model to a table in a lakehouse.
 
@@ -20,11 +24,7 @@ def update_direct_lake_partition_entity(dataset: str, table_name: Union[str, Lis
         The Fabric workspace name in which the semantic model exists.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-    
-    """  
+    """
 
     if workspace == None:
         workspace_id = fabric.get_workspace_id()
@@ -37,26 +37,32 @@ def update_direct_lake_partition_entity(dataset: str, table_name: Union[str, Lis
         table_name = [table_name]
     if isinstance(entity_name, str):
         entity_name = [entity_name]
-    
+
     if len(table_name) != len(entity_name):
-        print(f"ERROR: The 'table_name' and 'entity_name' arrays must be of equal length.")
+        print(
+            f"ERROR: The 'table_name' and 'entity_name' arrays must be of equal length."
+        )
         return
-    
-    with connect_semantic_model(dataset=dataset, readonly=False, workspace=workspace) as tom:
+
+    with connect_semantic_model(
+        dataset=dataset, readonly=False, workspace=workspace
+    ) as tom:
 
         if not tom.is_direct_lake():
-            print(f"The '{dataset}' semantic model within the '{workspace}' workspace is not in Direct Lake mode.")
+            print(
+                f"The '{dataset}' semantic model within the '{workspace}' workspace is not in Direct Lake mode."
+            )
             return
 
         for tName in table_name:
             i = table_name.index(tName)
             eName = entity_name[i]
             try:
-                tom.model.Tables[tName].Partitions[0].EntityName = eName                 
-                print(f"The '{tName}' table in the '{dataset}' semantic model has been updated to point to the '{eName}' table in the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace.")
+                tom.model.Tables[tName].Partitions[0].EntityName = eName
+                print(
+                    f"The '{tName}' table in the '{dataset}' semantic model has been updated to point to the '{eName}' table in the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace."
+                )
             except:
-                print(f"ERROR: The '{tName}' table in the '{dataset}' semantic model has not been updated.")
-
-
-    
-
+                print(
+                    f"ERROR: The '{tName}' table in the '{dataset}' semantic model has not been updated."
+                )

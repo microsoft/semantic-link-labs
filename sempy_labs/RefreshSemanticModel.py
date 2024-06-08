@@ -1,18 +1,22 @@
 import sempy
 import sempy.fabric as fabric
 import time
-from .HelperFunctions import resolve_dataset_id
+from ._helper_functions import resolve_dataset_id
 from typing import List, Optional, Union
 from sempy._utils._log import log
+import sempy_labs._icons as icons
 
-green_dot = '\U0001F7E2'
-yellow_dot = '\U0001F7E1'
-red_dot = '\U0001F534'
-in_progress = '⌛'
 
 @log
-def refresh_semantic_model(dataset: str, tables: Optional[Union[str, List[str]]] = None, partitions: Optional[Union[str, List[str]]] = None, refresh_type: Optional[str] = None, retry_count: Optional[int] = 0, apply_refresh_policy: Optional[bool] = True, workspace: Optional[str] = None):
-
+def refresh_semantic_model(
+    dataset: str,
+    tables: Optional[Union[str, List[str]]] = None,
+    partitions: Optional[Union[str, List[str]]] = None,
+    refresh_type: Optional[str] = None,
+    retry_count: Optional[int] = 0,
+    apply_refresh_policy: Optional[bool] = True,
+    workspace: Optional[str] = None,
+):
     """
     Refreshes a semantic model.
 
@@ -37,7 +41,7 @@ def refresh_semantic_model(dataset: str, tables: Optional[Union[str, List[str]]]
 
     Returns
     -------
-    
+
     """
 
     if workspace == None:
@@ -45,7 +49,7 @@ def refresh_semantic_model(dataset: str, tables: Optional[Union[str, List[str]]]
         workspace = fabric.resolve_workspace_name(workspace_id)
 
     if refresh_type is None:
-        refresh_type = 'full'
+        refresh_type = "full"
 
     if isinstance(tables, str):
         tables = [tables]
@@ -57,6 +61,7 @@ def refresh_semantic_model(dataset: str, tables: Optional[Union[str, List[str]]]
     if tables is not None:
         objects = objects + [{"table": table} for table in tables]
     if partitions is not None:
+
         def extract_names(partition):
             parts = partition.split("[")
             table_name = parts[0].strip("'")
@@ -65,43 +70,79 @@ def refresh_semantic_model(dataset: str, tables: Optional[Union[str, List[str]]]
 
         objects = objects + [extract_names(partition) for partition in partitions]
 
-    refresh_type = refresh_type.lower().replace('only', 'Only').replace('values', 'Values')
+    refresh_type = (
+        refresh_type.lower().replace("only", "Only").replace("values", "Values")
+    )
 
-    refreshTypes = ['full', 'automatic', 'dataOnly', 'calculate', 'clearValues', 'defragment']
+    refreshTypes = [
+        "full",
+        "automatic",
+        "dataOnly",
+        "calculate",
+        "clearValues",
+        "defragment",
+    ]
 
     if refresh_type not in refreshTypes:
-        print(f"{red_dot} Invalid refresh type. Refresh type must be one of these values: {refreshTypes}.")
+        print(
+            f"{icons.red_dot} Invalid refresh type. Refresh type must be one of these values: {refreshTypes}."
+        )
         return
-        
+
     if len(objects) == 0:
-        requestID = fabric.refresh_dataset(dataset = dataset, workspace = workspace, refresh_type = refresh_type, retry_count = retry_count, apply_refresh_policy = apply_refresh_policy)
+        requestID = fabric.refresh_dataset(
+            dataset=dataset,
+            workspace=workspace,
+            refresh_type=refresh_type,
+            retry_count=retry_count,
+            apply_refresh_policy=apply_refresh_policy,
+        )
     else:
-        requestID = fabric.refresh_dataset(dataset = dataset, workspace = workspace, refresh_type = refresh_type, retry_count = retry_count, apply_refresh_policy = apply_refresh_policy, objects = objects)
-    print(f"{in_progress} Refresh of the '{dataset}' semantic model within the '{workspace}' workspace is in progress...")
+        requestID = fabric.refresh_dataset(
+            dataset=dataset,
+            workspace=workspace,
+            refresh_type=refresh_type,
+            retry_count=retry_count,
+            apply_refresh_policy=apply_refresh_policy,
+            objects=objects,
+        )
+    print(
+        f"{icons.in_progress} Refresh of the '{dataset}' semantic model within the '{workspace}' workspace is in progress..."
+    )
     if len(objects) != 0:
         print(objects)
 
     while True:
-        requestDetails = fabric.get_refresh_execution_details(dataset = dataset,refresh_request_id = requestID, workspace = workspace)
+        requestDetails = fabric.get_refresh_execution_details(
+            dataset=dataset, refresh_request_id=requestID, workspace=workspace
+        )
         status = requestDetails.status
 
         # Check if the refresh has completed
-        if status == 'Completed':
+        if status == "Completed":
             break
-        elif status == 'Failed':
-            print(f"{red_dot} The refresh of the '{dataset}' semantic model within the '{workspace}' workspace has failed.")
+        elif status == "Failed":
+            print(
+                f"{icons.red_dot} The refresh of the '{dataset}' semantic model within the '{workspace}' workspace has failed."
+            )
             return
-        elif status == 'Cancelled':
-            print(f"{yellow_dot} The refresh of the '{dataset}' semantic model within the '{workspace}' workspace has been cancelled.")
+        elif status == "Cancelled":
+            print(
+                f"{icons.yellow_dot} The refresh of the '{dataset}' semantic model within the '{workspace}' workspace has been cancelled."
+            )
             return
 
         time.sleep(3)
 
-    print(f"{green_dot} Refresh of the '{dataset}' semantic model within the '{workspace}' workspace is complete.")
+    print(
+        f"{icons.green_dot} Refresh of the '{dataset}' semantic model within the '{workspace}' workspace is complete."
+    )
+
 
 @log
-def cancel_dataset_refresh(dataset: str, request_id: Optional[str] = None, workspace: Optional[str] = None):
-
+def cancel_dataset_refresh(
+    dataset: str, request_id: Optional[str] = None, workspace: Optional[str] = None
+):
     """
     Cancels the refresh of a semantic model which was executed via the [Enhanced Refresh API](https://learn.microsoft.com/power-bi/connect-data/asynchronous-refresh).
 
@@ -110,7 +151,7 @@ def cancel_dataset_refresh(dataset: str, request_id: Optional[str] = None, works
     dataset : str
         Name of the semantic model.
     request_id : str, default=None
-        The request id of a semantic model refresh. 
+        The request id of a semantic model refresh.
         Defaults to finding the latest active refresh of the semantic model.
     workspace : str, default=None
         The Fabric workspace name.
@@ -119,31 +160,36 @@ def cancel_dataset_refresh(dataset: str, request_id: Optional[str] = None, works
 
     Returns
     -------
-    
-    """ 
+
+    """
 
     if workspace == None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
     else:
         workspace_id = fabric.resolve_workspace_id(workspace)
-    
-    rr = fabric.list_refresh_requests(dataset = dataset, workspace = workspace)
-    rr_filt = rr[rr['Status'] == 'Unknown']
+
+    rr = fabric.list_refresh_requests(dataset=dataset, workspace=workspace)
+    rr_filt = rr[rr["Status"] == "Unknown"]
 
     if request_id == None:
         if len(rr_filt) == 0:
-            print(f"{red_dot} There are no active Enhanced API refreshes of the '{dataset}' semantic model within the '{workspace}' workspace.")
+            print(
+                f"{icons.red_dot} There are no active Enhanced API refreshes of the '{dataset}' semantic model within the '{workspace}' workspace."
+            )
             return
-        request_id = rr_filt['Request Id'].iloc[0]
-    
-    dataset_id = resolve_dataset_id(dataset = dataset, workspace = workspace)
+        request_id = rr_filt["Request Id"].iloc[0]
+
+    dataset_id = resolve_dataset_id(dataset=dataset, workspace=workspace)
 
     client = fabric.PowerBIRestClient()
 
-    response = client.delete(f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/refreshes/{request_id}")    
+    response = client.delete(
+        f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/refreshes/{request_id}"
+    )
     if response.status_code == 200:
-        print(f"{green_dot} The '{request_id}' refresh request for the '{dataset}' semantic model within the '{workspace}' workspace has been cancelled.")
+        print(
+            f"{icons.green_dot} The '{request_id}' refresh request for the '{dataset}' semantic model within the '{workspace}' workspace has been cancelled."
+        )
     else:
         print(response.status_code)
-

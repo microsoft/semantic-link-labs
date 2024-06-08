@@ -1,13 +1,18 @@
 import sempy
 import sempy.fabric as fabric
 import pandas as pd
-from .HelperFunctions import resolve_dataset_id
+from ._helper_functions import resolve_dataset_id
 from typing import List, Optional, Union
 from sempy._utils._log import log
 
-@log
-def run_dax(dataset: str, dax_query: str, user_name: Optional[str] = None, workspace: Optional[str] = None):
 
+@log
+def run_dax(
+    dataset: str,
+    dax_query: str,
+    user_name: Optional[str] = None,
+    workspace: Optional[str] = None,
+):
     """
     Runs a DAX query against a semantic model.
 
@@ -30,7 +35,7 @@ def run_dax(dataset: str, dax_query: str, user_name: Optional[str] = None, works
         A pandas dataframe holding the result of the DAX query.
     """
 
-    #https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/execute-queries-in-group
+    # https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/execute-queries-in-group
 
     if workspace is None:
         workspace_id = fabric.get_workspace_id()
@@ -38,31 +43,24 @@ def run_dax(dataset: str, dax_query: str, user_name: Optional[str] = None, works
     else:
         workspace_id = fabric.resolve_workspace_id(workspace)
 
-    dataset_id = resolve_dataset_id(dataset = dataset, workspace = workspace)    
+    dataset_id = resolve_dataset_id(dataset=dataset, workspace=workspace)
 
     if user_name is None:
-        request_body = {
-    "queries": [
-        {
-        "query": dax_query
-        }
-    ]
-    }
+        request_body = {"queries": [{"query": dax_query}]}
     else:
         request_body = {
-    "queries": [
-        {
-        "query": dax_query
+            "queries": [{"query": dax_query}],
+            "impersonatedUserName": user_name,
         }
-    ],
-    "impersonatedUserName": user_name
-    }
 
     client = fabric.PowerBIRestClient()
-    response = client.post(f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/executeQueries", json = request_body)
-    data = response.json()['results'][0]['tables']
-    column_names = data[0]['rows'][0].keys()
-    data_rows = [row.values() for item in data for row in item['rows']]
+    response = client.post(
+        f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/executeQueries",
+        json=request_body,
+    )
+    data = response.json()["results"][0]["tables"]
+    column_names = data[0]["rows"][0].keys()
+    data_rows = [row.values() for item in data for row in item["rows"]]
     df = pd.DataFrame(data_rows, columns=column_names)
-    
+
     return df

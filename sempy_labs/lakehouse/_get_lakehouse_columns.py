@@ -1,14 +1,18 @@
-import sempy
 import sempy.fabric as fabric
 import pandas as pd
 from pyspark.sql import SparkSession
-from delta import DeltaTable
-from .HelperFunctions import resolve_lakehouse_name, format_dax_object_name, resolve_lakehouse_id
-from .GetLakehouseTables import get_lakehouse_tables
-from typing import List, Optional, Union
+from sempy_labs._helper_functions import (
+    resolve_lakehouse_name,
+    format_dax_object_name,
+    resolve_lakehouse_id,
+)
+from typing import Optional
+from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 
-def get_lakehouse_columns(lakehouse: Optional[str] = None, workspace: Optional[str] = None):
 
+def get_lakehouse_columns(
+    lakehouse: Optional[str] = None, workspace: Optional[str] = None
+):
     """
     Shows the tables and columns of a lakehouse and their respective properties.
 
@@ -28,7 +32,16 @@ def get_lakehouse_columns(lakehouse: Optional[str] = None, workspace: Optional[s
         Shows the tables/columns within a lakehouse and their properties.
     """
 
-    df = pd.DataFrame(columns=['Workspace Name', 'Lakehouse Name', 'Table Name', 'Column Name', 'Full Column Name', 'Data Type'])
+    df = pd.DataFrame(
+        columns=[
+            "Workspace Name",
+            "Lakehouse Name",
+            "Table Name",
+            "Column Name",
+            "Full Column Name",
+            "Data Type",
+        ]
+    )
 
     if workspace == None:
         workspace_id = fabric.get_workspace_id()
@@ -44,18 +57,27 @@ def get_lakehouse_columns(lakehouse: Optional[str] = None, workspace: Optional[s
 
     spark = SparkSession.builder.getOrCreate()
 
-    tables = get_lakehouse_tables(lakehouse = lakehouse, workspace = workspace, extended = False, count_rows = False)
-    tables_filt = tables[tables['Format'] == 'delta']
+    tables = get_lakehouse_tables(
+        lakehouse=lakehouse, workspace=workspace, extended=False, count_rows=False
+    )
+    tables_filt = tables[tables["Format"] == "delta"]
 
     for i, r in tables_filt.iterrows():
-        tName = r['Table Name']
-        tPath = r['Location']
+        tName = r["Table Name"]
+        tPath = r["Location"]
         delta_table = DeltaTable.forPath(spark, tPath)
         sparkdf = delta_table.toDF()
 
         for cName, data_type in sparkdf.dtypes:
             tc = format_dax_object_name(tName, cName)
-            new_data = {'Workspace Name': workspace, 'Lakehouse Name': lakehouse, 'Table Name': tName, 'Column Name': cName, 'Full Column Name': tc, 'Data Type': data_type}
+            new_data = {
+                "Workspace Name": workspace,
+                "Lakehouse Name": lakehouse,
+                "Table Name": tName,
+                "Column Name": cName,
+                "Full Column Name": tc,
+                "Data Type": data_type,
+            }
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df

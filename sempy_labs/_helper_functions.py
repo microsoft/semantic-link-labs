@@ -1,17 +1,14 @@
-import sempy
 import sempy.fabric as fabric
 import re
 from pyspark.sql import SparkSession
-from typing import List, Optional, Union
+from typing import Optional
 from uuid import UUID
+import sempy_labs._icons as icons
 
-green_dot = '\U0001F7E2'
-yellow_dot = '\U0001F7E1'
-red_dot = '\U0001F534'
-in_progress = '⌛'
 
-def create_abfss_path(lakehouse_id: UUID, lakehouse_workspace_id: UUID, delta_table_name: str):
-
+def create_abfss_path(
+    lakehouse_id: UUID, lakehouse_workspace_id: UUID, delta_table_name: str
+):
     """
     Creates an abfss path for a delta table in a Fabric lakehouse.
 
@@ -32,8 +29,8 @@ def create_abfss_path(lakehouse_id: UUID, lakehouse_workspace_id: UUID, delta_ta
 
     return f"abfss://{lakehouse_workspace_id}@onelake.dfs.fabric.microsoft.com/{lakehouse_id}/Tables/{delta_table_name}"
 
-def format_dax_object_name(a: str,b: str):
 
+def format_dax_object_name(a: str, b: str):
     """
     Formats a table/column combination to the 'Table Name'[Column Name] format.
 
@@ -49,11 +46,13 @@ def format_dax_object_name(a: str,b: str):
     str
         The fully qualified object name.
     """
-    
+
     return "'" + a + "'[" + b + "]"
 
-def create_relationship_name(from_table: str, from_column: str, to_table: str, to_column: str):
 
+def create_relationship_name(
+    from_table: str, from_column: str, to_table: str, to_column: str
+):
     """
     Formats a relationship's table/columns into a fully qualified name.
 
@@ -71,13 +70,17 @@ def create_relationship_name(from_table: str, from_column: str, to_table: str, t
     Returns
     -------
     str
-        The fully qualified relationship name.       
+        The fully qualified relationship name.
     """
 
-    return format_dax_object_name(from_table, from_column) + ' -> ' + format_dax_object_name(to_table, to_column)
+    return (
+        format_dax_object_name(from_table, from_column)
+        + " -> "
+        + format_dax_object_name(to_table, to_column)
+    )
+
 
 def resolve_report_id(report: str, workspace: Optional[str] = None):
-
     """
     Obtains the ID of the Power BI report.
 
@@ -95,22 +98,22 @@ def resolve_report_id(report: str, workspace: Optional[str] = None):
     UUID
         The ID of the Power BI report.
     """
-    
+
     if workspace == None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
-    obj = fabric.resolve_item_id(item_name = report, type = 'Report', workspace = workspace)
+    obj = fabric.resolve_item_id(item_name=report, type="Report", workspace=workspace)
 
-    #objectType = 'Report'
-    #dfI = fabric.list_items(workspace = workspace, type = objectType)
-    #dfI_filt = dfI[(dfI['Display Name'] == report)]
-    #obj = dfI_filt['Id'].iloc[0]
+    # objectType = 'Report'
+    # dfI = fabric.list_items(workspace = workspace, type = objectType)
+    # dfI_filt = dfI[(dfI['Display Name'] == report)]
+    # obj = dfI_filt['Id'].iloc[0]
 
     return obj
 
-def resolve_report_name(report_id: UUID, workspace: Optional[str] = None):
 
+def resolve_report_name(report_id: UUID, workspace: Optional[str] = None):
     """
     Obtains the name of the Power BI report.
 
@@ -128,23 +131,24 @@ def resolve_report_name(report_id: UUID, workspace: Optional[str] = None):
     str
         The name of the Power BI report.
     """
-    
-    
+
     if workspace == None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
-    obj = fabric.resolve_item_name(item_id = report_id, type = 'Report', workspace = workspace)
+    obj = fabric.resolve_item_name(
+        item_id=report_id, type="Report", workspace=workspace
+    )
 
-    #objectType = 'Report'
-    #dfI = fabric.list_items(workspace = workspace, type = objectType)
-    #dfI_filt = dfI[(dfI['Id'] == report_id)]
-    #obj = dfI_filt['Display Name'].iloc[0]
+    # objectType = 'Report'
+    # dfI = fabric.list_items(workspace = workspace, type = objectType)
+    # dfI_filt = dfI[(dfI['Id'] == report_id)]
+    # obj = dfI_filt['Display Name'].iloc[0]
 
     return obj
 
-def resolve_dataset_id(dataset: str, workspace: Optional[str] = None):
 
+def resolve_dataset_id(dataset: str, workspace: Optional[str] = None):
     """
     Obtains the ID of the semantic model.
 
@@ -162,22 +166,24 @@ def resolve_dataset_id(dataset: str, workspace: Optional[str] = None):
     UUID
         The ID of the semantic model.
     """
-    
+
     if workspace == None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
-    obj = fabric.resolve_item_id(item_name = dataset, type = 'SemanticModel', workspace = workspace)
+    obj = fabric.resolve_item_id(
+        item_name=dataset, type="SemanticModel", workspace=workspace
+    )
 
-    #objectType = 'SemanticModel'
-    #dfI = fabric.list_items(workspace = workspace, type = objectType)
-    #dfI_filt = dfI[(dfI['Display Name'] == dataset)]
-    #obj = dfI_filt['Id'].iloc[0]
+    # objectType = 'SemanticModel'
+    # dfI = fabric.list_items(workspace = workspace, type = objectType)
+    # dfI_filt = dfI[(dfI['Display Name'] == dataset)]
+    # obj = dfI_filt['Id'].iloc[0]
 
     return obj
 
-def resolve_dataset_name(dataset_id: UUID, workspace: Optional[str] = None):
 
+def resolve_dataset_name(dataset_id: UUID, workspace: Optional[str] = None):
     """
     Obtains the name of the semantic model.
 
@@ -195,22 +201,24 @@ def resolve_dataset_name(dataset_id: UUID, workspace: Optional[str] = None):
     str
         The name of the semantic model.
     """
-    
+
     if workspace == None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
-    obj = fabric.resolve_item_name(item_id = dataset_id, type = 'SemanticModel', workspace = workspace)
+    obj = fabric.resolve_item_name(
+        item_id=dataset_id, type="SemanticModel", workspace=workspace
+    )
 
-    #objectType = 'SemanticModel'
-    #dfI = fabric.list_items(workspace = workspace, type = objectType)
-    #dfI_filt = dfI[(dfI['Id'] == dataset_id)]
-    #obj = dfI_filt['Display Name'].iloc[0]
+    # objectType = 'SemanticModel'
+    # dfI = fabric.list_items(workspace = workspace, type = objectType)
+    # dfI_filt = dfI[(dfI['Id'] == dataset_id)]
+    # obj = dfI_filt['Display Name'].iloc[0]
 
     return obj
 
-def resolve_lakehouse_name(lakehouse_id: UUID, workspace: Optional[str] = None):
 
+def resolve_lakehouse_name(lakehouse_id: UUID, workspace: Optional[str] = None):
     """
     Obtains the name of the Fabric lakehouse.
 
@@ -228,27 +236,29 @@ def resolve_lakehouse_name(lakehouse_id: UUID, workspace: Optional[str] = None):
     str
         The name of the Fabric lakehouse.
     """
-    
+
     if workspace == None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
-    obj = fabric.resolve_item_name(item_id = lakehouse_id, type = 'Lakehouse', workspace = workspace)
+    obj = fabric.resolve_item_name(
+        item_id=lakehouse_id, type="Lakehouse", workspace=workspace
+    )
 
-    #objectType = 'Lakehouse'
-    #dfI = fabric.list_items(workspace = workspace, type = objectType)
-    #dfI_filt = dfI[(dfI['Id'] == lakehouse_id)]
+    # objectType = 'Lakehouse'
+    # dfI = fabric.list_items(workspace = workspace, type = objectType)
+    # dfI_filt = dfI[(dfI['Id'] == lakehouse_id)]
 
-    #if len(dfI_filt) == 0:
+    # if len(dfI_filt) == 0:
     #    print(f"The '{lakehouse_id}' Lakehouse Id does not exist within the '{workspace}' workspace.")
     #    return
-    
-    #obj = dfI_filt['Display Name'].iloc[0]
+
+    # obj = dfI_filt['Display Name'].iloc[0]
 
     return obj
 
-def resolve_lakehouse_id(lakehouse: str, workspace: Optional[str] = None):
 
+def resolve_lakehouse_id(lakehouse: str, workspace: Optional[str] = None):
     """
     Obtains the ID of the Fabric lakehouse.
 
@@ -266,27 +276,29 @@ def resolve_lakehouse_id(lakehouse: str, workspace: Optional[str] = None):
     UUID
         The ID of the Fabric lakehouse.
     """
-    
+
     if workspace == None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
-    obj = fabric.resolve_item_id(item_name = lakehouse, type = 'Lakehouse', workspace = workspace)
+    obj = fabric.resolve_item_id(
+        item_name=lakehouse, type="Lakehouse", workspace=workspace
+    )
 
-    #objectType = 'Lakehouse'    
-    #dfI = fabric.list_items(workspace = workspace, type = objectType)
-    #dfI_filt = dfI[(dfI['Display Name'] == lakehouse)]
+    # objectType = 'Lakehouse'
+    # dfI = fabric.list_items(workspace = workspace, type = objectType)
+    # dfI_filt = dfI[(dfI['Display Name'] == lakehouse)]
 
-    #if len(dfI_filt) == 0:
+    # if len(dfI_filt) == 0:
     #    print(f"The '{lakehouse}' lakehouse does not exist within the '{workspace}' workspace.")
     #    return
-    
-    #obj = dfI_filt['Id'].iloc[0]
+
+    # obj = dfI_filt['Id'].iloc[0]
 
     return obj
 
-def get_direct_lake_sql_endpoint(dataset: str, workspace: Optional[str] = None):
 
+def get_direct_lake_sql_endpoint(dataset: str, workspace: Optional[str] = None):
     """
     Obtains the SQL Endpoint ID of the semantic model.
 
@@ -309,24 +321,26 @@ def get_direct_lake_sql_endpoint(dataset: str, workspace: Optional[str] = None):
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
-    dfP = fabric.list_partitions(dataset = dataset, workspace = workspace)
-    dfP_filt = dfP[dfP['Mode'] == 'DirectLake']
+    dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
+    dfP_filt = dfP[dfP["Mode"] == "DirectLake"]
 
     if len(dfP_filt) == 0:
-        print(f"The '{dataset}' semantic model in the '{workspace}' workspace is not in Direct Lake mode.")
+        print(
+            f"The '{dataset}' semantic model in the '{workspace}' workspace is not in Direct Lake mode."
+        )
         return
-    
-    dfE = fabric.list_expressions(dataset = dataset, workspace = workspace)
-    dfE_filt = dfE[dfE['Name']== 'DatabaseQuery']
-    expr = dfE_filt['Expression'].iloc[0]
+
+    dfE = fabric.list_expressions(dataset=dataset, workspace=workspace)
+    dfE_filt = dfE[dfE["Name"] == "DatabaseQuery"]
+    expr = dfE_filt["Expression"].iloc[0]
 
     matches = re.findall(r'"([^"]*)"', expr)
     sqlEndpointId = matches[1]
-    
+
     return sqlEndpointId
 
-def generate_embedded_filter(filter: str):
 
+def generate_embedded_filter(filter: str):
     """
     Converts the filter expression to a filter expression which can be used by a Power BI embedded URL.
 
@@ -344,27 +358,60 @@ def generate_embedded_filter(filter: str):
     pattern = r"'[^']+'\[[^\[]+\]"
     matches = re.findall(pattern, filter)
     for match in matches:
-        matchReplace = match.replace("'",'').replace('[','/').replace(']','')\
-        .replace(' ','_x0020_').replace('@','_00x40_').replace('+','_0x2B_').replace('{','_007B_').replace('}','_007D_')
+        matchReplace = (
+            match.replace("'", "")
+            .replace("[", "/")
+            .replace("]", "")
+            .replace(" ", "_x0020_")
+            .replace("@", "_00x40_")
+            .replace("+", "_0x2B_")
+            .replace("{", "_007B_")
+            .replace("}", "_007D_")
+        )
         filter = filter.replace(match, matchReplace)
-    
+
     pattern = r"\[[^\[]+\]"
     matches = re.findall(pattern, filter)
     for match in matches:
-        matchReplace = match.replace("'",'').replace('[','/').replace(']','')\
-        .replace(' ','_x0020_').replace('@','_00x40_').replace('+','_0x2B_').replace('{','_007B_').replace('}','_007D_')
+        matchReplace = (
+            match.replace("'", "")
+            .replace("[", "/")
+            .replace("]", "")
+            .replace(" ", "_x0020_")
+            .replace("@", "_00x40_")
+            .replace("+", "_0x2B_")
+            .replace("{", "_007B_")
+            .replace("}", "_007D_")
+        )
         filter = filter.replace(match, matchReplace)
 
-    revised_filter = filter.replace('<=','le').replace('>=','ge').replace('<>','ne').replace('!=','ne')\
-            .replace('==','eq').replace('=','eq').replace('<','lt').replace('>','gt')\
-            .replace(' && ',' and ').replace(' & ',' and ')\
-            .replace(' || ',' or ').replace(' | ',' or ')\
-            .replace('{','(').replace('}',')')
-    
+    revised_filter = (
+        filter.replace("<=", "le")
+        .replace(">=", "ge")
+        .replace("<>", "ne")
+        .replace("!=", "ne")
+        .replace("==", "eq")
+        .replace("=", "eq")
+        .replace("<", "lt")
+        .replace(">", "gt")
+        .replace(" && ", " and ")
+        .replace(" & ", " and ")
+        .replace(" || ", " or ")
+        .replace(" | ", " or ")
+        .replace("{", "(")
+        .replace("}", ")")
+    )
+
     return revised_filter
 
-def save_as_delta_table(dataframe, delta_table_name: str, write_mode: str, lakehouse: Optional[str] = None, workspace: Optional[str] = None):
 
+def save_as_delta_table(
+    dataframe,
+    delta_table_name: str,
+    write_mode: str,
+    lakehouse: Optional[str] = None,
+    workspace: Optional[str] = None,
+):
     """
     Saves a pandas dataframe as a delta table in a Fabric lakehouse.
 
@@ -398,26 +445,38 @@ def save_as_delta_table(dataframe, delta_table_name: str, write_mode: str, lakeh
 
     if lakehouse is None:
         lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse = resolve_lakehouse_name(lakehouse_id=lakehouse_id, workspace=workspace)
+        lakehouse = resolve_lakehouse_name(
+            lakehouse_id=lakehouse_id, workspace=workspace
+        )
     else:
         lakehouse_id = resolve_lakehouse_id(lakehouse, workspace)
 
-    writeModes = ['append', 'overwrite']
+    writeModes = ["append", "overwrite"]
     write_mode = write_mode.lower()
 
     if write_mode not in writeModes:
-        print(f"{red_dot} Invalid 'write_type' parameter. Choose from one of the following values: {writeModes}.")
+        print(
+            f"{icons.red_dot} Invalid 'write_type' parameter. Choose from one of the following values: {writeModes}."
+        )
         return
 
-    if ' ' in delta_table_name:
-        print(f"{red_dot} Invalid 'delta_table_name'. Delta tables in the lakehouse cannot have spaces in their names.")
+    if " " in delta_table_name:
+        print(
+            f"{icons.red_dot} Invalid 'delta_table_name'. Delta tables in the lakehouse cannot have spaces in their names."
+        )
         return
-    
-    dataframe.columns = dataframe.columns.str.replace(' ', '_')
+
+    dataframe.columns = dataframe.columns.str.replace(" ", "_")
 
     spark = SparkSession.builder.getOrCreate()
     spark_df = spark.createDataFrame(dataframe)
 
-    filePath = create_abfss_path(lakehouse_id = lakehouse_id, lakehouse_workspace_id = workspace_id, delta_table_name = delta_table_name)
-    spark_df.write.mode(write_mode).format('delta').save(filePath)
-    print(f"{green_dot} The dataframe has been saved as the '{delta_table_name}' table in the '{lakehouse}' lakehouse within the '{workspace}' workspace.")
+    filePath = create_abfss_path(
+        lakehouse_id=lakehouse_id,
+        lakehouse_workspace_id=workspace_id,
+        delta_table_name=delta_table_name,
+    )
+    spark_df.write.mode(write_mode).format("delta").save(filePath)
+    print(
+        f"{icons.green_dot} The dataframe has been saved as the '{delta_table_name}' table in the '{lakehouse}' lakehouse within the '{workspace}' workspace."
+    )

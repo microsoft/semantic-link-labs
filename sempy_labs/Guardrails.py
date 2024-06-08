@@ -3,8 +3,8 @@ import sempy.fabric as fabric
 import pandas as pd
 from typing import List, Optional, Union
 
-def get_direct_lake_guardrails():
 
+def get_direct_lake_guardrails():
     """
     Shows the guardrails for when Direct Lake semantic models will fallback to Direct Query based on Microsoft's online documentation.
 
@@ -17,17 +17,17 @@ def get_direct_lake_guardrails():
         A table showing the Direct Lake guardrails by SKU.
     """
 
-    url = 'https://learn.microsoft.com/power-bi/enterprise/directlake-overview'
+    url = "https://learn.microsoft.com/power-bi/enterprise/directlake-overview"
 
     tables = pd.read_html(url)
     df = tables[0]
-    df['Fabric SKUs'] = df['Fabric SKUs'].str.split('/')
-    df = df.explode('Fabric SKUs', ignore_index=True)
-    
+    df["Fabric SKUs"] = df["Fabric SKUs"].str.split("/")
+    df = df.explode("Fabric SKUs", ignore_index=True)
+
     return df
 
-def get_sku_size(workspace: Optional[str] = None):
 
+def get_sku_size(workspace: Optional[str] = None):
     """
     Shows the SKU size for a workspace.
 
@@ -49,15 +49,20 @@ def get_sku_size(workspace: Optional[str] = None):
         workspace = fabric.resolve_workspace_name(workspace_id)
 
     dfC = fabric.list_capacities()
-    dfW = fabric.list_workspaces().sort_values(by='Name', ascending=True)
-    dfC.rename(columns={'Id': 'Capacity Id'}, inplace=True)
-    dfCW = pd.merge(dfW, dfC[['Capacity Id', 'Sku', 'Region', 'State']], on='Capacity Id', how='inner')
-    sku_value = dfCW.loc[dfCW['Name'] == workspace, 'Sku'].iloc[0]
-    
+    dfW = fabric.list_workspaces().sort_values(by="Name", ascending=True)
+    dfC.rename(columns={"Id": "Capacity Id"}, inplace=True)
+    dfCW = pd.merge(
+        dfW,
+        dfC[["Capacity Id", "Sku", "Region", "State"]],
+        on="Capacity Id",
+        how="inner",
+    )
+    sku_value = dfCW.loc[dfCW["Name"] == workspace, "Sku"].iloc[0]
+
     return sku_value
 
-def get_directlake_guardrails_for_sku(sku_size: str):
 
+def get_directlake_guardrails_for_sku(sku_size: str):
     """
     Shows the guardrails for Direct Lake based on the SKU used by your workspace's capacity.
     *Use the result of the 'get_sku_size' function as an input for this function's skuSize parameter.*
@@ -65,7 +70,7 @@ def get_directlake_guardrails_for_sku(sku_size: str):
     Parameters
     ----------
     sku_size : str
-        Sku size of a workspace/capacity        
+        Sku size of a workspace/capacity
 
     Returns
     -------
@@ -74,6 +79,6 @@ def get_directlake_guardrails_for_sku(sku_size: str):
     """
 
     df = get_direct_lake_guardrails()
-    filtered_df = df[df['Fabric SKUs'] == sku_size]
-    
+    filtered_df = df[df["Fabric SKUs"] == sku_size]
+
     return filtered_df

@@ -6,66 +6,94 @@ from pyspark.sql.functions import col
 from pyspark.sql import SparkSession
 from typing import List, Optional, Union
 
+
 def optimize_semantic_model(dataset: str, workspace: Optional[str] = None):
 
     from .ModelBPA import run_model_bpa
-    from .Fallback import check_fallback_reason
-    from .HelperFunctions import format_dax_object_name
+    from ._fallback import check_fallback_reason
+    from ._helper_functions import format_dax_object_name
 
-    modelBPA = run_model_bpa(dataset = dataset, workspace = workspace, return_dataframe = True)
-    dfC = fabric.list_columns(dataset = dataset, workspace = workspace, extended = True)
-    dfC['Column Object'] = format_dax_object_name(dfC['Table Name'], dfC['Column Name'])
-    dfC['Total Size'] = dfC['Total Size'].astype('int')
-    dfP = fabric.list_partitions(dataset = dataset, workspace = workspace)
+    modelBPA = run_model_bpa(
+        dataset=dataset, workspace=workspace, return_dataframe=True
+    )
+    dfC = fabric.list_columns(dataset=dataset, workspace=workspace, extended=True)
+    dfC["Column Object"] = format_dax_object_name(dfC["Table Name"], dfC["Column Name"])
+    dfC["Total Size"] = dfC["Total Size"].astype("int")
+    dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
 
-    modelBPA_col = modelBPA[modelBPA['Object Type'] == 'Column']
-    modelBPA_col = pd.merge(modelBPA_col, dfC[['Column Object', 'Total Size']], left_on = 'Object Name', right_on = 'Column Object', how = 'left')
+    modelBPA_col = modelBPA[modelBPA["Object Type"] == "Column"]
+    modelBPA_col = pd.merge(
+        modelBPA_col,
+        dfC[["Column Object", "Total Size"]],
+        left_on="Object Name",
+        right_on="Column Object",
+        how="left",
+    )
 
-    isDirectLake = any(r['Mode'] == 'DirectLake' for i, r in dfP.iterrows())
+    isDirectLake = any(r["Mode"] == "DirectLake" for i, r in dfP.iterrows())
 
     if isDirectLake:
-        fallback = check_fallback_reason(dataset = dataset, workspace = workspace)
-        fallback_filt = fallback[fallback['FallbackReasonID']== 2]
+        fallback = check_fallback_reason(dataset=dataset, workspace=workspace)
+        fallback_filt = fallback[fallback["FallbackReasonID"] == 2]
 
         if len(fallback_filt) > 0:
-            print(f"The '{dataset}' semantic model is a Direct Lake semantic model which contains views. Since views always fall back to DirectQuery, it is recommended to only use lakehouse tables and not views.")
+            print(
+                f"The '{dataset}' semantic model is a Direct Lake semantic model which contains views. Since views always fall back to DirectQuery, it is recommended to only use lakehouse tables and not views."
+            )
 
     # Potential model reduction estimate
-    ruleNames = ['Remove unnecessary columns','Set IsAvailableInMdx to false on non-attribute columns']
+    ruleNames = [
+        "Remove unnecessary columns",
+        "Set IsAvailableInMdx to false on non-attribute columns",
+    ]
 
     for rule in ruleNames:
-        df = modelBPA_col[modelBPA_col['Rule Name'] == rule]        
-        df_filt = df[['Object Name', 'Total Size']].sort_values(by='Total Size', ascending=False)
-        totSize = df['Total Size'].sum()
+        df = modelBPA_col[modelBPA_col["Rule Name"] == rule]
+        df_filt = df[["Object Name", "Total Size"]].sort_values(
+            by="Total Size", ascending=False
+        )
+        totSize = df["Total Size"].sum()
         if len(df_filt) > 0:
-            print(f"Potential savings of {totSize} bytes from following the '{rule}' rule.")
+            print(
+                f"Potential savings of {totSize} bytes from following the '{rule}' rule."
+            )
             display(df_filt)
         else:
             print(f"The '{rule}' rule has been followed.")
 
 
-def generate_measure_descriptions(dataset: str, measures: Union[str,List[str]], gpt_model: Optional[str] = 'gpt-35-turbo', workspace: Optional[str] = None):
+def generate_measure_descriptions(
+    dataset: str,
+    measures: Union[str, List[str]],
+    gpt_model: Optional[str] = "gpt-35-turbo",
+    workspace: Optional[str] = None,
+):
 
-    service_name = 'synapseml-openai'
+    service_name = "synapseml-openai"
 
     if isinstance(measures, str):
         measures = [measures]
 
-    validModels = ['gpt-35-turbo', 'gpt-35-turbo-16k', 'gpt-4']
+    validModels = ["gpt-35-turbo", "gpt-35-turbo-16k", "gpt-4"]
     if gpt_model not in validModels:
-        print(f"The '{gpt_model}' model is not a valid model. Enter a gpt_model from this list: {validModels}.")
+        print(
+            f"The '{gpt_model}' model is not a valid model. Enter a gpt_model from this list: {validModels}."
+        )
         return
 
-    dfM = fabric.list_measures(dataset = dataset, workspace = workspace)
+    dfM = fabric.list_measures(dataset=dataset, workspace=workspace)
 
     if measures is not None:
-        dfM_filt = dfM[dfM['Measure Name'].isin(measures)]
+        dfM_filt = dfM[dfM["Measure Name"].isin(measures)]
     else:
         dfM_filt = dfM
 
-    df = dfM_filt[['Table Name', 'Measure Name', 'Measure Expression']]
+    df = dfM_filt[["Table Name", "Measure Name", "Measure Expression"]]
 
-    df['prompt'] = f"The following is DAX code used by Microsoft Power BI. Please explain this code in simple terms:" +df['Measure Expression']
+    df["prompt"] = (
+        f"The following is DAX code used by Microsoft Power BI. Please explain this code in simple terms:"
+        + df["Measure Expression"]
+    )
 
     # Generate new column in df dataframe which has the AI-generated descriptions
     completion = {
@@ -73,43 +101,55 @@ def generate_measure_descriptions(dataset: str, measures: Union[str,List[str]], 
         .setDeploymentName(gpt_model)
         .setMaxTokens(200)
         .setCustomServiceName(service_name)
-        .setPromptCol('prompt')
-        .setErrorCol('error')
-        .setOutputCol('completions')
+        .setPromptCol("prompt")
+        .setErrorCol("error")
+        .setOutputCol("completions")
     }
 
     completed_df = completion.transform(df).cache()
     completed_df.select(
-        col('prompt'),
-        col('error'),
-        col('completions.choices.text').getItem(0).alias('text'),
+        col("prompt"),
+        col("error"),
+        col("completions.choices.text").getItem(0).alias("text"),
     )
 
     # Update the model to use the new descriptions
     tom_server = fabric.create_tom_server(readonly=False, workspace=workspace)
     m = tom_server.Databases.GetByName(dataset).Model
 
-    #for t in m.Tables:
-        #tName = t.Name
-        #for ms in t.Measures:
-            #mName = ms.Name
-            #mDesc = promptValue
+    # for t in m.Tables:
+    # tName = t.Name
+    # for ms in t.Measures:
+    # mName = ms.Name
+    # mDesc = promptValue
 
-    #m.SaveChanges()
+    # m.SaveChanges()
 
-def generate_aggs(dataset: str, table_name: str, columns: Union[str,List[str]], workspace: Optional[str] = None, lakehouse_workspace: Optional[str] = None):
 
-    from .HelperFunctions import get_direct_lake_sql_endpoint, create_abfss_path, format_dax_object_name, resolve_lakehouse_id
-    
+def generate_aggs(
+    dataset: str,
+    table_name: str,
+    columns: Union[str, List[str]],
+    workspace: Optional[str] = None,
+    lakehouse_workspace: Optional[str] = None,
+):
+
+    from ._helper_functions import (
+        get_direct_lake_sql_endpoint,
+        create_abfss_path,
+        format_dax_object_name,
+        resolve_lakehouse_id,
+    )
+
     sempy.fabric._client._utils._init_analysis_services()
     import Microsoft.AnalysisServices.Tabular as TOM
     import System
 
-    #columns = {
+    # columns = {
     #'SalesAmount': 'Sum',
     #'ProductKey': 'GroupBy',
     #'OrderDateKey': 'GroupBy'
-    #}
+    # }
 
     if workspace == None:
         workspace_id = fabric.get_workspace_id()
@@ -125,71 +165,87 @@ def generate_aggs(dataset: str, table_name: str, columns: Union[str,List[str]], 
         columns = [columns]
 
     columnValues = columns.keys()
-    
-    aggTypes = ['Sum', 'Count', 'Min', 'Max', 'GroupBy']
-    aggTypesAggregate =  ['Sum', 'Count', 'Min', 'Max']
-    numericTypes = ['Int64', 'Double', 'Decimal']
+
+    aggTypes = ["Sum", "Count", "Min", "Max", "GroupBy"]
+    aggTypesAggregate = ["Sum", "Count", "Min", "Max"]
+    numericTypes = ["Int64", "Double", "Decimal"]
 
     if any(value not in aggTypes for value in columns.values()):
-        print(f"Invalid aggregation type(s) have been specified in the 'columns' parameter. Valid aggregation types: {aggTypes}.")
+        print(
+            f"Invalid aggregation type(s) have been specified in the 'columns' parameter. Valid aggregation types: {aggTypes}."
+        )
         return
 
-    dfC = fabric.list_columns(dataset = dataset, workspace = workspace)
-    dfP = fabric.list_partitions(dataset = dataset, workspace = workspace)
-    dfM = fabric.list_measures(dataset = dataset, workspace = workspace)
-    dfR = fabric.list_relationships(dataset = dataset, workspace = workspace)
-    if not any(r['Mode'] == 'DirectLake' for i, r in dfP.iterrows()):
-        print(f"The '{dataset}' semantic model within the '{workspace}' workspace is not in Direct Lake mode. This function is only relevant for Direct Lake semantic models.")
+    dfC = fabric.list_columns(dataset=dataset, workspace=workspace)
+    dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
+    dfM = fabric.list_measures(dataset=dataset, workspace=workspace)
+    dfR = fabric.list_relationships(dataset=dataset, workspace=workspace)
+    if not any(r["Mode"] == "DirectLake" for i, r in dfP.iterrows()):
+        print(
+            f"The '{dataset}' semantic model within the '{workspace}' workspace is not in Direct Lake mode. This function is only relevant for Direct Lake semantic models."
+        )
         return
-    
-    dfC_filtT = dfC[dfC['Table Name'] == table_name]
+
+    dfC_filtT = dfC[dfC["Table Name"] == table_name]
 
     if len(dfC_filtT) == 0:
-        print(f"The '{table_name}' table does not exist in the '{dataset}' semantic model within the '{workspace}' workspace.")
+        print(
+            f"The '{table_name}' table does not exist in the '{dataset}' semantic model within the '{workspace}' workspace."
+        )
         return
-    
-    dfC_filt = dfC[(dfC['Table Name'] == table_name) & (dfC['Column Name'].isin(columnValues))]
+
+    dfC_filt = dfC[
+        (dfC["Table Name"] == table_name) & (dfC["Column Name"].isin(columnValues))
+    ]
 
     if len(columns) != len(dfC_filt):
-        print(f"Columns listed in '{columnValues}' do not exist in the '{table_name}' table in the '{dataset}' semantic model within the '{workspace}' workspace.")
+        print(
+            f"Columns listed in '{columnValues}' do not exist in the '{table_name}' table in the '{dataset}' semantic model within the '{workspace}' workspace."
+        )
         return
-    
+
     # Check if doing sum/count/min/max etc. on a non-number column
-    for col,agg in columns.items():
-        dfC_col = dfC_filt[dfC_filt['Column Name'] == col]
-        dataType = dfC_col['Data Type'].iloc[0]
+    for col, agg in columns.items():
+        dfC_col = dfC_filt[dfC_filt["Column Name"] == col]
+        dataType = dfC_col["Data Type"].iloc[0]
         if agg in aggTypesAggregate and dataType not in numericTypes:
-            print(f"The '{col}' column in the '{table_name}' table is of '{dataType}' data type. Only columns of '{numericTypes}' data types can be aggregated as '{aggTypesAggregate}' aggregation types.")
+            print(
+                f"The '{col}' column in the '{table_name}' table is of '{dataType}' data type. Only columns of '{numericTypes}' data types can be aggregated as '{aggTypesAggregate}' aggregation types."
+            )
             return
 
     # Create/update lakehouse delta agg table
-    aggSuffix = '_agg'
+    aggSuffix = "_agg"
     aggTableName = f"{table_name}{aggSuffix}"
-    aggLakeTName = aggTableName.lower().replace(' ','_')
-    dfP = fabric.list_partitions(dataset = dataset, workspace = workspace)
-    dfP_filt = dfP[dfP['Table Name'] == table_name]
-    lakeTName = dfP_filt['Query'].iloc[0]
+    aggLakeTName = aggTableName.lower().replace(" ", "_")
+    dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
+    dfP_filt = dfP[dfP["Table Name"] == table_name]
+    lakeTName = dfP_filt["Query"].iloc[0]
 
-    sqlEndpointId = get_direct_lake_sql_endpoint(dataset = dataset, workspace = workspace)
+    sqlEndpointId = get_direct_lake_sql_endpoint(dataset=dataset, workspace=workspace)
 
-    dfI = fabric.list_items(workspace = lakehouse_workspace, type = 'SQLEndpoint')
-    dfI_filt = dfI[(dfI['Id'] == sqlEndpointId)]
+    dfI = fabric.list_items(workspace=lakehouse_workspace, type="SQLEndpoint")
+    dfI_filt = dfI[(dfI["Id"] == sqlEndpointId)]
 
     if len(dfI_filt) == 0:
-        print(f"The lakehouse (SQL Endpoint) used by the '{dataset}' semantic model does not reside in the '{lakehouse_workspace}' workspace. Please update the lakehouse_workspace parameter.")
+        print(
+            f"The lakehouse (SQL Endpoint) used by the '{dataset}' semantic model does not reside in the '{lakehouse_workspace}' workspace. Please update the lakehouse_workspace parameter."
+        )
         return
-    
-    lakehouseName = dfI_filt['Display Name'].iloc[0]
-    lakehouse_id = resolve_lakehouse_id(lakehouse = lakehouseName, workspace = lakehouse_workspace)
+
+    lakehouseName = dfI_filt["Display Name"].iloc[0]
+    lakehouse_id = resolve_lakehouse_id(
+        lakehouse=lakehouseName, workspace=lakehouse_workspace
+    )
 
     # Generate SQL query
-    query = 'SELECT'
-    groupBy = '\nGROUP BY'
+    query = "SELECT"
+    groupBy = "\nGROUP BY"
     for col, agg in columns.items():
-        colFilt = dfC_filt[dfC_filt['Column Name'] == col]
-        sourceCol = colFilt['Source'].iloc[0]
+        colFilt = dfC_filt[dfC_filt["Column Name"] == col]
+        sourceCol = colFilt["Source"].iloc[0]
 
-        if agg == 'GroupBy':
+        if agg == "GroupBy":
             query = f"{query}\n{sourceCol},"
             groupBy = f"{groupBy}\n{sourceCol},"
         else:
@@ -198,12 +254,16 @@ def generate_aggs(dataset: str, table_name: str, columns: Union[str,List[str]], 
     query = query[:-1]
 
     spark = SparkSession.builder.getOrCreate()
-    fromTablePath = create_abfss_path(lakehouse_id=lakehouse_id, lakehouse_workspace_id=lakehouse_workspace_id, delta_table_name=lakeTName)
+    fromTablePath = create_abfss_path(
+        lakehouse_id=lakehouse_id,
+        lakehouse_workspace_id=lakehouse_workspace_id,
+        delta_table_name=lakeTName,
+    )
     df = spark.read.format("delta").load(fromTablePath)
-    tempTableName = 'delta_table_' + lakeTName
+    tempTableName = "delta_table_" + lakeTName
     df.createOrReplaceTempView(tempTableName)
     sqlQuery = f"{query} \n FROM {tempTableName} {groupBy}"
-    
+
     sqlQuery = sqlQuery[:-1]
     print(sqlQuery)
 
@@ -211,20 +271,24 @@ def generate_aggs(dataset: str, table_name: str, columns: Union[str,List[str]], 
     spark_df = spark.sql(sqlQuery)
     f"\nCreating/updating the '{aggLakeTName}' table in the lakehouse..."
     # Write spark dataframe to delta table
-    aggFilePath = create_abfss_path(lakehouse_id = lakehouse_id, lakehouse_workspace_id = lakehouse_workspace_id, delta_table_name = aggLakeTName)
-    spark_df.write.mode('overwrite').format('delta').save(aggFilePath)
+    aggFilePath = create_abfss_path(
+        lakehouse_id=lakehouse_id,
+        lakehouse_workspace_id=lakehouse_workspace_id,
+        delta_table_name=aggLakeTName,
+    )
+    spark_df.write.mode("overwrite").format("delta").save(aggFilePath)
     f"The '{aggLakeTName}' table has been created/updated in the lakehouse."
 
     # Create/update semantic model agg table
     tom_server = fabric.create_tom_server(readonly=False, workspace=workspace)
     m = tom_server.Databases.GetByName(dataset).Model
     f"\nUpdating the '{dataset}' semantic model..."
-    dfC_agg = dfC[dfC['Table Name'] == aggTableName]
+    dfC_agg = dfC[dfC["Table Name"] == aggTableName]
 
     if len(dfC_agg) == 0:
         print(f"Creating the '{aggTableName}' table...")
-        exp = m.Expressions['DatabaseQuery']
-        tbl = TOM.Table()        
+        exp = m.Expressions["DatabaseQuery"]
+        tbl = TOM.Table()
         tbl.Name = aggTableName
         tbl.IsHidden = True
 
@@ -241,9 +305,9 @@ def generate_aggs(dataset: str, table_name: str, columns: Union[str,List[str]], 
         tbl.Partitions.Add(part)
 
         for i, r in dfC_filt.iterrows():
-            scName = r['Source']
-            cName = r['Column Name']
-            dType = r['Data Type']
+            scName = r["Source"]
+            cName = r["Column Name"]
+            dType = r["Data Type"]
 
             col = TOM.DataColumn()
             col.Name = cName
@@ -252,10 +316,14 @@ def generate_aggs(dataset: str, table_name: str, columns: Union[str,List[str]], 
             col.DataType = System.Enum.Parse(TOM.DataType, dType)
 
             tbl.Columns.Add(col)
-            print(f"The '{aggTableName}'[{cName}] column has been added to the '{dataset}' semantic model.")
+            print(
+                f"The '{aggTableName}'[{cName}] column has been added to the '{dataset}' semantic model."
+            )
 
         m.Tables.Add(tbl)
-        print(f"The '{aggTableName}' table has been added to the '{dataset}' semantic model.")
+        print(
+            f"The '{aggTableName}' table has been added to the '{dataset}' semantic model."
+        )
     else:
         print(f"Updating the '{aggTableName}' table's columns...")
         # Remove existing columns
@@ -267,9 +335,9 @@ def generate_aggs(dataset: str, table_name: str, columns: Union[str,List[str]], 
                     m.Tables[tName].Columns.Remove(cName)
         # Add columns
         for i, r in dfC_filt.iterrows():
-            scName = r['Source']
-            cName = r['Column Name']
-            dType = r['Data Type']
+            scName = r["Source"]
+            cName = r["Column Name"]
+            dType = r["Data Type"]
 
             col = TOM.DataColumn()
             col.Name = cName
@@ -281,58 +349,68 @@ def generate_aggs(dataset: str, table_name: str, columns: Union[str,List[str]], 
             print(f"The '{aggTableName}'[{cName}] column has been added.")
 
     # Create relationships
-    relMap = {
-    'm': 'Many',
-    '1': 'One',
-    '0': 'None'
-    }
+    relMap = {"m": "Many", "1": "One", "0": "None"}
 
     print(f"\nGenerating necessary relationships...")
     for i, r in dfR.iterrows():
-        fromTable = r['From Table']
-        fromColumn = r['From Column']
-        toTable = r['To Table']
-        toColumn = r['To Column']
-        cfb = r['Cross Filtering Behavior']
-        sfb = r['Security Filtering Behavior']
-        mult = r['Multiplicity']
+        fromTable = r["From Table"]
+        fromColumn = r["From Column"]
+        toTable = r["To Table"]
+        toColumn = r["To Column"]
+        cfb = r["Cross Filtering Behavior"]
+        sfb = r["Security Filtering Behavior"]
+        mult = r["Multiplicity"]
 
-        crossFB = System.Enum.Parse(TOM.CrossFilteringBehavior,cfb)
-        secFB = System.Enum.Parse(TOM.SecurityFilteringBehavior,sfb)
-        fromCardinality = System.Enum.Parse(TOM.RelationshipEndCardinality, relMap.get(mult[0]))
-        toCardinality = System.Enum.Parse(TOM.RelationshipEndCardinality, relMap.get(mult[-1]))
-        
+        crossFB = System.Enum.Parse(TOM.CrossFilteringBehavior, cfb)
+        secFB = System.Enum.Parse(TOM.SecurityFilteringBehavior, sfb)
+        fromCardinality = System.Enum.Parse(
+            TOM.RelationshipEndCardinality, relMap.get(mult[0])
+        )
+        toCardinality = System.Enum.Parse(
+            TOM.RelationshipEndCardinality, relMap.get(mult[-1])
+        )
+
         rel = TOM.SingleColumnRelationship()
         rel.FromCardinality = fromCardinality
         rel.ToCardinality = toCardinality
-        rel.IsActive = r['Active']
+        rel.IsActive = r["Active"]
         rel.CrossFilteringBehavior = crossFB
         rel.SecurityFilteringBehavior = secFB
-        rel.RelyOnReferentialIntegrity = r['Rely On Referential Integrity']
+        rel.RelyOnReferentialIntegrity = r["Rely On Referential Integrity"]
 
         if fromTable == table_name:
             try:
                 rel.FromColumn = m.Tables[aggTableName].Columns[fromColumn]
                 m.Relationships.Add(rel)
-                print(f"'{aggTableName}'[{fromColumn}] -> '{toTable}'[{toColumn}] relationship has been added.")
+                print(
+                    f"'{aggTableName}'[{fromColumn}] -> '{toTable}'[{toColumn}] relationship has been added."
+                )
             except:
-                print(f"'{aggTableName}'[{fromColumn}] -> '{toTable}'[{toColumn}] relationship has not been created.")
-        elif toTable == table_name:            
+                print(
+                    f"'{aggTableName}'[{fromColumn}] -> '{toTable}'[{toColumn}] relationship has not been created."
+                )
+        elif toTable == table_name:
             try:
                 rel.ToColumn = m.Tables[aggTableName].Columns[toColumn]
                 m.Relationships.Add(rel)
-                print(f"'{fromTable}'[{fromColumn}] -> '{aggTableName}'[{toColumn}] relationship has been added.")
+                print(
+                    f"'{fromTable}'[{fromColumn}] -> '{aggTableName}'[{toColumn}] relationship has been added."
+                )
             except:
-                print(f"'{fromTable}'[{fromColumn}] -> '{aggTableName}'[{toColumn}] relationship has not been created.")
+                print(
+                    f"'{fromTable}'[{fromColumn}] -> '{aggTableName}'[{toColumn}] relationship has not been created."
+                )
     f"Relationship creation is complete."
 
     # Create IF measure
     f"\nCreating measure to check if the agg table can be used..."
-    aggChecker = 'IF('
-    dfR_filt = dfR[(dfR['From Table'] == table_name) & (~dfR['From Column'].isin(columnValues))]
+    aggChecker = "IF("
+    dfR_filt = dfR[
+        (dfR["From Table"] == table_name) & (~dfR["From Column"].isin(columnValues))
+    ]
 
     for i, r in dfR_filt.iterrows():
-        toTable = r['To Table']
+        toTable = r["To Table"]
         aggChecker = f"{aggChecker}\nISCROSSFILTERED('{toTable}') ||"
 
     aggChecker = aggChecker[:-3]
@@ -342,7 +420,10 @@ def generate_aggs(dataset: str, table_name: str, columns: Union[str,List[str]], 
     # Todo: add IFISFILTERED clause for columns
     f"\n Creating the base measures in the agg table..."
     # Create base agg measures
-    dep = fabric.evaluate_dax(dataset = dataset, workspace = workspace, dax_string = """
+    dep = fabric.evaluate_dax(
+        dataset=dataset,
+        workspace=workspace,
+        dax_string="""
         SELECT 
          [TABLE] AS [Table Name]
         ,[OBJECT] AS [Object Name]
@@ -352,27 +433,32 @@ def generate_aggs(dataset: str, table_name: str, columns: Union[str,List[str]], 
         ,[REFERENCED_OBJECT_TYPE] AS [Referenced Object Type]
         FROM $SYSTEM.DISCOVER_CALC_DEPENDENCY
         WHERE [OBJECT_TYPE] = 'MEASURE'
-        """)
-    
-    baseMeasures = dep[(dep['Referenced Object Type'] == 'COLUMN') & (dep['Referenced Table'] == table_name) & (dep['Referenced Object'].isin(columnValues))]
+        """,
+    )
+
+    baseMeasures = dep[
+        (dep["Referenced Object Type"] == "COLUMN")
+        & (dep["Referenced Table"] == table_name)
+        & (dep["Referenced Object"].isin(columnValues))
+    ]
     for i, r in baseMeasures.iterrows():
-        tName = r['Table Name']
-        mName = r['Object Name']
-        cName = r['Referenced Object']
-        dfM_filt = dfM[dfM['Measure Name'] == mName]
-        expr = dfM_filt['Measure Expression'].iloc[0]
+        tName = r["Table Name"]
+        mName = r["Object Name"]
+        cName = r["Referenced Object"]
+        dfM_filt = dfM[dfM["Measure Name"] == mName]
+        expr = dfM_filt["Measure Expression"].iloc[0]
 
         colFQNonAgg = format_dax_object_name(tName, cName)
         colFQAgg = format_dax_object_name(aggTableName, cName)
         colNQNonAgg = f"{tName}[{cName}]"
 
-        if ' ' in tName:
-            newExpr = expr.replace(colFQNonAgg,colFQAgg)
+        if " " in tName:
+            newExpr = expr.replace(colFQNonAgg, colFQAgg)
         else:
-            newExpr = expr.replace(colFQNonAgg, colFQAgg).replace(colNQNonAgg,colFQAgg)
+            newExpr = expr.replace(colFQNonAgg, colFQAgg).replace(colNQNonAgg, colFQAgg)
         print(expr)
         print(newExpr)
-                
+
         aggMName = mName + aggSuffix
         measure = TOM.Measure()
         measure.Name = aggMName
@@ -380,39 +466,30 @@ def generate_aggs(dataset: str, table_name: str, columns: Union[str,List[str]], 
         measure.Expression = newExpr
         m.Tables[aggTableName].Measures.Add(measure)
         f"The '{aggMName}' measure has been created in the '{aggTableName}' table."
- 
+
     # Update base detail measures
-    
-    #m.SaveChanges()
 
-
-
-
-
-
-
-
+    # m.SaveChanges()
 
 
 # Identify views used within Direct Lake model
-#workspace = 'MK Demo 6'
-#lakehouse = 'MyLakehouse'
-#dataset = 'MigrationTest'
-#lakehouse_workspace = workspace
+# workspace = 'MK Demo 6'
+# lakehouse = 'MyLakehouse'
+# dataset = 'MigrationTest'
+# lakehouse_workspace = workspace
 
-#dfView = pd.DataFrame(columns=['Workspace Name', 'Lakehouse Name', 'View Name'])
-#dfP = fabric.list_partitions(dataset = dataset, workspace = workspace)
-#isDirectLake = any(r['Mode'] == 'DirectLake' for i, r in dfP.iterrows())
+# dfView = pd.DataFrame(columns=['Workspace Name', 'Lakehouse Name', 'View Name'])
+# dfP = fabric.list_partitions(dataset = dataset, workspace = workspace)
+# isDirectLake = any(r['Mode'] == 'DirectLake' for i, r in dfP.iterrows())
 
-#spark = SparkSession.builder.getOrCreate()
-#views = spark.sql(f"SHOW VIEWS IN {lakehouse}").collect()
-#for view in views:
+# spark = SparkSession.builder.getOrCreate()
+# views = spark.sql(f"SHOW VIEWS IN {lakehouse}").collect()
+# for view in views:
 #    viewName = view['viewName']
 #    isTemporary = view['isTemporary']
 #    new_data = {'Workspace Name': workspace, 'Lakehouse Name': lakehouse, 'View Name': viewName}
 #    dfView = pd.concat([dfView, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-#dfView
-#lakeT = get_lakehouse_tables(lakehouse, lakehouse_workspace)
-#if not dfP['Query'].isin(lakeT['Table Name'].values):
+# dfView
+# lakeT = get_lakehouse_tables(lakehouse, lakehouse_workspace)
+# if not dfP['Query'].isin(lakeT['Table Name'].values):
 #    if
-

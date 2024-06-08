@@ -1,15 +1,15 @@
 import sempy
 import sempy.fabric as fabric
 from typing import List, Optional, Union
+import sempy_labs._icons as icons
 
-green_dot = '\U0001F7E2'
-yellow_dot = '\U0001F7E1'
-red_dot = '\U0001F534'
-in_progress = '⌛'
 
-def create_blank_semantic_model(dataset: str, compatibility_level: Optional[int] = 1605, workspace: Optional[str] = None):
-  
-  """
+def create_blank_semantic_model(
+    dataset: str,
+    compatibility_level: Optional[int] = 1605,
+    workspace: Optional[str] = None,
+):
+    """
     Creates a new blank semantic model (no tables/columns etc.).
 
     Parameters
@@ -23,21 +23,17 @@ def create_blank_semantic_model(dataset: str, compatibility_level: Optional[int]
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    
-    Returns
-    -------
-    
     """
 
-  if workspace == None:
-    workspace_id = fabric.get_workspace_id()
-    workspace = fabric.resolve_workspace_name(workspace_id)
+    if workspace == None:
+        workspace_id = fabric.get_workspace_id()
+        workspace = fabric.resolve_workspace_name(workspace_id)
 
-  if compatibility_level < 1500:
-    print(f"{red_dot} Compatiblity level must be at least 1500.")
-    return
+    if compatibility_level < 1500:
+        print(f"{icons.red_dot} Compatiblity level must be at least 1500.")
+        return
 
-  tmsl = f'''
+    tmsl = f"""
   {{
     "createOrReplace": {{
       "object": {{
@@ -53,8 +49,10 @@ def create_blank_semantic_model(dataset: str, compatibility_level: Optional[int]
       }}
     }}
   }}
-  '''
+  """
 
-  fabric.execute_tmsl(script = tmsl, workspace = workspace)
+    fabric.execute_tmsl(script=tmsl, workspace=workspace)
 
-  return print(f"{green_dot} The '{dataset}' semantic model was created within the '{workspace}' workspace.")
+    return print(
+        f"{icons.green_dot} The '{dataset}' semantic model was created within the '{workspace}' workspace."
+    )

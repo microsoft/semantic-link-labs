@@ -1,15 +1,11 @@
 import sempy
 import sempy.fabric as fabric
-from .HelperFunctions import resolve_dataset_id
+from sempy_labs._helper_functions import resolve_dataset_id
 from typing import List, Optional, Union
+import sempy_labs._icons as icons
 
-green_dot = '\U0001F7E2'
-yellow_dot = '\U0001F7E1'
-red_dot = '\U0001F534'
-in_progress = '⌛'
 
 def clear_cache(dataset: str, workspace: Optional[str] = None):
-
     """
     Clears the cache of a semantic model.
 
@@ -21,17 +17,13 @@ def clear_cache(dataset: str, workspace: Optional[str] = None):
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-    
     """
 
     if workspace == None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
-    datasetID = resolve_dataset_id(dataset = dataset, workspace = workspace)
+    datasetID = resolve_dataset_id(dataset=dataset, workspace=workspace)
 
     xmla = f"""
             <ClearCache xmlns="http://schemas.microsoft.com/analysisservices/2003/engine">  
@@ -40,8 +32,8 @@ def clear_cache(dataset: str, workspace: Optional[str] = None):
                 </Object>  
             </ClearCache>
             """
-    fabric.execute_xmla(dataset = dataset,xmla_command=xmla, workspace = workspace)
+    fabric.execute_xmla(dataset=dataset, xmla_command=xmla, workspace=workspace)
 
-    outputtext = f"{green_dot} Cache cleared for the '{dataset}' semantic model within the '{workspace}' workspace."
-    
+    outputtext = f"{icons.green_dot} Cache cleared for the '{dataset}' semantic model within the '{workspace}' workspace."
+
     return outputtext
