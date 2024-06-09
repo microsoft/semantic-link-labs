@@ -6,7 +6,9 @@ from delta import DeltaTable
 from .HelperFunctions import resolve_lakehouse_name, format_dax_object_name, resolve_lakehouse_id
 from .GetLakehouseTables import get_lakehouse_tables
 from typing import List, Optional, Union
+from sempy._utils._log import log
 
+@log
 def get_lakehouse_columns(lakehouse: Optional[str] = None, workspace: Optional[str] = None):
 
     """

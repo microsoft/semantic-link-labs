@@ -9,7 +9,7 @@ from .RefreshSemanticModel import refresh_semantic_model
 from .Fallback import check_fallback_reason
 from contextlib import contextmanager
 from typing import List, Optional, Union, TYPE_CHECKING
-
+from sempy._utils._log import log
 
 if TYPE_CHECKING:
     import Microsoft.AnalysisServices.Tabular
@@ -23,7 +23,7 @@ unchecked = '\u2610'
 start_bold = '\033[1m'
 end_bold = '\033[0m'
 
-
+@log
 @contextmanager
 def connect_semantic_model(dataset: str, readonly: Optional[bool] = True, workspace: Optional[str] = None):
 

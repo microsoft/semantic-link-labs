@@ -8,14 +8,14 @@ from .HelperFunctions import format_dax_object_name
 from .RefreshSemanticModel import refresh_semantic_model
 from .GetMeasureDependencies import get_measure_dependencies
 from typing import List, Optional, Union
-
+from sempy._utils._log import log
 
 green_dot = '\U0001F7E2'
 yellow_dot = '\U0001F7E1'
 red_dot = '\U0001F534'
 in_progress = '⌛'
 
-
+@log
 def warm_direct_lake_cache_perspective(dataset: str, perspective: str, add_dependencies: Optional[bool] = False, workspace: Optional[str] = None):
 
     """
@@ -115,7 +115,7 @@ def warm_direct_lake_cache_perspective(dataset: str, perspective: str, add_depen
     
     return df
 
-
+@log
 def warm_direct_lake_cache_isresident(dataset: str, workspace: Optional[str] = None):
 
     """

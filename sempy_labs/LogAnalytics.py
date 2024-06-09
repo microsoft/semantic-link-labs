@@ -3,9 +3,9 @@ import sempy.fabric as fabric
 import pandas as pd
 from .HelperFunctions import resolve_dataset_id
 from typing import List, Optional, Union
+from sempy._utils._log import log
 
-
-
+@log
 def run_dax(dataset: str, dax_query: str, user_name: Optional[str] = None, workspace: Optional[str] = None):
 
     """

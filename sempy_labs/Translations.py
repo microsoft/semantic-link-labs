@@ -1,6 +1,6 @@
 import pandas as pd
 from typing import List, Optional, Union
-
+from sempy._utils._log import log
 
 green_dot = '\U0001F7E2'
 yellow_dot = '\U0001F7E1'
@@ -42,7 +42,7 @@ def language_validate(language: str):
 
     return lang
 
-
+@log
 def translate_semantic_model(dataset: str, languages: Union[str, List[str]], exclude_characters: Optional[str] = None, workspace: Optional[str] = None):
 
     """

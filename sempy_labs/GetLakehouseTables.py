@@ -8,7 +8,9 @@ from .HelperFunctions import resolve_lakehouse_id, resolve_lakehouse_name
 from .Guardrails import get_sku_size, get_directlake_guardrails_for_sku
 from .Lakehouse import lakehouse_attached
 from typing import List, Optional, Union
+from sempy._utils._log import log
 
+@log
 def get_lakehouse_tables(lakehouse: Optional[str] = None, workspace: Optional[str] = None, extended: Optional[bool] = False, count_rows: Optional[bool] = False, export: Optional[bool] = False):
 
     """

@@ -1,4 +1,4 @@
-import sempy_labs
+import sempy
 import sempy.fabric as fabric
 import pandas as pd
 from .HelperFunctions import resolve_lakehouse_name, resolve_lakehouse_id

@@ -3,9 +3,9 @@ import sempy.fabric as fabric
 import pandas as pd
 from .ListFunctions import list_tables, list_annotations
 from typing import List, Optional, Union
+from sempy._utils._log import log
 
-
-
+@log
 def list_direct_lake_model_calc_tables(dataset: str, workspace: Optional[str] = None):
 
     """

@@ -4,9 +4,9 @@ import pandas as pd
 from .GetLakehouseColumns import get_lakehouse_columns
 from .HelperFunctions import format_dax_object_name, resolve_lakehouse_name, get_direct_lake_sql_endpoint
 from typing import List, Optional, Union
+from sempy._utils._log import log
 
-
-
+@log
 def direct_lake_schema_sync(dataset: str, workspace: Optional[str] = None, add_to_model: Optional[bool] = False, lakehouse: Optional[str] = None, lakehouse_workspace: Optional[str] = None):
 
     """

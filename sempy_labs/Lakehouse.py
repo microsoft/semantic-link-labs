@@ -5,6 +5,7 @@ from pyspark.sql import SparkSession
 from delta import DeltaTable
 from .HelperFunctions import resolve_lakehouse_name
 from typing import List, Optional, Union
+from sempy._utils._log import log
 
 def lakehouse_attached() -> bool:
 
@@ -28,6 +29,7 @@ def lakehouse_attached() -> bool:
     else:
         return False
 
+@log
 def optimize_lakehouse_tables(tables: Optional[Union[str, List[str]]] = None, lakehouse: Optional[str] = None, workspace: Optional[str] = None):
 
     """

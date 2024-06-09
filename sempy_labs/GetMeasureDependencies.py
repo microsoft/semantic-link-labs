@@ -3,7 +3,9 @@ import sempy.fabric as fabric
 import pandas as pd
 from .HelperFunctions import format_dax_object_name
 from typing import List, Optional, Union
+from sempy._utils._log import log
 
+@log
 def get_measure_dependencies(dataset: str, workspace: Optional[str] = None):
 
     """
@@ -75,6 +77,7 @@ def get_measure_dependencies(dataset: str, workspace: Optional[str] = None):
 
     return df
 
+@log
 def get_model_calc_dependencies(dataset: str, workspace: Optional[str] = None):
 
     """

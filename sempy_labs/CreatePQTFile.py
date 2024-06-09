@@ -5,7 +5,7 @@ import json, os, shutil
 import xml.etree.ElementTree as ET
 from .ListFunctions import list_tables
 from .Lakehouse import lakehouse_attached
-
+from sempy._utils._log import log
 from typing import List, Optional, Union
 
 green_dot = '\U0001F7E2'
@@ -13,7 +13,7 @@ yellow_dot = '\U0001F7E1'
 red_dot = '\U0001F534'
 in_progress = '⌛'
 
-
+@log
 def create_pqt_file(dataset: str, workspace: Optional[str] = None, file_name: Optional[str] = None):
 
     """

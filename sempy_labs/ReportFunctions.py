@@ -12,7 +12,7 @@ from .Translations import language_validate
 from .Lakehouse import lakehouse_attached
 from .HelperFunctions import generate_embedded_filter, resolve_dataset_name, resolve_report_id, resolve_lakehouse_name
 from typing import List, Optional, Union
-
+from sempy._utils._log import log
 
 green_dot = '\U0001F7E2'
 yellow_dot = '\U0001F7E1'
@@ -136,7 +136,7 @@ def report_dependency_tree(workspace: Optional[str] = None):
     for pre, _, node in RenderTree(node_dict[workspace]):
         print(f"{pre}{node.custom_property}'{node.name}'")
 
-
+@log
 def export_report(report: str, export_format: str, file_name: Optional[str] = None, bookmark_name: Optional[str] = None, page_name: Optional[str] = None, visual_name: Optional[str] = None, report_filter: Optional[str] = None, workspace: Optional[str] = None):
 
     """
@@ -348,7 +348,7 @@ def export_report(report: str, export_format: str, file_name: Optional[str] = No
                 export_file.write(response.content)
             print(f"{green_dot} The '{export_format}' export for the '{report}' report within the '{workspace}' workspace has been saved to the following location: '{filePath}'.")
 
-
+@log
 def clone_report(report: str, cloned_report: str, workspace: Optional[str] = None, target_workspace: Optional[str] = None, target_dataset: Optional[str] = None):
 
     """
@@ -646,6 +646,7 @@ def list_report_bookmarks(report: str, workspace: Optional[str] = None):
     except:
         print(f"The '{report}' report within the '{workspace}' workspace has no bookmarks.")
 
+@log
 def translate_report_titles(report: str, languages: Union[str,List[str]], workspace: Optional[str] = None):
 
     """

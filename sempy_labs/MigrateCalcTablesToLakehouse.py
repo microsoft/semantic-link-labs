@@ -7,14 +7,14 @@ from .HelperFunctions import resolve_lakehouse_name, resolve_lakehouse_id, creat
 from .TOM import connect_semantic_model
 from pyspark.sql import SparkSession
 from typing import List, Optional, Union
-
+from sempy._utils._log import log
 
 green_dot = '\U0001F7E2'
 yellow_dot = '\U0001F7E1'
 red_dot = '\U0001F534'
 in_progress = '⌛'
 
-
+@log
 def migrate_calc_tables_to_lakehouse(dataset: str, new_dataset: str, workspace: Optional[str] = None, new_dataset_workspace: Optional[str] = None, lakehouse: Optional[str] = None, lakehouse_workspace: Optional[str] = None):
 
     """
@@ -178,7 +178,7 @@ def migrate_calc_tables_to_lakehouse(dataset: str, new_dataset: str, workspace: 
                 break
             time.sleep(1)
 
-
+@log
 def migrate_field_parameters(dataset: str, new_dataset: str, workspace: Optional[str] = None, new_dataset_workspace: Optional[str] = None):
 
     """

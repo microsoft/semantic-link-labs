@@ -3,9 +3,9 @@ import sempy.fabric as fabric
 from anytree import Node, RenderTree
 from .GetMeasureDependencies import get_measure_dependencies
 from typing import List, Optional, Union
+from sempy._utils._log import log
 
-
-
+@log
 def measure_dependency_tree(dataset: str, measure_name: str, workspace: Optional[str] = None):
 
     """

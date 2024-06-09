@@ -3,14 +3,14 @@ import sempy.fabric as fabric
 import time
 from .HelperFunctions import resolve_dataset_id
 from typing import List, Optional, Union
-
+from sempy._utils._log import log
 
 green_dot = '\U0001F7E2'
 yellow_dot = '\U0001F7E1'
 red_dot = '\U0001F534'
 in_progress = '⌛'
 
-
+@log
 def refresh_semantic_model(dataset: str, tables: Optional[Union[str, List[str]]] = None, partitions: Optional[Union[str, List[str]]] = None, refresh_type: Optional[str] = None, retry_count: Optional[int] = 0, apply_refresh_policy: Optional[bool] = True, workspace: Optional[str] = None):
 
     """
@@ -99,7 +99,7 @@ def refresh_semantic_model(dataset: str, tables: Optional[Union[str, List[str]]]
 
     print(f"{green_dot} Refresh of the '{dataset}' semantic model within the '{workspace}' workspace is complete.")
 
-
+@log
 def cancel_dataset_refresh(dataset: str, request_id: Optional[str] = None, workspace: Optional[str] = None):
 
     """
