@@ -7,6 +7,7 @@ from sempy_labs._helper_functions import resolve_lakehouse_name
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 import sempy_labs._icons as icons
 
+
 def create_blank_semantic_model(
     dataset: str,
     compatibility_level: Optional[int] = 1605,
@@ -200,6 +201,7 @@ def deploy_semantic_model(
     create_semantic_model_from_bim(
         dataset=new_dataset, bim_file=bim, workspace=new_dataset_workspace
     )
+
 
 def get_semantic_model_bim(
     dataset: str,

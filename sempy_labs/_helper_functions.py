@@ -483,6 +483,7 @@ def save_as_delta_table(
         f"{icons.green_dot} The dataframe has been saved as the '{delta_table_name}' table in the '{lakehouse}' lakehouse within the '{workspace}' workspace."
     )
 
+
 def language_validate(language: str):
     """
     Validateds that the language specified exists within the supported langauges.

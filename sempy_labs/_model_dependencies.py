@@ -258,6 +258,8 @@ def get_model_calc_dependencies(dataset: str, workspace: Optional[str] = None):
     df = df.drop(["Done"], axis=1)
 
     return df
+
+
 @log
 def measure_dependency_tree(
     dataset: str, measure_name: str, workspace: Optional[str] = None

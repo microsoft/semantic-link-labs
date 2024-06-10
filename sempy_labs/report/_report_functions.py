@@ -14,7 +14,7 @@ from sempy_labs._helper_functions import (
     resolve_dataset_name,
     resolve_report_id,
     resolve_lakehouse_name,
-    language_validate
+    language_validate,
 )
 from typing import List, Optional, Union
 from sempy._utils._log import log

@@ -145,7 +145,7 @@ def cancel_dataset_refresh(
 ):
     """
     Cancels the refresh of a semantic model which was executed via the `Enhanced Refresh API <https://learn.microsoft.com/power-bi/connect-data/asynchronous-refresh>`_
-    
+
     Parameters
     ----------
     dataset : str
