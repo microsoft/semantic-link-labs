@@ -4,9 +4,9 @@ import pandas as pd
 from tqdm.auto import tqdm
 import numpy as np
 import time
-from ._helper_functions import format_dax_object_name
-from .RefreshSemanticModel import refresh_semantic_model
-from .GetMeasureDependencies import get_measure_dependencies
+from sempy_labs._helper_functions import format_dax_object_name
+from sempy_labs._refresh_semantic_model import refresh_semantic_model
+from sempy_labs._model_dependencies import get_measure_dependencies
 from typing import List, Optional, Union
 from sempy._utils._log import log
 import sempy_labs._icons as icons

@@ -2,11 +2,11 @@ import sempy
 import sempy.fabric as fabric
 import pandas as pd
 import datetime, time
-from ._list_functions import list_tables
-from .GetSharedExpression import get_shared_expression
-from .HelperFunctions import resolve_lakehouse_name
-from .lakehouse.Lakehouse import lakehouse_attached
-from .TOM import connect_semantic_model
+from sempy_labs._list_functions import list_tables
+from sempy_labs.directlake._get_shared_expression import get_shared_expression
+from sempy_labs._helper_functions import resolve_lakehouse_name
+from sempy_labs.lakehouse._lakehouse import lakehouse_attached
+from sempy_labs._tom import connect_semantic_model
 from typing import List, Optional, Union
 from sempy._utils._log import log
 import sempy_labs._icons as icons

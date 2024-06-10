@@ -1,3 +1,4 @@
+import sempy
 import sempy.fabric as fabric
 from tqdm.auto import tqdm
 from pyspark.sql import SparkSession
@@ -30,7 +31,7 @@ def optimize_lakehouse_tables(
     workspace: Optional[str] = None,
 ):
     """
-    Runs the [OPTIMIZE](https://docs.delta.io/latest/optimizations-oss.html) function over the specified lakehouse tables.
+    Runs the `OPTIMIZE <https://docs.delta.io/latest/optimizations-oss.html>`_ function over the specified lakehouse tables.
 
     Parameters
     ----------
@@ -45,7 +46,7 @@ def optimize_lakehouse_tables(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    from .lakehouse.GetLakehouseTables import get_lakehouse_tables
+    from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 
     if workspace == None:
         workspace_id = fabric.get_workspace_id()

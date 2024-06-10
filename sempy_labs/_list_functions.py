@@ -1,3 +1,4 @@
+import sempy
 import sempy.fabric as fabric
 import pandas as pd
 import json, time
@@ -1341,7 +1342,7 @@ def list_kpis(dataset: str, workspace: Optional[str] = None):
         A pandas dataframe showing the KPIs for the semantic model.
     """
 
-    from .TOM import connect_semantic_model
+    from ._tom import connect_semantic_model
 
     with connect_semantic_model(
         dataset=dataset, workspace=workspace, readonly=True

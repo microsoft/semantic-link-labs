@@ -1,7 +1,7 @@
-import sempy_labs
+import sempy
 import sempy.fabric as fabric
 import pandas as pd
-from ._helper_functions import resolve_lakehouse_name, resolve_lakehouse_id
+from sempy_labs._helper_functions import resolve_lakehouse_name, resolve_lakehouse_id
 from typing import List, Optional, Union
 import sempy_labs._icons as icons
 
@@ -15,7 +15,7 @@ def create_shortcut_onelake(
     shortcut_name: Optional[str] = None,
 ):
     """
-    Creates a [shortcut](https://learn.microsoft.com/fabric/onelake/onelake-shortcuts) to a delta table in OneLake.
+    Creates a `shortcut <https://learn.microsoft.com/fabric/onelake/onelake-shortcuts>`_ to a delta table in OneLake.
 
     Parameters
     ----------
@@ -95,7 +95,7 @@ def create_shortcut(
     workspace: Optional[str] = None,
 ):
     """
-    Creates a [shortcut](https://learn.microsoft.com/fabric/onelake/onelake-shortcuts) to an ADLS Gen2 or Amazon S3 source.
+    Creates a `shortcut <https://learn.microsoft.com/fabric/onelake/onelake-shortcuts>`_ to an ADLS Gen2 or Amazon S3 source.
 
     Parameters
     ----------

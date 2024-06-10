@@ -2,13 +2,13 @@ import sempy
 import sempy.fabric as fabric
 import pandas as pd
 import re, datetime, time
-from .lakehouse.GetLakehouseTables import get_lakehouse_tables
-from .HelperFunctions import (
+from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
+from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
     resolve_lakehouse_id,
     create_abfss_path,
 )
-from .TOM import connect_semantic_model
+from sempy_labs._tom import connect_semantic_model
 from pyspark.sql import SparkSession
 from typing import List, Optional, Union
 from sempy._utils._log import log

@@ -4,14 +4,14 @@ import pandas as pd
 from IPython.display import display, HTML
 import zipfile, os, shutil, datetime, warnings
 from pyspark.sql import SparkSession
-from ._helper_functions import (
+from sempy_labs._helper_functions import (
     format_dax_object_name,
     get_direct_lake_sql_endpoint,
     resolve_lakehouse_name,
 )
-from ._list_functions import list_relationships
-from .lakehouse.GetLakehouseTables import get_lakehouse_tables
-from .lakehouse.Lakehouse import lakehouse_attached
+from sempy_labs._list_functions import list_relationships
+from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
+from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from typing import List, Optional, Union
 from sempy._utils._log import log
 

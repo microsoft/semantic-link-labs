@@ -1,8 +1,8 @@
 import sempy
 import sempy.fabric as fabric
 import pandas as pd
-from .HelperFunctions import create_relationship_name
-from .TOM import connect_semantic_model
+from sempy_labs._helper_functions import create_relationship_name
+from sempy_labs._tom import connect_semantic_model
 from typing import List, Optional, Union
 from sempy._utils._log import log
 

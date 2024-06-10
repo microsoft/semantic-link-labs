@@ -9,8 +9,8 @@ from typing import List, Optional, Union
 
 def optimize_semantic_model(dataset: str, workspace: Optional[str] = None):
 
-    from .ModelBPA import run_model_bpa
-    from ._fallback import check_fallback_reason
+    from ._model_bpa import run_model_bpa
+    from .directlake._fallback import check_fallback_reason
     from ._helper_functions import format_dax_object_name
 
     modelBPA = run_model_bpa(

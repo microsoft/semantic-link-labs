@@ -1,8 +1,9 @@
+import sempy
 import sempy.fabric as fabric
 import json, os, shutil
 import xml.etree.ElementTree as ET
-from ._list_functions import list_tables
-from sempy_labs.lakehouse import lakehouse_attached
+from sempy_labs._list_functions import list_tables
+from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from sempy._utils._log import log
 from typing import Optional
 import sempy_labs._icons as icons
@@ -13,7 +14,7 @@ def create_pqt_file(
     dataset: str, workspace: Optional[str] = None, file_name: Optional[str] = None
 ):
     """
-    Dynamically generates a [Power Query Template](https://learn.microsoft.com/power-query/power-query-template) file based on the semantic model. The .pqt file is saved within the Files section of your lakehouse.
+    Dynamically generates a `Power Query Template <https://learn.microsoft.com/power-query/power-query-template>`_ file based on the semantic model. The .pqt file is saved within the Files section of your lakehouse.
 
     Parameters
     ----------

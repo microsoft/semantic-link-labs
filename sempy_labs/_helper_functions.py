@@ -1,5 +1,7 @@
+import sempy
 import sempy.fabric as fabric
 import re
+import pandas as pd
 from pyspark.sql import SparkSession
 from typing import Optional
 from uuid import UUID
@@ -480,3 +482,39 @@ def save_as_delta_table(
     print(
         f"{icons.green_dot} The dataframe has been saved as the '{delta_table_name}' table in the '{lakehouse}' lakehouse within the '{workspace}' workspace."
     )
+
+def language_validate(language: str):
+    """
+    Validateds that the language specified exists within the supported langauges.
+
+    Parameters
+    ----------
+    language : str
+        The language code.
+
+    Returns
+    -------
+    bool
+        A True/False indication as to whether the language code is supported.
+    """
+
+    url = "https://learn.microsoft.com/azure/ai-services/translator/language-support"
+
+    tables = pd.read_html(url)
+    df = tables[0]
+
+    df_filt = df[df["Language code"] == language]
+
+    df_filt2 = df[df["Language"] == language.capitalize()]
+
+    if len(df_filt) == 1:
+        lang = df_filt["Language"].iloc[0]
+    elif len(df_filt2) == 1:
+        lang = df_filt2["Language"].iloc[0]
+    else:
+        print(
+            f"The '{language}' language is not a valid language code. Please refer to this link for a list of valid language codes: {url}."
+        )
+        return
+
+    return lang

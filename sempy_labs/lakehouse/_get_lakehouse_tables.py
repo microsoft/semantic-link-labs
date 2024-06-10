@@ -5,7 +5,7 @@ from pyspark.sql import SparkSession
 import pyarrow.parquet as pq
 import datetime
 from sempy_labs._helper_functions import resolve_lakehouse_id, resolve_lakehouse_name
-from ..Guardrails import get_sku_size, get_directlake_guardrails_for_sku
+from sempy_labs.directlake._guardrails import get_sku_size, get_directlake_guardrails_for_sku
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from typing import Optional
 

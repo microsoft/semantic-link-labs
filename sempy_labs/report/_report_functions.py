@@ -7,14 +7,14 @@ from powerbiclient import Report
 from synapse.ml.services import Translate
 from pyspark.sql.functions import col, flatten
 from pyspark.sql import SparkSession
-from .report._generate_report import update_report_from_reportjson
-from .Translations import language_validate
-from .lakehouse.Lakehouse import lakehouse_attached
-from .HelperFunctions import (
+from sempy_labs.report._generate_report import update_report_from_reportjson
+from sempy_labs.lakehouse._lakehouse import lakehouse_attached
+from sempy_labs._helper_functions import (
     generate_embedded_filter,
     resolve_dataset_name,
     resolve_report_id,
     resolve_lakehouse_name,
+    language_validate
 )
 from typing import List, Optional, Union
 from sempy._utils._log import log
@@ -171,7 +171,8 @@ def export_report(
     report : str
         Name of the Power BI report.
     export_format : str
-        The format in which to export the report. See this link for valid formats: https://learn.microsoft.com/rest/api/power-bi/reports/export-to-file-in-group#fileformat. For image formats, enter the file extension in this parameter, not 'IMAGE'.
+        The format in which to export the report. For image formats, enter the file extension in this parameter, not 'IMAGE'.
+        `Valid formats <https://learn.microsoft.com/rest/api/power-bi/reports/export-to-file-in-group#fileformat>`_
     file_name : str, default=None
         The name of the file to be saved within the lakehouse. Do not include the file extension. Defaults ot the reportName parameter value.
     bookmark_name : str, default=None

@@ -1,7 +1,7 @@
 import sempy
 import sempy.fabric as fabric
 import pandas as pd
-from ._helper_functions import resolve_dataset_id
+from sempy_labs._helper_functions import resolve_dataset_id
 from typing import List, Optional, Union
 from sempy._utils._log import log
 
@@ -22,8 +22,9 @@ def run_dax(
         Name of the semantic model.
     dax_query : str
         The DAX query.
-    user_name : str | None
+    user_name : str
         The user name (i.e. hello@goodbye.com).
+        Defaults to None which resolves to no user impersonation.
     workspace : str, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse

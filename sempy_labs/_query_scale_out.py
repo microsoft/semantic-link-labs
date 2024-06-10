@@ -1,7 +1,7 @@
 import sempy
 import sempy.fabric as fabric
 import pandas as pd
-from ._helper_functions import resolve_dataset_id
+from sempy_labs._helper_functions import resolve_dataset_id
 from typing import List, Optional, Union
 import sempy_labs._icons as icons
 

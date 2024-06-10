@@ -5,10 +5,10 @@ import re, unicodedata, warnings, datetime
 import numpy as np
 from IPython.display import display, HTML
 from pyspark.sql import SparkSession
-from .GetMeasureDependencies import get_measure_dependencies
-from ._helper_functions import format_dax_object_name, resolve_lakehouse_name
-from .lakehouse.Lakehouse import lakehouse_attached
-from .lakehouse.GetLakehouseTables import get_lakehouse_tables
+from sempy_labs._model_dependencies import get_measure_dependencies
+from sempy_labs._helper_functions import format_dax_object_name, resolve_lakehouse_name
+from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
+from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from typing import List, Optional, Union
 from sempy._utils._log import log
 

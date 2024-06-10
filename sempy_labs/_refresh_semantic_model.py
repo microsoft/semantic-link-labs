@@ -1,7 +1,7 @@
 import sempy
 import sempy.fabric as fabric
 import time
-from ._helper_functions import resolve_dataset_id
+from sempy_labs._helper_functions import resolve_dataset_id
 from typing import List, Optional, Union
 from sempy._utils._log import log
 import sempy_labs._icons as icons
@@ -144,8 +144,8 @@ def cancel_dataset_refresh(
     dataset: str, request_id: Optional[str] = None, workspace: Optional[str] = None
 ):
     """
-    Cancels the refresh of a semantic model which was executed via the [Enhanced Refresh API](https://learn.microsoft.com/power-bi/connect-data/asynchronous-refresh).
-
+    Cancels the refresh of a semantic model which was executed via the `Enhanced Refresh API <https://learn.microsoft.com/power-bi/connect-data/asynchronous-refresh>`_
+    
     Parameters
     ----------
     dataset : str

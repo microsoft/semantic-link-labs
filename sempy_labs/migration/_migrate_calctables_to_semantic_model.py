@@ -1,8 +1,9 @@
+import sempy
 import sempy.fabric as fabric
 import re, datetime, time
-from .lakehouse.GetLakehouseTables import get_lakehouse_tables
-from .HelperFunctions import resolve_lakehouse_name
-from .TOM import connect_semantic_model
+from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
+from sempy_labs._helper_functions import resolve_lakehouse_name
+from sempy_labs._tom import connect_semantic_model
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons

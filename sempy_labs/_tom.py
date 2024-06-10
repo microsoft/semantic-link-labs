@@ -3,10 +3,10 @@ import sempy.fabric as fabric
 import pandas as pd
 import re
 from datetime import datetime
-from ._helper_functions import format_dax_object_name
-from ._list_functions import list_relationships
-from .RefreshSemanticModel import refresh_semantic_model
-from ._fallback import check_fallback_reason
+from sempy_labs._helper_functions import format_dax_object_name
+from sempy_labs._list_functions import list_relationships
+from sempy_labs._refresh_semantic_model import refresh_semantic_model
+from sempy_labs.directlake._fallback import check_fallback_reason
 from contextlib import contextmanager
 from typing import List, Optional, Union, TYPE_CHECKING
 from sempy._utils._log import log
@@ -647,6 +647,7 @@ def connect_semantic_model(
                 Name of the column.
             permission : str
                 The object level security permission for the column.
+                `Valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.metadatapermission?view=analysisservices-dotnet>`_
 
             Returns
             -------
@@ -1065,6 +1066,7 @@ def connect_semantic_model(
                 Name of the column.
             summarization_type : str
                 The summarization type for the column.
+                `Valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.alternateof.summarization?view=analysisservices-dotnet#microsoft-analysisservices-tabular-alternateof-summarization>`_
             base_table : str
                 Name of the base table for aggregation.
             base_column : str
@@ -1269,7 +1271,8 @@ def connect_semantic_model(
             object : TOM Object
                 An object (i.e. table/column/measure) within a semantic model.
             extended_property_type : str
-                The extended property type. Options: 'Json', 'String'.
+                The extended property type.
+                `Valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.extendedpropertytype?view=analysisservices-dotnet>`_
             name : str
                 Name of the extended property.
             value : str
@@ -2515,6 +2518,7 @@ def connect_semantic_model(
             value : bool, default=None
                 The SummarizeBy property value.
                 Defaults to none which resolves to 'Default'.
+                `Valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.aggregatefunction?view=analysisservices-dotnet>`_
 
             Returns
             -------
@@ -2559,6 +2563,7 @@ def connect_semantic_model(
             ----------
             direct_lake_behavior : str
                 The DirectLakeBehavior property value.
+                `Valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.directlakebehavior?view=analysisservices-dotnet>`_
 
             Returns
             -------
@@ -3767,7 +3772,8 @@ def connect_semantic_model(
             column_name : str
                 Name of the column.
             value : str
-                Encoding hint value. Options: 'Value', 'Hash', 'Default'.
+                Encoding hint value.
+                `Valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.encodinghinttype?view=analysisservices-dotnet>`_
 
             Returns
             -------
@@ -3799,6 +3805,7 @@ def connect_semantic_model(
                 Name of the column.
             value : str
                 The data type.
+                `Valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.datatype?view=analysisservices-dotnet>`_
 
             Returns
             -------

@@ -4,43 +4,6 @@ from sempy._utils._log import log
 import sempy_labs._icons as icons
 
 
-def language_validate(language: str):
-    """
-    Validateds that the language specified exists within the supported langauges.
-
-    Parameters
-    ----------
-    language : str
-        The language code.
-
-    Returns
-    -------
-    bool
-        A True/False indication as to whether the language code is supported.
-    """
-
-    url = "https://learn.microsoft.com/azure/ai-services/translator/language-support"
-
-    tables = pd.read_html(url)
-    df = tables[0]
-
-    df_filt = df[df["Language code"] == language]
-
-    df_filt2 = df[df["Language"] == language.capitalize()]
-
-    if len(df_filt) == 1:
-        lang = df_filt["Language"].iloc[0]
-    elif len(df_filt2) == 1:
-        lang = df_filt2["Language"].iloc[0]
-    else:
-        print(
-            f"The '{language}' language is not a valid language code. Please refer to this link for a list of valid language codes: {url}."
-        )
-        return
-
-    return lang
-
-
 @log
 def translate_semantic_model(
     dataset: str,
@@ -72,7 +35,7 @@ def translate_semantic_model(
     from synapse.ml.services import Translate
     from pyspark.sql.functions import col, flatten
     from pyspark.sql import SparkSession
-    from .TOM import connect_semantic_model
+    from ._tom import connect_semantic_model
 
     if isinstance(languages, str):
         languages = [languages]

@@ -1,8 +1,8 @@
 import sempy
 import sempy.fabric as fabric
-from .GetSharedExpression import get_shared_expression
+from sempy_labs.directlake._get_shared_expression import get_shared_expression
 from sempy_labs._helper_functions import resolve_lakehouse_name
-from ..TOM import connect_semantic_model
+from sempy_labs._tom import connect_semantic_model
 from typing import List, Optional, Union
 
 

@@ -1,7 +1,7 @@
 import sempy
 import sempy.fabric as fabric
 import pandas as pd
-from .lakehouse.GetLakehouseColumns import get_lakehouse_columns
+from sempy_labs.lakehouse._get_lakehouse_columns import get_lakehouse_columns
 from sempy_labs._helper_functions import (
     format_dax_object_name,
     resolve_lakehouse_name,
