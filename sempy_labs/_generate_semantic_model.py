@@ -2,7 +2,6 @@ import sempy
 import sempy.fabric as fabric
 import pandas as pd
 import json, base64, time, os
-from sempy_labs._generate_semantic_model import get_semantic_model_bim
 from typing import List, Optional, Union
 from sempy_labs._helper_functions import resolve_lakehouse_name
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached

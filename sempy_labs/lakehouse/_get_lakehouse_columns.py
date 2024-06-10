@@ -8,7 +8,6 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_id,
 )
 from typing import Optional
-from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 
 
 def get_lakehouse_columns(
@@ -32,6 +31,7 @@ def get_lakehouse_columns(
     pandas.DataFrame
         Shows the tables/columns within a lakehouse and their properties.
     """
+    from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 
     df = pd.DataFrame(
         columns=[
