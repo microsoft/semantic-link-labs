@@ -1,7 +1,11 @@
 import sempy
 import sempy.fabric as fabric
 import pandas as pd
-from sempy_labs._helper_functions import resolve_lakehouse_name, resolve_lakehouse_id
+from sempy_labs._helper_functions import (
+    resolve_lakehouse_name,
+    resolve_lakehouse_id,
+    resolve_workspace_name_and_id,
+)
 from typing import List, Optional, Union
 import sempy_labs._icons as icons
 
@@ -33,10 +37,6 @@ def create_shortcut_onelake(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     shortcut_name : str, default=None
         The name of the shortcut 'table' to be created. This defaults to the 'table_name' parameter value.
-
-    Returns
-    -------
-
     """
 
     sourceWorkspaceId = fabric.resolve_workspace_id(source_workspace)
@@ -110,10 +110,6 @@ def create_shortcut(
         The name of the Fabric workspace in which the shortcut will be created.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-
     """
 
     source_titles = {"adlsGen2": "ADLS Gen2", "amazonS3": "Amazon S3"}
@@ -128,11 +124,7 @@ def create_shortcut(
 
     sourceTitle = source_titles[source]
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     if lakehouse == None:
         lakehouse_id = fabric.get_lakehouse_id()
@@ -171,7 +163,9 @@ def create_shortcut(
         )
 
 
-def list_shortcuts(lakehouse: Optional[str] = None, workspace: Optional[str] = None):
+def list_shortcuts(
+    lakehouse: Optional[str] = None, workspace: Optional[str] = None
+) -> pd.DataFrame:
     """
     Shows all shortcuts which exist in a Fabric lakehouse.
 
@@ -191,11 +185,7 @@ def list_shortcuts(lakehouse: Optional[str] = None, workspace: Optional[str] = N
         A pandas dataframe showing all the shortcuts which exist in the specified lakehouse.
     """
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     if lakehouse == None:
         lakehouse_id = fabric.get_lakehouse_id()
@@ -283,17 +273,9 @@ def delete_shortcut(
         The name of the Fabric workspace in which lakehouse resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-
     """
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     if lakehouse == None:
         lakehouse_id = fabric.get_lakehouse_id()

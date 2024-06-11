@@ -44,11 +44,7 @@ def migrate_calc_tables_to_semantic_model(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    workspace = fabric.resolve_workspace_name(workspace)
 
     if new_dataset_workspace == None:
         new_dataset_workspace = workspace

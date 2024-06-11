@@ -1,4 +1,3 @@
-import sempy
 import sempy.fabric as fabric
 from sempy_labs._tom import connect_semantic_model
 from typing import List, Optional, Union
@@ -27,11 +26,7 @@ def update_direct_lake_partition_entity(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    workspace = fabric.resolve_workspace_name(workspace)
 
     # Support both str & list types
     if isinstance(table_name, str):

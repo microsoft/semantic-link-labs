@@ -48,11 +48,7 @@ def migrate_tables_columns_to_semantic_model(
 
     """
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    workspace = fabric.resolve_workspace_name(workspace)
 
     if new_dataset_workspace == None:
         new_dataset_workspace = workspace

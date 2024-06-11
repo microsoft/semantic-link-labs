@@ -14,7 +14,10 @@ def run_dax(
     workspace: Optional[str] = None,
 ):
     """
-    Runs a DAX query against a semantic model.
+    Runs a DAX query against a semantic model using the `REST API <https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/execute-queries-in-group>`_.
+
+    Compared to evaluate_dax this allows passing the user name for impersonation.
+    Note that the REST API has significant limitations compared to the XMLA endpoint.
 
     Parameters
     ----------

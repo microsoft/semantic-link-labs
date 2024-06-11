@@ -5,6 +5,7 @@ from sempy_labs._helper_functions import resolve_dataset_id
 from typing import List, Optional, Union
 from sempy._utils._log import log
 import sempy_labs._icons as icons
+from sempy_labs._helper_functions import resolve_workspace_name_and_id
 
 
 @log
@@ -38,10 +39,6 @@ def refresh_semantic_model(
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-
     """
 
     if workspace == None:
@@ -157,17 +154,9 @@ def cancel_dataset_refresh(
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-
     """
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     rr = fabric.list_refresh_requests(dataset=dataset, workspace=workspace)
     rr_filt = rr[rr["Status"] == "Unknown"]

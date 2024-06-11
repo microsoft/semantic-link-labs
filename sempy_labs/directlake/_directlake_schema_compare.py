@@ -6,6 +6,7 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
     get_direct_lake_sql_endpoint,
 )
+from IPython.display import display
 from sempy_labs.lakehouse._get_lakehouse_columns import get_lakehouse_columns
 from sempy_labs._list_functions import list_tables
 from typing import Optional

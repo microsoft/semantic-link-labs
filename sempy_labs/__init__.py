@@ -82,6 +82,7 @@ from sempy_labs._vertipaq import (
     # visualize_vertipaq,
     import_vertipaq_analyzer,
 )
+from sempy_labs._tom import TOMWrapper, connect_semantic_model
 
 __all__ = [
     "clear_cache",
@@ -148,4 +149,6 @@ __all__ = [
     "vertipaq_analyzer",
     #'visualize_vertipaq',
     "import_vertipaq_analyzer",
+    "TOMWrapper",
+    "connect_semantic_model",
 ]

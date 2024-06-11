@@ -3,14 +3,17 @@ import sempy.fabric as fabric
 import pandas as pd
 import json, base64, time, os
 from typing import List, Optional, Union
-from sempy_labs._helper_functions import resolve_lakehouse_name
+from sempy_labs._helper_functions import (
+    resolve_lakehouse_name,
+    resolve_workspace_name_and_id,
+)
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 import sempy_labs._icons as icons
 
 
 def create_blank_semantic_model(
     dataset: str,
-    compatibility_level: Optional[int] = 1605,
+    compatibility_level: int = 1605,
     workspace: Optional[str] = None,
 ):
     """
@@ -80,11 +83,7 @@ def create_semantic_model_from_bim(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     objectType = "SemanticModel"
 
@@ -228,11 +227,7 @@ def get_semantic_model_bim(
         The Model.bim file for the semantic model.
     """
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     objType = "SemanticModel"
     client = fabric.FabricRestClient()

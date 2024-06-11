@@ -27,9 +27,6 @@ def list_semantic_model_objects(dataset: str, workspace: Optional[str] = None):
         A pandas dataframe showing a list of objects in the semantic model
     """
 
-    if workspace is None:
-        workspace = fabric.resolve_workspace_name()
-
     df = pd.DataFrame(columns=["Parent Name", "Object Name", "Object Type"])
     with connect_semantic_model(
         dataset=dataset, workspace=workspace, readonly=True
@@ -177,7 +174,7 @@ def migration_validation(
     new_dataset: str,
     workspace: Optional[str] = None,
     new_dataset_workspace: Optional[str] = None,
-):
+) -> pd.DataFrame:
     """
     Shows the objects in the original semantic model and whether then were migrated successfully or not.
 

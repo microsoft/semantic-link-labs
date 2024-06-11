@@ -1,9 +1,8 @@
-import sempy
 import sempy.fabric as fabric
 import re
 import pandas as pd
 from pyspark.sql import SparkSession
-from typing import Optional
+from typing import Optional, Tuple
 from uuid import UUID
 import sempy_labs._icons as icons
 
@@ -32,15 +31,15 @@ def create_abfss_path(
     return f"abfss://{lakehouse_workspace_id}@onelake.dfs.fabric.microsoft.com/{lakehouse_id}/Tables/{delta_table_name}"
 
 
-def format_dax_object_name(a: str, b: str):
+def format_dax_object_name(table: str, column: str):
     """
     Formats a table/column combination to the 'Table Name'[Column Name] format.
 
     Parameters
     ----------
-    a : str
+    table : str
         The name of the table.
-    b : str
+    column : str
         The name of the column.
 
     Returns
@@ -49,7 +48,7 @@ def format_dax_object_name(a: str, b: str):
         The fully qualified object name.
     """
 
-    return "'" + a + "'[" + b + "]"
+    return "'" + table + "'[" + column + "]"
 
 
 def create_relationship_name(
@@ -107,11 +106,6 @@ def resolve_report_id(report: str, workspace: Optional[str] = None):
 
     obj = fabric.resolve_item_id(item_name=report, type="Report", workspace=workspace)
 
-    # objectType = 'Report'
-    # dfI = fabric.list_items(workspace = workspace, type = objectType)
-    # dfI_filt = dfI[(dfI['Display Name'] == report)]
-    # obj = dfI_filt['Id'].iloc[0]
-
     return obj
 
 
@@ -141,11 +135,6 @@ def resolve_report_name(report_id: UUID, workspace: Optional[str] = None):
     obj = fabric.resolve_item_name(
         item_id=report_id, type="Report", workspace=workspace
     )
-
-    # objectType = 'Report'
-    # dfI = fabric.list_items(workspace = workspace, type = objectType)
-    # dfI_filt = dfI[(dfI['Id'] == report_id)]
-    # obj = dfI_filt['Display Name'].iloc[0]
 
     return obj
 
@@ -177,11 +166,6 @@ def resolve_dataset_id(dataset: str, workspace: Optional[str] = None):
         item_name=dataset, type="SemanticModel", workspace=workspace
     )
 
-    # objectType = 'SemanticModel'
-    # dfI = fabric.list_items(workspace = workspace, type = objectType)
-    # dfI_filt = dfI[(dfI['Display Name'] == dataset)]
-    # obj = dfI_filt['Id'].iloc[0]
-
     return obj
 
 
@@ -211,11 +195,6 @@ def resolve_dataset_name(dataset_id: UUID, workspace: Optional[str] = None):
     obj = fabric.resolve_item_name(
         item_id=dataset_id, type="SemanticModel", workspace=workspace
     )
-
-    # objectType = 'SemanticModel'
-    # dfI = fabric.list_items(workspace = workspace, type = objectType)
-    # dfI_filt = dfI[(dfI['Id'] == dataset_id)]
-    # obj = dfI_filt['Display Name'].iloc[0]
 
     return obj
 
@@ -247,16 +226,6 @@ def resolve_lakehouse_name(lakehouse_id: UUID, workspace: Optional[str] = None):
         item_id=lakehouse_id, type="Lakehouse", workspace=workspace
     )
 
-    # objectType = 'Lakehouse'
-    # dfI = fabric.list_items(workspace = workspace, type = objectType)
-    # dfI_filt = dfI[(dfI['Id'] == lakehouse_id)]
-
-    # if len(dfI_filt) == 0:
-    #    print(f"The '{lakehouse_id}' Lakehouse Id does not exist within the '{workspace}' workspace.")
-    #    return
-
-    # obj = dfI_filt['Display Name'].iloc[0]
-
     return obj
 
 
@@ -287,20 +256,10 @@ def resolve_lakehouse_id(lakehouse: str, workspace: Optional[str] = None):
         item_name=lakehouse, type="Lakehouse", workspace=workspace
     )
 
-    # objectType = 'Lakehouse'
-    # dfI = fabric.list_items(workspace = workspace, type = objectType)
-    # dfI_filt = dfI[(dfI['Display Name'] == lakehouse)]
-
-    # if len(dfI_filt) == 0:
-    #    print(f"The '{lakehouse}' lakehouse does not exist within the '{workspace}' workspace.")
-    #    return
-
-    # obj = dfI_filt['Id'].iloc[0]
-
     return obj
 
 
-def get_direct_lake_sql_endpoint(dataset: str, workspace: Optional[str] = None):
+def get_direct_lake_sql_endpoint(dataset: str, workspace: Optional[str] = None) -> UUID:
     """
     Obtains the SQL Endpoint ID of the semantic model.
 
@@ -315,7 +274,7 @@ def get_direct_lake_sql_endpoint(dataset: str, workspace: Optional[str] = None):
 
     Returns
     -------
-    UUID
+    uuid.UUID
         The ID of SQL Endpoint.
     """
 
@@ -519,3 +478,29 @@ def language_validate(language: str):
         return
 
     return lang
+
+
+def resolve_workspace_name_and_id(workspace: Optional[str] = None) -> Tuple[str, str]:
+    """
+    Obtains the name and ID of the Fabric workspace.
+
+    Parameters
+    ----------
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    str, str
+        The name and ID of the Fabric workspace.
+    """
+
+    if workspace == None:
+        workspace_id = fabric.get_workspace_id()
+        workspace = fabric.resolve_workspace_name(workspace_id)
+    else:
+        workspace_id = fabric.resolve_workspace_id(workspace)
+
+    return workspace, workspace_id

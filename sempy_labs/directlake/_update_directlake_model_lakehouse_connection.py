@@ -1,7 +1,10 @@
 import sempy
 import sempy.fabric as fabric
 from sempy_labs.directlake._get_shared_expression import get_shared_expression
-from sempy_labs._helper_functions import resolve_lakehouse_name
+from sempy_labs._helper_functions import (
+    resolve_lakehouse_name,
+    resolve_workspace_name_and_id,
+)
 from sempy_labs._tom import connect_semantic_model
 from typing import List, Optional, Union
 
@@ -36,11 +39,7 @@ def update_direct_lake_model_lakehouse_connection(
 
     """
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     if lakehouse_workspace == None:
         lakehouse_workspace = workspace

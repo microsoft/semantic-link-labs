@@ -1,8 +1,8 @@
-import sempy
 import sempy.fabric as fabric
 import pandas as pd
-from typing import List, Optional, Union
+from typing import Optional
 from sempy._utils._log import log
+from sempy_labs._helper_functions import resolve_workspace_name_and_id
 
 
 @log
@@ -27,18 +27,9 @@ def export_model_to_onelake(
         The name of the Fabric lakehouse where shortcuts will be created to access the delta tables created by the export. If the lakehouse specified does not exist, one will be created with that name. If no lakehouse is specified, shortcuts will not be created.
     destination_workspace : str, default=None
         The name of the Fabric workspace in which the lakehouse resides.
-
-
-    Returns
-    -------
-
     """
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     if destination_workspace == None:
         destination_workspace = workspace

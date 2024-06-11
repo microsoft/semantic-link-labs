@@ -1,9 +1,9 @@
-import sempy
 import sempy.fabric as fabric
+from sempy_labs._helper_functions import resolve_workspace_name_and_id
 import pandas as pd
 import json, time
 from pyspark.sql import SparkSession
-from typing import List, Optional, Union
+from typing import Optional
 
 
 def get_object_level_security(dataset: str, workspace: Optional[str] = None):
@@ -198,8 +198,8 @@ def list_annotations(dataset: str, workspace: Optional[str] = None):
             pName = p.Name
             objectType = "Partition"
             for pa in p.Annotations:
-                paName = paName
-                paValue = paValue
+                paName = pa.Name
+                paValue = pa.Value
                 new_data = {
                     "Object Name": pName,
                     "Parent Object Name": tName,
@@ -393,7 +393,7 @@ def list_columns(
     if isDirectLake:
         dfC["Column Cardinality"] = None
         sql_statements = []
-        lakeID, lakeName = get_direct_lake_lakehouse(
+        (lakeID, lakeName) = get_direct_lake_lakehouse(
             dataset=dataset,
             workspace=workspace,
             lakehouse=lakehouse,
@@ -545,11 +545,7 @@ def list_lakehouses(workspace: Optional[str] = None):
         ]
     )
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/lakehouses/")
@@ -609,11 +605,7 @@ def list_warehouses(workspace: Optional[str] = None):
         ]
     )
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/warehouses/")
@@ -659,11 +651,7 @@ def list_sqlendpoints(workspace: Optional[str] = None):
 
     df = pd.DataFrame(columns=["SQL Endpoint ID", "SQL Endpoint Name", "Description"])
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/sqlEndpoints/")
@@ -704,11 +692,7 @@ def list_mirroredwarehouses(workspace: Optional[str] = None):
         columns=["Mirrored Warehouse", "Mirrored Warehouse ID", "Description"]
     )
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/mirroredWarehouses/")
@@ -757,11 +741,7 @@ def list_kqldatabases(workspace: Optional[str] = None):
         ]
     )
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/kqlDatabases/")
@@ -809,11 +789,7 @@ def list_kqlquerysets(workspace: Optional[str] = None):
 
     df = pd.DataFrame(columns=["KQL Queryset Name", "KQL Queryset ID", "Description"])
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/kqlQuerysets/")
@@ -852,11 +828,7 @@ def list_mlmodels(workspace: Optional[str] = None):
 
     df = pd.DataFrame(columns=["ML Model Name", "ML Model ID", "Description"])
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/mlModels/")
@@ -895,11 +867,7 @@ def list_eventstreams(workspace: Optional[str] = None):
 
     df = pd.DataFrame(columns=["Eventstream Name", "Eventstream ID", "Description"])
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/eventstreams/")
@@ -938,11 +906,7 @@ def list_datapipelines(workspace: Optional[str] = None):
 
     df = pd.DataFrame(columns=["Data Pipeline Name", "Data Pipeline ID", "Description"])
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/dataPipelines/")
@@ -981,11 +945,7 @@ def list_mlexperiments(workspace: Optional[str] = None):
 
     df = pd.DataFrame(columns=["ML Experiment Name", "ML Experiment ID", "Description"])
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/mlExperiments/")
@@ -1024,11 +984,7 @@ def list_datamarts(workspace: Optional[str] = None):
 
     df = pd.DataFrame(columns=["Datamart Name", "Datamart ID", "Description"])
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/datamarts/")
@@ -1070,11 +1026,7 @@ def create_warehouse(
 
     """
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     if description == None:
         request_body = {"displayName": warehouse}
@@ -1132,17 +1084,9 @@ def update_item(
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-
     """
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     itemTypes = {
         "DataPipeline": "dataPipelines",
@@ -1404,11 +1348,7 @@ def list_workspace_role_assignments(workspace: Optional[str] = None):
         A pandas dataframe showing the members of a given workspace and their roles.
     """
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     df = pd.DataFrame(columns=["User Name", "User Email", "Role Name", "Type"])
 

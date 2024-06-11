@@ -1,10 +1,13 @@
-import sempy
 import sempy.fabric as fabric
 import pandas as pd
 from pyspark.sql import SparkSession
 import pyarrow.parquet as pq
 import datetime
-from sempy_labs._helper_functions import resolve_lakehouse_id, resolve_lakehouse_name
+from sempy_labs._helper_functions import (
+    resolve_lakehouse_id,
+    resolve_lakehouse_name,
+    resolve_workspace_name_and_id,
+)
 from sempy_labs.directlake._guardrails import (
     get_sku_size,
     get_directlake_guardrails_for_sku,
@@ -56,11 +59,7 @@ def get_lakehouse_tables(
         ]
     )
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     if lakehouse == None:
         lakehouse_id = fabric.get_lakehouse_id()

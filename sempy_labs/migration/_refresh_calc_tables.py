@@ -24,10 +24,6 @@ def refresh_calc_tables(dataset: str, workspace: Optional[str] = None):
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-
     spark = SparkSession.builder.getOrCreate()
 
     start_time = datetime.datetime.now()

@@ -2,7 +2,8 @@ import sempy
 import sempy.fabric as fabric
 import pandas as pd
 import json, base64, time
-from typing import List, Optional, Union
+from typing import Optional
+from sempy_labs._helper_functions import resolve_workspace_name_and_id
 
 
 def create_report_from_reportjson(
@@ -31,11 +32,7 @@ def create_report_from_reportjson(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     objectType = "Report"
 
@@ -168,11 +165,7 @@ def update_report_from_reportjson(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     objectType = "Report"
 

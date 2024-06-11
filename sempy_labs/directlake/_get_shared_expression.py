@@ -1,6 +1,9 @@
 import sempy
 import sempy.fabric as fabric
-from sempy_labs._helper_functions import resolve_lakehouse_name
+from sempy_labs._helper_functions import (
+    resolve_lakehouse_name,
+    resolve_workspace_name_and_id,
+)
 from sempy_labs._list_functions import list_lakehouses
 from typing import Optional
 
@@ -27,11 +30,7 @@ def get_shared_expression(
         Shows the expression which can be used to connect a Direct Lake semantic model to its SQL Endpoint.
     """
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
     if lakehouse == None:
         lakehouse_id = fabric.get_lakehouse_id()
         lakehouse = resolve_lakehouse_name(lakehouse_id)

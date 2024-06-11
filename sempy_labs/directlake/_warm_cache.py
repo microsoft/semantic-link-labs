@@ -7,7 +7,7 @@ import time
 from sempy_labs._helper_functions import format_dax_object_name
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
 from sempy_labs._model_dependencies import get_measure_dependencies
-from typing import List, Optional, Union
+from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 
@@ -37,14 +37,11 @@ def warm_direct_lake_cache_perspective(
 
     Returns
     -------
-
+    pandas.DataFrame
+        Returns a pandas dataframe showing the columns that have been put into memory.
     """
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    workspace = fabric.resolve_workspace_name(workspace)
 
     dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
     if not any(r["Mode"] == "DirectLake" for i, r in dfP.iterrows()):
@@ -148,7 +145,9 @@ def warm_direct_lake_cache_perspective(
 
 
 @log
-def warm_direct_lake_cache_isresident(dataset: str, workspace: Optional[str] = None):
+def warm_direct_lake_cache_isresident(
+    dataset: str, workspace: Optional[str] = None
+) -> pd.DataFrame:
     """
     Performs a refresh on the semantic model and puts the columns which were in memory prior to the refresh back into memory.
 
@@ -163,14 +162,9 @@ def warm_direct_lake_cache_isresident(dataset: str, workspace: Optional[str] = N
 
     Returns
     -------
-
+    pandas.DataFrame
+        Returns a pandas dataframe showing the columns that have been put into memory.
     """
-
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
 
     dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
     if not any(r["Mode"] == "DirectLake" for i, r in dfP.iterrows()):

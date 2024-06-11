@@ -5,8 +5,9 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
     get_direct_lake_sql_endpoint,
 )
-from typing import List, Optional, Union
+from typing import Optional, Tuple
 from uuid import UUID
+from sempy_labs._helper_functions import resolve_workspace_name_and_id
 
 
 def get_direct_lake_lakehouse(
@@ -14,7 +15,7 @@ def get_direct_lake_lakehouse(
     workspace: Optional[str] = None,
     lakehouse: Optional[str] = None,
     lakehouse_workspace: Optional[str] = None,
-):
+) -> Tuple[str, UUID]:
     """
     Identifies the lakehouse used by a Direct Lake semantic model.
 
@@ -36,15 +37,11 @@ def get_direct_lake_lakehouse(
 
     Returns
     -------
-    str, UUID
+    str, uuid.UUID
         The lakehouse name and lakehouse ID.
     """
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    workspace = fabric.resolve_workspace_name(workspace)
 
     if lakehouse_workspace is None:
         lakehouse_workspace = workspace
@@ -57,16 +54,16 @@ def get_direct_lake_lakehouse(
     dfP_filt = dfP[dfP["Mode"] == "DirectLake"]
 
     if len(dfP_filt) == 0:
-        print(
+        raise ValueError(
             f"ERROR: The '{dataset}' semantic model within the '{workspace}' workspace is not in Direct Lake mode."
         )
-    else:
-        sqlEndpointId = get_direct_lake_sql_endpoint(dataset, workspace)
 
-        dfI = fabric.list_items(workspace=lakehouse_workspace, type="SQLEndpoint")
-        dfI_filt = dfI[dfI["Id"] == sqlEndpointId]
-        lakehouseName = dfI_filt["Display Name"].iloc[0]
+    sqlEndpointId = get_direct_lake_sql_endpoint(dataset, workspace)
 
-        lakehouseId = resolve_lakehouse_id(lakehouseName, lakehouse_workspace)
+    dfI = fabric.list_items(workspace=lakehouse_workspace, type="SQLEndpoint")
+    dfI_filt = dfI[dfI["Id"] == sqlEndpointId]
+    lakehouseName = dfI_filt["Display Name"].iloc[0]
 
-        return lakehouseName, lakehouseId
+    lakehouseId = resolve_lakehouse_id(lakehouseName, lakehouse_workspace)
+
+    return lakehouseName, lakehouseId

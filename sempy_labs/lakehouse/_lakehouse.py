@@ -47,6 +47,7 @@ def optimize_lakehouse_tables(
     """
 
     from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
+    from delta import DeltaTable
 
     if workspace == None:
         workspace_id = fabric.get_workspace_id()

@@ -5,6 +5,7 @@ from synapse.ml.services.openai import OpenAICompletion
 from pyspark.sql.functions import col
 from pyspark.sql import SparkSession
 from typing import List, Optional, Union
+from IPython.display import display
 
 
 def optimize_semantic_model(dataset: str, workspace: Optional[str] = None):

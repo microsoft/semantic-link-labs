@@ -32,6 +32,7 @@ def get_lakehouse_columns(
         Shows the tables/columns within a lakehouse and their properties.
     """
     from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
+    from delta import DeltaTable
 
     df = pd.DataFrame(
         columns=[
@@ -44,11 +45,7 @@ def get_lakehouse_columns(
         ]
     )
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    workspace = fabric.resolve_workspace_name(workspace)
 
     if lakehouse == None:
         lakehouse_id = fabric.get_lakehouse_id()

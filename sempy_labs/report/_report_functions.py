@@ -15,8 +15,9 @@ from sempy_labs._helper_functions import (
     resolve_report_id,
     resolve_lakehouse_name,
     language_validate,
+    resolve_workspace_name_and_id,
 )
-from typing import List, Optional, Union
+from typing import Any, List, Optional, Union
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 
@@ -25,7 +26,7 @@ def get_report_json(
     report: str,
     workspace: Optional[str] = None,
     save_to_file_name: Optional[str] = None,
-):
+) -> Any:
     """
     Gets the report.json file content of a Power BI report.
 
@@ -42,15 +43,11 @@ def get_report_json(
 
     Returns
     -------
-    str
+    Any
         The report.json file for a given Power BI report.
     """
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
 
@@ -199,11 +196,7 @@ def export_report(
         )
         return
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     if isinstance(page_name, str):
         page_name = [page_name]
@@ -239,13 +232,13 @@ def export_report(
     }
 
     export_format = export_format.upper()
-    if export_format not in validFormats:
+
+    fileExt = validFormats.get(export_format)
+    if fileExt is None:
         print(
             f"{icons.red_dot} The '{export_format}' format is not a valid format for exporting Power BI reports. Please enter a valid format. Options: {validFormats}"
         )
         return
-
-    fileExt = validFormats.get(export_format)
 
     if file_name == None:
         file_name = report + fileExt
@@ -448,11 +441,7 @@ def clone_report(
 
     # https://learn.microsoft.com/rest/api/power-bi/reports/clone-report-in-group
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     dfI = fabric.list_items(workspace=workspace, type="Report")
     dfI_filt = dfI[(dfI["Display Name"] == report)]
@@ -545,11 +534,7 @@ def launch_report(report: str, workspace: Optional[str] = None):
 
     from .HelperFunctions import resolve_report_id
 
-    if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     reportId = resolve_report_id(report, workspace)
 
