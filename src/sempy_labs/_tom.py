@@ -609,7 +609,7 @@ class TOMWrapper:
             Name of the column.
         permission : str
             The object level security permission for the column.
-            `Valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.metadatapermission?view=analysisservices-dotnet>`_
+            `Permission valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.metadatapermission?view=analysisservices-dotnet>`_
         """
         import Microsoft.AnalysisServices.Tabular as TOM
         import System
@@ -995,7 +995,7 @@ class TOMWrapper:
             Name of the column.
         summarization_type : str
             The summarization type for the column.
-            `Valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.alternateof.summarization?view=analysisservices-dotnet#microsoft-analysisservices-tabular-alternateof-summarization>`_
+            `Summarization valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.alternateof.summarization?view=analysisservices-dotnet#microsoft-analysisservices-tabular-alternateof-summarization>`_
         base_table : str
             Name of the base table for aggregation.
         base_column : str
@@ -1180,7 +1180,7 @@ class TOMWrapper:
             An object (i.e. table/column/measure) within a semantic model.
         extended_property_type : str
             The extended property type.
-            `Valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.extendedpropertytype?view=analysisservices-dotnet>`_
+            `Extended property valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.extendedpropertytype?view=analysisservices-dotnet>`_
         name : str
             Name of the extended property.
         value : str
@@ -2396,7 +2396,7 @@ class TOMWrapper:
         value : bool, default=None
             The SummarizeBy property value.
             Defaults to none which resolves to 'Default'.
-            `Valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.aggregatefunction?view=analysisservices-dotnet>`_
+            `Aggregate valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.aggregatefunction?view=analysisservices-dotnet>`_
         """
         import System
 
@@ -2438,7 +2438,7 @@ class TOMWrapper:
         ----------
         direct_lake_behavior : str
             The DirectLakeBehavior property value.
-            `Valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.directlakebehavior?view=analysisservices-dotnet>`_
+            `DirectLakeBehavior valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.directlakebehavior?view=analysisservices-dotnet>`_
         """
         import System
 
@@ -3585,7 +3585,7 @@ class TOMWrapper:
             Name of the column.
         value : str
             Encoding hint value.
-            `Valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.encodinghinttype?view=analysisservices-dotnet>`_
+            `Encoding hint valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.encodinghinttype?view=analysisservices-dotnet>`_
         """
         import Microsoft.AnalysisServices.Tabular as TOM
         import System
@@ -3615,7 +3615,7 @@ class TOMWrapper:
             Name of the column.
         value : str
             The data type.
-            `Valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.datatype?view=analysisservices-dotnet>`_
+            `Data type valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.datatype?view=analysisservices-dotnet>`_
         """
         import System
 
