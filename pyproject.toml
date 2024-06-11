@@ -33,7 +33,7 @@ test = [
 ]
 
 [project.urls]
-Repository = "https://github.com/microsoft/semantic-link-labs"
+Repository = "https://github.com/microsoft/semantic-link-labs.git"
 
 [[tool.mypy.overrides]]
 module = "sempy.*,Microsoft.*,System.*,anytree.*,powerbiclient.*,synapse.ml.services.*"
