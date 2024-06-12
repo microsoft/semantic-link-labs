@@ -1,6 +1,6 @@
 import pandas as pd
 from json import loads
-from sempy_labs.shortcuts import create_shortcut_onelake
+from sempy_labs.lakehouse._shortcuts import create_shortcut_onelake
 from unittest.mock import MagicMock, PropertyMock, patch
 
 
