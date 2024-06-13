@@ -1308,7 +1308,7 @@ def list_kpis(dataset: str, workspace: Optional[str] = None):
             ]
         )
 
-        for t in tom.model.Tables:
+        for t in tom._model.Tables:
             for m in t.Measures:
                 if m.KPI is not None:
                     new_data = {

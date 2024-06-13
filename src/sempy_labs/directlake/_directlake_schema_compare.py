@@ -10,7 +10,7 @@ from IPython.display import display
 from sempy_labs.lakehouse._get_lakehouse_columns import get_lakehouse_columns
 from sempy_labs._list_functions import list_tables
 from typing import Optional
-
+import sempy_labs._icons as icons
 
 def direct_lake_schema_compare(
     dataset: str,
@@ -56,12 +56,12 @@ def direct_lake_schema_compare(
 
     if len(dfI_filt) == 0:
         print(
-            f"The SQL Endpoint in the '{dataset}' semantic model in the '{workspace} workspace does not point to the '{lakehouse}' lakehouse in the '{lakehouse_workspace}' workspace as specified."
+            f"{icons.red_dot} The SQL Endpoint in the '{dataset}' semantic model in the '{workspace} workspace does not point to the '{lakehouse}' lakehouse in the '{lakehouse_workspace}' workspace as specified."
         )
         return
 
     if not any(r["Mode"] == "DirectLake" for i, r in dfP.iterrows()):
-        print(f"The '{dataset}' semantic model is not in Direct Lake mode.")
+        print(f"{icons.red_dot} The '{dataset}' semantic model is not in Direct Lake mode.")
         return
 
     dfT = list_tables(dataset, workspace)
@@ -92,19 +92,19 @@ def direct_lake_schema_compare(
 
     if len(missingtbls) == 0:
         print(
-            f"All tables exist in the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace."
+            f"{icons.green_dot} All tables exist in the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace."
         )
     else:
         print(
-            f"The following tables exist in the '{dataset}' semantic model within the '{workspace}' workspace but do not exist in the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace."
+            f"{icons.yellow_dot} The following tables exist in the '{dataset}' semantic model within the '{workspace}' workspace but do not exist in the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace."
         )
         display(missingtbls)
     if len(missingcols) == 0:
         print(
-            f"All columns exist in the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace."
+            f"{icons.green_dot} All columns exist in the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace."
         )
     else:
         print(
-            f"The following columns exist in the '{dataset}' semantic model within the '{workspace}' workspace but do not exist in the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace."
+            f"{icons.yellow_dot} The following columns exist in the '{dataset}' semantic model within the '{workspace}' workspace but do not exist in the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace."
         )
         display(missingcols)

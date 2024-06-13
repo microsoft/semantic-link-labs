@@ -4,12 +4,12 @@ import pandas as pd
 from sempy_labs._list_functions import list_tables, list_annotations
 from typing import Optional
 from sempy._utils._log import log
-
+import sempy_labs._icons as icons
 
 @log
 def list_direct_lake_model_calc_tables(dataset: str, workspace: Optional[str] = None):
     """
-    Shows the calculated tables and their respective DAX expression for a Direct Lake model (which has been migrated from import/DirectQuery.
+    Shows the calculated tables and their respective DAX expression for a Direct Lake model (which has been migrated from import/DirectQuery).
 
     Parameters
     ----------
@@ -36,7 +36,7 @@ def list_direct_lake_model_calc_tables(dataset: str, workspace: Optional[str] = 
     dfP_filt = dfP[dfP["Mode"] == "DirectLake"]
 
     if len(dfP_filt) == 0:
-        print(f"The '{dataset}' semantic model is not in Direct Lake mode.")
+        print(f"{icons.yellow_dot} The '{dataset}' semantic model is not in Direct Lake mode.")
     else:
         dfA = list_annotations(dataset, workspace)
         dfT = list_tables(dataset, workspace)

@@ -14,7 +14,7 @@ from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from typing import List, Optional, Union
 from sempy._utils._log import log
-
+import sempy_labs._icons as icons
 
 @log
 def vertipaq_analyzer(
@@ -103,7 +103,7 @@ def vertipaq_analyzer(
 
             if len(dfI_filt) == 0:
                 print(
-                    f"The lakehouse (SQL Endpoint) used by the '{dataset}' semantic model does not reside in the '{lakehouse_workspace}' workspace. Please update the lakehouse_workspace parameter."
+                    f"{icons.red_dot} The lakehouse (SQL Endpoint) used by the '{dataset}' semantic model does not reside in the '{lakehouse_workspace}' workspace. Please update the lakehouse_workspace parameter."
                 )
             else:
                 lakehouseName = dfI_filt["Display Name"].iloc[0]
@@ -438,7 +438,7 @@ def vertipaq_analyzer(
         lakeAttach = lakehouse_attached()
         if lakeAttach == False:
             print(
-                f"In order to save the Vertipaq Analyzer results, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
+                f"{icons.red_dot} In order to save the Vertipaq Analyzer results, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
             )
             return
 
@@ -472,7 +472,7 @@ def vertipaq_analyzer(
             "export_Model": ["Model", export_Model],
         }
 
-        print(f"Saving Vertipaq Analyzer to delta tables in the lakehouse...\n")
+        print(f"{icons.in_progress} Saving Vertipaq Analyzer to delta tables in the lakehouse...\n")
         now = datetime.datetime.now()
         for key, (obj, df) in dfMap.items():
             df["Timestamp"] = now
@@ -491,7 +491,7 @@ def vertipaq_analyzer(
             spark_df = spark.createDataFrame(df)
             spark_df.write.mode("append").format("delta").saveAsTable(delta_table_name)
             print(
-                f"\u2022 Vertipaq Analyzer results for '{obj}' have been appended to the '{delta_table_name}' delta table."
+                f"{icons.bullet} Vertipaq Analyzer results for '{obj}' have been appended to the '{delta_table_name}' delta table."
             )
 
     ### Export vertipaq to zip file within the lakehouse
@@ -532,7 +532,7 @@ def vertipaq_analyzer(
             if os.path.exists(filePath):
                 os.remove(filePath)
         print(
-            f"The Vertipaq Analyzer info for the '{dataset}' semantic model in the '{workspace}' workspace has been saved to the 'Vertipaq Analyzer/{zipFileName}' in the default lakehouse attached to this notebook."
+            f"{icons.green_dot} The Vertipaq Analyzer info for the '{dataset}' semantic model in the '{workspace}' workspace has been saved to the 'Vertipaq Analyzer/{zipFileName}' in the default lakehouse attached to this notebook."
         )
 
 

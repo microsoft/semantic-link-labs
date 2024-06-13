@@ -4,7 +4,7 @@ from tqdm.auto import tqdm
 from pyspark.sql import SparkSession
 from sempy_labs._helper_functions import resolve_lakehouse_name
 from typing import List, Optional, Union
-
+import sempy_labs._icons as icons
 
 def lakehouse_attached() -> bool:
     """
@@ -80,6 +80,6 @@ def optimize_lakehouse_tables(
         deltaTable = DeltaTable.forPath(spark, tablePath)
         deltaTable.optimize().executeCompaction()
         print(
-            f"The '{tableName}' table has been optimized. ({str(i)}/{str(tableCount)})"
+            f"{icons.green_dot} The '{tableName}' table has been optimized. ({str(i)}/{str(tableCount)})"
         )
         i += 1

@@ -89,7 +89,7 @@ def migrate_calc_tables_to_semantic_model(
                     if tName.lower() in lc["Table Name"].values:
 
                         try:
-                            tom.model.Tables[tName]
+                            tom._model.Tables[tName]
                         except:
                             tom.add_table(name=tName)
                             tom.add_entity_partition(
@@ -128,7 +128,7 @@ def migrate_calc_tables_to_semantic_model(
                         matches = re.findall(pattern, scName)
                         lakeColumn = matches[0].replace(" ", "")
                         try:
-                            tom.model.Tables[tName].Columns[cName]
+                            tom._model.Tables[tName].Columns[cName]
                         except:
                             tom.add_data_column(
                                 table_name=tName,

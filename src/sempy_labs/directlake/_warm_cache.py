@@ -169,7 +169,7 @@ def warm_direct_lake_cache_isresident(
     dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
     if not any(r["Mode"] == "DirectLake" for i, r in dfP.iterrows()):
         print(
-            f"The '{dataset}' semantic model in the '{workspace}' workspace is not in Direct Lake mode. This function is specifically for semantic models in Direct Lake mode."
+            f"{icons.red_dot} The '{dataset}' semantic model in the '{workspace}' workspace is not in Direct Lake mode. This function is specifically for semantic models in Direct Lake mode."
         )
         return
 

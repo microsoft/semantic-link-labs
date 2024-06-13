@@ -6,8 +6,8 @@ from typing import List, Optional, Union
 
 def get_direct_lake_guardrails():
     """
-    Shows the guardrails for when Direct Lake semantic models will fallback to Direct Query based on Microsoft's online documentation.
-
+    Shows the guardrails for when Direct Lake semantic models will fallback to Direct Query based on Microsoft's `online documentation <https://learn.microsoft.com/power-bi/enterprise/directlake-overview>`_.
+    
     Parameters
     ----------
 
@@ -65,7 +65,7 @@ def get_sku_size(workspace: Optional[str] = None):
 def get_directlake_guardrails_for_sku(sku_size: str):
     """
     Shows the guardrails for Direct Lake based on the SKU used by your workspace's capacity.
-    *Use the result of the 'get_sku_size' function as an input for this function's skuSize parameter.*
+    * Use the result of the 'get_sku_size' function as an input for this function's sku_size parameter.*
 
     Parameters
     ----------

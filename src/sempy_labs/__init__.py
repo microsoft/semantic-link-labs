@@ -5,7 +5,7 @@ from sempy_labs._clear_cache import clear_cache
 # create_connection_vnet,
 # create_connection_on_prem
 # )
-from sempy_labs._dax import run_dax
+from sempy_labs._dax import evaluate_dax_impersonation
 from sempy_labs._generate_semantic_model import (
     create_blank_semantic_model,
     create_semantic_model_from_bim,
@@ -89,7 +89,7 @@ __all__ = [
     # create_connection_cloud,
     # create_connection_vnet,
     # create_connection_on_prem,
-    "run_dax",
+    "evaluate_dax_impersonation",
     "create_blank_semantic_model",
     "create_semantic_model_from_bim",
     #'deploy_semantic_model',

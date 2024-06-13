@@ -7,7 +7,7 @@ from sempy_labs._helper_functions import (
 )
 from sempy_labs._tom import connect_semantic_model
 from typing import List, Optional, Union
-
+import sempy_labs._icons as icons
 
 def update_direct_lake_model_lakehouse_connection(
     dataset: str,
@@ -54,7 +54,7 @@ def update_direct_lake_model_lakehouse_connection(
 
     if len(dfI_filt) == 0:
         print(
-            f"The '{lakehouse}' lakehouse does not exist within the '{lakehouse_workspace}' workspace. Therefore it cannot be used to support the '{dataset}' semantic model within the '{workspace}' workspace."
+            f"{icons.red_dot} The '{lakehouse}' lakehouse does not exist within the '{lakehouse_workspace}' workspace. Therefore it cannot be used to support the '{dataset}' semantic model within the '{workspace}' workspace."
         )
 
     dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
@@ -62,7 +62,7 @@ def update_direct_lake_model_lakehouse_connection(
 
     if len(dfP_filt) == 0:
         print(
-            f"The '{dataset}' semantic model is not in Direct Lake. This function is only applicable to Direct Lake semantic models."
+            f"{icons.yellow_dot} The '{dataset}' semantic model is not in Direct Lake. This function is only applicable to Direct Lake semantic models."
         )
     else:
         with connect_semantic_model(
@@ -71,11 +71,11 @@ def update_direct_lake_model_lakehouse_connection(
 
             shEx = get_shared_expression(lakehouse, lakehouse_workspace)
             try:
-                tom.model.Expressions["DatabaseQuery"].Expression = shEx
+                tom._model.Expressions["DatabaseQuery"].Expression = shEx
                 print(
-                    f"The expression in the '{dataset}' semantic model has been updated to point to the '{lakehouse}' lakehouse in the '{lakehouse_workspace}' workspace."
+                    f"{icons.green_dot} The expression in the '{dataset}' semantic model has been updated to point to the '{lakehouse}' lakehouse in the '{lakehouse_workspace}' workspace."
                 )
             except:
                 print(
-                    f"ERROR: The expression in the '{dataset}' semantic model was not updated."
+                    f"{icons.red_dot} The expression in the '{dataset}' semantic model was not updated."
                 )
