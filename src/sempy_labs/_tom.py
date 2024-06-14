@@ -20,6 +20,8 @@ if TYPE_CHECKING:
 class TOMWrapper:
     """
     Convenience wrapper around the TOM object model for a semantic model. Always use connect_semantic_model function to make sure the TOM object is initialized correctly.
+
+    `XMLA read/write endpoints <https://learn.microsoft.com/power-bi/enterprise/service-premium-connect-tools#to-enable-read-write-for-a-premium-capacity>`_ must be enabled if setting the readonly parameter to False.
     """
 
     _dataset: str
@@ -646,7 +648,7 @@ class TOMWrapper:
             Name of the hierarchy.
         columns : List[str]
             Names of the columns to use within the hierarchy.
-        `levels <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.level?view=analysisservices-dotnet>`_ : List[str], default=None
+        levels : List[str], default=None
             Names of the levels to use within the hierarhcy (instead of the column names).
         hierarchy_description : str, default=None
             A description of the hierarchy.
@@ -962,7 +964,7 @@ class TOMWrapper:
         if expression is None:
             ep.ExpressionSource = self._model.Expressions["DatabaseQuery"]
         else:
-            ep.ExpressionSource = expression
+            ep.ExpressionSource = self.model.Expressions[expression]
         p = TOM.Partition()
         p.Name = table_name
         p.Source = ep
@@ -2547,6 +2549,8 @@ class TOMWrapper:
             Measures may be formatted as '[Measure Name]' or 'Measure Name'.
         """
 
+        import Microsoft.AnalysisServices.Tabular as TOM
+
         if isinstance(objects, str):
             print(f"{icons.red_dot} The 'objects' parameter must be a list of columns/measures.")
             return
@@ -2627,7 +2631,6 @@ class TOMWrapper:
         )
 
         self.set_extended_property(
-            self=self,
             object=self._model.Tables[table_name].Columns[col2],
             extended_property_type="Json",
             name="ParameterMetadata",
@@ -3165,6 +3168,8 @@ class TOMWrapper:
             Name of the table.
         """
 
+        import Microsoft.AnalysisServices.Tabular as TOM
+
         rp = self._model.Tables[table_name].RefreshPolicy
 
         if rp is None:
@@ -3613,6 +3618,7 @@ class TOMWrapper:
             The data type.
             `Data type valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.datatype?view=analysisservices-dotnet>`_
         """
+        import Microsoft.AnalysisServices.Tabular as TOM
         import System
 
         values = [
