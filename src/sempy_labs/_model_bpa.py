@@ -1008,7 +1008,7 @@ def run_model_bpa(
     dfM["Referenced By"].fillna(0, inplace=True)
     dfM["Referenced By"] = dfM["Referenced By"].fillna(0).astype(int)
 
-    pattern = "[^\( ][a-zA-Z0-9_()-]+\[[^\[]+\]|'[^']+'\[[^\[]+\]|\[[^\[]+\]"
+    pattern = r"[^\( ][a-zA-Z0-9_()-]+\[[^\[]+\]|'[^']+'\[[^\[]+\]|\[[^\[]+\]"
 
     dfM["Has Fully Qualified Measure Reference"] = False
     dfM["Has Unqualified Column Reference"] = False
@@ -1041,15 +1041,15 @@ def run_model_bpa(
 
         dfM_filt = dfM[
             dfM["Measure Expression"].str.contains(
-                "(?i)USERELATIONSHIP\s*\(\s*'*"
-                + fromTable
-                + "'*\["
-                + fromColumn
-                + "\]\s*,\s*'*"
-                + toTable
-                + "'*\["
-                + toColumn
-                + "\]",
+                r"(?i)USERELATIONSHIP\s*\(\s*'*"
+                + re.escape(fromTable)
+                + r"'*\["
+                + re.escape(fromColumn)
+                + r"\]\s*,\s*'*"
+                + re.escape(toTable)
+                + r"'*\["
+                + re.escape(toColumn)
+                + r"\]",
                 regex=True,
             )
         ]

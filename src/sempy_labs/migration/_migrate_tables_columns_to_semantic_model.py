@@ -96,7 +96,7 @@ def migrate_tables_columns_to_semantic_model(
                 ) as tom:
                     success = True
                     try:
-                        tom.model.Expressions["DatabaseQuery"]
+                        tom._model.Expressions["DatabaseQuery"]
                     except:
                         tom.add_expression("DatabaseQuery", expression=shEx)
                         print(
@@ -110,7 +110,7 @@ def migrate_tables_columns_to_semantic_model(
                         tDesc = r["Description"]
 
                         try:
-                            tom.model.Tables[tName]
+                            tom._model.Tables[tName]
                         except:
                             tom.add_table(
                                 name=tName,
@@ -133,7 +133,7 @@ def migrate_tables_columns_to_semantic_model(
                         cDataType = r["Data Type"]
 
                         try:
-                            tom.model.Tables[tName].Columns[cName]
+                            tom._model.Tables[tName].Columns[cName]
                         except:
                             tom.add_data_column(
                                 table_name=tName,

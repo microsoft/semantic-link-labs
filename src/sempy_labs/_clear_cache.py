@@ -8,6 +8,7 @@ import sempy_labs._icons as icons
 def clear_cache(dataset: str, workspace: Optional[str] = None):
     """
     Clears the cache of a semantic model.
+    See `here <https://learn.microsoft.com/analysis-services/instances/clear-the-analysis-services-caches?view=asallproducts-allversions>`_ for documentation.
 
     Parameters
     ----------

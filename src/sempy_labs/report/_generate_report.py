@@ -4,7 +4,7 @@ import pandas as pd
 import json, base64, time
 from typing import Optional
 from sempy_labs._helper_functions import resolve_workspace_name_and_id
-
+import sempy_labs._icons as icons
 
 def create_report_from_reportjson(
     report: str,
@@ -41,7 +41,7 @@ def create_report_from_reportjson(
 
     if len(dfI_model) == 0:
         print(
-            f"ERROR: The '{dataset}' semantic model does not exist in the '{workspace}' workspace."
+            f"{icons.red_dot} The '{dataset}' semantic model does not exist in the '{workspace}' workspace."
         )
         return
 
@@ -52,7 +52,7 @@ def create_report_from_reportjson(
 
     if len(dfI_rpt) > 0:
         print(
-            f"WARNING: '{report}' already exists as a report in the '{workspace}' workspace."
+            f"{icons.yellow_dot} '{report}' already exists as a report in the '{workspace}' workspace."
         )
         return
 
@@ -132,7 +132,7 @@ def create_report_from_reportjson(
     response = client.post(f"/v1/workspaces/{workspace_id}/items", json=request_body)
 
     if response.status_code == 201:
-        print("Report creation succeeded")
+        print(f"{icons.green_dot} Report creation succeeded")
         print(response.json())
     elif response.status_code == 202:
         operationId = response.headers["x-ms-operation-id"]
@@ -143,7 +143,7 @@ def create_report_from_reportjson(
             response = client.get(f"/v1/operations/{operationId}")
             response_body = json.loads(response.content)
         response = client.get(f"/v1/operations/{operationId}/result")
-        print("Report creation succeeded")
+        print(f"{icons.green_dot} Report creation succeeded")
         print(response.json())
 
 
@@ -167,13 +167,11 @@ def update_report_from_reportjson(
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    objectType = "Report"
-
     dfR = fabric.list_reports(workspace=workspace)
     dfR_filt = dfR[(dfR["Name"] == report) & (dfR["Report Type"] == "PowerBIReport")]
 
     if len(dfR_filt) == 0:
-        print(f"The '{report}' report does not exist in the '{workspace}' workspace.")
+        print(f"{icons.red_dot} The '{report}' report does not exist in the '{workspace}' workspace.")
         return
 
     reportId = dfR_filt["Id"].iloc[0]
@@ -215,7 +213,7 @@ def update_report_from_reportjson(
 
     request_body = {
         "displayName": report,
-        "type": objectType,
+        "type": 'Report',
         "definition": {
             "parts": [
                 {
@@ -238,7 +236,7 @@ def update_report_from_reportjson(
     )
 
     if response.status_code == 201:
-        print(f"The '{report}' report has been successfully updated.")
+        print(f"{icons.green_dot} The '{report}' report has been successfully updated.")
         # print(response.json())
     elif response.status_code == 202:
         operationId = response.headers["x-ms-operation-id"]
@@ -249,5 +247,5 @@ def update_report_from_reportjson(
             response = client.get(f"/v1/operations/{operationId}")
             response_body = json.loads(response.content)
         response = client.get(f"/v1/operations/{operationId}/result")
-        print(f"The '{report}' report has been successfully updated.")
+        print(f"{icons.green_dot} The '{report}' report has been successfully updated.")
         # print(response.json())

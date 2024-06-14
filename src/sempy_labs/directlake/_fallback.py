@@ -2,7 +2,7 @@ import sempy
 import sempy.fabric as fabric
 import numpy as np
 from typing import List, Optional, Union
-
+import sempy_labs._icons as icons
 
 def check_fallback_reason(dataset: str, workspace: Optional[str] = None):
     """
@@ -32,7 +32,7 @@ def check_fallback_reason(dataset: str, workspace: Optional[str] = None):
 
     if len(dfP_filt) == 0:
         print(
-            f"The '{dataset}' semantic model is not in Direct Lake. This function is only applicable to Direct Lake semantic models."
+            f"{icons.yellow_dot} The '{dataset}' semantic model is not in Direct Lake. This function is only applicable to Direct Lake semantic models."
         )
     else:
         df = fabric.evaluate_dax(

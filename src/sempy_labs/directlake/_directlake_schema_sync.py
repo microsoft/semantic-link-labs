@@ -9,7 +9,7 @@ from sempy_labs._helper_functions import (
 )
 from typing import Optional
 from sempy._utils._log import log
-
+import sempy_labs._icons as icons
 
 @log
 def direct_lake_schema_sync(
@@ -63,7 +63,7 @@ def direct_lake_schema_sync(
 
     if len(dfI_filt) == 0:
         print(
-            f"The SQL Endpoint in the '{dataset}' semantic model in the '{workspace} workspace does not point to the '{lakehouse}' lakehouse in the '{lakehouse_workspace}' workspace as specified."
+            f"{icons.red_dot} The SQL Endpoint in the '{dataset}' semantic model in the '{workspace} workspace does not point to the '{lakehouse}' lakehouse in the '{lakehouse_workspace}' workspace as specified."
         )
         return
 
@@ -113,16 +113,16 @@ def direct_lake_schema_sync(
                     col.DataType = System.Enum.Parse(TOM.DataType, dt)
                 except:
                     print(
-                        f"ERROR: '{dType}' data type is not mapped properly to the semantic model data types."
+                        f"{icons.red_dot} '{dType}' data type is not mapped properly to the semantic model data types."
                     )
                     return
 
                 m.Tables[tName].Columns.Add(col)
                 print(
-                    f"The '{lakeCName}' column has been added to the '{tName}' table as a '{dt}' data type within the '{dataset}' semantic model within the '{workspace}' workspace."
+                    f"{icons.green_dot} The '{lakeCName}' column has been added to the '{tName}' table as a '{dt}' data type within the '{dataset}' semantic model within the '{workspace}' workspace."
                 )
             else:
                 print(
-                    f"The {fullColName} column exists in the lakehouse but not in the '{tName}' table in the '{dataset}' semantic model within the '{workspace}' workspace."
+                    f"{icons.yellow_dot} The {fullColName} column exists in the lakehouse but not in the '{tName}' table in the '{dataset}' semantic model within the '{workspace}' workspace."
                 )
         m.SaveChanges()

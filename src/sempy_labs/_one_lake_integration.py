@@ -3,7 +3,7 @@ import pandas as pd
 from typing import Optional
 from sempy._utils._log import log
 from sempy_labs._helper_functions import resolve_workspace_name_and_id
-
+import sempy_labs._icons as icons
 
 @log
 def export_model_to_onelake(
@@ -42,7 +42,7 @@ def export_model_to_onelake(
 
     if len(dfD_filt) == 0:
         print(
-            f"The '{dataset}' semantic model does not exist in the '{workspace}' workspace."
+            f"{icons.red_dot} The '{dataset}' semantic model does not exist in the '{workspace}' workspace."
         )
         return
 
@@ -64,11 +64,11 @@ def export_model_to_onelake(
     try:
         fabric.execute_tmsl(script=tmsl, workspace=workspace)
         print(
-            f"The '{dataset}' semantic model's tables have been exported as delta tables to the '{workspace}' workspace.\n"
+            f"{icons.green_dot} The '{dataset}' semantic model's tables have been exported as delta tables to the '{workspace}' workspace.\n"
         )
     except:
         print(
-            f"ERROR: The '{dataset}' semantic model's tables have not been exported as delta tables to the '{workspace}' workspace."
+            f"{icons.red_dot} The '{dataset}' semantic model's tables have not been exported as delta tables to the '{workspace}' workspace."
         )
         print(
             f"Make sure you enable OneLake integration for the '{dataset}' semantic model. Follow the instructions here: https://learn.microsoft.com/power-bi/enterprise/onelake-integration-overview#enable-onelake-integration"
@@ -83,14 +83,14 @@ def export_model_to_onelake(
 
         if len(dfI_filt) == 0:
             print(
-                f"The '{destination_lakehouse}' lakehouse does not exist within the '{destination_workspace}' workspace."
+                f"{icons.red_dot} The '{destination_lakehouse}' lakehouse does not exist within the '{destination_workspace}' workspace."
             )
             # Create lakehouse
             destination_lakehouse_id = fabric.create_lakehouse(
                 display_name=destination_lakehouse, workspace=destination_workspace
             )
             print(
-                f"The '{destination_lakehouse}' lakehouse has been created within the '{destination_workspace}' workspace.\n"
+                f"{icons.green_dot} The '{destination_lakehouse}' lakehouse has been created within the '{destination_workspace}' workspace.\n"
             )
         else:
             destination_lakehouse_id = dfI_filt["Id"].iloc[0]
@@ -122,7 +122,7 @@ def export_model_to_onelake(
 
         client = fabric.FabricRestClient()
 
-        print("Creating shortcuts...\n")
+        print(f"{icons.in_progress} Creating shortcuts...\n")
         for tableName in tables:
             tablePath = "Tables/" + tableName
             shortcutName = tableName.replace(" ", "")
@@ -145,11 +145,11 @@ def export_model_to_onelake(
                 )
                 if response.status_code == 201:
                     print(
-                        f"\u2022 The shortcut '{shortcutName}' was created in the '{destination_lakehouse}' lakehouse within the '{destination_workspace}' workspace. It is based on the '{tableName}' table in the '{dataset}' semantic model within the '{workspace}' workspace.\n"
+                        f"{icons.bullet} The shortcut '{shortcutName}' was created in the '{destination_lakehouse}' lakehouse within the '{destination_workspace}' workspace. It is based on the '{tableName}' table in the '{dataset}' semantic model within the '{workspace}' workspace.\n"
                     )
                 else:
                     print(response.status_code)
             except:
                 print(
-                    f"ERROR: Failed to create a shortcut for the '{tableName}' table."
+                    f"{icons.red_dot} Failed to create a shortcut for the '{tableName}' table."
                 )

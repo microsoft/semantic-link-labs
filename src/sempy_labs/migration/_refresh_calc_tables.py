@@ -36,8 +36,8 @@ def refresh_calc_tables(dataset: str, workspace: Optional[str] = None):
                 dataset=dataset, readonly=True, workspace=workspace
             ) as tom:
                 success = True
-                for a in tom.model.Annotations:
-                    if any(a.Name == t.Name for t in tom.model.Tables):
+                for a in tom._model.Annotations:
+                    if any(a.Name == t.Name for t in tom._model.Tables):
                         tName = a.Name
                         query = a.Value
 

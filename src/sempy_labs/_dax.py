@@ -7,7 +7,7 @@ from sempy._utils._log import log
 
 
 @log
-def run_dax(
+def evaluate_dax_impersonation(
     dataset: str,
     dax_query: str,
     user_name: Optional[str] = None,

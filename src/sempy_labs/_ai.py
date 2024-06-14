@@ -6,7 +6,7 @@ from pyspark.sql.functions import col
 from pyspark.sql import SparkSession
 from typing import List, Optional, Union
 from IPython.display import display
-
+import sempy_labs._icons as icons
 
 def optimize_semantic_model(dataset: str, workspace: Optional[str] = None):
 
@@ -39,7 +39,7 @@ def optimize_semantic_model(dataset: str, workspace: Optional[str] = None):
 
         if len(fallback_filt) > 0:
             print(
-                f"The '{dataset}' semantic model is a Direct Lake semantic model which contains views. Since views always fall back to DirectQuery, it is recommended to only use lakehouse tables and not views."
+                f"{icons.yellow_dot} The '{dataset}' semantic model is a Direct Lake semantic model which contains views. Since views always fall back to DirectQuery, it is recommended to only use lakehouse tables and not views."
             )
 
     # Potential model reduction estimate
@@ -56,11 +56,11 @@ def optimize_semantic_model(dataset: str, workspace: Optional[str] = None):
         totSize = df["Total Size"].sum()
         if len(df_filt) > 0:
             print(
-                f"Potential savings of {totSize} bytes from following the '{rule}' rule."
+                f"{icons.yellow_dot} Potential savings of {totSize} bytes from following the '{rule}' rule."
             )
             display(df_filt)
         else:
-            print(f"The '{rule}' rule has been followed.")
+            print(f"{icons.green_dot} The '{rule}' rule has been followed.")
 
 
 def generate_measure_descriptions(
@@ -78,7 +78,7 @@ def generate_measure_descriptions(
     validModels = ["gpt-35-turbo", "gpt-35-turbo-16k", "gpt-4"]
     if gpt_model not in validModels:
         print(
-            f"The '{gpt_model}' model is not a valid model. Enter a gpt_model from this list: {validModels}."
+            f"{icons.red_dot} The '{gpt_model}' model is not a valid model. Enter a gpt_model from this list: {validModels}."
         )
         return
 
@@ -173,7 +173,7 @@ def generate_aggs(
 
     if any(value not in aggTypes for value in columns.values()):
         print(
-            f"Invalid aggregation type(s) have been specified in the 'columns' parameter. Valid aggregation types: {aggTypes}."
+            f"{icons.red_dot} Invalid aggregation type(s) have been specified in the 'columns' parameter. Valid aggregation types: {aggTypes}."
         )
         return
 
@@ -183,7 +183,7 @@ def generate_aggs(
     dfR = fabric.list_relationships(dataset=dataset, workspace=workspace)
     if not any(r["Mode"] == "DirectLake" for i, r in dfP.iterrows()):
         print(
-            f"The '{dataset}' semantic model within the '{workspace}' workspace is not in Direct Lake mode. This function is only relevant for Direct Lake semantic models."
+            f"{icons.red_dot} The '{dataset}' semantic model within the '{workspace}' workspace is not in Direct Lake mode. This function is only relevant for Direct Lake semantic models."
         )
         return
 
@@ -191,7 +191,7 @@ def generate_aggs(
 
     if len(dfC_filtT) == 0:
         print(
-            f"The '{table_name}' table does not exist in the '{dataset}' semantic model within the '{workspace}' workspace."
+            f"{icons.red_dot} The '{table_name}' table does not exist in the '{dataset}' semantic model within the '{workspace}' workspace."
         )
         return
 
@@ -201,7 +201,7 @@ def generate_aggs(
 
     if len(columns) != len(dfC_filt):
         print(
-            f"Columns listed in '{columnValues}' do not exist in the '{table_name}' table in the '{dataset}' semantic model within the '{workspace}' workspace."
+            f"{icons.red_dot} Columns listed in '{columnValues}' do not exist in the '{table_name}' table in the '{dataset}' semantic model within the '{workspace}' workspace."
         )
         return
 
@@ -211,7 +211,7 @@ def generate_aggs(
         dataType = dfC_col["Data Type"].iloc[0]
         if agg in aggTypesAggregate and dataType not in numericTypes:
             print(
-                f"The '{col}' column in the '{table_name}' table is of '{dataType}' data type. Only columns of '{numericTypes}' data types can be aggregated as '{aggTypesAggregate}' aggregation types."
+                f"{icons.red_dot} The '{col}' column in the '{table_name}' table is of '{dataType}' data type. Only columns of '{numericTypes}' data types can be aggregated as '{aggTypesAggregate}' aggregation types."
             )
             return
 
@@ -230,7 +230,7 @@ def generate_aggs(
 
     if len(dfI_filt) == 0:
         print(
-            f"The lakehouse (SQL Endpoint) used by the '{dataset}' semantic model does not reside in the '{lakehouse_workspace}' workspace. Please update the lakehouse_workspace parameter."
+            f"{icons.red_dot} The lakehouse (SQL Endpoint) used by the '{dataset}' semantic model does not reside in the '{lakehouse_workspace}' workspace. Please update the lakehouse_workspace parameter."
         )
         return
 
@@ -278,16 +278,16 @@ def generate_aggs(
         delta_table_name=aggLakeTName,
     )
     spark_df.write.mode("overwrite").format("delta").save(aggFilePath)
-    f"The '{aggLakeTName}' table has been created/updated in the lakehouse."
+    f"{icons.green_dot} The '{aggLakeTName}' table has been created/updated in the lakehouse."
 
     # Create/update semantic model agg table
     tom_server = fabric.create_tom_server(readonly=False, workspace=workspace)
     m = tom_server.Databases.GetByName(dataset).Model
-    f"\nUpdating the '{dataset}' semantic model..."
+    f"\n{icons.in_progress} Updating the '{dataset}' semantic model..."
     dfC_agg = dfC[dfC["Table Name"] == aggTableName]
 
     if len(dfC_agg) == 0:
-        print(f"Creating the '{aggTableName}' table...")
+        print(f"{icons.in_progress} Creating the '{aggTableName}' table...")
         exp = m.Expressions["DatabaseQuery"]
         tbl = TOM.Table()
         tbl.Name = aggTableName
@@ -318,15 +318,15 @@ def generate_aggs(
 
             tbl.Columns.Add(col)
             print(
-                f"The '{aggTableName}'[{cName}] column has been added to the '{dataset}' semantic model."
+                f"{icons.green_dot} The '{aggTableName}'[{cName}] column has been added to the '{dataset}' semantic model."
             )
 
         m.Tables.Add(tbl)
         print(
-            f"The '{aggTableName}' table has been added to the '{dataset}' semantic model."
+            f"{icons.green_dot} The '{aggTableName}' table has been added to the '{dataset}' semantic model."
         )
     else:
-        print(f"Updating the '{aggTableName}' table's columns...")
+        print(f"{icons.in_progress} Updating the '{aggTableName}' table's columns...")
         # Remove existing columns
         for t in m.Tables:
             tName = t.Name
@@ -347,12 +347,12 @@ def generate_aggs(
             col.DataType = System.Enum.Parse(TOM.DataType, dType)
 
             m.Tables[aggTableName].Columns.Add(col)
-            print(f"The '{aggTableName}'[{cName}] column has been added.")
+            print(f"{icons.green_dot} The '{aggTableName}'[{cName}] column has been added.")
 
     # Create relationships
     relMap = {"m": "Many", "1": "One", "0": "None"}
 
-    print(f"\nGenerating necessary relationships...")
+    print(f"\n{icons.in_progress} Generating necessary relationships...")
     for i, r in dfR.iterrows():
         fromTable = r["From Table"]
         fromColumn = r["From Column"]
@@ -384,27 +384,27 @@ def generate_aggs(
                 rel.FromColumn = m.Tables[aggTableName].Columns[fromColumn]
                 m.Relationships.Add(rel)
                 print(
-                    f"'{aggTableName}'[{fromColumn}] -> '{toTable}'[{toColumn}] relationship has been added."
+                    f"{icons.green_dot} '{aggTableName}'[{fromColumn}] -> '{toTable}'[{toColumn}] relationship has been added."
                 )
             except:
                 print(
-                    f"'{aggTableName}'[{fromColumn}] -> '{toTable}'[{toColumn}] relationship has not been created."
+                    f"{icons.red_dot} '{aggTableName}'[{fromColumn}] -> '{toTable}'[{toColumn}] relationship has not been created."
                 )
         elif toTable == table_name:
             try:
                 rel.ToColumn = m.Tables[aggTableName].Columns[toColumn]
                 m.Relationships.Add(rel)
                 print(
-                    f"'{fromTable}'[{fromColumn}] -> '{aggTableName}'[{toColumn}] relationship has been added."
+                    f"{icons.green_dot} '{fromTable}'[{fromColumn}] -> '{aggTableName}'[{toColumn}] relationship has been added."
                 )
             except:
                 print(
-                    f"'{fromTable}'[{fromColumn}] -> '{aggTableName}'[{toColumn}] relationship has not been created."
+                    f"{icons.red_dot} '{fromTable}'[{fromColumn}] -> '{aggTableName}'[{toColumn}] relationship has not been created."
                 )
     f"Relationship creation is complete."
 
     # Create IF measure
-    f"\nCreating measure to check if the agg table can be used..."
+    f"\n{icons.in_progress} Creating measure to check if the agg table can be used..."
     aggChecker = "IF("
     dfR_filt = dfR[
         (dfR["From Table"] == table_name) & (~dfR["From Column"].isin(columnValues))
@@ -419,7 +419,7 @@ def generate_aggs(
     print(aggChecker)
 
     # Todo: add IFISFILTERED clause for columns
-    f"\n Creating the base measures in the agg table..."
+    f"\n{icons.in_progress} Creating the base measures in the agg table..."
     # Create base agg measures
     dep = fabric.evaluate_dax(
         dataset=dataset,

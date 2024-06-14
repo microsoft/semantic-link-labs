@@ -31,7 +31,7 @@ def list_semantic_model_objects(dataset: str, workspace: Optional[str] = None):
     with connect_semantic_model(
         dataset=dataset, workspace=workspace, readonly=True
     ) as tom:
-        for t in tom.model.Tables:
+        for t in tom._model.Tables:
             if t.CalculationGroup is not None:
                 new_data = {
                     "Parent Name": t.Parent.Name,
@@ -124,7 +124,7 @@ def list_semantic_model_objects(dataset: str, workspace: Optional[str] = None):
                 df = pd.concat(
                     [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
                 )
-        for r in tom.model.Relationships:
+        for r in tom._model.Relationships:
             rName = create_relationship_name(
                 r.FromTable.Name, r.FromColumn.Name, r.ToTable.Name, r.ToColumn.Name
             )
@@ -134,7 +134,7 @@ def list_semantic_model_objects(dataset: str, workspace: Optional[str] = None):
                 "Object Type": str(r.ObjectType),
             }
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-        for role in tom.model.Roles:
+        for role in tom._model.Roles:
             new_data = {
                 "Parent Name": role.Parent.Name,
                 "Object Name": role.Name,
@@ -150,14 +150,14 @@ def list_semantic_model_objects(dataset: str, workspace: Optional[str] = None):
                 df = pd.concat(
                     [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
                 )
-        for tr in tom.model.Cultures:
+        for tr in tom._model.Cultures:
             new_data = {
                 "Parent Name": tr.Parent.Name,
                 "Object Name": tr.Name,
                 "Object Type": str(tr.ObjectType),
             }
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-        for per in tom.model.Perspectives:
+        for per in tom._model.Perspectives:
             new_data = {
                 "Parent Name": per.Parent.Name,
                 "Object Name": per.Name,

@@ -8,7 +8,7 @@ from sempy_labs._helper_functions import (
 from typing import Optional, Tuple
 from uuid import UUID
 from sempy_labs._helper_functions import resolve_workspace_name_and_id
-
+import sempy_labs._icons as icons
 
 def get_direct_lake_lakehouse(
     dataset: str,
@@ -55,7 +55,7 @@ def get_direct_lake_lakehouse(
 
     if len(dfP_filt) == 0:
         raise ValueError(
-            f"ERROR: The '{dataset}' semantic model within the '{workspace}' workspace is not in Direct Lake mode."
+            f"{icons.red_dot} The '{dataset}' semantic model within the '{workspace}' workspace is not in Direct Lake mode."
         )
 
     sqlEndpointId = get_direct_lake_sql_endpoint(dataset, workspace)

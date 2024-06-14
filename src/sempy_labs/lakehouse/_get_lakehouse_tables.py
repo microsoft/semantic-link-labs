@@ -14,7 +14,7 @@ from sempy_labs.directlake._guardrails import (
 )
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from typing import Optional
-
+import sempy_labs._icons as icons
 
 def get_lakehouse_tables(
     lakehouse: Optional[str] = None,
@@ -172,7 +172,7 @@ def get_lakehouse_tables(
         lakeAttach = lakehouse_attached()
         if lakeAttach == False:
             print(
-                f"In order to save the report.json file, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
+                f"{icons.red_dot} In order to save the report.json file, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
             )
             return
         spark = SparkSession.builder.getOrCreate()
@@ -234,7 +234,7 @@ def get_lakehouse_tables(
                     export_df[c] = export_df[c].astype(bool)
 
         print(
-            f"Saving Lakehouse table properties to the '{lakeTName}' table in the lakehouse...\n"
+            f"{icons.in_progress} Saving Lakehouse table properties to the '{lakeTName}' table in the lakehouse...\n"
         )
         now = datetime.datetime.now()
         export_df["Timestamp"] = now
@@ -244,7 +244,7 @@ def get_lakehouse_tables(
         spark_df = spark.createDataFrame(export_df)
         spark_df.write.mode("append").format("delta").saveAsTable(lakeTName)
         print(
-            f"\u2022 Lakehouse table properties have been saved to the '{lakeTName}' delta table."
+            f"{icons.bullet} Lakehouse table properties have been saved to the '{lakeTName}' delta table."
         )
 
     return df

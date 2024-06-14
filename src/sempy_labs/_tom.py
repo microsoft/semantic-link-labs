@@ -17,32 +17,28 @@ if TYPE_CHECKING:
     import Microsoft.AnalysisServices.Tabular as TOM
 
 
-checked = "\u2611"
-unchecked = "\u2610"
-start_bold = "\033[1m"
-end_bold = "\033[0m"
-
-
 class TOMWrapper:
     """
     Convenience wrapper around the TOM object model for a semantic model. Always use connect_semantic_model function to make sure the TOM object is initialized correctly.
+
+    `XMLA read/write endpoints <https://learn.microsoft.com/power-bi/enterprise/service-premium-connect-tools#to-enable-read-write-for-a-premium-capacity>`_ must be enabled if setting the readonly parameter to False.
     """
 
-    dataset: str
-    workspace: str
-    readonly: bool
-    tables_added: List[str]
+    _dataset: str
+    _workspace: str
+    _readonly: bool
+    _tables_added: List[str]
 
     def __init__(self, dataset, workspace, readonly):
-        self.dataset = dataset
-        self.workspace = workspace
-        self.readonly = readonly
-        self.tables_added = []
+        self._dataset = dataset
+        self._workspace = workspace
+        self._readonly = readonly
+        self._tables_added = []
 
-        self.tom_server = fabric.create_tom_server(
+        self._tom_server = fabric.create_tom_server(
             readonly=readonly, workspace=workspace
         )
-        self.model = self.tom_server.Databases.GetByName(dataset).Model
+        self._model = self._tom_server.Databases.GetByName(dataset).Model
 
     def all_columns(self):
         """
@@ -58,7 +54,7 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        for t in self.model.Tables:
+        for t in self._model.Tables:
             for c in t.Columns:
                 if c.Type != TOM.ColumnType.RowNumber:
                     yield c
@@ -77,7 +73,7 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        for t in self.model.Tables:
+        for t in self._model.Tables:
             for c in t.Columns:
                 if c.Type == TOM.ColumnType.Calculated:
                     yield c
@@ -96,7 +92,7 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        for t in self.model.Tables:
+        for t in self._model.Tables:
             if any(p.SourceType == TOM.ColumnType.Calculated for p in t.Partitions):
                 yield t
 
@@ -113,7 +109,7 @@ class TOMWrapper:
             All calculation groups within the semantic model.
         """
 
-        for t in self.model.Tables:
+        for t in self._model.Tables:
             if t.CalculationGroup is not None:
                 yield t
 
@@ -130,7 +126,7 @@ class TOMWrapper:
             All measures within the semantic model.
         """
 
-        for t in self.model.Tables:
+        for t in self._model.Tables:
             for m in t.Measures:
                 yield m
 
@@ -147,7 +143,7 @@ class TOMWrapper:
             All partitions within the semantic model.
         """
 
-        for t in self.model.Tables:
+        for t in self._model.Tables:
             for p in t.Partitions:
                 yield p
 
@@ -164,7 +160,7 @@ class TOMWrapper:
             All hierarchies within the semantic model.
         """
 
-        for t in self.model.Tables:
+        for t in self._model.Tables:
             for h in t.Hierarchies:
                 yield h
 
@@ -181,7 +177,7 @@ class TOMWrapper:
             All levels within the semantic model.
         """
 
-        for t in self.model.Tables:
+        for t in self._model.Tables:
             for h in t.Hierarchies:
                 for l in h.Levels:
                     yield l
@@ -199,7 +195,7 @@ class TOMWrapper:
             All calculation items within the semantic model.
         """
 
-        for t in self.model.Tables:
+        for t in self._model.Tables:
             if t.CalculationGroup is not None:
                 for ci in t.CalculationGroup.CalculationItems:
                     yield ci
@@ -217,7 +213,7 @@ class TOMWrapper:
             All row level security expressions within the semantic model.
         """
 
-        for r in self.model.Roles:
+        for r in self._model.Roles:
             for tp in r.TablePermissions:
                 yield tp
 
@@ -264,7 +260,7 @@ class TOMWrapper:
         if display_folder is not None:
             obj.DisplayFolder = display_folder
 
-        self.model.Tables[table_name].Measures.Add(obj)
+        self._model.Tables[table_name].Measures.Add(obj)
 
     def add_calculated_table_column(
         self,
@@ -340,7 +336,7 @@ class TOMWrapper:
             obj.DisplayFolder = display_folder
         if data_category is not None:
             obj.DataCategory = data_category
-        self.model.Tables[table_name].Columns.Add(obj)
+        self._model.Tables[table_name].Columns.Add(obj)
 
     def add_data_column(
         self,
@@ -416,7 +412,7 @@ class TOMWrapper:
             obj.DisplayFolder = display_folder
         if data_category is not None:
             obj.DataCategory = data_category
-        self.model.Tables[table_name].Columns.Add(obj)
+        self._model.Tables[table_name].Columns.Add(obj)
 
     def add_calculated_column(
         self,
@@ -459,7 +455,7 @@ class TOMWrapper:
             Marks the column as the primary key of the table.
         summarize_by : str, default=None
             Sets the value for the Summarize By property of the column.
-            Defaults to None resolves to 'Default'.
+            Defaults to None which resolves to 'Default'.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
         import System
@@ -492,7 +488,7 @@ class TOMWrapper:
             obj.DisplayFolder = display_folder
         if data_category is not None:
             obj.DataCategory = data_category
-        self.model.Tables[table_name].Columns.Add(obj)
+        self._model.Tables[table_name].Columns.Add(obj)
 
     def add_calculation_item(
         self,
@@ -504,7 +500,7 @@ class TOMWrapper:
         description: Optional[str] = None,
     ):
         """
-        Adds a calculation item to a calculation group within a semantic model.
+        Adds a `calculation item <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculationitem?view=analysisservices-dotnet>`_ to a `calculation group <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculationgroup?view=analysisservices-dotnet>`_ within a semantic model.
 
         Parameters
         ----------
@@ -533,7 +529,7 @@ class TOMWrapper:
             obj.Description = description
         if format_string_expression is not None:
             obj.FormatStringDefinition = fsd.Expression = format_string_expression
-        self.model.Tables[table_name].CalculationGroup.CalculationItems.Add(obj)
+        self._model.Tables[table_name].CalculationGroup.CalculationItems.Add(obj)
 
     def add_role(
         self,
@@ -565,7 +561,7 @@ class TOMWrapper:
         obj.ModelPermission = System.Enum.Parse(TOM.ModelPermission, model_permission)
         if description is not None:
             obj.Description = description
-        self.model.Roles.Add(obj)
+        self._model.Roles.Add(obj)
 
     def set_rls(self, role_name: str, table_name: str, filter_expression: str):
         """
@@ -583,15 +579,15 @@ class TOMWrapper:
         import Microsoft.AnalysisServices.Tabular as TOM
 
         tp = TOM.TablePermission()
-        tp.Table = self.model.Tables[table_name]
+        tp.Table = self._model.Tables[table_name]
         tp.FilterExpression = filter_expression
 
         try:
-            self.model.Roles[role_name].TablePermissions[
+            self._model.Roles[role_name].TablePermissions[
                 table_name
             ].FilterExpression = filter_expression
         except:
-            self.model.Roles[role_name].TablePermissions.Add(tp)
+            self._model.Roles[role_name].TablePermissions.Add(tp)
 
     def set_ols(
         self, role_name: str, table_name: str, column_name: str, permission: str
@@ -621,14 +617,14 @@ class TOMWrapper:
             return
 
         cp = TOM.ColumnPermission()
-        cp.Column = self.model.Tables[table_name].Columns[column_name]
+        cp.Column = self._model.Tables[table_name].Columns[column_name]
         cp.MetadataPermission = System.Enum.Parse(TOM.MetadataPermission, permission)
         try:
-            self.model.Roles[role_name].TablePermissions[table_name].ColumnPermissions[
+            self._model.Roles[role_name].TablePermissions[table_name].ColumnPermissions[
                 column_name
             ].MetadataPermission = System.Enum.Parse(TOM.MetadataPermission, permission)
         except:
-            self.model.Roles[role_name].TablePermissions[
+            self._model.Roles[role_name].TablePermissions[
                 table_name
             ].ColumnPermissions.Add(cp)
 
@@ -642,7 +638,7 @@ class TOMWrapper:
         hierarchy_hidden: Optional[bool] = False,
     ):
         """
-        Adds a hierarchy to a table within a semantic model.
+        Adds a `hierarchy <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.hierarchy?view=analysisservices-dotnet>`_ to a table within a semantic model.
 
         Parameters
         ----------
@@ -663,11 +659,11 @@ class TOMWrapper:
 
         if isinstance(columns, str):
             print(
-                f"The 'levels' parameter must be a list. For example: ['Continent', 'Country', 'City']"
+                f"{icons.red_dot} The 'levels' parameter must be a list. For example: ['Continent', 'Country', 'City']"
             )
             return
         if len(columns) == 1:
-            print(f"There must be at least 2 levels in order to create a hierarchy.")
+            print(f"{icons.red_dot} There must be at least 2 levels in order to create a hierarchy.")
             return
 
         if levels is None:
@@ -675,7 +671,7 @@ class TOMWrapper:
 
         if len(columns) != len(levels):
             print(
-                f"If specifying level names, you must specify a level for each column."
+                f"{icons.red_dot} If specifying level names, you must specify a level for each column."
             )
             return
 
@@ -684,14 +680,14 @@ class TOMWrapper:
         obj.IsHidden = hierarchy_hidden
         if hierarchy_description is not None:
             obj.Description = hierarchy_description
-        self.model.Tables[table_name].Hierarchies.Add(obj)
+        self._model.Tables[table_name].Hierarchies.Add(obj)
 
         for col in columns:
             lvl = TOM.Level()
-            lvl.Column = self.model.Tables[table_name].Columns[col]
+            lvl.Column = self._model.Tables[table_name].Columns[col]
             lvl.Name = levels[columns.index(col)]
             lvl.Ordinal = columns.index(col)
-            self.model.Tables[table_name].Hierarchies[hierarchy_name].Levels.Add(lvl)
+            self._model.Tables[table_name].Hierarchies[hierarchy_name].Levels.Add(lvl)
 
     def add_relationship(
         self,
@@ -707,7 +703,7 @@ class TOMWrapper:
         rely_on_referential_integrity: Optional[bool] = False,
     ):
         """
-        Adds a relationship to a semantic model.
+        Adds a `relationship <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.singlecolumnrelationship?view=analysisservices-dotnet>`_ to a semantic model.
 
         Parameters
         ----------
@@ -752,11 +748,11 @@ class TOMWrapper:
         cross_filtering_behavior = cross_filtering_behavior.replace("direct", "Direct")
 
         rel = TOM.SingleColumnRelationship()
-        rel.FromColumn = self.model.Tables[from_table].Columns[from_column]
+        rel.FromColumn = self._model.Tables[from_table].Columns[from_column]
         rel.FromCardinality = System.Enum.Parse(
             TOM.RelationshipEndCardinality, from_cardinality
         )
-        rel.ToColumn = self.model.Tables[to_table].Columns[to_column]
+        rel.ToColumn = self._model.Tables[to_table].Columns[to_column]
         rel.ToCardinality = System.Enum.Parse(
             TOM.RelationshipEndCardinality, to_cardinality
         )
@@ -769,7 +765,7 @@ class TOMWrapper:
         )
         rel.RelyOnReferentialIntegrity = rely_on_referential_integrity
 
-        self.model.Relationships.Add(rel)
+        self._model.Relationships.Add(rel)
 
     def add_calculation_group(
         self,
@@ -779,7 +775,7 @@ class TOMWrapper:
         hidden: Optional[bool] = False,
     ):
         """
-        Adds a calculation group to a semantic model.
+        Adds a `calculation group <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculationgroup?view=analysisservices-dotnet>`_ to a semantic model.
 
         Parameters
         ----------
@@ -825,14 +821,14 @@ class TOMWrapper:
         # col.SortByColumn = m.Tables[name].Columns[sortCol]
         tbl.Columns.Add(col2)
 
-        self.model.DiscourageImplicitMeasures = True
-        self.model.Tables.Add(tbl)
+        self._model.DiscourageImplicitMeasures = True
+        self._model.Tables.Add(tbl)
 
     def add_expression(
         self, name: str, expression: str, description: Optional[str] = None
     ):
         """
-        Adds an expression to a semantic model.
+        Adds an `expression <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.namedexpression?view=analysisservices-dotnet>`_ to a semantic model.
 
         Parameters
         ----------
@@ -852,11 +848,11 @@ class TOMWrapper:
         exp.Kind = TOM.ExpressionKind.M
         exp.Expression = expression
 
-        self.model.Expressions.Add(exp)
+        self._model.Expressions.Add(exp)
 
     def add_translation(self, language: str):
         """
-        Adds a translation language (culture) to a semantic model.
+        Adds a `translation language <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.culture?view=analysisservices-dotnet>`_ (culture) to a semantic model.
 
         Parameters
         ----------
@@ -869,13 +865,13 @@ class TOMWrapper:
         cul.Name = language
 
         try:
-            self.model.Cultures.Add(cul)
+            self._model.Cultures.Add(cul)
         except:
             pass
 
     def add_perspective(self, perspective_name: str):
         """
-        Adds a perspective to a semantic model.
+        Adds a `perspective <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.perspective?view=analysisservices-dotnet>`_ to a semantic model.
 
         Parameters
         ----------
@@ -886,7 +882,7 @@ class TOMWrapper:
 
         persp = TOM.Perspective()
         persp.Name = perspective_name
-        self.model.Perspectives.Add(persp)
+        self._model.Perspectives.Add(persp)
 
     def add_m_partition(
         self,
@@ -910,18 +906,22 @@ class TOMWrapper:
         mode : str, default=None
             The query mode for the partition.
             Defaults to None which resolves to 'Import'.
+            `Valid mode values <https://learn.microsoft.com/en-us/dotnet/api/microsoft.analysisservices.tabular.modetype?view=analysisservices-dotnet>`_
         description : str, default=None
             A description for the partition.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
         import System
 
-        mode = (
-            mode.title()
-            .replace("query", "Query")
-            .replace(" ", "")
-            .replace("lake", "Lake")
-        )
+        if mode is None:
+            mode = "Default"
+        else:
+            mode = (
+                mode.title()
+                .replace("query", "Query")
+                .replace(" ", "")
+                .replace("lake", "Lake")
+            )
 
         mp = TOM.MPartitionSource()
         mp.Expression = expression
@@ -929,12 +929,10 @@ class TOMWrapper:
         p.Name = partition_name
         p.Source = mp
         if description is not None:
-            p.Description = description
-        if mode is None:
-            mode = "Default"
+            p.Description = description        
         p.Mode = System.Enum.Parse(TOM.ModeType, mode)
 
-        self.model.Tables[table_name].Partitions.Add(p)
+        self._model.Tables[table_name].Partitions.Add(p)
 
     def add_entity_partition(
         self,
@@ -964,9 +962,9 @@ class TOMWrapper:
         ep.Name = table_name
         ep.EntityName = entity_name
         if expression is None:
-            ep.ExpressionSource = self.model.Expressions["DatabaseQuery"]
+            ep.ExpressionSource = self._model.Expressions["DatabaseQuery"]
         else:
-            ep.ExpressionSource = expression
+            ep.ExpressionSource = self.model.Expressions[expression]
         p = TOM.Partition()
         p.Name = table_name
         p.Source = ep
@@ -974,7 +972,7 @@ class TOMWrapper:
         if description is not None:
             p.Description = description
 
-        self.model.Tables[table_name].Partitions.Add(p)
+        self._model.Tables[table_name].Partitions.Add(p)
 
     def set_alternate_of(
         self,
@@ -985,7 +983,7 @@ class TOMWrapper:
         base_column: Optional[str] = None,
     ):
         """
-        Sets the 'alternate of' property on a column.
+        Sets the `alternate of <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.alternateof?view=analysisservices-dotnet>`_ property on a column.
 
         Parameters
         ----------
@@ -1006,7 +1004,7 @@ class TOMWrapper:
 
         if base_column is not None and base_table is None:
             print(
-                f"ERROR: If you specify the base table you must also specify the base column"
+                f"{icons.red_dot} If you specify the base table you must also specify the base column"
             )
 
         summarization_type = (
@@ -1018,28 +1016,28 @@ class TOMWrapper:
         summarizationTypes = ["Sum", "GroupBy", "Count", "Min", "Max"]
         if summarization_type not in summarizationTypes:
             print(
-                f"The 'summarization_type' parameter must be one of the following valuse: {summarizationTypes}."
+                f"{icons.red_dot} The 'summarization_type' parameter must be one of the following valuse: {summarizationTypes}."
             )
             return
 
         ao = TOM.AlternateOf()
         ao.Summarization = System.Enum.Parse(TOM.SummarizationType, summarization_type)
         if base_column is not None:
-            ao.BaseColumn = self.model.Tables[base_table].Columns[base_column]
+            ao.BaseColumn = self._model.Tables[base_table].Columns[base_column]
         else:
-            ao.BaseTable = self.model.Tables[base_table]
+            ao.BaseTable = self._model.Tables[base_table]
 
-        self.model.Tables[table_name].Columns[column_name].AlternateOf = ao
+        self._model.Tables[table_name].Columns[column_name].AlternateOf = ao
 
         # Hide agg table and columns
-        t = self.model.Tables[table_name]
+        t = self._model.Tables[table_name]
         t.IsHidden = True
         for c in t.Columns:
             c.IsHidden = True
 
     def remove_alternate_of(self, table_name: str, column_name: str):
         """
-        Removes the 'alternate of' property on a column.
+        Removes the `alternate of <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.alternateof?view=analysisservices-dotnet>`_ property on a column.
 
         Parameters
         ----------
@@ -1053,13 +1051,13 @@ class TOMWrapper:
 
         """
 
-        self.model.Tables[table_name].Columns[column_name].AlternateOf = None
+        self._model.Tables[table_name].Columns[column_name].AlternateOf = None
 
     def get_annotations(
         self, object
     ) -> "Microsoft.AnalysisServices.Tabular.Annotation":
         """
-        Shows all annotations for a given object within a semantic model.
+        Shows all `annotations <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.annotation?view=analysisservices-dotnet>`_ for a given object within a semantic model.
 
         Parameters
         ----------
@@ -1081,7 +1079,7 @@ class TOMWrapper:
 
     def set_annotation(self, object, name: str, value: str):
         """
-        Sets an annotation on an object within the semantic model.
+        Sets an `annotation <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.annotation?view=analysisservices-dotnet>`_ on an object within the semantic model.
 
         Parameters
         ----------
@@ -1105,7 +1103,7 @@ class TOMWrapper:
 
     def get_annotation_value(self, object, name: str):
         """
-        Obtains the annotation value for a given annotation on an object within the semantic model.
+        Obtains the `annotation <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.annotation?view=analysisservices-dotnet>`_ value for a given annotation on an object within the semantic model.
 
         Parameters
         ----------
@@ -1124,7 +1122,7 @@ class TOMWrapper:
 
     def remove_annotation(self, object, name: str):
         """
-        Removes an annotation on an object within the semantic model.
+        Removes an `annotation <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.annotation?view=analysisservices-dotnet>`_ on an object within the semantic model.
 
         Parameters
         ----------
@@ -1138,7 +1136,7 @@ class TOMWrapper:
 
     def clear_annotations(self, object):
         """
-        Removes all annotations on an object within the semantic model.
+        Removes all `annotations <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.annotation?view=analysisservices-dotnet>`_ on an object within the semantic model.
 
         Parameters
         ----------
@@ -1152,7 +1150,7 @@ class TOMWrapper:
         self, object
     ) -> "Microsoft.AnalysisServices.Tabular.ExtendedProperty":
         """
-        Retrieves all extended properties on an object within the semantic model.
+        Retrieves all `extended properties <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.extendedproperty?view=analysisservices-dotnet>`_ on an object within the semantic model.
 
         Parameters
         ----------
@@ -1172,7 +1170,7 @@ class TOMWrapper:
         self, object, extended_property_type: str, name: str, value: str
     ):
         """
-        Sets an extended property on an object within the semantic model.
+        Sets an `extended property <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.extendedproperty?view=analysisservices-dotnet>`_ on an object within the semantic model.
 
         Parameters
         ----------
@@ -1205,7 +1203,7 @@ class TOMWrapper:
 
     def get_extended_property_value(self, object, name: str):
         """
-        Retrieves the value of an extended property for an object within the semantic model.
+        Retrieves the value of an `extended property <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.extendedproperty?view=analysisservices-dotnet>`_ for an object within the semantic model.
 
         Parameters
         ----------
@@ -1224,7 +1222,7 @@ class TOMWrapper:
 
     def remove_extended_property(self, object, name: str):
         """
-        Removes an extended property on an object within the semantic model.
+        Removes an `extended property <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.extendedproperty?view=analysisservices-dotnet>`_ on an object within the semantic model.
 
         Parameters
         ----------
@@ -1238,7 +1236,7 @@ class TOMWrapper:
 
     def clear_extended_properties(self, object):
         """
-        Removes all extended properties on an object within the semantic model.
+        Removes all `extended properties <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.extendedproperty?view=analysisservices-dotnet>`_ on an object within the semantic model.
 
         Parameters
         ----------
@@ -1254,7 +1252,7 @@ class TOMWrapper:
         perspective_name: str,
     ):
         """
-        Indicates whether an object is contained within a given perspective.
+        Indicates whether an object is contained within a given `perspective <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.perspective?view=analysisservices-dotnet>`_.
 
         Parameters
         ----------
@@ -1280,7 +1278,7 @@ class TOMWrapper:
 
         if objectType not in validObjects:
             print(
-                f"Only the following object types are valid for perspectives: {validObjects}."
+                f"{icons.red_dot} Only the following object types are valid for perspectives: {validObjects}."
             )
             return
 
@@ -1313,7 +1311,7 @@ class TOMWrapper:
         perspective_name: str,
     ):
         """
-        Adds an object to a perspective.
+        Adds an object to a `perspective <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.perspective?view=analysisservices-dotnet>`_.
 
         Parameters
         ----------
@@ -1334,13 +1332,13 @@ class TOMWrapper:
 
         if objectType not in validObjects:
             print(
-                f"Only the following object types are valid for perspectives: {validObjects}."
+                f"{icons.red_dot} Only the following object types are valid for perspectives: {validObjects}."
             )
             return
         try:
             object.Model.Perspectives[perspective_name]
         except:
-            print(f"The '{perspective_name}' perspective does not exist.")
+            print(f"{icons.red_dot} The '{perspective_name}' perspective does not exist.")
             return
 
         # try:
@@ -1375,7 +1373,7 @@ class TOMWrapper:
         perspective_name: str,
     ):
         """
-        Removes an object from a perspective.
+        Removes an object from a `perspective <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.perspective?view=analysisservices-dotnet>`_.
 
         Parameters
         ----------
@@ -1396,13 +1394,13 @@ class TOMWrapper:
 
         if objectType not in validObjects:
             print(
-                f"Only the following object types are valid for perspectives: {validObjects}."
+                f"{icons.red_dot} Only the following object types are valid for perspectives: {validObjects}."
             )
             return
         try:
             object.Model.Perspectives[perspective_name]
         except:
-            print(f"The '{perspective_name}' perspective does not exist.")
+            print(f"{icons.red_dot} The '{perspective_name}' perspective does not exist.")
             return
 
         # try:
@@ -1449,7 +1447,7 @@ class TOMWrapper:
         value: str,
     ):
         """
-        Sets a translation value for an object's property.
+        Sets a `translation <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.culture?view=analysisservices-dotnet>`_ value for an object's property.
 
         Parameters
         ----------
@@ -1476,7 +1474,7 @@ class TOMWrapper:
         ]  # , 'Level'
 
         if object.ObjectType not in validObjects:
-            print(f"Translations can only be set to {validObjects}.")
+            print(f"{icons.red_dot} Translations can only be set to {validObjects}.")
             return
 
         mapping = {
@@ -1491,7 +1489,7 @@ class TOMWrapper:
             object.Model.Cultures[language]
         except:
             print(
-                f"The '{language}' translation language does not exist in the semantic model."
+                f"{icons.red_dot} The '{language}' translation language does not exist in the semantic model."
             )
             return
 
@@ -1505,7 +1503,7 @@ class TOMWrapper:
         language: str,
     ):
         """
-        Removes an object's translation value.
+        Removes an object's `translation <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.culture?view=analysisservices-dotnet>`_ value.
 
         Parameters
         ----------
@@ -1579,7 +1577,7 @@ class TOMWrapper:
 
     def used_in_relationships(self, object: Union["TOM.Table", "TOM.Column"]):
         """
-        Shows all relationships in which a table/column is used.
+        Shows all `relationships <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.singlecolumnrelationship?view=analysisservices-dotnet>`_ in which a table/column is used.
 
         Parameters
         ----------
@@ -1596,11 +1594,11 @@ class TOMWrapper:
         objType = object.ObjectType
 
         if objType == TOM.ObjectType.Table:
-            for r in self.model.Relationships:
+            for r in self._model.Relationships:
                 if r.FromTable.Name == object.Name or r.ToTable.Name == object.Name:
                     yield r  # , 'Table'
         elif objType == TOM.ObjectType.Column:
-            for r in self.model.Relationships:
+            for r in self._model.Relationships:
                 if (
                     r.FromTable.Name == object.Parent.Name
                     and r.FromColumn.Name == object.Name
@@ -1612,7 +1610,7 @@ class TOMWrapper:
 
     def used_in_levels(self, column: "TOM.Column"):
         """
-        Shows all levels in which a column is used.
+        Shows all `levels <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.level?view=analysisservices-dotnet>`_ in which a column is used.
 
         Parameters
         ----------
@@ -1638,7 +1636,7 @@ class TOMWrapper:
 
     def used_in_hierarchies(self, column: "TOM.Column"):
         """
-        Shows all hierarchies in which a column is used.
+        Shows all `hierarchies <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.hierarchy?view=analysisservices-dotnet>`_ in which a column is used.
 
         Parameters
         ----------
@@ -1681,7 +1679,7 @@ class TOMWrapper:
         objType = column.ObjectType
 
         if objType == TOM.ObjectType.Column:
-            for c in self.model.Tables[column.Parent.Name].Columns:
+            for c in self._model.Tables[column.Parent.Name].Columns:
                 if c.SortByColumn == column:
                     yield c
 
@@ -1691,7 +1689,7 @@ class TOMWrapper:
         dependencies: pd.DataFrame,
     ):
         """
-        Identifies the filter expressions which reference a given object.
+        Identifies the row level security `filter expressions <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.tablepermission.filterexpression?view=analysisservices-dotnet#microsoft-analysisservices-tabular-tablepermission-filterexpression>`_ which reference a given object.
 
         Parameters
         ----------
@@ -1717,7 +1715,7 @@ class TOMWrapper:
                 & (df_filt["Referenced Table"] == object.Name)
             ]
             tbls = fil["Table Name"].unique().tolist()
-            for t in self.model.Tables:
+            for t in self._model.Tables:
                 if t.Name in tbls:
                     yield t
         elif objType == TOM.ObjectType.Column:
@@ -1774,7 +1772,7 @@ class TOMWrapper:
                 & (df_filt["Referenced Table"] == object.Name)
             ]
             tbls = fil["Table Name"].unique().tolist()
-            for t in self.model.Tables:
+            for t in self._model.Tables:
                 if t.Name in tbls:
                     yield t
         elif objType == TOM.ObjectType.Column:
@@ -1829,7 +1827,7 @@ class TOMWrapper:
                 & (df_filt["Referenced Table"] == object.Name)
             ]
             tbls = fil["Table Name"].unique().tolist()
-            for t in self.model.Tables:
+            for t in self._model.Tables:
                 if t.Name in tbls:
                     yield t
         elif objType == TOM.ObjectType.Column:
@@ -1855,7 +1853,7 @@ class TOMWrapper:
 
     def hybrid_tables(self):
         """
-        Outputs the hybrid tables within a semantic model.
+        Outputs the `hybrid tables <https://learn.microsoft.com/power-bi/connect-data/service-dataset-modes-understand#hybrid-tables>`_ within a semantic model.
 
         Parameters
         ----------
@@ -1867,14 +1865,14 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        for t in self.model.Tables:
+        for t in self._model.Tables:
             if any(p.Mode == TOM.ModeType.Import for p in t.Partitions):
                 if any(p.Mode == TOM.ModeType.DirectQuery for p in t.Partitions):
                     yield t
 
     def date_tables(self):
         """
-        Outputs the tables which are marked as date tables within a semantic model.
+        Outputs the tables which are marked as `date tables <https://learn.microsoft.com/power-bi/transform-model/desktop-date-tables>`_ within a semantic model.
 
         Parameters
         ----------
@@ -1886,7 +1884,7 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        for t in self.model.Tables:
+        for t in self._model.Tables:
             if t.DataCategory == "Time":
                 if any(
                     c.IsKey and c.DataType == TOM.DataType.DateTime for c in t.Columns
@@ -1895,7 +1893,7 @@ class TOMWrapper:
 
     def is_hybrid_table(self, table_name: str):
         """
-        Identifies if a table is a hybrid table.
+        Identifies if a table is a `hybrid table <https://learn.microsoft.com/power-bi/connect-data/service-dataset-modes-understand#hybrid-tables>`_.
 
         Parameters
         ----------
@@ -1913,11 +1911,11 @@ class TOMWrapper:
 
         if any(
             p.Mode == TOM.ModeType.Import
-            for p in self.model.Tables[table_name].Partitions
+            for p in self._model.Tables[table_name].Partitions
         ):
             if any(
                 p.Mode == TOM.ModeType.DirectQuery
-                for p in self.model.Tables[table_name].Partitions
+                for p in self._model.Tables[table_name].Partitions
             ):
                 isHybridTable = True
 
@@ -1925,7 +1923,7 @@ class TOMWrapper:
 
     def is_date_table(self, table_name: str):
         """
-        Identifies if a table is marked as a date table.
+        Identifies if a table is marked as a `date tables <https://learn.microsoft.com/power-bi/transform-model/desktop-date-tables>`_.
 
         Parameters
         ----------
@@ -1940,7 +1938,7 @@ class TOMWrapper:
         import Microsoft.AnalysisServices.Tabular as TOM
 
         isDateTable = False
-        t = self.model.Tables[table_name]
+        t = self._model.Tables[table_name]
 
         if t.DataCategory == "Time":
             if any(c.IsKey and c.DataType == TOM.DataType.DateTime for c in t.Columns):
@@ -1950,7 +1948,7 @@ class TOMWrapper:
 
     def mark_as_date_table(self, table_name: str, column_name: str):
         """
-        Marks a table as a date table.
+        Marks a table as a `date table <https://learn.microsoft.com/power-bi/transform-model/desktop-date-tables>`_.
 
         Parameters
         ----------
@@ -1961,7 +1959,7 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        t = self.model.Tables[table_name]
+        t = self._model.Tables[table_name]
         c = t.Columns[column_name]
         if c.DataType != TOM.DataType.DateTime:
             print(
@@ -1983,7 +1981,7 @@ class TOMWrapper:
         )
         """
         df = fabric.evaluate_dax(
-            dataset=self.dataset, workspace=self.workspace, dax_string=daxQuery
+            dataset=self._dataset, workspace=self._workspace, dax_string=daxQuery
         )
         value = df["1"].iloc[0]
         if value != "1":
@@ -2001,7 +1999,7 @@ class TOMWrapper:
 
     def has_aggs(self):
         """
-        Identifies if a semantic model has any aggregations.
+        Identifies if a semantic model has any `aggregations <https://learn.microsoft.com/power-bi/transform-model/aggregations-advanced>`_.
 
         Parameters
         ----------
@@ -2022,7 +2020,7 @@ class TOMWrapper:
 
     def is_agg_table(self, table_name: str):
         """
-        Identifies if a table has aggregations.
+        Identifies if a table has `aggregations <https://learn.microsoft.com/power-bi/transform-model/aggregations-advanced>`_.
 
         Parameters
         ----------
@@ -2035,13 +2033,13 @@ class TOMWrapper:
             Indicates if the table has any aggregations.
         """
 
-        t = self.model.Tables[table_name]
+        t = self._model.Tables[table_name]
 
         return any(c.AlternateOf is not None for c in t.Columns)
 
     def has_hybrid_table(self):
         """
-        Identifies if a semantic model has a hybrid table.
+        Identifies if a semantic model has a `hybrid table <https://learn.microsoft.com/power-bi/connect-data/service-dataset-modes-understand#hybrid-tables>`_.
 
         Parameters
         ----------
@@ -2054,7 +2052,7 @@ class TOMWrapper:
 
         hasHybridTable = False
 
-        for t in self.model.Tables:
+        for t in self._model.Tables:
             if self.is_hybrid_table(table_name=t.Name):
                 hasHybridTable = True
 
@@ -2062,7 +2060,7 @@ class TOMWrapper:
 
     def has_date_table(self):
         """
-        Identifies if a semantic model has a table marked as a date table.
+        Identifies if a semantic model has a table marked as a `date table <https://learn.microsoft.com/power-bi/transform-model/desktop-date-tables>`_.
 
         Parameters
         ----------
@@ -2075,7 +2073,7 @@ class TOMWrapper:
 
         hasDateTable = False
 
-        for t in self.model.Tables:
+        for t in self._model.Tables:
             if self.is_date_table(table_name=t.Name):
                 hasDateTable = True
 
@@ -2083,7 +2081,7 @@ class TOMWrapper:
 
     def is_direct_lake(self):
         """
-        Identifies if a semantic model is in Direct Lake mode.
+        Identifies if a semantic model is in `Direct Lake <https://learn.microsoft.com/fabric/get-started/direct-lake-overview>`_ mode.
 
         Parameters
         ----------
@@ -2096,13 +2094,13 @@ class TOMWrapper:
 
         return any(
             p.Mode == TOM.ModeType.DirectLake
-            for t in self.model.Tables
+            for t in self._model.Tables
             for p in t.Partitions
         )
 
     def is_field_parameter(self, table_name: str):
         """
-        Identifies if a table is a field parameter.
+        Identifies if a table is a `field parameter <https://learn.microsoft.com/power-bi/create-reports/power-bi-field-parameters>`_.
 
         Parameters
         ----------
@@ -2116,7 +2114,7 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        t = self.model.Tables[table_name]
+        t = self._model.Tables[table_name]
 
         return (
             any(
@@ -2134,7 +2132,7 @@ class TOMWrapper:
 
     def is_auto_date_table(self, table_name: str):
         """
-        Identifies if a table is an auto-date table.
+        Identifies if a table is an `auto date/time table <https://learn.microsoft.com/power-bi/transform-model/desktop-auto-date-time>`_.
 
         Parameters
         ----------
@@ -2150,7 +2148,7 @@ class TOMWrapper:
 
         isAutoDate = False
 
-        t = self.model.Tables[table_name]
+        t = self._model.Tables[table_name]
 
         if t.Name.startswith("LocalDateTable_") or t.Name.startswith(
             "DateTableTemplate_"
@@ -2174,7 +2172,7 @@ class TOMWrapper:
         status_graphic: Optional[str] = None,
     ):
         """
-        Sets the properties to add/update a KPI for a measure.
+        Sets the properties to add/update a `KPI <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.kpi?view=analysisservices-dotnet>`_ for a measure.
 
         Parameters
         ----------
@@ -2203,7 +2201,7 @@ class TOMWrapper:
 
         if measure_name == target:
             print(
-                f"The 'target' parameter cannot be the same measure as the 'measure_name' parameter."
+                f"{icons.red_dot} The 'target' parameter cannot be the same measure as the 'measure_name' parameter."
             )
             return
 
@@ -2218,32 +2216,32 @@ class TOMWrapper:
 
         if status_type not in statusType:
             print(
-                f"'{status_type}' is an invalid status_type. Please choose from these options: {statusType}."
+                f"{icons.red_dot} '{status_type}' is an invalid status_type. Please choose from these options: {statusType}."
             )
             return
 
         if status_type in ["Linear", "LinearReversed"]:
             if upper_bound is not None or lower_mid_bound is not None:
                 print(
-                    f"The 'upper_mid_bound' and 'lower_mid_bound' parameters are not used in the 'Linear' and 'LinearReversed' status types. Make sure these parameters are set to None."
+                    f"{icons.red_dot} The 'upper_mid_bound' and 'lower_mid_bound' parameters are not used in the 'Linear' and 'LinearReversed' status types. Make sure these parameters are set to None."
                 )
                 return
             elif upper_bound <= lower_bound:
-                print(f"The upper_bound must be greater than the lower_bound.")
+                print(f"{icons.red_dot} The upper_bound must be greater than the lower_bound.")
                 return
 
         if status_type in ["Centered", "CenteredReversed"]:
             if upper_mid_bound is None or lower_mid_bound is None:
                 print(
-                    f"The 'upper_mid_bound' and 'lower_mid_bound' parameters are necessary in the 'Centered' and 'CenteredReversed' status types."
+                    f"{icons.red_dot} The 'upper_mid_bound' and 'lower_mid_bound' parameters are necessary in the 'Centered' and 'CenteredReversed' status types."
                 )
                 return
             elif upper_bound <= upper_mid_bound:
-                print(f"The upper_bound must be greater than the upper_mid_bound.")
+                print(f"{icons.red_dot} The upper_bound must be greater than the upper_mid_bound.")
             elif upper_mid_bound <= lower_mid_bound:
-                print(f"The upper_mid_bound must be greater than the lower_mid_bound.")
+                print(f"{icons.red_dot} The upper_mid_bound must be greater than the lower_mid_bound.")
             elif lower_mid_bound <= lower_bound:
-                print(f"The lower_mid_bound must be greater than the lower_bound.")
+                print(f"{icons.red_dot} The lower_mid_bound must be greater than the lower_bound.")
 
         try:
             table_name = next(
@@ -2251,7 +2249,7 @@ class TOMWrapper:
             )
         except:
             print(
-                f"The '{measure_name}' measure does not exist in the '{self.dataset}' semantic model within the '{self.workspace}'."
+                f"{icons.red_dot} The '{measure_name}' measure does not exist in the '{self._dataset}' semantic model within the '{self._workspace}'."
             )
             return
 
@@ -2277,7 +2275,7 @@ class TOMWrapper:
 
         if status_graphic not in graphics:
             print(
-                f"The '{status_graphic}' status graphic is not valid. Please choose from these options: {graphics}."
+                f"{icons.red_dot} The '{status_graphic}' status graphic is not valid. Please choose from these options: {graphics}."
             )
             return
 
@@ -2296,7 +2294,7 @@ class TOMWrapper:
                 )
             except:
                 print(
-                    f"The '{target}' measure does not exist in the '{self.dataset}' semantic model within the '{self.workspace}'."
+                    f"{icons.red_dot} The '{target}' measure does not exist in the '{self._dataset}' semantic model within the '{self._workspace}'."
                 )
 
         if measure_target:
@@ -2318,7 +2316,7 @@ class TOMWrapper:
         kpi.StatusGraphic = status_graphic
         kpi.StatusExpression = expr
 
-        ms = self.model.Tables[table_name].Measures[measure_name]
+        ms = self._model.Tables[table_name].Measures[measure_name]
         try:
             ms.KPI.TargetExpression = tgt
             ms.KPI.StatusGraphic = status_graphic
@@ -2328,7 +2326,7 @@ class TOMWrapper:
 
     def set_aggregations(self, table_name: str, agg_table_name: str):
         """
-        Sets the aggregations (alternate of) for all the columns in an aggregation table based on a base table.
+        Sets the `aggregations <https://learn.microsoft.com/power-bi/transform-model/aggregations-advanced>`_ (alternate of) for all the columns in an aggregation table based on a base table.
 
         Parameters
         ----------
@@ -2342,7 +2340,7 @@ class TOMWrapper:
 
         """
 
-        for c in self.model.Tables[agg_table_name].Columns:
+        for c in self._model.Tables[agg_table_name].Columns:
 
             dataType = c.DataType
 
@@ -2367,7 +2365,7 @@ class TOMWrapper:
         self, table_name: str, column_name: str, value: Optional[bool] = False
     ):
         """
-        Sets the IsAvailableInMdx property on a column.
+        Sets the `IsAvailableInMDX <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.column.isavailableinmdx?view=analysisservices-dotnet#microsoft-analysisservices-tabular-column-isavailableinmdx>`_ property on a column.
 
         Parameters
         ----------
@@ -2379,13 +2377,13 @@ class TOMWrapper:
             The IsAvailableInMdx property value.
         """
 
-        self.model.Tables[table_name].Columns[column_name].IsAvailableInMdx = value
+        self._model.Tables[table_name].Columns[column_name].IsAvailableInMdx = value
 
     def set_summarize_by(
         self, table_name: str, column_name: str, value: Optional[str] = None
     ):
         """
-        Sets the SummarizeBy property on a column.
+        Sets the `SummarizeBy <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.column.summarizeby?view=analysisservices-dotnet#microsoft-analysisservices-tabular-column-summarizeby>`_ property on a column.
 
         Parameters
         ----------
@@ -2422,17 +2420,17 @@ class TOMWrapper:
 
         if value not in values:
             print(
-                f"'{value}' is not a valid value for the SummarizeBy property. These are the valid values: {values}."
+                f"{icons.red_dot} '{value}' is not a valid value for the SummarizeBy property. These are the valid values: {values}."
             )
             return
 
-        self.model.Tables[table_name].Columns[column_name].SummarizeBy = (
+        self._model.Tables[table_name].Columns[column_name].SummarizeBy = (
             System.Enum.Parse(TOM.AggregateFunction, value)
         )
 
     def set_direct_lake_behavior(self, direct_lake_behavior: str):
         """
-        Sets the Direct Lake Behavior property for a semantic model.
+        Sets the `Direct Lake Behavior <https://learn.microsoft.com/fabric/get-started/direct-lake-overview#fallback-behavior>`_ property for a semantic model.
 
         Parameters
         ----------
@@ -2454,11 +2452,11 @@ class TOMWrapper:
 
         if direct_lake_behavior not in dlValues:
             print(
-                f"The 'direct_lake_behavior' parameter must be one of these values: {dlValues}."
+                f"{icons.red_dot} The 'direct_lake_behavior' parameter must be one of these values: {dlValues}."
             )
             return
 
-        self.model.DirectLakeBehavior = System.Enum.Parse(
+        self._model.DirectLakeBehavior = System.Enum.Parse(
             TOM.DirectLakeBehavior, direct_lake_behavior
         )
 
@@ -2492,7 +2490,7 @@ class TOMWrapper:
         if data_category is not None:
             t.DataCategory = data_category
         t.Hidden = hidden
-        self.model.Tables.Add(t)
+        self._model.Tables.Add(t)
 
     def add_calculated_table(
         self,
@@ -2535,11 +2533,11 @@ class TOMWrapper:
             t.DataCategory = data_category
         t.Hidden = hidden
         t.Partitions.Add(par)
-        self.model.Tables.Add(t)
+        self._model.Tables.Add(t)
 
     def add_field_parameter(self, table_name: str, objects: List[str]):
         """
-        Adds a table to the semantic model.
+        Adds a `field parameter <https://learn.microsoft.com/power-bi/create-reports/power-bi-field-parameters>`_ to the semantic model.
 
         Parameters
         ----------
@@ -2551,12 +2549,14 @@ class TOMWrapper:
             Measures may be formatted as '[Measure Name]' or 'Measure Name'.
         """
 
+        import Microsoft.AnalysisServices.Tabular as TOM
+
         if isinstance(objects, str):
-            print(f"The 'objects' parameter must be a list of columns/measures.")
+            print(f"{icons.red_dot} The 'objects' parameter must be a list of columns/measures.")
             return
         if len(objects) == 1:
             print(
-                f"There must be more than one object (column/measure) within the objects parameter."
+                f"{icons.red_dot} There must be more than one object (column/measure) within the objects parameter."
             )
             return
 
@@ -2595,7 +2595,7 @@ class TOMWrapper:
                     success = True
             if not success:
                 print(
-                    f"The '{obj}' object was not found in the '{self.dataset}' semantic model."
+                    f"{icons.red_dot} The '{obj}' object was not found in the '{self._dataset}' semantic model."
                 )
                 return
             else:
@@ -2631,8 +2631,7 @@ class TOMWrapper:
         )
 
         self.set_extended_property(
-            self=self,
-            object=self.model.Tables[table_name].Columns[col2],
+            object=self._model.Tables[table_name].Columns[col2],
             extended_property_type="Json",
             name="ParameterMetadata",
             value='{"version":3,"kind":2}',
@@ -2640,23 +2639,23 @@ class TOMWrapper:
 
         rcd = TOM.RelatedColumnDetails()
         gpc = TOM.GroupByColumn()
-        gpc.GroupingColumn = self.model.Tables[table_name].Columns[col2]
+        gpc.GroupingColumn = self._model.Tables[table_name].Columns[col2]
         rcd.GroupByColumns.Add(gpc)
 
         # Update column properties
-        self.model.Tables[table_name].Columns[col2].SortByColumn = self.model.Tables[
+        self._model.Tables[table_name].Columns[col2].SortByColumn = self._model.Tables[
             table_name
         ].Columns[col3]
-        self.model.Tables[table_name].Columns[table_name].RelatedColumnDetails = rcd
+        self._model.Tables[table_name].Columns[table_name].RelatedColumnDetails = rcd
 
-        self.tables_added.append(table_name)
+        self._tables_added.append(table_name)
 
     def remove_vertipaq_annotations(self):
         """
-        Removes the annotations set using the [set_vertipaq_annotations] function.
+        Removes the annotations set using the set_vertipaq_annotations function.
         """
 
-        for t in self.model.Tables:
+        for t in self._model.Tables:
             for a in t.Annotations:
                 if a.Name.startswith("Vertipaq_"):
                     self.remove_annotation(object=t, name=a.Name)
@@ -2672,7 +2671,7 @@ class TOMWrapper:
                 for a in p.Annotations:
                     if a.Name.startswith("Vertipaq_"):
                         self.remove_annotation(object=p, name=a.Name)
-        for r in self.model.Relationships:
+        for r in self._model.Relationships:
             for a in r.Annotations:
                 if a.Name.startswith("Veripaq_"):
                     self.remove_annotation(object=r, name=a.Name)
@@ -2683,10 +2682,10 @@ class TOMWrapper:
         """
 
         dfT = fabric.list_tables(
-            dataset=self.dataset, workspace=self.workspace, extended=True
+            dataset=self._dataset, workspace=self._workspace, extended=True
         )
         dfC = fabric.list_columns(
-            dataset=self.dataset, workspace=self.workspace, extended=True
+            dataset=self._dataset, workspace=self._workspace, extended=True
         )
         # intList = ['Total Size']#, 'Data Size', 'Dictionary Size', 'Hierarchy Size']
         dfCSum = dfC.groupby(["Table Name"])["Total Size"].sum().reset_index()
@@ -2698,19 +2697,19 @@ class TOMWrapper:
             how="inner",
         )
         dfP = fabric.list_partitions(
-            dataset=self.dataset, workspace=self.workspace, extended=True
+            dataset=self._dataset, workspace=self._workspace, extended=True
         )
         dfP["Records per Segment"] = round(
             dfP["Record Count"] / dfP["Segment Count"], 2
         )
         dfH = fabric.list_hierarchies(
-            dataset=self.dataset, workspace=self.workspace, extended=True
+            dataset=self._dataset, workspace=self._workspace, extended=True
         )
         dfR = list_relationships(
-            dataset=self.dataset, workspace=self.workspace, extended=True
+            dataset=self._dataset, workspace=self._workspace, extended=True
         )
 
-        for t in self.model.Tables:
+        for t in self._model.Tables:
             dfT_filt = dfTable[dfTable["Name"] == t.Name]
             rowCount = str(dfT_filt["Row Count"].iloc[0])
             totalSize = str(dfT_filt["Total Size"].iloc[0])
@@ -2758,17 +2757,17 @@ class TOMWrapper:
                 ]
                 usedSize = str(dfH_filt["Used Size"].iloc[0])
                 self.set_annotation(object=h, name="Vertipaq_UsedSize", value=usedSize)
-        for r in self.model.Relationships:
+        for r in self._model.Relationships:
             dfR_filt = dfR[dfR["Relationship Name"] == r.Name]
             relSize = str(dfR_filt["Used Size"].iloc[0])
             self.set_annotation(object=r, name="Vertipaq_UsedSize", value=relSize)
 
         try:
-            runId = self.get_annotation_value(object=self.model, name="Vertipaq_Run")
+            runId = self.get_annotation_value(object=self._model, name="Vertipaq_Run")
             runId = str(int(runId) + 1)
         except:
             runId = "1"
-        self.set_annotation(object=self.model, name="Vertipaq_Run", value=runId)
+        self.set_annotation(object=self._model, name="Vertipaq_Run", value=runId)
 
     def row_count(self, object: Union["TOM.Partition", "TOM.Table"]):
         """
@@ -2998,7 +2997,7 @@ class TOMWrapper:
         for c in self.all_columns():
             if format_dax_object_name(c.Parent.Name, c.Name) in cols:
                 yield c
-        for t in self.model.Tables:
+        for t in self._model.Tables:
             if t.Name in tbls:
                 yield t
 
@@ -3049,7 +3048,7 @@ class TOMWrapper:
         for c in self.all_columns():
             if format_dax_object_name(c.Parent.Name, c.Name) in cols:
                 yield c
-        for t in self.model.Tables:
+        for t in self._model.Tables:
             if t.Name in tbls:
                 yield t
 
@@ -3100,7 +3099,7 @@ class TOMWrapper:
         import Microsoft.AnalysisServices.Tabular as TOM
 
         def create_pattern(a, b):
-            return r"(?<!" + a + "\[)(?<!" + a + "'\[)" + b
+            return r"(?<!" + re.escape(a) + r"\[)(?<!" + re.escape(a) + r"'\[)" + re.escape(b)        
 
         for obj in self.depends_on(object=object, dependencies=dependencies):
             if obj.ObjectType == TOM.ObjectType.Column:
@@ -3128,7 +3127,7 @@ class TOMWrapper:
         usingView = False
 
         if self.is_direct_lake():
-            df = check_fallback_reason(dataset=self.dataset, workspace=self.workspace)
+            df = check_fallback_reason(dataset=self._dataset, workspace=self._workspace)
             df_filt = df[df["FallbackReasonID"] == 2]
 
             if len(df_filt) > 0:
@@ -3138,7 +3137,7 @@ class TOMWrapper:
 
     def has_incremental_refresh_policy(self, table_name: str):
         """
-        Identifies whether a table has an incremental refresh policy.
+        Identifies whether a table has an `incremental refresh <https://learn.microsoft.com/power-bi/connect-data/incremental-refresh-overview>`_ policy.
 
         Parameters
         ----------
@@ -3152,7 +3151,7 @@ class TOMWrapper:
         """
 
         hasRP = False
-        rp = self.model.Tables[table_name].RefreshPolicy
+        rp = self._model.Tables[table_name].RefreshPolicy
 
         if rp is not None:
             hasRP = True
@@ -3161,7 +3160,7 @@ class TOMWrapper:
 
     def show_incremental_refresh_policy(self, table_name: str):
         """
-        Prints the incremental refresh policy for a table.
+        Prints the `incremental refresh <https://learn.microsoft.com/power-bi/connect-data/incremental-refresh-overview>`_ policy for a table.
 
         Parameters
         ----------
@@ -3169,11 +3168,13 @@ class TOMWrapper:
             Name of the table.
         """
 
-        rp = self.model.Tables[table_name].RefreshPolicy
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        rp = self._model.Tables[table_name].RefreshPolicy
 
         if rp is None:
             print(
-                f"The '{table_name}' table in the '{self.dataset}' semantic model within the '{self.workspace}' workspace does not have an incremental refresh policy."
+                f"{icons.yellow_dot} The '{table_name}' table in the '{self._dataset}' semantic model within the '{self._workspace}' workspace does not have an incremental refresh policy."
             )
         else:
             print(f"Table Name: {table_name}")
@@ -3181,33 +3182,33 @@ class TOMWrapper:
             icGran = str(rp.IncrementalGranularity).lower()
             if rp.RollingWindowPeriods > 1:
                 print(
-                    f"Archive data starting {start_bold}{rp.RollingWindowPeriods} {rwGran}s{end_bold} before refresh date."
+                    f"Archive data starting {icons.start_bold}{rp.RollingWindowPeriods} {rwGran}s{icons.end_bold} before refresh date."
                 )
             else:
                 print(
-                    f"Archive data starting {start_bold}{rp.RollingWindowPeriods} {rwGran}{end_bold} before refresh date."
+                    f"Archive data starting {icons.start_bold}{rp.RollingWindowPeriods} {rwGran}{icons.end_bold} before refresh date."
                 )
             if rp.IncrementalPeriods > 1:
                 print(
-                    f"Incrementally refresh data {start_bold}{rp.IncrementalPeriods} {icGran}s{end_bold} before refresh date."
+                    f"Incrementally refresh data {icons.start_bold}{rp.IncrementalPeriods} {icGran}s{icons.end_bold} before refresh date."
                 )
             else:
                 print(
-                    f"Incrementally refresh data {start_bold}{rp.IncrementalPeriods} {icGran}{end_bold} before refresh date."
+                    f"Incrementally refresh data {icons.start_bold}{rp.IncrementalPeriods} {icGran}{icons.end_bold} before refresh date."
                 )
 
             if rp.Mode == TOM.RefreshPolicyMode.Hybrid:
                 print(
-                    f"{checked} Get the latest data in real time with DirectQuery (Premium only)"
+                    f"{icons.checked} Get the latest data in real time with DirectQuery (Premium only)"
                 )
             else:
                 print(
-                    f"{unchecked} Get the latest data in real time with DirectQuery (Premium only)"
+                    f"{icons.unchecked} Get the latest data in real time with DirectQuery (Premium only)"
                 )
             if rp.IncrementalPeriodsOffset == -1:
-                print(f"{checked} Only refresh complete days")
+                print(f"{icons.checked} Only refresh complete days")
             else:
-                print(f"{unchecked} Only refresh complete days")
+                print(f"{icons.unchecked} Only refresh complete days")
             if len(rp.PollingExpression) > 0:
                 pattern = r"\[([^\]]+)\]"
                 match = re.search(pattern, rp.PollingExpression)
@@ -3215,10 +3216,10 @@ class TOMWrapper:
                     col = match[0][1:-1]
                     fullCol = format_dax_object_name(table_name, col)
                     print(
-                        f"{checked} Detect data changes: {start_bold}{fullCol}{end_bold}"
+                        f"{icons.checked} Detect data changes: {icons.start_bold}{fullCol}{icons.end_bold}"
                     )
             else:
-                print(f"{unchecked} Detect data changes")
+                print(f"{icons.unchecked} Detect data changes")
 
     def update_incremental_refresh_policy(
         self,
@@ -3231,7 +3232,7 @@ class TOMWrapper:
         detect_data_changes_column: Optional[str] = None,
     ):
         """
-        Updates the incremental refresh policy for a table within a semantic model.
+        Updates the `incremental refresh <https://learn.microsoft.com/power-bi/connect-data/incremental-refresh-overview>`_ policy for a table within a semantic model.
 
         Parameters
         ----------
@@ -3287,7 +3288,7 @@ class TOMWrapper:
             )
             return
 
-        t = self.model.Tables[table_name]
+        t = self._model.Tables[table_name]
 
         if detect_data_changes_column is not None:
             dc = t.Columns[detect_data_changes_column]
@@ -3339,7 +3340,7 @@ class TOMWrapper:
         detect_data_changes_column: Optional[str] = None,
     ):
         """
-        Adds anincremental refresh policy for a table within a semantic model.
+        Adds an `incremental refresh <https://learn.microsoft.com/power-bi/connect-data/incremental-refresh-overview>`_ policy for a table within a semantic model.
 
         Parameters
         ----------
@@ -3415,7 +3416,7 @@ class TOMWrapper:
             )
             return
 
-        t = self.model.Tables[table_name]
+        t = self._model.Tables[table_name]
 
         c = t.Columns[column_name]
         fcName = format_dax_object_name(table_name, column_name)
@@ -3514,7 +3515,7 @@ class TOMWrapper:
         max_parallelism: Optional[int] = 0,
     ):
         """
-        Applies the incremental refresh policy for a table within a semantic model.
+        `Applies the incremental refresh <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.table.applyrefreshpolicy?view=analysisservices-dotnet#microsoft-analysisservices-tabular-table-applyrefreshpolicy(system-boolean-system-int32)>`_ policy for a table within a semantic model.
 
         Parameters
         ----------
@@ -3528,7 +3529,7 @@ class TOMWrapper:
             The degree of parallelism during the refresh execution.
         """
 
-        self.model.Tables[table_name].ApplyRefreshPolicy(
+        self._model.Tables[table_name].ApplyRefreshPolicy(
             effectiveDate=effective_date,
             refresh=refresh,
             maxParallelism=max_parallelism,
@@ -3538,7 +3539,7 @@ class TOMWrapper:
         self, table_name: str, partition_name: str, expression: str
     ):
         """
-        Sets the data coverage definition for a partition.
+        Sets the `data coverage definition <https://learn.microsoft.com/analysis-services/tom/table-partitions?view=asallproducts-allversions>`_ for a partition.
 
         Parameters
         ----------
@@ -3553,19 +3554,19 @@ class TOMWrapper:
 
         doc = "https://learn.microsoft.com/analysis-services/tom/table-partitions?view=asallproducts-allversions"
 
-        t = self.model.Tables[table_name]
+        t = self._model.Tables[table_name]
         p = t.Partitions[partition_name]
 
         ht = self.is_hybrid_table(table_name=table_name)
 
         if not ht:
             print(
-                f"The data coverage definition property is only applicable to hybrid tables. See the documentation: {doc}."
+                f"{icons.red_dot} The `data coverage definition <https://learn.microsoft.com/analysis-services/tom/table-partitions?view=asallproducts-allversions>`_ property is only applicable to `hybrid tables <https://learn.microsoft.com/power-bi/connect-data/service-dataset-modes-understand#hybrid-tables>`_. See the documentation: {doc}."
             )
             return
         if p.Mode != TOM.ModeType.DirectQuery:
             print(
-                f"The data coverage definition property is only applicable to the DirectQuery partition of a hybrid table. See the documentation: {doc}."
+                f"{icons.red_dot} The `data coverage definition <https://learn.microsoft.com/analysis-services/tom/table-partitions?view=asallproducts-allversions>`_ property is only applicable to the DirectQuery partition of a `hybrid table <https://learn.microsoft.com/power-bi/connect-data/service-dataset-modes-understand#hybrid-tables>`_. See the documentation: {doc}."
             )
             return
 
@@ -3575,7 +3576,7 @@ class TOMWrapper:
 
     def set_encoding_hint(self, table_name: str, column_name: str, value: str):
         """
-        Sets the encoding hint for a column.
+        Sets the `encoding hint <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.encodinghinttype?view=analysisservices-dotnet>`_ for a column.
 
         Parameters
         ----------
@@ -3599,13 +3600,13 @@ class TOMWrapper:
             )
             return
 
-        self.model.Tables[table_name].Columns[column_name].EncodingHint = (
+        self._model.Tables[table_name].Columns[column_name].EncodingHint = (
             System.Enum.Parse(TOM.EncodingHintType, value)
         )
 
     def set_data_type(self, table_name: str, column_name: str, value: str):
         """
-        Sets the data type for a column.
+        Sets the `data type <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.datatype?view=analysisservices-dotnet>`_ for a column.
 
         Parameters
         ----------
@@ -3617,6 +3618,7 @@ class TOMWrapper:
             The data type.
             `Data type valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.datatype?view=analysisservices-dotnet>`_
         """
+        import Microsoft.AnalysisServices.Tabular as TOM
         import System
 
         values = [
@@ -3643,7 +3645,7 @@ class TOMWrapper:
             )
             return
 
-        self.model.Tables[table_name].Columns[column_name].DataType = System.Enum.Parse(
+        self._model.Tables[table_name].Columns[column_name].DataType = System.Enum.Parse(
             TOM.DataType, value
         )
 
@@ -3674,7 +3676,7 @@ class TOMWrapper:
             t = t.capitalize()
             if t not in [time_intel_options]:
                 print(
-                    f"The '{t}' time intelligence variation is not supported. Valid options: {time_intel_options}."
+                    f"{icons.red_dot} The '{t}' time intelligence variation is not supported. Valid options: {time_intel_options}."
                 )
                 return
 
@@ -3685,14 +3687,14 @@ class TOMWrapper:
 
         if table_name is None:
             print(
-                f"The '{measure_name}' is not a valid measure in the '{self.dataset}' semantic model within the '{self.workspace}' workspace."
+                f"{icons.red_dot} The '{measure_name}' is not a valid measure in the '{self._dataset}' semantic model within the '{self._workspace}' workspace."
             )
             return
 
         # Validate date table
         if not self.is_date_table(date_table):
             print(
-                f"{icons.red_dot} The '{date_table}' table is not a valid date table in the '{self.dataset}' wemantic model within the '{self.workspace}' workspace."
+                f"{icons.red_dot} The '{date_table}' table is not a valid date table in the '{self._dataset}' wemantic model within the '{self._workspace}' workspace."
             )
             return
 
@@ -3713,18 +3715,18 @@ class TOMWrapper:
                 )
 
     def close(self):
-        if not self.readonly and self.model is not None:
-            self.model.SaveChanges()
+        if not self._readonly and self._model is not None:
+            self._model.SaveChanges()
 
-            if len(self.tables_added) > 0:
+            if len(self._tables_added) > 0:
                 refresh_semantic_model(
-                    dataset=self.dataset,
-                    tables=self.tables_added,
-                    workspace=self.workspace,
+                    dataset=self._dataset,
+                    tables=self._tables_added,
+                    workspace=self._workspace,
                 )
-            self.model = None
+            self._model = None
 
-        self.tom_server.Dispose()
+        self._tom_server.Dispose()
 
 
 @log
