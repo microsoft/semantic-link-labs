@@ -1,7 +1,7 @@
 import sempy
 import sempy.fabric as fabric
 import pandas as pd
-from sempy_labs._tom import connect_semantic_model
+from sempy_labs.tom.model import connect_semantic_model
 from sempy_labs._generate_semantic_model import create_blank_semantic_model
 from sempy_labs.directlake._get_shared_expression import get_shared_expression
 from typing import List, Optional, Union

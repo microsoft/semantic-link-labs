@@ -3,7 +3,7 @@ import sempy.fabric as fabric
 import pandas as pd
 import re, datetime, time
 from pyspark.sql import SparkSession
-from sempy_labs._tom import connect_semantic_model
+from sempy_labs.tom.model import connect_semantic_model
 from typing import List, Optional, Union
 from sempy._utils._log import log
 import sempy_labs._icons as icons

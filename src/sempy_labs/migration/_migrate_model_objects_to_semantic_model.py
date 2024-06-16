@@ -3,7 +3,7 @@ import sempy.fabric as fabric
 import re, datetime, time
 from sempy_labs._list_functions import list_tables
 from sempy_labs._helper_functions import create_relationship_name
-from sempy_labs._tom import connect_semantic_model
+from sempy_labs.tom.model import connect_semantic_model
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons

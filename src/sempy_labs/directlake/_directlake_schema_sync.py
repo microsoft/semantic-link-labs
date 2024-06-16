@@ -2,6 +2,7 @@ import sempy
 import sempy.fabric as fabric
 import pandas as pd
 from sempy_labs.lakehouse._get_lakehouse_columns import get_lakehouse_columns
+from sempy_labs.tom.model import connect_semantic_model
 from sempy_labs._helper_functions import (
     format_dax_object_name,
     resolve_lakehouse_name,
@@ -46,8 +47,7 @@ def direct_lake_schema_sync(
     import System
 
     if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
+        workspace = fabric.resolve_workspace_name()
 
     if lakehouse_workspace is None:
         lakehouse_workspace = workspace
@@ -93,36 +93,38 @@ def direct_lake_schema_sync(
         "double": "Double",
     }
 
-    tom_server = fabric.create_tom_server(readonly=False, workspace=workspace)
-    m = tom_server.Databases.GetByName(dataset).Model
-    for i, r in lc_filt.iterrows():
-        lakeTName = r["Table Name"]
-        lakeCName = r["Column Name"]
-        fullColName = r["Full Column Name"]
-        dType = r["Data Type"]
+    with connect_semantic_model(
+                dataset=dataset, readonly=False, workspace=workspace
+            ) as tom:
 
-        if fullColName not in dfC_filt["Column Object"].values:
-            dfL = dfP_filt[dfP_filt["Query"] == lakeTName]
-            tName = dfL["Table Name"].iloc[0]
-            if add_to_model:
-                col = TOM.DataColumn()
-                col.Name = lakeCName
-                col.SourceColumn = lakeCName
-                dt = mapping.get(dType)
-                try:
-                    col.DataType = System.Enum.Parse(TOM.DataType, dt)
-                except:
+        for i, r in lc_filt.iterrows():
+            lakeTName = r["Table Name"]
+            lakeCName = r["Column Name"]
+            fullColName = r["Full Column Name"]
+            dType = r["Data Type"]
+
+            if fullColName not in dfC_filt["Column Object"].values:
+                dfL = dfP_filt[dfP_filt["Query"] == lakeTName]
+                tName = dfL["Table Name"].iloc[0]
+                if add_to_model:
+                    col = TOM.DataColumn()
+                    col.Name = lakeCName
+                    col.SourceColumn = lakeCName
+                    dt = mapping.get(dType)
+                    try:
+                        col.DataType = System.Enum.Parse(TOM.DataType, dt)
+                    except:
+                        print(
+                            f"{icons.red_dot} '{dType}' data type is not mapped properly to the semantic model data types."
+                        )
+                        return
+
+                    tom.model.Tables[tName].Columns.Add(col)
                     print(
-                        f"{icons.red_dot} '{dType}' data type is not mapped properly to the semantic model data types."
+                        f"{icons.green_dot} The '{lakeCName}' column has been added to the '{tName}' table as a '{dt}' data type within the '{dataset}' semantic model within the '{workspace}' workspace."
                     )
-                    return
-
-                m.Tables[tName].Columns.Add(col)
-                print(
-                    f"{icons.green_dot} The '{lakeCName}' column has been added to the '{tName}' table as a '{dt}' data type within the '{dataset}' semantic model within the '{workspace}' workspace."
-                )
-            else:
-                print(
-                    f"{icons.yellow_dot} The {fullColName} column exists in the lakehouse but not in the '{tName}' table in the '{dataset}' semantic model within the '{workspace}' workspace."
-                )
-        m.SaveChanges()
+                else:
+                    print(
+                        f"{icons.yellow_dot} The {fullColName} column exists in the lakehouse but not in the '{tName}' table in the '{dataset}' semantic model within the '{workspace}' workspace."
+                    )
+            

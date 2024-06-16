@@ -1,3 +1,4 @@
+import sempy
 import sempy.fabric as fabric
 import re
 import pandas as pd
@@ -199,14 +200,15 @@ def resolve_dataset_name(dataset_id: UUID, workspace: Optional[str] = None):
     return obj
 
 
-def resolve_lakehouse_name(lakehouse_id: UUID, workspace: Optional[str] = None):
+def resolve_lakehouse_name(lakehouse_id: Optional[UUID] = None, workspace: Optional[str] = None):
     """
     Obtains the name of the Fabric lakehouse.
 
     Parameters
     ----------
-    lakehouse_id : UUID
+    lakehouse_id : UUID, default=None
         The name of the Fabric lakehouse.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
     workspace : str, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -221,6 +223,9 @@ def resolve_lakehouse_name(lakehouse_id: UUID, workspace: Optional[str] = None):
     if workspace == None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
+    
+    if lakehouse_id is None:
+        lakehouse_id = fabric.get_lakehouse_id()
 
     obj = fabric.resolve_item_name(
         item_id=lakehouse_id, type="Lakehouse", workspace=workspace

@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 class TOMWrapper:
     """
-    Convenience wrapper around the TOM object model for a semantic model. Always use connect_semantic_model function to make sure the TOM object is initialized correctly.
+    Convenience wrapper around the TOM object model for a semantic model. Always use the connect_semantic_model function to make sure the TOM object is initialized correctly.
 
     `XMLA read/write endpoints <https://learn.microsoft.com/power-bi/enterprise/service-premium-connect-tools#to-enable-read-write-for-a-premium-capacity>`_ must be enabled if setting the readonly parameter to False.
     """
@@ -1937,14 +1937,7 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        isDateTable = False
-        t = self._model.Tables[table_name]
-
-        if t.DataCategory == "Time":
-            if any(c.IsKey and c.DataType == TOM.DataType.DateTime for c in t.Columns):
-                isDateTable = True
-
-        return isDateTable
+        return any(c.IsKey and c.DataType == TOM.DataType.DateTime for c in self.all_columns() if c.Parent.Name == table_name and c.Parent.DataCategory == 'Time')
 
     def mark_as_date_table(self, table_name: str, column_name: str):
         """
@@ -2010,13 +2003,7 @@ class TOMWrapper:
             Indicates if the semantic model has any aggregations.
         """
 
-        hasAggs = False
-
-        for c in self.all_columns():
-            if c.AlterateOf is not None:
-                hasAggs = True
-
-        return hasAggs
+        return any(c.AlternateOf is not None for c in self.all_columns())
 
     def is_agg_table(self, table_name: str):
         """
@@ -2048,15 +2035,9 @@ class TOMWrapper:
         -------
         bool
             Indicates if the semantic model has a hybrid table.
-        """
+        """    
 
-        hasHybridTable = False
-
-        for t in self._model.Tables:
-            if self.is_hybrid_table(table_name=t.Name):
-                hasHybridTable = True
-
-        return hasHybridTable
+        return any(self.is_hybrid_table(table_name = t.Name) for t in self._model.Tables)
 
     def has_date_table(self):
         """
@@ -2071,13 +2052,7 @@ class TOMWrapper:
             Indicates if the semantic model has a table marked as a date table.
         """
 
-        hasDateTable = False
-
-        for t in self._model.Tables:
-            if self.is_date_table(table_name=t.Name):
-                hasDateTable = True
-
-        return hasDateTable
+        return any(self.is_date_table(table_name = t.Name) for t in self._model.Tables)
 
     def is_direct_lake(self):
         """
@@ -2091,6 +2066,7 @@ class TOMWrapper:
         bool
             Indicates if the semantic model is in Direct Lake mode.
         """
+        import Microsoft.AnalysisServices.Tabular as TOM
 
         return any(
             p.Mode == TOM.ModeType.DirectLake

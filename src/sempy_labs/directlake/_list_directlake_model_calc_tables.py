@@ -2,6 +2,7 @@ import sempy
 import sempy.fabric as fabric
 import pandas as pd
 from sempy_labs._list_functions import list_tables, list_annotations
+from sempy_labs.tom.model import connect_semantic_model
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
@@ -27,28 +28,30 @@ def list_direct_lake_model_calc_tables(dataset: str, workspace: Optional[str] = 
     """
 
     if workspace == None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
+        workspace = fabric.resolve_workspace_name()
 
     df = pd.DataFrame(columns=["Table Name", "Source Expression"])
 
-    dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
-    dfP_filt = dfP[dfP["Mode"] == "DirectLake"]
+    with connect_semantic_model(
+                dataset=dataset, readonly=True, workspace=workspace
+            ) as tom:
+        
+        is_direct_lake = tom.is_direct_lake()
 
-    if len(dfP_filt) == 0:
-        print(f"{icons.yellow_dot} The '{dataset}' semantic model is not in Direct Lake mode.")
-    else:
-        dfA = list_annotations(dataset, workspace)
-        dfT = list_tables(dataset, workspace)
-        dfA_filt = dfA[
-            (dfA["Object Type"] == "Model") & (dfA["Annotation Name"].isin(dfT["Name"]))
-        ]
+        if not is_direct_lake:
+            print(f"{icons.yellow_dot} The '{dataset}' semantic model is not in Direct Lake mode.")
+        else:
+            dfA = list_annotations(dataset, workspace)
+            dfT = list_tables(dataset, workspace)
+            dfA_filt = dfA[
+                (dfA["Object Type"] == "Model") & (dfA["Annotation Name"].isin(dfT["Name"]))
+            ]
 
-        for i, r in dfA_filt.iterrows():
-            tName = r["Annotation Name"]
-            se = r["Annotation Value"]
+            for i, r in dfA_filt.iterrows():
+                tName = r["Annotation Name"]
+                se = r["Annotation Value"]
 
-            new_data = {"Table Name": tName, "Source Expression": se}
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+                new_data = {"Table Name": tName, "Source Expression": se}
+                df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-        return df
+            return df

@@ -13,6 +13,8 @@ from sempy_labs._generate_semantic_model import (
     get_semantic_model_bim,
 )
 from sempy_labs._list_functions import (
+    list_semantic_model_objects,
+    list_shortcuts,
     get_object_level_security,
     # list_annotations,
     # list_columns,
@@ -52,7 +54,7 @@ from sempy_labs._helper_functions import (
     resolve_report_name,
     # language_validate
 )
-from sempy_labs._model_auto_build import model_auto_build
+#from sempy_labs._model_auto_build import model_auto_build
 from sempy_labs._model_bpa import model_bpa_rules, run_model_bpa
 from sempy_labs._model_dependencies import (
     measure_dependency_tree,
@@ -62,16 +64,15 @@ from sempy_labs._model_dependencies import (
 from sempy_labs._one_lake_integration import (
     export_model_to_onelake,
 )
-
-# from sempy_labs._query_scale_out import (
-#    qso_sync,
-#    qso_sync_status,
-#    set_qso,
-#    list_qso_settings,
-#    disable_qso,
-#    set_semantic_model_storage_format,
-#    set_workspace_default_storage_format,
-# )
+from sempy_labs._query_scale_out import (
+    qso_sync,
+    qso_sync_status,
+    set_qso,
+    list_qso_settings,
+    disable_qso,
+    set_semantic_model_storage_format,
+    set_workspace_default_storage_format,
+)
 from sempy_labs._refresh_semantic_model import (
     refresh_semantic_model,
     cancel_dataset_refresh,
@@ -82,7 +83,6 @@ from sempy_labs._vertipaq import (
     # visualize_vertipaq,
     import_vertipaq_analyzer,
 )
-from sempy_labs._tom import TOMWrapper, connect_semantic_model
 
 __all__ = [
     "clear_cache",
@@ -129,26 +129,26 @@ __all__ = [
     "resolve_report_id",
     "resolve_report_name",
     #'language_validate',
-    "model_auto_build",
+    #"model_auto_build",
     "model_bpa_rules",
     "run_model_bpa",
     "measure_dependency_tree",
     "get_measure_dependencies",
     "get_model_calc_dependencies",
     "export_model_to_onelake",
-    #'qso_sync',
-    #'qso_sync_status',
-    #'set_qso',
-    #'list_qso_settings',
-    #'disable_qso',
-    #'set_semantic_model_storage_format',
-    #'set_workspace_default_storage_format',
+    'qso_sync',
+    'qso_sync_status',
+    'set_qso',
+    'list_qso_settings',
+    'disable_qso',
+    'set_semantic_model_storage_format',
+    'set_workspace_default_storage_format',
     "refresh_semantic_model",
     "cancel_dataset_refresh",
     "translate_semantic_model",
     "vertipaq_analyzer",
     #'visualize_vertipaq',
     "import_vertipaq_analyzer",
-    "TOMWrapper",
-    "connect_semantic_model",
+    "list_semantic_model_objects",
+    "list_shortcuts"
 ]

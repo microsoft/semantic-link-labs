@@ -7,7 +7,6 @@ from sempy_labs._helper_functions import (
 )
 from typing import Optional, Tuple
 from uuid import UUID
-from sempy_labs._helper_functions import resolve_workspace_name_and_id
 import sempy_labs._icons as icons
 
 def get_direct_lake_lakehouse(

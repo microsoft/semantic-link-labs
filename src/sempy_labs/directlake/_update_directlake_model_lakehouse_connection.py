@@ -5,7 +5,7 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
     resolve_workspace_name_and_id,
 )
-from sempy_labs._tom import connect_semantic_model
+from sempy_labs.tom.model import connect_semantic_model
 from typing import List, Optional, Union
 import sempy_labs._icons as icons
 
