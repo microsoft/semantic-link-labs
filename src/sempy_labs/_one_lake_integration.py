@@ -32,7 +32,7 @@ def export_model_to_onelake(
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    if destination_workspace == None:
+    if destination_workspace is None:
         destination_workspace = workspace
         destination_workspace_id = workspace_id
     else:
@@ -104,7 +104,7 @@ def export_model_to_onelake(
         dfP_filt = dfP[
             (dfP["Mode"] == "Import")
             & (dfP["Source Type"] != "CalculationGroup")
-            & (dfP["Parent System Managed"] == False)
+            & (dfP["Parent System Managed"] is False)
         ]
         dfC = fabric.list_columns(dataset=dataset, workspace=workspace)
         tmc = pd.DataFrame(dfP.groupby("Table Name")["Mode"].nunique()).reset_index()

@@ -1,4 +1,3 @@
-import sempy
 import sempy.fabric as fabric
 import pandas as pd
 from sempy_labs._helper_functions import (
@@ -40,14 +39,14 @@ def direct_lake_schema_compare(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
     if lakehouse_workspace is None:
         lakehouse_workspace = workspace
 
-    if lakehouse == None:
+    if lakehouse is None:
         lakehouse_id = fabric.get_lakehouse_id()
         lakehouse = resolve_lakehouse_name(lakehouse_id, lakehouse_workspace)
 

@@ -8,6 +8,7 @@ from typing import List, Optional, Union
 from IPython.display import display
 import sempy_labs._icons as icons
 
+
 def optimize_semantic_model(dataset: str, workspace: Optional[str] = None):
 
     from ._model_bpa import run_model_bpa
@@ -92,7 +93,7 @@ def generate_measure_descriptions(
     df = dfM_filt[["Table Name", "Measure Name", "Measure Expression"]]
 
     df["prompt"] = (
-        f"The following is DAX code used by Microsoft Power BI. Please explain this code in simple terms:"
+        "The following is DAX code used by Microsoft Power BI. Please explain this code in simple terms:"
         + df["Measure Expression"]
     )
 
@@ -152,11 +153,11 @@ def generate_aggs(
     #'OrderDateKey': 'GroupBy'
     # }
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
-    if lakehouse_workspace == None:
+    if lakehouse_workspace is None:
         lakehouse_workspace = workspace
         lakehouse_workspace_id = workspace_id
     else:

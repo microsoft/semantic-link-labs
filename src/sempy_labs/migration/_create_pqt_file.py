@@ -34,13 +34,13 @@ def create_pqt_file(
 
     lakeAttach = lakehouse_attached()
 
-    if lakeAttach == False:
+    if lakeAttach is False:
         print(
             f"{icons.red_dot} In order to run the 'create_pqt_file' function, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
         )
         return
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 

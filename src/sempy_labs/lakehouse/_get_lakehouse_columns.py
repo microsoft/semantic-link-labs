@@ -48,7 +48,7 @@ def get_lakehouse_columns(
 
     workspace = fabric.resolve_workspace_name(workspace)
 
-    if lakehouse == None:
+    if lakehouse is None:
         lakehouse_id = fabric.get_lakehouse_id()
         lakehouse = resolve_lakehouse_name(lakehouse_id, workspace)
     else:

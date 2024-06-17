@@ -39,10 +39,10 @@ def update_direct_lake_partition_entity(
 
     workspace = fabric.resolve_workspace_name(workspace)
 
-    if lakehouse_workspace == None:
+    if lakehouse_workspace is None:
         lakehouse_workspace = workspace
 
-    if lakehouse == None:
+    if lakehouse is None:
         lakehouse_id = fabric.get_lakehouse_id()
         lakehouse = resolve_lakehouse_name(lakehouse_id, lakehouse_workspace)
 

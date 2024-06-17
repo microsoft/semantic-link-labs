@@ -101,7 +101,7 @@ def resolve_report_id(report: str, workspace: Optional[str] = None):
         The ID of the Power BI report.
     """
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
@@ -129,7 +129,7 @@ def resolve_report_name(report_id: UUID, workspace: Optional[str] = None):
         The name of the Power BI report.
     """
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
@@ -159,7 +159,7 @@ def resolve_dataset_id(dataset: str, workspace: Optional[str] = None):
         The ID of the semantic model.
     """
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
@@ -189,7 +189,7 @@ def resolve_dataset_name(dataset_id: UUID, workspace: Optional[str] = None):
         The name of the semantic model.
     """
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
@@ -220,7 +220,7 @@ def resolve_lakehouse_name(lakehouse_id: Optional[UUID] = None, workspace: Optio
         The name of the Fabric lakehouse.
     """
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
     
@@ -253,7 +253,7 @@ def resolve_lakehouse_id(lakehouse: str, workspace: Optional[str] = None):
         The ID of the Fabric lakehouse.
     """
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
@@ -283,7 +283,7 @@ def get_direct_lake_sql_endpoint(dataset: str, workspace: Optional[str] = None) 
         The ID of SQL Endpoint.
     """
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
@@ -291,10 +291,9 @@ def get_direct_lake_sql_endpoint(dataset: str, workspace: Optional[str] = None) 
     dfP_filt = dfP[dfP["Mode"] == "DirectLake"]
 
     if len(dfP_filt) == 0:
-        print(
+        raise ValueError(
             f"The '{dataset}' semantic model in the '{workspace}' workspace is not in Direct Lake mode."
         )
-        return
 
     dfE = fabric.list_expressions(dataset=dataset, workspace=workspace)
     dfE_filt = dfE[dfE["Name"] == "DatabaseQuery"]
@@ -502,10 +501,10 @@ def resolve_workspace_name_and_id(workspace: Optional[str] = None) -> Tuple[str,
         The name and ID of the Fabric workspace.
     """
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
     else:
         workspace_id = fabric.resolve_workspace_id(workspace)
 
-    return workspace, workspace_id
+    return str(workspace), str(workspace_id)

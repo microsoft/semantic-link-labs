@@ -46,13 +46,13 @@ def direct_lake_schema_sync(
     import Microsoft.AnalysisServices.Tabular as TOM
     import System
 
-    if workspace == None:
+    if workspace is None:
         workspace = fabric.resolve_workspace_name()
 
     if lakehouse_workspace is None:
         lakehouse_workspace = workspace
 
-    if lakehouse == None:
+    if lakehouse is None:
         lakehouse_id = fabric.get_lakehouse_id()
         lakehouse = resolve_lakehouse_name(lakehouse_id, lakehouse_workspace)
 

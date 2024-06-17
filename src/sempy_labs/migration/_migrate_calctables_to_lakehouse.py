@@ -52,16 +52,16 @@ def migrate_calc_tables_to_lakehouse(
 
     workspace = fabric.resolve_workspace_name(workspace)
 
-    if new_dataset_workspace == None:
+    if new_dataset_workspace is None:
         new_dataset_workspace = workspace
 
-    if lakehouse_workspace == None:
+    if lakehouse_workspace is None:
         lakehouse_workspace = new_dataset_workspace
         lakehouse_workspace_id = fabric.resolve_workspace_id(lakehouse_workspace)
     else:
         lakehouse_workspace_id = fabric.resolve_workspace_id(lakehouse_workspace)
 
-    if lakehouse == None:
+    if lakehouse is None:
         lakehouse_id = fabric.get_lakehouse_id()
         lakehouse = resolve_lakehouse_name(lakehouse_id, lakehouse_workspace)
     else:
@@ -288,16 +288,16 @@ def migrate_field_parameters(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    from .HelperFunctions import format_dax_object_name
+    from sempy_labs import format_dax_object_name
 
     sempy.fabric._client._utils._init_analysis_services()
     import Microsoft.AnalysisServices.Tabular as TOM
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
-    if new_dataset_workspace == None:
+    if new_dataset_workspace is None:
         new_dataset_workspace = workspace
 
     dfC = fabric.list_columns(dataset=dataset, workspace=workspace)

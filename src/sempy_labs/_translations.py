@@ -212,7 +212,7 @@ def translate_semantic_model(
                 print(f"{icons.in_progress} Translating into the '{lang}' language...")
 
                 for t in tom.model.Tables:
-                    if t.IsHidden == False:
+                    if t.IsHidden is False:
                         if clm == "Name":
                             df_filt = df_panda[
                                 (df_panda["Object Type"] == "Table")
@@ -240,7 +240,7 @@ def translate_semantic_model(
                                     value=tr,
                                 )
                         for c in t.Columns:
-                            if c.IsHidden == False:
+                            if c.IsHidden is False:
                                 if clm == "Name":
                                     df_filt = df_panda[
                                         (df_panda["Object Type"] == "Column")
@@ -287,7 +287,7 @@ def translate_semantic_model(
                                             value=tr,
                                         )
                         for h in t.Hierarchies:
-                            if h.IsHidden == False:
+                            if h.IsHidden is False:
                                 if clm == "Name":
                                     df_filt = df_panda[
                                         (df_panda["Object Type"] == "Hierarchy")
@@ -331,7 +331,7 @@ def translate_semantic_model(
                                             value=tr,
                                         )
                     for ms in t.Measures:
-                        if ms.IsHidden == False:
+                        if ms.IsHidden is False:
                             if clm == "Name":
                                 df_filt = df_panda[
                                     (df_panda["Object Type"] == "Measure")

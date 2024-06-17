@@ -29,7 +29,7 @@ def get_object_level_security(dataset: str, workspace: Optional[str] = None):
         A pandas dataframe showing the object level security for the semantic model.
     """
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
@@ -88,7 +88,7 @@ def list_tables(dataset: str, workspace: Optional[str] = None):
         A pandas dataframe showing the semantic model's tables and their properties.
     """
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
@@ -154,7 +154,7 @@ def list_annotations(dataset: str, workspace: Optional[str] = None):
         A pandas dataframe showing the semantic model's annotations and their properties.
     """
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
@@ -384,7 +384,7 @@ def list_columns(
         get_direct_lake_lakehouse,
     )
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
@@ -1032,10 +1032,10 @@ def create_warehouse(
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    if description == None:
-        request_body = {"displayName": warehouse}
-    else:
-        request_body = {"displayName": warehouse, "description": description}
+    request_body = {"displayName": warehouse}
+
+    if description:
+        request_body["description"] = description
 
     client = fabric.FabricRestClient()
     response = client.post(
@@ -1123,10 +1123,9 @@ def update_item(
 
     itemId = dfI_filt["Id"].iloc[0]
 
-    if description == None:
-        request_body = {"displayName": new_name}
-    else:
-        request_body = {"displayName": new_name, "description": description}
+    request_body = {"displayName": new_name}
+    if description:
+        request_body["description"] = description
 
     client = fabric.FabricRestClient()
     response = client.patch(
@@ -1134,7 +1133,7 @@ def update_item(
     )
 
     if response.status_code == 200:
-        if description == None:
+        if description is None:
             print(
                 f"The '{current_name}' {item_type} within the '{workspace}' workspace has been updated to be named '{new_name}'"
             )
@@ -1171,7 +1170,7 @@ def list_relationships(
         A pandas dataframe showing the object level security for the semantic model.
     """
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
@@ -1560,7 +1559,7 @@ def list_shortcuts(
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    if lakehouse == None:
+    if lakehouse is None:
         lakehouse_id = fabric.get_lakehouse_id()
         lakehouse = resolve_lakehouse_name(lakehouse_id, workspace)
     else:

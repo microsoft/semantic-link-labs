@@ -2,7 +2,7 @@ import sempy
 import sempy.fabric as fabric
 import time
 from sempy_labs._helper_functions import resolve_dataset_id
-from typing import List, Optional, Union
+from typing import Any, List, Optional, Union
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from sempy_labs._helper_functions import resolve_workspace_name_and_id
@@ -41,7 +41,7 @@ def refresh_semantic_model(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
@@ -53,7 +53,7 @@ def refresh_semantic_model(
     if isinstance(partitions, str):
         partitions = [partitions]
 
-    objects = []
+    objects: List[Any] = []
 
     if tables is not None:
         objects = objects + [{"table": table} for table in tables]
@@ -161,7 +161,7 @@ def cancel_dataset_refresh(
     rr = fabric.list_refresh_requests(dataset=dataset, workspace=workspace)
     rr_filt = rr[rr["Status"] == "Unknown"]
 
-    if request_id == None:
+    if request_id is None:
         if len(rr_filt) == 0:
             print(
                 f"{icons.red_dot} There are no active Enhanced API refreshes of the '{dataset}' semantic model within the '{workspace}' workspace."

@@ -45,7 +45,7 @@ def get_direct_lake_lakehouse(
     if lakehouse_workspace is None:
         lakehouse_workspace = workspace
 
-    if lakehouse == None:
+    if lakehouse is None:
         lakehouse_id = fabric.get_lakehouse_id()
         lakehouse = resolve_lakehouse_name(lakehouse_id, lakehouse_workspace)
 

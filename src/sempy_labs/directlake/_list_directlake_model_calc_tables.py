@@ -27,7 +27,7 @@ def list_direct_lake_model_calc_tables(dataset: str, workspace: Optional[str] = 
         A pandas dataframe showing the calculated tables which were migrated to Direct Lake and whose DAX expressions are stored as model annotations.
     """
 
-    if workspace == None:
+    if workspace is None:
         workspace = fabric.resolve_workspace_name()
 
     df = pd.DataFrame(columns=["Table Name", "Source Expression"])

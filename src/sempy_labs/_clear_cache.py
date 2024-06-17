@@ -20,7 +20,7 @@ def clear_cache(dataset: str, workspace: Optional[str] = None):
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
