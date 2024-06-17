@@ -1,6 +1,6 @@
 import sempy
 import sempy.fabric as fabric
-from sempy_labs.tom.model import connect_semantic_model
+from sempy_labs.tom import connect_semantic_model
 from sempy_labs._helper_functions import resolve_lakehouse_name
 from typing import List, Optional, Union
 import sempy_labs._icons as icons

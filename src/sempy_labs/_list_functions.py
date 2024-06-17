@@ -1290,7 +1290,7 @@ def list_kpis(dataset: str, workspace: Optional[str] = None):
         A pandas dataframe showing the KPIs for the semantic model.
     """
 
-    from .tom.model import connect_semantic_model
+    from .tom import connect_semantic_model
 
     with connect_semantic_model(
         dataset=dataset, workspace=workspace, readonly=True
@@ -1394,7 +1394,7 @@ def list_semantic_model_objects(dataset: str, workspace: Optional[str] = None):
     pandas.DataFrame
         A pandas dataframe showing a list of objects in the semantic model
     """
-    from .tom.model import connect_semantic_model
+    from .tom import connect_semantic_model
 
     df = pd.DataFrame(columns=["Parent Name", "Object Name", "Object Type"])
     with connect_semantic_model(

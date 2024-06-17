@@ -8,7 +8,7 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_id,
     create_abfss_path,
 )
-from sempy_labs.tom.model import connect_semantic_model
+from sempy_labs.tom import connect_semantic_model
 from pyspark.sql import SparkSession
 from typing import List, Optional, Union
 from sempy._utils._log import log

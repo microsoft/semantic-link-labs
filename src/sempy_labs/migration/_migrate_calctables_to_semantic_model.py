@@ -3,7 +3,7 @@ import sempy.fabric as fabric
 import re, datetime, time
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 from sempy_labs._helper_functions import resolve_lakehouse_name
-from sempy_labs.tom.model import connect_semantic_model
+from sempy_labs.tom import connect_semantic_model
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons

@@ -2,7 +2,7 @@ import sempy
 import sempy.fabric as fabric
 import pandas as pd
 from sempy_labs._list_functions import list_tables, list_annotations
-from sempy_labs.tom.model import connect_semantic_model
+from sempy_labs.tom import connect_semantic_model
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons

@@ -14,7 +14,7 @@ If you encounter any issues, please [raise a bug](https://github.com/microsoft/s
 
 If you have ideas for new features/functions, please [request a feature](https://github.com/microsoft/semantic-link-labs/issues/new?assignees=&labels=&projects=&template=feature_request.md&title=).
 
-## [Function documentation](https://semantic-link-labs.readthedocs.io/en/latest/sempy_labs.html)
+## [Function documentation](https://semantic-link-labs.readthedocs.io/en/0.4.2/)
 
 ## Install the library in a Fabric notebook
 ```python
