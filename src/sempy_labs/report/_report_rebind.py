@@ -5,7 +5,6 @@ from typing import List, Optional, Union
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 
-
 @log
 def report_rebind(
     report: str,
@@ -65,7 +64,6 @@ def report_rebind(
         print(
             f"{icons.red_dot} The '{report}' report within the '{report_workspace}' workspace failed to rebind to the '{dataset}' semantic model within the '{dataset_workspace}' workspace."
         )
-
 
 @log
 def report_rebind_all(

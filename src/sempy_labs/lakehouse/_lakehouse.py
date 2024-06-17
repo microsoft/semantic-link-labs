@@ -5,6 +5,7 @@ from pyspark.sql import SparkSession
 from sempy_labs._helper_functions import resolve_lakehouse_name
 from typing import List, Optional, Union
 import sempy_labs._icons as icons
+from sempy._utils._log import log
 
 def lakehouse_attached() -> bool:
     """
@@ -24,7 +25,7 @@ def lakehouse_attached() -> bool:
     else:
         return False
 
-
+@log
 def optimize_lakehouse_tables(
     tables: Optional[Union[str, List[str]]] = None,
     lakehouse: Optional[str] = None,

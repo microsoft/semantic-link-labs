@@ -749,7 +749,7 @@ def list_report_bookmarks(report: str, workspace: Optional[str] = None):
             f"The '{report}' report within the '{workspace}' workspace has no bookmarks."
         )
 
-
+@log
 def translate_report_titles(
     report: str, languages: Union[str, List[str]], workspace: Optional[str] = None
 ):

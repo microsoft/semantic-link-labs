@@ -16,7 +16,9 @@ from sempy_labs.directlake._guardrails import (
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from typing import Optional
 import sempy_labs._icons as icons
+from sempy._utils._log import log
 
+@log
 def get_lakehouse_tables(
     lakehouse: Optional[str] = None,
     workspace: Optional[str] = None,

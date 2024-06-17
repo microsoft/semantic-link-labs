@@ -4,8 +4,9 @@ import pandas as pd
 from sempy_labs._list_functions import list_tables
 from sempy_labs._helper_functions import format_dax_object_name
 from typing import Optional, Tuple
+from sempy._utils._log import log
 
-
+@log
 def show_unsupported_direct_lake_objects(
     dataset: str, workspace: Optional[str] = None
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:

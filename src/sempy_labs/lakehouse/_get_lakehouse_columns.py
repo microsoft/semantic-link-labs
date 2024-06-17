@@ -8,8 +8,9 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_id,
 )
 from typing import Optional
+from sempy._utils._log import log
 
-
+@log
 def get_lakehouse_columns(
     lakehouse: Optional[str] = None, workspace: Optional[str] = None
 ):
