@@ -23,9 +23,8 @@ def create_blank_semantic_model(
     ----------
     dataset : str
         Name of the semantic model.
-    compatibility_level : int
+    compatibility_level : int, default=1605
         The compatibility level of the semantic model.
-        Defaults to 1605.
     workspace : str, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse

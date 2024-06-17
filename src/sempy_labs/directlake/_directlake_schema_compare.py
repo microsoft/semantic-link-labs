@@ -11,7 +11,9 @@ from sempy_labs.lakehouse._get_lakehouse_columns import get_lakehouse_columns
 from sempy_labs._list_functions import list_tables
 from typing import Optional
 import sempy_labs._icons as icons
+from sempy._utils._log import log
 
+@log
 def direct_lake_schema_compare(
     dataset: str,
     workspace: Optional[str] = None,

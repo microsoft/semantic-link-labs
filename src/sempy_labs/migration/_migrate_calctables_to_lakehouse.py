@@ -8,7 +8,7 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_id,
     create_abfss_path,
 )
-from sempy_labs._tom import connect_semantic_model
+from sempy_labs.tom import connect_semantic_model
 from pyspark.sql import SparkSession
 from typing import List, Optional, Union
 from sempy._utils._log import log
@@ -110,7 +110,7 @@ def migrate_calc_tables_to_lakehouse(
                 dataset=dataset, workspace=workspace, readonly=True
             ) as tom:
                 success = True
-                for t in tom._model.Tables:
+                for t in tom.model.Tables:
                     if tom.is_auto_date_table(table_name=t.Name):
                         print(
                             f"{icons.yellow_dot} The '{t.Name}' table is an auto-datetime table and is not supported in the Direct Lake migration process. Please create a proper Date/Calendar table in your lakehoues and use it in your Direct Lake model."
@@ -175,7 +175,7 @@ def migrate_calc_tables_to_lakehouse(
                                             try:
                                                 dataType = next(
                                                     str(c.DataType)
-                                                    for c in tom._model.Tables[
+                                                    for c in tom.model.Tables[
                                                         t.Name
                                                     ].Columns
                                                     if str(c.Type)
@@ -185,7 +185,7 @@ def migrate_calc_tables_to_lakehouse(
                                             except:
                                                 dataType = next(
                                                     str(c.DataType)
-                                                    for c in tom._model.Tables[
+                                                    for c in tom.model.Tables[
                                                         t.Name
                                                     ].Columns
                                                     if str(c.Type) == "Calculated"
@@ -236,7 +236,7 @@ def migrate_calc_tables_to_lakehouse(
                                                 ) as tom2:
                                                     success2 = True
                                                     tom2.set_annotation(
-                                                        object=tom2._model,
+                                                        object=tom2.model,
                                                         name=t.Name,
                                                         value=daxQuery,
                                                     )
@@ -369,7 +369,7 @@ def migrate_field_parameters(
 
                             tbl.Columns.Add(col)
 
-                        tom._model.Tables.Add(tbl)
+                        tom.model.Tables.Add(tbl)
 
                         ep = TOM.JsonExtendedProperty()
                         ep.Name = "ParameterMetadata"
@@ -377,25 +377,25 @@ def migrate_field_parameters(
 
                         rcd = TOM.RelatedColumnDetails()
                         gpc = TOM.GroupByColumn()
-                        gpc.GroupingColumn = tom._model.Tables[tName].Columns["Value2"]
+                        gpc.GroupingColumn = tom.model.Tables[tName].Columns["Value2"]
                         rcd.GroupByColumns.Add(gpc)
 
                         # Update column properties
-                        tom._model.Tables[tName].Columns["Value2"].IsHidden = True
-                        tom._model.Tables[tName].Columns["Value3"].IsHidden = True
-                        tom._model.Tables[tName].Columns[
+                        tom.model.Tables[tName].Columns["Value2"].IsHidden = True
+                        tom.model.Tables[tName].Columns["Value3"].IsHidden = True
+                        tom.model.Tables[tName].Columns[
                             "Value3"
                         ].DataType = TOM.DataType.Int64
-                        tom._model.Tables[tName].Columns["Value1"].SortByColumn = (
-                            tom._model.Tables[tName].Columns["Value3"]
+                        tom.model.Tables[tName].Columns["Value1"].SortByColumn = (
+                            tom.model.Tables[tName].Columns["Value3"]
                         )
-                        tom._model.Tables[tName].Columns["Value2"].SortByColumn = (
-                            tom._model.Tables[tName].Columns["Value3"]
+                        tom.model.Tables[tName].Columns["Value2"].SortByColumn = (
+                            tom.model.Tables[tName].Columns["Value3"]
                         )
-                        tom._model.Tables[tName].Columns[
+                        tom.model.Tables[tName].Columns[
                             "Value2"
                         ].ExtendedProperties.Add(ep)
-                        tom._model.Tables[tName].Columns[
+                        tom.model.Tables[tName].Columns[
                             "Value1"
                         ].RelatedColumnDetails = rcd
 
@@ -412,9 +412,9 @@ def migrate_field_parameters(
                         ]
                         col3 = dfC_filt3["Column Name"].iloc[0]
 
-                        tom._model.Tables[tName].Columns["Value1"].Name = col1
-                        tom._model.Tables[tName].Columns["Value2"].Name = col2
-                        tom._model.Tables[tName].Columns["Value3"].Name = col3
+                        tom.model.Tables[tName].Columns["Value1"].Name = col1
+                        tom.model.Tables[tName].Columns["Value2"].Name = col2
+                        tom.model.Tables[tName].Columns["Value3"].Name = col3
 
                         print(
                             f"{icons.green_dot} The '{tName}' table has been added as a field parameter to the '{new_dataset}' semantic model in the '{new_dataset_workspace}' workspace."

@@ -80,9 +80,7 @@ def create_shortcut_onelake(
         else:
             print(response.status_code)
     except Exception as e:
-        print(
-            f"{icons.red_dot} Failed to create a shortcut for the '{table_name}' table: {e}"
-        )
+        raise ValueError(f"{icons.red_dot} Failed to create a shortcut for the '{table_name}' table.") from e
 
 
 def create_shortcut(
@@ -157,103 +155,8 @@ def create_shortcut(
             )
         else:
             print(response.status_code)
-    except:
-        print(
-            f"{icons.red_dot} Failed to create a shortcut for the '{shortcut_name}' table."
-        )
-
-
-def list_shortcuts(
-    lakehouse: Optional[str] = None, workspace: Optional[str] = None
-) -> pd.DataFrame:
-    """
-    Shows all shortcuts which exist in a Fabric lakehouse.
-
-    Parameters
-    ----------
-    lakehouse : str, default=None
-        The Fabric lakehouse name.
-        Defaults to None which resolves to the lakehouse attached to the notebook.
-    workspace : str, default=None
-        The name of the Fabric workspace in which lakehouse resides.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-    pandas.DataFrame
-        A pandas dataframe showing all the shortcuts which exist in the specified lakehouse.
-    """
-
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    if lakehouse == None:
-        lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse = resolve_lakehouse_name(lakehouse_id, workspace)
-    else:
-        lakehouse_id = resolve_lakehouse_id(lakehouse, workspace)
-
-    df = pd.DataFrame(
-        columns=[
-            "Shortcut Name",
-            "Shortcut Path",
-            "Source",
-            "Source Lakehouse Name",
-            "Source Workspace Name",
-            "Source Path",
-            "Source Connection ID",
-            "Source Location",
-            "Source SubPath",
-        ]
-    )
-
-    client = fabric.FabricRestClient()
-    response = client.get(
-        f"/v1/workspaces/{workspace_id}/items/{lakehouse_id}/shortcuts"
-    )
-    if response.status_code == 200:
-        for s in response.json()["value"]:
-            shortcutName = s["name"]
-            shortcutPath = s["path"]
-            source = list(s["target"].keys())[0]
-            (
-                sourceLakehouseName,
-                sourceWorkspaceName,
-                sourcePath,
-                connectionId,
-                location,
-                subpath,
-            ) = (None, None, None, None, None, None)
-            if source == "oneLake":
-                sourceLakehouseId = s["target"][source]["itemId"]
-                sourcePath = s["target"][source]["path"]
-                sourceWorkspaceId = s["target"][source]["workspaceId"]
-                sourceWorkspaceName = fabric.resolve_workspace_name(sourceWorkspaceId)
-                sourceLakehouseName = resolve_lakehouse_name(
-                    sourceLakehouseId, sourceWorkspaceName
-                )
-            else:
-                connectionId = s["target"][source]["connectionId"]
-                location = s["target"][source]["location"]
-                subpath = s["target"][source]["subpath"]
-
-            new_data = {
-                "Shortcut Name": shortcutName,
-                "Shortcut Path": shortcutPath,
-                "Source": source,
-                "Source Lakehouse Name": sourceLakehouseName,
-                "Source Workspace Name": sourceWorkspaceName,
-                "Source Path": sourcePath,
-                "Source Connection ID": connectionId,
-                "Source Location": location,
-                "Source SubPath": subpath,
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    print(
-        f"This function relies on an API which is not yet official as of May 21, 2024. Once the API becomes official this function will work as expected."
-    )
-    return df
+    except Exception as e:
+        raise ValueError(f"{icons.red_dot} Failed to create a shortcut for the '{shortcut_name}' table.") from e
 
 
 def delete_shortcut(

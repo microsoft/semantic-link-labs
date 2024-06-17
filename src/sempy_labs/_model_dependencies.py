@@ -6,7 +6,7 @@ from typing import List, Optional, Union
 from anytree import Node, RenderTree
 from sempy._utils._log import log
 
-
+@log
 def get_measure_dependencies(dataset: str, workspace: Optional[str] = None):
     """
     Shows all dependencies for all measures in a semantic model.
@@ -131,7 +131,7 @@ def get_measure_dependencies(dataset: str, workspace: Optional[str] = None):
 
     return df
 
-
+@log
 def get_model_calc_dependencies(dataset: str, workspace: Optional[str] = None):
     """
     Shows all dependencies for all objects in a semantic model.

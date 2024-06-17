@@ -1,6 +1,6 @@
 from sempy_labs.report._generate_report import (
     create_report_from_reportjson,
-    update_report_from_reportjson,
+    #update_report_from_reportjson,
 )
 from sempy_labs.report._report_functions import (
     get_report_json,
@@ -20,7 +20,7 @@ from sempy_labs.report._report_rebind import (
 
 __all__ = [
     "create_report_from_reportjson",
-    "update_report_from_reportjson",
+    #"update_report_from_reportjson",
     "get_report_json",
     # report_dependency_tree,
     "export_report",

@@ -3,7 +3,7 @@ import sempy.fabric as fabric
 import re, datetime, time
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 from sempy_labs._helper_functions import resolve_lakehouse_name
-from sempy_labs._tom import connect_semantic_model
+from sempy_labs.tom import connect_semantic_model
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
@@ -89,7 +89,7 @@ def migrate_calc_tables_to_semantic_model(
                     if tName.lower() in lc["Table Name"].values:
 
                         try:
-                            tom._model.Tables[tName]
+                            tom.model.Tables[tName]
                         except:
                             tom.add_table(name=tName)
                             tom.add_entity_partition(
@@ -128,7 +128,7 @@ def migrate_calc_tables_to_semantic_model(
                         matches = re.findall(pattern, scName)
                         lakeColumn = matches[0].replace(" ", "")
                         try:
-                            tom._model.Tables[tName].Columns[cName]
+                            tom.model.Tables[tName].Columns[cName]
                         except:
                             tom.add_data_column(
                                 table_name=tName,

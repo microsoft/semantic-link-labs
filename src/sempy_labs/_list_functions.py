@@ -1,10 +1,14 @@
+import sempy
 import sempy.fabric as fabric
-from sempy_labs._helper_functions import resolve_workspace_name_and_id
+from sempy_labs._helper_functions import (
+    resolve_workspace_name_and_id, 
+    resolve_lakehouse_name, 
+    create_relationship_name, 
+    resolve_lakehouse_id)
 import pandas as pd
 import json, time
 from pyspark.sql import SparkSession
 from typing import Optional
-
 
 def get_object_level_security(dataset: str, workspace: Optional[str] = None):
     """
@@ -1286,7 +1290,7 @@ def list_kpis(dataset: str, workspace: Optional[str] = None):
         A pandas dataframe showing the KPIs for the semantic model.
     """
 
-    from ._tom import connect_semantic_model
+    from .tom import connect_semantic_model
 
     with connect_semantic_model(
         dataset=dataset, workspace=workspace, readonly=True
@@ -1308,7 +1312,7 @@ def list_kpis(dataset: str, workspace: Optional[str] = None):
             ]
         )
 
-        for t in tom._model.Tables:
+        for t in tom.model.Tables:
             for m in t.Measures:
                 if m.KPI is not None:
                     new_data = {
@@ -1369,4 +1373,257 @@ def list_workspace_role_assignments(workspace: Optional[str] = None):
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
+    return df
+
+def list_semantic_model_objects(dataset: str, workspace: Optional[str] = None):
+    """
+    Shows a list of semantic model objects.
+
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of objects in the semantic model
+    """
+    from .tom import connect_semantic_model
+
+    df = pd.DataFrame(columns=["Parent Name", "Object Name", "Object Type"])
+    with connect_semantic_model(
+        dataset=dataset, workspace=workspace, readonly=True
+    ) as tom:
+        for t in tom.model.Tables:
+            if t.CalculationGroup is not None:
+                new_data = {
+                    "Parent Name": t.Parent.Name,
+                    "Object Name": t.Name,
+                    "Object Type": "Calculation Group",
+                }
+                df = pd.concat(
+                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                )
+                for ci in t.CalculationGroup.CalculationItems:
+                    new_data = {
+                        "Parent Name": t.Name,
+                        "Object Name": ci.Name,
+                        "Object Type": str(ci.ObjectType),
+                    }
+                    df = pd.concat(
+                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
+            elif any(str(p.SourceType) == "Calculated" for p in t.Partitions):
+                new_data = {
+                    "Parent Name": t.Parent.Name,
+                    "Object Name": t.Name,
+                    "Object Type": "Calculated Table",
+                }
+                df = pd.concat(
+                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                )
+            else:
+                new_data = {
+                    "Parent Name": t.Parent.Name,
+                    "Object Name": t.Name,
+                    "Object Type": str(t.ObjectType),
+                }
+                df = pd.concat(
+                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                )
+            for c in t.Columns:
+                if str(c.Type) != "RowNumber":
+                    if str(c.Type) == "Calculated":
+                        new_data = {
+                            "Parent Name": c.Parent.Name,
+                            "Object Name": c.Name,
+                            "Object Type": "Calculated Column",
+                        }
+                        df = pd.concat(
+                            [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                        )
+                    else:
+                        new_data = {
+                            "Parent Name": c.Parent.Name,
+                            "Object Name": c.Name,
+                            "Object Type": str(c.ObjectType),
+                        }
+                        df = pd.concat(
+                            [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                        )
+            for m in t.Measures:
+                new_data = {
+                    "Parent Name": m.Parent.Name,
+                    "Object Name": m.Name,
+                    "Object Type": str(m.ObjectType),
+                }
+                df = pd.concat(
+                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                )
+            for h in t.Hierarchies:
+                new_data = {
+                    "Parent Name": h.Parent.Name,
+                    "Object Name": h.Name,
+                    "Object Type": str(h.ObjectType),
+                }
+                df = pd.concat(
+                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                )
+                for l in h.Levels:
+                    new_data = {
+                        "Parent Name": l.Parent.Name,
+                        "Object Name": l.Name,
+                        "Object Type": str(l.ObjectType),
+                    }
+                    df = pd.concat(
+                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
+            for p in t.Partitions:
+                new_data = {
+                    "Parent Name": p.Parent.Name,
+                    "Object Name": p.Name,
+                    "Object Type": str(p.ObjectType),
+                }
+                df = pd.concat(
+                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                )
+        for r in tom.model.Relationships:
+            rName = create_relationship_name(
+                r.FromTable.Name, r.FromColumn.Name, r.ToTable.Name, r.ToColumn.Name
+            )
+            new_data = {
+                "Parent Name": r.Parent.Name,
+                "Object Name": rName,
+                "Object Type": str(r.ObjectType),
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+        for role in tom.model.Roles:
+            new_data = {
+                "Parent Name": role.Parent.Name,
+                "Object Name": role.Name,
+                "Object Type": str(role.ObjectType),
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            for rls in role.TablePermissions:
+                new_data = {
+                    "Parent Name": role.Name,
+                    "Object Name": rls.Name,
+                    "Object Type": str(rls.ObjectType),
+                }
+                df = pd.concat(
+                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                )
+        for tr in tom.model.Cultures:
+            new_data = {
+                "Parent Name": tr.Parent.Name,
+                "Object Name": tr.Name,
+                "Object Type": str(tr.ObjectType),
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+        for per in tom.model.Perspectives:
+            new_data = {
+                "Parent Name": per.Parent.Name,
+                "Object Name": per.Name,
+                "Object Type": str(per.ObjectType),
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    return df
+
+def list_shortcuts(
+    lakehouse: Optional[str] = None, workspace: Optional[str] = None
+) -> pd.DataFrame:
+    """
+    Shows all shortcuts which exist in a Fabric lakehouse.
+
+    Parameters
+    ----------
+    lakehouse : str, default=None
+        The Fabric lakehouse name.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    workspace : str, default=None
+        The name of the Fabric workspace in which lakehouse resides.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing all the shortcuts which exist in the specified lakehouse.
+    """
+
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    if lakehouse == None:
+        lakehouse_id = fabric.get_lakehouse_id()
+        lakehouse = resolve_lakehouse_name(lakehouse_id, workspace)
+    else:
+        lakehouse_id = resolve_lakehouse_id(lakehouse, workspace)
+
+    df = pd.DataFrame(
+        columns=[
+            "Shortcut Name",
+            "Shortcut Path",
+            "Source",
+            "Source Lakehouse Name",
+            "Source Workspace Name",
+            "Source Path",
+            "Source Connection ID",
+            "Source Location",
+            "Source SubPath",
+        ]
+    )
+
+    client = fabric.FabricRestClient()
+    response = client.get(
+        f"/v1/workspaces/{workspace_id}/items/{lakehouse_id}/shortcuts"
+    )
+    if response.status_code == 200:
+        for s in response.json()["value"]:
+            shortcutName = s["name"]
+            shortcutPath = s["path"]
+            source = list(s["target"].keys())[0]
+            (
+                sourceLakehouseName,
+                sourceWorkspaceName,
+                sourcePath,
+                connectionId,
+                location,
+                subpath,
+            ) = (None, None, None, None, None, None)
+            if source == "oneLake":
+                sourceLakehouseId = s["target"][source]["itemId"]
+                sourcePath = s["target"][source]["path"]
+                sourceWorkspaceId = s["target"][source]["workspaceId"]
+                sourceWorkspaceName = fabric.resolve_workspace_name(sourceWorkspaceId)
+                sourceLakehouseName = resolve_lakehouse_name(
+                    sourceLakehouseId, sourceWorkspaceName
+                )
+            else:
+                connectionId = s["target"][source]["connectionId"]
+                location = s["target"][source]["location"]
+                subpath = s["target"][source]["subpath"]
+
+            new_data = {
+                "Shortcut Name": shortcutName,
+                "Shortcut Path": shortcutPath,
+                "Source": source,
+                "Source Lakehouse Name": sourceLakehouseName,
+                "Source Workspace Name": sourceWorkspaceName,
+                "Source Path": sourcePath,
+                "Source Connection ID": connectionId,
+                "Source Location": location,
+                "Source SubPath": subpath,
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    print(
+        f"This function relies on an API which is not yet official as of May 21, 2024. Once the API becomes official this function will work as expected."
+    )
     return df

@@ -14,7 +14,9 @@ from sempy_labs.migration._migrate_tables_columns_to_semantic_model import (
 )
 from sempy_labs.migration._migration_validation import (
     migration_validation,
-    # list_semantic_model_objects
+)
+from sempy_labs.migration._refresh_calc_tables import (
+    refresh_calc_tables,
 )
 
 __all__ = [
@@ -25,5 +27,5 @@ __all__ = [
     "migrate_model_objects_to_semantic_model",
     "migrate_tables_columns_to_semantic_model",
     "migration_validation",
-    # list_semantic_model_objects
+    "refresh_calc_tables"
 ]

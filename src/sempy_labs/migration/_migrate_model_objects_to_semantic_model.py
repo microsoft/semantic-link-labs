@@ -3,11 +3,10 @@ import sempy.fabric as fabric
 import re, datetime, time
 from sempy_labs._list_functions import list_tables
 from sempy_labs._helper_functions import create_relationship_name
-from sempy_labs._tom import connect_semantic_model
+from sempy_labs.tom import connect_semantic_model
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
-
 
 @log
 def migrate_model_objects_to_semantic_model(
@@ -80,12 +79,12 @@ def migrate_model_objects_to_semantic_model(
 
                 isDirectLake = any(
                     str(p.Mode) == "DirectLake"
-                    for t in tom._model.Tables
+                    for t in tom.model.Tables
                     for p in t.Partitions
                 )
 
                 print(f"\n{icons.in_progress} Updating table properties...")
-                for t in tom._model.Tables:
+                for t in tom.model.Tables:
                     t.IsHidden = bool(dfT.loc[dfT["Name"] == t.Name, "Hidden"].iloc[0])
                     t.Description = dfT.loc[dfT["Name"] == t.Name, "Description"].iloc[
                         0
@@ -99,7 +98,7 @@ def migrate_model_objects_to_semantic_model(
                     )
 
                 print(f"\n{icons.in_progress} Updating column properties...")
-                for t in tom._model.Tables:
+                for t in tom.model.Tables:
                     if (
                         t.Name not in dfP_fp["Table Name"].values
                     ):  # do not include field parameters
@@ -131,7 +130,7 @@ def migrate_model_objects_to_semantic_model(
 
                                 if sbc != None:
                                     try:
-                                        c.SortByColumn = tom._model.Tables[
+                                        c.SortByColumn = tom.model.Tables[
                                             t.Name
                                         ].Columns[sbc]
                                     except:
@@ -165,7 +164,7 @@ def migrate_model_objects_to_semantic_model(
                     lvls = r["Level Name"]
 
                     try:
-                        tom._model.Tables[tName].Hierarchies[hName]
+                        tom.model.Tables[tName].Hierarchies[hName]
                     except:
                         tom.add_hierarchy(
                             table_name=tName,
@@ -190,7 +189,7 @@ def migrate_model_objects_to_semantic_model(
                     mFS = r["Format String"]
 
                     try:
-                        tom._model.Tables[tName].Measures[mName]
+                        tom.model.Tables[tName].Measures[mName]
                     except:
                         tom.add_measure(
                             table_name=tName,
@@ -222,7 +221,7 @@ def migrate_model_objects_to_semantic_model(
                     ].iloc[0]
 
                     try:
-                        tom._model.Tables[cgName]
+                        tom.model.Tables[cgName]
                     except:
                         tom.add_calculation_group(
                             name=cgName,
@@ -233,7 +232,7 @@ def migrate_model_objects_to_semantic_model(
                         print(
                             f"{icons.green_dot} The '{cgName}' calculation group has been added."
                         )
-                        tom._model.DiscourageImplicitMeasures = True
+                        tom.model.DiscourageImplicitMeasures = True
 
                         print(
                             f"\n{icons.in_progress} Updating calculation group column name..."
@@ -242,7 +241,7 @@ def migrate_model_objects_to_semantic_model(
                             (dfC["Table Name"] == cgName) & (dfC["Hidden"] == False)
                         ]
                         colName = dfC_filt["Column Name"].iloc[0]
-                        tom._model.Tables[cgName].Columns["Name"].Name = colName
+                        tom.model.Tables[cgName].Columns["Name"].Name = colName
 
                     calcItems = dfCI.loc[
                         dfCI["Calculation Group Name"] == cgName,
@@ -269,7 +268,7 @@ def migrate_model_objects_to_semantic_model(
                             "Format String Expression",
                         ].iloc[0]
                         try:
-                            tom._model.Tables[cgName].CalculationGroup.CalculationItems[
+                            tom.model.Tables[cgName].CalculationGroup.CalculationItems[
                                 calcItem
                             ]
                         except:
@@ -310,7 +309,7 @@ def migrate_model_objects_to_semantic_model(
                         and r.FromColumn.Name == fromColumn
                         and r.ToTable.Name == toTable
                         and r.ToColumn.Name == toColumn
-                        for r in tom._model.Relationships
+                        for r in tom.model.Relationships
                     ):
                         print(
                             f"{icons.yellow_dot} {relName} already exists as a relationship in the semantic model."
@@ -324,7 +323,7 @@ def migrate_model_objects_to_semantic_model(
                             r.FromColumn.DataType == "DateTime"
                             or r.ToColumn.DataType == "DateTime"
                         )
-                        for r in tom._model.Relationships
+                        for r in tom.model.Relationships
                     ):
                         print(
                             f"{icons.yellow_dot} {relName} was not created since relationships based on DateTime columns are not supported."
@@ -335,7 +334,7 @@ def migrate_model_objects_to_semantic_model(
                         and r.ToTable.Name == toTable
                         and r.ToColumn.Name == toColumn
                         and (r.FromColumn.DataType != r.ToColumn.DataType)
-                        for r in tom._model.Relationships
+                        for r in tom.model.Relationships
                     ):
                         print(
                             f"{icons.yellow_dot} {relName} was not created since columns used in a relationship must have the same data type."
@@ -370,7 +369,7 @@ def migrate_model_objects_to_semantic_model(
                     modPerm = row["Model Permission"]
 
                     try:
-                        tom._model.Roles[roleName]
+                        tom.model.Roles[roleName]
                     except:
                         tom.add_role(
                             role_name=roleName,
@@ -403,7 +402,7 @@ def migrate_model_objects_to_semantic_model(
                 for pName in dfP["Perspective Name"].unique():
 
                     try:
-                        tom._model.Perspectives[pName]
+                        tom.model.Perspectives[pName]
                     except:
                         tom.add_perspective(perspective_name=pName)
                         print(
@@ -421,21 +420,21 @@ def migrate_model_objects_to_semantic_model(
                     try:
                         if oType == "Table":
                             tom.add_to_perspective(
-                                object=tom._model.Tables[tName], perspective_name=pName
+                                object=tom.model.Tables[tName], perspective_name=pName
                             )
                         elif oType == "Column":
                             tom.add_to_perspective(
-                                object=tom._model.Tables[tName].Columns[oName],
+                                object=tom.model.Tables[tName].Columns[oName],
                                 perspective_name=pName,
                             )
                         elif oType == "Measure":
                             tom.add_to_perspective(
-                                object=tom._model.Tables[tName].Measures[oName],
+                                object=tom.model.Tables[tName].Measures[oName],
                                 perspective_name=pName,
                             )
                         elif oType == "Hierarchy":
                             tom.add_to_perspective(
-                                object=tom._model.Tables[tName].Hierarchies[oName],
+                                object=tom.model.Tables[tName].Hierarchies[oName],
                                 perspective_name=pName,
                             )
                     except:
@@ -444,7 +443,7 @@ def migrate_model_objects_to_semantic_model(
                 print(f"\n{icons.in_progress} Creating translation languages...")
                 for trName in dfTranslation["Culture Name"].unique():
                     try:
-                        tom._model.Cultures[trName]
+                        tom.model.Cultures[trName]
                     except:
                         tom.add_translation(trName)
                         print(
@@ -468,28 +467,28 @@ def migrate_model_objects_to_semantic_model(
                     try:
                         if oType == "Table":
                             tom.set_translation(
-                                object=tom._model.Tables[tName],
+                                object=tom.model.Tables[tName],
                                 language=trName,
                                 property=prop,
                                 value=translation,
                             )
                         elif oType == "Column":
                             tom.set_translation(
-                                object=tom._model.Tables[tName].Columns[oName],
+                                object=tom.model.Tables[tName].Columns[oName],
                                 language=trName,
                                 property=prop,
                                 value=translation,
                             )
                         elif oType == "Measure":
                             tom.set_translation(
-                                object=tom._model.Tables[tName].Measures[oName],
+                                object=tom.model.Tables[tName].Measures[oName],
                                 language=trName,
                                 property=prop,
                                 value=translation,
                             )
                         elif oType == "Hierarchy":
                             tom.set_translation(
-                                object=tom._model.Tables[tName].Hierarchies[oName],
+                                object=tom.model.Tables[tName].Hierarchies[oName],
                                 language=trName,
                                 property=prop,
                                 value=translation,
@@ -504,7 +503,7 @@ def migrate_model_objects_to_semantic_model(
                             matches = re.findall(pattern, oName)
                             hName = matches[0]
                             tom.set_translation(
-                                object=tom._model.Tables[tName]
+                                object=tom.model.Tables[tName]
                                 .Hierarchies[hName]
                                 .Levels[lName],
                                 language=trName,

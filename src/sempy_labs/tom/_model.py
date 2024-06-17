@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 class TOMWrapper:
     """
-    Convenience wrapper around the TOM object model for a semantic model. Always use connect_semantic_model function to make sure the TOM object is initialized correctly.
+    Convenience wrapper around the TOM object model for a semantic model. Always use the connect_semantic_model function to make sure the TOM object is initialized correctly.
 
     `XMLA read/write endpoints <https://learn.microsoft.com/power-bi/enterprise/service-premium-connect-tools#to-enable-read-write-for-a-premium-capacity>`_ must be enabled if setting the readonly parameter to False.
     """
@@ -38,7 +38,7 @@ class TOMWrapper:
         self._tom_server = fabric.create_tom_server(
             readonly=readonly, workspace=workspace
         )
-        self._model = self._tom_server.Databases.GetByName(dataset).Model
+        self.model = self._tom_server.Databases.GetByName(dataset).Model
 
     def all_columns(self):
         """
@@ -54,7 +54,7 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        for t in self._model.Tables:
+        for t in self.model.Tables:
             for c in t.Columns:
                 if c.Type != TOM.ColumnType.RowNumber:
                     yield c
@@ -73,7 +73,7 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        for t in self._model.Tables:
+        for t in self.model.Tables:
             for c in t.Columns:
                 if c.Type == TOM.ColumnType.Calculated:
                     yield c
@@ -92,7 +92,7 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        for t in self._model.Tables:
+        for t in self.model.Tables:
             if any(p.SourceType == TOM.ColumnType.Calculated for p in t.Partitions):
                 yield t
 
@@ -109,7 +109,7 @@ class TOMWrapper:
             All calculation groups within the semantic model.
         """
 
-        for t in self._model.Tables:
+        for t in self.model.Tables:
             if t.CalculationGroup is not None:
                 yield t
 
@@ -126,7 +126,7 @@ class TOMWrapper:
             All measures within the semantic model.
         """
 
-        for t in self._model.Tables:
+        for t in self.model.Tables:
             for m in t.Measures:
                 yield m
 
@@ -143,7 +143,7 @@ class TOMWrapper:
             All partitions within the semantic model.
         """
 
-        for t in self._model.Tables:
+        for t in self.model.Tables:
             for p in t.Partitions:
                 yield p
 
@@ -160,7 +160,7 @@ class TOMWrapper:
             All hierarchies within the semantic model.
         """
 
-        for t in self._model.Tables:
+        for t in self.model.Tables:
             for h in t.Hierarchies:
                 yield h
 
@@ -177,7 +177,7 @@ class TOMWrapper:
             All levels within the semantic model.
         """
 
-        for t in self._model.Tables:
+        for t in self.model.Tables:
             for h in t.Hierarchies:
                 for l in h.Levels:
                     yield l
@@ -195,7 +195,7 @@ class TOMWrapper:
             All calculation items within the semantic model.
         """
 
-        for t in self._model.Tables:
+        for t in self.model.Tables:
             if t.CalculationGroup is not None:
                 for ci in t.CalculationGroup.CalculationItems:
                     yield ci
@@ -213,7 +213,7 @@ class TOMWrapper:
             All row level security expressions within the semantic model.
         """
 
-        for r in self._model.Roles:
+        for r in self.model.Roles:
             for tp in r.TablePermissions:
                 yield tp
 
@@ -260,7 +260,7 @@ class TOMWrapper:
         if display_folder is not None:
             obj.DisplayFolder = display_folder
 
-        self._model.Tables[table_name].Measures.Add(obj)
+        self.model.Tables[table_name].Measures.Add(obj)
 
     def add_calculated_table_column(
         self,
@@ -336,7 +336,7 @@ class TOMWrapper:
             obj.DisplayFolder = display_folder
         if data_category is not None:
             obj.DataCategory = data_category
-        self._model.Tables[table_name].Columns.Add(obj)
+        self.model.Tables[table_name].Columns.Add(obj)
 
     def add_data_column(
         self,
@@ -412,7 +412,7 @@ class TOMWrapper:
             obj.DisplayFolder = display_folder
         if data_category is not None:
             obj.DataCategory = data_category
-        self._model.Tables[table_name].Columns.Add(obj)
+        self.model.Tables[table_name].Columns.Add(obj)
 
     def add_calculated_column(
         self,
@@ -488,7 +488,7 @@ class TOMWrapper:
             obj.DisplayFolder = display_folder
         if data_category is not None:
             obj.DataCategory = data_category
-        self._model.Tables[table_name].Columns.Add(obj)
+        self.model.Tables[table_name].Columns.Add(obj)
 
     def add_calculation_item(
         self,
@@ -529,7 +529,7 @@ class TOMWrapper:
             obj.Description = description
         if format_string_expression is not None:
             obj.FormatStringDefinition = fsd.Expression = format_string_expression
-        self._model.Tables[table_name].CalculationGroup.CalculationItems.Add(obj)
+        self.model.Tables[table_name].CalculationGroup.CalculationItems.Add(obj)
 
     def add_role(
         self,
@@ -561,7 +561,7 @@ class TOMWrapper:
         obj.ModelPermission = System.Enum.Parse(TOM.ModelPermission, model_permission)
         if description is not None:
             obj.Description = description
-        self._model.Roles.Add(obj)
+        self.model.Roles.Add(obj)
 
     def set_rls(self, role_name: str, table_name: str, filter_expression: str):
         """
@@ -579,15 +579,15 @@ class TOMWrapper:
         import Microsoft.AnalysisServices.Tabular as TOM
 
         tp = TOM.TablePermission()
-        tp.Table = self._model.Tables[table_name]
+        tp.Table = self.model.Tables[table_name]
         tp.FilterExpression = filter_expression
 
         try:
-            self._model.Roles[role_name].TablePermissions[
+            self.model.Roles[role_name].TablePermissions[
                 table_name
             ].FilterExpression = filter_expression
         except:
-            self._model.Roles[role_name].TablePermissions.Add(tp)
+            self.model.Roles[role_name].TablePermissions.Add(tp)
 
     def set_ols(
         self, role_name: str, table_name: str, column_name: str, permission: str
@@ -617,14 +617,14 @@ class TOMWrapper:
             return
 
         cp = TOM.ColumnPermission()
-        cp.Column = self._model.Tables[table_name].Columns[column_name]
+        cp.Column = self.model.Tables[table_name].Columns[column_name]
         cp.MetadataPermission = System.Enum.Parse(TOM.MetadataPermission, permission)
         try:
-            self._model.Roles[role_name].TablePermissions[table_name].ColumnPermissions[
+            self.model.Roles[role_name].TablePermissions[table_name].ColumnPermissions[
                 column_name
             ].MetadataPermission = System.Enum.Parse(TOM.MetadataPermission, permission)
         except:
-            self._model.Roles[role_name].TablePermissions[
+            self.model.Roles[role_name].TablePermissions[
                 table_name
             ].ColumnPermissions.Add(cp)
 
@@ -680,14 +680,14 @@ class TOMWrapper:
         obj.IsHidden = hierarchy_hidden
         if hierarchy_description is not None:
             obj.Description = hierarchy_description
-        self._model.Tables[table_name].Hierarchies.Add(obj)
+        self.model.Tables[table_name].Hierarchies.Add(obj)
 
         for col in columns:
             lvl = TOM.Level()
-            lvl.Column = self._model.Tables[table_name].Columns[col]
+            lvl.Column = self.model.Tables[table_name].Columns[col]
             lvl.Name = levels[columns.index(col)]
             lvl.Ordinal = columns.index(col)
-            self._model.Tables[table_name].Hierarchies[hierarchy_name].Levels.Add(lvl)
+            self.model.Tables[table_name].Hierarchies[hierarchy_name].Levels.Add(lvl)
 
     def add_relationship(
         self,
@@ -748,11 +748,11 @@ class TOMWrapper:
         cross_filtering_behavior = cross_filtering_behavior.replace("direct", "Direct")
 
         rel = TOM.SingleColumnRelationship()
-        rel.FromColumn = self._model.Tables[from_table].Columns[from_column]
+        rel.FromColumn = self.model.Tables[from_table].Columns[from_column]
         rel.FromCardinality = System.Enum.Parse(
             TOM.RelationshipEndCardinality, from_cardinality
         )
-        rel.ToColumn = self._model.Tables[to_table].Columns[to_column]
+        rel.ToColumn = self.model.Tables[to_table].Columns[to_column]
         rel.ToCardinality = System.Enum.Parse(
             TOM.RelationshipEndCardinality, to_cardinality
         )
@@ -765,7 +765,7 @@ class TOMWrapper:
         )
         rel.RelyOnReferentialIntegrity = rely_on_referential_integrity
 
-        self._model.Relationships.Add(rel)
+        self.model.Relationships.Add(rel)
 
     def add_calculation_group(
         self,
@@ -821,8 +821,8 @@ class TOMWrapper:
         # col.SortByColumn = m.Tables[name].Columns[sortCol]
         tbl.Columns.Add(col2)
 
-        self._model.DiscourageImplicitMeasures = True
-        self._model.Tables.Add(tbl)
+        self.model.DiscourageImplicitMeasures = True
+        self.model.Tables.Add(tbl)
 
     def add_expression(
         self, name: str, expression: str, description: Optional[str] = None
@@ -848,7 +848,7 @@ class TOMWrapper:
         exp.Kind = TOM.ExpressionKind.M
         exp.Expression = expression
 
-        self._model.Expressions.Add(exp)
+        self.model.Expressions.Add(exp)
 
     def add_translation(self, language: str):
         """
@@ -865,7 +865,7 @@ class TOMWrapper:
         cul.Name = language
 
         try:
-            self._model.Cultures.Add(cul)
+            self.model.Cultures.Add(cul)
         except:
             pass
 
@@ -882,7 +882,7 @@ class TOMWrapper:
 
         persp = TOM.Perspective()
         persp.Name = perspective_name
-        self._model.Perspectives.Add(persp)
+        self.model.Perspectives.Add(persp)
 
     def add_m_partition(
         self,
@@ -932,7 +932,7 @@ class TOMWrapper:
             p.Description = description        
         p.Mode = System.Enum.Parse(TOM.ModeType, mode)
 
-        self._model.Tables[table_name].Partitions.Add(p)
+        self.model.Tables[table_name].Partitions.Add(p)
 
     def add_entity_partition(
         self,
@@ -962,7 +962,7 @@ class TOMWrapper:
         ep.Name = table_name
         ep.EntityName = entity_name
         if expression is None:
-            ep.ExpressionSource = self._model.Expressions["DatabaseQuery"]
+            ep.ExpressionSource = self.model.Expressions["DatabaseQuery"]
         else:
             ep.ExpressionSource = self.model.Expressions[expression]
         p = TOM.Partition()
@@ -972,7 +972,7 @@ class TOMWrapper:
         if description is not None:
             p.Description = description
 
-        self._model.Tables[table_name].Partitions.Add(p)
+        self.model.Tables[table_name].Partitions.Add(p)
 
     def set_alternate_of(
         self,
@@ -1023,14 +1023,14 @@ class TOMWrapper:
         ao = TOM.AlternateOf()
         ao.Summarization = System.Enum.Parse(TOM.SummarizationType, summarization_type)
         if base_column is not None:
-            ao.BaseColumn = self._model.Tables[base_table].Columns[base_column]
+            ao.BaseColumn = self.model.Tables[base_table].Columns[base_column]
         else:
-            ao.BaseTable = self._model.Tables[base_table]
+            ao.BaseTable = self.model.Tables[base_table]
 
-        self._model.Tables[table_name].Columns[column_name].AlternateOf = ao
+        self.model.Tables[table_name].Columns[column_name].AlternateOf = ao
 
         # Hide agg table and columns
-        t = self._model.Tables[table_name]
+        t = self.model.Tables[table_name]
         t.IsHidden = True
         for c in t.Columns:
             c.IsHidden = True
@@ -1051,7 +1051,7 @@ class TOMWrapper:
 
         """
 
-        self._model.Tables[table_name].Columns[column_name].AlternateOf = None
+        self.model.Tables[table_name].Columns[column_name].AlternateOf = None
 
     def get_annotations(
         self, object
@@ -1594,11 +1594,11 @@ class TOMWrapper:
         objType = object.ObjectType
 
         if objType == TOM.ObjectType.Table:
-            for r in self._model.Relationships:
+            for r in self.model.Relationships:
                 if r.FromTable.Name == object.Name or r.ToTable.Name == object.Name:
                     yield r  # , 'Table'
         elif objType == TOM.ObjectType.Column:
-            for r in self._model.Relationships:
+            for r in self.model.Relationships:
                 if (
                     r.FromTable.Name == object.Parent.Name
                     and r.FromColumn.Name == object.Name
@@ -1679,7 +1679,7 @@ class TOMWrapper:
         objType = column.ObjectType
 
         if objType == TOM.ObjectType.Column:
-            for c in self._model.Tables[column.Parent.Name].Columns:
+            for c in self.model.Tables[column.Parent.Name].Columns:
                 if c.SortByColumn == column:
                     yield c
 
@@ -1715,7 +1715,7 @@ class TOMWrapper:
                 & (df_filt["Referenced Table"] == object.Name)
             ]
             tbls = fil["Table Name"].unique().tolist()
-            for t in self._model.Tables:
+            for t in self.model.Tables:
                 if t.Name in tbls:
                     yield t
         elif objType == TOM.ObjectType.Column:
@@ -1772,7 +1772,7 @@ class TOMWrapper:
                 & (df_filt["Referenced Table"] == object.Name)
             ]
             tbls = fil["Table Name"].unique().tolist()
-            for t in self._model.Tables:
+            for t in self.model.Tables:
                 if t.Name in tbls:
                     yield t
         elif objType == TOM.ObjectType.Column:
@@ -1827,7 +1827,7 @@ class TOMWrapper:
                 & (df_filt["Referenced Table"] == object.Name)
             ]
             tbls = fil["Table Name"].unique().tolist()
-            for t in self._model.Tables:
+            for t in self.model.Tables:
                 if t.Name in tbls:
                     yield t
         elif objType == TOM.ObjectType.Column:
@@ -1865,7 +1865,7 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        for t in self._model.Tables:
+        for t in self.model.Tables:
             if any(p.Mode == TOM.ModeType.Import for p in t.Partitions):
                 if any(p.Mode == TOM.ModeType.DirectQuery for p in t.Partitions):
                     yield t
@@ -1884,7 +1884,7 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        for t in self._model.Tables:
+        for t in self.model.Tables:
             if t.DataCategory == "Time":
                 if any(
                     c.IsKey and c.DataType == TOM.DataType.DateTime for c in t.Columns
@@ -1911,11 +1911,11 @@ class TOMWrapper:
 
         if any(
             p.Mode == TOM.ModeType.Import
-            for p in self._model.Tables[table_name].Partitions
+            for p in self.model.Tables[table_name].Partitions
         ):
             if any(
                 p.Mode == TOM.ModeType.DirectQuery
-                for p in self._model.Tables[table_name].Partitions
+                for p in self.model.Tables[table_name].Partitions
             ):
                 isHybridTable = True
 
@@ -1937,14 +1937,7 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        isDateTable = False
-        t = self._model.Tables[table_name]
-
-        if t.DataCategory == "Time":
-            if any(c.IsKey and c.DataType == TOM.DataType.DateTime for c in t.Columns):
-                isDateTable = True
-
-        return isDateTable
+        return any(c.IsKey and c.DataType == TOM.DataType.DateTime for c in self.all_columns() if c.Parent.Name == table_name and c.Parent.DataCategory == 'Time')
 
     def mark_as_date_table(self, table_name: str, column_name: str):
         """
@@ -1959,7 +1952,7 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        t = self._model.Tables[table_name]
+        t = self.model.Tables[table_name]
         c = t.Columns[column_name]
         if c.DataType != TOM.DataType.DateTime:
             print(
@@ -2010,13 +2003,7 @@ class TOMWrapper:
             Indicates if the semantic model has any aggregations.
         """
 
-        hasAggs = False
-
-        for c in self.all_columns():
-            if c.AlterateOf is not None:
-                hasAggs = True
-
-        return hasAggs
+        return any(c.AlternateOf is not None for c in self.all_columns())
 
     def is_agg_table(self, table_name: str):
         """
@@ -2033,7 +2020,7 @@ class TOMWrapper:
             Indicates if the table has any aggregations.
         """
 
-        t = self._model.Tables[table_name]
+        t = self.model.Tables[table_name]
 
         return any(c.AlternateOf is not None for c in t.Columns)
 
@@ -2048,15 +2035,9 @@ class TOMWrapper:
         -------
         bool
             Indicates if the semantic model has a hybrid table.
-        """
+        """    
 
-        hasHybridTable = False
-
-        for t in self._model.Tables:
-            if self.is_hybrid_table(table_name=t.Name):
-                hasHybridTable = True
-
-        return hasHybridTable
+        return any(self.is_hybrid_table(table_name = t.Name) for t in self.model.Tables)
 
     def has_date_table(self):
         """
@@ -2071,13 +2052,7 @@ class TOMWrapper:
             Indicates if the semantic model has a table marked as a date table.
         """
 
-        hasDateTable = False
-
-        for t in self._model.Tables:
-            if self.is_date_table(table_name=t.Name):
-                hasDateTable = True
-
-        return hasDateTable
+        return any(self.is_date_table(table_name = t.Name) for t in self.model.Tables)
 
     def is_direct_lake(self):
         """
@@ -2091,10 +2066,11 @@ class TOMWrapper:
         bool
             Indicates if the semantic model is in Direct Lake mode.
         """
+        import Microsoft.AnalysisServices.Tabular as TOM
 
         return any(
             p.Mode == TOM.ModeType.DirectLake
-            for t in self._model.Tables
+            for t in self.model.Tables
             for p in t.Partitions
         )
 
@@ -2114,7 +2090,7 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        t = self._model.Tables[table_name]
+        t = self.model.Tables[table_name]
 
         return (
             any(
@@ -2148,7 +2124,7 @@ class TOMWrapper:
 
         isAutoDate = False
 
-        t = self._model.Tables[table_name]
+        t = self.model.Tables[table_name]
 
         if t.Name.startswith("LocalDateTable_") or t.Name.startswith(
             "DateTableTemplate_"
@@ -2316,7 +2292,7 @@ class TOMWrapper:
         kpi.StatusGraphic = status_graphic
         kpi.StatusExpression = expr
 
-        ms = self._model.Tables[table_name].Measures[measure_name]
+        ms = self.model.Tables[table_name].Measures[measure_name]
         try:
             ms.KPI.TargetExpression = tgt
             ms.KPI.StatusGraphic = status_graphic
@@ -2340,7 +2316,7 @@ class TOMWrapper:
 
         """
 
-        for c in self._model.Tables[agg_table_name].Columns:
+        for c in self.model.Tables[agg_table_name].Columns:
 
             dataType = c.DataType
 
@@ -2377,7 +2353,7 @@ class TOMWrapper:
             The IsAvailableInMdx property value.
         """
 
-        self._model.Tables[table_name].Columns[column_name].IsAvailableInMdx = value
+        self.model.Tables[table_name].Columns[column_name].IsAvailableInMdx = value
 
     def set_summarize_by(
         self, table_name: str, column_name: str, value: Optional[str] = None
@@ -2424,7 +2400,7 @@ class TOMWrapper:
             )
             return
 
-        self._model.Tables[table_name].Columns[column_name].SummarizeBy = (
+        self.model.Tables[table_name].Columns[column_name].SummarizeBy = (
             System.Enum.Parse(TOM.AggregateFunction, value)
         )
 
@@ -2456,7 +2432,7 @@ class TOMWrapper:
             )
             return
 
-        self._model.DirectLakeBehavior = System.Enum.Parse(
+        self.model.DirectLakeBehavior = System.Enum.Parse(
             TOM.DirectLakeBehavior, direct_lake_behavior
         )
 
@@ -2490,7 +2466,7 @@ class TOMWrapper:
         if data_category is not None:
             t.DataCategory = data_category
         t.Hidden = hidden
-        self._model.Tables.Add(t)
+        self.model.Tables.Add(t)
 
     def add_calculated_table(
         self,
@@ -2533,7 +2509,7 @@ class TOMWrapper:
             t.DataCategory = data_category
         t.Hidden = hidden
         t.Partitions.Add(par)
-        self._model.Tables.Add(t)
+        self.model.Tables.Add(t)
 
     def add_field_parameter(self, table_name: str, objects: List[str]):
         """
@@ -2631,7 +2607,7 @@ class TOMWrapper:
         )
 
         self.set_extended_property(
-            object=self._model.Tables[table_name].Columns[col2],
+            object=self.model.Tables[table_name].Columns[col2],
             extended_property_type="Json",
             name="ParameterMetadata",
             value='{"version":3,"kind":2}',
@@ -2639,14 +2615,14 @@ class TOMWrapper:
 
         rcd = TOM.RelatedColumnDetails()
         gpc = TOM.GroupByColumn()
-        gpc.GroupingColumn = self._model.Tables[table_name].Columns[col2]
+        gpc.GroupingColumn = self.model.Tables[table_name].Columns[col2]
         rcd.GroupByColumns.Add(gpc)
 
         # Update column properties
-        self._model.Tables[table_name].Columns[col2].SortByColumn = self._model.Tables[
+        self.model.Tables[table_name].Columns[col2].SortByColumn = self.model.Tables[
             table_name
         ].Columns[col3]
-        self._model.Tables[table_name].Columns[table_name].RelatedColumnDetails = rcd
+        self.model.Tables[table_name].Columns[table_name].RelatedColumnDetails = rcd
 
         self._tables_added.append(table_name)
 
@@ -2655,7 +2631,7 @@ class TOMWrapper:
         Removes the annotations set using the set_vertipaq_annotations function.
         """
 
-        for t in self._model.Tables:
+        for t in self.model.Tables:
             for a in t.Annotations:
                 if a.Name.startswith("Vertipaq_"):
                     self.remove_annotation(object=t, name=a.Name)
@@ -2671,7 +2647,7 @@ class TOMWrapper:
                 for a in p.Annotations:
                     if a.Name.startswith("Vertipaq_"):
                         self.remove_annotation(object=p, name=a.Name)
-        for r in self._model.Relationships:
+        for r in self.model.Relationships:
             for a in r.Annotations:
                 if a.Name.startswith("Veripaq_"):
                     self.remove_annotation(object=r, name=a.Name)
@@ -2709,7 +2685,7 @@ class TOMWrapper:
             dataset=self._dataset, workspace=self._workspace, extended=True
         )
 
-        for t in self._model.Tables:
+        for t in self.model.Tables:
             dfT_filt = dfTable[dfTable["Name"] == t.Name]
             rowCount = str(dfT_filt["Row Count"].iloc[0])
             totalSize = str(dfT_filt["Total Size"].iloc[0])
@@ -2757,17 +2733,17 @@ class TOMWrapper:
                 ]
                 usedSize = str(dfH_filt["Used Size"].iloc[0])
                 self.set_annotation(object=h, name="Vertipaq_UsedSize", value=usedSize)
-        for r in self._model.Relationships:
+        for r in self.model.Relationships:
             dfR_filt = dfR[dfR["Relationship Name"] == r.Name]
             relSize = str(dfR_filt["Used Size"].iloc[0])
             self.set_annotation(object=r, name="Vertipaq_UsedSize", value=relSize)
 
         try:
-            runId = self.get_annotation_value(object=self._model, name="Vertipaq_Run")
+            runId = self.get_annotation_value(object=self.model, name="Vertipaq_Run")
             runId = str(int(runId) + 1)
         except:
             runId = "1"
-        self.set_annotation(object=self._model, name="Vertipaq_Run", value=runId)
+        self.set_annotation(object=self.model, name="Vertipaq_Run", value=runId)
 
     def row_count(self, object: Union["TOM.Partition", "TOM.Table"]):
         """
@@ -2997,7 +2973,7 @@ class TOMWrapper:
         for c in self.all_columns():
             if format_dax_object_name(c.Parent.Name, c.Name) in cols:
                 yield c
-        for t in self._model.Tables:
+        for t in self.model.Tables:
             if t.Name in tbls:
                 yield t
 
@@ -3048,7 +3024,7 @@ class TOMWrapper:
         for c in self.all_columns():
             if format_dax_object_name(c.Parent.Name, c.Name) in cols:
                 yield c
-        for t in self._model.Tables:
+        for t in self.model.Tables:
             if t.Name in tbls:
                 yield t
 
@@ -3151,7 +3127,7 @@ class TOMWrapper:
         """
 
         hasRP = False
-        rp = self._model.Tables[table_name].RefreshPolicy
+        rp = self.model.Tables[table_name].RefreshPolicy
 
         if rp is not None:
             hasRP = True
@@ -3170,7 +3146,7 @@ class TOMWrapper:
 
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        rp = self._model.Tables[table_name].RefreshPolicy
+        rp = self.model.Tables[table_name].RefreshPolicy
 
         if rp is None:
             print(
@@ -3288,7 +3264,7 @@ class TOMWrapper:
             )
             return
 
-        t = self._model.Tables[table_name]
+        t = self.model.Tables[table_name]
 
         if detect_data_changes_column is not None:
             dc = t.Columns[detect_data_changes_column]
@@ -3416,7 +3392,7 @@ class TOMWrapper:
             )
             return
 
-        t = self._model.Tables[table_name]
+        t = self.model.Tables[table_name]
 
         c = t.Columns[column_name]
         fcName = format_dax_object_name(table_name, column_name)
@@ -3529,7 +3505,7 @@ class TOMWrapper:
             The degree of parallelism during the refresh execution.
         """
 
-        self._model.Tables[table_name].ApplyRefreshPolicy(
+        self.model.Tables[table_name].ApplyRefreshPolicy(
             effectiveDate=effective_date,
             refresh=refresh,
             maxParallelism=max_parallelism,
@@ -3554,7 +3530,7 @@ class TOMWrapper:
 
         doc = "https://learn.microsoft.com/analysis-services/tom/table-partitions?view=asallproducts-allversions"
 
-        t = self._model.Tables[table_name]
+        t = self.model.Tables[table_name]
         p = t.Partitions[partition_name]
 
         ht = self.is_hybrid_table(table_name=table_name)
@@ -3600,7 +3576,7 @@ class TOMWrapper:
             )
             return
 
-        self._model.Tables[table_name].Columns[column_name].EncodingHint = (
+        self.model.Tables[table_name].Columns[column_name].EncodingHint = (
             System.Enum.Parse(TOM.EncodingHintType, value)
         )
 
@@ -3645,7 +3621,7 @@ class TOMWrapper:
             )
             return
 
-        self._model.Tables[table_name].Columns[column_name].DataType = System.Enum.Parse(
+        self.model.Tables[table_name].Columns[column_name].DataType = System.Enum.Parse(
             TOM.DataType, value
         )
 
@@ -3715,8 +3691,8 @@ class TOMWrapper:
                 )
 
     def close(self):
-        if not self._readonly and self._model is not None:
-            self._model.SaveChanges()
+        if not self._readonly and self.model is not None:
+            self.model.SaveChanges()
 
             if len(self._tables_added) > 0:
                 refresh_semantic_model(
@@ -3724,7 +3700,7 @@ class TOMWrapper:
                     tables=self._tables_added,
                     workspace=self._workspace,
                 )
-            self._model = None
+            self.model = None
 
         self._tom_server.Dispose()
 

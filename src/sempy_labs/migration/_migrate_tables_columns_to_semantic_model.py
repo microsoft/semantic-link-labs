@@ -6,7 +6,7 @@ from sempy_labs._list_functions import list_tables
 from sempy_labs.directlake._get_shared_expression import get_shared_expression
 from sempy_labs._helper_functions import resolve_lakehouse_name
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
-from sempy_labs._tom import connect_semantic_model
+from sempy_labs.tom import connect_semantic_model
 from typing import List, Optional, Union
 from sempy._utils._log import log
 import sempy_labs._icons as icons
@@ -96,7 +96,7 @@ def migrate_tables_columns_to_semantic_model(
                 ) as tom:
                     success = True
                     try:
-                        tom._model.Expressions["DatabaseQuery"]
+                        tom.model.Expressions["DatabaseQuery"]
                     except:
                         tom.add_expression("DatabaseQuery", expression=shEx)
                         print(
@@ -110,7 +110,7 @@ def migrate_tables_columns_to_semantic_model(
                         tDesc = r["Description"]
 
                         try:
-                            tom._model.Tables[tName]
+                            tom.model.Tables[tName]
                         except:
                             tom.add_table(
                                 name=tName,
@@ -133,7 +133,7 @@ def migrate_tables_columns_to_semantic_model(
                         cDataType = r["Data Type"]
 
                         try:
-                            tom._model.Tables[tName].Columns[cName]
+                            tom.model.Tables[tName].Columns[cName]
                         except:
                             tom.add_data_column(
                                 table_name=tName,
