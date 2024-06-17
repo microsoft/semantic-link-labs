@@ -36,8 +36,8 @@ def refresh_calc_tables(dataset: str, workspace: Optional[str] = None):
                 dataset=dataset, readonly=True, workspace=workspace
             ) as tom:
                 success = True
-                for a in tom._model.Annotations:
-                    if any(a.Name == t.Name for t in tom._model.Tables):
+                for a in tom.model.Annotations:
+                    if any(a.Name == t.Name for t in tom.model.Tables):
                         tName = a.Name
                         query = a.Value
 
@@ -118,10 +118,8 @@ def refresh_calc_tables(dataset: str, workspace: Optional[str] = None):
                             print(
                                 f"{icons.green_dot} Calculated table '{tName}' has been refreshed as the '{delta_table_name.lower()}' table in the lakehouse."
                             )
-                        except:
-                            print(
-                                f"{icons.red_dot} Failed to create calculated table '{tName}' as a delta table in the lakehouse."
-                            )
+                        except Exception as e:
+                            raise ValueError(f"{icons.red_dot} Failed to create calculated table '{tName}' as a delta table in the lakehouse.") from e
 
         except Exception as e:
             if datetime.datetime.now() - start_time > timeout:

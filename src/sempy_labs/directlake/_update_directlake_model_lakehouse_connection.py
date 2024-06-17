@@ -71,11 +71,9 @@ def update_direct_lake_model_lakehouse_connection(
 
             shEx = get_shared_expression(lakehouse, lakehouse_workspace)
             try:
-                tom._model.Expressions["DatabaseQuery"].Expression = shEx
+                tom.model.Expressions["DatabaseQuery"].Expression = shEx
                 print(
                     f"{icons.green_dot} The expression in the '{dataset}' semantic model has been updated to point to the '{lakehouse}' lakehouse in the '{lakehouse_workspace}' workspace."
                 )
-            except:
-                print(
-                    f"{icons.red_dot} The expression in the '{dataset}' semantic model was not updated."
-                )
+            except Exception as e:
+                raise ValueError(f"{icons.red_dot} The expression in the '{dataset}' semantic model was not updated.") from e

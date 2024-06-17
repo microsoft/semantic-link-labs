@@ -67,15 +67,9 @@ def export_model_to_onelake(
         print(
             f"{icons.green_dot} The '{dataset}' semantic model's tables have been exported as delta tables to the '{workspace}' workspace.\n"
         )
-    except:
-        print(
-            f"{icons.red_dot} The '{dataset}' semantic model's tables have not been exported as delta tables to the '{workspace}' workspace."
-        )
-        print(
-            f"Make sure you enable OneLake integration for the '{dataset}' semantic model. Follow the instructions here: https://learn.microsoft.com/power-bi/enterprise/onelake-integration-overview#enable-onelake-integration"
-        )
-        return
-
+    except Exception as e:
+        raise ValueError(f"{icons.red_dot} The '{dataset}' semantic model's tables have not been exported as delta tables to the '{workspace}' workspace.\nMake sure you enable OneLake integration for the '{dataset}' semantic model. Follow the instructions here: https://learn.microsoft.com/power-bi/enterprise/onelake-integration-overview#enable-onelake-integration") from e
+        
     # Create shortcuts if destination lakehouse is specified
     if destination_lakehouse is not None:
         # Destination...
@@ -150,7 +144,5 @@ def export_model_to_onelake(
                     )
                 else:
                     print(response.status_code)
-            except:
-                print(
-                    f"{icons.red_dot} Failed to create a shortcut for the '{tableName}' table."
-                )
+            except Exception as e:
+                raise ValueError(f"{icons.red_dot} Failed to create a shortcut for the '{tableName}' table.") from e

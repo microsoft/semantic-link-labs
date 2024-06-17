@@ -113,11 +113,8 @@ def direct_lake_schema_sync(
                     dt = mapping.get(dType)
                     try:
                         col.DataType = System.Enum.Parse(TOM.DataType, dt)
-                    except:
-                        print(
-                            f"{icons.red_dot} '{dType}' data type is not mapped properly to the semantic model data types."
-                        )
-                        return
+                    except Exception as e:
+                        raise ValueError(f"{icons.red_dot} Failed to map '{dType}' data type to the semantic model data types.") from e
 
                     tom.model.Tables[tName].Columns.Add(col)
                     print(

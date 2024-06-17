@@ -72,11 +72,9 @@ def update_direct_lake_partition_entity(
             i = table_name.index(tName)
             eName = entity_name[i]
             try:
-                tom._model.Tables[tName].Partitions[0].EntityName = eName
+                tom.model.Tables[tName].Partitions[0].EntityName = eName
                 print(
                     f"{icons.green_dot} The '{tName}' table in the '{dataset}' semantic model has been updated to point to the '{eName}' table in the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace."
                 )
-            except:
-                print(
-                    f"{icons.red_dot} The '{tName}' table in the '{dataset}' semantic model has not been updated."
-                )
+            except Exception as e:
+                raise ValueError(f"{icons.red_dot} The '{tName}' table in the '{dataset}' semantic model has not been updated.") from e

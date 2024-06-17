@@ -26,7 +26,7 @@ If you have ideas for new features/functions, please [request a feature](https:/
 import sempy_labs as labs
 from sempy_labs import migration, report, directlake
 from sempy_labs import lakehouse as lake
-from sempy_labs._tom import connect_semantic_model
+from sempy_labs.tom import connect_semantic_model
 ```
 
 ## Load semantic-link-labs into a custom [Fabric environment](https://learn.microsoft.com/fabric/data-engineering/create-and-use-environment)

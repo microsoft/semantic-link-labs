@@ -80,9 +80,7 @@ def create_shortcut_onelake(
         else:
             print(response.status_code)
     except Exception as e:
-        print(
-            f"{icons.red_dot} Failed to create a shortcut for the '{table_name}' table: {e}"
-        )
+        raise ValueError(f"{icons.red_dot} Failed to create a shortcut for the '{table_name}' table.") from e
 
 
 def create_shortcut(
@@ -157,10 +155,8 @@ def create_shortcut(
             )
         else:
             print(response.status_code)
-    except:
-        print(
-            f"{icons.red_dot} Failed to create a shortcut for the '{shortcut_name}' table."
-        )
+    except Exception as e:
+        raise ValueError(f"{icons.red_dot} Failed to create a shortcut for the '{shortcut_name}' table.") from e
 
 
 def delete_shortcut(

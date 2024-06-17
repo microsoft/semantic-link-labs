@@ -49,7 +49,7 @@ def translate_semantic_model(
     ) as tom:
 
         if exclude_characters is None:
-            for o in tom._model.Tables:
+            for o in tom.model.Tables:
                 new_data = {
                     "Object Type": "Table",
                     "Name": o.Name,
@@ -102,7 +102,7 @@ def translate_semantic_model(
                     [dfPrep, pd.DataFrame(new_data, index=[0])], ignore_index=True
                 )
         else:
-            for o in tom._model.Tables:
+            for o in tom.model.Tables:
                 oName = o.Name
                 oDescription = o.Description
                 for s in exclude_characters:
@@ -211,7 +211,7 @@ def translate_semantic_model(
                 tom.add_translation(language=lang)
                 print(f"{icons.in_progress} Translating into the '{lang}' language...")
 
-                for t in tom._model.Tables:
+                for t in tom.model.Tables:
                     if t.IsHidden == False:
                         if clm == "Name":
                             df_filt = df_panda[
