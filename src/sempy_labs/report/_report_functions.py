@@ -1,7 +1,6 @@
-import sempy
 import sempy.fabric as fabric
 import pandas as pd
-import json, os, time, base64, copy, re
+import json, os, time, base64, copy
 from anytree import Node, RenderTree
 from powerbiclient import Report
 from synapse.ml.services import Translate
@@ -73,7 +72,7 @@ def get_report_json(
 
     if save_to_file_name is not None:
         lakeAttach = lakehouse_attached()
-        if lakeAttach == False:
+        if lakeAttach is False:
             print(
                 f"{icons.red_dot} In order to save the report.json file, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
             )
@@ -107,7 +106,7 @@ def report_dependency_tree(workspace: Optional[str] = None):
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    if workspace == None:
+    if workspace is None:
         workspaceId = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspaceId)
 
@@ -190,7 +189,7 @@ def export_report(
 
     lakeAttach = lakehouse_attached()
 
-    if lakeAttach == False:
+    if lakeAttach is False:
         print(
             f"{icons.red_dot} In order to run the 'export_report' function, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
         )
@@ -240,7 +239,7 @@ def export_report(
         )
         return
 
-    if file_name == None:
+    if file_name is None:
         file_name = report + fileExt
     else:
         file_name = file_name + fileExt
@@ -466,7 +465,7 @@ def clone_report(
             return
         target_workspace_id = dfW_filt["Id"].iloc[0]
 
-    if target_dataset == None:
+    if target_dataset is None:
         dfR = fabric.list_reports(workspace=target_workspace)
         dfR_filt = dfR[dfR["Name"] == report]
         target_dataset_id = dfR_filt["Dataset Id"].iloc[0]
@@ -532,7 +531,7 @@ def launch_report(report: str, workspace: Optional[str] = None):
         An embedded Power BI report within the notebook.
     """
 
-    from .HelperFunctions import resolve_report_id
+    from sempy_labs import resolve_report_id
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
@@ -562,7 +561,7 @@ def list_report_pages(report: str, workspace: Optional[str] = None):
         A pandas dataframe showing the pages within a Power BI report and their properties.
     """
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
@@ -626,7 +625,7 @@ def list_report_visuals(report: str, workspace: Optional[str] = None):
         A pandas dataframe showing the visuals within a Power BI report and their properties.
     """
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
@@ -681,7 +680,7 @@ def list_report_bookmarks(report: str, workspace: Optional[str] = None):
         A pandas dataframe showing the bookmarks within a Power BI report and their properties.
     """
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
@@ -748,6 +747,7 @@ def list_report_bookmarks(report: str, workspace: Optional[str] = None):
         print(
             f"The '{report}' report within the '{workspace}' workspace has no bookmarks."
         )
+
 
 @log
 def translate_report_titles(

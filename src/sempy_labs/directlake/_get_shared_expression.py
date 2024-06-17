@@ -31,7 +31,7 @@ def get_shared_expression(
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-    if lakehouse == None:
+    if lakehouse is None:
         lakehouse_id = fabric.get_lakehouse_id()
         lakehouse = resolve_lakehouse_name(lakehouse_id)
 

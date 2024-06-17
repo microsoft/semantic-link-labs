@@ -7,7 +7,7 @@ from typing import List, Optional, Union
 def get_direct_lake_guardrails():
     """
     Shows the guardrails for when Direct Lake semantic models will fallback to Direct Query based on Microsoft's `online documentation <https://learn.microsoft.com/power-bi/enterprise/directlake-overview>`_.
-    
+
     Parameters
     ----------
 
@@ -44,7 +44,7 @@ def get_sku_size(workspace: Optional[str] = None):
         The SKU size for a workspace.
     """
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 

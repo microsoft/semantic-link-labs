@@ -1,10 +1,10 @@
-import sempy
 import sempy.fabric as fabric
 import pandas as pd
 import json, base64, time
 from typing import Optional
 from sempy_labs._helper_functions import resolve_workspace_name_and_id
 import sempy_labs._icons as icons
+
 
 def create_report_from_reportjson(
     report: str,
@@ -82,7 +82,7 @@ def create_report_from_reportjson(
     definitionPBIR = conv_b64(defPBIR)
     payloadReportJson = conv_b64(report_json)
 
-    if theme_json == None:
+    if theme_json is None:
         request_body = {
             "displayName": report,
             "type": objectType,

@@ -46,12 +46,12 @@ def migrate_calc_tables_to_semantic_model(
 
     workspace = fabric.resolve_workspace_name(workspace)
 
-    if new_dataset_workspace == None:
+    if new_dataset_workspace is None:
         new_dataset_workspace = workspace
 
-    if lakehouse_workspace == None:
+    if lakehouse_workspace is None:
         lakehouse_workspace = new_dataset_workspace
-    if lakehouse == None:
+    if lakehouse is None:
         lakehouse_id = fabric.get_lakehouse_id()
         lakehouse = resolve_lakehouse_name(lakehouse_id, lakehouse_workspace)
 

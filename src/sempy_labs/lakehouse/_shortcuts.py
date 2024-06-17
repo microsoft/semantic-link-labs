@@ -1,12 +1,10 @@
-import sempy
 import sempy.fabric as fabric
-import pandas as pd
 from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
     resolve_lakehouse_id,
     resolve_workspace_name_and_id,
 )
-from typing import List, Optional, Union
+from typing import Optional
 import sempy_labs._icons as icons
 
 
@@ -42,7 +40,7 @@ def create_shortcut_onelake(
     sourceWorkspaceId = fabric.resolve_workspace_id(source_workspace)
     sourceLakehouseId = resolve_lakehouse_id(source_lakehouse, source_workspace)
 
-    if destination_workspace == None:
+    if destination_workspace is None:
         destination_workspace = source_workspace
 
     destinationWorkspaceId = fabric.resolve_workspace_id(destination_workspace)
@@ -50,7 +48,7 @@ def create_shortcut_onelake(
         destination_lakehouse, destination_workspace
     )
 
-    if shortcut_name == None:
+    if shortcut_name is None:
         shortcut_name = table_name
 
     client = fabric.FabricRestClient()
@@ -124,7 +122,7 @@ def create_shortcut(
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    if lakehouse == None:
+    if lakehouse is None:
         lakehouse_id = fabric.get_lakehouse_id()
     else:
         lakehouse_id = resolve_lakehouse_id(lakehouse, workspace)
@@ -180,7 +178,7 @@ def delete_shortcut(
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    if lakehouse == None:
+    if lakehouse is None:
         lakehouse_id = fabric.get_lakehouse_id()
         lakehouse = resolve_lakehouse_name(lakehouse_id, workspace)
     else:

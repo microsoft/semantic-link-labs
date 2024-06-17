@@ -1,4 +1,3 @@
-import sempy
 import sempy.fabric as fabric
 import pandas as pd
 from tqdm.auto import tqdm
@@ -131,7 +130,7 @@ def warm_direct_lake_cache_perspective(
         bar.set_description(f"Warming the '{tableName}' table...")
         css = ",".join(map(str, filtered_list))
         dax = """EVALUATE TOPN(1,SUMMARIZECOLUMNS(""" + css + "))" ""
-        x = fabric.evaluate_dax(dataset=dataset, dax_string=dax, workspace=workspace)
+        fabric.evaluate_dax(dataset=dataset, dax_string=dax, workspace=workspace)
 
     print(f"{icons.green_dot} The following columns have been put into memory:")
 
@@ -168,10 +167,9 @@ def warm_direct_lake_cache_isresident(
 
     dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
     if not any(r["Mode"] == "DirectLake" for i, r in dfP.iterrows()):
-        print(
+        raise ValueError(
             f"{icons.red_dot} The '{dataset}' semantic model in the '{workspace}' workspace is not in Direct Lake mode. This function is specifically for semantic models in Direct Lake mode."
         )
-        return
 
     # Identify columns which are currently in memory (Is Resident = True)
     dfC = fabric.list_columns(dataset=dataset, workspace=workspace, extended=True)
@@ -181,10 +179,9 @@ def warm_direct_lake_cache_isresident(
     dfC_filtered = dfC[dfC["Is Resident"]]
 
     if len(dfC_filtered) == 0:
-        print(
+        raise ValueError(
             f"{icons.yellow_dot} At present, no columns are in memory in the '{dataset}' semantic model in the '{workspace}' workspace."
         )
-        return
 
     # Refresh/frame dataset
     refresh_semantic_model(dataset=dataset, refresh_type="full", workspace=workspace)
@@ -199,7 +196,7 @@ def warm_direct_lake_cache_isresident(
         bar.set_description(f"Warming the '{tableName}' table...")
         css = ",".join(map(str, column_values))
         dax = """EVALUATE TOPN(1,SUMMARIZECOLUMNS(""" + css + "))" ""
-        x = fabric.evaluate_dax(dataset=dataset, dax_string=dax, workspace=workspace)
+        fabric.evaluate_dax(dataset=dataset, dax_string=dax, workspace=workspace)
 
     print(
         f"{icons.green_dot} The following columns have been put into memory. Temperature indicates the column temperature prior to the semantic model refresh."

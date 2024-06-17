@@ -23,7 +23,7 @@ def check_fallback_reason(dataset: str, workspace: Optional[str] = None):
         The tables in the semantic model and their fallback reason.
     """
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 

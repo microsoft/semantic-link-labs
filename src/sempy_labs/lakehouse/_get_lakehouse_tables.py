@@ -64,7 +64,7 @@ def get_lakehouse_tables(
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    if lakehouse == None:
+    if lakehouse is None:
         lakehouse_id = fabric.get_lakehouse_id()
         lakehouse = resolve_lakehouse_name(lakehouse_id, workspace)
     else:
@@ -83,7 +83,7 @@ def get_lakehouse_tables(
         tType = i["type"]
         tFormat = i["format"]
         tLocation = i["location"]
-        if extended == False:
+        if not extended:
             new_data = {
                 "Workspace Name": workspace,
                 "Lakehouse Name": lakehouse,
@@ -173,7 +173,7 @@ def get_lakehouse_tables(
 
     if export:
         lakeAttach = lakehouse_attached()
-        if lakeAttach == False:
+        if lakeAttach is False:
             print(
                 f"{icons.red_dot} In order to save the report.json file, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
             )

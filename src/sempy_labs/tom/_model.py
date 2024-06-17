@@ -8,7 +8,7 @@ from sempy_labs._list_functions import list_relationships
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
 from sempy_labs.directlake._fallback import check_fallback_reason
 from contextlib import contextmanager
-from typing import List, Optional, Union, TYPE_CHECKING
+from typing import List, Iterator, Optional, Union, TYPE_CHECKING
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 
@@ -177,10 +177,10 @@ class TOMWrapper:
             All levels within the semantic model.
         """
 
-        for t in self.model.Tables:
-            for h in t.Hierarchies:
-                for l in h.Levels:
-                    yield l
+        for table in self.model.Tables:
+            for hierarchy in table.Hierarchies:
+                for level in hierarchy.Levels:
+                    yield level
 
     def all_calculation_items(self):
         """
@@ -929,7 +929,7 @@ class TOMWrapper:
         p.Name = partition_name
         p.Source = mp
         if description is not None:
-            p.Description = description        
+            p.Description = description
         p.Mode = System.Enum.Parse(TOM.ModeType, mode)
 
         self.model.Tables[table_name].Partitions.Add(p)
@@ -1627,12 +1627,12 @@ class TOMWrapper:
         objType = column.ObjectType
 
         if objType == TOM.ObjectType.Column:
-            for l in self.all_levels():
+            for level in self.all_levels():
                 if (
-                    l.Parent.Table.Name == column.Parent.Name
-                    and l.Column.Name == column.Name
+                    level.Parent.Table.Name == column.Parent.Name
+                    and level.Column.Name == column.Name
                 ):
-                    yield l
+                    yield level
 
     def used_in_hierarchies(self, column: "TOM.Column"):
         """
@@ -2037,7 +2037,7 @@ class TOMWrapper:
             Indicates if the semantic model has a hybrid table.
         """    
 
-        return any(self.is_hybrid_table(table_name = t.Name) for t in self.model.Tables)
+        return any(self.is_hybrid_table(table_name=t.Name) for t in self.model.Tables)
 
     def has_date_table(self):
         """
@@ -2052,7 +2052,7 @@ class TOMWrapper:
             Indicates if the semantic model has a table marked as a date table.
         """
 
-        return any(self.is_date_table(table_name = t.Name) for t in self.model.Tables)
+        return any(self.is_date_table(table_name=t.Name) for t in self.model.Tables)
 
     def is_direct_lake(self):
         """
@@ -2184,15 +2184,16 @@ class TOMWrapper:
         if status_graphic is None:
             status_graphic = "Three Circles Colored"
 
-        statusType = ["Linear", "LinearReversed", "Centered", "CenteredReversed"]
-        status_type = status_type.title().replace(" ", "")
-
+        valid_status_types = ["Linear", "LinearReversed", "Centered", "CenteredReversed"]
+        status_type = status_type
         if status_type is None:
             status_type = "Linear"
+        else:
+            status_type = status_type.title().replace(" ", "")
 
-        if status_type not in statusType:
+        if status_type not in valid_status_types:
             print(
-                f"{icons.red_dot} '{status_type}' is an invalid status_type. Please choose from these options: {statusType}."
+                f"{icons.red_dot} '{status_type}' is an invalid status_type. Please choose from these options: {valid_status_types}."
             )
             return
 
@@ -3075,7 +3076,7 @@ class TOMWrapper:
         import Microsoft.AnalysisServices.Tabular as TOM
 
         def create_pattern(a, b):
-            return r"(?<!" + re.escape(a) + r"\[)(?<!" + re.escape(a) + r"'\[)" + re.escape(b)        
+            return r"(?<!" + re.escape(a) + r"\[)(?<!" + re.escape(a) + r"'\[)" + re.escape(b)
 
         for obj in self.depends_on(object=object, dependencies=dependencies):
             if obj.ObjectType == TOM.ObjectType.Column:
@@ -3709,7 +3710,7 @@ class TOMWrapper:
 @contextmanager
 def connect_semantic_model(
     dataset: str, readonly: bool = True, workspace: Optional[str] = None
-):
+) -> Iterator[TOMWrapper]:
     """
     Connects to the Tabular Object Model (TOM) within a semantic model.
 
@@ -3726,7 +3727,7 @@ def connect_semantic_model(
 
     Returns
     -------
-    str
+    typing.Iterator[TOMWrapper]
         A connection to the semantic model's Tabular Object Model.
     """
 

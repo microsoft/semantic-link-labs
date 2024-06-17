@@ -1,7 +1,6 @@
-import sempy
 import sempy.fabric as fabric
 from sempy_labs._helper_functions import resolve_dataset_id, resolve_report_id
-from typing import List, Optional, Union
+from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 
@@ -35,12 +34,12 @@ def report_rebind(
 
     """
 
-    if report_workspace == None:
+    if report_workspace is None:
         report_workspace_id = fabric.get_workspace_id()
         report_workspace = fabric.resolve_workspace_name(report_workspace_id)
     else:
         report_workspace_id = fabric.resolve_workspace_id(report_workspace)
-    if dataset_workspace == None:
+    if dataset_workspace is None:
         dataset_workspace = report_workspace
 
     client = fabric.PowerBIRestClient()
@@ -64,6 +63,7 @@ def report_rebind(
         print(
             f"{icons.red_dot} The '{report}' report within the '{report_workspace}' workspace failed to rebind to the '{dataset}' semantic model within the '{dataset_workspace}' workspace."
         )
+
 
 @log
 def report_rebind_all(
@@ -102,16 +102,16 @@ def report_rebind_all(
 
     """
 
-    if dataset_workspace == None:
+    if dataset_workspace is None:
         dataset_workspace_id = fabric.get_workspace_id()
         dataset_workspace = fabric.resolve_workspace_name(dataset_workspace_id)
     else:
         dataset_workspace_id = fabric.resolve_workspace_id(dataset_workspace)
 
-    if new_dataset_workpace == None:
+    if new_dataset_workpace is None:
         new_dataset_workpace = dataset_workspace
 
-    if report_workspace == None:
+    if report_workspace is None:
         report_workspace = dataset_workspace
 
     datasetId = resolve_dataset_id(dataset, dataset_workspace)

@@ -56,11 +56,11 @@ def vertipaq_analyzer(
         "ignore", message="createDataFrame attempted Arrow optimization*"
     )
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
-    if lakehouse_workspace == None:
+    if lakehouse_workspace is None:
         lakehouse_workspace = workspace
 
     dfT = fabric.list_tables(dataset=dataset, extended=True, workspace=workspace)
@@ -233,7 +233,7 @@ def vertipaq_analyzer(
 
                 query = f"evaluate\nsummarizecolumns(\n\"1\",calculate(countrows('{fromTable}'),isblank({toObject}))\n)"
 
-                if isActive == False:  # add userelationship
+                if isActive is False:  # add userelationship
                     query = f"evaluate\nsummarizecolumns(\n\"1\",calculate(countrows('{fromTable}'),userelationship({fromObject},{toObject}),isblank({toObject}))\n)"
 
                 result = fabric.evaluate_dax(
@@ -359,7 +359,7 @@ def vertipaq_analyzer(
         "Max To Cardinality",
         "Missing Rows",
     ]
-    if read_stats_from_data == False:
+    if read_stats_from_data is False:
         intList.remove("Missing Rows")
     dfR[intList] = dfR[intList].applymap("{:,}".format)
 
@@ -436,7 +436,7 @@ def vertipaq_analyzer(
     ### Export vertipaq to delta tables in lakehouse
     if export in ["table", "zip"]:
         lakeAttach = lakehouse_attached()
-        if lakeAttach == False:
+        if lakeAttach is False:
             print(
                 f"{icons.red_dot} In order to save the Vertipaq Analyzer results, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
             )

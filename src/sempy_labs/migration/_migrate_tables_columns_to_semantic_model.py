@@ -50,13 +50,13 @@ def migrate_tables_columns_to_semantic_model(
 
     workspace = fabric.resolve_workspace_name(workspace)
 
-    if new_dataset_workspace == None:
+    if new_dataset_workspace is None:
         new_dataset_workspace = workspace
 
-    if lakehouse_workspace == None:
+    if lakehouse_workspace is None:
         lakehouse_workspace = new_dataset_workspace
 
-    if lakehouse == None:
+    if lakehouse is None:
         lakehouse_id = fabric.get_lakehouse_id()
         lakehouse = resolve_lakehouse_name(lakehouse_id, lakehouse_workspace)
 
@@ -158,8 +158,8 @@ def migrate_tables_columns_to_semantic_model(
             f"{icons.red_dot} Lakehouse not attached to notebook and lakehouse/lakehouse_workspace are not specified. Please add your lakehouse to this notebook or specify the lakehouse/lakehouse_workspace parameters."
         )
         print(
-            f"To attach a lakehouse to a notebook, go to the the 'Explorer' window to the left, click 'Lakehouses' to add your lakehouse to this notebook"
+            "To attach a lakehouse to a notebook, go to the the 'Explorer' window to the left, click 'Lakehouses' to add your lakehouse to this notebook"
         )
         print(
-            f"\nLearn more here: https://learn.microsoft.com/fabric/data-engineering/lakehouse-notebook-explore#add-or-remove-a-lakehouse"
+            "\nLearn more here: https://learn.microsoft.com/fabric/data-engineering/lakehouse-notebook-explore#add-or-remove-a-lakehouse"
         )

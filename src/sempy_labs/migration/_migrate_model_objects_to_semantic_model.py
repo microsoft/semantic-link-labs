@@ -38,13 +38,13 @@ def migrate_model_objects_to_semantic_model(
     import Microsoft.AnalysisServices.Tabular as TOM
     import System
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
     else:
-        workspaceId = fabric.resolve_workspace_id(workspace)
+        workspace_id = fabric.resolve_workspace_id(workspace)
 
-    if new_dataset_workspace == None:
+    if new_dataset_workspace is None:
         new_dataset_workspace = workspace
 
     dfT = list_tables(dataset, workspace)
@@ -238,7 +238,7 @@ def migrate_model_objects_to_semantic_model(
                             f"\n{icons.in_progress} Updating calculation group column name..."
                         )
                         dfC_filt = dfC[
-                            (dfC["Table Name"] == cgName) & (dfC["Hidden"] == False)
+                            (dfC["Table Name"] == cgName) & (dfC["Hidden"] is False)
                         ]
                         colName = dfC_filt["Column Name"].iloc[0]
                         tom.model.Tables[cgName].Columns["Name"].Name = colName

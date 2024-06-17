@@ -30,7 +30,7 @@ def show_unsupported_direct_lake_objects(
 
     pd.options.mode.chained_assignment = None
 
-    if workspace == None:
+    if workspace is None:
         workspace = fabric.resolve_workspace_name()
 
     dfT = list_tables(dataset, workspace)

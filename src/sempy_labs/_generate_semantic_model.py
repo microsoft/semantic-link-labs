@@ -31,7 +31,7 @@ def create_blank_semantic_model(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
@@ -178,11 +178,11 @@ def deploy_semantic_model(
 
     """
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
-    if new_dataset_workspace == None:
+    if new_dataset_workspace is None:
         new_dataset_workspace = workspace
 
     if new_dataset is None:
@@ -257,7 +257,7 @@ def get_semantic_model_bim(
 
     if save_to_file_name is not None:
         lakeAttach = lakehouse_attached()
-        if lakeAttach == False:
+        if lakeAttach is False:
             print(
                 f"In order to save the model.bim file, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
             )

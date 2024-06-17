@@ -1,8 +1,7 @@
-import sempy
 import sempy.fabric as fabric
 import pandas as pd
 from sempy_labs._helper_functions import format_dax_object_name
-from typing import List, Optional, Union
+from typing import Any, Dict, Optional
 from anytree import Node, RenderTree
 from sempy._utils._log import log
 
@@ -26,7 +25,7 @@ def get_measure_dependencies(dataset: str, workspace: Optional[str] = None):
         Shows all dependencies for all measures in the semantic model.
     """
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
@@ -64,11 +63,11 @@ def get_measure_dependencies(dataset: str, workspace: Optional[str] = None):
         axis=1,
     )
 
-    while any(df["Done"] == False):
+    while any(df["Done"] is False):
         for i, r in df.iterrows():
             rObjFull = r["Referenced Full Object Name"]
             rObj = r["Referenced Object"]
-            if r["Done"] == False:
+            if r["Done"] is False:
                 dep_filt = dep[dep["Full Object Name"] == rObjFull]
 
                 for index, dependency in dep_filt.iterrows():
@@ -151,7 +150,7 @@ def get_model_calc_dependencies(dataset: str, workspace: Optional[str] = None):
         Shows all dependencies for all objects in the semantic model.
     """
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
@@ -192,11 +191,11 @@ def get_model_calc_dependencies(dataset: str, workspace: Optional[str] = None):
         lambda row: False if row["Referenced Object Type"] in objs else True, axis=1
     )
 
-    while any(df["Done"] == False):
+    while any(df["Done"] is False):
         for i, r in df.iterrows():
             rObjFull = r["Referenced Full Object Name"]
             rObj = r["Referenced Object"]
-            if r["Done"] == False:
+            if r["Done"] is False:
                 dep_filt = dep[dep["Full Object Name"] == rObjFull]
 
                 for index, dependency in dep_filt.iterrows():
@@ -283,7 +282,7 @@ def measure_dependency_tree(
 
     """
 
-    if workspace == None:
+    if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
@@ -300,7 +299,7 @@ def measure_dependency_tree(
     df_filt = md[md["Object Name"] == measure_name]
 
     # Create a dictionary to hold references to nodes
-    node_dict = {}
+    node_dict: Dict[str, Any] = {}
     measureIcon = "\u2211"
     tableIcon = "\u229E"
     columnIcon = "\u229F"

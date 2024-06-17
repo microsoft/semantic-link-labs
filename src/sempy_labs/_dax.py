@@ -27,7 +27,6 @@ def evaluate_dax_impersonation(
         The DAX query.
     user_name : str
         The user name (i.e. hello@goodbye.com).
-        Defaults to None which resolves to no user impersonation.
     workspace : str, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -49,13 +48,10 @@ def evaluate_dax_impersonation(
 
     dataset_id = resolve_dataset_id(dataset=dataset, workspace=workspace)
 
-    if user_name is None:
-        request_body = {"queries": [{"query": dax_query}]}
-    else:
-        request_body = {
-            "queries": [{"query": dax_query}],
-            "impersonatedUserName": user_name,
-        }
+    request_body = {
+        "queries": [{"query": dax_query}],
+        "impersonatedUserName": user_name
+    }
 
     client = fabric.PowerBIRestClient()
     response = client.post(

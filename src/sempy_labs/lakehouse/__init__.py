@@ -5,7 +5,7 @@ from sempy_labs.lakehouse._lakehouse import (
     optimize_lakehouse_tables,
 )
 
-from sempy_labs.lakehouse._shortcuts import (    
+from sempy_labs.lakehouse._shortcuts import (
     # create_shortcut,
     create_shortcut_onelake,
     delete_shortcut,
@@ -15,7 +15,7 @@ __all__ = [
     "get_lakehouse_columns",
     "get_lakehouse_tables",
     "lakehouse_attached",
-    "optimize_lakehouse_tables",    
+    "optimize_lakehouse_tables",
     # create_shortcut,
     "create_shortcut_onelake",
     "delete_shortcut",
