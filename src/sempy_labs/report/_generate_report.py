@@ -1,3 +1,4 @@
+import sempy
 import sempy.fabric as fabric
 import pandas as pd
 import json, base64, time
@@ -9,8 +10,8 @@ import sempy_labs._icons as icons
 def create_report_from_reportjson(
     report: str,
     dataset: str,
-    report_json: str,
-    theme_json: Optional[str] = None,
+    report_json: dict,
+    theme_json: Optional[dict] = None,
     workspace: Optional[str] = None,
 ):
     """
@@ -22,9 +23,9 @@ def create_report_from_reportjson(
         Name of the report.
     dataset : str
         Name of the semantic model to connect to the report.
-    report_json : str
+    report_json : dict
         The report.json file to be used to create the report.
-    theme_json : str, default=None
+    theme_json : dict, default=None
         The theme.json file to be used for the theme of the report.
     workspace : str, default=None
         The Fabric workspace name.

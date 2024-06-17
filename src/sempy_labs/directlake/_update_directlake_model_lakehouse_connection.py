@@ -1,3 +1,4 @@
+import sempy
 import sempy.fabric as fabric
 from sempy_labs.directlake._get_shared_expression import get_shared_expression
 from sempy_labs._helper_functions import (
