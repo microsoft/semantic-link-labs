@@ -1,7 +1,7 @@
 # semantic-link-labs
 
 [![PyPI version](https://badge.fury.io/py/semantic-link-labs.svg)](https://badge.fury.io/py/semantic-link-labs)
-[![Read The Docs](https://readthedocs.org/projects/semantic-link-labs/badge/?version=0.4.1&style=flat)](https://readthedocs.org/projects/semantic-link-labs/)
+[![Read The Docs](https://readthedocs.org/projects/semantic-link-labs/badge/?version=0.4.2&style=flat)](https://readthedocs.org/projects/semantic-link-labs/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Downloads](https://static.pepy.tech/badge/semantic-link-labs)](https://pepy.tech/project/semantic-link-labs)
 
