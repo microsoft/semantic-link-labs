@@ -65,7 +65,7 @@ def create_blank_semantic_model(
 
 
 def create_semantic_model_from_bim(
-    dataset: str, bim_file: str, workspace: Optional[str] = None
+    dataset: str, bim_file: dict, workspace: Optional[str] = None
 ):
     """
     Creates a new semantic model based on a Model.bim file.
@@ -74,7 +74,7 @@ def create_semantic_model_from_bim(
     ----------
     dataset : str
         Name of the semantic model.
-    bim_file : str
+    bim_file : dict
         The model.bim file.
     workspace : str, default=None
         The Fabric workspace name.

@@ -1,3 +1,4 @@
+import sempy
 import sempy.fabric as fabric
 import pandas as pd
 import json, os, time, base64, copy

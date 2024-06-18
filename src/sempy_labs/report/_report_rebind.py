@@ -1,3 +1,4 @@
+import sempy
 import sempy.fabric as fabric
 from sempy_labs._helper_functions import resolve_dataset_id, resolve_report_id
 from typing import Optional
