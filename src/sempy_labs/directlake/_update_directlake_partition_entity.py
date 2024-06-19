@@ -53,20 +53,14 @@ def update_direct_lake_partition_entity(
         entity_name = [entity_name]
 
     if len(table_name) != len(entity_name):
-        print(
-            f"{icons.red_dot} The 'table_name' and 'entity_name' arrays must be of equal length."
-        )
-        return
+        raise ValueError(f"{icons.red_dot} The 'table_name' and 'entity_name' arrays must be of equal length.")
 
     with connect_semantic_model(
         dataset=dataset, readonly=False, workspace=workspace
     ) as tom:
 
         if not tom.is_direct_lake():
-            print(
-                f"{icons.yellow_dot} The '{dataset}' semantic model within the '{workspace}' workspace is not in Direct Lake mode."
-            )
-            return
+            raise ValueError(f"{icons.red_dot} The '{dataset}' semantic model within the '{workspace}' workspace is not in Direct Lake mode.")
 
         for tName in table_name:
             i = table_name.index(tName)

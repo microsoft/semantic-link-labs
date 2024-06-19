@@ -46,8 +46,7 @@ def direct_lake_schema_sync(
     import Microsoft.AnalysisServices.Tabular as TOM
     import System
 
-    if workspace is None:
-        workspace = fabric.resolve_workspace_name()
+    workspace = fabric.resolve_workspace_name(workspace)
 
     if lakehouse_workspace is None:
         lakehouse_workspace = workspace
@@ -62,10 +61,7 @@ def direct_lake_schema_sync(
     dfI_filt = dfI[(dfI["Id"] == sqlEndpointId)]
 
     if len(dfI_filt) == 0:
-        print(
-            f"{icons.red_dot} The SQL Endpoint in the '{dataset}' semantic model in the '{workspace} workspace does not point to the '{lakehouse}' lakehouse in the '{lakehouse_workspace}' workspace as specified."
-        )
-        return
+        raise ValueError(f"{icons.red_dot} The SQL Endpoint in the '{dataset}' semantic model in the '{workspace} workspace does not point to the '{lakehouse}' lakehouse in the '{lakehouse_workspace}' workspace as specified.")
 
     dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
     dfP_filt = dfP[dfP["Source Type"] == "Entity"]

@@ -23,17 +23,13 @@ def check_fallback_reason(dataset: str, workspace: Optional[str] = None):
         The tables in the semantic model and their fallback reason.
     """
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
+    workspace = fabric.resolve_workspace_name(workspace)
 
     dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
     dfP_filt = dfP[dfP["Mode"] == "DirectLake"]
 
     if len(dfP_filt) == 0:
-        print(
-            f"{icons.yellow_dot} The '{dataset}' semantic model is not in Direct Lake. This function is only applicable to Direct Lake semantic models."
-        )
+        raise ValueError(f"{icons.red_dot} The '{dataset}' semantic model is not in Direct Lake. This function is only applicable to Direct Lake semantic models.")
     else:
         df = fabric.evaluate_dax(
             dataset=dataset,

@@ -40,7 +40,7 @@ def update_direct_lake_model_lakehouse_connection(
 
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace = fabric.resolve_workspace_name(workspace)
 
     if lakehouse_workspace is None:
         lakehouse_workspace = workspace
@@ -54,17 +54,13 @@ def update_direct_lake_model_lakehouse_connection(
     dfI_filt = dfI[(dfI["Display Name"] == lakehouse)]
 
     if len(dfI_filt) == 0:
-        print(
-            f"{icons.red_dot} The '{lakehouse}' lakehouse does not exist within the '{lakehouse_workspace}' workspace. Therefore it cannot be used to support the '{dataset}' semantic model within the '{workspace}' workspace."
-        )
+        raise ValueError(f"{icons.red_dot} The '{lakehouse}' lakehouse does not exist within the '{lakehouse_workspace}' workspace. Therefore it cannot be used to support the '{dataset}' semantic model within the '{workspace}' workspace.")
 
     dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
     dfP_filt = dfP[dfP["Mode"] == "DirectLake"]
 
     if len(dfP_filt) == 0:
-        print(
-            f"{icons.yellow_dot} The '{dataset}' semantic model is not in Direct Lake. This function is only applicable to Direct Lake semantic models."
-        )
+        raise ValueError(f"{icons.red_dot} The '{dataset}' semantic model is not in Direct Lake. This function is only applicable to Direct Lake semantic models.")
     else:
         with connect_semantic_model(
             dataset=dataset, readonly=False, workspace=workspace

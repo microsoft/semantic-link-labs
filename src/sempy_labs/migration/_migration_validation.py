@@ -36,6 +36,10 @@ def migration_validation(
        A pandas dataframe showing a list of objects and whether they were successfully migrated. Also shows the % of objects which were migrated successfully.
     """
 
+    workspace = fabric.resolve_workspace_name(workspace)
+    if new_dataset_workspace is None:
+        new_dataset_workspace = workspace
+
     dfA = list_semantic_model_objects(dataset=dataset, workspace=workspace)
     dfB = list_semantic_model_objects(
         dataset=new_dataset, workspace=new_dataset_workspace

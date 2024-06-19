@@ -44,9 +44,7 @@ def get_sku_size(workspace: Optional[str] = None):
         The SKU size for a workspace.
     """
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
+    workspace = fabric.resolve_workspace_name(workspace)
 
     dfC = fabric.list_capacities()
     dfW = fabric.list_workspaces().sort_values(by="Name", ascending=True)

@@ -174,10 +174,8 @@ def get_lakehouse_tables(
     if export:
         lakeAttach = lakehouse_attached()
         if lakeAttach is False:
-            print(
-                f"{icons.red_dot} In order to save the report.json file, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
-            )
-            return
+            raise ValueError(f"{icons.red_dot} In order to save the report.json file, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook.")
+            
         spark = SparkSession.builder.getOrCreate()
 
         lakehouse_id = fabric.get_lakehouse_id()

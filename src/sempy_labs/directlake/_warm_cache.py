@@ -45,10 +45,7 @@ def warm_direct_lake_cache_perspective(
 
     dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
     if not any(r["Mode"] == "DirectLake" for i, r in dfP.iterrows()):
-        print(
-            f"{icons.red_dot} The '{dataset}' semantic model in the '{workspace}' workspace is not in Direct Lake mode. This function is specifically for semantic models in Direct Lake mode."
-        )
-        return
+        raise ValueError(f"{icons.red_dot} The '{dataset}' semantic model in the '{workspace}' workspace is not in Direct Lake mode. This function is specifically for semantic models in Direct Lake mode.")
 
     dfPersp = fabric.list_perspectives(dataset=dataset, workspace=workspace)
     dfPersp["DAX Object Name"] = format_dax_object_name(
@@ -57,10 +54,8 @@ def warm_direct_lake_cache_perspective(
     dfPersp_filt = dfPersp[dfPersp["Perspective Name"] == perspective]
 
     if len(dfPersp_filt) == 0:
-        print(
-            f"{icons.red_dot} The '{perspective} perspective does not exist or contains no objects within the '{dataset}' semantic model in the '{workspace}' workspace."
-        )
-        return
+        raise ValueError(f"{icons.red_dot} The '{perspective} perspective does not exist or contains no objects within the '{dataset}' semantic model in the '{workspace}' workspace.")
+
     dfPersp_c = dfPersp_filt[dfPersp_filt["Object Type"] == "Column"]
 
     column_values = dfPersp_c["DAX Object Name"].tolist()
@@ -165,6 +160,8 @@ def warm_direct_lake_cache_isresident(
     pandas.DataFrame
         Returns a pandas dataframe showing the columns that have been put into memory.
     """
+
+    workspace = fabric.resolve_workspace_name(workspace)
 
     dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
     if not any(r["Mode"] == "DirectLake" for i, r in dfP.iterrows()):

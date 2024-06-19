@@ -11,7 +11,7 @@ from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from typing import List, Optional, Union
 from sempy._utils._log import log
-
+import sempy_labs._icons as icons
 
 def model_bpa_rules():
     """
@@ -744,9 +744,7 @@ def run_model_bpa(
         message="This pattern is interpreted as a regular expression, and has match groups.",
     )
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
+    workspace = fabric.resolve_workspace_name(workspace)
 
     if rules_dataframe is None:
         rules_dataframe = model_bpa_rules()
@@ -1184,10 +1182,8 @@ def run_model_bpa(
     if export:
         lakeAttach = lakehouse_attached()
         if lakeAttach is False:
-            print(
-                f"In order to save the Best Practice Analyzer results, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
-            )
-            return
+            raise ValueError(f"{icons.red_dot} In order to save the Best Practice Analyzer results, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook.")
+
         dfExport = finalDF.copy()
         delta_table_name = "modelbparesults"
 
@@ -1230,7 +1226,7 @@ def run_model_bpa(
         spark_df = spark.createDataFrame(dfExport)
         spark_df.write.mode("append").format("delta").saveAsTable(delta_table_name)
         print(
-            f"\u2022 Model Best Practice Analyzer results for the '{dataset}' semantic model have been appended to the '{delta_table_name}' delta table."
+            f"{icons.green_dot} Model Best Practice Analyzer results for the '{dataset}' semantic model have been appended to the '{delta_table_name}' delta table."
         )
 
     if return_dataframe:

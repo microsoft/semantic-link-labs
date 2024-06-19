@@ -41,9 +41,7 @@ def refresh_semantic_model(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
+    workspace = fabric.resolve_workspace_name(workspace)
 
     if refresh_type is None:
         refresh_type = "full"
@@ -81,10 +79,7 @@ def refresh_semantic_model(
     ]
 
     if refresh_type not in refreshTypes:
-        print(
-            f"{icons.red_dot} Invalid refresh type. Refresh type must be one of these values: {refreshTypes}."
-        )
-        return
+        raise ValueError(f"{icons.red_dot} Invalid refresh type. Refresh type must be one of these values: {refreshTypes}.")
 
     if len(objects) == 0:
         requestID = fabric.refresh_dataset(
@@ -119,10 +114,7 @@ def refresh_semantic_model(
         if status == "Completed":
             break
         elif status == "Failed":
-            print(
-                f"{icons.red_dot} The refresh of the '{dataset}' semantic model within the '{workspace}' workspace has failed."
-            )
-            return
+            raise ValueError(f"{icons.red_dot} The refresh of the '{dataset}' semantic model within the '{workspace}' workspace has failed.")
         elif status == "Cancelled":
             print(
                 f"{icons.yellow_dot} The refresh of the '{dataset}' semantic model within the '{workspace}' workspace has been cancelled."
@@ -163,10 +155,8 @@ def cancel_dataset_refresh(
 
     if request_id is None:
         if len(rr_filt) == 0:
-            print(
-                f"{icons.red_dot} There are no active Enhanced API refreshes of the '{dataset}' semantic model within the '{workspace}' workspace."
-            )
-            return
+            raise ValueError(f"{icons.red_dot} There are no active Enhanced API refreshes of the '{dataset}' semantic model within the '{workspace}' workspace.")
+
         request_id = rr_filt["Request Id"].iloc[0]
 
     dataset_id = resolve_dataset_id(dataset=dataset, workspace=workspace)

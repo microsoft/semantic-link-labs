@@ -32,12 +32,10 @@ def create_blank_semantic_model(
     """
 
     if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
+        workspace = fabric.resolve_workspace_name()
 
     if compatibility_level < 1500:
-        print(f"{icons.red_dot} Compatiblity level must be at least 1500.")
-        return
+        raise ValueError(f"{icons.red_dot} Compatiblity level must be at least 1500.")
 
     tmsl = f"""
   {{
@@ -90,10 +88,7 @@ def create_semantic_model_from_bim(
     dfI_filt = dfI[(dfI["Display Name"] == dataset)]
 
     if len(dfI_filt) > 0:
-        print(
-            f"WARNING: '{dataset}' already exists as a semantic model in the '{workspace}' workspace."
-        )
-        return
+        raise ValueError(f"{icons.red_dot} '{dataset}' already exists as a semantic model in the '{workspace}' workspace.")
 
     client = fabric.FabricRestClient()
     defPBIDataset = {"version": "1.0", "settings": {}}
@@ -131,7 +126,7 @@ def create_semantic_model_from_bim(
 
     if response.status_code == 201:
         print(
-            f"The '{dataset}' semantic model has been created within the '{workspace}' workspace."
+            f"{icons.green_dot} The '{dataset}' semantic model has been created within the '{workspace}' workspace."
         )
         print(response.json())
     elif response.status_code == 202:
@@ -144,7 +139,7 @@ def create_semantic_model_from_bim(
             response_body = json.loads(response.content)
         response = client.get(f"/v1/operations/{operationId}/result")
         print(
-            f"The '{dataset}' semantic model has been created within the '{workspace}' workspace."
+            f"{icons.green_dot} The '{dataset}' semantic model has been created within the '{workspace}' workspace."
         )
         print(response.json())
 
@@ -178,9 +173,7 @@ def deploy_semantic_model(
 
     """
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
+    workspace = fabric.resolve_workspace_name(workspace)
 
     if new_dataset_workspace is None:
         new_dataset_workspace = workspace

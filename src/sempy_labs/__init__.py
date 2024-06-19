@@ -34,7 +34,7 @@ from sempy_labs._list_functions import (
     # list_sqlendpoints,
     # list_tables,
     list_warehouses,
-    # list_workspace_role_assignments,
+    list_workspace_role_assignments,
     create_warehouse,
     update_item,
 )
@@ -113,7 +113,7 @@ __all__ = [
     #'list_sqlendpoints',
     #'list_tables',
     "list_warehouses",
-    #'list_workspace_role_assignments',
+    'list_workspace_role_assignments',
     "create_warehouse",
     "update_item",
     "create_abfss_path",
