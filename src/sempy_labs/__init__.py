@@ -37,6 +37,18 @@ from sempy_labs._list_functions import (
     list_workspace_role_assignments,
     create_warehouse,
     update_item,
+    list_custom_pools,
+    create_custom_pool,
+    update_custom_pool,
+    assign_workspace_to_capacity,
+    unassign_workspace_from_capacity,
+    get_spark_settings,
+    update_spark_settings,
+    add_user_to_workspace,
+    delete_user_from_workspace,
+    update_workspace_user,
+    list_workspace_users,
+    assign_workspace_to_dataflow_storage,
 )
 
 from sempy_labs._helper_functions import (
@@ -150,5 +162,17 @@ __all__ = [
     #'visualize_vertipaq',
     "import_vertipaq_analyzer",
     "list_semantic_model_objects",
-    "list_shortcuts"
+    "list_shortcuts",
+    "list_custom_pools",
+    "create_custom_pool",
+    "update_custom_pool",
+    "assign_workspace_to_capacity",
+    "unassign_workspace_from_capacity",
+    "get_spark_settings",
+    "update_spark_settings",
+    "add_user_to_workspace",
+    "delete_user_from_workspace",
+    "update_workspace_user",
+    "list_workspace_users",
+    "assign_workspace_to_dataflow_storage"
 ]
