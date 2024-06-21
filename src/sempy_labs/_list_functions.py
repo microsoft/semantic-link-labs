@@ -9,6 +9,7 @@ import pandas as pd
 import json, time
 from pyspark.sql import SparkSession
 from typing import Optional
+import sempy_labs._icons as icons
 
 def get_object_level_security(dataset: str, workspace: Optional[str] = None):
     """
@@ -29,44 +30,44 @@ def get_object_level_security(dataset: str, workspace: Optional[str] = None):
         A pandas dataframe showing the object level security for the semantic model.
     """
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
+    from .tom import connect_semantic_model
 
-    tom_server = fabric.create_tom_server(readonly=True, workspace=workspace)
-    m = tom_server.Databases.GetByName(dataset).Model
-
+    if workspace is None:        
+        workspace = fabric.resolve_workspace_name()
+    
     df = pd.DataFrame(columns=["Role Name", "Object Type", "Table Name", "Object Name"])
 
-    for r in m.Roles:
-        for tp in r.TablePermissions:
-            if len(tp.FilterExpression) == 0:
-                columnCount = len(tp.ColumnPermissions)
-                objectType = "Table"
-                if columnCount == 0:
-                    new_data = {
-                        "Role Name": r.Name,
-                        "Object Type": objectType,
-                        "Table Name": tp.Name,
-                        "Object Name": tp.Name,
-                    }
-                    df = pd.concat(
-                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                    )
-                else:
-                    objectType = "Column"
-                    for cp in tp.ColumnPermissions:
+    with connect_semantic_model(dataset=dataset, readonly=True, workspace=workspace) as tom:
+
+        for r in tom.model.Roles:
+            for tp in r.TablePermissions:
+                if len(tp.FilterExpression) == 0:
+                    columnCount = len(tp.ColumnPermissions)
+                    objectType = "Table"
+                    if columnCount == 0:
                         new_data = {
                             "Role Name": r.Name,
                             "Object Type": objectType,
                             "Table Name": tp.Name,
-                            "Object Name": cp.Name,
+                            "Object Name": tp.Name,
                         }
                         df = pd.concat(
                             [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
                         )
+                    else:
+                        objectType = "Column"
+                        for cp in tp.ColumnPermissions:
+                            new_data = {
+                                "Role Name": r.Name,
+                                "Object Type": objectType,
+                                "Table Name": tp.Name,
+                                "Object Name": cp.Name,
+                            }
+                            df = pd.concat(
+                                [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                            )
 
-    return df
+        return df
 
 
 def list_tables(dataset: str, workspace: Optional[str] = None):
@@ -88,12 +89,10 @@ def list_tables(dataset: str, workspace: Optional[str] = None):
         A pandas dataframe showing the semantic model's tables and their properties.
     """
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
+    from .tom import connect_semantic_model
 
-    tom_server = fabric.create_tom_server(readonly=True, workspace=workspace)
-    m = tom_server.Databases.GetByName(dataset).Model
+    if workspace is None:
+        workspace = fabric.resolve_workspace_name()
 
     df = pd.DataFrame(
         columns=[
@@ -107,32 +106,34 @@ def list_tables(dataset: str, workspace: Optional[str] = None):
         ]
     )
 
-    for t in m.Tables:
-        tableType = "Table"
-        rPolicy = bool(t.RefreshPolicy)
-        sourceExpression = None
-        if str(t.CalculationGroup) != "None":
-            tableType = "Calculation Group"
-        else:
-            for p in t.Partitions:
-                if str(p.SourceType) == "Calculated":
-                    tableType = "Calculated Table"
+    with connect_semantic_model(dataset=dataset, readonly=True, workspace=workspace) as tom:
 
-        if rPolicy:
-            sourceExpression = t.RefreshPolicy.SourceExpression
+        for t in tom.model.Tables:
+            tableType = "Table"
+            rPolicy = bool(t.RefreshPolicy)
+            sourceExpression = None
+            if str(t.CalculationGroup) != "None":
+                tableType = "Calculation Group"
+            else:
+                for p in t.Partitions:
+                    if str(p.SourceType) == "Calculated":
+                        tableType = "Calculated Table"
 
-        new_data = {
-            "Name": t.Name,
-            "Type": tableType,
-            "Hidden": t.IsHidden,
-            "Data Category": t.DataCategory,
-            "Description": t.Description,
-            "Refresh Policy": rPolicy,
-            "Source Expression": sourceExpression,
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            if rPolicy:
+                sourceExpression = t.RefreshPolicy.SourceExpression
 
-    return df
+            new_data = {
+                "Name": t.Name,
+                "Type": tableType,
+                "Hidden": t.IsHidden,
+                "Data Category": t.DataCategory,
+                "Description": t.Description,
+                "Refresh Policy": rPolicy,
+                "Source Expression": sourceExpression,
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+        return df
 
 
 def list_annotations(dataset: str, workspace: Optional[str] = None):
@@ -154,12 +155,10 @@ def list_annotations(dataset: str, workspace: Optional[str] = None):
         A pandas dataframe showing the semantic model's annotations and their properties.
     """
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
+    from .tom import connect_semantic_model
 
-    tom_server = fabric.create_tom_server(readonly=True, workspace=workspace)
-    m = tom_server.Databases.GetByName(dataset).Model
+    if workspace is None:
+        workspace = fabric.resolve_workspace_name()
 
     df = pd.DataFrame(
         columns=[
@@ -171,183 +170,185 @@ def list_annotations(dataset: str, workspace: Optional[str] = None):
         ]
     )
 
-    mName = m.Name
-    for a in m.Annotations:
-        objectType = "Model"
-        aName = a.Name
-        aValue = a.Value
-        new_data = {
-            "Object Name": mName,
-            "Parent Object Name": "N/A",
-            "Object Type": objectType,
-            "Annotation Name": aName,
-            "Annotation Value": aValue,
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-    for t in m.Tables:
-        objectType = "Table"
-        tName = t.Name
-        for ta in t.Annotations:
-            taName = ta.Name
-            taValue = ta.Value
-            new_data = {
-                "Object Name": tName,
-                "Parent Object Name": mName,
-                "Object Type": objectType,
-                "Annotation Name": taName,
-                "Annotation Value": taValue,
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-        for p in t.Partitions:
-            pName = p.Name
-            objectType = "Partition"
-            for pa in p.Annotations:
-                paName = pa.Name
-                paValue = pa.Value
-                new_data = {
-                    "Object Name": pName,
-                    "Parent Object Name": tName,
-                    "Object Type": objectType,
-                    "Annotation Name": paName,
-                    "Annotation Value": paValue,
-                }
-                df = pd.concat(
-                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                )
-        for c in t.Columns:
-            objectType = "Column"
-            cName = c.Name
-            for ca in c.Annotations:
-                caName = ca.Name
-                caValue = ca.Value
-                new_data = {
-                    "Object Name": cName,
-                    "Parent Object Name": tName,
-                    "Object Type": objectType,
-                    "Annotation Name": caName,
-                    "Annotation Value": caValue,
-                }
-                df = pd.concat(
-                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                )
-        for ms in t.Measures:
-            objectType = "Measure"
-            measName = ms.Name
-            for ma in ms.Annotations:
-                maName = ma.Name
-                maValue = ma.Value
-                new_data = {
-                    "Object Name": measName,
-                    "Parent Object Name": tName,
-                    "Object Type": objectType,
-                    "Annotation Name": maName,
-                    "Annotation Value": maValue,
-                }
-                df = pd.concat(
-                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                )
-        for h in t.Hierarchies:
-            objectType = "Hierarchy"
-            hName = h.Name
-            for ha in h.Annotations:
-                haName = ha.Name
-                haValue = ha.Value
-                new_data = {
-                    "Object Name": hName,
-                    "Parent Object Name": tName,
-                    "Object Type": objectType,
-                    "Annotation Name": haName,
-                    "Annotation Value": haValue,
-                }
-                df = pd.concat(
-                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                )
-    for d in m.DataSources:
-        dName = d.Name
-        objectType = "Data Source"
-        for da in d.Annotations:
-            daName = da.Name
-            daValue = da.Value
-            new_data = {
-                "Object Name": dName,
-                "Parent Object Name": mName,
-                "Object Type": objectType,
-                "Annotation Name": daName,
-                "Annotation Value": daValue,
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-    for r in m.Relationships:
-        rName = r.Name
-        objectType = "Relationship"
-        for ra in r.Annotations:
-            raName = ra.Name
-            raValue = ra.Value
-            new_data = {
-                "Object Name": rName,
-                "Parent Object Name": mName,
-                "Object Type": objectType,
-                "Annotation Name": raName,
-                "Annotation Value": raValue,
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-    for cul in m.Cultures:
-        culName = cul.Name
-        objectType = "Translation"
-        for cula in cul.Annotations:
-            culaName = cula.Name
-            culaValue = cula.Value
-            new_data = {
-                "Object Name": culName,
-                "Parent Object Name": mName,
-                "Object Type": objectType,
-                "Annotation Name": culaName,
-                "Annotation Value": culaValue,
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-    for e in m.Expressions:
-        eName = e.Name
-        objectType = "Expression"
-        for ea in e.Annotations:
-            eaName = ea.Name
-            eaValue = ea.Value
-            new_data = {
-                "Object Name": eName,
-                "Parent Object Name": mName,
-                "Object Type": objectType,
-                "Annotation Name": eaName,
-                "Annotation Value": eaValue,
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-    for per in m.Perspectives:
-        perName = per.Name
-        objectType = "Perspective"
-        for pera in per.Annotations:
-            peraName = pera.Name
-            peraValue = pera.Value
-            new_data = {
-                "Object Name": perName,
-                "Parent Object Name": mName,
-                "Object Type": objectType,
-                "Annotation Name": peraName,
-                "Annotation Value": peraValue,
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-    for rol in m.Roles:
-        rolName = rol.Name
-        objectType = "Role"
-        for rola in rol.Annotations:
-            rolaName = rola.Name
-            rolaValue = rola.Value
-            new_data = {
-                "Object Name": rolName,
-                "Parent Object Name": mName,
-                "Object Type": objectType,
-                "Annotation Name": rolaName,
-                "Annotation Value": rolaValue,
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    with connect_semantic_model(dataset=dataset, readonly=True, workspace=workspace) as tom:
 
-    return df
+        mName = tom.model.Name
+        for a in tom.model.Annotations:
+            objectType = "Model"
+            aName = a.Name
+            aValue = a.Value
+            new_data = {
+                "Object Name": mName,
+                "Parent Object Name": "N/A",
+                "Object Type": objectType,
+                "Annotation Name": aName,
+                "Annotation Value": aValue,
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+        for t in tom.model.Tables:
+            objectType = "Table"
+            tName = t.Name
+            for ta in t.Annotations:
+                taName = ta.Name
+                taValue = ta.Value
+                new_data = {
+                    "Object Name": tName,
+                    "Parent Object Name": mName,
+                    "Object Type": objectType,
+                    "Annotation Name": taName,
+                    "Annotation Value": taValue,
+                }
+                df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            for p in t.Partitions:
+                pName = p.Name
+                objectType = "Partition"
+                for pa in p.Annotations:
+                    paName = pa.Name
+                    paValue = pa.Value
+                    new_data = {
+                        "Object Name": pName,
+                        "Parent Object Name": tName,
+                        "Object Type": objectType,
+                        "Annotation Name": paName,
+                        "Annotation Value": paValue,
+                    }
+                    df = pd.concat(
+                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
+            for c in t.Columns:
+                objectType = "Column"
+                cName = c.Name
+                for ca in c.Annotations:
+                    caName = ca.Name
+                    caValue = ca.Value
+                    new_data = {
+                        "Object Name": cName,
+                        "Parent Object Name": tName,
+                        "Object Type": objectType,
+                        "Annotation Name": caName,
+                        "Annotation Value": caValue,
+                    }
+                    df = pd.concat(
+                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
+            for ms in t.Measures:
+                objectType = "Measure"
+                measName = ms.Name
+                for ma in ms.Annotations:
+                    maName = ma.Name
+                    maValue = ma.Value
+                    new_data = {
+                        "Object Name": measName,
+                        "Parent Object Name": tName,
+                        "Object Type": objectType,
+                        "Annotation Name": maName,
+                        "Annotation Value": maValue,
+                    }
+                    df = pd.concat(
+                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
+            for h in t.Hierarchies:
+                objectType = "Hierarchy"
+                hName = h.Name
+                for ha in h.Annotations:
+                    haName = ha.Name
+                    haValue = ha.Value
+                    new_data = {
+                        "Object Name": hName,
+                        "Parent Object Name": tName,
+                        "Object Type": objectType,
+                        "Annotation Name": haName,
+                        "Annotation Value": haValue,
+                    }
+                    df = pd.concat(
+                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
+        for d in tom.model.DataSources:
+            dName = d.Name
+            objectType = "Data Source"
+            for da in d.Annotations:
+                daName = da.Name
+                daValue = da.Value
+                new_data = {
+                    "Object Name": dName,
+                    "Parent Object Name": mName,
+                    "Object Type": objectType,
+                    "Annotation Name": daName,
+                    "Annotation Value": daValue,
+                }
+                df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+        for r in tom.model.Relationships:
+            rName = r.Name
+            objectType = "Relationship"
+            for ra in r.Annotations:
+                raName = ra.Name
+                raValue = ra.Value
+                new_data = {
+                    "Object Name": rName,
+                    "Parent Object Name": mName,
+                    "Object Type": objectType,
+                    "Annotation Name": raName,
+                    "Annotation Value": raValue,
+                }
+                df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+        for cul in tom.model.Cultures:
+            culName = cul.Name
+            objectType = "Translation"
+            for cula in cul.Annotations:
+                culaName = cula.Name
+                culaValue = cula.Value
+                new_data = {
+                    "Object Name": culName,
+                    "Parent Object Name": mName,
+                    "Object Type": objectType,
+                    "Annotation Name": culaName,
+                    "Annotation Value": culaValue,
+                }
+                df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+        for e in tom.model.Expressions:
+            eName = e.Name
+            objectType = "Expression"
+            for ea in e.Annotations:
+                eaName = ea.Name
+                eaValue = ea.Value
+                new_data = {
+                    "Object Name": eName,
+                    "Parent Object Name": mName,
+                    "Object Type": objectType,
+                    "Annotation Name": eaName,
+                    "Annotation Value": eaValue,
+                }
+                df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+        for per in tom.model.Perspectives:
+            perName = per.Name
+            objectType = "Perspective"
+            for pera in per.Annotations:
+                peraName = pera.Name
+                peraValue = pera.Value
+                new_data = {
+                    "Object Name": perName,
+                    "Parent Object Name": mName,
+                    "Object Type": objectType,
+                    "Annotation Name": peraName,
+                    "Annotation Value": peraValue,
+                }
+                df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+        for rol in tom.model.Roles:
+            rolName = rol.Name
+            objectType = "Role"
+            for rola in rol.Annotations:
+                rolaName = rola.Name
+                rolaValue = rola.Value
+                new_data = {
+                    "Object Name": rolName,
+                    "Parent Object Name": mName,
+                    "Object Type": objectType,
+                    "Annotation Name": rolaName,
+                    "Annotation Value": rolaValue,
+                }
+                df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+        return df
 
 
 def list_columns(
@@ -385,8 +386,7 @@ def list_columns(
     )
 
     if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
+        workspace = fabric.resolve_workspace_name()
 
     dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
 
@@ -493,24 +493,15 @@ def list_dashboards(workspace: Optional[str] = None):
     response = client.get(f"/v1.0/myorg/groups/{workspace_id}/dashboards")
 
     for v in response.json()["value"]:
-        dashboardID = v["id"]
-        displayName = v["displayName"]
-        isReadOnly = v["isReadOnly"]
-        webURL = v["webUrl"]
-        embedURL = v["embedUrl"]
-        dataClass = v["dataClassification"]
-        users = v["users"]
-        subs = v["subscriptions"]
-
         new_data = {
-            "Dashboard ID": dashboardID,
-            "Dashboard Name": displayName,
-            "Read Only": isReadOnly,
-            "Web URL": webURL,
-            "Embed URL": embedURL,
-            "Data Classification": dataClass,
-            "Users": [users],
-            "Subscriptions": [subs],
+            "Dashboard ID": v.get("id"),
+            "Dashboard Name": v.get("displayName"),
+            "Read Only": v.get("isReadOnly"),
+            "Web URL": v.get("webUrl"),
+            "Embed URL": v.get("embedUrl"),
+            "Data Classification": v.get("dataClassification"),
+            "Users": [v.get("users")],
+            "Subscriptions": [v.get("subscriptions")],
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
@@ -554,27 +545,19 @@ def list_lakehouses(workspace: Optional[str] = None):
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/lakehouses/")
 
-    for v in response.json()["value"]:
-        lakehouseId = v["id"]
-        lakehouseName = v["displayName"]
-        lakehouseDesc = v["description"]
-        prop = v["properties"]
-        oneLakeTP = prop["oneLakeTablesPath"]
-        oneLakeFP = prop["oneLakeFilesPath"]
-        sqlEPProp = prop["sqlEndpointProperties"]
-        sqlEPCS = sqlEPProp["connectionString"]
-        sqlepid = sqlEPProp["id"]
-        sqlepstatus = sqlEPProp["provisioningStatus"]
+    for v in response.json()["value"]:        
+        prop = v.get("properties")
+        sqlEPProp = prop.get("sqlEndpointProperties")
 
         new_data = {
-            "Lakehouse Name": lakehouseName,
-            "Lakehouse ID": lakehouseId,
-            "Description": lakehouseDesc,
-            "OneLake Tables Path": oneLakeTP,
-            "OneLake Files Path": oneLakeFP,
-            "SQL Endpoint Connection String": sqlEPCS,
-            "SQL Endpoint ID": sqlepid,
-            "SQL Endpoint Provisioning Status": sqlepstatus,
+            "Lakehouse Name": v.get("displayName"),
+            "Lakehouse ID": v.get("id"),
+            "Description": v.get("description"),
+            "OneLake Tables Path": prop.get("oneLakeTablesPath"),
+            "OneLake Files Path": prop.get("oneLakeFilesPath"),
+            "SQL Endpoint Connection String": sqlEPProp.get("connectionString"),
+            "SQL Endpoint ID": sqlEPProp.get("id"),
+            "SQL Endpoint Provisioning Status": sqlEPProp.get("provisioningStatus"),
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
@@ -614,22 +597,16 @@ def list_warehouses(workspace: Optional[str] = None):
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/warehouses/")
 
-    for v in response.json()["value"]:
-        warehouse_id = v["id"]
-        warehouse_name = v["displayName"]
-        desc = v["description"]
-        prop = v["properties"]
-        connInfo = prop["connectionInfo"]
-        createdDate = prop["createdDate"]
-        lastUpdate = prop["lastUpdatedTime"]
+    for v in response.json()["value"]:        
+        prop = v.get("properties")
 
         new_data = {
-            "Warehouse Name": warehouse_name,
-            "Warehouse ID": warehouse_id,
-            "Description": desc,
-            "Connection Info": connInfo,
-            "Created Date": createdDate,
-            "Last Updated Time": lastUpdate,
+            "Warehouse Name": v.get("displayName"),
+            "Warehouse ID": v.get("id"),
+            "Description": v.get("description"),
+            "Connection Info": prop.get("connectionInfo"),
+            "Created Date": prop.get("createdDate"),
+            "Last Updated Time": prop.get("lastUpdatedTime"),
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
@@ -661,14 +638,11 @@ def list_sqlendpoints(workspace: Optional[str] = None):
     response = client.get(f"/v1/workspaces/{workspace_id}/sqlEndpoints/")
 
     for v in response.json()["value"]:
-        sql_id = v["id"]
-        lake_name = v["displayName"]
-        desc = v["description"]
 
         new_data = {
-            "SQL Endpoint ID": sql_id,
-            "SQL Endpoint Name": lake_name,
-            "Description": desc,
+            "SQL Endpoint ID": v.get("id"),
+            "SQL Endpoint Name": v.get("displayName"),
+            "Description": v.get("description"),
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
@@ -701,15 +675,12 @@ def list_mirroredwarehouses(workspace: Optional[str] = None):
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/mirroredWarehouses/")
 
-    for v in response.json()["value"]:
-        mirr_id = v["id"]
-        dbname = v["displayName"]
-        desc = v["description"]
+    for v in response.json()["value"]:        
 
         new_data = {
-            "Mirrored Warehouse": dbname,
-            "Mirrored Warehouse ID": mirr_id,
-            "Description": desc,
+            "Mirrored Warehouse": v.get("displayName"),
+            "Mirrored Warehouse ID": v.get("id"),
+            "Description": v.get("description"),
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
@@ -750,24 +721,17 @@ def list_kqldatabases(workspace: Optional[str] = None):
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/kqlDatabases/")
 
-    for v in response.json()["value"]:
-        kql_id = v["id"]
-        kql_name = v["displayName"]
-        desc = v["description"]
-        prop = v["properties"]
-        eventId = prop["parentEventhouseItemId"]
-        qsURI = prop["queryServiceUri"]
-        isURI = prop["ingestionServiceUri"]
-        dbType = prop["kustoDatabaseType"]
+    for v in response.json()["value"]:        
+        prop = v.get("properties")
 
         new_data = {
-            "KQL Database Name": kql_name,
-            "KQL Database ID": kql_id,
-            "Description": desc,
-            "Parent Eventhouse Item ID": eventId,
-            "Query Service URI": qsURI,
-            "Ingestion Service URI": isURI,
-            "Kusto Database Type": dbType,
+            "KQL Database Name": v.get("displayName"),
+            "KQL Database ID": v.get("id"),
+            "Description": v.get("description"),
+            "Parent Eventhouse Item ID": prop.get("parentEventhouseItemId"),
+            "Query Service URI": prop.get("queryServiceUri"),
+            "Ingestion Service URI": prop.get("ingestionServiceUri"),
+            "Kusto Database Type": prop.get("kustoDatabaseType"),
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
@@ -799,14 +763,11 @@ def list_kqlquerysets(workspace: Optional[str] = None):
     response = client.get(f"/v1/workspaces/{workspace_id}/kqlQuerysets/")
 
     for v in response.json()["value"]:
-        kql_id = v["id"]
-        kql_name = v["displayName"]
-        desc = v["description"]
 
         new_data = {
-            "KQL Queryset Name": kql_name,
-            "KQL Queryset ID": kql_id,
-            "Description": desc,
+            "KQL Queryset Name": v.get("displayName"),
+            "KQL Queryset ID": v.get("id"),
+            "Description": v.get("description"),
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
@@ -955,14 +916,11 @@ def list_mlexperiments(workspace: Optional[str] = None):
     response = client.get(f"/v1/workspaces/{workspace_id}/mlExperiments/")
 
     for v in response.json()["value"]:
-        model_id = v["id"]
-        modelName = v["displayName"]
-        desc = v["description"]
 
         new_data = {
-            "ML Experiment Name": modelName,
-            "ML Experiment ID": model_id,
-            "Description": desc,
+            "ML Experiment Name": v.get("displayName"),
+            "ML Experiment ID": v.get("id"),
+            "Description": v.get("description"),
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
@@ -994,14 +952,11 @@ def list_datamarts(workspace: Optional[str] = None):
     response = client.get(f"/v1/workspaces/{workspace_id}/datamarts/")
 
     for v in response.json()["value"]:
-        model_id = v["id"]
-        modelName = v["displayName"]
-        desc = v["description"]
 
         new_data = {
-            "Datamart Name": modelName,
-            "Datamart ID": model_id,
-            "Description": desc,
+            "Datamart Name": v.get("displayName"),
+            "Datamart ID": v.get("id"),
+            "Description": v.get("description"),
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
@@ -1044,7 +999,7 @@ def create_warehouse(
 
     if response.status_code == 201:
         print(
-            f"The '{warehouse}' warehouse has been created within the '{workspace}' workspace."
+            f"{icons.green_dot} The '{warehouse}' warehouse has been created within the '{workspace}' workspace."
         )
     elif response.status_code == 202:
         operationId = response.headers["x-ms-operation-id"]
@@ -1056,13 +1011,10 @@ def create_warehouse(
             response_body = json.loads(response.content)
         response = client.get(f"/v1/operations/{operationId}/result")
         print(
-            f"The '{warehouse}' warehouse has been created within the '{workspace}' workspace."
+            f"{icons.green_dot} The '{warehouse}' warehouse has been created within the '{workspace}' workspace."
         )
     else:
-        print(
-            f"ERROR: Failed to create the '{warehouse}' warehouse within the '{workspace}' workspace."
-        )
-
+        raise ValueError(f"{icons.red_dot} Failed to create the '{warehouse}' warehouse within the '{workspace}' workspace.")
 
 def update_item(
     item_type: str,
@@ -1107,19 +1059,15 @@ def update_item(
     item_type = item_type.replace(" ", "").capitalize()
 
     if item_type not in itemTypes.keys():
-        print(f"The '{item_type}' is not a valid item type. ")
-        return
-
+        raise ValueError(f"{icons.red_dot} The '{item_type}' is not a valid item type. ")
+        
     itemType = itemTypes[item_type]
 
     dfI = fabric.list_items(workspace=workspace, type=item_type)
     dfI_filt = dfI[(dfI["Display Name"] == current_name)]
 
     if len(dfI_filt) == 0:
-        print(
-            f"The '{current_name}' {item_type} does not exist within the '{workspace}' workspace."
-        )
-        return
+        raise ValueError(f"{icons.red_dot} The '{current_name}' {item_type} does not exist within the '{workspace}' workspace.")
 
     itemId = dfI_filt["Id"].iloc[0]
 
@@ -1135,17 +1083,14 @@ def update_item(
     if response.status_code == 200:
         if description is None:
             print(
-                f"The '{current_name}' {item_type} within the '{workspace}' workspace has been updated to be named '{new_name}'"
+                f"{icons.green_dot} The '{current_name}' {item_type} within the '{workspace}' workspace has been updated to be named '{new_name}'"
             )
         else:
             print(
-                f"The '{current_name}' {item_type} within the '{workspace}' workspace has been updated to be named '{new_name}' and have a description of '{description}'"
+                f"{icons.green_dot} The '{current_name}' {item_type} within the '{workspace}' workspace has been updated to be named '{new_name}' and have a description of '{description}'"
             )
     else:
-        print(
-            f"ERROR: The '{current_name}' {item_type} within the '{workspace}' workspace was not updateds."
-        )
-
+        raise ValueError(f"{icons.red_dot}: The '{current_name}' {item_type} within the '{workspace}' workspace was not updateds.")
 
 def list_relationships(
     dataset: str, workspace: Optional[str] = None, extended: Optional[bool] = False
@@ -1171,8 +1116,7 @@ def list_relationships(
     """
 
     if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
+        workspace = fabric.resolve_workspace_name()
 
     dfR = fabric.list_relationships(dataset=dataset, workspace=workspace)
 
@@ -1254,14 +1198,11 @@ def list_dataflow_storage_accounts():
     response = client.get(f"/v1.0/myorg/dataflowStorageAccounts")
 
     for v in response.json()["value"]:
-        dfsaId = v["id"]
-        dfsaName = v["name"]
-        isEnabled = v["isEnabled"]
 
         new_data = {
-            "Dataflow Storage Account ID": dfsaId,
-            "Dataflow Storage Account Name": dfsaName,
-            "Enabled": isEnabled,
+            "Dataflow Storage Account ID": v.get("id"),
+            "Dataflow Storage Account Name": v.get("name"),
+            "Enabled": v.get("isEnabled"),
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
@@ -1359,10 +1300,10 @@ def list_workspace_role_assignments(workspace: Optional[str] = None):
     response = client.get(f"/v1/workspaces/{workspace_id}/roleAssignments")
 
     for i in response.json()["value"]:
-        user_name = i["principal"]["displayName"]
-        role_name = i["role"]
-        user_email = i["principal"]["userDetails"]["userPrincipalName"]
-        user_type = i["principal"]["type"]
+        user_name = i.get("principal").get("displayName")
+        role_name = i.get("role")
+        user_email = i.get("principal").get("userDetails").get("userPrincipalName")
+        user_type = i.get("principal").get("type")
 
         new_data = {
             "User Name": user_name,
@@ -1585,8 +1526,8 @@ def list_shortcuts(
     )
     if response.status_code == 200:
         for s in response.json()["value"]:
-            shortcutName = s["name"]
-            shortcutPath = s["path"]
+            shortcutName = s.get("name")
+            shortcutPath = s.get("path")
             source = list(s["target"].keys())[0]
             (
                 sourceLakehouseName,
@@ -1597,17 +1538,17 @@ def list_shortcuts(
                 subpath,
             ) = (None, None, None, None, None, None)
             if source == "oneLake":
-                sourceLakehouseId = s["target"][source]["itemId"]
-                sourcePath = s["target"][source]["path"]
-                sourceWorkspaceId = s["target"][source]["workspaceId"]
+                sourceLakehouseId = s.get("target").get(source).get("itemId")
+                sourcePath = s.get("target").get(source).get("path")
+                sourceWorkspaceId = s.get("target").get(source).get("workspaceId")
                 sourceWorkspaceName = fabric.resolve_workspace_name(sourceWorkspaceId)
                 sourceLakehouseName = resolve_lakehouse_name(
                     sourceLakehouseId, sourceWorkspaceName
                 )
             else:
-                connectionId = s["target"][source]["connectionId"]
-                location = s["target"][source]["location"]
-                subpath = s["target"][source]["subpath"]
+                connectionId = s.get("target").get(source).get("connectionId")
+                location = s.get("target").get(source).get("location")
+                subpath = s.get("target").get(source).get("subpath")
 
             new_data = {
                 "Shortcut Name": shortcutName,

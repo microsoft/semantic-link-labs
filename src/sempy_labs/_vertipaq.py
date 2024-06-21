@@ -56,9 +56,7 @@ def vertipaq_analyzer(
         "ignore", message="createDataFrame attempted Arrow optimization*"
     )
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
+    workspace = fabric.resolve_workspace_name(workspace)
 
     if lakehouse_workspace is None:
         lakehouse_workspace = workspace
@@ -102,9 +100,7 @@ def vertipaq_analyzer(
             dfI_filt = dfI[(dfI["Id"] == sqlEndpointId)]
 
             if len(dfI_filt) == 0:
-                print(
-                    f"{icons.red_dot} The lakehouse (SQL Endpoint) used by the '{dataset}' semantic model does not reside in the '{lakehouse_workspace}' workspace. Please update the lakehouse_workspace parameter."
-                )
+                raise ValueError(f"{icons.red_dot} The lakehouse (SQL Endpoint) used by the '{dataset}' semantic model does not reside in the '{lakehouse_workspace}' workspace. Please update the lakehouse_workspace parameter.")                
             else:
                 lakehouseName = dfI_filt["Display Name"].iloc[0]
 
@@ -437,10 +433,7 @@ def vertipaq_analyzer(
     if export in ["table", "zip"]:
         lakeAttach = lakehouse_attached()
         if lakeAttach is False:
-            print(
-                f"{icons.red_dot} In order to save the Vertipaq Analyzer results, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
-            )
-            return
+            raise ValueError(f"{icons.red_dot} In order to save the Vertipaq Analyzer results, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook.")            
 
     if export == "table":
         spark = SparkSession.builder.getOrCreate()

@@ -11,7 +11,7 @@ import sempy_labs._icons as icons
 
 @log
 def create_pqt_file(
-    dataset: str, workspace: Optional[str] = None, file_name: Optional[str] = None
+    dataset: str, workspace: Optional[str] = None, file_name: Optional[str] = 'PowerQueryTemplate'
 ):
     """
     Dynamically generates a `Power Query Template <https://learn.microsoft.com/power-query/power-query-template>`_ file based on the semantic model. The .pqt file is saved within the Files section of your lakehouse.
@@ -24,25 +24,16 @@ def create_pqt_file(
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    file_name : str, default=None
+    file_name : str, default='PowerQueryTemplate'
         The name of the Power Query Template file to be generated.
-        Defaults to None which resolves to 'PowerQueryTemplate'.
     """
-
-    if file_name is None:
-        file_name = "PowerQueryTemplate"
 
     lakeAttach = lakehouse_attached()
 
     if lakeAttach is False:
-        print(
-            f"{icons.red_dot} In order to run the 'create_pqt_file' function, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
-        )
-        return
+        raise ValueError(f"{icons.red_dot} In order to run the 'create_pqt_file' function, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook.")
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
+    workspace = fabric.resolve_workspace_name(workspace)
 
     folderPath = "/lakehouse/default/Files"
     subFolderPath = os.path.join(folderPath, "pqtnewfolder")

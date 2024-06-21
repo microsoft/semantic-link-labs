@@ -61,10 +61,7 @@ def report_rebind(
             f"{icons.green_dot} The '{report}' report has been successfully rebinded to the '{dataset}' semantic model."
         )
     else:
-        print(
-            f"{icons.red_dot} The '{report}' report within the '{report_workspace}' workspace failed to rebind to the '{dataset}' semantic model within the '{dataset_workspace}' workspace."
-        )
-
+        raise ValueError(f"{icons.red_dot} The '{report}' report within the '{report_workspace}' workspace failed to rebind to the '{dataset}' semantic model within the '{dataset_workspace}' workspace.")
 
 @log
 def report_rebind_all(
@@ -103,11 +100,7 @@ def report_rebind_all(
 
     """
 
-    if dataset_workspace is None:
-        dataset_workspace_id = fabric.get_workspace_id()
-        dataset_workspace = fabric.resolve_workspace_name(dataset_workspace_id)
-    else:
-        dataset_workspace_id = fabric.resolve_workspace_id(dataset_workspace)
+    dataset_workspace = fabric.resolve_workspace_name()
 
     if new_dataset_workpace is None:
         new_dataset_workpace = dataset_workspace

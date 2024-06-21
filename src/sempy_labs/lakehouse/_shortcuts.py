@@ -114,10 +114,7 @@ def create_shortcut(
     sourceValues = list(source_titles.keys())
 
     if source not in sourceValues:
-        print(
-            f"{icons.red_dot} The 'source' parameter must be one of these values: {sourceValues}."
-        )
-        return
+        raise ValueError(f"{icons.red_dot} The 'source' parameter must be one of these values: {sourceValues}.")
 
     sourceTitle = source_titles[source]
 
@@ -195,4 +192,4 @@ def delete_shortcut(
             f"{icons.green_dot} The '{shortcut_name}' shortcut in the '{lakehouse}' within the '{workspace}' workspace has been deleted."
         )
     else:
-        print(f"{icons.red_dot} The '{shortcut_name}' has not been deleted.")
+        raise ValueError(f"{icons.red_dot} The '{shortcut_name}' has not been deleted.")

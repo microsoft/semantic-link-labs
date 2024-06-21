@@ -41,9 +41,7 @@ def model_auto_build(
 
     """
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
+    workspace = fabric.resolve_workspace_name(workspace)
 
     if lakehouse_workspace is None:
         lakehouse_workspace = workspace
@@ -60,7 +58,7 @@ def model_auto_build(
 
     create_blank_semantic_model(dataset=dataset, workspace=workspace)
 
-    with connect_semantic_model(dataset=dataset, workspace=workspace) as tom:
+    with connect_semantic_model(dataset=dataset, workspace=workspace, readonly=False) as tom:
 
         # DL Only
         expr = get_shared_expression(lakehouse=lakehouse, workspace=lakehouse_workspace)

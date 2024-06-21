@@ -14,6 +14,7 @@ def optimize_semantic_model(dataset: str, workspace: Optional[str] = None):
     from ._model_bpa import run_model_bpa
     from .directlake._fallback import check_fallback_reason
     from ._helper_functions import format_dax_object_name
+    from .tom import connect_semantic_model
 
     modelBPA = run_model_bpa(
         dataset=dataset, workspace=workspace, return_dataframe=True
@@ -78,10 +79,7 @@ def generate_measure_descriptions(
 
     validModels = ["gpt-35-turbo", "gpt-35-turbo-16k", "gpt-4"]
     if gpt_model not in validModels:
-        print(
-            f"{icons.red_dot} The '{gpt_model}' model is not a valid model. Enter a gpt_model from this list: {validModels}."
-        )
-        return
+        raise ValueError(f"{icons.red_dot} The '{gpt_model}' model is not a valid model. Enter a gpt_model from this list: {validModels}.")
 
     dfM = fabric.list_measures(dataset=dataset, workspace=workspace)
 
@@ -116,8 +114,8 @@ def generate_measure_descriptions(
     )
 
     # Update the model to use the new descriptions
-    tom_server = fabric.create_tom_server(readonly=False, workspace=workspace)
-    m = tom_server.Databases.GetByName(dataset).Model
+    #with connect_semantic_model(dataset=dataset, workspace=workspace, readonly=False) as tom:
+    
 
     # for t in m.Tables:
     # tName = t.Name
@@ -173,48 +171,33 @@ def generate_aggs(
     numericTypes = ["Int64", "Double", "Decimal"]
 
     if any(value not in aggTypes for value in columns.values()):
-        print(
-            f"{icons.red_dot} Invalid aggregation type(s) have been specified in the 'columns' parameter. Valid aggregation types: {aggTypes}."
-        )
-        return
+        raise ValueError(f"{icons.red_dot} Invalid aggregation type(s) have been specified in the 'columns' parameter. Valid aggregation types: {aggTypes}.")
 
     dfC = fabric.list_columns(dataset=dataset, workspace=workspace)
     dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
     dfM = fabric.list_measures(dataset=dataset, workspace=workspace)
     dfR = fabric.list_relationships(dataset=dataset, workspace=workspace)
     if not any(r["Mode"] == "DirectLake" for i, r in dfP.iterrows()):
-        print(
-            f"{icons.red_dot} The '{dataset}' semantic model within the '{workspace}' workspace is not in Direct Lake mode. This function is only relevant for Direct Lake semantic models."
-        )
-        return
-
+        raise ValueError(f"{icons.red_dot} The '{dataset}' semantic model within the '{workspace}' workspace is not in Direct Lake mode. This function is only relevant for Direct Lake semantic models.")
+        
     dfC_filtT = dfC[dfC["Table Name"] == table_name]
 
     if len(dfC_filtT) == 0:
-        print(
-            f"{icons.red_dot} The '{table_name}' table does not exist in the '{dataset}' semantic model within the '{workspace}' workspace."
-        )
-        return
+        raise ValueError(f"{icons.red_dot} The '{table_name}' table does not exist in the '{dataset}' semantic model within the '{workspace}' workspace.")
 
     dfC_filt = dfC[
         (dfC["Table Name"] == table_name) & (dfC["Column Name"].isin(columnValues))
     ]
 
     if len(columns) != len(dfC_filt):
-        print(
-            f"{icons.red_dot} Columns listed in '{columnValues}' do not exist in the '{table_name}' table in the '{dataset}' semantic model within the '{workspace}' workspace."
-        )
-        return
+        raise ValueError(f"{icons.red_dot} Columns listed in '{columnValues}' do not exist in the '{table_name}' table in the '{dataset}' semantic model within the '{workspace}' workspace.")
 
     # Check if doing sum/count/min/max etc. on a non-number column
     for col, agg in columns.items():
         dfC_col = dfC_filt[dfC_filt["Column Name"] == col]
         dataType = dfC_col["Data Type"].iloc[0]
         if agg in aggTypesAggregate and dataType not in numericTypes:
-            print(
-                f"{icons.red_dot} The '{col}' column in the '{table_name}' table is of '{dataType}' data type. Only columns of '{numericTypes}' data types can be aggregated as '{aggTypesAggregate}' aggregation types."
-            )
-            return
+            raise ValueError(f"{icons.red_dot} The '{col}' column in the '{table_name}' table is of '{dataType}' data type. Only columns of '{numericTypes}' data types can be aggregated as '{aggTypesAggregate}' aggregation types.")            
 
     # Create/update lakehouse delta agg table
     aggSuffix = "_agg"
@@ -230,10 +213,7 @@ def generate_aggs(
     dfI_filt = dfI[(dfI["Id"] == sqlEndpointId)]
 
     if len(dfI_filt) == 0:
-        print(
-            f"{icons.red_dot} The lakehouse (SQL Endpoint) used by the '{dataset}' semantic model does not reside in the '{lakehouse_workspace}' workspace. Please update the lakehouse_workspace parameter."
-        )
-        return
+        raise ValueError(f"{icons.red_dot} The lakehouse (SQL Endpoint) used by the '{dataset}' semantic model does not reside in the '{lakehouse_workspace}' workspace. Please update the lakehouse_workspace parameter.")
 
     lakehouseName = dfI_filt["Display Name"].iloc[0]
     lakehouse_id = resolve_lakehouse_id(
@@ -284,7 +264,7 @@ def generate_aggs(
     # Create/update semantic model agg table
     tom_server = fabric.create_tom_server(readonly=False, workspace=workspace)
     m = tom_server.Databases.GetByName(dataset).Model
-    f"\n{icons.in_progress} Updating the '{dataset}' semantic model..."
+    print(f"\n{icons.in_progress} Updating the '{dataset}' semantic model...")
     dfC_agg = dfC[dfC["Table Name"] == aggTableName]
 
     if len(dfC_agg) == 0:

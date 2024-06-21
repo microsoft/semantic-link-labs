@@ -27,8 +27,7 @@ def list_direct_lake_model_calc_tables(dataset: str, workspace: Optional[str] = 
         A pandas dataframe showing the calculated tables which were migrated to Direct Lake and whose DAX expressions are stored as model annotations.
     """
 
-    if workspace is None:
-        workspace = fabric.resolve_workspace_name()
+    workspace = fabric.resolve_workspace_name(workspace)
 
     df = pd.DataFrame(columns=["Table Name", "Source Expression"])
 
@@ -39,7 +38,7 @@ def list_direct_lake_model_calc_tables(dataset: str, workspace: Optional[str] = 
         is_direct_lake = tom.is_direct_lake()
 
         if not is_direct_lake:
-            print(f"{icons.yellow_dot} The '{dataset}' semantic model is not in Direct Lake mode.")
+            raise ValueError(f"{icons.red_dot} The '{dataset}' semantic model is not in Direct Lake mode.")
         else:
             dfA = list_annotations(dataset, workspace)
             dfT = list_tables(dataset, workspace)

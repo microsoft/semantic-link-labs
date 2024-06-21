@@ -42,10 +42,7 @@ def export_model_to_onelake(
     dfD_filt = dfD[dfD["Dataset Name"] == dataset]
 
     if len(dfD_filt) == 0:
-        print(
-            f"{icons.red_dot} The '{dataset}' semantic model does not exist in the '{workspace}' workspace."
-        )
-        return
+        raise ValueError(f"{icons.red_dot} The '{dataset}' semantic model does not exist in the '{workspace}' workspace.")
 
     tmsl = f"""
     {{

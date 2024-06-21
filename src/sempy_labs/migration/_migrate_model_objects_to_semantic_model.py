@@ -38,11 +38,7 @@ def migrate_model_objects_to_semantic_model(
     import Microsoft.AnalysisServices.Tabular as TOM
     import System
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    workspace = fabric.resolve_workspace_name(workspace)
 
     if new_dataset_workspace is None:
         new_dataset_workspace = workspace
