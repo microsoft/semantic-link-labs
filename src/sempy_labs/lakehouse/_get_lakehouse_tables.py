@@ -25,7 +25,7 @@ def get_lakehouse_tables(
     extended: Optional[bool] = False,
     count_rows: Optional[bool] = False,
     export: Optional[bool] = False,
-):
+) -> pd.DataFrame:
     """
     Shows the tables of a lakehouse and their respective properties. Option to include additional properties relevant to Direct Lake guardrails.
 

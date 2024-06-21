@@ -11,7 +11,7 @@ from pyspark.sql import SparkSession
 from typing import Optional
 import sempy_labs._icons as icons
 
-def get_object_level_security(dataset: str, workspace: Optional[str] = None):
+def get_object_level_security(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the object level security for the semantic model.
 
@@ -70,7 +70,7 @@ def get_object_level_security(dataset: str, workspace: Optional[str] = None):
         return df
 
 
-def list_tables(dataset: str, workspace: Optional[str] = None):
+def list_tables(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows a semantic model's tables and their properties.
 
@@ -136,7 +136,7 @@ def list_tables(dataset: str, workspace: Optional[str] = None):
         return df
 
 
-def list_annotations(dataset: str, workspace: Optional[str] = None):
+def list_annotations(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows a semantic model's annotations and their properties.
 
@@ -356,7 +356,7 @@ def list_columns(
     workspace: Optional[str] = None,
     lakehouse: Optional[str] = None,
     lakehouse_workspace: Optional[str] = None,
-):
+) -> pd.DataFrame:
     """
     Shows a semantic model's columns and their properties.
 
@@ -453,7 +453,7 @@ def list_columns(
     return dfC
 
 
-def list_dashboards(workspace: Optional[str] = None):
+def list_dashboards(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows a list of the dashboards within a workspace.
 
@@ -510,7 +510,7 @@ def list_dashboards(workspace: Optional[str] = None):
     return df
 
 
-def list_lakehouses(workspace: Optional[str] = None):
+def list_lakehouses(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the lakehouses within a workspace.
 
@@ -564,7 +564,7 @@ def list_lakehouses(workspace: Optional[str] = None):
     return df
 
 
-def list_warehouses(workspace: Optional[str] = None):
+def list_warehouses(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the warehouses within a workspace.
 
@@ -613,7 +613,7 @@ def list_warehouses(workspace: Optional[str] = None):
     return df
 
 
-def list_sqlendpoints(workspace: Optional[str] = None):
+def list_sqlendpoints(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the SQL Endpoints within a workspace.
 
@@ -649,7 +649,7 @@ def list_sqlendpoints(workspace: Optional[str] = None):
     return df
 
 
-def list_mirroredwarehouses(workspace: Optional[str] = None):
+def list_mirroredwarehouses(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the mirrored warehouses within a workspace.
 
@@ -687,7 +687,7 @@ def list_mirroredwarehouses(workspace: Optional[str] = None):
     return df
 
 
-def list_kqldatabases(workspace: Optional[str] = None):
+def list_kqldatabases(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the KQL databases within a workspace.
 
@@ -738,7 +738,7 @@ def list_kqldatabases(workspace: Optional[str] = None):
     return df
 
 
-def list_kqlquerysets(workspace: Optional[str] = None):
+def list_kqlquerysets(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the KQL Querysets within a workspace.
 
@@ -774,7 +774,7 @@ def list_kqlquerysets(workspace: Optional[str] = None):
     return df
 
 
-def list_mlmodels(workspace: Optional[str] = None):
+def list_mlmodels(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the ML models within a workspace.
 
@@ -813,7 +813,7 @@ def list_mlmodels(workspace: Optional[str] = None):
     return df
 
 
-def list_eventstreams(workspace: Optional[str] = None):
+def list_eventstreams(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the eventstreams within a workspace.
 
@@ -852,7 +852,7 @@ def list_eventstreams(workspace: Optional[str] = None):
     return df
 
 
-def list_datapipelines(workspace: Optional[str] = None):
+def list_datapipelines(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the data pipelines within a workspace.
 
@@ -891,7 +891,7 @@ def list_datapipelines(workspace: Optional[str] = None):
     return df
 
 
-def list_mlexperiments(workspace: Optional[str] = None):
+def list_mlexperiments(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the ML experiments within a workspace.
 
@@ -927,7 +927,7 @@ def list_mlexperiments(workspace: Optional[str] = None):
     return df
 
 
-def list_datamarts(workspace: Optional[str] = None):
+def list_datamarts(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the datamarts within a workspace.
 
@@ -1094,7 +1094,7 @@ def update_item(
 
 def list_relationships(
     dataset: str, workspace: Optional[str] = None, extended: Optional[bool] = False
-):
+) -> pd.DataFrame:
     """
     Shows a semantic model's relationships and their properties.
 
@@ -1174,7 +1174,7 @@ def list_relationships(
     return dfR
 
 
-def list_dataflow_storage_accounts():
+def list_dataflow_storage_accounts() -> pd.DataFrame:
     """
     Shows the accessible dataflow storage accounts.
 
@@ -1211,7 +1211,7 @@ def list_dataflow_storage_accounts():
     return df
 
 
-def list_kpis(dataset: str, workspace: Optional[str] = None):
+def list_kpis(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows a semantic model's KPIs and their properties.
 
@@ -1275,7 +1275,7 @@ def list_kpis(dataset: str, workspace: Optional[str] = None):
         return df
 
 
-def list_workspace_role_assignments(workspace: Optional[str] = None):
+def list_workspace_role_assignments(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the members of a given workspace.
 
@@ -1315,7 +1315,7 @@ def list_workspace_role_assignments(workspace: Optional[str] = None):
 
     return df
 
-def list_semantic_model_objects(dataset: str, workspace: Optional[str] = None):
+def list_semantic_model_objects(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows a list of semantic model objects.
 
@@ -1564,6 +1564,584 @@ def list_shortcuts(
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     print(
-        f"This function relies on an API which is not yet official as of May 21, 2024. Once the API becomes official this function will work as expected."
+        f"{icons.warning} This function relies on an API which is not yet official as of May 21, 2024. Once the API becomes official this function will work as expected."
     )
     return df
+
+def list_custom_pools(workspace: Optional[str] = None) -> pd.DataFrame:
+  
+    """
+    Lists all `custom pools <https://learn.microsoft.com/fabric/data-engineering/create-custom-spark-pools>`_ within a workspace.
+
+    Parameters
+    ----------
+    workspace : str, default=None
+        The name of the Fabric workspace.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing all the custom pools within the Fabric workspace.
+    """
+  
+    #https://learn.microsoft.com/rest/api/fabric/spark/custom-pools/list-workspace-custom-pools
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    df = pd.DataFrame(columns=['Custom Pool ID', 'Custom Pool Name', 'Type', 'Node Family', 'Node Size', 'Auto Scale Enabled', 'Auto Scale Min Node Count', 'Auto Scale Max Node Count', 'Dynamic Executor Allocation Enabled', 'Dynamic Executor Allocation Min Executors', 'Dynamic Executor Allocation Max Executors'])
+
+    client = fabric.FabricRestClient()
+    response = client.get(f"/v1/workspaces/{workspace_id}/spark/pools")
+
+    for i in response.json()['value']:
+
+        aScale = i.get('autoScale')
+        d = i.get('dynamicExecutorAllocation')
+
+        new_data = {'Custom Pool ID': i.get('id'), 'Custom Pool Name': i.get('name'), 'Type': i.get('type'), 'Node Family': i.get('nodeFamily'), 'Node Size': i.get('nodeSize'), \
+        'Auto Scale Enabled': aScale.get('enabled'), 'Auto Scale Min Node Count': aScale.get('minNodeCount'), 'Auto Scale Max Node Count': aScale.get('maxNodeCount'), \
+        'Dynamic Executor Allocation Enabled': d.get('enabled'), 'Dynamic Executor Allocation Min Executors': d.get('minExecutors'), 'Dynamic Executor Allocation Max Executors': d.get('maxExecutors')}
+        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    bool_cols = ['Auto Scale Enabled', 'Dynamic Executor Allocation Enabled']
+    int_cols = ['Auto Scale Min Node Count', 'Auto Scale Max Node Count', 'Dynamic Executor Allocation Enabled', 'Dynamic Executor Allocation Min Executors', 'Dynamic Executor Allocation Max Executors']
+
+    df[bool_cols] = df[bool_cols].astype(bool)
+    df[int_cols] = df[int_cols].astype(int)
+
+    return df
+
+def create_custom_pool(pool_name: str, node_size: str, min_node_count: int, max_node_count: int, min_executors: int, max_executors: int, node_family: Optional[str] = 'MemoryOptimized', auto_scale_enabled: Optional[bool] = True, dynamic_executor_allocation_enabled: Optional[bool] = True, workspace: Optional[str] = None):
+  
+    """
+    Creates a `custom pool <https://learn.microsoft.com/fabric/data-engineering/create-custom-spark-pools>`_ within a workspace.
+
+    Parameters
+    ----------
+    pool_name : str
+        The custom pool name.    
+    node_size : str
+        The `node size <https://learn.microsoft.com/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool?tabs=HTTP#nodesize>`_.
+    min_node_count : int
+        The `minimum node count <https://learn.microsoft.com/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool?tabs=HTTP#autoscaleproperties>`_.
+    max_node_count : int
+        The `maximum node count <https://learn.microsoft.com/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool?tabs=HTTP#autoscaleproperties>`_.
+    min_executors : int
+        The `minimum executors <https://learn.microsoft.com/en-us/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool?tabs=HTTP#dynamicexecutorallocationproperties>`_.
+    max_executors : int
+        The `maximum executors <https://learn.microsoft.com/en-us/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool?tabs=HTTP#dynamicexecutorallocationproperties>`_.
+    node_family : str, default='MemoryOptimized'
+        The `node family <https://learn.microsoft.com/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool?tabs=HTTP#nodefamily>`_.
+    auto_scale_enabled : bool, default=True
+        The status of `auto scale <https://learn.microsoft.com/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool?tabs=HTTP#autoscaleproperties>`_.
+    dynamic_executor_allocation_enabled : bool, default=True
+        The status of the `dynamic executor allocation <https://learn.microsoft.com/en-us/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool?tabs=HTTP#dynamicexecutorallocationproperties>`_.
+    workspace : str, default=None
+        The name of the Fabric workspace.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------    
+    """
+
+    #https://learn.microsoft.com/en-us/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    request_body = {
+        "name": pool_name,
+        "nodeFamily": node_family,
+        "nodeSize": node_size,
+        "autoScale": {
+        "enabled": auto_scale_enabled,
+        "minNodeCount": min_node_count,
+        "maxNodeCount": max_node_count
+        },
+        "dynamicExecutorAllocation": {
+        "enabled": dynamic_executor_allocation_enabled,
+        "minExecutors": min_executors,
+        "maxExecutors": max_executors
+        }
+    }
+
+    client = fabric.FabricRestClient()
+    response = client.post(f"/v1/workspaces/{workspace_id}/spark/pools", json = request_body)
+
+    if response.status_code == 201:
+        print(f"{icons.green_dot} The '{pool_name}' spark pool has been created within the '{workspace}' workspace.")
+    else:
+        raise ValueError(f"{icons.red_dot} {response.status_code}")
+  
+def update_custom_pool(pool_name: str, node_size: Optional[str] = None, min_node_count: Optional[int] = None, max_node_count: Optional[int] = None, min_executors: Optional[int] = None, max_executors: Optional[int] = None, node_family: Optional[str] = None, auto_scale_enabled: Optional[bool] = None, dynamic_executor_allocation_enabled: Optional[bool] = None, workspace: Optional[str] = None):
+
+    """
+    Updates the properties of a `custom pool <https://learn.microsoft.com/fabric/data-engineering/create-custom-spark-pools>`_ within a workspace.
+
+    Parameters
+    ----------
+    pool_name : str
+        The custom pool name.    
+    node_size : str, default=None
+        The `node size <https://learn.microsoft.com/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool?tabs=HTTP#nodesize>`_.
+        Defaults to None which keeps the existing property setting.
+    min_node_count : int, default=None
+        The `minimum node count <https://learn.microsoft.com/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool?tabs=HTTP#autoscaleproperties>`_.
+        Defaults to None which keeps the existing property setting.
+    max_node_count : int, default=None
+        The `maximum node count <https://learn.microsoft.com/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool?tabs=HTTP#autoscaleproperties>`_.
+        Defaults to None which keeps the existing property setting.
+    min_executors : int, default=None
+        The `minimum executors <https://learn.microsoft.com/en-us/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool?tabs=HTTP#dynamicexecutorallocationproperties>`_.
+        Defaults to None which keeps the existing property setting.
+    max_executors : int, default=None
+        The `maximum executors <https://learn.microsoft.com/en-us/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool?tabs=HTTP#dynamicexecutorallocationproperties>`_.
+        Defaults to None which keeps the existing property setting.
+    node_family : str, default=None
+        The `node family <https://learn.microsoft.com/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool?tabs=HTTP#nodefamily>`_.
+        Defaults to None which keeps the existing property setting.
+    auto_scale_enabled : bool, default=None
+        The status of `auto scale <https://learn.microsoft.com/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool?tabs=HTTP#autoscaleproperties>`_.
+        Defaults to None which keeps the existing property setting.
+    dynamic_executor_allocation_enabled : bool, default=None
+        The status of the `dynamic executor allocation <https://learn.microsoft.com/en-us/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool?tabs=HTTP#dynamicexecutorallocationproperties>`_.
+        Defaults to None which keeps the existing property setting.
+    workspace : str, default=None
+        The name of the Fabric workspace.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------    
+    """
+
+    #https://learn.microsoft.com/en-us/rest/api/fabric/spark/custom-pools/update-workspace-custom-pool?tabs=HTTP
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    df = list_custom_pools(workspace = workspace)
+    df_pool = df[df['Custom Pool Name'] == pool_name]
+
+    if len(df_pool) == 0:
+        raise ValueError(f"{icons.red_dot} The '{pool_name}' custom pool does not exist within the '{workspace}'. Please choose a valid custom pool.")
+
+    if node_family is None:
+        node_family = df_pool['Node Family'].iloc[0]
+    if node_size is None:
+        node_size = df_pool['Node Size'].iloc[0]
+    if auto_scale_enabled is None:
+        auto_scale_enabled = bool(df_pool['Auto Scale Enabled'].iloc[0])
+    if min_node_count is None:
+        min_node_count = int(df_pool['Min Node Count'].iloc[0])
+    if max_node_count is None:
+        max_node_count = int(df_pool['Max Node Count'].iloc[0])
+    if dynamic_executor_allocation_enabled is None:
+        dynamic_executor_allocation_enabled = bool(df_pool['Dynami Executor Allocation Enabled'].iloc[0])
+    if min_executors is None:
+        min_executors = int(df_pool['Min Executors'].iloc[0])
+    if max_executors is None:
+        max_executors = int(df_pool['Max Executors'].iloc[0])
+
+    request_body = {
+        "name": pool_name,
+        "nodeFamily": node_family,
+        "nodeSize": node_size,
+        "autoScale": {
+        "enabled": auto_scale_enabled,
+        "minNodeCount": min_node_count,
+        "maxNodeCount": max_node_count
+        },
+        "dynamicExecutorAllocation": {
+        "enabled": dynamic_executor_allocation_enabled,
+        "minExecutors": min_executors,
+        "maxExecutors": max_executors
+        }
+    }
+
+    client = fabric.FabricRestClient()
+    response = client.post(f"/v1/workspaces/{workspace_id}/spark/pools", json = request_body)
+
+    if response.status_code == 200:
+        print(f"{icons.green_dot} The '{pool_name}' spark pool within the '{workspace}' workspace has been updated.")
+    else:
+        raise ValueError(f"{icons.red_dot} {response.status_code}")
+    
+def assign_workspace_to_capacity(capacity_name: str, workspace: Optional[str] = None):
+  
+    """
+    Assigns a workspace to a capacity.
+
+    Parameters
+    ----------
+    capacity_name : str
+        The name of the capacity.
+    workspace : str, default=None
+        The name of the Fabric workspace.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    """
+
+    #https://learn.microsoft.com/en-us/rest/api/fabric/core/workspaces/assign-to-capacity?tabs=HTTP
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    dfC = fabric.list_capacities()
+    dfC_filt = dfC[dfC['Name'] == capacity_name]
+    capacity_id = dfC_filt['Id'].iloc[0]
+
+    request_body = {
+        "capacityId": capacity_id
+    }
+
+    client = fabric.FabricRestClient()
+    response = client.post(f"/v1/workspaces/{workspace_id}/assignToCapacity", json = request_body)
+
+    if response.status_code == 202:
+        print(f"{icons.green_dot} The '{workspace}' workspace has been assigned to the '{capacity_name}' capacity.")
+    else:
+        raise ValueError(f"{icons.red_dot} {response.status_code}")
+
+def unassign_workspace_from_capacity(workspace: Optional[str] = None):
+  
+    """
+    Unassigns a workspace from its assigned capacity.
+
+    Parameters
+    ----------
+    workspace : str, default=None
+        The name of the Fabric workspace.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    """
+
+    #https://learn.microsoft.com/en-us/rest/api/fabric/core/workspaces/unassign-from-capacity?tabs=HTTP
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    
+    client = fabric.FabricRestClient()
+    response = client.post(f"/v1/workspaces/{workspace_id}/unassignFromCapacity")
+
+    if response.status_code == 202:
+        print(f"{icons.green_dot} The '{workspace}' workspace has been unassigned from its capacity.")
+    else:
+        raise ValueError(f"{icons.red_dot} {response.status_code}")
+  
+def get_spark_settings(workspace: Optional[str] = None) -> pd.DataFrame:
+  
+    """
+    Shows the spark settings for a workspace.
+
+    Parameters
+    ----------
+    workspace : str, default=None
+        The name of the Fabric workspace.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the spark settings for a workspace.
+    """
+
+    #https://learn.microsoft.com/en-us/rest/api/fabric/spark/workspace-settings/get-spark-settings?tabs=HTTP
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    df = pd.DataFrame(columns=['Automatic Log Enabled', 'High Concurrency Enabled', 'Customize Compute Enabled', 'Default Pool Name', 'Default Pool Type', 'Max Node Count', 'Max Executors', 'Environment Name', 'Runtime Version'])
+
+    client = fabric.FabricRestClient()
+    response = client.get(f"/v1/workspaces/{workspace_id}/spark/settings")
+
+    i = response.json()
+    p = i.get('pool')
+    dp = i.get('pool').get('defaultPool')
+    sp = i.get('pool').get('starterPool')
+    e = i.get('environment')
+
+    new_data = {'Automatic Log Enabled': i.get('automaticLog').get('enabled'), 'High Concurrency Enabled': i.get('highConcurrency').get('notebookInteractiveRunEnabled'), \
+    'Customize Compute Enabled': p.get('customizeComputeEnabled'), 'Default Pool Name': dp.get('name'), 'Default Pool Type': dp.get('type'), \
+    'Max Node Count': sp.get('maxNodeCount'), 'Max Node Executors': sp.get('maxExecutors'), 'Environment Name': e.get('name') , 'Runtime Version': e.get('runtimeVersion')}
+    df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    bool_cols = ['Automatic Log Enabled', 'High Concurrency Enabled', 'Customize Compute Enabled']
+    int_cols = ['Max Node Count', 'Max Executors']
+
+    df[bool_cols] = df[bool_cols].astype(bool)
+    df[int_cols] = df[int_cols].astype(int)
+
+    return df
+
+def update_spark_settings(automatic_log_enabled: Optional[bool] = None, high_concurrency_enabled: Optional[bool] = None, customize_compute_enabled: Optional[bool] = None, default_pool_name: Optional[str] = None, max_node_count: Optional[int] = None, max_executors: Optional[int] = None, environment_name: Optional[str] = None, runtime_version: Optional[str] = None, workspace: Optional[str] = None):
+  
+    """
+    Updates the spark settings for a workspace.
+
+    Parameters
+    ----------
+    automatic_log_enabled : bool, default=None
+        The status of the `automatic log <https://learn.microsoft.com/rest/api/fabric/spark/workspace-settings/update-spark-settings?tabs=HTTP#automaticlogproperties>`_.
+        Defaults to None which keeps the existing property setting.
+    high_concurrency_enabled : bool, default=None
+        The status of the `high concurrency <https://learn.microsoft.com/rest/api/fabric/spark/workspace-settings/update-spark-settings?tabs=HTTP#highconcurrencyproperties>`_ for notebook interactive run.
+        Defaults to None which keeps the existing property setting.
+    customize_compute_enabled : bool, default=None
+        `Customize compute <https://learn.microsoft.com/rest/api/fabric/spark/workspace-settings/update-spark-settings?tabs=HTTP#poolproperties>`_ configurations for items.
+        Defaults to None which keeps the existing property setting.
+    default_pool_name : str, default=None
+        `Default pool <https://learn.microsoft.com/rest/api/fabric/spark/workspace-settings/update-spark-settings?tabs=HTTP#poolproperties>`_ for workspace.
+        Defaults to None which keeps the existing property setting.
+    max_node_count : int, default=None
+        The `maximum node count <https://learn.microsoft.com/rest/api/fabric/spark/workspace-settings/update-spark-settings?tabs=HTTP#starterpoolproperties>`_.
+        Defaults to None which keeps the existing property setting.
+    max_executors : int, default=None
+        The `maximum executors <https://learn.microsoft.com/rest/api/fabric/spark/workspace-settings/update-spark-settings?tabs=HTTP#starterpoolproperties>`_.
+        Defaults to None which keeps the existing property setting.
+    environment_name : str, default=None
+        The name of the `default environment <https://learn.microsoft.com/rest/api/fabric/spark/workspace-settings/update-spark-settings?tabs=HTTP#environmentproperties>`_. Empty string indicated there is no workspace default environment
+        Defaults to None which keeps the existing property setting.
+    runtime_version : str, default=None
+        The `runtime version <https://learn.microsoft.com/rest/api/fabric/spark/workspace-settings/update-spark-settings?tabs=HTTP#environmentproperties>`_.
+        Defaults to None which keeps the existing property setting.
+    workspace : str, default=None
+        The name of the Fabric workspace.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    """
+
+    #https://learn.microsoft.com/en-us/rest/api/fabric/spark/workspace-settings/update-spark-settings?tabs=HTTP
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    dfS = get_spark_settings(workspace = workspace)
+
+    if automatic_log_enabled is None:
+        automatic_log_enabled = bool(dfS['Automatic Log Enabled'].iloc[0])
+    if high_concurrency_enabled is None:
+        high_concurrency_enabled = bool(dfS['High Concurrency Enabled'].iloc[0])
+    if customize_compute_enabled is None:
+        customize_compute_enabled = bool(dfS['Customize Compute Enabled'].iloc[0])
+    if default_pool_name is None:
+        default_pool_name = dfS['Default Pool Name'].iloc[0]
+    if max_node_count is None:
+        max_node_count = int(dfS['Max Node Count'].iloc[0])
+    if max_executors is None:
+        max_executors = int(dfS['Max Executors'].iloc[0])
+    if environment_name is None:
+        environment_name = dfS['Environment Name'].iloc[0]
+    if runtime_version is None:
+        runtime_version = dfS['Runtime Version'].iloc[0]
+
+    request_body = {
+    "automaticLog": {
+        "enabled": automatic_log_enabled
+    },
+    "highConcurrency": {
+        "notebookInteractiveRunEnabled": high_concurrency_enabled
+    },
+    "pool": {
+        "customizeComputeEnabled": customize_compute_enabled,
+        "defaultPool": {
+        "name": default_pool_name,
+        "type": "Workspace"
+        },
+        "starterPool": {
+        "maxNodeCount": max_node_count,
+        "maxExecutors": max_executors
+        }
+    },
+    "environment": {
+        "name": environment_name,
+        "runtimeVersion": runtime_version
+    }
+    }
+
+    client = fabric.FabricRestClient()
+    response = client.patch(f"/v1/workspaces/{workspace_id}/spark/settings", json = request_body)
+
+    if response.status_code == 200:
+        print(f"{icons.green_dot} The spark settings within the '{workspace}' workspace have been updated accordingly.")
+    else:
+        raise ValueError(f"{icons.red_dot} {response.status_code}")
+
+def add_user_to_workspace(email_address: str, role_name: str, workspace: Optional[str] = None):
+
+    """
+    Adds a user to a workspace.
+
+    Parameters
+    ----------
+    email_address : str
+        The email address of the user.
+    role_name : str
+        The `role <https://learn.microsoft.com/rest/api/power-bi/groups/add-group-user#groupuseraccessright>`_ of the user within the workspace.
+    workspace : str, default=None
+        The name of the workspace.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    """
+
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    role_names = ['Admin', 'Member', 'Viewer', 'Contributor']
+    role_name = role_name.capitalize()
+    if role_name not in role_names:
+        raise ValueError(f"{icons.red_dot} Invalid role. The 'role_name' parameter must be one of the following: {role_names}.")
+    plural = 'n' if role_name == 'Admin' else ''
+
+    client = fabric.PowerBIRestClient()
+
+    request_body = {
+    "emailAddress": email_address,
+    "groupUserAccessRight": role_name
+    }
+
+    response = client.post(f"/v1.0/myorg/groups/{workspace_id}/users",json=request_body)
+    
+    if response.status_code == 200:
+        print(f"{icons.green_dot} The '{email_address}' user has been added as a{plural} '{role_name}' within the '{workspace}' workspace.")
+    else:
+        print(f"{icons.red_dot} {response.status_code}")
+
+def delete_user_from_workspace(email_address : str, workspace : Optional[str] = None):
+
+    """
+    Removes a user from a workspace.
+
+    Parameters
+    ----------
+    email_address : str
+        The email address of the user.
+    workspace : str, default=None
+        The name of the workspace.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    """
+
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    client = fabric.PowerBIRestClient()
+    response = client.delete(f"/v1.0/myorg/groups/{workspace_id}/users/{email_address}")
+    
+    if response.status_code == 200:
+        print(f"{icons.green_dot} The '{email_address}' user has been removed from accessing the '{workspace}' workspace.")
+    else:
+        print(f"{icons.red_dot} {response.status_code}")
+
+def update_workspace_user(email_address: str, role_name: str, workspace: Optional[str] = None):
+  
+    """
+    Updates a user's role within a workspace.
+
+    Parameters
+    ----------
+    email_address : str
+        The email address of the user.
+    role_name : str
+        The `role <https://learn.microsoft.com/rest/api/power-bi/groups/add-group-user#groupuseraccessright>`_ of the user within the workspace.
+    workspace : str, default=None
+        The name of the workspace.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    """
+
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    role_names = ['Admin', 'Member', 'Viewer', 'Contributor']
+    role_name = role_name.capitalize()
+    if role_name not in role_names:
+            raise ValueError(f"{icons.red_dot} Invalid role. The 'role_name' parameter must be one of the following: {role_names}.")
+
+    request_body = {
+    "emailAddress": email_address,
+    "groupUserAccessRight": role_name
+    }
+
+    client = fabric.PowerBIRestClient()
+    response = client.put(f"/v1.0/myorg/groups/{workspace_id}/users", json = request_body)
+
+    if response.status_code == 200:
+        print(f"{icons.green_dot} The '{email_address}' user has been updated to a '{role_name}' within the '{workspace}' workspace.")
+    else:
+        print(f"{icons.red_dot} {response.status_code}")
+
+def list_workspace_users(workspace: Optional[str] = None) -> pd.DataFrame:
+
+    """
+    A list of all the users of a workspace and their roles.
+
+    Parameters
+    ----------
+    workspace : str, default=None
+        The name of the workspace.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe the users of a workspace and their properties.
+    """
+
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    df = pd.DataFrame(columns=['User Name', 'Email Address', 'Role', 'Type', 'User ID'])
+    client = fabric.FabricRestClient()
+    response = client.get(f"/v1/workspaces/{workspace_id}/roleAssignments")
+
+    for v in response.json()['value']:
+        p = v.get('principal')
+
+        new_data = {'User Name': p.get('displayName'), 'User ID': p.get('id'), 'Type': p.get('type'), 'Role': v.get('role'), 'Email Address': p.get('userDetails').get('userPrincipalName')}
+        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    return df
+
+def assign_workspace_to_dataflow_storage(dataflow_storage_account: str, workspace: Optional[str] = None):
+
+    """
+    Assigns a dataflow storage account to a workspace.
+
+    Parameters
+    ----------
+    dataflow_storage_account : str
+        The name of the dataflow storage account.
+    workspace : str, default=None
+        The name of the workspace.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    """
+
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    df = list_dataflow_storage_accounts()
+    df_filt = df[df['Dataflow Storage Account Name'] == dataflow_storage_account]
+    dataflow_storage_id = df_filt['Dataflow Storage Account ID'].iloc[0]
+
+    client = fabric.PowerBIRestClient()
+
+    request_body = {
+    "dataflowStorageId": dataflow_storage_id
+    }
+
+    response = client.post(f"/v1.0/myorg/groups/{workspace_id}/AssignToDataflowStorage",json=request_body)
+    if response.status_code == 200:
+        print(f"{icons.green_dot} The '{dataflow_storage_account}' dataflow storage account has been assigned to the '{workspace}' workspacce.")
+    else:
+        print(f"{icons.red_dot} {response.status_code}")

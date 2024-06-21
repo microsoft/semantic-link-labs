@@ -2,6 +2,7 @@ import sempy
 import sempy.fabric as fabric
 import pandas as pd
 from typing import List, Optional, Union
+import sempy_labs._icons as icons
 
 
 def create_connection_cloud(
@@ -11,7 +12,7 @@ def create_connection_cloud(
     user_name: str,
     password: str,
     privacy_level: str,
-):
+) -> pd.DataFrame:
 
     # https://review.learn.microsoft.com/en-us/rest/api/fabric/core/connections/create-connection?branch=features%2Fdmts&tabs=HTTP
 
@@ -77,7 +78,7 @@ def create_connection_cloud(
 
         return df
     else:
-        print(response.status_code)
+        print(f"{icons.red_dot} {response.status_code}")
 
 
 def create_connection_on_prem(
@@ -87,7 +88,7 @@ def create_connection_on_prem(
     database_name: str,
     credentials: str,
     privacy_level: str,
-):
+) -> pd.DataFrame:
 
     df = pd.DataFrame(
         columns=[
@@ -153,7 +154,7 @@ def create_connection_on_prem(
 
         return df
     else:
-        print(response.status_code)
+        print(f"{icons.red_dot} {response.status_code}")
 
 
 def create_connection_vnet(
@@ -164,7 +165,7 @@ def create_connection_vnet(
     user_name: str,
     password: str,
     privacy_level: str,
-):
+) -> pd.DataFrame:
 
     df = pd.DataFrame(
         columns=[
@@ -231,4 +232,4 @@ def create_connection_vnet(
 
         return df
     else:
-        print(response.status_code)
+        print(f"{icons.red_dot} {response.status_code}")

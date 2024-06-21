@@ -8,7 +8,7 @@ from sempy._utils._log import log
 import sempy_labs._icons as icons
 
 @log
-def list_direct_lake_model_calc_tables(dataset: str, workspace: Optional[str] = None):
+def list_direct_lake_model_calc_tables(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the calculated tables and their respective DAX expression for a Direct Lake model (which has been migrated from import/DirectQuery).
 
