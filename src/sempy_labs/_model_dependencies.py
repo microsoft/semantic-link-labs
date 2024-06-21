@@ -61,11 +61,11 @@ def get_measure_dependencies(dataset: str, workspace: Optional[str] = None):
         axis=1,
     )
 
-    while any(df["Done"] is False):
+    while any(df["Done"] == False):
         for i, r in df.iterrows():
             rObjFull = r["Referenced Full Object Name"]
             rObj = r["Referenced Object"]
-            if r["Done"] is False:
+            if r["Done"] == False:
                 dep_filt = dep[dep["Full Object Name"] == rObjFull]
 
                 for index, dependency in dep_filt.iterrows():
@@ -187,11 +187,11 @@ def get_model_calc_dependencies(dataset: str, workspace: Optional[str] = None):
         lambda row: False if row["Referenced Object Type"] in objs else True, axis=1
     )
 
-    while any(df["Done"] is False):
+    while any(df["Done"] == False):
         for i, r in df.iterrows():
             rObjFull = r["Referenced Full Object Name"]
             rObj = r["Referenced Object"]
-            if r["Done"] is False:
+            if r["Done"] == False:
                 dep_filt = dep[dep["Full Object Name"] == rObjFull]
 
                 for index, dependency in dep_filt.iterrows():

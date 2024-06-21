@@ -70,8 +70,8 @@ def model_bpa_rules():
                 "Table",
                 "Warning",
                 "Avoid using many-to-many relationships on tables used for dynamic row level security",
-                lambda df: (df["Used in M2M Relationship"] is True)
-                & (df["Used in Dynamic RLS"] is True),
+                lambda df: (df["Used in M2M Relationship"] == True)
+                & (df["Used in Dynamic RLS"] == True),
                 "Using many-to-many relationships on tables which use dynamic row level security can cause serious query performance degradation. This pattern's performance problems compound when snowflaking multiple many-to-many relationships against a table which contains row level security. Instead, use one of the patterns shown in the article below where a single dimension table relates many-to-one to a security table.",
                 "https://www.elegantbi.com/post/dynamicrlspatterns",
             ),
@@ -88,12 +88,12 @@ def model_bpa_rules():
                 "Column",
                 "Warning",
                 "Set IsAvailableInMdx to false on non-attribute columns",
-                lambda df: (df["Is Direct Lake"] is False)
-                & (df["Is Available in MDX"] is True)
-                & ((df["Hidden"] is True) | (df["Parent Is Hidden"] is True))
-                & (df["Used in Sort By"] is False)
-                & (df["Used in Hierarchy"] is False)
-                & (df["Sort By Column"] is None),
+                lambda df: (df["Is Direct Lake"] == False)
+                & (df["Is Available in MDX"] == True)
+                & ((df["Hidden"] == True) | (df["Parent Is Hidden"] == True))
+                & (df["Used in Sort By"] == False)
+                & (df["Used in Hierarchy"] == False)
+                & (df["Sort By Column"] == None),
                 "To speed up processing time and conserve memory after processing, attribute hierarchies should not be built for columns that are never used for slicing by MDX clients. In other words, all hidden columns that are not used as a Sort By Column or referenced in user hierarchies should have their IsAvailableInMdx property set to false. The IsAvailableInMdx property is not relevant for Direct Lake models.",
                 "https://blog.crossjoin.co.uk/2018/07/02/isavailableinmdx-ssas-tabular",
             ),
@@ -219,7 +219,7 @@ def model_bpa_rules():
                 "Table",
                 "Warning",
                 "Large tables should be partitioned",
-                lambda df: (df["Is Direct Lake"] is False)
+                lambda df: (df["Is Direct Lake"] == False)
                 & (df["Partition Count"] == 1)
                 & (df["Row Count"] > 25000000),
                 "Large tables should be partitioned in order to optimize processing. This is not relevant for semantic models in Direct Lake mode as they can only have one partition per table.",
@@ -306,11 +306,11 @@ def model_bpa_rules():
                 "Column",
                 "Warning",
                 "Set IsAvailableInMdx to true on necessary columns",
-                lambda df: (df["Is Direct Lake"] is False)
-                & (df["Is Available in MDX"] is False)
+                lambda df: (df["Is Direct Lake"] == False)
+                & (df["Is Available in MDX"] == False)
                 & (
-                    (df["Used in Sort By"] is True)
-                    | (df["Used in Hierarchy"] is True)
+                    (df["Used in Sort By"] == True)
+                    | (df["Used in Hierarchy"] == True)
                     | (df["Sort By Column"] != None)
                 ),
                 "In order to avoid errors, ensure that attribute hierarchies are enabled if a column is used for sorting another column, used in a hierarchy, used in variations, or is sorted by another column. The IsAvailableInMdx property is not relevant for Direct Lake models.",
@@ -320,8 +320,8 @@ def model_bpa_rules():
                 "Table",
                 "Error",
                 "Avoid the USERELATIONSHIP function and RLS against the same table",
-                lambda df: (df["USERELATIONSHIP Used"] is True)
-                & (df["Used in RLS"] is True),
+                lambda df: (df["USERELATIONSHIP Used"] == True)
+                & (df["Used in RLS"] == True),
                 "The USERELATIONSHIP function may not be used against a table which also leverages row-level security (RLS). This will generate an error when using the particular measure in a visual. This rule will highlight the table which is used in a measure's USERELATIONSHIP function as well as RLS.",
                 "https://blog.crossjoin.co.uk/2013/05/10/userelationship-and-tabular-row-security",
             ),
@@ -494,7 +494,7 @@ def model_bpa_rules():
                 "Table",
                 "Warning",
                 "Ensure tables have relationships",
-                lambda df: (df["Used in Relationship"] is False)
+                lambda df: (df["Used in Relationship"] == False)
                 & (df["Type"] != "Calculation Group"),
                 "This rule highlights tables which are not connected to any other table in the model with a relationship.",
             ),
@@ -511,7 +511,7 @@ def model_bpa_rules():
                 "Column",
                 "Info",
                 "Visible objects with no description",
-                lambda df: (df["Hidden"] is False) & (df["Description"].str.len() == 0),
+                lambda df: (df["Hidden"] == False) & (df["Description"].str.len() == 0),
                 "Calculation groups have no function unless they have calculation items.",
             ),
             (
@@ -595,7 +595,7 @@ def model_bpa_rules():
                 "Column",
                 "Info",
                 "Hide foreign keys",
-                lambda df: (df["Foreign Key"]) & (df["Hidden"] is False),
+                lambda df: (df["Foreign Key"]) & (df["Hidden"] == False),
                 "Foreign keys should always be hidden.",
             ),
             (
@@ -603,7 +603,7 @@ def model_bpa_rules():
                 "Column",
                 "Info",
                 "Mark primary keys",
-                lambda df: (df["Primary Key"]) & (df["Key"] is False),
+                lambda df: (df["Primary Key"]) & (df["Key"] == False),
                 "Set the 'Key' property to 'True' for primary key columns within the column properties.",
             ),
             (
@@ -949,7 +949,7 @@ def run_model_bpa(
     dfD["Has Date Table"] = any(
         (r["Parent Data Category"] == "Time")
         & (r["Data Type"] == "DateTime")
-        & (r["Key"] is True)
+        & (r["Key"] == True)
         for i, r in dfC.iterrows()
     )
     # dfC['In Date Table'] = dfC['Table Name'].isin(dfT.loc[dfT['Data Category'] == "Time", 'Name'])
@@ -1031,7 +1031,7 @@ def run_model_bpa(
                     dfM.at[i, "Has Fully Qualified Measure Reference"] = True
 
     dfR["Inactive without USERELATIONSHIP"] = False
-    for i, r in dfR[dfR["Active"] is False].iterrows():
+    for i, r in dfR[dfR["Active"] == False].iterrows():
         fromTable = r["From Table"]
         fromColumn = r["From Column"]
         toTable = r["To Table"]
