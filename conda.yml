@@ -1,0 +1,10 @@
+name: Fabric12Python310CPU
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+#
+# Core
+#
+- pip:

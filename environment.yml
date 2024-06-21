@@ -1,5 +1,21 @@
 name: fabric
+channels:
+  - conda-forge
+  - defaults
+
 dependencies:
+- conda=22.9.0
+- ipython=8.14.0
+- ipywidgets=8.0.7
+- jupyter_server=2.7.3
+- pip=23.1.2
+- python=3.10
+- virtualenv=20.23.1
+
+- pythonnet=3.0.1
+- pandas=2.0.3
+- graphviz=8.1.0
+- python-graphviz=0.20.1
 - flake8
 - mypy
 - pytest
@@ -7,6 +23,13 @@ dependencies:
 - pytest-mock
 - pip:
   - semantic-link-sempy>=0.7.5
-  - azure-identity==1.7.1
   - azure-storage-blob>=12.9.0
   - pandas-stubs
+  - semantic-link-sempy
+  - sphinx_rtd_theme
+  - pandas==2.0.3
+  - numpy<2.0.0 # 2.0.0 breaks the build
+  - azure-identity==1.16.1
+  - azure-keyvault-secrets
+  - azure-storage-file-datalake==12.3.1
+  - anytree
