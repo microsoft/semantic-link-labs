@@ -42,10 +42,7 @@ def export_model_to_onelake(
     dfD_filt = dfD[dfD["Dataset Name"] == dataset]
 
     if len(dfD_filt) == 0:
-        print(
-            f"{icons.red_dot} The '{dataset}' semantic model does not exist in the '{workspace}' workspace."
-        )
-        return
+        raise ValueError(f"{icons.red_dot} The '{dataset}' semantic model does not exist in the '{workspace}' workspace.")
 
     tmsl = f"""
     {{
@@ -104,7 +101,7 @@ def export_model_to_onelake(
         dfP_filt = dfP[
             (dfP["Mode"] == "Import")
             & (dfP["Source Type"] != "CalculationGroup")
-            & (dfP["Parent System Managed"] is False)
+            & (dfP["Parent System Managed"] == False)
         ]
         dfC = fabric.list_columns(dataset=dataset, workspace=workspace)
         tmc = pd.DataFrame(dfP.groupby("Table Name")["Mode"].nunique()).reset_index()

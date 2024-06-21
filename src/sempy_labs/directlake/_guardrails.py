@@ -4,7 +4,7 @@ import pandas as pd
 from typing import List, Optional, Union
 
 
-def get_direct_lake_guardrails():
+def get_direct_lake_guardrails() -> pd.DataFrame:
     """
     Shows the guardrails for when Direct Lake semantic models will fallback to Direct Query based on Microsoft's `online documentation <https://learn.microsoft.com/power-bi/enterprise/directlake-overview>`_.
 
@@ -44,9 +44,7 @@ def get_sku_size(workspace: Optional[str] = None):
         The SKU size for a workspace.
     """
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
+    workspace = fabric.resolve_workspace_name(workspace)
 
     dfC = fabric.list_capacities()
     dfW = fabric.list_workspaces().sort_values(by="Name", ascending=True)
@@ -62,7 +60,7 @@ def get_sku_size(workspace: Optional[str] = None):
     return sku_value
 
 
-def get_directlake_guardrails_for_sku(sku_size: str):
+def get_directlake_guardrails_for_sku(sku_size: str) -> pd.DataFrame:
     """
     Shows the guardrails for Direct Lake based on the SKU used by your workspace's capacity.
     * Use the result of the 'get_sku_size' function as an input for this function's sku_size parameter.*
