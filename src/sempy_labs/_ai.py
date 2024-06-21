@@ -14,7 +14,7 @@ def optimize_semantic_model(dataset: str, workspace: Optional[str] = None):
     from ._model_bpa import run_model_bpa
     from .directlake._fallback import check_fallback_reason
     from ._helper_functions import format_dax_object_name
-    from .tom import connect_semantic_model
+    from sempy_labs.tom import connect_semantic_model
 
     modelBPA = run_model_bpa(
         dataset=dataset, workspace=workspace, return_dataframe=True

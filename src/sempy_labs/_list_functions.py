@@ -30,7 +30,7 @@ def get_object_level_security(dataset: str, workspace: Optional[str] = None) -> 
         A pandas dataframe showing the object level security for the semantic model.
     """
 
-    from .tom import connect_semantic_model
+    from sempy_labs.tom import connect_semantic_model
 
     if workspace is None:        
         workspace = fabric.resolve_workspace_name()
@@ -42,7 +42,11 @@ def get_object_level_security(dataset: str, workspace: Optional[str] = None) -> 
         for r in tom.model.Roles:
             for tp in r.TablePermissions:
                 if len(tp.FilterExpression) == 0:
-                    columnCount = len(tp.ColumnPermissions)
+                    columnCount = 0
+                    try:
+                        columnCount = len(tp.ColumnPermissions)
+                    except:
+                        pass
                     objectType = "Table"
                     if columnCount == 0:
                         new_data = {
@@ -89,7 +93,7 @@ def list_tables(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
         A pandas dataframe showing the semantic model's tables and their properties.
     """
 
-    from .tom import connect_semantic_model
+    from sempy_labs.tom import connect_semantic_model
 
     if workspace is None:
         workspace = fabric.resolve_workspace_name()
@@ -108,6 +112,8 @@ def list_tables(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
 
     with connect_semantic_model(dataset=dataset, readonly=True, workspace=workspace) as tom:
 
+        import Microsoft.AnalysisServices.Tabular as TOM
+
         for t in tom.model.Tables:
             tableType = "Table"
             rPolicy = bool(t.RefreshPolicy)
@@ -116,7 +122,7 @@ def list_tables(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
                 tableType = "Calculation Group"
             else:
                 for p in t.Partitions:
-                    if str(p.SourceType) == "Calculated":
+                    if p.SourceType == TOM.PartitionSourceType.Calculated:
                         tableType = "Calculated Table"
 
             if rPolicy:
@@ -155,10 +161,9 @@ def list_annotations(dataset: str, workspace: Optional[str] = None) -> pd.DataFr
         A pandas dataframe showing the semantic model's annotations and their properties.
     """
 
-    from .tom import connect_semantic_model
+    from sempy_labs.tom import connect_semantic_model
 
-    if workspace is None:
-        workspace = fabric.resolve_workspace_name()
+    workspace = fabric.resolve_workspace_name()
 
     df = pd.DataFrame(
         columns=[
@@ -179,7 +184,7 @@ def list_annotations(dataset: str, workspace: Optional[str] = None) -> pd.DataFr
             aValue = a.Value
             new_data = {
                 "Object Name": mName,
-                "Parent Object Name": "N/A",
+                "Parent Object Name": None,
                 "Object Type": objectType,
                 "Annotation Name": aName,
                 "Annotation Value": aValue,
@@ -546,8 +551,8 @@ def list_lakehouses(workspace: Optional[str] = None) -> pd.DataFrame:
     response = client.get(f"/v1/workspaces/{workspace_id}/lakehouses/")
 
     for v in response.json()["value"]:        
-        prop = v.get("properties")
-        sqlEPProp = prop.get("sqlEndpointProperties")
+        prop = v.get("properties",{})
+        sqlEPProp = prop.get("sqlEndpointProperties",{})
 
         new_data = {
             "Lakehouse Name": v.get("displayName"),
@@ -598,7 +603,7 @@ def list_warehouses(workspace: Optional[str] = None) -> pd.DataFrame:
     response = client.get(f"/v1/workspaces/{workspace_id}/warehouses/")
 
     for v in response.json()["value"]:        
-        prop = v.get("properties")
+        prop = v.get("properties",{})
 
         new_data = {
             "Warehouse Name": v.get("displayName"),
@@ -722,7 +727,7 @@ def list_kqldatabases(workspace: Optional[str] = None) -> pd.DataFrame:
     response = client.get(f"/v1/workspaces/{workspace_id}/kqlDatabases/")
 
     for v in response.json()["value"]:        
-        prop = v.get("properties")
+        prop = v.get("properties",{})
 
         new_data = {
             "KQL Database Name": v.get("displayName"),
@@ -799,9 +804,9 @@ def list_mlmodels(workspace: Optional[str] = None) -> pd.DataFrame:
     response = client.get(f"/v1/workspaces/{workspace_id}/mlModels/")
 
     for v in response.json()["value"]:
-        model_id = v["id"]
-        modelName = v["displayName"]
-        desc = v["description"]
+        model_id = v.get("id")
+        modelName = v.get("displayName")
+        desc = v.get("description")
 
         new_data = {
             "ML Model Name": modelName,
@@ -838,9 +843,9 @@ def list_eventstreams(workspace: Optional[str] = None) -> pd.DataFrame:
     response = client.get(f"/v1/workspaces/{workspace_id}/eventstreams/")
 
     for v in response.json()["value"]:
-        model_id = v["id"]
-        modelName = v["displayName"]
-        desc = v["description"]
+        model_id = v.get("id")
+        modelName = v.get("displayName")
+        desc = v.get("description")
 
         new_data = {
             "Eventstream Name": modelName,
@@ -877,9 +882,9 @@ def list_datapipelines(workspace: Optional[str] = None) -> pd.DataFrame:
     response = client.get(f"/v1/workspaces/{workspace_id}/dataPipelines/")
 
     for v in response.json()["value"]:
-        model_id = v["id"]
-        modelName = v["displayName"]
-        desc = v["description"]
+        model_id = v.get("id")
+        modelName = v.get("displayName")
+        desc = v.get("description")
 
         new_data = {
             "Data Pipeline Name": modelName,
@@ -1230,7 +1235,7 @@ def list_kpis(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
         A pandas dataframe showing the KPIs for the semantic model.
     """
 
-    from .tom import connect_semantic_model
+    from sempy_labs.tom import connect_semantic_model
 
     with connect_semantic_model(
         dataset=dataset, workspace=workspace, readonly=True
@@ -1300,10 +1305,10 @@ def list_workspace_role_assignments(workspace: Optional[str] = None) -> pd.DataF
     response = client.get(f"/v1/workspaces/{workspace_id}/roleAssignments")
 
     for i in response.json()["value"]:
-        user_name = i.get("principal").get("displayName")
+        user_name = i.get("principal",{}).get("displayName")
         role_name = i.get("role")
-        user_email = i.get("principal").get("userDetails").get("userPrincipalName")
-        user_type = i.get("principal").get("type")
+        user_email = i.get("principal",{}).get("userDetails",{}).get("userPrincipalName")
+        user_type = i.get("principal",{}).get("type")
 
         new_data = {
             "User Name": user_name,
@@ -1334,7 +1339,7 @@ def list_semantic_model_objects(dataset: str, workspace: Optional[str] = None) -
     pandas.DataFrame
         A pandas dataframe showing a list of objects in the semantic model
     """
-    from .tom import connect_semantic_model
+    from sempy_labs.tom import connect_semantic_model
 
     df = pd.DataFrame(columns=["Parent Name", "Object Name", "Object Type"])
     with connect_semantic_model(
@@ -1538,17 +1543,17 @@ def list_shortcuts(
                 subpath,
             ) = (None, None, None, None, None, None)
             if source == "oneLake":
-                sourceLakehouseId = s.get("target").get(source).get("itemId")
-                sourcePath = s.get("target").get(source).get("path")
-                sourceWorkspaceId = s.get("target").get(source).get("workspaceId")
+                sourceLakehouseId = s.get("target",{}).get(source,{}).get("itemId")
+                sourcePath = s.get("target",{}).get(source,{}).get("path")
+                sourceWorkspaceId = s.get("target",{}).get(source,{}).get("workspaceId")
                 sourceWorkspaceName = fabric.resolve_workspace_name(sourceWorkspaceId)
                 sourceLakehouseName = resolve_lakehouse_name(
                     sourceLakehouseId, sourceWorkspaceName
                 )
             else:
-                connectionId = s.get("target").get(source).get("connectionId")
-                location = s.get("target").get(source).get("location")
-                subpath = s.get("target").get(source).get("subpath")
+                connectionId = s.get("target",{}).get(source,{}).get("connectionId")
+                location = s.get("target",{}).get(source,{}).get("location")
+                subpath = s.get("target",{}).get(source,{}).get("subpath")
 
             new_data = {
                 "Shortcut Name": shortcutName,
@@ -1596,8 +1601,8 @@ def list_custom_pools(workspace: Optional[str] = None) -> pd.DataFrame:
 
     for i in response.json()['value']:
 
-        aScale = i.get('autoScale')
-        d = i.get('dynamicExecutorAllocation')
+        aScale = i.get('autoScale',{})
+        d = i.get('dynamicExecutorAllocation',{})
 
         new_data = {'Custom Pool ID': i.get('id'), 'Custom Pool Name': i.get('name'), 'Type': i.get('type'), 'Node Family': i.get('nodeFamily'), 'Node Size': i.get('nodeSize'), \
         'Auto Scale Enabled': aScale.get('enabled'), 'Auto Scale Min Node Count': aScale.get('minNodeCount'), 'Auto Scale Max Node Count': aScale.get('maxNodeCount'), \
@@ -1857,9 +1862,9 @@ def get_spark_settings(workspace: Optional[str] = None) -> pd.DataFrame:
 
     i = response.json()
     p = i.get('pool')
-    dp = i.get('pool').get('defaultPool')
-    sp = i.get('pool').get('starterPool')
-    e = i.get('environment')
+    dp = i.get('pool',{}).get('defaultPool',{})
+    sp = i.get('pool',{}).get('starterPool',{})
+    e = i.get('environment',{})
 
     new_data = {'Automatic Log Enabled': i.get('automaticLog').get('enabled'), 'High Concurrency Enabled': i.get('highConcurrency').get('notebookInteractiveRunEnabled'), \
     'Customize Compute Enabled': p.get('customizeComputeEnabled'), 'Default Pool Name': dp.get('name'), 'Default Pool Type': dp.get('type'), \
@@ -2103,9 +2108,9 @@ def list_workspace_users(workspace: Optional[str] = None) -> pd.DataFrame:
     response = client.get(f"/v1/workspaces/{workspace_id}/roleAssignments")
 
     for v in response.json()['value']:
-        p = v.get('principal')
+        p = v.get('principal',{})
 
-        new_data = {'User Name': p.get('displayName'), 'User ID': p.get('id'), 'Type': p.get('type'), 'Role': v.get('role'), 'Email Address': p.get('userDetails').get('userPrincipalName')}
+        new_data = {'User Name': p.get('displayName'), 'User ID': p.get('id'), 'Type': p.get('type'), 'Role': v.get('role'), 'Email Address': p.get('userDetails',{}).get('userPrincipalName')}
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df

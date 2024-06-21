@@ -365,8 +365,8 @@ def list_qso_settings(dataset: Optional[str] = None, workspace: Optional[str] = 
             "Dataset Id": v.get("id"),
             "Dataset Name": v.get("name"),
             "Storage Mode": sm,
-            "QSO Auto Sync Enabled": v.get("queryScaleOutSettings").get("autoSyncReadOnlyReplicas"),
-            "QSO Max Read Only Replicas": v.get("queryScaleOutSettings").get("maxReadOnlyReplicas"),
+            "QSO Auto Sync Enabled": v.get("queryScaleOutSettings",{}).get("autoSyncReadOnlyReplicas"),
+            "QSO Max Read Only Replicas": v.get("queryScaleOutSettings",{}).get("maxReadOnlyReplicas"),
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 

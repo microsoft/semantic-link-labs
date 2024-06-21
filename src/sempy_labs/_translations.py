@@ -35,7 +35,7 @@ def translate_semantic_model(
     from synapse.ml.services import Translate
     from pyspark.sql.functions import col, flatten
     from pyspark.sql import SparkSession
-    from .tom import connect_semantic_model
+    from sempy_labs.tom import connect_semantic_model
 
     if isinstance(languages, str):
         languages = [languages]

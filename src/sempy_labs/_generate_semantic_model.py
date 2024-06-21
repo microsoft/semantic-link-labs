@@ -34,8 +34,10 @@ def create_blank_semantic_model(
     if workspace is None:
         workspace = fabric.resolve_workspace_name()
 
-    if compatibility_level < 1500:
-        raise ValueError(f"{icons.red_dot} Compatiblity level must be at least 1500.")
+    min_compat = 1500
+
+    if compatibility_level < min_compat:
+        raise ValueError(f"{icons.red_dot} Compatiblity level must be at least {min_compat}.")
 
     tmsl = f"""
   {{
