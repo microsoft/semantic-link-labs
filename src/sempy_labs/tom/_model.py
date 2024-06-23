@@ -93,7 +93,7 @@ class TOMWrapper:
         import Microsoft.AnalysisServices.Tabular as TOM
 
         for t in self.model.Tables:
-            if any(p.SourceType == TOM.ColumnType.Calculated for p in t.Partitions):
+            if any(p.SourceType == TOM.PartitionSourceType.Calculated for p in t.Partitions):
                 yield t
 
     def all_calculation_groups(self):
