@@ -420,16 +420,10 @@ def save_as_delta_table(
     write_mode = write_mode.lower()
 
     if write_mode not in writeModes:
-        print(
-            f"{icons.red_dot} Invalid 'write_type' parameter. Choose from one of the following values: {writeModes}."
-        )
-        return
+        raise ValueError(f"{icons.red_dot} Invalid 'write_type' parameter. Choose from one of the following values: {writeModes}.")
 
     if " " in delta_table_name:
-        print(
-            f"{icons.red_dot} Invalid 'delta_table_name'. Delta tables in the lakehouse cannot have spaces in their names."
-        )
-        return
+        raise ValueError(f"{icons.red_dot} Invalid 'delta_table_name'. Delta tables in the lakehouse cannot have spaces in their names.")
 
     dataframe.columns = dataframe.columns.str.replace(" ", "_")
 
@@ -476,10 +470,7 @@ def language_validate(language: str):
     elif len(df_filt2) == 1:
         lang = df_filt2["Language"].iloc[0]
     else:
-        print(
-            f"The '{language}' language is not a valid language code. Please refer to this link for a list of valid language codes: {url}."
-        )
-        return
+        raise ValueError(f"{icons.red_dot} The '{language}' language is not a valid language code. Please refer to this link for a list of valid language codes: {url}.")
 
     return lang
 

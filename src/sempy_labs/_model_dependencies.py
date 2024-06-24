@@ -25,9 +25,7 @@ def get_measure_dependencies(dataset: str, workspace: Optional[str] = None):
         Shows all dependencies for all measures in the semantic model.
     """
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
+    workspace = fabric.resolve_workspace_name(workspace)
 
     dep = fabric.evaluate_dax(
         dataset=dataset,
@@ -63,11 +61,11 @@ def get_measure_dependencies(dataset: str, workspace: Optional[str] = None):
         axis=1,
     )
 
-    while any(df["Done"] is False):
+    while any(df["Done"] == False):
         for i, r in df.iterrows():
             rObjFull = r["Referenced Full Object Name"]
             rObj = r["Referenced Object"]
-            if r["Done"] is False:
+            if r["Done"] == False:
                 dep_filt = dep[dep["Full Object Name"] == rObjFull]
 
                 for index, dependency in dep_filt.iterrows():
@@ -150,9 +148,7 @@ def get_model_calc_dependencies(dataset: str, workspace: Optional[str] = None):
         Shows all dependencies for all objects in the semantic model.
     """
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
+    workspace = fabric.resolve_workspace_name(workspace)
 
     dep = fabric.evaluate_dax(
         dataset=dataset,
@@ -191,11 +187,11 @@ def get_model_calc_dependencies(dataset: str, workspace: Optional[str] = None):
         lambda row: False if row["Referenced Object Type"] in objs else True, axis=1
     )
 
-    while any(df["Done"] is False):
+    while any(df["Done"] == False):
         for i, r in df.iterrows():
             rObjFull = r["Referenced Full Object Name"]
             rObj = r["Referenced Object"]
-            if r["Done"] is False:
+            if r["Done"] == False:
                 dep_filt = dep[dep["Full Object Name"] == rObjFull]
 
                 for index, dependency in dep_filt.iterrows():
@@ -282,9 +278,7 @@ def measure_dependency_tree(
 
     """
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
+    workspace = fabric.resolve_workspace_name(workspace)
 
     dfM = fabric.list_measures(dataset=dataset, workspace=workspace)
     dfM_filt = dfM[dfM["Measure Name"] == measure_name]

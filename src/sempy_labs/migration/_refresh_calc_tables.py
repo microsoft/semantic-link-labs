@@ -30,6 +30,8 @@ def refresh_calc_tables(dataset: str, workspace: Optional[str] = None):
     timeout = datetime.timedelta(minutes=1)
     success = False
 
+    workspace = fabric.resolve_workspace_name(workspace)
+
     while not success:
         try:
             with connect_semantic_model(

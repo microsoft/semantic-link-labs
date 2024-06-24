@@ -40,9 +40,7 @@ def direct_lake_schema_compare(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
+    workspace = fabric.resolve_workspace_name(workspace)
 
     if lakehouse_workspace is None:
         lakehouse_workspace = workspace
@@ -57,14 +55,10 @@ def direct_lake_schema_compare(
     dfI_filt = dfI[(dfI["Id"] == sqlEndpointId)]
 
     if len(dfI_filt) == 0:
-        print(
-            f"{icons.red_dot} The SQL Endpoint in the '{dataset}' semantic model in the '{workspace} workspace does not point to the '{lakehouse}' lakehouse in the '{lakehouse_workspace}' workspace as specified."
-        )
-        return
+        raise ValueError(f"{icons.red_dot} The SQL Endpoint in the '{dataset}' semantic model in the '{workspace} workspace does not point to the '{lakehouse}' lakehouse in the '{lakehouse_workspace}' workspace as specified.")
 
     if not any(r["Mode"] == "DirectLake" for i, r in dfP.iterrows()):
-        print(f"{icons.red_dot} The '{dataset}' semantic model is not in Direct Lake mode.")
-        return
+        raise ValueError(f"{icons.red_dot} The '{dataset}' semantic model is not in Direct Lake mode.")
 
     dfT = list_tables(dataset, workspace)
     dfC = fabric.list_columns(dataset=dataset, workspace=workspace)

@@ -25,7 +25,7 @@ def get_lakehouse_tables(
     extended: Optional[bool] = False,
     count_rows: Optional[bool] = False,
     export: Optional[bool] = False,
-):
+) -> pd.DataFrame:
     """
     Shows the tables of a lakehouse and their respective properties. Option to include additional properties relevant to Direct Lake guardrails.
 
@@ -174,10 +174,8 @@ def get_lakehouse_tables(
     if export:
         lakeAttach = lakehouse_attached()
         if lakeAttach is False:
-            print(
-                f"{icons.red_dot} In order to save the report.json file, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
-            )
-            return
+            raise ValueError(f"{icons.red_dot} In order to save the report.json file, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook.")
+            
         spark = SparkSession.builder.getOrCreate()
 
         lakehouse_id = fabric.get_lakehouse_id()
