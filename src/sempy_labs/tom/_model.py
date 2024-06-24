@@ -3601,7 +3601,7 @@ class TOMWrapper:
         import System
 
         p = self.model.Tables[table_name].Partitions[partition_name]
-        if str(p.SourceType) != 'M':
+        if p.SourceType != TOM.PartitionSourceType.M:
             raise ValueError(f"Invalid partition source type. This function is only for M partitions.")
         if expression is not None:
             p.Source.Expression = expression
@@ -3648,70 +3648,6 @@ class TOMWrapper:
         """
 
         self.model.Tables[table_name].Columns[column_name].SortByColumn = None
-
-    #def format_dax(self, measure_name: Optional[str | List[str] | None] = None, format_type: Optional[str] = 'short', format_region: Optional[str] = 'US'):
-
-    #    """
-    #    Formats the DAX expression of a measure in a semantic model.
-
-    #    Parameters
-    #    ----------
-    #    measure_name : str, List[str], None, default=None
-    #        Name of the measure.
-    #        Defaults to None which formats all the measures in the semantic model.
-    #    format_type : str, default='short'
-    #        `Formatting type <https://www.sqlbi.com/blog/marco/2014/02/24/how-to-pass-a-dax-query-to-dax-formatter/>`_ in which the expression will be formatted.
-    #    format_region : str, default='US'
-    #        `Region <https://www.sqlbi.com/blog/marco/2014/02/24/how-to-pass-a-dax-query-to-dax-formatter/>`_ to use for formatting.
-    #    """
-
-    #    import requests
-    #    from bs4 import BeautifulSoup
-
-    #    def fmt(dax, format_type, format_region):
-
-   #         url = "https://www.daxformatter.com"
-
-   #         payload = {
-   #                     'r': format_region,
-   #                     'fx': dax,
-   #                     'embed': '1',
-   #                     's': 'auto',
-   #                     'l': format_type
-   #                 }
-
-   #         try:
-   #             response = requests.post(url, data=payload)
-   #             response.raise_for_status()
-                
-   #             soup = BeautifulSoup(response.text, 'html.parser')
-   #             formatted_dax_div = soup.find('div', {'class': 'formatted'})
-
-   #             for br in formatted_dax_div.find_all("br"):
-   #                 br.replace_with("\n")
-
-   #             formatted_dax = formatted_dax_div.get_text(' ').replace('\xa0', ' ')
-   #             return formatted_dax
-   #         except Exception as e:
-   #                 raise ValueError(f"{icons.red_dot} The DAX expression could not be formatted.")
-
-   #     if measure_name is None:
-   #         for m in self.all_measures():
-   #             expr = fmt(dax=m.Expression, format_type=format_type, format_region=format_region)
-   #             if expr is not None:
-   #                 m.Expression = expr
-   #     elif isinstance(measure_name, str):
-   #         measure_name = [measure_name]
-   #     if measure_name is not None:
-   #         for ms in measure_name:
-   #             try:
-   #                 meas = next(m for m in self.all_measures() if m.Name == ms)
-   #             except Exception:
-   #                 raise ValueError(f"{icons.red_dot} The '{ms}' measure does not exist in the semantic model.")
-
-   #             expr = fmt(measure_expression=meas.Expression, format_type=format_type, format_region=format_region) 
-   #             if expr is not None:
-   #                 meas.Expression = expr
 
     def close(self):
         if not self._readonly and self.model is not None:
