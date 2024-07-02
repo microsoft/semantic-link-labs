@@ -13,6 +13,7 @@ from typing import List, Optional, Union
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 
+
 def model_bpa_rules():
     """
     Shows the default rules for the semantic model BPA used by the run_model_bpa function.
@@ -1182,7 +1183,9 @@ def run_model_bpa(
     if export:
         lakeAttach = lakehouse_attached()
         if lakeAttach is False:
-            raise ValueError(f"{icons.red_dot} In order to save the Best Practice Analyzer results, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook.")
+            raise ValueError(
+                f"{icons.red_dot} In order to save the Best Practice Analyzer results, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
+            )
 
         dfExport = finalDF.copy()
         delta_table_name = "modelbparesults"

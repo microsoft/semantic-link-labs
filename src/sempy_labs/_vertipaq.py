@@ -16,6 +16,7 @@ from typing import List, Optional, Union
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 
+
 @log
 def vertipaq_analyzer(
     dataset: str,
@@ -100,7 +101,9 @@ def vertipaq_analyzer(
             dfI_filt = dfI[(dfI["Id"] == sqlEndpointId)]
 
             if len(dfI_filt) == 0:
-                raise ValueError(f"{icons.red_dot} The lakehouse (SQL Endpoint) used by the '{dataset}' semantic model does not reside in the '{lakehouse_workspace}' workspace. Please update the lakehouse_workspace parameter.")                
+                raise ValueError(
+                    f"{icons.red_dot} The lakehouse (SQL Endpoint) used by the '{dataset}' semantic model does not reside in the '{lakehouse_workspace}' workspace. Please update the lakehouse_workspace parameter."
+                )
             else:
                 lakehouseName = dfI_filt["Display Name"].iloc[0]
 
@@ -433,7 +436,9 @@ def vertipaq_analyzer(
     if export in ["table", "zip"]:
         lakeAttach = lakehouse_attached()
         if lakeAttach is False:
-            raise ValueError(f"{icons.red_dot} In order to save the Vertipaq Analyzer results, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook.")            
+            raise ValueError(
+                f"{icons.red_dot} In order to save the Vertipaq Analyzer results, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
+            )
 
     if export == "table":
         spark = SparkSession.builder.getOrCreate()
@@ -465,7 +470,9 @@ def vertipaq_analyzer(
             "export_Model": ["Model", export_Model],
         }
 
-        print(f"{icons.in_progress} Saving Vertipaq Analyzer to delta tables in the lakehouse...\n")
+        print(
+            f"{icons.in_progress} Saving Vertipaq Analyzer to delta tables in the lakehouse...\n"
+        )
         now = datetime.datetime.now()
         for key, (obj, df) in dfMap.items():
             df["Timestamp"] = now

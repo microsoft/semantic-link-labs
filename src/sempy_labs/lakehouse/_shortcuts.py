@@ -79,7 +79,9 @@ def create_shortcut_onelake(
         else:
             print(response.status_code)
     except Exception as e:
-        raise ValueError(f"{icons.red_dot} Failed to create a shortcut for the '{table_name}' table.") from e
+        raise ValueError(
+            f"{icons.red_dot} Failed to create a shortcut for the '{table_name}' table."
+        ) from e
 
 
 def create_shortcut(
@@ -114,7 +116,9 @@ def create_shortcut(
     sourceValues = list(source_titles.keys())
 
     if source not in sourceValues:
-        raise ValueError(f"{icons.red_dot} The 'source' parameter must be one of these values: {sourceValues}.")
+        raise ValueError(
+            f"{icons.red_dot} The 'source' parameter must be one of these values: {sourceValues}."
+        )
 
     sourceTitle = source_titles[source]
 
@@ -152,7 +156,9 @@ def create_shortcut(
         else:
             print(response.status_code)
     except Exception as e:
-        raise ValueError(f"{icons.red_dot} Failed to create a shortcut for the '{shortcut_name}' table.") from e
+        raise ValueError(
+            f"{icons.red_dot} Failed to create a shortcut for the '{shortcut_name}' table."
+        ) from e
 
 
 def delete_shortcut(

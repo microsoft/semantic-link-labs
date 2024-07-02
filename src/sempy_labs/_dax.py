@@ -50,7 +50,7 @@ def evaluate_dax_impersonation(
 
     request_body = {
         "queries": [{"query": dax_query}],
-        "impersonatedUserName": user_name
+        "impersonatedUserName": user_name,
     }
 
     client = fabric.PowerBIRestClient()

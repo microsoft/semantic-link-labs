@@ -5,6 +5,7 @@ from sempy_labs._list_functions import list_lakehouses
 from typing import Optional
 import sempy_labs._icons as icons
 
+
 def get_shared_expression(
     lakehouse: Optional[str] = None, workspace: Optional[str] = None
 ):
@@ -40,7 +41,9 @@ def get_shared_expression(
     provStatus = lakeDetail["SQL Endpoint Provisioning Status"].iloc[0]
 
     if provStatus == "InProgress":
-        raise ValueError(f"{icons.red_dot} The SQL Endpoint for the '{lakehouse}' lakehouse within the '{workspace}' workspace has not yet been provisioned. Please wait until it has been provisioned.")
+        raise ValueError(
+            f"{icons.red_dot} The SQL Endpoint for the '{lakehouse}' lakehouse within the '{workspace}' workspace has not yet been provisioned. Please wait until it has been provisioned."
+        )
 
     sh = (
         'let\n\tdatabase = Sql.Database("'
