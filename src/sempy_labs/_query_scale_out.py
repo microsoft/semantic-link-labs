@@ -1,4 +1,3 @@
-import sempy
 import sempy.fabric as fabric
 import pandas as pd
 from sempy_labs._helper_functions import resolve_dataset_id
@@ -44,7 +43,10 @@ def qso_sync(dataset: str, workspace: Optional[str] = None):
             f"{icons.green_dot} QSO sync initiated for the '{dataset}' semantic model within the '{workspace}' workspace."
         )
     else:
-        raise ValueError(f"{icons.red_dot} QSO sync failed for the '{dataset}' semantic model within the '{workspace}' workspace.")
+        raise ValueError(
+            f"{icons.red_dot} QSO sync failed for the '{dataset}' semantic model within the '{workspace}' workspace."
+        )
+
 
 def qso_sync_status(dataset: str, workspace: Optional[str] = None):
     """
@@ -255,7 +257,10 @@ def set_qso(
         else:
             raise ValueError(f"{icons.red_dot} {response.status_code}")
     else:
-        raise ValueError(f"{icons.red_dot} Failed to set the '{dataset}' semantic model within the '{workspace}' workspace to large semantic model storage format. This is a prerequisite for enabling Query Scale Out.\n\"https://learn.microsoft.com/power-bi/enterprise/service-premium-scale-out#prerequisites\"")
+        raise ValueError(
+            f"{icons.red_dot} Failed to set the '{dataset}' semantic model within the '{workspace}' workspace to large semantic model storage format. This is a prerequisite for enabling Query Scale Out.\n\"https://learn.microsoft.com/power-bi/enterprise/service-premium-scale-out#prerequisites\""
+        )
+
 
 def set_semantic_model_storage_format(
     dataset: str, storage_format: str, workspace: Optional[str] = None
@@ -301,7 +306,9 @@ def set_semantic_model_storage_format(
     elif storage_format == "Small":
         request_body = {"targetStorageMode": "Abf"}
     else:
-        raise ValueError(f"{icons.red_dot} Invalid storage format value. Valid options: {storageFormats}.")
+        raise ValueError(
+            f"{icons.red_dot} Invalid storage format value. Valid options: {storageFormats}."
+        )
 
     client = fabric.PowerBIRestClient()
     response = client.patch(
@@ -314,6 +321,7 @@ def set_semantic_model_storage_format(
         )
     else:
         raise ValueError(f"{icons.red_dot} {response.status_code}")
+
 
 def list_qso_settings(dataset: Optional[str] = None, workspace: Optional[str] = None):
     """
@@ -365,8 +373,12 @@ def list_qso_settings(dataset: Optional[str] = None, workspace: Optional[str] = 
             "Dataset Id": v.get("id"),
             "Dataset Name": v.get("name"),
             "Storage Mode": sm,
-            "QSO Auto Sync Enabled": v.get("queryScaleOutSettings",{}).get("autoSyncReadOnlyReplicas"),
-            "QSO Max Read Only Replicas": v.get("queryScaleOutSettings",{}).get("maxReadOnlyReplicas"),
+            "QSO Auto Sync Enabled": v.get("queryScaleOutSettings", {}).get(
+                "autoSyncReadOnlyReplicas"
+            ),
+            "QSO Max Read Only Replicas": v.get("queryScaleOutSettings", {}).get(
+                "maxReadOnlyReplicas"
+            ),
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 

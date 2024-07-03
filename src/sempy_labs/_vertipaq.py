@@ -1,8 +1,11 @@
-import sempy
 import sempy.fabric as fabric
 import pandas as pd
 from IPython.display import display, HTML
-import zipfile, os, shutil, datetime, warnings
+import zipfile
+import os
+import shutil
+import datetime
+import warnings
 from pyspark.sql import SparkSession
 from sempy_labs._helper_functions import (
     format_dax_object_name,
@@ -12,9 +15,10 @@ from sempy_labs._helper_functions import (
 from sempy_labs._list_functions import list_relationships
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
-from typing import List, Optional, Union
+from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
+
 
 @log
 def vertipaq_analyzer(
@@ -100,7 +104,10 @@ def vertipaq_analyzer(
             dfI_filt = dfI[(dfI["Id"] == sqlEndpointId)]
 
             if len(dfI_filt) == 0:
-                raise ValueError(f"{icons.red_dot} The lakehouse (SQL Endpoint) used by the '{dataset}' semantic model does not reside in the '{lakehouse_workspace}' workspace. Please update the lakehouse_workspace parameter.")                
+                raise ValueError(
+                    f"{icons.red_dot} The lakehouse (SQL Endpoint) used by the '{dataset}' semantic model does not reside in the '{lakehouse_workspace}' workspace."
+                    "Please update the lakehouse_workspace parameter."
+                )
             else:
                 lakehouseName = dfI_filt["Display Name"].iloc[0]
 
@@ -238,7 +245,7 @@ def vertipaq_analyzer(
 
                 try:
                     missingRows = result.iloc[0, 0]
-                except:
+                except Exception:
                     pass
 
                 dfR.at[i, "Missing Rows"] = missingRows
@@ -318,7 +325,7 @@ def vertipaq_analyzer(
     pctList = ["% DB"]
     dfTable[pctList] = dfTable[pctList].applymap("{:.2f}%".format)
 
-    ## Relationships
+    #  Relationships
     # dfR.drop(columns=['Max From Cardinality', 'Max To Cardinality'], inplace=True)
     dfR = pd.merge(
         dfR,
@@ -359,7 +366,7 @@ def vertipaq_analyzer(
         intList.remove("Missing Rows")
     dfR[intList] = dfR[intList].applymap("{:,}".format)
 
-    ## Partitions
+    # Partitions
     dfP = dfP[
         ["Table Name", "Partition Name", "Mode", "Record Count", "Segment Count"]
     ].sort_values(
@@ -373,7 +380,7 @@ def vertipaq_analyzer(
     intList = ["Record Count", "Segment Count", "Records per Segment"]
     dfP[intList] = dfP[intList].applymap("{:,}".format)
 
-    ## Hierarchies
+    # Hierarchies
     dfH_filt = dfH[dfH["Level Ordinal"] == 0]
     dfH_filt = dfH_filt[["Table Name", "Hierarchy Name", "Used Size"]].sort_values(
         by="Used Size", ascending=False
@@ -383,7 +390,7 @@ def vertipaq_analyzer(
     intList = ["Used Size"]
     dfH_filt[intList] = dfH_filt[intList].applymap("{:,}".format)
 
-    ## Model
+    # Model
     if total_size >= 1000000000:
         y = total_size / (1024**3) * 1000000000
     elif total_size >= 1000000:
@@ -429,11 +436,13 @@ def vertipaq_analyzer(
 
     visualize_vertipaq(dfs)
 
-    ### Export vertipaq to delta tables in lakehouse
+    # Export vertipaq to delta tables in lakehouse
     if export in ["table", "zip"]:
         lakeAttach = lakehouse_attached()
         if lakeAttach is False:
-            raise ValueError(f"{icons.red_dot} In order to save the Vertipaq Analyzer results, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook.")            
+            raise ValueError(
+                f"{icons.red_dot} In order to save the Vertipaq Analyzer results, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
+            )
 
     if export == "table":
         spark = SparkSession.builder.getOrCreate()
@@ -465,7 +474,9 @@ def vertipaq_analyzer(
             "export_Model": ["Model", export_Model],
         }
 
-        print(f"{icons.in_progress} Saving Vertipaq Analyzer to delta tables in the lakehouse...\n")
+        print(
+            f"{icons.in_progress} Saving Vertipaq Analyzer to delta tables in the lakehouse...\n"
+        )
         now = datetime.datetime.now()
         for key, (obj, df) in dfMap.items():
             df["Timestamp"] = now
@@ -487,7 +498,7 @@ def vertipaq_analyzer(
                 f"{icons.bullet} Vertipaq Analyzer results for '{obj}' have been appended to the '{delta_table_name}' delta table."
             )
 
-    ### Export vertipaq to zip file within the lakehouse
+    # Export vertipaq to zip file within the lakehouse
     if export == "zip":
         dataFrames = {
             "dfModel": dfModel,
@@ -525,7 +536,8 @@ def vertipaq_analyzer(
             if os.path.exists(filePath):
                 os.remove(filePath)
         print(
-            f"{icons.green_dot} The Vertipaq Analyzer info for the '{dataset}' semantic model in the '{workspace}' workspace has been saved to the 'Vertipaq Analyzer/{zipFileName}' in the default lakehouse attached to this notebook."
+            f"{icons.green_dot} The Vertipaq Analyzer info for the '{dataset}' semantic model in the '{workspace}' workspace has been saved "
+            f"to the 'Vertipaq Analyzer/{zipFileName}' in the default lakehouse attached to this notebook."
         )
 
 
@@ -832,7 +844,7 @@ def visualize_vertipaq(dataframes):
                     (tooltipDF["ViewName"] == vw) & (tooltipDF["ColumnName"] == col)
                 ]
                 tt = tooltipDF_filt["Tooltip"].iloc[0]
-            except:
+            except Exception:
                 pass
             df_html = df_html.replace(f"<th>{col}</th>", f'<th title="{tt}">{col}</th>')
         content_html += (

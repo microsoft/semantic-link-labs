@@ -1,4 +1,3 @@
-import sempy
 import sempy.fabric as fabric
 import re
 import pandas as pd
@@ -200,7 +199,9 @@ def resolve_dataset_name(dataset_id: UUID, workspace: Optional[str] = None):
     return obj
 
 
-def resolve_lakehouse_name(lakehouse_id: Optional[UUID] = None, workspace: Optional[str] = None):
+def resolve_lakehouse_name(
+    lakehouse_id: Optional[UUID] = None, workspace: Optional[str] = None
+):
     """
     Obtains the name of the Fabric lakehouse.
 
@@ -223,7 +224,7 @@ def resolve_lakehouse_name(lakehouse_id: Optional[UUID] = None, workspace: Optio
     if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
-    
+
     if lakehouse_id is None:
         lakehouse_id = fabric.get_lakehouse_id()
 
@@ -420,10 +421,14 @@ def save_as_delta_table(
     write_mode = write_mode.lower()
 
     if write_mode not in writeModes:
-        raise ValueError(f"{icons.red_dot} Invalid 'write_type' parameter. Choose from one of the following values: {writeModes}.")
+        raise ValueError(
+            f"{icons.red_dot} Invalid 'write_type' parameter. Choose from one of the following values: {writeModes}."
+        )
 
     if " " in delta_table_name:
-        raise ValueError(f"{icons.red_dot} Invalid 'delta_table_name'. Delta tables in the lakehouse cannot have spaces in their names.")
+        raise ValueError(
+            f"{icons.red_dot} Invalid 'delta_table_name'. Delta tables in the lakehouse cannot have spaces in their names."
+        )
 
     dataframe.columns = dataframe.columns.str.replace(" ", "_")
 
@@ -470,7 +475,9 @@ def language_validate(language: str):
     elif len(df_filt2) == 1:
         lang = df_filt2["Language"].iloc[0]
     else:
-        raise ValueError(f"{icons.red_dot} The '{language}' language is not a valid language code. Please refer to this link for a list of valid language codes: {url}.")
+        raise ValueError(
+            f"{icons.red_dot} The '{language}' language is not a valid language code. Please refer to this link for a list of valid language codes: {url}."
+        )
 
     return lang
 

@@ -1,10 +1,9 @@
-import sempy
 import sempy.fabric as fabric
 import pandas as pd
 from sempy_labs.tom import connect_semantic_model
 from sempy_labs._generate_semantic_model import create_blank_semantic_model
 from sempy_labs.directlake._get_shared_expression import get_shared_expression
-from typing import List, Optional, Union
+from typing import Optional
 from sempy._utils._log import log
 
 
@@ -58,7 +57,9 @@ def model_auto_build(
 
     create_blank_semantic_model(dataset=dataset, workspace=workspace)
 
-    with connect_semantic_model(dataset=dataset, workspace=workspace, readonly=False) as tom:
+    with connect_semantic_model(
+        dataset=dataset, workspace=workspace, readonly=False
+    ) as tom:
 
         # DL Only
         expr = get_shared_expression(lakehouse=lakehouse, workspace=lakehouse_workspace)

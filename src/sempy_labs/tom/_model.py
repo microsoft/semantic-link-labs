@@ -21,7 +21,8 @@ class TOMWrapper:
     """
     Convenience wrapper around the TOM object model for a semantic model. Always use the connect_semantic_model function to make sure the TOM object is initialized correctly.
 
-    `XMLA read/write endpoints <https://learn.microsoft.com/power-bi/enterprise/service-premium-connect-tools#to-enable-read-write-for-a-premium-capacity>`_ must be enabled if setting the readonly parameter to False.
+    `XMLA read/write endpoints <https://learn.microsoft.com/power-bi/enterprise/service-premium-connect-tools#to-enable-read-write-for-a-premium-capacity>`_ must
+     be enabled if setting the readonly parameter to False.
     """
 
     _dataset: str
@@ -93,7 +94,9 @@ class TOMWrapper:
         import Microsoft.AnalysisServices.Tabular as TOM
 
         for t in self.model.Tables:
-            if any(p.SourceType == TOM.PartitionSourceType.Calculated for p in t.Partitions):
+            if any(
+                p.SourceType == TOM.PartitionSourceType.Calculated for p in t.Partitions
+            ):
                 yield t
 
     def all_calculation_groups(self):
@@ -500,7 +503,8 @@ class TOMWrapper:
         description: Optional[str] = None,
     ):
         """
-        Adds a `calculation item <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculationitem?view=analysisservices-dotnet>`_ to a `calculation group <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculationgroup?view=analysisservices-dotnet>`_ within a semantic model.
+        Adds a `calculation item <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculationitem?view=analysisservices-dotnet>`_ to
+          a `calculation group <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculationgroup?view=analysisservices-dotnet>`_ within a semantic model.
 
         Parameters
         ----------
@@ -586,7 +590,7 @@ class TOMWrapper:
             self.model.Roles[role_name].TablePermissions[
                 table_name
             ].FilterExpression = filter_expression
-        except:
+        except Exception:
             self.model.Roles[role_name].TablePermissions.Add(tp)
 
     def set_ols(
@@ -613,8 +617,7 @@ class TOMWrapper:
         permission = permission.capitalize()
 
         if permission not in ["Read", "None", "Default"]:
-            print(f"ERROR! Invalid 'permission' value.")
-            return
+            raise ValueError(f"{icons.red_dot} Invalid 'permission' value.")
 
         cp = TOM.ColumnPermission()
         cp.Column = self.model.Tables[table_name].Columns[column_name]
@@ -623,7 +626,7 @@ class TOMWrapper:
             self.model.Roles[role_name].TablePermissions[table_name].ColumnPermissions[
                 column_name
             ].MetadataPermission = System.Enum.Parse(TOM.MetadataPermission, permission)
-        except:
+        except Exception:
             self.model.Roles[role_name].TablePermissions[
                 table_name
             ].ColumnPermissions.Add(cp)
@@ -658,16 +661,22 @@ class TOMWrapper:
         import Microsoft.AnalysisServices.Tabular as TOM
 
         if isinstance(columns, str):
-            raise ValueError(f"{icons.red_dot} The 'levels' parameter must be a list. For example: ['Continent', 'Country', 'City']")
-            
+            raise ValueError(
+                f"{icons.red_dot} The 'levels' parameter must be a list. For example: ['Continent', 'Country', 'City']"
+            )
+
         if len(columns) == 1:
-            raise ValueError(f"{icons.red_dot} There must be at least 2 levels in order to create a hierarchy.")            
+            raise ValueError(
+                f"{icons.red_dot} There must be at least 2 levels in order to create a hierarchy."
+            )
 
         if levels is None:
             levels = columns
 
         if len(columns) != len(levels):
-            raise ValueError(f"{icons.red_dot} If specifying level names, you must specify a level for each column.")            
+            raise ValueError(
+                f"{icons.red_dot} If specifying level names, you must specify a level for each column."
+            )
 
         obj = TOM.Hierarchy()
         obj.Name = hierarchy_name
@@ -860,7 +869,7 @@ class TOMWrapper:
 
         try:
             self.model.Cultures.Add(cul)
-        except:
+        except Exception:
             pass
 
     def add_perspective(self, perspective_name: str):
@@ -997,7 +1006,9 @@ class TOMWrapper:
         import System
 
         if base_column is not None and base_table is None:
-            raise ValueError(f"{icons.red_dot} If you specify the base table you must also specify the base column")
+            raise ValueError(
+                f"{icons.red_dot} If you specify the base table you must also specify the base column"
+            )
 
         summarization_type = (
             summarization_type.replace(" ", "")
@@ -1007,7 +1018,9 @@ class TOMWrapper:
 
         summarizationTypes = ["Sum", "GroupBy", "Count", "Min", "Max"]
         if summarization_type not in summarizationTypes:
-            raise ValueError(f"{icons.red_dot} The 'summarization_type' parameter must be one of the following valuse: {summarizationTypes}.")
+            raise ValueError(
+                f"{icons.red_dot} The 'summarization_type' parameter must be one of the following valuse: {summarizationTypes}."
+            )
 
         ao = TOM.AlternateOf()
         ao.Summarization = System.Enum.Parse(TOM.SummarizationType, summarization_type)
@@ -1087,7 +1100,7 @@ class TOMWrapper:
 
         try:
             object.Annotations[name].Value = value
-        except:
+        except Exception:
             object.Annotations.Add(ann)
 
     def get_annotation_value(self, object, name: str):
@@ -1187,7 +1200,7 @@ class TOMWrapper:
 
         try:
             object.ExtendedProperties[name].Value = value
-        except:
+        except Exception:
             object.ExtendedProperties.Add(ep)
 
     def get_extended_property_value(self, object, name: str):
@@ -1266,7 +1279,9 @@ class TOMWrapper:
         objectType = object.ObjectType
 
         if objectType not in validObjects:
-            raise ValueError(f"{icons.red_dot} Only the following object types are valid for perspectives: {validObjects}.")
+            raise ValueError(
+                f"{icons.red_dot} Only the following object types are valid for perspectives: {validObjects}."
+            )
 
         object.Model.Perspectives[perspective_name]
 
@@ -1288,7 +1303,7 @@ class TOMWrapper:
                     object.Parent.Name
                 ].PerspectiveHierarchies[object.Name]
             return True
-        except:
+        except Exception:
             return False
 
     def add_to_perspective(
@@ -1317,12 +1332,16 @@ class TOMWrapper:
         objectType = object.ObjectType
 
         if objectType not in validObjects:
-            raise ValueError(f"{icons.red_dot} Only the following object types are valid for perspectives: {validObjects}.")
+            raise ValueError(
+                f"{icons.red_dot} Only the following object types are valid for perspectives: {validObjects}."
+            )
 
         try:
             object.Model.Perspectives[perspective_name]
-        except:
-            raise ValueError(f"{icons.red_dot} The '{perspective_name}' perspective does not exist.")
+        except Exception:
+            raise ValueError(
+                f"{icons.red_dot} The '{perspective_name}' perspective does not exist."
+            )
 
         # try:
         if objectType == TOM.ObjectType.Table:
@@ -1376,12 +1395,16 @@ class TOMWrapper:
         objectType = object.ObjectType
 
         if objectType not in validObjects:
-            raise ValueError(f"{icons.red_dot} Only the following object types are valid for perspectives: {validObjects}.")
+            raise ValueError(
+                f"{icons.red_dot} Only the following object types are valid for perspectives: {validObjects}."
+            )
 
         try:
             object.Model.Perspectives[perspective_name]
-        except:
-            raise ValueError(f"{icons.red_dot} The '{perspective_name}' perspective does not exist.")
+        except Exception:
+            raise ValueError(
+                f"{icons.red_dot} The '{perspective_name}' perspective does not exist."
+            )
 
         # try:
         if objectType == TOM.ObjectType.Table:
@@ -1454,7 +1477,9 @@ class TOMWrapper:
         ]  # , 'Level'
 
         if object.ObjectType not in validObjects:
-            raise ValueError(f"{icons.red_dot} Translations can only be set to {validObjects}.")
+            raise ValueError(
+                f"{icons.red_dot} Translations can only be set to {validObjects}."
+            )
 
         mapping = {
             "Name": TOM.TranslatedProperty.Caption,
@@ -1463,13 +1488,17 @@ class TOMWrapper:
         }
 
         prop = mapping.get(property)
-        if prop == None:
-            raise ValueError(f"{icons.red_dot} Invalid property value. Please choose from the following: ['Name', 'Description', Display Folder].")
+        if prop is None:
+            raise ValueError(
+                f"{icons.red_dot} Invalid property value. Please choose from the following: ['Name', 'Description', Display Folder]."
+            )
 
         try:
             object.Model.Cultures[language]
-        except:
-            raise ValueError(f"{icons.red_dot} The '{language}' translation language does not exist in the semantic model.")
+        except Exception:
+            raise ValueError(
+                f"{icons.red_dot} The '{language}' translation language does not exist in the semantic model."
+            )
 
         object.Model.Cultures[language].ObjectTranslations.SetTranslation(
             object, prop, value
@@ -1515,7 +1544,7 @@ class TOMWrapper:
             for lang in object.Model.Cultures:
                 try:
                     self.remove_translation(object=object, language=lang.Name)
-                except:
+                except Exception:
                     pass
         if objType in ["Table", "Column", "Measure", "Hierarchy"]:
             for persp in object.Model.Perspectives:
@@ -1523,7 +1552,7 @@ class TOMWrapper:
                     self.remove_from_perspective(
                         object=object, perspective_name=persp.Name
                     )
-                except:
+                except Exception:
                     pass
 
         if objType == TOM.ObjectType.Column:
@@ -1631,12 +1660,12 @@ class TOMWrapper:
         objType = column.ObjectType
 
         if objType == TOM.ObjectType.Column:
-            for l in self.all_levels():
+            for lev in self.all_levels():
                 if (
-                    l.Parent.Table.Name == column.Parent.Name
-                    and l.Column.Name == column.Name
+                    lev.Parent.Table.Name == column.Parent.Name
+                    and lev.Column.Name == column.Name
                 ):
-                    yield l.Parent
+                    yield lev.Parent
 
     def used_in_sort_by(self, column: "TOM.Column"):
         """
@@ -1829,7 +1858,7 @@ class TOMWrapper:
                 if m.Name in meas:
                     yield m
 
-    def hybrid_tables(self):
+    def all_hybrid_tables(self):
         """
         Outputs the `hybrid tables <https://learn.microsoft.com/power-bi/connect-data/service-dataset-modes-understand#hybrid-tables>`_ within a semantic model.
 
@@ -1848,7 +1877,7 @@ class TOMWrapper:
                 if any(p.Mode == TOM.ModeType.DirectQuery for p in t.Partitions):
                     yield t
 
-    def date_tables(self):
+    def all_date_tables(self):
         """
         Outputs the tables which are marked as `date tables <https://learn.microsoft.com/power-bi/transform-model/desktop-date-tables>`_ within a semantic model.
 
@@ -1915,7 +1944,11 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        return any(c.IsKey and c.DataType == TOM.DataType.DateTime for c in self.all_columns() if c.Parent.Name == table_name and c.Parent.DataCategory == 'Time')
+        return any(
+            c.IsKey and c.DataType == TOM.DataType.DateTime
+            for c in self.all_columns()
+            if c.Parent.Name == table_name and c.Parent.DataCategory == "Time"
+        )
 
     def mark_as_date_table(self, table_name: str, column_name: str):
         """
@@ -1933,8 +1966,10 @@ class TOMWrapper:
         t = self.model.Tables[table_name]
         c = t.Columns[column_name]
         if c.DataType != TOM.DataType.DateTime:
-            raise ValueError(f"{icons.red_dot} The column specified in the 'column_name' parameter in this function must be of DateTime data type.")
-            
+            raise ValueError(
+                f"{icons.red_dot} The column specified in the 'column_name' parameter in this function must be of DateTime data type."
+            )
+
         daxQuery = f"""
         define measure '{table_name}'[test] = 
         var mn = MIN('{table_name}'[{column_name}])
@@ -1953,7 +1988,9 @@ class TOMWrapper:
         )
         value = df["1"].iloc[0]
         if value != "1":
-            raise ValueError(f"{icons.red_dot} The '{column_name}' within the '{table_name}' table does not contain contiguous date values.")
+            raise ValueError(
+                f"{icons.red_dot} The '{column_name}' within the '{table_name}' table does not contain contiguous date values."
+            )
 
         # Mark as a date table
         t.DataCategory = "Time"
@@ -2007,7 +2044,7 @@ class TOMWrapper:
         -------
         bool
             Indicates if the semantic model has a hybrid table.
-        """    
+        """
 
         return any(self.is_hybrid_table(table_name=t.Name) for t in self.model.Tables)
 
@@ -2148,12 +2185,19 @@ class TOMWrapper:
         # https://github.com/m-kovalsky/Tabular/blob/master/KPI%20Graphics.md
 
         if measure_name == target:
-            raise ValueError(f"{icons.red_dot} The 'target' parameter cannot be the same measure as the 'measure_name' parameter.")
+            raise ValueError(
+                f"{icons.red_dot} The 'target' parameter cannot be the same measure as the 'measure_name' parameter."
+            )
 
         if status_graphic is None:
             status_graphic = "Three Circles Colored"
 
-        valid_status_types = ["Linear", "LinearReversed", "Centered", "CenteredReversed"]
+        valid_status_types = [
+            "Linear",
+            "LinearReversed",
+            "Centered",
+            "CenteredReversed",
+        ]
         status_type = status_type
         if status_type is None:
             status_type = "Linear"
@@ -2161,31 +2205,47 @@ class TOMWrapper:
             status_type = status_type.title().replace(" ", "")
 
         if status_type not in valid_status_types:
-            raise ValueError(f"{icons.red_dot} '{status_type}' is an invalid status_type. Please choose from these options: {valid_status_types}.")
+            raise ValueError(
+                f"{icons.red_dot} '{status_type}' is an invalid status_type. Please choose from these options: {valid_status_types}."
+            )
 
         if status_type in ["Linear", "LinearReversed"]:
             if upper_bound is not None or lower_mid_bound is not None:
-                raise ValueError(f"{icons.red_dot} The 'upper_mid_bound' and 'lower_mid_bound' parameters are not used in the 'Linear' and 'LinearReversed' status types. Make sure these parameters are set to None.")
+                raise ValueError(
+                    f"{icons.red_dot} The 'upper_mid_bound' and 'lower_mid_bound' parameters are not used in the 'Linear' and 'LinearReversed' status types. Make sure these parameters are set to None."
+                )
 
             elif upper_bound <= lower_bound:
-                raise ValueError(f"{icons.red_dot} The upper_bound must be greater than the lower_bound.")
+                raise ValueError(
+                    f"{icons.red_dot} The upper_bound must be greater than the lower_bound."
+                )
 
         if status_type in ["Centered", "CenteredReversed"]:
             if upper_mid_bound is None or lower_mid_bound is None:
-                raise ValueError(f"{icons.red_dot} The 'upper_mid_bound' and 'lower_mid_bound' parameters are necessary in the 'Centered' and 'CenteredReversed' status types.")
+                raise ValueError(
+                    f"{icons.red_dot} The 'upper_mid_bound' and 'lower_mid_bound' parameters are necessary in the 'Centered' and 'CenteredReversed' status types."
+                )
             elif upper_bound <= upper_mid_bound:
-                raise ValueError(f"{icons.red_dot} The upper_bound must be greater than the upper_mid_bound.")
+                raise ValueError(
+                    f"{icons.red_dot} The upper_bound must be greater than the upper_mid_bound."
+                )
             elif upper_mid_bound <= lower_mid_bound:
-                raise ValueError(f"{icons.red_dot} The upper_mid_bound must be greater than the lower_mid_bound.")
+                raise ValueError(
+                    f"{icons.red_dot} The upper_mid_bound must be greater than the lower_mid_bound."
+                )
             elif lower_mid_bound <= lower_bound:
-                raise ValueError(f"{icons.red_dot} The lower_mid_bound must be greater than the lower_bound.")
+                raise ValueError(
+                    f"{icons.red_dot} The lower_mid_bound must be greater than the lower_bound."
+                )
 
         try:
             table_name = next(
                 m.Parent.Name for m in self.all_measures() if m.Name == measure_name
             )
-        except:
-            raise ValueError(f"{icons.red_dot} The '{measure_name}' measure does not exist in the '{self._dataset}' semantic model within the '{self._workspace}'.")            
+        except Exception:
+            raise ValueError(
+                f"{icons.red_dot} The '{measure_name}' measure does not exist in the '{self._dataset}' semantic model within the '{self._workspace}'."
+            )
 
         graphics = [
             "Cylinder",
@@ -2208,7 +2268,9 @@ class TOMWrapper:
         ]
 
         if status_graphic not in graphics:
-            raise ValueError(f"{icons.red_dot} The '{status_graphic}' status graphic is not valid. Please choose from these options: {graphics}.")
+            raise ValueError(
+                f"{icons.red_dot} The '{status_graphic}' status graphic is not valid. Please choose from these options: {graphics}."
+            )
 
         measure_target = True
 
@@ -2216,16 +2278,18 @@ class TOMWrapper:
             float(target)
             tgt = str(target)
             measure_target = False
-        except:
+        except Exception:
             try:
                 tgt = next(
                     format_dax_object_name(m.Parent.Name, m.Name)
                     for m in self.all_measures()
                     if m.Name == target
                 )
-            except:
-                raise ValueError(f"{icons.red_dot} The '{target}' measure does not exist in the '{self._dataset}' semantic model within the '{self._workspace}'.")
-            
+            except Exception:
+                raise ValueError(
+                    f"{icons.red_dot} The '{target}' measure does not exist in the '{self._dataset}' semantic model within the '{self._workspace}'."
+                )
+
         if measure_target:
             expr = f"var x = [{measure_name}]/[{target}]\nreturn"
         else:
@@ -2250,7 +2314,7 @@ class TOMWrapper:
             ms.KPI.TargetExpression = tgt
             ms.KPI.StatusGraphic = status_graphic
             ms.KPI.StatusExpression = expr
-        except:
+        except Exception:
             ms.KPI = kpi
 
     def set_aggregations(self, table_name: str, agg_table_name: str):
@@ -2268,6 +2332,8 @@ class TOMWrapper:
         -------
 
         """
+
+        import Microsoft.AnalysisServices.Tabular as TOM
 
         for c in self.model.Tables[agg_table_name].Columns:
 
@@ -2325,6 +2391,7 @@ class TOMWrapper:
             Defaults to none which resolves to 'Default'.
             `Aggregate valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.aggregatefunction?view=analysisservices-dotnet>`_
         """
+        import Microsoft.AnalysisServices.Tabular as TOM
         import System
 
         values = [
@@ -2348,7 +2415,9 @@ class TOMWrapper:
         )
 
         if value not in values:
-            raise ValueError(f"{icons.red_dot} '{value}' is not a valid value for the SummarizeBy property. These are the valid values: {values}.")
+            raise ValueError(
+                f"{icons.red_dot} '{value}' is not a valid value for the SummarizeBy property. These are the valid values: {values}."
+            )
 
         self.model.Tables[table_name].Columns[column_name].SummarizeBy = (
             System.Enum.Parse(TOM.AggregateFunction, value)
@@ -2364,6 +2433,7 @@ class TOMWrapper:
             The DirectLakeBehavior property value.
             `DirectLakeBehavior valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.directlakebehavior?view=analysisservices-dotnet>`_
         """
+        import Microsoft.AnalysisServices.Tabular as TOM
         import System
 
         direct_lake_behavior = direct_lake_behavior.capitalize()
@@ -2377,7 +2447,9 @@ class TOMWrapper:
         dlValues = ["Automatic", "DirectLakeOnly", "DirectQueryOnly"]
 
         if direct_lake_behavior not in dlValues:
-            raise ValueError(f"{icons.red_dot} The 'direct_lake_behavior' parameter must be one of these values: {dlValues}.")
+            raise ValueError(
+                f"{icons.red_dot} The 'direct_lake_behavior' parameter must be one of these values: {dlValues}."
+            )
 
         self.model.DirectLakeBehavior = System.Enum.Parse(
             TOM.DirectLakeBehavior, direct_lake_behavior
@@ -2475,10 +2547,14 @@ class TOMWrapper:
         import Microsoft.AnalysisServices.Tabular as TOM
 
         if isinstance(objects, str):
-            raise ValueError(f"{icons.red_dot} The 'objects' parameter must be a list of columns/measures.")
+            raise ValueError(
+                f"{icons.red_dot} The 'objects' parameter must be a list of columns/measures."
+            )
 
         if len(objects) == 1:
-            raise ValueError(f"{icons.red_dot} There must be more than one object (column/measure) within the objects parameter.")
+            raise ValueError(
+                f"{icons.red_dot} There must be more than one object (column/measure) within the objects parameter."
+            )
 
         expr = ""
         i = 0
@@ -2514,7 +2590,9 @@ class TOMWrapper:
                     )
                     success = True
             if not success:
-                raise ValueError(f"{icons.red_dot} The '{obj}' object was not found in the '{self._dataset}' semantic model.")
+                raise ValueError(
+                    f"{icons.red_dot} The '{obj}' object was not found in the '{self._dataset}' semantic model."
+                )
             else:
                 i += 1
 
@@ -2682,7 +2760,7 @@ class TOMWrapper:
         try:
             runId = self.get_annotation_value(object=self.model, name="Vertipaq_Run")
             runId = str(int(runId) + 1)
-        except:
+        except Exception:
             runId = "1"
         self.set_annotation(object=self.model, name="Vertipaq_Run", value=runId)
 
@@ -3016,7 +3094,14 @@ class TOMWrapper:
         import Microsoft.AnalysisServices.Tabular as TOM
 
         def create_pattern(a, b):
-            return r"(?<!" + re.escape(a) + r"\[)(?<!" + re.escape(a) + r"'\[)" + re.escape(b)
+            return (
+                r"(?<!"
+                + re.escape(a)
+                + r"\[)(?<!"
+                + re.escape(a)
+                + r"'\[)"
+                + re.escape(b)
+            )
 
         for obj in self.depends_on(object=object, dependencies=dependencies):
             if obj.ObjectType == TOM.ObjectType.Column:
@@ -3184,16 +3269,24 @@ class TOMWrapper:
         rolling_window_granularity = rolling_window_granularity.capitalize()
 
         if incremental_granularity not in incGran:
-            raise ValueError(f"{icons.red_dot} Invalid 'incremental_granularity' value. Please choose from the following options: {incGran}.")
- 
+            raise ValueError(
+                f"{icons.red_dot} Invalid 'incremental_granularity' value. Please choose from the following options: {incGran}."
+            )
+
         if rolling_window_granularity not in incGran:
-            raise ValueError(f"{icons.red_dot} Invalid 'rolling_window_granularity' value. Please choose from the following options: {incGran}.")
+            raise ValueError(
+                f"{icons.red_dot} Invalid 'rolling_window_granularity' value. Please choose from the following options: {incGran}."
+            )
 
         if rolling_window_periods < 1:
-            raise ValueError(f"{icons.red_dot} Invalid 'rolling_window_periods' value. Must be a value greater than 0.")
-            
+            raise ValueError(
+                f"{icons.red_dot} Invalid 'rolling_window_periods' value. Must be a value greater than 0."
+            )
+
         if incremental_periods < 1:
-            raise ValueError(f"{icons.red_dot} Invalid 'incremental_periods' value. Must be a value greater than 0.")
+            raise ValueError(
+                f"{icons.red_dot} Invalid 'incremental_periods' value. Must be a value greater than 0."
+            )
 
         t = self.model.Tables[table_name]
 
@@ -3201,7 +3294,9 @@ class TOMWrapper:
             dc = t.Columns[detect_data_changes_column]
 
             if dc.DataType != TOM.DataType.DateTime:
-                raise ValueError(f"{icons.red_dot} Invalid 'detect_data_changes_column' parameter. This column must be of DateTime data type.")
+                raise ValueError(
+                    f"{icons.red_dot} Invalid 'detect_data_changes_column' parameter. This column must be of DateTime data type."
+                )
 
         rp = TOM.BasicRefreshPolicy()
         rp.IncrementalPeriods = incremental_periods
@@ -3281,16 +3376,24 @@ class TOMWrapper:
         rolling_window_granularity = rolling_window_granularity.capitalize()
 
         if incremental_granularity not in incGran:
-            raise ValueError(f"{icons.red_dot} Invalid 'incremental_granularity' value. Please choose from the following options: {incGran}.")
-            
+            raise ValueError(
+                f"{icons.red_dot} Invalid 'incremental_granularity' value. Please choose from the following options: {incGran}."
+            )
+
         if rolling_window_granularity not in incGran:
-            raise ValueError(f"{icons.red_dot} Invalid 'rolling_window_granularity' value. Please choose from the following options: {incGran}.")
+            raise ValueError(
+                f"{icons.red_dot} Invalid 'rolling_window_granularity' value. Please choose from the following options: {incGran}."
+            )
 
         if rolling_window_periods < 1:
-            raise ValueError(f"{icons.red_dot} Invalid 'rolling_window_periods' value. Must be a value greater than 0.")
+            raise ValueError(
+                f"{icons.red_dot} Invalid 'rolling_window_periods' value. Must be a value greater than 0."
+            )
 
         if incremental_periods < 1:
-            raise ValueError(f"{icons.red_dot} Invalid 'incremental_periods' value. Must be a value greater than 0.")
+            raise ValueError(
+                f"{icons.red_dot} Invalid 'incremental_periods' value. Must be a value greater than 0."
+            )
 
         date_format = "%m/%d/%Y"
 
@@ -3305,7 +3408,9 @@ class TOMWrapper:
         end_day = date_obj_end.day
 
         if date_obj_end <= date_obj_start:
-            raise ValueError(f"{icons.red_dot} Invalid 'start_date' or 'end_date'. The 'end_date' must be after the 'start_date'.")
+            raise ValueError(
+                f"{icons.red_dot} Invalid 'start_date' or 'end_date'. The 'end_date' must be after the 'start_date'."
+            )
 
         t = self.model.Tables[table_name]
 
@@ -3314,14 +3419,18 @@ class TOMWrapper:
         dType = c.DataType
 
         if dType != TOM.DataType.DateTime:
-            raise ValueError(f"{icons.red_dot} The {fcName} column is of '{dType}' data type. The column chosen must be of DateTime data type.")
+            raise ValueError(
+                f"{icons.red_dot} The {fcName} column is of '{dType}' data type. The column chosen must be of DateTime data type."
+            )
 
         if detect_data_changes_column is not None:
             dc = t.Columns[detect_data_changes_column]
             dcType = dc.DataType
 
             if dcType != TOM.DataType.DateTime:
-                raise ValueError(f"{icons.red_dot} Invalid 'detect_data_changes_column' parameter. This column must be of DateTime data type.")
+                raise ValueError(
+                    f"{icons.red_dot} Invalid 'detect_data_changes_column' parameter. This column must be of DateTime data type."
+                )
 
         # Start changes:
 
@@ -3329,7 +3438,9 @@ class TOMWrapper:
         i = 0
         for p in t.Partitions:
             if p.SourceType != TOM.PartitionSourceType.M:
-                raise ValueError(f"{icons.red_dot} Invalid partition source type. Incremental refresh can only be set up if the table's partition is an M-partition.")
+                raise ValueError(
+                    f"{icons.red_dot} Invalid partition source type. Incremental refresh can only be set up if the table's partition is an M-partition."
+                )
 
             elif i == 0:
                 text = p.Expression
@@ -3442,9 +3553,13 @@ class TOMWrapper:
         ht = self.is_hybrid_table(table_name=table_name)
 
         if not ht:
-            raise ValueError(f"{icons.red_dot} The `data coverage definition <https://learn.microsoft.com/analysis-services/tom/table-partitions?view=asallproducts-allversions>`_ property is only applicable to `hybrid tables <https://learn.microsoft.com/power-bi/connect-data/service-dataset-modes-understand#hybrid-tables>`_. See the documentation: {doc}.")
+            raise ValueError(
+                f"{icons.red_dot} The `data coverage definition <https://learn.microsoft.com/analysis-services/tom/table-partitions?view=asallproducts-allversions>`_ property is only applicable to `hybrid tables <https://learn.microsoft.com/power-bi/connect-data/service-dataset-modes-understand#hybrid-tables>`_. See the documentation: {doc}."
+            )
         if p.Mode != TOM.ModeType.DirectQuery:
-            raise ValueError(f"{icons.red_dot} The `data coverage definition <https://learn.microsoft.com/analysis-services/tom/table-partitions?view=asallproducts-allversions>`_ property is only applicable to the DirectQuery partition of a `hybrid table <https://learn.microsoft.com/power-bi/connect-data/service-dataset-modes-understand#hybrid-tables>`_. See the documentation: {doc}.")
+            raise ValueError(
+                f"{icons.red_dot} The `data coverage definition <https://learn.microsoft.com/analysis-services/tom/table-partitions?view=asallproducts-allversions>`_ property is only applicable to the DirectQuery partition of a `hybrid table <https://learn.microsoft.com/power-bi/connect-data/service-dataset-modes-understand#hybrid-tables>`_. See the documentation: {doc}."
+            )
 
         dcd = TOM.DataCoverageDefinition()
         dcd.Expression = expression
@@ -3471,7 +3586,9 @@ class TOMWrapper:
         value = value.capitalize()
 
         if value not in values:
-            raise ValueError(f"{icons.red_dot} Invalid encoding hint value. Please choose from these options: {values}.")
+            raise ValueError(
+                f"{icons.red_dot} Invalid encoding hint value. Please choose from these options: {values}."
+            )
 
         self.model.Tables[table_name].Columns[column_name].EncodingHint = (
             System.Enum.Parse(TOM.EncodingHintType, value)
@@ -3513,7 +3630,9 @@ class TOMWrapper:
             value = "Boolean"
 
         if value not in values:
-            raise ValueError(f"{icons.red_dot} Invalid data type. Please choose from these options: {values}.")
+            raise ValueError(
+                f"{icons.red_dot} Invalid data type. Please choose from these options: {values}."
+            )
 
         self.model.Tables[table_name].Columns[column_name].DataType = System.Enum.Parse(
             TOM.DataType, value
@@ -3545,7 +3664,9 @@ class TOMWrapper:
         for t in time_intel:
             t = t.capitalize()
             if t not in [time_intel_options]:
-                raise ValueError(f"{icons.red_dot} The '{t}' time intelligence variation is not supported. Valid options: {time_intel_options}.")
+                raise ValueError(
+                    f"{icons.red_dot} The '{t}' time intelligence variation is not supported. Valid options: {time_intel_options}."
+                )
 
         # Validate measure and extract table name
         for m in self.all_measures():
@@ -3553,11 +3674,15 @@ class TOMWrapper:
                 table_name = m.Parent.Name
 
         if table_name is None:
-            raise ValueError(f"{icons.red_dot} The '{measure_name}' is not a valid measure in the '{self._dataset}' semantic model within the '{self._workspace}' workspace.")
+            raise ValueError(
+                f"{icons.red_dot} The '{measure_name}' is not a valid measure in the '{self._dataset}' semantic model within the '{self._workspace}' workspace."
+            )
 
         # Validate date table
         if not self.is_date_table(date_table):
-            raise ValueError(f"{icons.red_dot} The '{date_table}' table is not a valid date table in the '{self._dataset}' wemantic model within the '{self._workspace}' workspace.")
+            raise ValueError(
+                f"{icons.red_dot} The '{date_table}' table is not a valid date table in the '{self._dataset}' wemantic model within the '{self._workspace}' workspace."
+            )
 
         # Extract date key from date table
         for c in self.all_columns():
@@ -3575,15 +3700,21 @@ class TOMWrapper:
                     expression=expr,
                 )
 
-    def update_m_partition(self, table_name: str, partition_name: str, expression: Optional[str | None] = None, mode: Optional[str | None] = None, description: Optional[str | None] = None):
-
+    def update_m_partition(
+        self,
+        table_name: str,
+        partition_name: str,
+        expression: Optional[str | None] = None,
+        mode: Optional[str | None] = None,
+        description: Optional[str | None] = None,
+    ):
         """
         Updates an M partition for a table within a semantic model.
 
         Parameters
         ----------
         table_name : str
-            Name of the table.       
+            Name of the table.
         partition_name : str
             Name of the partition.
         expression : str, default=None
@@ -3602,7 +3733,9 @@ class TOMWrapper:
 
         p = self.model.Tables[table_name].Partitions[partition_name]
         if p.SourceType != TOM.PartitionSourceType.M:
-            raise ValueError(f"Invalid partition source type. This function is only for M partitions.")
+            raise ValueError(
+                f"{icons.red_dot} Invalid partition source type. This function is only for M partitions."
+            )
         if expression is not None:
             p.Source.Expression = expression
         if mode is not None:
@@ -3610,15 +3743,16 @@ class TOMWrapper:
         if description is not None:
             p.Description = description
 
-    def set_sort_by_column(self, table_name: str, column_name: str, sort_by_column: str):
-
+    def set_sort_by_column(
+        self, table_name: str, column_name: str, sort_by_column: str
+    ):
         """
         Sets the sort by column for a column in a semantic model.
 
         Parameters
         ----------
         table_name : str
-            Name of the table.       
+            Name of the table.
         column_name : str
             Name of the column.
         sort_by_column : str
@@ -3630,19 +3764,20 @@ class TOMWrapper:
         sbc = self.model.Tables[table_name].Columns[sort_by_column]
 
         if sbc.DataType != TOM.DataType.Int64:
-            raise ValueError(f"Invalid sort by column data type. The sort by column must be of 'Int64' data type.")
-        
+            raise ValueError(
+                f"{icons.red_dot} Invalid sort by column data type. The sort by column must be of 'Int64' data type."
+            )
+
         self.model.Tables[table_name].Columns[column_name].SortByColumn = sbc
 
     def remove_sort_by_column(self, table_name: str, column_name: str):
-
         """
         Removes the sort by column for a column in a semantic model.
 
         Parameters
         ----------
         table_name : str
-            Name of the table.       
+            Name of the table.
         column_name : str
             Name of the column.
         """

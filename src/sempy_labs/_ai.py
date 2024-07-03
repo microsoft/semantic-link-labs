@@ -14,7 +14,6 @@ def optimize_semantic_model(dataset: str, workspace: Optional[str] = None):
     from ._model_bpa import run_model_bpa
     from .directlake._fallback import check_fallback_reason
     from ._helper_functions import format_dax_object_name
-    from sempy_labs.tom import connect_semantic_model
 
     modelBPA = run_model_bpa(
         dataset=dataset, workspace=workspace, return_dataframe=True
@@ -41,7 +40,8 @@ def optimize_semantic_model(dataset: str, workspace: Optional[str] = None):
 
         if len(fallback_filt) > 0:
             print(
-                f"{icons.yellow_dot} The '{dataset}' semantic model is a Direct Lake semantic model which contains views. Since views always fall back to DirectQuery, it is recommended to only use lakehouse tables and not views."
+                f"{icons.yellow_dot} The '{dataset}' semantic model is a Direct Lake semantic model which contains views. "
+                "Since views always fall back to DirectQuery, it is recommended to only use lakehouse tables and not views."
             )
 
     # Potential model reduction estimate
@@ -79,7 +79,9 @@ def generate_measure_descriptions(
 
     validModels = ["gpt-35-turbo", "gpt-35-turbo-16k", "gpt-4"]
     if gpt_model not in validModels:
-        raise ValueError(f"{icons.red_dot} The '{gpt_model}' model is not a valid model. Enter a gpt_model from this list: {validModels}.")
+        raise ValueError(
+            f"{icons.red_dot} The '{gpt_model}' model is not a valid model. Enter a gpt_model from this list: {validModels}."
+        )
 
     dfM = fabric.list_measures(dataset=dataset, workspace=workspace)
 
@@ -114,8 +116,7 @@ def generate_measure_descriptions(
     )
 
     # Update the model to use the new descriptions
-    #with connect_semantic_model(dataset=dataset, workspace=workspace, readonly=False) as tom:
-    
+    # with connect_semantic_model(dataset=dataset, workspace=workspace, readonly=False) as tom:
 
     # for t in m.Tables:
     # tName = t.Name
@@ -146,10 +147,10 @@ def generate_aggs(
     import System
 
     # columns = {
-    #'SalesAmount': 'Sum',
-    #'ProductKey': 'GroupBy',
-    #'OrderDateKey': 'GroupBy'
-    # }
+    # 'SalesAmount': 'Sum',
+    # 'ProductKey': 'GroupBy',
+    # 'OrderDateKey': 'GroupBy'
+    #  }
 
     if workspace is None:
         workspace_id = fabric.get_workspace_id()
@@ -171,33 +172,44 @@ def generate_aggs(
     numericTypes = ["Int64", "Double", "Decimal"]
 
     if any(value not in aggTypes for value in columns.values()):
-        raise ValueError(f"{icons.red_dot} Invalid aggregation type(s) have been specified in the 'columns' parameter. Valid aggregation types: {aggTypes}.")
+        raise ValueError(
+            f"{icons.red_dot} Invalid aggregation type(s) have been specified in the 'columns' parameter. Valid aggregation types: {aggTypes}."
+        )
 
     dfC = fabric.list_columns(dataset=dataset, workspace=workspace)
     dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
     dfM = fabric.list_measures(dataset=dataset, workspace=workspace)
     dfR = fabric.list_relationships(dataset=dataset, workspace=workspace)
     if not any(r["Mode"] == "DirectLake" for i, r in dfP.iterrows()):
-        raise ValueError(f"{icons.red_dot} The '{dataset}' semantic model within the '{workspace}' workspace is not in Direct Lake mode. This function is only relevant for Direct Lake semantic models.")
-        
+        raise ValueError(
+            f"{icons.red_dot} The '{dataset}' semantic model within the '{workspace}' workspace is not in Direct Lake mode. This function is only relevant for Direct Lake semantic models."
+        )
+
     dfC_filtT = dfC[dfC["Table Name"] == table_name]
 
     if len(dfC_filtT) == 0:
-        raise ValueError(f"{icons.red_dot} The '{table_name}' table does not exist in the '{dataset}' semantic model within the '{workspace}' workspace.")
+        raise ValueError(
+            f"{icons.red_dot} The '{table_name}' table does not exist in the '{dataset}' semantic model within the '{workspace}' workspace."
+        )
 
     dfC_filt = dfC[
         (dfC["Table Name"] == table_name) & (dfC["Column Name"].isin(columnValues))
     ]
 
     if len(columns) != len(dfC_filt):
-        raise ValueError(f"{icons.red_dot} Columns listed in '{columnValues}' do not exist in the '{table_name}' table in the '{dataset}' semantic model within the '{workspace}' workspace.")
+        raise ValueError(
+            f"{icons.red_dot} Columns listed in '{columnValues}' do not exist in the '{table_name}' table in the '{dataset}' semantic model within the '{workspace}' workspace."
+        )
 
     # Check if doing sum/count/min/max etc. on a non-number column
-    for col, agg in columns.items():
-        dfC_col = dfC_filt[dfC_filt["Column Name"] == col]
+    for cm, agg in columns.items():
+        dfC_col = dfC_filt[dfC_filt["Column Name"] == cm]
         dataType = dfC_col["Data Type"].iloc[0]
         if agg in aggTypesAggregate and dataType not in numericTypes:
-            raise ValueError(f"{icons.red_dot} The '{col}' column in the '{table_name}' table is of '{dataType}' data type. Only columns of '{numericTypes}' data types can be aggregated as '{aggTypesAggregate}' aggregation types.")            
+            raise ValueError(
+                f"{icons.red_dot} The '{cm}' column in the '{table_name}' table is of '{dataType}' data type. Only columns of '{numericTypes}' data types"
+                f" can be aggregated as '{aggTypesAggregate}' aggregation types."
+            )
 
     # Create/update lakehouse delta agg table
     aggSuffix = "_agg"
@@ -213,7 +225,10 @@ def generate_aggs(
     dfI_filt = dfI[(dfI["Id"] == sqlEndpointId)]
 
     if len(dfI_filt) == 0:
-        raise ValueError(f"{icons.red_dot} The lakehouse (SQL Endpoint) used by the '{dataset}' semantic model does not reside in the '{lakehouse_workspace}' workspace. Please update the lakehouse_workspace parameter.")
+        raise ValueError(
+            f"{icons.red_dot} The lakehouse (SQL Endpoint) used by the '{dataset}' semantic model does not reside in"
+            f" the '{lakehouse_workspace}' workspace. Please update the lakehouse_workspace parameter."
+        )
 
     lakehouseName = dfI_filt["Display Name"].iloc[0]
     lakehouse_id = resolve_lakehouse_id(
@@ -223,8 +238,8 @@ def generate_aggs(
     # Generate SQL query
     query = "SELECT"
     groupBy = "\nGROUP BY"
-    for col, agg in columns.items():
-        colFilt = dfC_filt[dfC_filt["Column Name"] == col]
+    for cm, agg in columns.items():
+        colFilt = dfC_filt[dfC_filt["Column Name"] == cm]
         sourceCol = colFilt["Source"].iloc[0]
 
         if agg == "GroupBy":
@@ -328,7 +343,9 @@ def generate_aggs(
             col.DataType = System.Enum.Parse(TOM.DataType, dType)
 
             m.Tables[aggTableName].Columns.Add(col)
-            print(f"{icons.green_dot} The '{aggTableName}'[{cName}] column has been added.")
+            print(
+                f"{icons.green_dot} The '{aggTableName}'[{cName}] column has been added."
+            )
 
     # Create relationships
     relMap = {"m": "Many", "1": "One", "0": "None"}
@@ -367,7 +384,7 @@ def generate_aggs(
                 print(
                     f"{icons.green_dot} '{aggTableName}'[{fromColumn}] -> '{toTable}'[{toColumn}] relationship has been added."
                 )
-            except:
+            except Exception:
                 print(
                     f"{icons.red_dot} '{aggTableName}'[{fromColumn}] -> '{toTable}'[{toColumn}] relationship has not been created."
                 )
@@ -378,11 +395,11 @@ def generate_aggs(
                 print(
                     f"{icons.green_dot} '{fromTable}'[{fromColumn}] -> '{aggTableName}'[{toColumn}] relationship has been added."
                 )
-            except:
+            except Exception:
                 print(
                     f"{icons.red_dot} '{fromTable}'[{fromColumn}] -> '{aggTableName}'[{toColumn}] relationship has not been created."
                 )
-    f"Relationship creation is complete."
+    "Relationship creation is complete."
 
     # Create IF measure
     f"\n{icons.in_progress} Creating measure to check if the agg table can be used..."

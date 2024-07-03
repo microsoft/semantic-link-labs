@@ -1,6 +1,7 @@
-import sempy
 import sempy.fabric as fabric
-import json, os, shutil
+import json
+import os
+import shutil
 import xml.etree.ElementTree as ET
 from sempy_labs._list_functions import list_tables
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
@@ -11,10 +12,13 @@ import sempy_labs._icons as icons
 
 @log
 def create_pqt_file(
-    dataset: str, workspace: Optional[str] = None, file_name: Optional[str] = 'PowerQueryTemplate'
+    dataset: str,
+    workspace: Optional[str] = None,
+    file_name: Optional[str] = "PowerQueryTemplate",
 ):
     """
-    Dynamically generates a `Power Query Template <https://learn.microsoft.com/power-query/power-query-template>`_ file based on the semantic model. The .pqt file is saved within the Files section of your lakehouse.
+    Dynamically generates a `Power Query Template <https://learn.microsoft.com/power-query/power-query-template>`_ file based on the semantic model. The .pqt file is
+     saved within the Files section of your lakehouse.
 
     Parameters
     ----------
@@ -31,7 +35,9 @@ def create_pqt_file(
     lakeAttach = lakehouse_attached()
 
     if lakeAttach is False:
-        raise ValueError(f"{icons.red_dot} In order to run the 'create_pqt_file' function, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook.")
+        raise ValueError(
+            f"{icons.red_dot} In order to run the 'create_pqt_file' function, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
+        )
 
     workspace = fabric.resolve_workspace_name(workspace)
 
@@ -188,16 +194,16 @@ def create_pqt_file(
         ns = "http://schemas.openxmlformats.org/package/2006/content-types"
         ET.register_namespace("", ns)
         types = ET.Element("{%s}Types" % ns)
-        default1 = ET.SubElement(
-            types,
-            "{%s}Default" % ns,
-            {"Extension": "json", "ContentType": "application/json"},
-        )
-        default2 = ET.SubElement(
-            types,
-            "{%s}Default" % ns,
-            {"Extension": "pq", "ContentType": "application/x-ms-m"},
-        )
+        # default1 = ET.SubElement(
+        #    types,
+        #    "{%s}Default" % ns,
+        #    {"Extension": "json", "ContentType": "application/json"},
+        # )
+        # default2 = ET.SubElement(
+        #    types,
+        #    "{%s}Default" % ns,
+        #    {"Extension": "pq", "ContentType": "application/x-ms-m"},
+        # )
         xmlDocument = ET.ElementTree(types)
         xmlFileName = "[Content_Types].xml"
         xmlFilePath = os.path.join(subFolderPath, xmlFileName)

@@ -1,4 +1,3 @@
-import sempy
 import sempy.fabric as fabric
 from sempy_labs._helper_functions import (
     resolve_lakehouse_id,
@@ -8,6 +7,7 @@ from sempy_labs._helper_functions import (
 from typing import Optional, Tuple
 from uuid import UUID
 import sempy_labs._icons as icons
+
 
 def get_direct_lake_lakehouse(
     dataset: str,
