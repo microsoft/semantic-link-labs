@@ -5,13 +5,14 @@ from sempy_labs._helper_functions import resolve_lakehouse_name
 from typing import List, Optional, Union
 import sempy_labs._icons as icons
 
+
 def update_direct_lake_partition_entity(
     dataset: str,
     table_name: Union[str, List[str]],
     entity_name: Union[str, List[str]],
     workspace: Optional[str] = None,
     lakehouse: Optional[str] = None,
-    lakehouse_workspace: Optional[str] = None
+    lakehouse_workspace: Optional[str] = None,
 ):
     """
     Remaps a table (or tables) in a Direct Lake semantic model to a table in a lakehouse.
@@ -53,14 +54,18 @@ def update_direct_lake_partition_entity(
         entity_name = [entity_name]
 
     if len(table_name) != len(entity_name):
-        raise ValueError(f"{icons.red_dot} The 'table_name' and 'entity_name' arrays must be of equal length.")
+        raise ValueError(
+            f"{icons.red_dot} The 'table_name' and 'entity_name' arrays must be of equal length."
+        )
 
     with connect_semantic_model(
         dataset=dataset, readonly=False, workspace=workspace
     ) as tom:
 
         if not tom.is_direct_lake():
-            raise ValueError(f"{icons.red_dot} The '{dataset}' semantic model within the '{workspace}' workspace is not in Direct Lake mode.")
+            raise ValueError(
+                f"{icons.red_dot} The '{dataset}' semantic model within the '{workspace}' workspace is not in Direct Lake mode."
+            )
 
         for tName in table_name:
             i = table_name.index(tName)
@@ -71,4 +76,6 @@ def update_direct_lake_partition_entity(
                     f"{icons.green_dot} The '{tName}' table in the '{dataset}' semantic model has been updated to point to the '{eName}' table in the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace."
                 )
             except Exception as e:
-                raise ValueError(f"{icons.red_dot} The '{tName}' table in the '{dataset}' semantic model has not been updated.") from e
+                raise ValueError(
+                    f"{icons.red_dot} The '{tName}' table in the '{dataset}' semantic model has not been updated."
+                ) from e

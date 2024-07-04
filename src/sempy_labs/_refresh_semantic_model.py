@@ -79,7 +79,9 @@ def refresh_semantic_model(
     ]
 
     if refresh_type not in refreshTypes:
-        raise ValueError(f"{icons.red_dot} Invalid refresh type. Refresh type must be one of these values: {refreshTypes}.")
+        raise ValueError(
+            f"{icons.red_dot} Invalid refresh type. Refresh type must be one of these values: {refreshTypes}."
+        )
 
     if len(objects) == 0:
         requestID = fabric.refresh_dataset(
@@ -114,7 +116,9 @@ def refresh_semantic_model(
         if status == "Completed":
             break
         elif status == "Failed":
-            raise ValueError(f"{icons.red_dot} The refresh of the '{dataset}' semantic model within the '{workspace}' workspace has failed.")
+            raise ValueError(
+                f"{icons.red_dot} The refresh of the '{dataset}' semantic model within the '{workspace}' workspace has failed."
+            )
         elif status == "Cancelled":
             print(
                 f"{icons.yellow_dot} The refresh of the '{dataset}' semantic model within the '{workspace}' workspace has been cancelled."
@@ -155,7 +159,9 @@ def cancel_dataset_refresh(
 
     if request_id is None:
         if len(rr_filt) == 0:
-            raise ValueError(f"{icons.red_dot} There are no active Enhanced API refreshes of the '{dataset}' semantic model within the '{workspace}' workspace.")
+            raise ValueError(
+                f"{icons.red_dot} There are no active Enhanced API refreshes of the '{dataset}' semantic model within the '{workspace}' workspace."
+            )
 
         request_id = rr_filt["Request Id"].iloc[0]
 

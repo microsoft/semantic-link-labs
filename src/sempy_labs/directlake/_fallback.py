@@ -4,6 +4,7 @@ import numpy as np
 from typing import List, Optional, Union
 import sempy_labs._icons as icons
 
+
 def check_fallback_reason(dataset: str, workspace: Optional[str] = None):
     """
     Shows the reason a table in a Direct Lake semantic model would fallback to DirectQuery.
@@ -29,7 +30,9 @@ def check_fallback_reason(dataset: str, workspace: Optional[str] = None):
     dfP_filt = dfP[dfP["Mode"] == "DirectLake"]
 
     if len(dfP_filt) == 0:
-        raise ValueError(f"{icons.red_dot} The '{dataset}' semantic model is not in Direct Lake. This function is only applicable to Direct Lake semantic models.")
+        raise ValueError(
+            f"{icons.red_dot} The '{dataset}' semantic model is not in Direct Lake. This function is only applicable to Direct Lake semantic models."
+        )
     else:
         df = fabric.evaluate_dax(
             dataset=dataset,

@@ -18,6 +18,7 @@ from typing import Optional
 import sempy_labs._icons as icons
 from sempy._utils._log import log
 
+
 @log
 def get_lakehouse_tables(
     lakehouse: Optional[str] = None,
@@ -174,8 +175,10 @@ def get_lakehouse_tables(
     if export:
         lakeAttach = lakehouse_attached()
         if lakeAttach is False:
-            raise ValueError(f"{icons.red_dot} In order to save the report.json file, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook.")
-            
+            raise ValueError(
+                f"{icons.red_dot} In order to save the report.json file, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
+            )
+
         spark = SparkSession.builder.getOrCreate()
 
         lakehouse_id = fabric.get_lakehouse_id()
