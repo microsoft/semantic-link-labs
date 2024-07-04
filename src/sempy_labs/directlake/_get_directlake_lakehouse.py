@@ -9,6 +9,7 @@ from typing import Optional, Tuple
 from uuid import UUID
 import sempy_labs._icons as icons
 
+
 def get_direct_lake_lakehouse(
     dataset: str,
     workspace: Optional[str] = None,

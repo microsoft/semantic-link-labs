@@ -121,7 +121,9 @@ def refresh_calc_tables(dataset: str, workspace: Optional[str] = None):
                                 f"{icons.green_dot} Calculated table '{tName}' has been refreshed as the '{delta_table_name.lower()}' table in the lakehouse."
                             )
                         except Exception as e:
-                            raise ValueError(f"{icons.red_dot} Failed to create calculated table '{tName}' as a delta table in the lakehouse.") from e
+                            raise ValueError(
+                                f"{icons.red_dot} Failed to create calculated table '{tName}' as a delta table in the lakehouse."
+                            ) from e
 
         except Exception as e:
             if datetime.datetime.now() - start_time > timeout:

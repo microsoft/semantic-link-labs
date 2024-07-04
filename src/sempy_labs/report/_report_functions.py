@@ -55,7 +55,9 @@ def get_report_json(
     dfI_filt = dfI[(dfI["Display Name"] == report)]
 
     if len(dfI_filt) == 0:
-        raise ValueError(f"{icons.red_dot} The '{report}' report does not exist in the '{workspace}' workspace.")        
+        raise ValueError(
+            f"{icons.red_dot} The '{report}' report does not exist in the '{workspace}' workspace."
+        )
 
     itemId = dfI_filt["Id"].iloc[0]
     response = client.post(
@@ -71,7 +73,9 @@ def get_report_json(
     if save_to_file_name is not None:
         lakeAttach = lakehouse_attached()
         if lakeAttach is False:
-            raise ValueError(f"{icons.red_dot} In order to save the report.json file, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook.")
+            raise ValueError(
+                f"{icons.red_dot} In order to save the report.json file, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
+            )
 
         lakehouse_id = fabric.get_lakehouse_id()
         lakehouse = resolve_lakehouse_name(lakehouse_id, workspace)
@@ -185,7 +189,9 @@ def export_report(
     lakeAttach = lakehouse_attached()
 
     if lakeAttach is False:
-        raise ValueError(f"{icons.red_dot} In order to run the 'export_report' function, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook.")
+        raise ValueError(
+            f"{icons.red_dot} In order to run the 'export_report' function, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
+        )
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
@@ -195,10 +201,14 @@ def export_report(
         visual_name = [visual_name]
 
     if bookmark_name is not None and (page_name is not None or visual_name is not None):
-        raise ValueError(f"{icons.red_dot} If the 'bookmark_name' parameter is set, the 'page_name' and 'visual_name' parameters must not be set.")
+        raise ValueError(
+            f"{icons.red_dot} If the 'bookmark_name' parameter is set, the 'page_name' and 'visual_name' parameters must not be set."
+        )
 
     if visual_name is not None and page_name is None:
-        raise ValueError(f"{icons.red_dot} If the 'visual_name' parameter is set, the 'page_name' parameter must be set.")
+        raise ValueError(
+            f"{icons.red_dot} If the 'visual_name' parameter is set, the 'page_name' parameter must be set."
+        )
 
     validFormats = {
         "ACCESSIBLEPDF": ".pdf",
@@ -221,7 +231,9 @@ def export_report(
 
     fileExt = validFormats.get(export_format)
     if fileExt is None:
-        raise ValueError(f"{icons.red_dot} The '{export_format}' format is not a valid format for exporting Power BI reports. Please enter a valid format. Options: {validFormats}")
+        raise ValueError(
+            f"{icons.red_dot} The '{export_format}' format is not a valid format for exporting Power BI reports. Please enter a valid format. Options: {validFormats}"
+        )
 
     if file_name is None:
         file_name = report + fileExt
@@ -238,7 +250,9 @@ def export_report(
     ]
 
     if len(dfI_filt) == 0:
-        raise ValueError(f"{icons.red_dot} The '{report}' report does not exist in the '{workspace}' workspace.")
+        raise ValueError(
+            f"{icons.red_dot} The '{report}' report does not exist in the '{workspace}' workspace."
+        )
 
     reportType = dfI_filt["Type"].iloc[0]
 
@@ -259,15 +273,21 @@ def export_report(
     ]
 
     if reportType == "Report" and export_format in paginatedOnly:
-        raise ValueError(f"{icons.red_dot} The '{export_format}' format is only supported for paginated reports.")
+        raise ValueError(
+            f"{icons.red_dot} The '{export_format}' format is only supported for paginated reports."
+        )
 
     if reportType == "PaginatedReport" and export_format in pbiOnly:
-        raise ValueError(f"{icons.red_dot} The '{export_format}' format is only supported for Power BI reports.")
+        raise ValueError(
+            f"{icons.red_dot} The '{export_format}' format is only supported for Power BI reports."
+        )
 
     if reportType == "PaginatedReport" and (
         bookmark_name is not None or page_name is not None or visual_name is not None
     ):
-        raise ValueError(f"{icons.red_dot} Export for paginated reports does not support bookmarks/pages/visuals. Those parameters must not be set for paginated reports.")
+        raise ValueError(
+            f"{icons.red_dot} Export for paginated reports does not support bookmarks/pages/visuals. Those parameters must not be set for paginated reports."
+        )
 
     reportId = dfI_filt["Id"].iloc[0]
     client = fabric.PowerBIRestClient()
@@ -304,14 +324,18 @@ def export_report(
             for page in page_name:
                 dfPage_filt = dfPage[dfPage["Page ID"] == page]
                 if len(dfPage_filt) == 0:
-                    raise ValueError(f"{icons.red_dot} The '{page}' page does not exist in the '{report}' report within the '{workspace}' workspace.")
+                    raise ValueError(
+                        f"{icons.red_dot} The '{page}' page does not exist in the '{report}' report within the '{workspace}' workspace."
+                    )
 
                 page_dict = {"pageName": page}
                 request_body["powerBIReportConfiguration"]["pages"].append(page_dict)
 
     elif page_name is not None and visual_name is not None:
         if len(page_name) != len(visual_name):
-            raise ValueError(f"{icons.red_dot} Each 'visual_name' must map to a single 'page_name'.")
+            raise ValueError(
+                f"{icons.red_dot} Each 'visual_name' must map to a single 'page_name'."
+            )
 
         if reportType == "Report":
             request_body = {"format": export_format, "powerBIReportConfiguration": {}}
@@ -324,7 +348,9 @@ def export_report(
                     (dfVisual["Page ID"] == page) & (dfVisual["Visual ID"] == visual)
                 ]
                 if len(dfVisual_filt) == 0:
-                    raise ValueError(f"{icons.red_dot} The '{visual}' visual does not exist on the '{page}' in the '{report}' report within the '{workspace}' workspace.")
+                    raise ValueError(
+                        f"{icons.red_dot} The '{visual}' visual does not exist on the '{page}' in the '{report}' report within the '{workspace}' workspace."
+                    )
 
                 page_dict = {"pageName": page, "visualName": visual}
                 request_body["powerBIReportConfiguration"]["pages"].append(page_dict)
@@ -359,7 +385,9 @@ def export_report(
             )
             response_body = json.loads(response.content)
         if response_body["status"] == "Failed":
-            raise ValueError(f"{icons.red_dot} The export for the '{report}' report within the '{workspace}' workspace in the '{export_format}' format has failed.")
+            raise ValueError(
+                f"{icons.red_dot} The export for the '{report}' report within the '{workspace}' workspace in the '{export_format}' format has failed."
+            )
         else:
             response = client.get(
                 f"/v1.0/myorg/groups/{workspace_id}/reports/{reportId}/exports/{exportId}/file"
@@ -411,7 +439,9 @@ def clone_report(
     dfI_filt = dfI[(dfI["Display Name"] == report)]
 
     if len(dfI_filt) == 0:
-        raise ValueError(f"{icons.red_dot} The '{report}' report does not exist within the '{workspace}' workspace.")
+        raise ValueError(
+            f"{icons.red_dot} The '{report}' report does not exist within the '{workspace}' workspace."
+        )
 
     reportId = resolve_report_id(report, workspace)
 
@@ -423,7 +453,9 @@ def clone_report(
         dfW_filt = dfW[dfW["Name"] == target_workspace]
 
         if len(dfW_filt) == 0:
-            raise ValueError(f"{icons.red_dot} The '{workspace}' is not a valid workspace.")
+            raise ValueError(
+                f"{icons.red_dot} The '{workspace}' is not a valid workspace."
+            )
 
         target_workspace_id = dfW_filt["Id"].iloc[0]
 
@@ -439,7 +471,9 @@ def clone_report(
         dfD_filt = dfD[dfD["Dataset Name"] == target_dataset]
 
         if len(dfD_filt) == 0:
-            raise ValueError(f"{icons.red_dot} The '{target_dataset}' target dataset does not exist in the '{target_workspace}' workspace.")
+            raise ValueError(
+                f"{icons.red_dot} The '{target_dataset}' target dataset does not exist in the '{target_workspace}' workspace."
+            )
 
         target_dataset_id = dfD_filt["Dataset Id"].iloc[0]
 
@@ -467,7 +501,9 @@ def clone_report(
             f"{icons.green_dot} The '{report}' report has been successfully cloned as the '{cloned_report}' report within the '{target_workspace}' workspace using the '{target_dataset}' semantic model."
         )
     else:
-        raise ValueError(f"{icons.red_dot} POST request failed with status code: {response.status_code}")
+        raise ValueError(
+            f"{icons.red_dot} POST request failed with status code: {response.status_code}"
+        )
 
 
 def launch_report(report: str, workspace: Optional[str] = None):

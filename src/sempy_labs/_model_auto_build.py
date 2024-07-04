@@ -58,7 +58,9 @@ def model_auto_build(
 
     create_blank_semantic_model(dataset=dataset, workspace=workspace)
 
-    with connect_semantic_model(dataset=dataset, workspace=workspace, readonly=False) as tom:
+    with connect_semantic_model(
+        dataset=dataset, workspace=workspace, readonly=False
+    ) as tom:
 
         # DL Only
         expr = get_shared_expression(lakehouse=lakehouse, workspace=lakehouse_workspace)

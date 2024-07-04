@@ -27,5 +27,5 @@ __all__ = [
     "migrate_model_objects_to_semantic_model",
     "migrate_tables_columns_to_semantic_model",
     "migration_validation",
-    "refresh_calc_tables"
+    "refresh_calc_tables",
 ]

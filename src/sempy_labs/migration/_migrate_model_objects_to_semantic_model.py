@@ -8,6 +8,7 @@ from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 
+
 @log
 def migrate_model_objects_to_semantic_model(
     dataset: str,

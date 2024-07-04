@@ -45,7 +45,9 @@ def warm_direct_lake_cache_perspective(
 
     dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
     if not any(r["Mode"] == "DirectLake" for i, r in dfP.iterrows()):
-        raise ValueError(f"{icons.red_dot} The '{dataset}' semantic model in the '{workspace}' workspace is not in Direct Lake mode. This function is specifically for semantic models in Direct Lake mode.")
+        raise ValueError(
+            f"{icons.red_dot} The '{dataset}' semantic model in the '{workspace}' workspace is not in Direct Lake mode. This function is specifically for semantic models in Direct Lake mode."
+        )
 
     dfPersp = fabric.list_perspectives(dataset=dataset, workspace=workspace)
     dfPersp["DAX Object Name"] = format_dax_object_name(
@@ -54,7 +56,9 @@ def warm_direct_lake_cache_perspective(
     dfPersp_filt = dfPersp[dfPersp["Perspective Name"] == perspective]
 
     if len(dfPersp_filt) == 0:
-        raise ValueError(f"{icons.red_dot} The '{perspective} perspective does not exist or contains no objects within the '{dataset}' semantic model in the '{workspace}' workspace.")
+        raise ValueError(
+            f"{icons.red_dot} The '{perspective} perspective does not exist or contains no objects within the '{dataset}' semantic model in the '{workspace}' workspace."
+        )
 
     dfPersp_c = dfPersp_filt[dfPersp_filt["Object Type"] == "Column"]
 
