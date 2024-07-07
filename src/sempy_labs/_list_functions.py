@@ -93,53 +93,14 @@ def list_tables(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
         A pandas dataframe showing the semantic model's tables and their properties.
     """
 
-    from sempy_labs.tom import connect_semantic_model
+    workspace = fabric.resolve_workspace_name()
 
-    if workspace is None:
-        workspace = fabric.resolve_workspace_name()
+    df = fabric.list_tables(dataset=dataset, workspace=workspace, additional_xmla_properties=['RefreshPolicy', 'RefreshPolicy.SourceExpression'])
 
-    df = pd.DataFrame(
-        columns=[
-            "Name",
-            "Type",
-            "Hidden",
-            "Data Category",
-            "Description",
-            "Refresh Policy",
-            "Source Expression",
-        ]
-    )
+    df['Refresh Policy'] = df['Refresh Policy'].notna()
+    df.rename(columns={"Refresh Policy Source Expression": "Source Expression"}, inplace=True)
 
-    with connect_semantic_model(dataset=dataset, readonly=True, workspace=workspace) as tom:
-
-        import Microsoft.AnalysisServices.Tabular as TOM
-
-        for t in tom.model.Tables:
-            tableType = "Table"
-            rPolicy = bool(t.RefreshPolicy)
-            sourceExpression = None
-            if str(t.CalculationGroup) != "None":
-                tableType = "Calculation Group"
-            else:
-                for p in t.Partitions:
-                    if p.SourceType == TOM.PartitionSourceType.Calculated:
-                        tableType = "Calculated Table"
-
-            if rPolicy:
-                sourceExpression = t.RefreshPolicy.SourceExpression
-
-            new_data = {
-                "Name": t.Name,
-                "Type": tableType,
-                "Hidden": t.IsHidden,
-                "Data Category": t.DataCategory,
-                "Description": t.Description,
-                "Refresh Policy": rPolicy,
-                "Source Expression": sourceExpression,
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-        return df
+    return df
 
 
 def list_annotations(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:

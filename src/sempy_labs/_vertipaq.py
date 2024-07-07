@@ -51,6 +51,8 @@ def vertipaq_analyzer(
 
     """
 
+    from sempy_labs.tom import connect_semantic_model
+
     pd.options.mode.copy_on_write = True
     warnings.filterwarnings(
         "ignore", message="createDataFrame attempted Arrow optimization*"
@@ -70,19 +72,20 @@ def vertipaq_analyzer(
     dfR = list_relationships(dataset=dataset, extended=True, workspace=workspace)
     dfR["From Object"] = format_dax_object_name(dfR["From Table"], dfR["From Column"])
     dfR["To Object"] = format_dax_object_name(dfR["To Table"], dfR["To Column"])
-    dfP = fabric.list_partitions(dataset=dataset, extended=True, workspace=workspace)
-    dfD = fabric.list_datasets(
-        workspace=workspace,
-        additional_xmla_properties=["CompatibilityLevel", "Model.DefaultMode"],
-    )
-    dfD = dfD[dfD["Dataset Name"] == dataset]
-    dfD["Compatibility Level"] = dfD["Compatibility Level"].astype(int)
-    isDirectLake = any(r["Mode"] == "DirectLake" for i, r in dfP.iterrows())
+    dfP = fabric.list_partitions(dataset=dataset, extended=True, workspace=workspace)    
+
+    with connect_semantic_model(dataset=dataset, readonly=True, workspace=workspace) as tom:
+        compat_level = tom.model.Model.Database.CompatibilityLevel
+        is_direct_lake = tom.is_direct_lake()
+        def_mode = tom.model.DefaultMode
+        table_count = tom.model.Tables.Count
+        column_count = len(list(tom.all_columns()))
+ 
     dfR["Missing Rows"] = None
 
     # Direct Lake
     if read_stats_from_data:
-        if isDirectLake:
+        if is_direct_lake:
             dfC = pd.merge(
                 dfC,
                 dfP[["Table Name", "Query", "Source Type"]],
@@ -308,7 +311,6 @@ def vertipaq_analyzer(
     )
     dfTable = pd.merge(dfTable, dfTP, on="Table Name", how="left")
     dfTable = pd.merge(dfTable, dfTC, on="Table Name", how="left")
-    dfTable = dfTable.drop_duplicates()  # Drop duplicates (temporary)
     dfTable = dfTable.sort_values(by="Total Size", ascending=False)
     dfTable.reset_index(drop=True, inplace=True)
     export_Table = dfTable.copy()
@@ -359,21 +361,18 @@ def vertipaq_analyzer(
         intList.remove("Missing Rows")
     dfR[intList] = dfR[intList].applymap("{:,}".format)
 
-    ## Partitions
+    # Partitions
     dfP = dfP[
-        ["Table Name", "Partition Name", "Mode", "Record Count", "Segment Count"]
+        ["Table Name", "Partition Name", "Mode", "Record Count", "Segment Count", "Records per Segment"]
     ].sort_values(
         by="Record Count", ascending=False
-    )  # , 'Records per Segment'
-    dfP["Records per Segment"] = round(
-        dfP["Record Count"] / dfP["Segment Count"], 2
-    )  # Remove after records per segment is fixed
+    )
     dfP.reset_index(drop=True, inplace=True)
     export_Part = dfP.copy()
     intList = ["Record Count", "Segment Count", "Records per Segment"]
     dfP[intList] = dfP[intList].applymap("{:,}".format)
 
-    ## Hierarchies
+    # Hierarchies
     dfH_filt = dfH[dfH["Level Ordinal"] == 0]
     dfH_filt = dfH_filt[["Table Name", "Hierarchy Name", "Used Size"]].sort_values(
         by="Used Size", ascending=False
@@ -392,19 +391,14 @@ def vertipaq_analyzer(
         y = total_size / (1024) * 1000
     y = round(y)
 
-    tblCount = len(dfT)
-    colCount = len(dfC_filt)
-    compatLevel = dfD["Compatibility Level"].iloc[0]
-    defMode = dfD["Model Default Mode"].iloc[0]
-
     dfModel = pd.DataFrame(
         {
             "Dataset Name": dataset,
             "Total Size": y,
-            "Table Count": tblCount,
-            "Column Count": colCount,
-            "Compatibility Level": compatLevel,
-            "Default Mode": defMode,
+            "Table Count": table_count,
+            "Column Count": column_count,
+            "Compatibility Level": compat_level,
+            "Default Mode": def_mode,
         },
         index=[0],
     )

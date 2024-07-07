@@ -1,7 +1,7 @@
 import sempy
 import sempy.fabric as fabric
 import pandas as pd
-from sempy_labs._list_functions import list_tables, list_annotations
+from sempy_labs._list_functions import list_tables
 from sempy_labs.tom import connect_semantic_model
 from typing import Optional
 from sempy._utils._log import log
@@ -40,7 +40,7 @@ def list_direct_lake_model_calc_tables(dataset: str, workspace: Optional[str] = 
         if not is_direct_lake:
             raise ValueError(f"{icons.red_dot} The '{dataset}' semantic model is not in Direct Lake mode.")
         else:
-            dfA = list_annotations(dataset, workspace)
+            dfA = fabric.list_annotations(dataset=dataset, workspace=workspace)
             dfT = list_tables(dataset, workspace)
             dfA_filt = dfA[
                 (dfA["Object Type"] == "Model") & (dfA["Annotation Name"].isin(dfT["Name"]))
