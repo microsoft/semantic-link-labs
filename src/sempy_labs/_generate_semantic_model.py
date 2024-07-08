@@ -37,7 +37,9 @@ def create_blank_semantic_model(
     min_compat = 1500
 
     if compatibility_level < min_compat:
-        raise ValueError(f"{icons.red_dot} Compatiblity level must be at least {min_compat}.")
+        raise ValueError(
+            f"{icons.red_dot} Compatiblity level must be at least {min_compat}."
+        )
 
     tmsl = f"""
   {{
@@ -90,7 +92,9 @@ def create_semantic_model_from_bim(
     dfI_filt = dfI[(dfI["Display Name"] == dataset)]
 
     if len(dfI_filt) > 0:
-        raise ValueError(f"{icons.red_dot} '{dataset}' already exists as a semantic model in the '{workspace}' workspace.")
+        raise ValueError(
+            f"{icons.red_dot} '{dataset}' already exists as a semantic model in the '{workspace}' workspace."
+        )
 
     client = fabric.FabricRestClient()
     defPBIDataset = {"version": "1.0", "settings": {}}

@@ -6,6 +6,7 @@ from sempy._utils._log import log
 from sempy_labs._helper_functions import resolve_workspace_name_and_id
 import sempy_labs._icons as icons
 
+
 @log
 def export_model_to_onelake(
     dataset: str,
@@ -42,7 +43,9 @@ def export_model_to_onelake(
     dfD_filt = dfD[dfD["Dataset Name"] == dataset]
 
     if len(dfD_filt) == 0:
-        raise ValueError(f"{icons.red_dot} The '{dataset}' semantic model does not exist in the '{workspace}' workspace.")
+        raise ValueError(
+            f"{icons.red_dot} The '{dataset}' semantic model does not exist in the '{workspace}' workspace."
+        )
 
     tmsl = f"""
     {{
@@ -65,8 +68,10 @@ def export_model_to_onelake(
             f"{icons.green_dot} The '{dataset}' semantic model's tables have been exported as delta tables to the '{workspace}' workspace.\n"
         )
     except Exception as e:
-        raise ValueError(f"{icons.red_dot} The '{dataset}' semantic model's tables have not been exported as delta tables to the '{workspace}' workspace.\nMake sure you enable OneLake integration for the '{dataset}' semantic model. Follow the instructions here: https://learn.microsoft.com/power-bi/enterprise/onelake-integration-overview#enable-onelake-integration") from e
-        
+        raise ValueError(
+            f"{icons.red_dot} The '{dataset}' semantic model's tables have not been exported as delta tables to the '{workspace}' workspace.\nMake sure you enable OneLake integration for the '{dataset}' semantic model. Follow the instructions here: https://learn.microsoft.com/power-bi/enterprise/onelake-integration-overview#enable-onelake-integration"
+        ) from e
+
     # Create shortcuts if destination lakehouse is specified
     if destination_lakehouse is not None:
         # Destination...
@@ -142,4 +147,6 @@ def export_model_to_onelake(
                 else:
                     print(response.status_code)
             except Exception as e:
-                raise ValueError(f"{icons.red_dot} Failed to create a shortcut for the '{tableName}' table.") from e
+                raise ValueError(
+                    f"{icons.red_dot} Failed to create a shortcut for the '{tableName}' table."
+                ) from e

@@ -7,6 +7,7 @@ from typing import List, Optional, Union
 import sempy_labs._icons as icons
 from sempy._utils._log import log
 
+
 def lakehouse_attached() -> bool:
     """
     Identifies if a lakehouse is attached to the notebook.
@@ -24,6 +25,7 @@ def lakehouse_attached() -> bool:
         return True
     else:
         return False
+
 
 @log
 def optimize_lakehouse_tables(

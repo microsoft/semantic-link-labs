@@ -11,7 +11,9 @@ import sempy_labs._icons as icons
 
 @log
 def create_pqt_file(
-    dataset: str, workspace: Optional[str] = None, file_name: Optional[str] = 'PowerQueryTemplate'
+    dataset: str,
+    workspace: Optional[str] = None,
+    file_name: Optional[str] = "PowerQueryTemplate",
 ):
     """
     Dynamically generates a `Power Query Template <https://learn.microsoft.com/power-query/power-query-template>`_ file based on the semantic model. The .pqt file is saved within the Files section of your lakehouse.
@@ -31,7 +33,9 @@ def create_pqt_file(
     lakeAttach = lakehouse_attached()
 
     if lakeAttach is False:
-        raise ValueError(f"{icons.red_dot} In order to run the 'create_pqt_file' function, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook.")
+        raise ValueError(
+            f"{icons.red_dot} In order to run the 'create_pqt_file' function, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
+        )
 
     workspace = fabric.resolve_workspace_name(workspace)
 
