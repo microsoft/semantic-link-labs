@@ -1421,7 +1421,7 @@ class TOMWrapper:
 
     def set_translation(
         self,
-        object: Union["TOM.Table", "TOM.Column", "TOM.Measure", "TOM.Hierarchy"],
+        object: Union["TOM.Table", "TOM.Column", "TOM.Measure", "TOM.Hierarchy", "TOM.Level"],
         language: str,
         property: str,
         value: str,
@@ -1451,7 +1451,8 @@ class TOMWrapper:
             TOM.ObjectType.Column,
             TOM.ObjectType.Measure,
             TOM.ObjectType.Hierarchy,
-        ]  # , 'Level'
+            TOM.ObjectType.Level
+        ]
 
         if object.ObjectType not in validObjects:
             raise ValueError(f"{icons.red_dot} Translations can only be set to {validObjects}.")
@@ -1474,10 +1475,15 @@ class TOMWrapper:
         object.Model.Cultures[language].ObjectTranslations.SetTranslation(
             object, prop, value
         )
+        
+        if object.ObjectType in [TOM.ObjectType.Table, TOM.ObjectType.Measure]:
+            print(f"{icons.green_dot} The {property} property for the '{object.Name}' {str(object.ObjectType).lower()} has been translated into '{language}' as '{value}'.")
+        elif object.ObjectType in [TOM.ObjectType.Column, TOM.ObjectType.Hierarchy, TOM.ObjectType.Level]:
+            print(f"{icons.green_dot} The {property} property for the '{object.Parent.Name}'[{object.Name}] {str(object.ObjectType).lower()} has been translated into '{language}' as '{value}'.")      
 
     def remove_translation(
         self,
-        object: Union["TOM.Table", "TOM.Column", "TOM.Measure", "TOM.Hierarchy"],
+        object: Union["TOM.Table", "TOM.Column", "TOM.Measure", "TOM.Hierarchy", "TOM.Level"],
         language: str,
     ):
         """
