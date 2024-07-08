@@ -1,4 +1,3 @@
-import sempy
 import sempy.fabric as fabric
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
@@ -7,7 +6,8 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_id,
 )
 import pandas as pd
-import json, time
+import json
+import time
 from pyspark.sql import SparkSession
 from typing import Optional
 import sempy_labs._icons as icons
@@ -51,7 +51,7 @@ def get_object_level_security(
                     columnCount = 0
                     try:
                         columnCount = len(tp.ColumnPermissions)
-                    except:
+                    except Exception:
                         pass
                     objectType = "Table"
                     if columnCount == 0:
@@ -1235,7 +1235,7 @@ def list_dataflow_storage_accounts() -> pd.DataFrame:
         ]
     )
     client = fabric.PowerBIRestClient()
-    response = client.get(f"/v1.0/myorg/dataflowStorageAccounts")
+    response = client.get("/v1.0/myorg/dataflowStorageAccounts")
 
     for v in response.json()["value"]:
 
@@ -1460,11 +1460,11 @@ def list_semantic_model_objects(
                 df = pd.concat(
                     [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
                 )
-                for l in h.Levels:
+                for lev in h.Levels:
                     new_data = {
-                        "Parent Name": l.Parent.Name,
-                        "Object Name": l.Name,
-                        "Object Type": str(l.ObjectType),
+                        "Parent Name": lev.Parent.Name,
+                        "Object Name": lev.Name,
+                        "Object Type": str(lev.ObjectType),
                     }
                     df = pd.concat(
                         [df, pd.DataFrame(new_data, index=[0])], ignore_index=True

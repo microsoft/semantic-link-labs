@@ -1,4 +1,3 @@
-import sempy
 import sempy.fabric as fabric
 import pandas as pd
 from sempy_labs._list_functions import list_tables
@@ -12,7 +11,8 @@ def show_unsupported_direct_lake_objects(
     dataset: str, workspace: Optional[str] = None
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
-    Returns a list of a semantic model's objects which are not supported by Direct Lake based on `official documentation <https://learn.microsoft.com/power-bi/enterprise/directlake-overview#known-issues-and-limitations>`_.
+    Returns a list of a semantic model's objects which are not supported by Direct Lake based on
+     `official documentation <https://learn.microsoft.com/power-bi/enterprise/directlake-overview#known-issues-and-limitations>`_.
 
     Parameters
     ----------

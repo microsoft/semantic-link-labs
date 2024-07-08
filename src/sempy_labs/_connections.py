@@ -1,7 +1,5 @@
-import sempy
 import sempy.fabric as fabric
 import pandas as pd
-from typing import List, Optional, Union
 import sempy_labs._icons as icons
 
 
@@ -56,7 +54,7 @@ def create_connection_cloud(
         },
     }
 
-    response = client.post(f"/v1/connections", json=request_body)
+    response = client.post("/v1/connections", json=request_body)
 
     if response.status_code == 200:
         o = response.json()
@@ -137,7 +135,7 @@ def create_connection_on_prem(
         },
     }
 
-    response = client.post(f"/v1/connections", json=request_body)
+    response = client.post("/v1/connections", json=request_body)
 
     if response.status_code == 200:
         o = response.json()
@@ -221,7 +219,7 @@ def create_connection_vnet(
         },
     }
 
-    response = client.post(f"/v1/connections", json=request_body)
+    response = client.post("/v1/connections", json=request_body)
 
     if response.status_code == 200:
         o = response.json()

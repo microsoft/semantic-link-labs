@@ -1,7 +1,9 @@
-import sempy
 import sempy.fabric as fabric
 import pandas as pd
-import re, unicodedata, warnings, datetime
+import re
+import unicodedata
+import warnings
+import datetime
 import numpy as np
 from IPython.display import display, HTML
 from pyspark.sql import SparkSession
@@ -9,7 +11,7 @@ from sempy_labs._model_dependencies import get_measure_dependencies
 from sempy_labs._helper_functions import format_dax_object_name, resolve_lakehouse_name
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
-from typing import List, Optional, Union
+from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 
@@ -36,7 +38,8 @@ def model_bpa_rules():
                 "Warning",
                 "Do not use floating point data types",
                 lambda df: df["Data Type"] == "Double",
-                'The "Double" floating point data type should be avoided, as it can result in unpredictable roundoff errors and decreased performance in certain scenarios. Use "Int64" or "Decimal" where appropriate (but note that "Decimal" is limited to 4 digits after the decimal sign).',
+                'The "Double" floating point data type should be avoided, as it can result in unpredictable roundoff errors and decreased performance in certain scenarios. Use "Int64" or '
+                '"Decimal" where appropriate (but note that "Decimal" is limited to 4 digits after the decimal sign).',
             ),
             (
                 "Performance",
@@ -44,7 +47,8 @@ def model_bpa_rules():
                 "Warning",
                 "Avoid using calculated columns",
                 lambda df: df["Type"] == "Calculated",
-                "Calculated columns do not compress as well as data columns so they take up more memory. They also slow down processing times for both the table as well as process recalc. Offload calculated column logic to your data warehouse and turn these calculated columns into data columns.",
+                "Calculated columns do not compress as well as data columns so they take up more memory. They also slow down processing times for both the table as well as process recalc. "
+                "Offload calculated column logic to your data warehouse and turn these calculated columns into data columns.",
                 "https://www.elegantbi.com/post/top10bestpractices",
             ),
             (
@@ -54,7 +58,8 @@ def model_bpa_rules():
                 "Check if bi-directional and many-to-many relationships are valid",
                 lambda df: (df["Multiplicity"] == "m:m")
                 | (df["Cross Filtering Behavior"] == "BothDirections"),
-                "Bi-directional and many-to-many relationships may cause performance degradation or even have unintended consequences. Make sure to check these specific relationships to ensure they are working as designed and are actually necessary.",
+                "Bi-directional and many-to-many relationships may cause performance degradation or even have unintended consequences."
+                " Make sure to check these specific relationships to ensure they are working as designed and are actually necessary.",
                 "https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-dax",
             ),
             (
@@ -73,7 +78,9 @@ def model_bpa_rules():
                 "Avoid using many-to-many relationships on tables used for dynamic row level security",
                 lambda df: (df["Used in M2M Relationship"] == True)
                 & (df["Used in Dynamic RLS"] == True),
-                "Using many-to-many relationships on tables which use dynamic row level security can cause serious query performance degradation. This pattern's performance problems compound when snowflaking multiple many-to-many relationships against a table which contains row level security. Instead, use one of the patterns shown in the article below where a single dimension table relates many-to-one to a security table.",
+                "Using many-to-many relationships on tables which use dynamic row level security can cause serious query performance degradation."
+                " This pattern's performance problems compound when snowflaking multiple many-to-many relationships against a table which contains"
+                " row level security. Instead, use one of the patterns shown in the article below where a single dimension table relates many-to-one to a security table.",
                 "https://www.elegantbi.com/post/dynamicrlspatterns",
             ),
             (
@@ -95,12 +102,15 @@ def model_bpa_rules():
                 & (df["Used in Sort By"] == False)
                 & (df["Used in Hierarchy"] == False)
                 & (df["Sort By Column"] == None),
-                "To speed up processing time and conserve memory after processing, attribute hierarchies should not be built for columns that are never used for slicing by MDX clients. In other words, all hidden columns that are not used as a Sort By Column or referenced in user hierarchies should have their IsAvailableInMdx property set to false. The IsAvailableInMdx property is not relevant for Direct Lake models.",
+                "To speed up processing time and conserve memory after processing, attribute hierarchies should not be built for columns that are never"
+                " used for slicing by MDX clients. In other words, all hidden columns that are not used as a Sort By Column or referenced in user hierarchies"
+                " should have their IsAvailableInMdx property set to false. The IsAvailableInMdx property is not relevant for Direct Lake models.",
                 "https://blog.crossjoin.co.uk/2018/07/02/isavailableinmdx-ssas-tabular",
             ),
             # ('Performance', 'Partition', 'Warning', "Set 'Data Coverage Definition' property on the DirectQuery partition of a hybrid table",
             #  lambda df: (df['Data Coverage Definition Expression'].isnull()) & (df['Mode'] == 'DirectQuery') & (df['Import Partitions'] > 0) & (df['Has Date Table']),
-            #  "Setting the 'Data Coverage Definition' property may lead to better performance because the engine knows when it can only query the import-portion of the table and when it needs to query the DirectQuery portion of the table.",
+            #  "Setting the 'Data Coverage Definition' property may lead to better performance because the engine knows when it can only query the "
+            #  "import-portion of the table and when it needs to query the DirectQuery portion of the table.",
             #  "https://learn.microsoft.com/analysis-services/tom/table-partitions?view=asallproducts-allversions",
             # ),
             (
@@ -136,7 +146,9 @@ def model_bpa_rules():
                     | ("OleDb.Query" in df["Query"])
                     | ("Odbc.Query" in df["Query"])
                 ),
-                "Minimize Power Query transformations in order to improve model processing performance. It is a best practice to offload these transformations to the data warehouse if possible. Also, please check whether query folding is occurring within your model. Please reference the article below for more information on query folding.",
+                "Minimize Power Query transformations in order to improve model processing performance. It is a best practice to offload these "
+                "transformations to the data warehouse if possible. Also, please check whether query folding is occurring within your model."
+                " Please reference the article below for more information on query folding.",
                 "https://docs.microsoft.com/power-query/power-query-folding",
             ),
             (
@@ -146,7 +158,8 @@ def model_bpa_rules():
                 "Consider a star-schema instead of a snowflake architecture",
                 lambda df: (df["Type"] != "Calculation Group")
                 & df["Used in Relationship Both Sides"],
-                "Generally speaking, a star-schema is the optimal architecture for tabular models. That being the case, there are valid cases to use a snowflake approach. Please check your model and consider moving to a star-schema architecture.",
+                "Generally speaking, a star-schema is the optimal architecture for tabular models. That being the case, there are valid cases"
+                " to use a snowflake approach. Please check your model and consider moving to a star-schema architecture.",
                 "https://docs.microsoft.com/power-bi/guidance/star-schema",
             ),
             (
@@ -155,7 +168,8 @@ def model_bpa_rules():
                 "Warning",
                 "Reduce usage of calculated tables",
                 lambda df: df["Type"] == "Calculated Table",
-                "Migrate calculated table logic to your data warehouse. Reliance on calculated tables will lead to technical debt and potential misalignments if you have multiple models on your platform.",
+                "Migrate calculated table logic to your data warehouse. Reliance on calculated tables will lead to technical debt and potential misalignments "
+                " if you have multiple models on your platform.",
             ),
             (
                 "Performance",
@@ -164,7 +178,8 @@ def model_bpa_rules():
                 "Reduce usage of calculated columns that use the RELATED function",
                 lambda df: (df["Type"] == "Calculated")
                 & (df["Source"].str.contains(r"related\s*\(", case=False)),
-                "Calculated columns do not compress as well as data columns and may cause longer processing times. As such, calculated columns should be avoided if possible. One scenario where they may be easier to avoid is if they use the RELATED function.",
+                "Calculated columns do not compress as well as data columns and may cause longer processing times. As such, calculated columns should"
+                " be avoided if possible. One scenario where they may be easier to avoid is if they use the RELATED function.",
                 "https://www.sqlbi.com/articles/storage-differences-between-calculated-columns-and-calculated-tables",
             ),
             (
@@ -242,7 +257,8 @@ def model_bpa_rules():
                 "Warning",
                 "Model should have a date table",
                 lambda df: df["Has Date Table"],
-                "Generally speaking, models should generally have a date table. Models that do not have a date table generally are not taking advantage of features such as time intelligence or may not have a properly structured architecture.",
+                "Generally speaking, models should generally have a date table. Models that do not have a date table generally are not taking advantage"
+                " of features such as time intelligence or may not have a properly structured architecture.",
             ),
             (
                 "Performance",
@@ -250,7 +266,8 @@ def model_bpa_rules():
                 "Warning",
                 "Measures using time intelligence and model is using Direct Query",
                 lambda df: df["DQ Date Function Used"],
-                "At present, time intelligence functions are known to not perform as well when using Direct Query. If you are having performance issues, you may want to try alternative solutions such as adding columns in the fact table that show previous year or previous month data.",
+                "At present, time intelligence functions are known to not perform as well when using Direct Query. If you are having performance issues,"
+                " you may want to try alternative solutions such as adding columns in the fact table that show previous year or previous month data.",
             ),
             (
                 "Error Prevention",
@@ -271,7 +288,9 @@ def model_bpa_rules():
                         for char in x
                     )
                 ),
-                "This rule identifies if a name for a given object in your model (i.e. table/column/measure) which contains an invalid character. Invalid characters will cause an error when deploying the model (and failure to deploy). This rule has a fix expression which converts the invalid character into a space, resolving the issue.",
+                "This rule identifies if a name for a given object in your model (i.e. table/column/measure) which contains an invalid character."
+                " Invalid characters will cause an error when deploying the model (and failure to deploy). This rule has a fix expression which"
+                " converts the invalid character into a space, resolving the issue.",
             ),
             (
                 "Error Prevention",
@@ -284,7 +303,9 @@ def model_bpa_rules():
                         for char in x
                     )
                 ),
-                "This rule identifies if a description for a given object in your model (i.e. table/column/measure) which contains an invalid character. Invalid characters will cause an error when deploying the model (and failure to deploy). This rule has a fix expression which converts the invalid character into a space, resolving the issue.",
+                "This rule identifies if a description for a given object in your model (i.e. table/column/measure) which contains an invalid character."
+                " Invalid characters will cause an error when deploying the model (and failure to deploy). This rule has a fix expression which"
+                " converts the invalid character into a space, resolving the issue.",
             ),
             (
                 "Error Prevention",
@@ -292,7 +313,9 @@ def model_bpa_rules():
                 "Warning",
                 "Relationship columns should be of the same data type",
                 lambda df: df["From Column Data Type"] != df["To Column Data Type"],
-                "Columns used in a relationship should be of the same data type. Ideally, they will be of integer data type (see the related rule '[Formatting] Relationship columns should be of integer data type'). Having columns within a relationship which are of different data types may lead to various issues.",
+                "Columns used in a relationship should be of the same data type. Ideally, they will be of integer data type"
+                " (see the related rule '[Formatting] Relationship columns should be of integer data type'). Having columns within a relationship "
+                "which are of different data types may lead to various issues.",
             ),
             (
                 "Error Prevention",
@@ -314,7 +337,8 @@ def model_bpa_rules():
                     | (df["Used in Hierarchy"] == True)
                     | (df["Sort By Column"] != None)
                 ),
-                "In order to avoid errors, ensure that attribute hierarchies are enabled if a column is used for sorting another column, used in a hierarchy, used in variations, or is sorted by another column. The IsAvailableInMdx property is not relevant for Direct Lake models.",
+                "In order to avoid errors, ensure that attribute hierarchies are enabled if a column is used for sorting another column, "
+                "used in a hierarchy, used in variations, or is sorted by another column. The IsAvailableInMdx property is not relevant for Direct Lake models.",
             ),
             (
                 "Error Prevention",
@@ -323,7 +347,8 @@ def model_bpa_rules():
                 "Avoid the USERELATIONSHIP function and RLS against the same table",
                 lambda df: (df["USERELATIONSHIP Used"] == True)
                 & (df["Used in RLS"] == True),
-                "The USERELATIONSHIP function may not be used against a table which also leverages row-level security (RLS). This will generate an error when using the particular measure in a visual. This rule will highlight the table which is used in a measure's USERELATIONSHIP function as well as RLS.",
+                "The USERELATIONSHIP function may not be used against a table which also leverages row-level security (RLS). This will generate an error "
+                "when using the particular measure in a visual. This rule will highlight the table which is used in a measure's USERELATIONSHIP function as well as RLS.",
                 "https://blog.crossjoin.co.uk/2013/05/10/userelationship-and-tabular-row-security",
             ),
             (
@@ -334,7 +359,8 @@ def model_bpa_rules():
                 lambda df: df["Measure Expression"].str.contains(
                     r"irerror\s*\(", case=False
                 ),
-                "Avoid using the IFERROR function as it may cause performance degradation. If you are concerned about a divide-by-zero error, use the DIVIDE function as it naturally resolves such errors as blank (or you can customize what should be shown in case of such an error).",
+                "Avoid using the IFERROR function as it may cause performance degradation. If you are concerned about a divide-by-zero error, use the DIVIDE"
+                " function as it naturally resolves such errors as blank (or you can customize what should be shown in case of such an error).",
                 "https://www.elegantbi.com/post/top10bestpractices",
             ),
             (
@@ -367,7 +393,8 @@ def model_bpa_rules():
                 lambda df: df["Measure Expression"]
                 .str.strip()
                 .isin(df["Measure Object"]),
-                "This rule identifies measures which are simply a reference to another measure. As an example, consider a model with two measures: [MeasureA] and [MeasureB]. This rule would be triggered for MeasureB if MeasureB's DAX was MeasureB:=[MeasureA]. Such duplicative measures should be removed.",
+                "This rule identifies measures which are simply a reference to another measure. As an example, consider a model with two measures"
+                ": [MeasureA] and [MeasureB]. This rule would be triggered for MeasureB if MeasureB's DAX was MeasureB:=[MeasureA]. Such duplicative measures should be removed.",
             ),
             (
                 "DAX Expressions",
@@ -1014,7 +1041,6 @@ def run_model_bpa(
 
     for i, r in dfM.iterrows():
         tName = r["Table Name"]
-        mName = r["Measure Name"]
         expr = r["Measure Expression"]
 
         matches = re.findall(pattern, expr)
@@ -1333,7 +1359,7 @@ def run_model_bpa(
         content_html += '<table border="1">'
         content_html += "<tr><th>Rule Name</th><th>Object Type</th><th>Object Name</th><th>Severity</th></tr>"
         for _, row in df.iterrows():
-            content_html += f"<tr>"
+            content_html += "<tr>"
             if pd.notnull(row["URL"]):
                 content_html += f'<td class="tooltip" onmouseover="adjustTooltipPosition(event)"><a href="{row["URL"]}">{row["Rule Name"]}</a><span class="tooltiptext">{row["Description"]}</span></td>'
             elif pd.notnull(row["Description"]):
@@ -1343,7 +1369,7 @@ def run_model_bpa(
             content_html += f'<td>{row["Object Type"]}</td>'
             content_html += f'<td>{row["Object Name"]}</td>'
             content_html += f'<td>{row["Severity"]}</td>'
-            content_html += f"</tr>"
+            content_html += "</tr>"
         content_html += "</table>"
 
         content_html += "</div>"

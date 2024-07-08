@@ -1,4 +1,3 @@
-import sempy
 import sempy.fabric as fabric
 from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
@@ -74,7 +73,8 @@ def create_shortcut_onelake(
         )
         if response.status_code == 201:
             print(
-                f"{icons.green_dot} The shortcut '{shortcut_name}' was created in the '{destination_lakehouse}' lakehouse within the '{destination_workspace} workspace. It is based on the '{table_name}' table in the '{source_lakehouse}' lakehouse within the '{source_workspace}' workspace."
+                f"{icons.green_dot} The shortcut '{shortcut_name}' was created in the '{destination_lakehouse}' lakehouse within"
+                f" the '{destination_workspace} workspace. It is based on the '{table_name}' table in the '{source_lakehouse}' lakehouse within the '{source_workspace}' workspace."
             )
         else:
             print(response.status_code)
@@ -151,7 +151,8 @@ def create_shortcut(
         )
         if response.status_code == 201:
             print(
-                f"{icons.green_dot} The shortcut '{shortcutActualName}' was created in the '{lakehouse}' lakehouse within the '{workspace} workspace. It is based on the '{subpath}' table in '{sourceTitle}'."
+                f"{icons.green_dot} The shortcut '{shortcutActualName}' was created in the '{lakehouse}' lakehouse within"
+                f" the '{workspace} workspace. It is based on the '{subpath}' table in '{sourceTitle}'."
             )
         else:
             print(response.status_code)

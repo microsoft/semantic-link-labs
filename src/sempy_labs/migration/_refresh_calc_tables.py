@@ -1,10 +1,11 @@
-import sempy
 import sempy.fabric as fabric
 import pandas as pd
-import re, datetime, time
+import re
+import datetime
+import time
 from pyspark.sql import SparkSession
 from sempy_labs.tom import connect_semantic_model
-from typing import List, Optional, Union
+from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 
@@ -125,7 +126,7 @@ def refresh_calc_tables(dataset: str, workspace: Optional[str] = None):
                                 f"{icons.red_dot} Failed to create calculated table '{tName}' as a delta table in the lakehouse."
                             ) from e
 
-        except Exception as e:
+        except Exception:
             if datetime.datetime.now() - start_time > timeout:
                 break
             time.sleep(1)

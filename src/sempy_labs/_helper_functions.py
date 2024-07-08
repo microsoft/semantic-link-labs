@@ -1,4 +1,3 @@
-import sempy
 import sempy.fabric as fabric
 import re
 import pandas as pd

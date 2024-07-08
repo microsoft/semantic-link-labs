@@ -1,7 +1,8 @@
-import sempy
 import sempy.fabric as fabric
 import pandas as pd
-import json, base64, time
+import json
+import base64
+import time
 from typing import Optional
 from sempy_labs._helper_functions import resolve_workspace_name_and_id
 import sempy_labs._icons as icons
