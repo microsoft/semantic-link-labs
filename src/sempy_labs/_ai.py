@@ -384,10 +384,11 @@ def generate_aggs(
                 print(
                     f"{icons.green_dot} '{aggTableName}'[{fromColumn}] -> '{toTable}'[{toColumn}] relationship has been added."
                 )
-            except Exception:
+            except Exception as e:
                 print(
                     f"{icons.red_dot} '{aggTableName}'[{fromColumn}] -> '{toTable}'[{toColumn}] relationship has not been created."
                 )
+                print(f"Exception occured: {e}")
         elif toTable == table_name:
             try:
                 rel.ToColumn = m.Tables[aggTableName].Columns[toColumn]
@@ -395,10 +396,11 @@ def generate_aggs(
                 print(
                     f"{icons.green_dot} '{fromTable}'[{fromColumn}] -> '{aggTableName}'[{toColumn}] relationship has been added."
                 )
-            except Exception:
+            except Exception as e:
                 print(
                     f"{icons.red_dot} '{fromTable}'[{fromColumn}] -> '{aggTableName}'[{toColumn}] relationship has not been created."
                 )
+                print(f"Exception occured: {e}")
     "Relationship creation is complete."
 
     # Create IF measure

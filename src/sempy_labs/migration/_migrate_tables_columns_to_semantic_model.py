@@ -109,9 +109,7 @@ def migrate_tables_columns_to_semantic_model(
                         tHid = bool(r["Hidden"])
                         tDesc = r["Description"]
 
-                        try:
-                            tom.model.Tables[tName]
-                        except Exception:
+                        if not any(t.Name == tName for t in tom.model.Tables):
                             tom.add_table(
                                 name=tName,
                                 description=tDesc,
