@@ -3664,15 +3664,14 @@ class TOMWrapper:
                 )
 
         # Validate measure and extract table name
-        try:
-            table_name = next(
-                m.Parent.Name for m in self.all_measures() if m.Name == measure_name
-            )
-        except:
-            raise ValueError(
-                f"{icons.red_dot} The '{measure_name}' is not a valid measure in the '{self._dataset}' semantic model within the '{self._workspace}' workspace."
-            )
+        matching_measures = [
+            m.Parent.Name for m in self.all_measures() if m.Name == measure_name
+        ]
 
+        if not matching_measures:
+            raise ValueError("{icons.red_dot} The '{measure_name}' is not a valid measure in the '{self._dataset}' semantic model within the '{self._workspace}' workspace.")
+
+        table_name = matching_measures[0]
         # Validate date table
         if not self.is_date_table(date_table):
             raise ValueError(
@@ -3680,16 +3679,17 @@ class TOMWrapper:
             )
 
         # Extract date key from date table
-        try:
-            date_key = next(
-                c.Name
-                for c in self.all_columns()
-                if c.Parent.Name == date_table and c.IsKey
-            )
-        except:
+        matching_columns = [
+            c.Name
+            for c in self.all_columns()
+            if c.Parent.Name == date_table and c.IsKey
+        ]
+
+        if not matching_columns:
             raise ValueError(
-                f"{icons.red_dot} The '{date_table}' table does not have a date key column in the '{self._dataset}' semantic model within the '{self._workspace}' workspace."
-            )
+                f"{icons.red_dot} The '{date_table}' table does not have a date key column in the '{self._dataset}' semantic model within the '{self._workspace}' workspace.")
+
+        date_key = matching_columns[0]
 
         # Create the new time intelligence measures
         for t in time_intel:
