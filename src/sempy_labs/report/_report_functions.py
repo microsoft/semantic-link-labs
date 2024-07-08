@@ -1,7 +1,10 @@
-import sempy
 import sempy.fabric as fabric
 import pandas as pd
-import json, os, time, base64, copy
+import json
+import os
+import time
+import base64
+import copy
 from anytree import Node, RenderTree
 from powerbiclient import Report
 from synapse.ml.services import Translate
@@ -498,7 +501,8 @@ def clone_report(
 
     if response.status_code == 200:
         print(
-            f"{icons.green_dot} The '{report}' report has been successfully cloned as the '{cloned_report}' report within the '{target_workspace}' workspace using the '{target_dataset}' semantic model."
+            f"{icons.green_dot} The '{report}' report has been successfully cloned as the '{cloned_report}' report within the"
+            f" '{target_workspace}' workspace using the '{target_dataset}' semantic model."
         )
     else:
         raise ValueError(
@@ -580,7 +584,7 @@ def list_report_pages(report: str, workspace: Optional[str] = None):
             pageH = pageConfigJson["visibility"]
             if pageH == 1:
                 pageHidden = True
-        except:
+        except Exception:
             pass
 
         new_data = {
@@ -641,7 +645,7 @@ def list_report_visuals(report: str, workspace: Optional[str] = None):
                     "properties"
                 ]["text"]["expr"]["Literal"]["Value"]
                 title = title[1:-1]
-            except:
+            except Exception:
                 title = ""
 
             new_data = {
@@ -709,7 +713,7 @@ def list_report_bookmarks(report: str, workspace: Optional[str] = None):
                         ][vc]["singleVisual"]["display"]["mode"]
                         if hidden == "hidden":
                             vHidden = True
-                    except:
+                    except Exception:
                         pass
 
             new_data = {
@@ -737,7 +741,7 @@ def list_report_bookmarks(report: str, workspace: Optional[str] = None):
 
         return df
 
-    except:
+    except Exception:
         print(
             f"The '{report}' report within the '{workspace}' workspace has no bookmarks."
         )

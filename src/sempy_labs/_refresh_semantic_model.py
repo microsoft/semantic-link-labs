@@ -1,4 +1,3 @@
-import sempy
 import sempy.fabric as fabric
 import time
 from sempy_labs._helper_functions import resolve_dataset_id

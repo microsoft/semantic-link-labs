@@ -1,6 +1,8 @@
 import sempy
 import sempy.fabric as fabric
-import re, datetime, time
+import re
+import datetime
+import time
 from sempy_labs._list_functions import list_tables
 from sempy_labs._helper_functions import create_relationship_name
 from sempy_labs.tom import connect_semantic_model
@@ -60,7 +62,6 @@ def migrate_model_objects_to_semantic_model(
 
     dfP_cc = dfPar[(dfPar["Source Type"] == "Calculated")]
     dfP_fp = dfP_cc[dfP_cc["Query"].str.contains("NAMEOF")]
-    dfC_fp = dfC[dfC["Table Name"].isin(dfP_fp["Table Name"].values)]
 
     print(f"{icons.in_progress} Updating '{new_dataset}' based on '{dataset}'...")
     start_time = datetime.datetime.now()
@@ -125,12 +126,12 @@ def migrate_model_objects_to_semantic_model(
                                 c.IsKey = bool(dfC_filt["Key"].iloc[0])
                                 sbc = dfC_filt["Sort By Column"].iloc[0]
 
-                                if sbc != None:
+                                if sbc is not None:
                                     try:
                                         c.SortByColumn = tom.model.Tables[
                                             t.Name
                                         ].Columns[sbc]
-                                    except:
+                                    except Exception:
                                         print(
                                             f"{icons.red_dot} Failed to create '{sbc}' as a Sort By Column for the '{c.Name}' in the '{t.Name}' table."
                                         )
@@ -162,7 +163,7 @@ def migrate_model_objects_to_semantic_model(
 
                     try:
                         tom.model.Tables[tName].Hierarchies[hName]
-                    except:
+                    except Exception:
                         tom.add_hierarchy(
                             table_name=tName,
                             hierarchy_name=hName,
@@ -187,7 +188,7 @@ def migrate_model_objects_to_semantic_model(
 
                     try:
                         tom.model.Tables[tName].Measures[mName]
-                    except:
+                    except Exception:
                         tom.add_measure(
                             table_name=tName,
                             measure_name=mName,
@@ -219,7 +220,7 @@ def migrate_model_objects_to_semantic_model(
 
                     try:
                         tom.model.Tables[cgName]
-                    except:
+                    except Exception:
                         tom.add_calculation_group(
                             name=cgName,
                             description=desc,
@@ -268,7 +269,7 @@ def migrate_model_objects_to_semantic_model(
                             tom.model.Tables[cgName].CalculationGroup.CalculationItems[
                                 calcItem
                             ]
-                        except:
+                        except Exception:
                             tom.add_calculation_item(
                                 table_name=cgName,
                                 calculation_item_name=calcItem,
@@ -354,7 +355,7 @@ def migrate_model_objects_to_semantic_model(
                             print(
                                 f"{icons.green_dot} The {relName} relationship has been added."
                             )
-                        except:
+                        except Exception:
                             print(
                                 f"{icons.red_dot} The {relName} relationship was not added."
                             )
@@ -367,7 +368,7 @@ def migrate_model_objects_to_semantic_model(
 
                     try:
                         tom.model.Roles[roleName]
-                    except:
+                    except Exception:
                         tom.add_role(
                             role_name=roleName,
                             model_permission=modPerm,
@@ -390,7 +391,7 @@ def migrate_model_objects_to_semantic_model(
                         print(
                             f"{icons.green_dot} Row level security for the '{tName}' table within the '{roleName}' role has been set."
                         )
-                    except:
+                    except Exception:
                         print(
                             f"{icons.red_dot} Row level security for the '{tName}' table within the '{roleName}' role was not set."
                         )
@@ -400,7 +401,7 @@ def migrate_model_objects_to_semantic_model(
 
                     try:
                         tom.model.Perspectives[pName]
-                    except:
+                    except Exception:
                         tom.add_perspective(perspective_name=pName)
                         print(
                             f"{icons.green_dot} The '{pName}' perspective has been added."
@@ -434,14 +435,14 @@ def migrate_model_objects_to_semantic_model(
                                 object=tom.model.Tables[tName].Hierarchies[oName],
                                 perspective_name=pName,
                             )
-                    except:
+                    except Exception:
                         pass
 
                 print(f"\n{icons.in_progress} Creating translation languages...")
                 for trName in dfTranslation["Culture Name"].unique():
                     try:
                         tom.model.Cultures[trName]
-                    except:
+                    except Exception:
                         tom.add_translation(trName)
                         print(
                             f"{icons.green_dot} The '{trName}' translation language has been added."
@@ -507,14 +508,14 @@ def migrate_model_objects_to_semantic_model(
                                 property=prop,
                                 value=translation,
                             )
-                    except:
+                    except Exception:
                         pass
 
                 print(
                     f"\n{icons.green_dot} Migration of objects from '{dataset}' -> '{new_dataset}' is complete."
                 )
 
-        except Exception as e:
+        except Exception:
             if datetime.datetime.now() - start_time > timeout:
                 break
             time.sleep(1)

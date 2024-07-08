@@ -1,12 +1,12 @@
-import sempy
 import sempy.fabric as fabric
 import pandas as pd
-from typing import List, Optional, Union
+from typing import Optional
 
 
 def get_direct_lake_guardrails() -> pd.DataFrame:
     """
-    Shows the guardrails for when Direct Lake semantic models will fallback to Direct Query based on Microsoft's `online documentation <https://learn.microsoft.com/power-bi/enterprise/directlake-overview>`_.
+    Shows the guardrails for when Direct Lake semantic models will fallback to Direct Query
+     based on Microsoft's `online documentation <https://learn.microsoft.com/power-bi/enterprise/directlake-overview>`_.
 
     Parameters
     ----------

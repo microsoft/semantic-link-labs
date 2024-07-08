@@ -1,4 +1,3 @@
-import sempy
 import sempy.fabric as fabric
 from sempy_labs.tom import connect_semantic_model
 from sempy_labs._helper_functions import resolve_lakehouse_name
@@ -73,7 +72,8 @@ def update_direct_lake_partition_entity(
             try:
                 tom.model.Tables[tName].Partitions[0].EntityName = eName
                 print(
-                    f"{icons.green_dot} The '{tName}' table in the '{dataset}' semantic model has been updated to point to the '{eName}' table in the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace."
+                    f"{icons.green_dot} The '{tName}' table in the '{dataset}' semantic model has been updated to point to the '{eName}' table "
+                    f"in the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace."
                 )
             except Exception as e:
                 raise ValueError(

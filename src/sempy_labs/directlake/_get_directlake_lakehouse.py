@@ -1,4 +1,3 @@
-import sempy
 import sempy.fabric as fabric
 from sempy_labs._helper_functions import (
     resolve_lakehouse_id,

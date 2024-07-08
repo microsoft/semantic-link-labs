@@ -1,4 +1,3 @@
-import sempy
 import sempy.fabric as fabric
 from tqdm.auto import tqdm
 from pyspark.sql import SparkSession

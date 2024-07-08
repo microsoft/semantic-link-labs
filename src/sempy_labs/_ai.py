@@ -14,7 +14,6 @@ def optimize_semantic_model(dataset: str, workspace: Optional[str] = None):
     from ._model_bpa import run_model_bpa
     from .directlake._fallback import check_fallback_reason
     from ._helper_functions import format_dax_object_name
-    from sempy_labs.tom import connect_semantic_model
 
     modelBPA = run_model_bpa(
         dataset=dataset, workspace=workspace, return_dataframe=True
@@ -41,7 +40,8 @@ def optimize_semantic_model(dataset: str, workspace: Optional[str] = None):
 
         if len(fallback_filt) > 0:
             print(
-                f"{icons.yellow_dot} The '{dataset}' semantic model is a Direct Lake semantic model which contains views. Since views always fall back to DirectQuery, it is recommended to only use lakehouse tables and not views."
+                f"{icons.yellow_dot} The '{dataset}' semantic model is a Direct Lake semantic model which contains views. "
+                "Since views always fall back to DirectQuery, it is recommended to only use lakehouse tables and not views."
             )
 
     # Potential model reduction estimate
@@ -147,10 +147,10 @@ def generate_aggs(
     import System
 
     # columns = {
-    #'SalesAmount': 'Sum',
-    #'ProductKey': 'GroupBy',
-    #'OrderDateKey': 'GroupBy'
-    # }
+    # 'SalesAmount': 'Sum',
+    # 'ProductKey': 'GroupBy',
+    # 'OrderDateKey': 'GroupBy'
+    #  }
 
     if workspace is None:
         workspace_id = fabric.get_workspace_id()
@@ -202,12 +202,13 @@ def generate_aggs(
         )
 
     # Check if doing sum/count/min/max etc. on a non-number column
-    for col, agg in columns.items():
-        dfC_col = dfC_filt[dfC_filt["Column Name"] == col]
+    for cm, agg in columns.items():
+        dfC_col = dfC_filt[dfC_filt["Column Name"] == cm]
         dataType = dfC_col["Data Type"].iloc[0]
         if agg in aggTypesAggregate and dataType not in numericTypes:
             raise ValueError(
-                f"{icons.red_dot} The '{col}' column in the '{table_name}' table is of '{dataType}' data type. Only columns of '{numericTypes}' data types can be aggregated as '{aggTypesAggregate}' aggregation types."
+                f"{icons.red_dot} The '{cm}' column in the '{table_name}' table is of '{dataType}' data type. Only columns of '{numericTypes}' data types"
+                f" can be aggregated as '{aggTypesAggregate}' aggregation types."
             )
 
     # Create/update lakehouse delta agg table
@@ -225,7 +226,8 @@ def generate_aggs(
 
     if len(dfI_filt) == 0:
         raise ValueError(
-            f"{icons.red_dot} The lakehouse (SQL Endpoint) used by the '{dataset}' semantic model does not reside in the '{lakehouse_workspace}' workspace. Please update the lakehouse_workspace parameter."
+            f"{icons.red_dot} The lakehouse (SQL Endpoint) used by the '{dataset}' semantic model does not reside in"
+            f" the '{lakehouse_workspace}' workspace. Please update the lakehouse_workspace parameter."
         )
 
     lakehouseName = dfI_filt["Display Name"].iloc[0]
@@ -236,8 +238,8 @@ def generate_aggs(
     # Generate SQL query
     query = "SELECT"
     groupBy = "\nGROUP BY"
-    for col, agg in columns.items():
-        colFilt = dfC_filt[dfC_filt["Column Name"] == col]
+    for cm, agg in columns.items():
+        colFilt = dfC_filt[dfC_filt["Column Name"] == cm]
         sourceCol = colFilt["Source"].iloc[0]
 
         if agg == "GroupBy":
@@ -382,10 +384,11 @@ def generate_aggs(
                 print(
                     f"{icons.green_dot} '{aggTableName}'[{fromColumn}] -> '{toTable}'[{toColumn}] relationship has been added."
                 )
-            except:
+            except Exception as e:
                 print(
                     f"{icons.red_dot} '{aggTableName}'[{fromColumn}] -> '{toTable}'[{toColumn}] relationship has not been created."
                 )
+                print(f"Exception occured: {e}")
         elif toTable == table_name:
             try:
                 rel.ToColumn = m.Tables[aggTableName].Columns[toColumn]
@@ -393,11 +396,12 @@ def generate_aggs(
                 print(
                     f"{icons.green_dot} '{fromTable}'[{fromColumn}] -> '{aggTableName}'[{toColumn}] relationship has been added."
                 )
-            except:
+            except Exception as e:
                 print(
                     f"{icons.red_dot} '{fromTable}'[{fromColumn}] -> '{aggTableName}'[{toColumn}] relationship has not been created."
                 )
-    f"Relationship creation is complete."
+                print(f"Exception occured: {e}")
+    "Relationship creation is complete."
 
     # Create IF measure
     f"\n{icons.in_progress} Creating measure to check if the agg table can be used..."
