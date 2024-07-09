@@ -12,6 +12,7 @@ from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 
+
 @log
 def direct_lake_schema_sync(
     dataset: str,
@@ -61,7 +62,10 @@ def direct_lake_schema_sync(
     dfI_filt = dfI[(dfI["Id"] == sqlEndpointId)]
 
     if len(dfI_filt) == 0:
-        raise ValueError(f"{icons.red_dot} The SQL Endpoint in the '{dataset}' semantic model in the '{workspace} workspace does not point to the '{lakehouse}' lakehouse in the '{lakehouse_workspace}' workspace as specified.")
+        raise ValueError(
+            f"{icons.red_dot} The SQL Endpoint in the '{dataset}' semantic model in the '{workspace} workspace does not point to the "
+            f"'{lakehouse}' lakehouse in the '{lakehouse_workspace}' workspace as specified."
+        )
 
     dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
     dfP_filt = dfP[dfP["Source Type"] == "Entity"]
@@ -90,8 +94,8 @@ def direct_lake_schema_sync(
     }
 
     with connect_semantic_model(
-                dataset=dataset, readonly=False, workspace=workspace
-            ) as tom:
+        dataset=dataset, readonly=False, workspace=workspace
+    ) as tom:
 
         for i, r in lc_filt.iterrows():
             lakeTName = r["Table Name"]
@@ -110,14 +114,16 @@ def direct_lake_schema_sync(
                     try:
                         col.DataType = System.Enum.Parse(TOM.DataType, dt)
                     except Exception as e:
-                        raise ValueError(f"{icons.red_dot} Failed to map '{dType}' data type to the semantic model data types.") from e
+                        raise ValueError(
+                            f"{icons.red_dot} Failed to map '{dType}' data type to the semantic model data types."
+                        ) from e
 
                     tom.model.Tables[tName].Columns.Add(col)
                     print(
-                        f"{icons.green_dot} The '{lakeCName}' column has been added to the '{tName}' table as a '{dt}' data type within the '{dataset}' semantic model within the '{workspace}' workspace."
+                        f"{icons.green_dot} The '{lakeCName}' column has been added to the '{tName}' table as a '{dt}' "
+                        f"data type within the '{dataset}' semantic model within the '{workspace}' workspace."
                     )
                 else:
                     print(
                         f"{icons.yellow_dot} The {fullColName} column exists in the lakehouse but not in the '{tName}' table in the '{dataset}' semantic model within the '{workspace}' workspace."
                     )
-            

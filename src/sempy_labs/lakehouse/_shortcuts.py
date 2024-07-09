@@ -1,4 +1,3 @@
-import sempy
 import sempy.fabric as fabric
 from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
@@ -74,12 +73,15 @@ def create_shortcut_onelake(
         )
         if response.status_code == 201:
             print(
-                f"{icons.green_dot} The shortcut '{shortcut_name}' was created in the '{destination_lakehouse}' lakehouse within the '{destination_workspace} workspace. It is based on the '{table_name}' table in the '{source_lakehouse}' lakehouse within the '{source_workspace}' workspace."
+                f"{icons.green_dot} The shortcut '{shortcut_name}' was created in the '{destination_lakehouse}' lakehouse within"
+                f" the '{destination_workspace} workspace. It is based on the '{table_name}' table in the '{source_lakehouse}' lakehouse within the '{source_workspace}' workspace."
             )
         else:
             print(response.status_code)
     except Exception as e:
-        raise ValueError(f"{icons.red_dot} Failed to create a shortcut for the '{table_name}' table.") from e
+        raise ValueError(
+            f"{icons.red_dot} Failed to create a shortcut for the '{table_name}' table."
+        ) from e
 
 
 def create_shortcut(
@@ -114,7 +116,9 @@ def create_shortcut(
     sourceValues = list(source_titles.keys())
 
     if source not in sourceValues:
-        raise ValueError(f"{icons.red_dot} The 'source' parameter must be one of these values: {sourceValues}.")
+        raise ValueError(
+            f"{icons.red_dot} The 'source' parameter must be one of these values: {sourceValues}."
+        )
 
     sourceTitle = source_titles[source]
 
@@ -147,12 +151,15 @@ def create_shortcut(
         )
         if response.status_code == 201:
             print(
-                f"{icons.green_dot} The shortcut '{shortcutActualName}' was created in the '{lakehouse}' lakehouse within the '{workspace} workspace. It is based on the '{subpath}' table in '{sourceTitle}'."
+                f"{icons.green_dot} The shortcut '{shortcutActualName}' was created in the '{lakehouse}' lakehouse within"
+                f" the '{workspace} workspace. It is based on the '{subpath}' table in '{sourceTitle}'."
             )
         else:
             print(response.status_code)
     except Exception as e:
-        raise ValueError(f"{icons.red_dot} Failed to create a shortcut for the '{shortcut_name}' table.") from e
+        raise ValueError(
+            f"{icons.red_dot} Failed to create a shortcut for the '{shortcut_name}' table."
+        ) from e
 
 
 def delete_shortcut(

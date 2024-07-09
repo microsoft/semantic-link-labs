@@ -1,9 +1,9 @@
-import sempy
 import sempy.fabric as fabric
 import pandas as pd
-from typing import List, Optional, Union
+from typing import Optional
 from sempy_labs._list_functions import list_semantic_model_objects
 from sempy._utils._log import log
+
 
 @log
 def migration_validation(

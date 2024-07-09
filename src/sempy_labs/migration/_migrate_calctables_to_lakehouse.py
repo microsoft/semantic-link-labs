@@ -1,7 +1,9 @@
 import sempy
 import sempy.fabric as fabric
 import pandas as pd
-import re, datetime, time
+import re
+import datetime
+import time
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
@@ -10,7 +12,7 @@ from sempy_labs._helper_functions import (
 )
 from sempy_labs.tom import connect_semantic_model
 from pyspark.sql import SparkSession
-from typing import List, Optional, Union
+from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 
@@ -25,7 +27,8 @@ def migrate_calc_tables_to_lakehouse(
     lakehouse_workspace: Optional[str] = None,
 ):
     """
-    Creates delta tables in your lakehouse based on the DAX expression of a calculated table in an import/DirectQuery semantic model. The DAX expression encapsulating the calculated table logic is stored in the new Direct Lake semantic model as model annotations.
+    Creates delta tables in your lakehouse based on the DAX expression of a calculated table in an import/DirectQuery semantic model.
+    The DAX expression encapsulating the calculated table logic is stored in the new Direct Lake semantic model as model annotations.
 
     Parameters
     ----------
@@ -67,8 +70,6 @@ def migrate_calc_tables_to_lakehouse(
     else:
         lakehouse_id = resolve_lakehouse_id(lakehouse, lakehouse_workspace)
 
-    dfC = fabric.list_columns(dataset=dataset, workspace=workspace)
-    # dfC['Column Object'] = "'" + dfC['Table Name'] + "'[" + dfC['Column Name'] + "]"
     dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
     dfP_filt = dfP[(dfP["Source Type"] == "Calculated")]
     dfP_filt = dfP_filt[
@@ -113,7 +114,8 @@ def migrate_calc_tables_to_lakehouse(
                 for t in tom.model.Tables:
                     if tom.is_auto_date_table(table_name=t.Name):
                         print(
-                            f"{icons.yellow_dot} The '{t.Name}' table is an auto-datetime table and is not supported in the Direct Lake migration process. Please create a proper Date/Calendar table in your lakehoues and use it in your Direct Lake model."
+                            f"{icons.yellow_dot} The '{t.Name}' table is an auto-datetime table and is not supported in the Direct Lake migration process. "
+                            "Please create a proper Date/Calendar table in your lakehoues and use it in your Direct Lake model."
                         )
                     else:
                         for p in t.Partitions:
@@ -182,7 +184,7 @@ def migrate_calc_tables_to_lakehouse(
                                                     == "CalculatedTableColumn"
                                                     and c.SourceColumn == col
                                                 )
-                                            except:
+                                            except Exception:
                                                 dataType = next(
                                                     str(c.DataType)
                                                     for c in tom.model.Tables[
@@ -240,7 +242,7 @@ def migrate_calc_tables_to_lakehouse(
                                                         name=t.Name,
                                                         value=daxQuery,
                                                     )
-                                            except Exception as e:
+                                            except Exception:
                                                 if (
                                                     datetime.datetime.now()
                                                     - start_time2
@@ -250,13 +252,14 @@ def migrate_calc_tables_to_lakehouse(
                                                 time.sleep(1)
 
                                         print(
-                                            f"{icons.green_dot} Calculated table '{t.Name}' has been created as delta table '{delta_table_name.lower()}' in the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace."
+                                            f"{icons.green_dot} Calculated table '{t.Name}' has been created as delta table '{delta_table_name.lower()}' "
+                                            f"in the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace."
                                         )
-                                    except:
+                                    except Exception:
                                         print(
                                             f"{icons.red_dot} Failed to create calculated table '{t.Name}' as a delta table in the lakehouse."
                                         )
-        except Exception as e:
+        except Exception:
             if datetime.datetime.now() - start_time > timeout:
                 break
             time.sleep(1)
@@ -419,11 +422,11 @@ def migrate_field_parameters(
                         print(
                             f"{icons.green_dot} The '{tName}' table has been added as a field parameter to the '{new_dataset}' semantic model in the '{new_dataset_workspace}' workspace."
                         )
-                    except:
+                    except Exception:
                         print(
                             f"{icons.red_dot} The '{tName}' table has not been added as a field parameter."
                         )
-        except Exception as e:
+        except Exception:
             if datetime.datetime.now() - start_time > timeout:
                 break
             time.sleep(1)

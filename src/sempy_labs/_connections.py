@@ -1,7 +1,5 @@
-import sempy
 import sempy.fabric as fabric
 import pandas as pd
-from typing import List, Optional, Union
 import sempy_labs._icons as icons
 
 
@@ -56,7 +54,7 @@ def create_connection_cloud(
         },
     }
 
-    response = client.post(f"/v1/connections", json=request_body)
+    response = client.post("/v1/connections", json=request_body)
 
     if response.status_code == 200:
         o = response.json()
@@ -64,13 +62,19 @@ def create_connection_cloud(
             "Connection Id": o.get("id"),
             "Connection Name": o.get("name"),
             "Connectivity Type": o.get("connectivityType"),
-            "Connection Type": o.get("connectionDetails",{}).get("type"),
-            "Connection Path": o.get("connectionDetails",{}).get("path"),
+            "Connection Type": o.get("connectionDetails", {}).get("type"),
+            "Connection Path": o.get("connectionDetails", {}).get("path"),
             "Privacy Level": o.get("privacyLevel"),
-            "Credential Type": o.get("credentialDetails",{}).get("credentialType"),
-            "Single Sign On Type": o.get("credentialDetails",{}).get("singleSignOnType"),
-            "Connection Encryption": o.get("credentialDetails",{}).get("connectionEncryption"),
-            "Skip Test Connection": o.get("credentialDetails",{}).get("skipTestConnection"),
+            "Credential Type": o.get("credentialDetails", {}).get("credentialType"),
+            "Single Sign On Type": o.get("credentialDetails", {}).get(
+                "singleSignOnType"
+            ),
+            "Connection Encryption": o.get("credentialDetails", {}).get(
+                "connectionEncryption"
+            ),
+            "Skip Test Connection": o.get("credentialDetails", {}).get(
+                "skipTestConnection"
+            ),
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
@@ -131,7 +135,7 @@ def create_connection_on_prem(
         },
     }
 
-    response = client.post(f"/v1/connections", json=request_body)
+    response = client.post("/v1/connections", json=request_body)
 
     if response.status_code == 200:
         o = response.json()
@@ -140,13 +144,19 @@ def create_connection_on_prem(
             "Connection Name": o.get("name"),
             "Gateway ID": o.get("gatewayId"),
             "Connectivity Type": o.get("connectivityType"),
-            "Connection Type": o.get("connectionDetails",{}).get("type"),
-            "Connection Path": o.get("connectionDetails",{}).get("path"),
+            "Connection Type": o.get("connectionDetails", {}).get("type"),
+            "Connection Path": o.get("connectionDetails", {}).get("path"),
             "Privacy Level": o.get("privacyLevel"),
-            "Credential Type": o.get("credentialDetails",{}).get("credentialType"),
-            "Single Sign On Type": o.get("credentialDetails",{}).get("singleSignOnType"),
-            "Connection Encryption": o.get("credentialDetails",{}).get("connectionEncryption"),
-            "Skip Test Connection": o.get("credentialDetails",{}).get("skipTestConnection"),
+            "Credential Type": o.get("credentialDetails", {}).get("credentialType"),
+            "Single Sign On Type": o.get("credentialDetails", {}).get(
+                "singleSignOnType"
+            ),
+            "Connection Encryption": o.get("credentialDetails", {}).get(
+                "connectionEncryption"
+            ),
+            "Skip Test Connection": o.get("credentialDetails", {}).get(
+                "skipTestConnection"
+            ),
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
@@ -209,7 +219,7 @@ def create_connection_vnet(
         },
     }
 
-    response = client.post(f"/v1/connections", json=request_body)
+    response = client.post("/v1/connections", json=request_body)
 
     if response.status_code == 200:
         o = response.json()
@@ -218,13 +228,19 @@ def create_connection_vnet(
             "Connection Name": o.get("name"),
             "Gateway ID": o.get("gatewayId"),
             "Connectivity Type": o.get("connectivityType"),
-            "Connection Type": o.get("connectionDetails",{}).get("type"),
-            "Connection Path": o.get("connectionDetails",{}).get("path"),
+            "Connection Type": o.get("connectionDetails", {}).get("type"),
+            "Connection Path": o.get("connectionDetails", {}).get("path"),
             "Privacy Level": o.get("privacyLevel"),
-            "Credential Type": o.get("credentialDetails",{}).get("credentialType"),
-            "Single Sign On Type": o.get("credentialDetails",{}).get("singleSignOnType"),
-            "Connection Encryption": o.get("credentialDetails",{}).get("connectionEncryption"),
-            "Skip Test Connection": o.get("credentialDetails",{}).get("skipTestConnection"),
+            "Credential Type": o.get("credentialDetails", {}).get("credentialType"),
+            "Single Sign On Type": o.get("credentialDetails", {}).get(
+                "singleSignOnType"
+            ),
+            "Connection Encryption": o.get("credentialDetails", {}).get(
+                "connectionEncryption"
+            ),
+            "Skip Test Connection": o.get("credentialDetails", {}).get(
+                "skipTestConnection"
+            ),
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 

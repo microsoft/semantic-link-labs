@@ -1,4 +1,3 @@
-import sempy
 import sempy.fabric as fabric
 import pandas as pd
 from sempy_labs._list_functions import list_tables, list_annotations
@@ -7,8 +6,11 @@ from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 
+
 @log
-def list_direct_lake_model_calc_tables(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
+def list_direct_lake_model_calc_tables(
+    dataset: str, workspace: Optional[str] = None
+) -> pd.DataFrame:
     """
     Shows the calculated tables and their respective DAX expression for a Direct Lake model (which has been migrated from import/DirectQuery).
 
@@ -32,18 +34,21 @@ def list_direct_lake_model_calc_tables(dataset: str, workspace: Optional[str] = 
     df = pd.DataFrame(columns=["Table Name", "Source Expression"])
 
     with connect_semantic_model(
-                dataset=dataset, readonly=True, workspace=workspace
-            ) as tom:
-        
+        dataset=dataset, readonly=True, workspace=workspace
+    ) as tom:
+
         is_direct_lake = tom.is_direct_lake()
 
         if not is_direct_lake:
-            raise ValueError(f"{icons.red_dot} The '{dataset}' semantic model is not in Direct Lake mode.")
+            raise ValueError(
+                f"{icons.red_dot} The '{dataset}' semantic model is not in Direct Lake mode."
+            )
         else:
             dfA = list_annotations(dataset, workspace)
             dfT = list_tables(dataset, workspace)
             dfA_filt = dfA[
-                (dfA["Object Type"] == "Model") & (dfA["Annotation Name"].isin(dfT["Name"]))
+                (dfA["Object Type"] == "Model")
+                & (dfA["Annotation Name"].isin(dfT["Name"]))
             ]
 
             for i, r in dfA_filt.iterrows():
@@ -51,6 +56,8 @@ def list_direct_lake_model_calc_tables(dataset: str, workspace: Optional[str] = 
                 se = r["Annotation Value"]
 
                 new_data = {"Table Name": tName, "Source Expression": se}
-                df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+                df = pd.concat(
+                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                )
 
             return df

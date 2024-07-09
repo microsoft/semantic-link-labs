@@ -1,7 +1,8 @@
-import sempy
 import sempy.fabric as fabric
 import pandas as pd
-import json, base64, time
+import json
+import base64
+import time
 from typing import Optional
 from sempy_labs._helper_functions import resolve_workspace_name_and_id
 import sempy_labs._icons as icons
@@ -41,7 +42,9 @@ def create_report_from_reportjson(
     dfI_model = dfI_m[(dfI_m["Display Name"] == dataset)]
 
     if len(dfI_model) == 0:
-        raise ValueError(f"{icons.red_dot} The '{dataset}' semantic model does not exist in the '{workspace}' workspace.")
+        raise ValueError(
+            f"{icons.red_dot} The '{dataset}' semantic model does not exist in the '{workspace}' workspace."
+        )
 
     datasetId = dfI_model["Id"].iloc[0]
 
@@ -169,7 +172,9 @@ def update_report_from_reportjson(
     dfR_filt = dfR[(dfR["Name"] == report) & (dfR["Report Type"] == "PowerBIReport")]
 
     if len(dfR_filt) == 0:
-        raise ValueError(f"{icons.red_dot} The '{report}' report does not exist in the '{workspace}' workspace.")
+        raise ValueError(
+            f"{icons.red_dot} The '{report}' report does not exist in the '{workspace}' workspace."
+        )
 
     reportId = dfR_filt["Id"].iloc[0]
     client = fabric.FabricRestClient()
@@ -210,7 +215,7 @@ def update_report_from_reportjson(
 
     request_body = {
         "displayName": report,
-        "type": 'Report',
+        "type": "Report",
         "definition": {
             "parts": [
                 {

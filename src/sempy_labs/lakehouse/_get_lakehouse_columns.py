@@ -1,4 +1,3 @@
-import sempy
 import sempy.fabric as fabric
 import pandas as pd
 from pyspark.sql import SparkSession
@@ -9,6 +8,7 @@ from sempy_labs._helper_functions import (
 )
 from typing import Optional
 from sempy._utils._log import log
+
 
 @log
 def get_lakehouse_columns(

@@ -1,13 +1,13 @@
-import sempy
 import sempy.fabric as fabric
 import pandas as pd
-import datetime, time
+import datetime
+import time
 from sempy_labs._list_functions import list_tables
 from sempy_labs.directlake._get_shared_expression import get_shared_expression
 from sempy_labs._helper_functions import resolve_lakehouse_name
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from sempy_labs.tom import connect_semantic_model
-from typing import List, Optional, Union
+from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 
@@ -97,7 +97,7 @@ def migrate_tables_columns_to_semantic_model(
                     success = True
                     try:
                         tom.model.Expressions["DatabaseQuery"]
-                    except:
+                    except Exception:
                         tom.add_expression("DatabaseQuery", expression=shEx)
                         print(
                             f"{icons.green_dot} The 'DatabaseQuery' expression has been added."
@@ -109,9 +109,7 @@ def migrate_tables_columns_to_semantic_model(
                         tHid = bool(r["Hidden"])
                         tDesc = r["Description"]
 
-                        try:
-                            tom.model.Tables[tName]
-                        except:
+                        if not any(t.Name == tName for t in tom.model.Tables):
                             tom.add_table(
                                 name=tName,
                                 description=tDesc,
@@ -134,7 +132,7 @@ def migrate_tables_columns_to_semantic_model(
 
                         try:
                             tom.model.Tables[tName].Columns[cName]
-                        except:
+                        except Exception:
                             tom.add_data_column(
                                 table_name=tName,
                                 column_name=cName,
@@ -149,13 +147,14 @@ def migrate_tables_columns_to_semantic_model(
                     print(
                         f"\n{icons.green_dot} All regular tables and columns have been added to the '{new_dataset}' semantic model."
                     )
-            except Exception as e:
+            except Exception:
                 if datetime.datetime.now() - start_time > timeout:
                     break
                 time.sleep(1)
     else:
         print(
-            f"{icons.red_dot} Lakehouse not attached to notebook and lakehouse/lakehouse_workspace are not specified. Please add your lakehouse to this notebook or specify the lakehouse/lakehouse_workspace parameters."
+            f"{icons.red_dot} Lakehouse not attached to notebook and lakehouse/lakehouse_workspace are not specified. Please add your lakehouse to this notebook"
+            f" or specify the lakehouse/lakehouse_workspace parameters."
         )
         print(
             "To attach a lakehouse to a notebook, go to the the 'Explorer' window to the left, click 'Lakehouses' to add your lakehouse to this notebook"

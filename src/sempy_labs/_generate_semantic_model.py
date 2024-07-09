@@ -1,8 +1,10 @@
-import sempy
 import sempy.fabric as fabric
 import pandas as pd
-import json, base64, time, os
-from typing import List, Optional, Union
+import json
+import base64
+import time
+import os
+from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
     resolve_workspace_name_and_id,
@@ -37,7 +39,9 @@ def create_blank_semantic_model(
     min_compat = 1500
 
     if compatibility_level < min_compat:
-        raise ValueError(f"{icons.red_dot} Compatiblity level must be at least {min_compat}.")
+        raise ValueError(
+            f"{icons.red_dot} Compatiblity level must be at least {min_compat}."
+        )
 
     tmsl = f"""
   {{
@@ -90,7 +94,9 @@ def create_semantic_model_from_bim(
     dfI_filt = dfI[(dfI["Display Name"] == dataset)]
 
     if len(dfI_filt) > 0:
-        raise ValueError(f"{icons.red_dot} '{dataset}' already exists as a semantic model in the '{workspace}' workspace.")
+        raise ValueError(
+            f"{icons.red_dot} '{dataset}' already exists as a semantic model in the '{workspace}' workspace."
+        )
 
     client = fabric.FabricRestClient()
     defPBIDataset = {"version": "1.0", "settings": {}}
@@ -185,7 +191,8 @@ def deploy_semantic_model(
 
     if new_dataset == dataset and new_dataset_workspace == workspace:
         print(
-            f"The 'dataset' and 'new_dataset' parameters have the same value. And, the 'workspace' and 'new_dataset_workspace' parameters have the same value. At least one of these must be different. Please update the parameters."
+            f"{icons.red_dot} The 'dataset' and 'new_dataset' parameters have the same value. And, the 'workspace' and 'new_dataset_workspace' "
+            f"parameters have the same value. At least one of these must be different. Please update the parameters."
         )
         return
 
@@ -253,10 +260,9 @@ def get_semantic_model_bim(
     if save_to_file_name is not None:
         lakeAttach = lakehouse_attached()
         if lakeAttach is False:
-            print(
-                f"In order to save the model.bim file, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
+            raise ValueError(
+                f"{icons.red_dot} In order to save the model.bim file, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
             )
-            return
 
         lakehouse_id = fabric.get_lakehouse_id()
         lakehouse = resolve_lakehouse_name(lakehouse_id, workspace)

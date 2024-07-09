@@ -1,6 +1,7 @@
-import sempy
 import sempy.fabric as fabric
-import re, datetime, time
+import re
+import datetime
+import time
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 from sempy_labs._helper_functions import resolve_lakehouse_name
 from sempy_labs.tom import connect_semantic_model
@@ -90,7 +91,7 @@ def migrate_calc_tables_to_semantic_model(
 
                         try:
                             tom.model.Tables[tName]
-                        except:
+                        except Exception:
                             tom.add_table(name=tName)
                             tom.add_entity_partition(
                                 table_name=tName,
@@ -112,11 +113,11 @@ def migrate_calc_tables_to_semantic_model(
                             & (dfC["Column Name"] == cName),
                             "Data Type",
                         ].iloc[0]
-                        cType = dfC.loc[
-                            (dfC["Table Name"] == tName)
-                            & (dfC["Column Name"] == cName),
-                            "Type",
-                        ].iloc[0]
+                        # cType = dfC.loc[
+                        #    (dfC["Table Name"] == tName)
+                        #    & (dfC["Column Name"] == cName),
+                        #    "Type",
+                        # ].iloc[0]
 
                         # av = tom.get_annotation_value(object = tom.model, name = tName)
 
@@ -129,7 +130,7 @@ def migrate_calc_tables_to_semantic_model(
                         lakeColumn = matches[0].replace(" ", "")
                         try:
                             tom.model.Tables[tName].Columns[cName]
-                        except:
+                        except Exception:
                             tom.add_data_column(
                                 table_name=tName,
                                 column_name=cName,
@@ -144,7 +145,7 @@ def migrate_calc_tables_to_semantic_model(
                     f"\n{icons.green_dot} All viable calculated tables have been added to the model."
                 )
 
-        except Exception as e:
+        except Exception:
             if datetime.datetime.now() - start_time > timeout:
                 break
             time.sleep(1)
