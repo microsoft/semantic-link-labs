@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional
 from anytree import Node, RenderTree
 from sempy._utils._log import log
 
+
 @log
 def get_measure_dependencies(dataset: str, workspace: Optional[str] = None):
     """
@@ -127,6 +128,7 @@ def get_measure_dependencies(dataset: str, workspace: Optional[str] = None):
     df = df.drop(["Done", "Full Object Name", "Referenced Full Object Name"], axis=1)
 
     return df
+
 
 @log
 def get_model_calc_dependencies(dataset: str, workspace: Optional[str] = None):

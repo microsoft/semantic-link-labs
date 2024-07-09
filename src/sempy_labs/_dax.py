@@ -1,8 +1,7 @@
-import sempy
 import sempy.fabric as fabric
 import pandas as pd
 from sempy_labs._helper_functions import resolve_dataset_id
-from typing import List, Optional, Union
+from typing import Optional
 from sempy._utils._log import log
 
 
@@ -50,7 +49,7 @@ def evaluate_dax_impersonation(
 
     request_body = {
         "queries": [{"query": dax_query}],
-        "impersonatedUserName": user_name
+        "impersonatedUserName": user_name,
     }
 
     client = fabric.PowerBIRestClient()

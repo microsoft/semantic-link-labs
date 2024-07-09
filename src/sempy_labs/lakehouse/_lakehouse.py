@@ -1,4 +1,3 @@
-import sempy
 import sempy.fabric as fabric
 from tqdm.auto import tqdm
 from pyspark.sql import SparkSession
@@ -6,6 +5,7 @@ from sempy_labs._helper_functions import resolve_lakehouse_name
 from typing import List, Optional, Union
 import sempy_labs._icons as icons
 from sempy._utils._log import log
+
 
 def lakehouse_attached() -> bool:
     """
@@ -24,6 +24,7 @@ def lakehouse_attached() -> bool:
         return True
     else:
         return False
+
 
 @log
 def optimize_lakehouse_tables(

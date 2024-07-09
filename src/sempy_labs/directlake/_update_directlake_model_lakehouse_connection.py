@@ -1,9 +1,7 @@
-import sempy
 import sempy.fabric as fabric
 from sempy_labs.directlake._get_shared_expression import get_shared_expression
 from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
-    resolve_workspace_name_and_id,
 )
 from sempy_labs.tom import connect_semantic_model
 from typing import Optional
@@ -54,13 +52,18 @@ def update_direct_lake_model_lakehouse_connection(
     dfI_filt = dfI[(dfI["Display Name"] == lakehouse)]
 
     if len(dfI_filt) == 0:
-        raise ValueError(f"{icons.red_dot} The '{lakehouse}' lakehouse does not exist within the '{lakehouse_workspace}' workspace. Therefore it cannot be used to support the '{dataset}' semantic model within the '{workspace}' workspace.")
+        raise ValueError(
+            f"{icons.red_dot} The '{lakehouse}' lakehouse does not exist within the '{lakehouse_workspace}' workspace. "
+            f"Therefore it cannot be used to support the '{dataset}' semantic model within the '{workspace}' workspace."
+        )
 
     dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
     dfP_filt = dfP[dfP["Mode"] == "DirectLake"]
 
     if len(dfP_filt) == 0:
-        raise ValueError(f"{icons.red_dot} The '{dataset}' semantic model is not in Direct Lake. This function is only applicable to Direct Lake semantic models.")
+        raise ValueError(
+            f"{icons.red_dot} The '{dataset}' semantic model is not in Direct Lake. This function is only applicable to Direct Lake semantic models."
+        )
     else:
         with connect_semantic_model(
             dataset=dataset, readonly=False, workspace=workspace
@@ -73,4 +76,6 @@ def update_direct_lake_model_lakehouse_connection(
                     f"{icons.green_dot} The expression in the '{dataset}' semantic model has been updated to point to the '{lakehouse}' lakehouse in the '{lakehouse_workspace}' workspace."
                 )
             except Exception as e:
-                raise ValueError(f"{icons.red_dot} The expression in the '{dataset}' semantic model was not updated.") from e
+                raise ValueError(
+                    f"{icons.red_dot} The expression in the '{dataset}' semantic model was not updated."
+                ) from e

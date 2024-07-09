@@ -1,7 +1,6 @@
-import sempy
 import sempy.fabric as fabric
 from ._helper_functions import resolve_dataset_id
-from typing import List, Optional, Union
+from typing import Optional
 import sempy_labs._icons as icons
 
 
@@ -25,10 +24,10 @@ def clear_cache(dataset: str, workspace: Optional[str] = None):
     datasetID = resolve_dataset_id(dataset=dataset, workspace=workspace)
 
     xmla = f"""
-            <ClearCache xmlns="http://schemas.microsoft.com/analysisservices/2003/engine">  
+            <ClearCache xmlns="http://schemas.microsoft.com/analysisservices/2003/engine">
                 <Object>  
-                    <DatabaseID>{datasetID}</DatabaseID>  
-                </Object>  
+                    <DatabaseID>{datasetID}</DatabaseID>
+                </Object>
             </ClearCache>
             """
     fabric.execute_xmla(dataset=dataset, xmla_command=xmla, workspace=workspace)

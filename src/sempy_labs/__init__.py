@@ -66,6 +66,7 @@ from sempy_labs._helper_functions import (
     resolve_report_name,
     #  language_validate
 )
+
 #  from sempy_labs._model_auto_build import model_auto_build
 from sempy_labs._model_bpa import model_bpa_rules, run_model_bpa
 from sempy_labs._model_dependencies import (
@@ -125,7 +126,7 @@ __all__ = [
     #'list_sqlendpoints',
     #'list_tables',
     "list_warehouses",
-    'list_workspace_role_assignments',
+    "list_workspace_role_assignments",
     "create_warehouse",
     "update_item",
     "create_abfss_path",
@@ -141,20 +142,20 @@ __all__ = [
     "resolve_report_id",
     "resolve_report_name",
     #'language_validate',
-    #"model_auto_build",
+    # "model_auto_build",
     "model_bpa_rules",
     "run_model_bpa",
     "measure_dependency_tree",
     "get_measure_dependencies",
     "get_model_calc_dependencies",
     "export_model_to_onelake",
-    'qso_sync',
-    'qso_sync_status',
-    'set_qso',
-    'list_qso_settings',
-    'disable_qso',
-    'set_semantic_model_storage_format',
-    'set_workspace_default_storage_format',
+    "qso_sync",
+    "qso_sync_status",
+    "set_qso",
+    "list_qso_settings",
+    "disable_qso",
+    "set_semantic_model_storage_format",
+    "set_workspace_default_storage_format",
     "refresh_semantic_model",
     "cancel_dataset_refresh",
     "translate_semantic_model",
@@ -174,5 +175,5 @@ __all__ = [
     "delete_user_from_workspace",
     "update_workspace_user",
     "list_workspace_users",
-    "assign_workspace_to_dataflow_storage"
+    "assign_workspace_to_dataflow_storage",
 ]
