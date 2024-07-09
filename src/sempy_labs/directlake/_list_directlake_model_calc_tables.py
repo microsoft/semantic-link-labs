@@ -1,4 +1,3 @@
-import sempy
 import sempy.fabric as fabric
 import pandas as pd
 from sempy_labs._list_functions import list_tables, list_annotations

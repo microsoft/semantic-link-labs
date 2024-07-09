@@ -63,7 +63,8 @@ def direct_lake_schema_sync(
 
     if len(dfI_filt) == 0:
         raise ValueError(
-            f"{icons.red_dot} The SQL Endpoint in the '{dataset}' semantic model in the '{workspace} workspace does not point to the '{lakehouse}' lakehouse in the '{lakehouse_workspace}' workspace as specified."
+            f"{icons.red_dot} The SQL Endpoint in the '{dataset}' semantic model in the '{workspace} workspace does not point to the "
+            f"'{lakehouse}' lakehouse in the '{lakehouse_workspace}' workspace as specified."
         )
 
     dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
@@ -119,7 +120,8 @@ def direct_lake_schema_sync(
 
                     tom.model.Tables[tName].Columns.Add(col)
                     print(
-                        f"{icons.green_dot} The '{lakeCName}' column has been added to the '{tName}' table as a '{dt}' data type within the '{dataset}' semantic model within the '{workspace}' workspace."
+                        f"{icons.green_dot} The '{lakeCName}' column has been added to the '{tName}' table as a '{dt}' "
+                        f"data type within the '{dataset}' semantic model within the '{workspace}' workspace."
                     )
                 else:
                     print(

@@ -21,7 +21,8 @@ class TOMWrapper:
     """
     Convenience wrapper around the TOM object model for a semantic model. Always use the connect_semantic_model function to make sure the TOM object is initialized correctly.
 
-    `XMLA read/write endpoints <https://learn.microsoft.com/power-bi/enterprise/service-premium-connect-tools#to-enable-read-write-for-a-premium-capacity>`_ must be enabled if setting the readonly parameter to False.
+    `XMLA read/write endpoints <https://learn.microsoft.com/power-bi/enterprise/service-premium-connect-tools#to-enable-read-write-for-a-premium-capacity>`_ must
+     be enabled if setting the readonly parameter to False.
     """
 
     _dataset: str
@@ -502,7 +503,8 @@ class TOMWrapper:
         description: Optional[str] = None,
     ):
         """
-        Adds a `calculation item <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculationitem?view=analysisservices-dotnet>`_ to a `calculation group <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculationgroup?view=analysisservices-dotnet>`_ within a semantic model.
+        Adds a `calculation item <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculationitem?view=analysisservices-dotnet>`_ to
+          a `calculation group <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculationgroup?view=analysisservices-dotnet>`_ within a semantic model.
 
         Parameters
         ----------
@@ -588,7 +590,7 @@ class TOMWrapper:
             self.model.Roles[role_name].TablePermissions[
                 table_name
             ].FilterExpression = filter_expression
-        except:
+        except Exception:
             self.model.Roles[role_name].TablePermissions.Add(tp)
 
     def set_ols(
@@ -615,8 +617,7 @@ class TOMWrapper:
         permission = permission.capitalize()
 
         if permission not in ["Read", "None", "Default"]:
-            print(f"ERROR! Invalid 'permission' value.")
-            return
+            raise ValueError(f"{icons.red_dot} Invalid 'permission' value.")
 
         cp = TOM.ColumnPermission()
         cp.Column = self.model.Tables[table_name].Columns[column_name]
@@ -625,7 +626,7 @@ class TOMWrapper:
             self.model.Roles[role_name].TablePermissions[table_name].ColumnPermissions[
                 column_name
             ].MetadataPermission = System.Enum.Parse(TOM.MetadataPermission, permission)
-        except:
+        except Exception:
             self.model.Roles[role_name].TablePermissions[
                 table_name
             ].ColumnPermissions.Add(cp)
@@ -868,7 +869,7 @@ class TOMWrapper:
 
         try:
             self.model.Cultures.Add(cul)
-        except:
+        except Exception:
             pass
 
     def add_perspective(self, perspective_name: str):
@@ -1099,7 +1100,7 @@ class TOMWrapper:
 
         try:
             object.Annotations[name].Value = value
-        except:
+        except Exception:
             object.Annotations.Add(ann)
 
     def get_annotation_value(self, object, name: str):
@@ -1199,7 +1200,7 @@ class TOMWrapper:
 
         try:
             object.ExtendedProperties[name].Value = value
-        except:
+        except Exception:
             object.ExtendedProperties.Add(ep)
 
     def get_extended_property_value(self, object, name: str):
@@ -1302,7 +1303,7 @@ class TOMWrapper:
                     object.Parent.Name
                 ].PerspectiveHierarchies[object.Name]
             return True
-        except:
+        except Exception:
             return False
 
     def add_to_perspective(
@@ -1337,7 +1338,7 @@ class TOMWrapper:
 
         try:
             object.Model.Perspectives[perspective_name]
-        except:
+        except Exception:
             raise ValueError(
                 f"{icons.red_dot} The '{perspective_name}' perspective does not exist."
             )
@@ -1400,7 +1401,7 @@ class TOMWrapper:
 
         try:
             object.Model.Perspectives[perspective_name]
-        except:
+        except Exception:
             raise ValueError(
                 f"{icons.red_dot} The '{perspective_name}' perspective does not exist."
             )
@@ -1487,14 +1488,14 @@ class TOMWrapper:
         }
 
         prop = mapping.get(property)
-        if prop == None:
+        if prop is None:
             raise ValueError(
                 f"{icons.red_dot} Invalid property value. Please choose from the following: ['Name', 'Description', Display Folder]."
             )
 
         try:
             object.Model.Cultures[language]
-        except:
+        except Exception:
             raise ValueError(
                 f"{icons.red_dot} The '{language}' translation language does not exist in the semantic model."
             )
@@ -1543,7 +1544,7 @@ class TOMWrapper:
             for lang in object.Model.Cultures:
                 try:
                     self.remove_translation(object=object, language=lang.Name)
-                except:
+                except Exception:
                     pass
         if objType in ["Table", "Column", "Measure", "Hierarchy"]:
             for persp in object.Model.Perspectives:
@@ -1551,7 +1552,7 @@ class TOMWrapper:
                     self.remove_from_perspective(
                         object=object, perspective_name=persp.Name
                     )
-                except:
+                except Exception:
                     pass
 
         if objType == TOM.ObjectType.Column:
@@ -1659,12 +1660,12 @@ class TOMWrapper:
         objType = column.ObjectType
 
         if objType == TOM.ObjectType.Column:
-            for l in self.all_levels():
+            for lev in self.all_levels():
                 if (
-                    l.Parent.Table.Name == column.Parent.Name
-                    and l.Column.Name == column.Name
+                    lev.Parent.Table.Name == column.Parent.Name
+                    and lev.Column.Name == column.Name
                 ):
-                    yield l.Parent
+                    yield lev.Parent
 
     def used_in_sort_by(self, column: "TOM.Column"):
         """
@@ -1857,7 +1858,7 @@ class TOMWrapper:
                 if m.Name in meas:
                     yield m
 
-    def hybrid_tables(self):
+    def all_hybrid_tables(self):
         """
         Outputs the `hybrid tables <https://learn.microsoft.com/power-bi/connect-data/service-dataset-modes-understand#hybrid-tables>`_ within a semantic model.
 
@@ -1876,7 +1877,7 @@ class TOMWrapper:
                 if any(p.Mode == TOM.ModeType.DirectQuery for p in t.Partitions):
                     yield t
 
-    def date_tables(self):
+    def all_date_tables(self):
         """
         Outputs the tables which are marked as `date tables <https://learn.microsoft.com/power-bi/transform-model/desktop-date-tables>`_ within a semantic model.
 
@@ -2241,7 +2242,7 @@ class TOMWrapper:
             table_name = next(
                 m.Parent.Name for m in self.all_measures() if m.Name == measure_name
             )
-        except:
+        except Exception:
             raise ValueError(
                 f"{icons.red_dot} The '{measure_name}' measure does not exist in the '{self._dataset}' semantic model within the '{self._workspace}'."
             )
@@ -2277,14 +2278,14 @@ class TOMWrapper:
             float(target)
             tgt = str(target)
             measure_target = False
-        except:
+        except Exception:
             try:
                 tgt = next(
                     format_dax_object_name(m.Parent.Name, m.Name)
                     for m in self.all_measures()
                     if m.Name == target
                 )
-            except:
+            except Exception:
                 raise ValueError(
                     f"{icons.red_dot} The '{target}' measure does not exist in the '{self._dataset}' semantic model within the '{self._workspace}'."
                 )
@@ -2313,7 +2314,7 @@ class TOMWrapper:
             ms.KPI.TargetExpression = tgt
             ms.KPI.StatusGraphic = status_graphic
             ms.KPI.StatusExpression = expr
-        except:
+        except Exception:
             ms.KPI = kpi
 
     def set_aggregations(self, table_name: str, agg_table_name: str):
@@ -2331,6 +2332,8 @@ class TOMWrapper:
         -------
 
         """
+
+        import Microsoft.AnalysisServices.Tabular as TOM
 
         for c in self.model.Tables[agg_table_name].Columns:
 
@@ -2388,6 +2391,7 @@ class TOMWrapper:
             Defaults to none which resolves to 'Default'.
             `Aggregate valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.aggregatefunction?view=analysisservices-dotnet>`_
         """
+        import Microsoft.AnalysisServices.Tabular as TOM
         import System
 
         values = [
@@ -2429,6 +2433,7 @@ class TOMWrapper:
             The DirectLakeBehavior property value.
             `DirectLakeBehavior valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.directlakebehavior?view=analysisservices-dotnet>`_
         """
+        import Microsoft.AnalysisServices.Tabular as TOM
         import System
 
         direct_lake_behavior = direct_lake_behavior.capitalize()
@@ -2755,7 +2760,7 @@ class TOMWrapper:
         try:
             runId = self.get_annotation_value(object=self.model, name="Vertipaq_Run")
             runId = str(int(runId) + 1)
-        except:
+        except Exception:
             runId = "1"
         self.set_annotation(object=self.model, name="Vertipaq_Run", value=runId)
 
@@ -3664,15 +3669,16 @@ class TOMWrapper:
                 )
 
         # Validate measure and extract table name
-        for m in self.all_measures():
-            if m.Name == measure_name:
-                table_name = m.Parent.Name
+        matching_measures = [
+            m.Parent.Name for m in self.all_measures() if m.Name == measure_name
+        ]
 
         if table_name is None:
             raise ValueError(
                 f"{icons.red_dot} The '{measure_name}' is not a valid measure in the '{self._dataset}' semantic model within the '{self._workspace}' workspace."
             )
 
+        table_name = matching_measures[0]
         # Validate date table
         if not self.is_date_table(date_table):
             raise ValueError(
@@ -3680,9 +3686,17 @@ class TOMWrapper:
             )
 
         # Extract date key from date table
-        for c in self.all_columns():
-            if c.Parent.Name == date_table and c.IsKey:
-                date_key = c.Name
+        matching_columns = [
+            c.Name
+            for c in self.all_columns()
+            if c.Parent.Name == date_table and c.IsKey
+        ]
+
+        if not matching_columns:
+            raise ValueError(
+                f"{icons.red_dot} The '{date_table}' table does not have a date key column in the '{self._dataset}' semantic model within the '{self._workspace}' workspace.")
+
+        date_key = matching_columns[0]
 
         # Create the new time intelligence measures
         for t in time_intel:
@@ -3729,7 +3743,7 @@ class TOMWrapper:
         p = self.model.Tables[table_name].Partitions[partition_name]
         if p.SourceType != TOM.PartitionSourceType.M:
             raise ValueError(
-                f"Invalid partition source type. This function is only for M partitions."
+                f"{icons.red_dot} Invalid partition source type. This function is only for M partitions."
             )
         if expression is not None:
             p.Source.Expression = expression
@@ -3760,7 +3774,7 @@ class TOMWrapper:
 
         if sbc.DataType != TOM.DataType.Int64:
             raise ValueError(
-                f"Invalid sort by column data type. The sort by column must be of 'Int64' data type."
+                f"{icons.red_dot} Invalid sort by column data type. The sort by column must be of 'Int64' data type."
             )
 
         self.model.Tables[table_name].Columns[column_name].SortByColumn = sbc
@@ -3778,6 +3792,32 @@ class TOMWrapper:
         """
 
         self.model.Tables[table_name].Columns[column_name].SortByColumn = None
+
+    def is_calculated_table(self, table_name: str):
+        """
+        Identifies if a table is a calculated table.
+
+        Parameters
+        ----------
+        table_name : str
+            Name of the table.
+
+        Returns
+        -------
+        bool
+            A boolean value indicating whether the table is a calculated table.
+        """
+
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        isCalcTable = False
+        t = self.model.Tables[table_name]
+        if t.ObjectType == TOM.ObjectType.Table:
+            if any(
+                p.SourceType == TOM.PartitionSourceType.Calculated for p in t.Partitions
+            ):
+                isCalcTable = True
+        return isCalcTable
 
     def close(self):
         if not self._readonly and self.model is not None:

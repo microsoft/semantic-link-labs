@@ -1,7 +1,6 @@
-import sempy
 import sempy.fabric as fabric
 import numpy as np
-from typing import List, Optional, Union
+from typing import Optional
 import sempy_labs._icons as icons
 
 
