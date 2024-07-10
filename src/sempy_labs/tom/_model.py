@@ -586,11 +586,15 @@ class TOMWrapper:
         tp.Table = self.model.Tables[table_name]
         tp.FilterExpression = filter_expression
 
-        try:
+        if any(
+            t.Name == table_name and r.Name == role_name
+            for r in self.model.Roles
+            for t in r.TablePermissions
+        ):
             self.model.Roles[role_name].TablePermissions[
                 table_name
             ].FilterExpression = filter_expression
-        except Exception:
+        else:
             self.model.Roles[role_name].TablePermissions.Add(tp)
 
     def set_ols(
@@ -622,11 +626,17 @@ class TOMWrapper:
         cp = TOM.ColumnPermission()
         cp.Column = self.model.Tables[table_name].Columns[column_name]
         cp.MetadataPermission = System.Enum.Parse(TOM.MetadataPermission, permission)
-        try:
+
+        if any(
+            c.Name == column_name and t.Name == table_name and r.Name == role_name
+            for r in self.model.Roles
+            for t in r.TablePermissions
+            for c in t.ColumnPermissions
+        ):
             self.model.Roles[role_name].TablePermissions[table_name].ColumnPermissions[
                 column_name
             ].MetadataPermission = System.Enum.Parse(TOM.MetadataPermission, permission)
-        except Exception:
+        else:
             self.model.Roles[role_name].TablePermissions[
                 table_name
             ].ColumnPermissions.Add(cp)
@@ -867,10 +877,8 @@ class TOMWrapper:
         cul = TOM.Culture()
         cul.Name = language
 
-        try:
+        if not any(c.Name == language for c in self.model.Cultures):
             self.model.Cultures.Add(cul)
-        except Exception:
-            pass
 
     def add_perspective(self, perspective_name: str):
         """
@@ -1098,9 +1106,9 @@ class TOMWrapper:
         ann.Name = name
         ann.Value = value
 
-        try:
+        if any(a.Name == name for a in object.Annotations):
             object.Annotations[name].Value = value
-        except Exception:
+        else:
             object.Annotations.Add(ann)
 
     def get_annotation_value(self, object, name: str):
@@ -1119,10 +1127,10 @@ class TOMWrapper:
         str
             The annotation value.
         """
-        try:
+        if any(a.Name == name for a in object.Annotations):
             value = object.Annotations[name].Value
-        except Exception:
-            value = ""
+        else:
+            value = None
 
         return value
 
@@ -1202,9 +1210,9 @@ class TOMWrapper:
         ep.Name = name
         ep.Value = value
 
-        try:
+        if any(a.Name == name for a in object.Annotations):
             object.ExtendedProperties[name].Value = value
-        except Exception:
+        else:
             object.ExtendedProperties.Add(ep)
 
     def get_extended_property_value(self, object, name: str):
@@ -1223,10 +1231,10 @@ class TOMWrapper:
         str
             The extended property value.
         """
-        try:
+        if any(a.Name == name for a in object.ExtendedProperties):
             value = object.ExtendedProperties[name].Value
-        except Exception:
-            value = ""
+        else:
+            value = None
 
         return value
 
@@ -1344,14 +1352,13 @@ class TOMWrapper:
                 f"{icons.red_dot} Only the following object types are valid for perspectives: {validObjects}."
             )
 
-        try:
+        if any(p.Name == perspective_name for p in self.model.Perspectives):
             object.Model.Perspectives[perspective_name]
-        except Exception:
+        else:
             raise ValueError(
                 f"{icons.red_dot} The '{perspective_name}' perspective does not exist."
             )
 
-        # try:
         if objectType == TOM.ObjectType.Table:
             pt = TOM.PerspectiveTable()
             pt.Table = object
@@ -1374,8 +1381,6 @@ class TOMWrapper:
             object.Model.Perspectives[perspective_name].PerspectiveTables[
                 object.Parent.Name
             ].PerspectiveHierarchies.Add(ph)
-        # except:
-        #    pass
 
     def remove_from_perspective(
         self,
@@ -1407,14 +1412,11 @@ class TOMWrapper:
                 f"{icons.red_dot} Only the following object types are valid for perspectives: {validObjects}."
             )
 
-        try:
-            object.Model.Perspectives[perspective_name]
-        except Exception:
+        if not any(p.Name == perspective_name for p in self.model.Perspectives):
             raise ValueError(
                 f"{icons.red_dot} The '{perspective_name}' perspective does not exist."
             )
 
-        # try:
         if objectType == TOM.ObjectType.Table:
             pt = object.Model.Perspectives[perspective_name].PerspectiveTables[
                 object.Name
@@ -1447,8 +1449,6 @@ class TOMWrapper:
             object.Model.Perspectives[perspective_name].PerspectiveTables[
                 object.Parent.Name
             ].PerspectiveHierarchies.Remove(ph)
-        # except:
-        #    pass
 
     def set_translation(
         self,
@@ -1501,9 +1501,7 @@ class TOMWrapper:
                 f"{icons.red_dot} Invalid property value. Please choose from the following: ['Name', 'Description', Display Folder]."
             )
 
-        try:
-            object.Model.Cultures[language]
-        except Exception:
+        if not any(c.Name == language for c in self.model.Cultures):
             raise ValueError(
                 f"{icons.red_dot} The '{language}' translation language does not exist in the semantic model."
             )
@@ -2318,11 +2316,11 @@ class TOMWrapper:
         kpi.StatusExpression = expr
 
         ms = self.model.Tables[table_name].Measures[measure_name]
-        try:
+        if ms.KPI is not None:
             ms.KPI.TargetExpression = tgt
             ms.KPI.StatusGraphic = status_graphic
             ms.KPI.StatusExpression = expr
-        except Exception:
+        else:
             ms.KPI = kpi
 
     def set_aggregations(self, table_name: str, agg_table_name: str):
@@ -2797,10 +2795,7 @@ class TOMWrapper:
                 object=object, name="Vertipaq_RecordCount"
             )
 
-        if result == "":
-            result = 0
-
-        return int(result)
+        return int(result) if result is not None else 0
 
     def records_per_segment(self, object: "TOM.Partition"):
         """
@@ -2825,10 +2820,7 @@ class TOMWrapper:
                 object=object, name="Vertipaq_RecordsPerSegment"
             )
 
-        if result == "":
-            result = 0
-
-        return float(result)
+        return float(result) if result is not None else 0
 
     def used_size(self, object: Union["TOM.Hierarchy", "TOM.Relationship"]):
         """
@@ -2853,10 +2845,7 @@ class TOMWrapper:
         elif objType == TOM.ObjectType.Relationship:
             result = self.get_annotation_value(object=object, name="Vertipaq_UsedSize")
 
-        if result == "":
-            result = 0
-
-        return int(result)
+        return int(result) if result is not None else 0
 
     def data_size(self, column: "TOM.Column"):
         """
@@ -2879,10 +2868,7 @@ class TOMWrapper:
         if objType == TOM.ObjectType.Column:
             result = self.get_annotation_value(object=column, name="Vertipaq_DataSize")
 
-        if result == "":
-            result = 0
-
-        return int(result)
+        return int(result) if result is not None else 0
 
     def dictionary_size(self, column: "TOM.Column"):
         """
@@ -2907,10 +2893,7 @@ class TOMWrapper:
                 object=column, name="Vertipaq_DictionarySize"
             )
 
-        if result == "":
-            result = 0
-
-        return int(result)
+        return int(result) if result is not None else 0
 
     def total_size(self, object: Union["TOM.Table", "TOM.Column"]):
         """
@@ -2935,10 +2918,7 @@ class TOMWrapper:
         elif objType == TOM.ObjectType.Table:
             result = self.get_annotation_value(object=object, name="Vertipaq_TotalSize")
 
-        if result == "":
-            result = 0
-
-        return int(result)
+        return int(result) if result is not None else 0
 
     def cardinality(self, column: "TOM.Column"):
         """
@@ -2963,10 +2943,7 @@ class TOMWrapper:
                 object=column, name="Vertipaq_Cardinality"
             )
 
-        if result == "":
-            result = 0
-
-        return int(result)
+        return int(result) if result is not None else 0
 
     def depends_on(self, object, dependencies: pd.DataFrame):
         """
@@ -3723,7 +3700,8 @@ class TOMWrapper:
 
         if not matching_columns:
             raise ValueError(
-                f"{icons.red_dot} The '{date_table}' table does not have a date key column in the '{self._dataset}' semantic model within the '{self._workspace}' workspace.")
+                f"{icons.red_dot} The '{date_table}' table does not have a date key column in the '{self._dataset}' semantic model within the '{self._workspace}' workspace."
+            )
 
         date_key = matching_columns[0]
 

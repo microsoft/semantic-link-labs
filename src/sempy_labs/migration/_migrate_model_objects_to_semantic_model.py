@@ -127,11 +127,14 @@ def migrate_model_objects_to_semantic_model(
                                 sbc = dfC_filt["Sort By Column"].iloc[0]
 
                                 if sbc is not None:
-                                    try:
+                                    if any(
+                                        o.Name == sbc and o.Parent.Name == c.Parent.Name
+                                        for o in tom.all_columns()
+                                    ):
                                         c.SortByColumn = tom.model.Tables[
                                             t.Name
                                         ].Columns[sbc]
-                                    except Exception:
+                                    else:
                                         print(
                                             f"{icons.red_dot} Failed to create '{sbc}' as a Sort By Column for the '{c.Name}' in the '{t.Name}' table."
                                         )
@@ -161,9 +164,11 @@ def migrate_model_objects_to_semantic_model(
                     cols = r["Column Name"]
                     lvls = r["Level Name"]
 
-                    try:
-                        tom.model.Tables[tName].Hierarchies[hName]
-                    except Exception:
+                    if not any(
+                        t.Name == tName and h.Name == hName
+                        for t in tom.model.Tables
+                        for h in t.Hierarchies
+                    ):
                         tom.add_hierarchy(
                             table_name=tName,
                             hierarchy_name=hName,
@@ -186,9 +191,7 @@ def migrate_model_objects_to_semantic_model(
                     mDesc = r["Measure Description"]
                     mFS = r["Format String"]
 
-                    try:
-                        tom.model.Tables[tName].Measures[mName]
-                    except Exception:
+                    if not any(m.Name == mName for m in tom.all_measures()):
                         tom.add_measure(
                             table_name=tName,
                             measure_name=mName,
@@ -201,7 +204,7 @@ def migrate_model_objects_to_semantic_model(
                         print(
                             f"{icons.green_dot} The '{mName}' measure has been added."
                         )
-
+                print(f"\n{icons.in_progress} Creating calculation groups...")
                 for cgName in dfCI["Calculation Group Name"].unique():
 
                     isHidden = bool(
@@ -218,9 +221,7 @@ def migrate_model_objects_to_semantic_model(
                         (dfCI["Calculation Group Name"] == cgName), "Description"
                     ].iloc[0]
 
-                    try:
-                        tom.model.Tables[cgName]
-                    except Exception:
+                    if not any(t.Name == cgName for t in tom.model.Tables):
                         tom.add_calculation_group(
                             name=cgName,
                             description=desc,
@@ -232,9 +233,9 @@ def migrate_model_objects_to_semantic_model(
                         )
                         tom.model.DiscourageImplicitMeasures = True
 
-                        print(
-                            f"\n{icons.in_progress} Updating calculation group column name..."
-                        )
+                        # print(
+                        #    f"\n{icons.in_progress} Updating calculation group column names..."
+                        # )
                         dfC_filt = dfC[
                             (dfC["Table Name"] == cgName) & (dfC["Hidden"] == False)
                         ]
@@ -265,11 +266,12 @@ def migrate_model_objects_to_semantic_model(
                             & (dfCI["Calculation Item Name"] == calcItem),
                             "Format String Expression",
                         ].iloc[0]
-                        try:
-                            tom.model.Tables[cgName].CalculationGroup.CalculationItems[
-                                calcItem
-                            ]
-                        except Exception:
+
+                        if not any(
+                            ci.CalculationGroup.Parent.Name == cgName
+                            and ci.Name == calcItem
+                            for ci in tom.all_calculation_items()
+                        ):
                             tom.add_calculation_item(
                                 table_name=cgName,
                                 calculation_item_name=calcItem,
@@ -338,7 +340,13 @@ def migrate_model_objects_to_semantic_model(
                             f"{icons.yellow_dot} {relName} was not created since columns used in a relationship must have the same data type."
                         )
                     else:
-                        try:
+                        if not any(
+                            r.FromTable.Name == fromTable
+                            and r.FromColumn.Name == fromColumn
+                            and r.ToTable.Name == toTable
+                            and r.ToColumn.Name == toColumn
+                            for r in tom.model.Relationships
+                        ):
                             tom.add_relationship(
                                 from_table=fromTable,
                                 from_column=fromColumn,
@@ -351,11 +359,10 @@ def migrate_model_objects_to_semantic_model(
                                 rely_on_referential_integrity=rori,
                                 is_active=isActive,
                             )
-
                             print(
                                 f"{icons.green_dot} The {relName} relationship has been added."
                             )
-                        except Exception:
+                        else:
                             print(
                                 f"{icons.red_dot} The {relName} relationship was not added."
                             )
@@ -366,9 +373,7 @@ def migrate_model_objects_to_semantic_model(
                     roleDesc = row["Description"]
                     modPerm = row["Model Permission"]
 
-                    try:
-                        tom.model.Roles[roleName]
-                    except Exception:
+                    if not any(r.Name == roleName for r in tom.model.Roles):
                         tom.add_role(
                             role_name=roleName,
                             model_permission=modPerm,
@@ -384,14 +389,14 @@ def migrate_model_objects_to_semantic_model(
                     tName = row["Table"]
                     expr = row["Filter Expression"]
 
-                    try:
+                    if any(t.Name == tName for t in tom.model.Tables):
                         tom.set_rls(
                             role_name=roleName, table_name=tName, filter_expression=expr
                         )
                         print(
                             f"{icons.green_dot} Row level security for the '{tName}' table within the '{roleName}' role has been set."
                         )
-                    except Exception:
+                    else:
                         print(
                             f"{icons.red_dot} Row level security for the '{tName}' table within the '{roleName}' role was not set."
                         )
@@ -399,9 +404,7 @@ def migrate_model_objects_to_semantic_model(
                 print(f"\n{icons.in_progress} Creating perspectives...")
                 for pName in dfP["Perspective Name"].unique():
 
-                    try:
-                        tom.model.Perspectives[pName]
-                    except Exception:
+                    if not any(p.Name == pName for p in tom.model.Perspectives):
                         tom.add_perspective(perspective_name=pName)
                         print(
                             f"{icons.green_dot} The '{pName}' perspective has been added."
@@ -440,9 +443,7 @@ def migrate_model_objects_to_semantic_model(
 
                 print(f"\n{icons.in_progress} Creating translation languages...")
                 for trName in dfTranslation["Culture Name"].unique():
-                    try:
-                        tom.model.Cultures[trName]
-                    except Exception:
+                    if not any(c.Name == trName for c in tom.model.Cultures):
                         tom.add_translation(trName)
                         print(
                             f"{icons.green_dot} The '{trName}' translation language has been added."

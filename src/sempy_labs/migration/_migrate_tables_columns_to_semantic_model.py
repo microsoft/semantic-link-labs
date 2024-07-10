@@ -95,9 +95,9 @@ def migrate_tables_columns_to_semantic_model(
                     dataset=new_dataset, readonly=False, workspace=new_dataset_workspace
                 ) as tom:
                     success = True
-                    try:
-                        tom.model.Expressions["DatabaseQuery"]
-                    except Exception:
+                    if not any(
+                        e.Name == "DatabaseQuery" for e in tom.model.Expressions
+                    ):
                         tom.add_expression("DatabaseQuery", expression=shEx)
                         print(
                             f"{icons.green_dot} The 'DatabaseQuery' expression has been added."
@@ -130,9 +130,10 @@ def migrate_tables_columns_to_semantic_model(
                         cHid = bool(r["Hidden"])
                         cDataType = r["Data Type"]
 
-                        try:
-                            tom.model.Tables[tName].Columns[cName]
-                        except Exception:
+                        if not any(
+                            c.Name == cName and c.Parent.Name == tName
+                            for c in tom.all_columns()
+                        ):
                             tom.add_data_column(
                                 table_name=tName,
                                 column_name=cName,

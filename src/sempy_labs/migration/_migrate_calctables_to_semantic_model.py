@@ -3,7 +3,7 @@ import re
 import datetime
 import time
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
-from sempy_labs._helper_functions import resolve_lakehouse_name
+from sempy_labs._helper_functions import resolve_lakehouse_name, format_dax_object_name
 from sempy_labs.tom import connect_semantic_model
 from typing import Optional
 from sempy._utils._log import log
@@ -88,10 +88,7 @@ def migrate_calc_tables_to_semantic_model(
                 success = True
                 for tName in dfC_filt["Table Name"].unique():
                     if tName.lower() in lc["Table Name"].values:
-
-                        try:
-                            tom.model.Tables[tName]
-                        except Exception:
+                        if not any(t.Name == tName for t in tom.model.Tables):
                             tom.add_table(name=tName)
                             tom.add_entity_partition(
                                 table_name=tName,
@@ -128,9 +125,10 @@ def migrate_calc_tables_to_semantic_model(
 
                         matches = re.findall(pattern, scName)
                         lakeColumn = matches[0].replace(" ", "")
-                        try:
-                            tom.model.Tables[tName].Columns[cName]
-                        except Exception:
+                        if not any(
+                            c.Name == cName and c.Parent.Name == tName
+                            for c in tom.all_columns()
+                        ):
                             tom.add_data_column(
                                 table_name=tName,
                                 column_name=cName,
@@ -138,7 +136,7 @@ def migrate_calc_tables_to_semantic_model(
                                 data_type=cDataType,
                             )
                             print(
-                                f"{icons.green_dot} The '{tName}'[{cName}] column has been added."
+                                f"{icons.green_dot} The {format_dax_object_name(tName,cName)} column has been added."
                             )
 
                 print(
