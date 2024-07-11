@@ -1444,7 +1444,9 @@ class TOMWrapper:
 
     def set_translation(
         self,
-        object: Union["TOM.Table", "TOM.Column", "TOM.Measure", "TOM.Hierarchy", "TOM.Level"],
+        object: Union[
+            "TOM.Table", "TOM.Column", "TOM.Measure", "TOM.Hierarchy", "TOM.Level"
+        ],
         language: str,
         property: str,
         value: str,
@@ -1474,7 +1476,7 @@ class TOMWrapper:
             TOM.ObjectType.Column,
             TOM.ObjectType.Measure,
             TOM.ObjectType.Hierarchy,
-            TOM.ObjectType.Level
+            TOM.ObjectType.Level,
         ]
 
         if object.ObjectType not in validObjects:
@@ -1504,15 +1506,25 @@ class TOMWrapper:
         object.Model.Cultures[language].ObjectTranslations.SetTranslation(
             object, prop, value
         )
-        
+
         if object.ObjectType in [TOM.ObjectType.Table, TOM.ObjectType.Measure]:
-            print(f"{icons.green_dot} The {property} property for the '{object.Name}' {str(object.ObjectType).lower()} has been translated into '{language}' as '{value}'.")
-        elif object.ObjectType in [TOM.ObjectType.Column, TOM.ObjectType.Hierarchy, TOM.ObjectType.Level]:
-            print(f"{icons.green_dot} The {property} property for the '{object.Parent.Name}'[{object.Name}] {str(object.ObjectType).lower()} has been translated into '{language}' as '{value}'.")      
+            print(
+                f"{icons.green_dot} The {property} property for the '{object.Name}' {str(object.ObjectType).lower()} has been translated into '{language}' as '{value}'."
+            )
+        elif object.ObjectType in [
+            TOM.ObjectType.Column,
+            TOM.ObjectType.Hierarchy,
+            TOM.ObjectType.Level,
+        ]:
+            print(
+                f"{icons.green_dot} The {property} property for the '{object.Parent.Name}'[{object.Name}] {str(object.ObjectType).lower()} has been translated into '{language}' as '{value}'."
+            )
 
     def remove_translation(
         self,
-        object: Union["TOM.Table", "TOM.Column", "TOM.Measure", "TOM.Hierarchy", "TOM.Level"],
+        object: Union[
+            "TOM.Table", "TOM.Column", "TOM.Measure", "TOM.Hierarchy", "TOM.Level"
+        ],
         language: str,
     ):
         """
@@ -3700,7 +3712,8 @@ class TOMWrapper:
 
         if not matching_columns:
             raise ValueError(
-                f"{icons.red_dot} The '{date_table}' table does not have a date key column in the '{self._dataset}' semantic model within the '{self._workspace}' workspace.")
+                f"{icons.red_dot} The '{date_table}' table does not have a date key column in the '{self._dataset}' semantic model within the '{self._workspace}' workspace."
+            )
 
         date_key = matching_columns[0]
 

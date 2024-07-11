@@ -37,10 +37,16 @@ def translate_semantic_model(
     from pyspark.sql import SparkSession
     from sempy_labs.tom import connect_semantic_model
 
+    def clean_text(text, exclude_chars):
+        if exclude_chars:
+            for char in exclude_chars:
+                text = text.replace(char, " ")
+        return text
+
     if isinstance(languages, str):
         languages = [languages]
 
-    dfPrep = pd.DataFrame(
+    df_prep = pd.DataFrame(
         columns=["Object Type", "Name", "Description", "Display Folder"]
     )
 
@@ -48,173 +54,87 @@ def translate_semantic_model(
         dataset=dataset, readonly=False, workspace=workspace
     ) as tom:
 
-        if exclude_characters is None:
-            for o in tom.model.Tables:
-                new_data = {
-                    "Object Type": "Table",
-                    "Name": o.Name,
-                    "TName": o.Name,
-                    "Description": o.Description,
-                    "TDescription": o.Description,
-                    "Display Folder": None,
-                    "TDisplay Folder": None,
-                }
-                dfPrep = pd.concat(
-                    [dfPrep, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                )
-            for o in tom.all_columns():
-                new_data = {
-                    "Object Type": "Column",
-                    "Name": o.Name,
-                    "TName": o.Name,
-                    "Description": o.Description,
-                    "TDescription": o.Description,
-                    "Display Folder": o.DisplayFolder,
-                    "TDisplay Folder": o.DisplayFolder,
-                }
-                dfPrep = pd.concat(
-                    [dfPrep, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                )
-            for o in tom.all_measures():
-                new_data = {
-                    "Object Type": "Measure",
-                    "Name": o.Name,
-                    "TName": o.Name,
-                    "Description": o.Description,
-                    "TDescription": o.Description,
-                    "Display Folder": o.DisplayFolder,
-                    "TDisplay Folder": o.DisplayFolder,
-                }
-                dfPrep = pd.concat(
-                    [dfPrep, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                )
-            for o in tom.all_hierarchies():
-                new_data = {
-                    "Object Type": "Hierarchy",
-                    "Name": o.Name,
-                    "TName": o.Name,
-                    "Description": o.Description,
-                    "TDescription": o.Description,
-                    "Display Folder": o.DisplayFolder,
-                    "TDisplay Folder": o.DisplayFolder,
-                }
-                dfPrep = pd.concat(
-                    [dfPrep, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                )
-
-            for o in tom.all_levels():
-                new_data = {
-                    "Object Type": "Level",
-                    "Name": o.Name,
-                    "TName": o.Name,
-                    "Description": o.Description,
-                    "TDescription": o.Description,
-                    "Display Folder": None,
-                    "TDisplay Folder": None,
-                }
-                dfPrep = pd.concat(
-                    [dfPrep, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                )
-        else:
-            for o in tom.model.Tables:
-                oName = o.Name
-                oDescription = o.Description
-                for s in exclude_characters:
-                    oName = oName.replace(s, " ")
-                    oDescription = oDescription.replace(s, " ")
-                new_data = {
-                    "Object Type": "Table",
-                    "Name": o.Name,
-                    "TName": oName,
-                    "Description": o.Description,
-                    "TDescription": oDescription,
-                    "Display Folder": None,
-                    "TDisplay Folder": None,
-                }
-                dfPrep = pd.concat(
-                    [dfPrep, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                )
-            for o in tom.all_columns():
-                oName = o.Name
-                oDescription = o.Description
-                oDisplayFolder = o.DisplayFolder
-                for s in exclude_characters:
-                    oName = oName.replace(s, " ")
-                    oDescription = oDescription.replace(s, " ")
-                    oDisplayFolder = oDisplayFolder.replace(s, " ")
-                new_data = {
-                    "Object Type": "Column",
-                    "Name": o.Name,
-                    "TName": oName,
-                    "Description": o.Description,
-                    "TDescription": oDescription,
-                    "Display Folder": o.DisplayFolder,
-                    "TDisplay Folder": oDisplayFolder,
-                }
-                dfPrep = pd.concat(
-                    [dfPrep, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                )
-            for o in tom.all_measures():
-                oName = o.Name
-                oDescription = o.Description
-                oDisplayFolder = o.DisplayFolder
-                for s in exclude_characters:
-                    oName = oName.replace(s, " ")
-                    oDescription = oDescription.replace(s, " ")
-                    oDisplayFolder = oDisplayFolder.replace(s, " ")
-                new_data = {
-                    "Object Type": "Measure",
-                    "Name": o.Name,
-                    "TName": oName,
-                    "Description": o.Description,
-                    "TDescription": oDescription,
-                    "Display Folder": o.DisplayFolder,
-                    "TDisplay Folder": oDisplayFolder,
-                }
-                dfPrep = pd.concat(
-                    [dfPrep, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                )
-            for o in tom.all_hierarchies():
-                oName = o.Name
-                oDescription = o.Description
-                oDisplayFolder = o.DisplayFolder
-                for s in exclude_characters:
-                    oName = oName.replace(s, " ")
-                    oDescription = oDescription.replace(s, " ")
-                    oDisplayFolder = oDisplayFolder.replace(s, " ")
-                new_data = {
-                    "Object Type": "Hierarchy",
-                    "Name": o.Name,
-                    "TName": oName,
-                    "Description": o.Description,
-                    "TDescription": oDescription,
-                    "Display Folder": o.DisplayFolder,
-                    "TDisplay Folder": oDisplayFolder,
-                }
-                dfPrep = pd.concat(
-                    [dfPrep, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                )
-            for o in tom.all_levels():
-                oName = o.Name
-                oDescription = o.Description
-                for s in exclude_characters:
-                    oName = oName.replace(s, " ")
-                    oDescription = oDescription.replace(s, " ")
-                new_data = {
-                    "Object Type": "Level",
-                    "Name": o.Name,
-                    "TName": oName,
-                    "Description": o.Description,
-                    "TDescription": oDescription,
-                    "Display Folder": None,
-                    "TDisplay Folder": None,
-                }
-                dfPrep = pd.concat(
-                    [dfPrep, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                )
+        for o in tom.model.Tables:
+            oName = clean_text(o.Name, exclude_characters)
+            oDescription = clean_text(o.Description, exclude_characters)
+            new_data = {
+                "Object Type": "Table",
+                "Name": o.Name,
+                "TName": oName,
+                "Description": o.Description,
+                "TDescription": oDescription,
+                "Display Folder": None,
+                "TDisplay Folder": None,
+            }
+            df_prep = pd.concat(
+                [df_prep, pd.DataFrame(new_data, index=[0])], ignore_index=True
+            )
+        for o in tom.all_columns():
+            oName = clean_text(o.Name, exclude_characters)
+            oDescription = clean_text(o.Description, exclude_characters)
+            oDisplayFolder = clean_text(o.DisplayFolder, exclude_characters)
+            new_data = {
+                "Object Type": "Column",
+                "Name": o.Name,
+                "TName": oName,
+                "Description": o.Description,
+                "TDescription": oDescription,
+                "Display Folder": o.DisplayFolder,
+                "TDisplay Folder": oDisplayFolder,
+            }
+            df_prep = pd.concat(
+                [df_prep, pd.DataFrame(new_data, index=[0])], ignore_index=True
+            )
+        for o in tom.all_measures():
+            oName = clean_text(o.Name, exclude_characters)
+            oDescription = clean_text(o.Description, exclude_characters)
+            oDisplayFolder = clean_text(o.DisplayFolder, exclude_characters)
+            new_data = {
+                "Object Type": "Measure",
+                "Name": o.Name,
+                "TName": oName,
+                "Description": o.Description,
+                "TDescription": oDescription,
+                "Display Folder": o.DisplayFolder,
+                "TDisplay Folder": oDisplayFolder,
+            }
+            df_prep = pd.concat(
+                [df_prep, pd.DataFrame(new_data, index=[0])], ignore_index=True
+            )
+        for o in tom.all_hierarchies():
+            oName = clean_text(o.Name, exclude_characters)
+            oDescription = clean_text(o.Description, exclude_characters)
+            oDisplayFolder = clean_text(o.DisplayFolder, exclude_characters)
+            new_data = {
+                "Object Type": "Hierarchy",
+                "Name": o.Name,
+                "TName": oName,
+                "Description": o.Description,
+                "TDescription": oDescription,
+                "Display Folder": o.DisplayFolder,
+                "TDisplay Folder": oDisplayFolder,
+            }
+            df_prep = pd.concat(
+                [df_prep, pd.DataFrame(new_data, index=[0])], ignore_index=True
+            )
+        for o in tom.all_levels():
+            oName = clean_text(o.Name, exclude_characters)
+            oDescription = clean_text(o.Description, exclude_characters)
+            new_data = {
+                "Object Type": "Level",
+                "Name": o.Name,
+                "TName": oName,
+                "Description": o.Description,
+                "TDescription": oDescription,
+                "Display Folder": None,
+                "TDisplay Folder": None,
+            }
+            df_prep = pd.concat(
+                [df_prep, pd.DataFrame(new_data, index=[0])], ignore_index=True
+            )
 
         spark = SparkSession.builder.getOrCreate()
-        df = spark.createDataFrame(dfPrep)
+        df = spark.createDataFrame(df_prep)
 
         columns = ["Name", "Description", "Display Folder"]
 
@@ -237,191 +157,148 @@ def translate_semantic_model(
 
             df_panda = transDF.toPandas()
 
+            def set_translation_if_exists(
+                obj, obj_type, property_name, property_value, df, lang, index
+            ):
+                if property_name in df.columns and len(property_value) > 0:
+                    df_filt = df[
+                        (df["Object Type"] == obj_type)
+                        & (df[property_name] == property_value)
+                    ]
+                    if len(df_filt) == 1:
+                        translation = df_filt["translation"].str[index].iloc[0]
+                        tom.set_translation(
+                            object=obj,
+                            language=lang,
+                            property=property_name,
+                            value=translation,
+                        )
+
             for lang in languages:
                 i = languages.index(lang)
                 tom.add_translation(language=lang)
-                print(f"{icons.in_progress} Translating {clm.lower()}s into the '{lang}' language...")
+                print(
+                    f"{icons.in_progress} Translating {clm.lower()}s into the '{lang}' language..."
+                )
 
                 for t in tom.model.Tables:
                     if t.IsHidden is False:
                         if clm == "Name":
-                            df_filt = df_panda[
-                                (df_panda["Object Type"] == "Table")
-                                & (df_panda["Name"] == t.Name)
-                            ]
-                            if len(df_filt) == 1:
-                                tr = df_filt["translation"].str[i].iloc[0]
-                                tom.set_translation(
-                                    object=t, language=lang, property="Name", value=tr
-                                )
-                        elif clm == "Description" and len(t.Description) > 0:
-                            df_filt = df_panda[
-                                (df_panda["Object Type"] == "Table")
-                                & (df_panda["Description"] == t.Description)
-                            ]
-                            if len(df_filt) == 1:
-                                tr = df_filt["translation"].str[i].iloc[0]
-                                tom.set_translation(
-                                    object=t,
-                                    language=lang,
-                                    property="Description",
-                                    value=tr,
-                                )
+                            set_translation_if_exists(
+                                t, "Table", "Name", t.Name, df_panda, lang, i
+                            )
+                        elif clm == "Description":
+                            set_translation_if_exists(
+                                t,
+                                "Table",
+                                "Description",
+                                t.Description,
+                                df_panda,
+                                lang,
+                                i,
+                            )
                         for c in t.Columns:
                             if c.IsHidden is False:
                                 if clm == "Name":
-                                    df_filt = df_panda[
-                                        (df_panda["Object Type"] == "Column")
-                                        & (df_panda["Name"] == c.Name)
-                                    ]
-                                    if len(df_filt) == 1:
-                                        tr = df_filt["translation"].str[i].iloc[0]
-                                        tom.set_translation(
-                                            object=c,
-                                            language=lang,
-                                            property="Name",
-                                            value=tr,
-                                        )
-                                elif clm == "Description" and len(c.Description) > 0:
-                                    df_filt = df_panda[
-                                        (df_panda["Object Type"] == "Column")
-                                        & (df_panda["Description"] == c.Description)
-                                    ]
-                                    if len(df_filt) == 1:
-                                        tr = df_filt["translation"].str[i].iloc[0]
-                                        tom.set_translation(
-                                            object=c,
-                                            language=lang,
-                                            property="Description",
-                                            value=tr,
-                                        )
-                                elif (
-                                    clm == "Display Folder"
-                                    and len(c.DisplayFolder) > 0
-                                ):
-                                    df_filt = df_panda[
-                                        (df_panda["Object Type"] == "Column")
-                                        & (df_panda["Display Folder"] == c.DisplayFolder)
-                                    ]
-                                    if len(df_filt) == 1:
-                                        tr = df_filt["translation"].str[i].iloc[0]
-                                        tom.set_translation(
-                                            object=c,
-                                            language=lang,
-                                            property="Display Folder",
-                                            value=tr,
-                                        )
+                                    set_translation_if_exists(
+                                        c, "Column", "Name", c.Name, df_panda, lang, i
+                                    )
+                                elif clm == "Description":
+                                    set_translation_if_exists(
+                                        c,
+                                        "Column",
+                                        "Description",
+                                        c.Description,
+                                        df_panda,
+                                        lang,
+                                        i,
+                                    )
+                                elif clm == "Display Folder":
+                                    set_translation_if_exists(
+                                        c,
+                                        "Column",
+                                        "Display Folder",
+                                        c.DisplayFolder,
+                                        df_panda,
+                                        lang,
+                                        i,
+                                    )
                         for h in t.Hierarchies:
                             if h.IsHidden is False:
                                 if clm == "Name":
-                                    df_filt = df_panda[
-                                        (df_panda["Object Type"] == "Hierarchy")
-                                        & (df_panda["Name"] == h.Name)
-                                    ]
-                                    if len(df_filt) == 1:
-                                        tr = df_filt["translation"].str[i].iloc[0]
-                                        tom.set_translation(
-                                            object=h,
-                                            language=lang,
-                                            property="Name",
-                                            value=tr,
-                                        )
-                                elif clm == "Description" and len(h.Description) > 0:
-                                    df_filt = df_panda[
-                                        (df_panda["Object Type"] == "Hierarchy")
-                                        & (df_panda["Description"] == h.Description)
-                                    ]
-                                    if len(df_filt) == 1:
-                                        tr = df_filt["translation"].str[i].iloc[0]
-                                        tom.set_translation(
-                                            object=h,
-                                            language=lang,
-                                            property="Description",
-                                            value=tr,
-                                        )
-                                elif (
-                                    clm == "Display Folder"
-                                    and len(h.DisplayFolder) > 0
-                                ):
-                                    df_filt = df_panda[
-                                        (df_panda["Object Type"] == "Hierarchy")
-                                        & (df_panda["Display Folder"] == h.DisplayFolder)
-                                    ]
-                                    if len(df_filt) == 1:
-                                        tr = df_filt["translation"].str[i].iloc[0]
-                                        tom.set_translation(
-                                            object=h,
-                                            language=lang,
-                                            property="Display Folder",
-                                            value=tr,
-                                        )
+                                    set_translation_if_exists(
+                                        h,
+                                        "Hierarchy",
+                                        "Name",
+                                        h.Name,
+                                        df_panda,
+                                        lang,
+                                        i,
+                                    )
+                                elif clm == "Description":
+                                    set_translation_if_exists(
+                                        h,
+                                        "Hierarchy",
+                                        "Description",
+                                        h.Description,
+                                        df_panda,
+                                        lang,
+                                        i,
+                                    )
+                                elif clm == "Display Folder":
+                                    set_translation_if_exists(
+                                        h,
+                                        "Hierarchy",
+                                        "Display Folder",
+                                        h.DisplayFolder,
+                                        df_panda,
+                                        lang,
+                                        i,
+                                    )
                                 for lev in h.Levels:
                                     if clm == "Name":
-                                        df_filt = df_panda[
-                                            (df_panda["Object Type"] == "Level")
-                                            & (df_panda["Name"] == lev.Name)
-                                        ]
-                                        if len(df_filt) == 1:
-                                            tr = df_filt["translation"].str[i].iloc[0]
-                                            tom.set_translation(
-                                                object=lev,
-                                                language=lang,
-                                                property="Name",
-                                                value=tr,
-                                            )
-                                    elif clm == "Description" and len(lev.Description) > 0:
-                                        df_filt = df_panda[
-                                            (df_panda["Object Type"] == "Level")
-                                            & (df_panda["Description"] == lev.Description)
-                                        ]
-                                        if len(df_filt) == 1:
-                                            tr = df_filt["translation"].str[i].iloc[0]
-                                            tom.set_translation(
-                                                object=lev,
-                                                language=lang,
-                                                property="Description",
-                                                value=tr,
-                                            )
+                                        set_translation_if_exists(
+                                            lev,
+                                            "Level",
+                                            "Name",
+                                            lev.Name,
+                                            df_panda,
+                                            lang,
+                                            i,
+                                        )
+                                    elif clm == "Description":
+                                        set_translation_if_exists(
+                                            lev,
+                                            "Level",
+                                            "Description",
+                                            lev.Description,
+                                            df_panda,
+                                            lang,
+                                            i,
+                                        )
                     for ms in t.Measures:
                         if ms.IsHidden is False:
                             if clm == "Name":
-                                df_filt = df_panda[
-                                    (df_panda["Object Type"] == "Measure")
-                                    & (df_panda["Name"] == ms.Name)
-                                ]
-                                if len(df_filt) == 1:
-                                    tr = df_filt["translation"].str[i].iloc[0]
-                                    tom.set_translation(
-                                        object=ms,
-                                        language=lang,
-                                        property="Name",
-                                        value=tr,
-                                    )
-                            elif clm == "Description" and len(ms.Description) > 0:
-                                df_filt = df_panda[
-                                    (df_panda["Object Type"] == "Measure")
-                                    & (df_panda["Description"] == ms.Description)
-                                ]
-                                if len(df_filt) == 1:
-                                    tr = df_filt["translation"].str[i].iloc[0]
-                                    tom.set_translation(
-                                        object=ms,
-                                        language=lang,
-                                        property="Description",
-                                        value=tr,
-                                    )
-                            elif (
-                                clm == "Display Folder" and len(ms.DisplayFolder) > 0
-                            ):
-                                df_filt = df_panda[
-                                    (df_panda["Object Type"] == "Measure")
-                                    & (df_panda["Display Folder"] == ms.DisplayFolder)
-                                ]
-                                if len(df_filt) == 1:
-                                    tr = df_filt["translation"].str[i].iloc[0]
-                                    tom.set_translation(
-                                        object=ms,
-                                        language=lang,
-                                        property="Display Folder",
-                                        value=tr,
-                                    )
+                                set_translation_if_exists(
+                                    ms, "Measure", "Name", ms.Name, df_panda, lang, i
+                                )
+                            elif clm == "Description":
+                                set_translation_if_exists(
+                                    ms,
+                                    "Measure",
+                                    "Description",
+                                    ms.Description,
+                                    df_panda,
+                                    lang,
+                                    i,
+                                )
+                            elif clm == "Display Folder":
+                                set_translation_if_exists(
+                                    ms,
+                                    "Measure",
+                                    "Display Folder",
+                                    ms.DisplayFolder,
+                                    df_panda,
+                                    lang,
+                                    i,
+                                )
