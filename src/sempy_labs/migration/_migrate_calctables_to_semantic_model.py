@@ -67,7 +67,7 @@ def migrate_calc_tables_to_semantic_model(
     dfC_filt = dfC[
         (dfC["Table Name"].isin(dfP_filt["Table Name"]))
     ]  # & (dfC['Type'] == 'CalculatedTableColumn')]
-    # dfA = list_annotations(new_dataset, new_dataset_workspace)
+    # dfA = fabric.list_annotations(new_dataset, new_dataset_workspace)
     # dfA_filt = dfA[(dfA['Object Type'] == 'Model') & ~ (dfA['Annotation Value'].str.contains('NAMEOF'))]
 
     if len(dfP_filt) == 0:
