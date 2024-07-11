@@ -207,6 +207,7 @@ def get_semantic_model_bim(
     dataset: str,
     workspace: Optional[str] = None,
     save_to_file_name: Optional[str] = None,
+    lakehouse_workspace: Optional[str] = None,
 ):
     """
     Extracts the Model.bim file for a given semantic model.
@@ -216,11 +217,15 @@ def get_semantic_model_bim(
     dataset : str
         Name of the semantic model.
     workspace : str, default=None
-        The Fabric workspace name.
+        The Fabric workspace name in which the semantic model resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     save_to_file_name : str, default=None
         If specified, saves the Model.bim as a file in the lakehouse attached to the notebook.
+    lakehouse_workspace : str, default=None
+        The Fabric workspace name in which the lakehouse attached to the workspace resides.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
 
     Returns
     -------
@@ -229,29 +234,20 @@ def get_semantic_model_bim(
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    if lakehouse_workspace is None:
+        lakehouse_workspace = workspace
 
-    objType = "SemanticModel"
+    fmt = "TMSL"
     client = fabric.FabricRestClient()
-    itemList = fabric.list_items(workspace=workspace, type=objType)
+    itemList = fabric.list_items(workspace=workspace, type="SemanticModel")
     itemListFilt = itemList[(itemList["Display Name"] == dataset)]
     itemId = itemListFilt["Id"].iloc[0]
     response = client.post(
-        f"/v1/workspaces/{workspace_id}/items/{itemId}/getDefinition"
+        f"/v1/workspaces/{workspace_id}/items/{itemId}/getDefinition?format={fmt}",
+        lro_wait=True,
     )
 
-    if response.status_code == 200:
-        res = response.json()
-    elif response.status_code == 202:
-        operationId = response.headers["x-ms-operation-id"]
-        response = client.get(f"/v1/operations/{operationId}")
-        response_body = json.loads(response.content)
-        while response_body["status"] != "Succeeded":
-            time.sleep(3)
-            response = client.get(f"/v1/operations/{operationId}")
-            response_body = json.loads(response.content)
-        response = client.get(f"/v1/operations/{operationId}/result")
-        res = response.json()
-    df_items = pd.json_normalize(res["definition"]["parts"])
+    df_items = pd.json_normalize(response.json()["definition"]["parts"])
     df_items_filt = df_items[df_items["path"] == "model.bim"]
     payload = df_items_filt["payload"].iloc[0]
     bimFile = base64.b64decode(payload).decode("utf-8")
@@ -265,7 +261,7 @@ def get_semantic_model_bim(
             )
 
         lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse = resolve_lakehouse_name(lakehouse_id, workspace)
+        lakehouse = resolve_lakehouse_name(lakehouse_id, lakehouse_workspace)
         folderPath = "/lakehouse/default/Files"
         fileExt = ".bim"
         if not save_to_file_name.endswith(fileExt):
