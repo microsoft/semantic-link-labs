@@ -1,6 +1,9 @@
 import sempy.fabric as fabric
 import pandas as pd
-from sempy_labs._helper_functions import resolve_dataset_id
+from sempy_labs._helper_functions import (
+    resolve_dataset_id,
+    resolve_workspace_name_and_id,
+)
 from typing import Optional
 from sempy._utils._log import log
 
@@ -39,11 +42,7 @@ def evaluate_dax_impersonation(
 
     # https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/execute-queries-in-group
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     dataset_id = resolve_dataset_id(dataset=dataset, workspace=workspace)
 

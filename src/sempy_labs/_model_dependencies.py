@@ -1,6 +1,7 @@
 import sempy.fabric as fabric
 import pandas as pd
 from sempy_labs._helper_functions import format_dax_object_name
+import sempy_labs._icons as icons
 from typing import Any, Dict, Optional
 from anytree import Node, RenderTree
 from sempy._utils._log import log
@@ -164,7 +165,7 @@ def get_model_calc_dependencies(dataset: str, workspace: Optional[str] = None):
         ,[REFERENCED_TABLE] AS [Referenced Table]
         ,[REFERENCED_OBJECT] AS [Referenced Object]
         ,[REFERENCED_OBJECT_TYPE] AS [Referenced Object Type]
-        FROM $SYSTEM.DISCOVER_CALC_DEPENDENCY        
+        FROM $SYSTEM.DISCOVER_CALC_DEPENDENCY
         """,
     )
 
@@ -296,9 +297,6 @@ def measure_dependency_tree(
 
     # Create a dictionary to hold references to nodes
     node_dict: Dict[str, Any] = {}
-    measureIcon = "\u2211"
-    tableIcon = "\u229E"
-    columnIcon = "\u229F"
 
     # Populate the tree
     for _, row in df_filt.iterrows():
@@ -313,24 +311,26 @@ def measure_dependency_tree(
         if parent_node is None:
             parent_node = Node(parent_node_name)
             node_dict[parent_node_name] = parent_node
-        parent_node.custom_property = measureIcon + " "
+        parent_node.custom_property = icons.measure_icon + " "
 
         # Create the child node
         child_node_name = ref_obj_name
         child_node = Node(child_node_name, parent=parent_node)
         if ref_obj_type == "Column":
-            child_node.custom_property = columnIcon + " '" + ref_obj_table_name + "'"
+            child_node.custom_property = (
+                icons.column_icon + " '" + ref_obj_table_name + "'"
+            )
         elif ref_obj_type == "Table":
-            child_node.custom_property = tableIcon + " "
+            child_node.custom_property = icons.table_icon + " "
         elif ref_obj_type == "Measure":
-            child_node.custom_property = measureIcon + " "
+            child_node.custom_property = icons.measure_icon + " "
 
         # Update the dictionary with the child node
         node_dict[child_node_name] = child_node
 
     # Visualize the tree structure using RenderTree
     for pre, _, node in RenderTree(node_dict[measure_name]):
-        if tableIcon in node.custom_property:
+        if icons.table_icon in node.custom_property:
             print(f"{pre}{node.custom_property}'{node.name}'")
         else:
             print(f"{pre}{node.custom_property}[{node.name}]")

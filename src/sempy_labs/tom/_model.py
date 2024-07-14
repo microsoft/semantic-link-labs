@@ -3725,14 +3725,13 @@ class TOMWrapper:
 
         # Create the new time intelligence measures
         for t in time_intel:
-            if t == "MTD":
-                expr = f"CALCULATE([{measure_name}],DATES{time_intel}('{date_table}'[{date_key}]))"
-                new_meas_name = f"{measure_name} {t}"
-                self.add_measure(
-                    table_name=table_name,
-                    measure_name=new_meas_name,
-                    expression=expr,
-                )
+            expr = f"CALCULATE([{measure_name}],DATES{t}('{date_table}'[{date_key}]))"
+            new_meas_name = f"{measure_name} {t}"
+            self.add_measure(
+                table_name=table_name,
+                measure_name=new_meas_name,
+                expression=expr,
+            )
 
     def update_m_partition(
         self,
@@ -3776,6 +3775,215 @@ class TOMWrapper:
             p.Mode = System.Enum.Parse(TOM.ModeType, mode)
         if description is not None:
             p.Description = description
+
+    def update_measure(
+        self,
+        measure_name: str,
+        expression: Optional[str | None] = None,
+        format_string: Optional[str | None] = None,
+        hidden: Optional[bool | None] = None,
+        description: Optional[str | None] = None,
+        display_folder: Optional[str | None] = None,
+    ):
+        """
+        Updates a measure within a semantic model.
+
+        Parameters
+        ----------
+        measure_name : str
+            Name of the measure.
+        expression : str, default=None
+            DAX expression of the measure.
+            Defaults to None which keeps the existing setting.
+        format_string : str, default=None
+            Format string of the measure.
+            Defaults to None which keeps the existing setting.
+        hidden : bool, default=None
+            Whether the measure will be hidden or visible.
+            Defaults to None which keeps the existing setting.
+        description : str, default=None
+            A description of the measure.
+            Defaults to None which keeps the existing setting.
+        display_folder : str, default=None
+            The display folder in which the measure will reside.
+            Defaults to None which keeps the existing setting.
+        """
+
+        table_name = next(
+            m.Parent.Name for m in self.all_measures() if m.Name == measure_name
+        )
+        m = self.model.Tables[table_name].Measures[measure_name]
+        if expression is not None:
+            m.Expression = expression
+        if format_string is not None:
+            m.FormatString = format_string
+        if hidden is not None:
+            m.IsHidden = hidden
+        if description is not None:
+            m.Description = description
+        if display_folder is not None:
+            m.DisplayFolder = display_folder
+
+    def update_column(
+        self,
+        table_name: str,
+        column_name: str,
+        source_column: Optional[str | None] = None,
+        data_type: Optional[str | None] = None,
+        expression: Optional[str | None] = None,
+        format_string: Optional[str | None] = None,
+        hidden: Optional[bool | None] = None,
+        description: Optional[str | None] = None,
+        display_folder: Optional[str | None] = None,
+        data_category: Optional[str | None] = None,
+        key: Optional[bool | None] = None,
+        summarize_by: Optional[str | None] = None,
+    ):
+        """
+        Updates a column within a semantic model.
+
+        Parameters
+        ----------
+        table_name : str
+            Name of the table in which the column exists.
+        column_name : str
+            Name of the column.
+        source_column : str, default=None
+            The source column for the column (for data columns only).
+            Defaults to None which keeps the existing setting.
+        data_type : str, default=None
+            The data type of the column.
+            Defaults to None which keeps the existing setting.
+        expression : str, default=None
+            The DAX expression of the column (for calculated columns only).
+            Defaults to None which keeps the existing setting.
+        format_string : str, default=None
+            Format string of the column.
+            Defaults to None which keeps the existing setting.
+        hidden : bool, default=None
+            Whether the column will be hidden or visible.
+            Defaults to None which keeps the existing setting.
+        description : str, default=None
+            A description of the column.
+            Defaults to None which keeps the existing setting.
+        display_folder : str, default=None
+            The display folder in which the column will reside.
+            Defaults to None which keeps the existing setting.
+        data_category : str, default=None
+            The data category of the column.
+            Defaults to None which keeps the existing setting.
+        key : bool, default=False
+            Marks the column as the primary key of the table.
+            Defaults to None which keeps the existing setting.
+        summarize_by : str, default=None
+            Sets the value for the Summarize By property of the column.
+            Defaults to None which keeps the existing setting.
+        """
+
+        import Microsoft.AnalysisServices.Tabular as TOM
+        import System
+
+        c = self.model.Tables[table_name].Measures[column_name]
+        if c.Type == TOM.ColumnType.Data:
+            if source_column is not None:
+                c.SourceColumn = source_column
+        if c.Type == TOM.ColumnType.Calculated:
+            if expression is not None:
+                c.Expression = expression
+        if data_type is not None:
+            c.DataType = System.Enum.Parse(TOM.DataType, data_type)
+        if format_string is not None:
+            c.FormatString = format_string
+        if hidden is not None:
+            c.IsHidden = hidden
+        if description is not None:
+            c.Description = description
+        if display_folder is not None:
+            c.DisplayFolder = display_folder
+        if key is not None:
+            c.IsKey = key
+        if data_category is not None:
+            c.DataCategory = data_category
+        if summarize_by is not None:
+            c.SummarizeBy = System.Enum.Parse(TOM.AggregateFunction, summarize_by)
+
+    def update_role(
+        self,
+        role_name: str,
+        model_permission: Optional[str | None] = None,
+        description: Optional[str | None] = None,
+    ):
+        """
+        Updates a role within a semantic model.
+
+        Parameters
+        ----------
+        role_name : str
+            Name of the role.
+        model_permission : str, default=None
+            The model permission for the role.
+            Defaults to None which keeps the existing setting.
+        description : str, default=None
+            The description of the role.
+            Defaults to None which keeps the existing setting.
+        """
+
+        import Microsoft.AnalysisServices.Tabular as TOM
+        import System
+
+        obj = self.model.Roles[role_name]
+
+        if model_permission is not None:
+            obj.ModelPermission = System.Enum.Parse(
+                TOM.ModelPermission, model_permission
+            )
+        if description is not None:
+            obj.Description = description
+
+    def update_calculation_item(
+        self,
+        table_name: str,
+        calculation_item_name: str,
+        expression: Optional[str | None] = None,
+        ordinal: Optional[int | None] = None,
+        format_string_expression: Optional[str | None] = None,
+        description: Optional[str | None] = None,
+    ):
+        """
+        Updates a calculation item within a semantic model.
+
+        Parameters
+        ----------
+        table_name : str
+            Name of the calculation group (table).
+        calculation_item_name : str
+            Name of the calculation item.
+        expression : str, default=None
+            The DAX expression of the calculation item.
+            Defaults to None which keeps the existing setting.
+        ordinal : int, default=None
+            The ordinal of the calculation item.
+            Defaults to None which keeps the existing setting.
+        format_string_expression : str, default=None
+            The format string expression for the calculation item.
+            Defaults to None which keeps the existing setting.
+        description : str, default=None
+            The description of the role.
+            Defaults to None which keeps the existing setting.
+        """
+
+        obj = self.Tables[table_name].CalculationGroup.CalculationItems[
+            calculation_item_name
+        ]
+
+        if expression is not None:
+            obj.Expression = expression
+        if format_string_expression is not None:
+            obj.FormatStringDefinition.Expression = format_string_expression
+        if ordinal is not None:
+            obj.Ordinal = ordinal
+        if description is not None:
+            obj.Description = description
 
     def set_sort_by_column(
         self, table_name: str, column_name: str, sort_by_column: str

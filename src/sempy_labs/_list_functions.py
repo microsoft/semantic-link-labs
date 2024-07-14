@@ -102,10 +102,16 @@ def list_tables(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
 
     workspace = fabric.resolve_workspace_name()
 
-    df = fabric.list_tables(dataset=dataset, workspace=workspace, additional_xmla_properties=['RefreshPolicy', 'RefreshPolicy.SourceExpression'])
+    df = fabric.list_tables(
+        dataset=dataset,
+        workspace=workspace,
+        additional_xmla_properties=["RefreshPolicy", "RefreshPolicy.SourceExpression"],
+    )
 
-    df['Refresh Policy'] = df['Refresh Policy'].notna()
-    df.rename(columns={"Refresh Policy Source Expression": "Source Expression"}, inplace=True)
+    df["Refresh Policy"] = df["Refresh Policy"].notna()
+    df.rename(
+        columns={"Refresh Policy Source Expression": "Source Expression"}, inplace=True
+    )
 
     return df
 
@@ -1835,6 +1841,45 @@ def update_custom_pool(
         )
     else:
         raise ValueError(f"{icons.red_dot} {response.status_code}")
+
+
+def delete_custom_pool(pool_name: str, workspace: Optional[str | None] = None):
+    """
+    Deletes a `custom pool <https://learn.microsoft.com/fabric/data-engineering/create-custom-spark-pools>`_ within a workspace.
+
+    Parameters
+    ----------
+    pool_name : str
+        The custom pool name.
+    workspace : str, default=None
+        The name of the Fabric workspace.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    """
+
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    dfL = list_custom_pools(workspace=workspace)
+    dfL_filt = dfL[dfL["Custom Pool Name"] == pool_name]
+
+    if len(dfL_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} The '{pool_name}' custom pool does not exist within the '{workspace}' workspace."
+        )
+    poolId = dfL_filt["Custom Pool ID"].iloc[0]
+
+    client = fabric.FabricRestClient()
+    response = client.delete(f"/v1/workspaces/{workspace_id}/spark/pools/{poolId}")
+
+    if response.status_code == 200:
+        print(
+            f"{icons.green_dot} The '{pool_name}' spark pool has been deleted from the '{workspace}' workspace."
+        )
+    else:
+        print(f"{icons.red_dot} {response.status_code}")
 
 
 def assign_workspace_to_capacity(capacity_name: str, workspace: Optional[str] = None):

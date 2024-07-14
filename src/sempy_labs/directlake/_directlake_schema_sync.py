@@ -81,18 +81,6 @@ def direct_lake_schema_sync(
     lc = get_lakehouse_columns(lakehouse, lakehouse_workspace)
     lc_filt = lc[lc["Table Name"].isin(dfP_filt["Query"].values)]
 
-    mapping = {
-        "string": "String",
-        "bigint": "Int64",
-        "int": "Int64",
-        "smallint": "Int64",
-        "boolean": "Boolean",
-        "timestamp": "DateTime",
-        "date": "DateTime",
-        "decimal(38,18)": "Decimal",
-        "double": "Double",
-    }
-
     with connect_semantic_model(
         dataset=dataset, readonly=False, workspace=workspace
     ) as tom:
@@ -110,7 +98,7 @@ def direct_lake_schema_sync(
                     col = TOM.DataColumn()
                     col.Name = lakeCName
                     col.SourceColumn = lakeCName
-                    dt = mapping.get(dType)
+                    dt = icons.data_type_mapping.get(dType)
                     try:
                         col.DataType = System.Enum.Parse(TOM.DataType, dt)
                     except Exception as e:

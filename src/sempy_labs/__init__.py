@@ -13,6 +13,7 @@ from sempy_labs._generate_semantic_model import (
     get_semantic_model_bim,
 )
 from sempy_labs._list_functions import (
+    delete_custom_pool,
     list_semantic_model_objects,
     list_shortcuts,
     get_object_level_security,
@@ -68,7 +69,8 @@ from sempy_labs._helper_functions import (
 )
 
 #  from sempy_labs._model_auto_build import model_auto_build
-from sempy_labs._model_bpa import model_bpa_rules, run_model_bpa
+from sempy_labs._model_bpa import run_model_bpa
+from sempy_labs._model_bpa_rules import model_bpa_rules
 from sempy_labs._model_dependencies import (
     measure_dependency_tree,
     get_measure_dependencies,
@@ -98,6 +100,7 @@ from sempy_labs._vertipaq import (
 )
 
 __all__ = [
+    "delete_custom_pool",
     "clear_cache",
     # create_connection_cloud,
     # create_connection_vnet,

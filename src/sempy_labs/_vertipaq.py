@@ -76,15 +76,17 @@ def vertipaq_analyzer(
     dfR = list_relationships(dataset=dataset, extended=True, workspace=workspace)
     dfR["From Object"] = format_dax_object_name(dfR["From Table"], dfR["From Column"])
     dfR["To Object"] = format_dax_object_name(dfR["To Table"], dfR["To Column"])
-    dfP = fabric.list_partitions(dataset=dataset, extended=True, workspace=workspace)    
+    dfP = fabric.list_partitions(dataset=dataset, extended=True, workspace=workspace)
 
-    with connect_semantic_model(dataset=dataset, readonly=True, workspace=workspace) as tom:
+    with connect_semantic_model(
+        dataset=dataset, readonly=True, workspace=workspace
+    ) as tom:
         compat_level = tom.model.Model.Database.CompatibilityLevel
         is_direct_lake = tom.is_direct_lake()
         def_mode = tom.model.DefaultMode
         table_count = tom.model.Tables.Count
         column_count = len(list(tom.all_columns()))
- 
+
     dfR["Missing Rows"] = None
 
     # Direct Lake
@@ -370,10 +372,18 @@ def vertipaq_analyzer(
 
     # Partitions
     dfP = dfP[
-        ["Table Name", "Partition Name", "Mode", "Record Count", "Segment Count", "Records per Segment"]
-    ].sort_values(
-        by="Record Count", ascending=False
-    )
+        [
+            "Table Name",
+            "Partition Name",
+            "Mode",
+            "Record Count",
+            "Segment Count",
+            # "Records per Segment",
+        ]
+    ].sort_values(by="Record Count", ascending=False)
+    dfP["Records per Segment"] = round(
+        dfP["Record Count"] / dfP["Segment Count"], 2
+    )  # Remove after records per segment is fixed
     dfP.reset_index(drop=True, inplace=True)
     export_Part = dfP.copy()
     intList = ["Record Count", "Segment Count", "Records per Segment"]
