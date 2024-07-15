@@ -98,6 +98,24 @@ Check out my [blog post](https://www.elegantbi.com/post/direct-lake-migration) o
 * Non-supported objects are not transferred (i.e. calculated columns, relationships using columns with unsupported data types etc.).
 * Reports used by your original semantic model will be rebinded to your new semantic model.
 
+## Dev instructions
+
+Run on Linux (or WSL) and setup your conda environment (this might take a bit):
+
+```bash
+conda env create -f environment.yml
+
+conda activate fabric
+
+pip install -e .
+```
+
+To run tests use
+
+```bash
+pytest -s tests 
+```
+
 ## Contributing
 
 This project welcomes contributions and suggestions.  Most contributions require you to agree to a
