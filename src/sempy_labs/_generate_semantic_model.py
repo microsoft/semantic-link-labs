@@ -153,54 +153,62 @@ def create_semantic_model_from_bim(
 
 
 def deploy_semantic_model(
-    dataset: str,
-    new_dataset: Optional[str] = None,
-    workspace: Optional[str] = None,
-    new_dataset_workspace: Optional[str] = None,
+    source_dataset: str,
+    source_workspace: Optional[str] = None,
+    target_dataset: Optional[str] = None,
+    target_workspace: Optional[str] = None,
+    refresh_target_dataset: Optional[bool] = True,
 ):
     """
     Deploys a semantic model based on an existing semantic model.
 
     Parameters
     ----------
-    dataset : str
+    source_dataset : str
         Name of the semantic model to deploy.
-    new_dataset: str
-        Name of the new semantic model to be created.
-    workspace : str, default=None
+    source_workspace : str, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    new_dataset_workspace : str, default=None
+    target_dataset: str
+        Name of the new semantic model to be created.
+    target_workspace : str, default=None
         The Fabric workspace name in which the new semantic model will be deployed.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    refresh_target_dataset : bool, default=True
+        If set to True, this will initiate a full refresh of the target semantic model in the target workspace.
 
     Returns
     -------
 
     """
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    from sempy_labs import refresh_semantic_model
 
-    if new_dataset_workspace is None:
-        new_dataset_workspace = workspace
+    source_workspace = fabric.resolve_workspace_name(source_workspace)
 
-    if new_dataset is None:
-        new_dataset = dataset
+    if target_workspace is None:
+        target_workspace = source_workspace
 
-    if new_dataset == dataset and new_dataset_workspace == workspace:
+    if target_dataset is None:
+        target_dataset = source_dataset
+
+    if target_dataset == source_dataset and target_workspace == source_workspace:
         print(
             f"{icons.red_dot} The 'dataset' and 'new_dataset' parameters have the same value. And, the 'workspace' and 'new_dataset_workspace' "
             f"parameters have the same value. At least one of these must be different. Please update the parameters."
         )
         return
 
-    bim = get_semantic_model_bim(dataset=dataset, workspace=workspace)
+    bim = get_semantic_model_bim(dataset=source_dataset, workspace=source_workspace)
 
     create_semantic_model_from_bim(
-        dataset=new_dataset, bim_file=bim, workspace=new_dataset_workspace
+        dataset=target_dataset, bim_file=bim, workspace=target_workspace
     )
+
+    if refresh_target_dataset:
+        refresh_semantic_model(dataset=target_dataset, workspace=target_workspace)
 
 
 def get_semantic_model_bim(

@@ -9,7 +9,7 @@ from sempy_labs._dax import evaluate_dax_impersonation
 from sempy_labs._generate_semantic_model import (
     create_blank_semantic_model,
     create_semantic_model_from_bim,
-    # deploy_semantic_model,
+    deploy_semantic_model,
     get_semantic_model_bim,
 )
 from sempy_labs._list_functions import (
@@ -17,6 +17,7 @@ from sempy_labs._list_functions import (
     list_semantic_model_objects,
     list_shortcuts,
     get_object_level_security,
+    list_capacities,
     # list_annotations,
     # list_columns,
     list_dashboards,
@@ -108,7 +109,7 @@ __all__ = [
     "evaluate_dax_impersonation",
     "create_blank_semantic_model",
     "create_semantic_model_from_bim",
-    #'deploy_semantic_model',
+    "deploy_semantic_model",
     "get_semantic_model_bim",
     "get_object_level_security",
     #'list_annotations',
@@ -179,4 +180,5 @@ __all__ = [
     "update_workspace_user",
     "list_workspace_users",
     "assign_workspace_to_dataflow_storage",
+    "list_capacities",
 ]

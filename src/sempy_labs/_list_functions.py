@@ -11,6 +11,7 @@ import time
 from pyspark.sql import SparkSession
 from typing import Optional
 import sempy_labs._icons as icons
+from sempy.fabric.exceptions import FabricHTTPException
 
 
 def get_object_level_security(
@@ -1835,12 +1836,11 @@ def update_custom_pool(
         f"/v1/workspaces/{workspace_id}/spark/pools", json=request_body
     )
 
-    if response.status_code == 200:
-        print(
-            f"{icons.green_dot} The '{pool_name}' spark pool within the '{workspace}' workspace has been updated."
-        )
-    else:
-        raise ValueError(f"{icons.red_dot} {response.status_code}")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+    print(
+        f"{icons.green_dot} The '{pool_name}' spark pool within the '{workspace}' workspace has been updated."
+    )
 
 
 def delete_custom_pool(pool_name: str, workspace: Optional[str | None] = None):
@@ -1874,12 +1874,11 @@ def delete_custom_pool(pool_name: str, workspace: Optional[str | None] = None):
     client = fabric.FabricRestClient()
     response = client.delete(f"/v1/workspaces/{workspace_id}/spark/pools/{poolId}")
 
-    if response.status_code == 200:
-        print(
-            f"{icons.green_dot} The '{pool_name}' spark pool has been deleted from the '{workspace}' workspace."
-        )
-    else:
-        print(f"{icons.red_dot} {response.status_code}")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+    print(
+        f"{icons.green_dot} The '{pool_name}' spark pool has been deleted from the '{workspace}' workspace."
+    )
 
 
 def assign_workspace_to_capacity(capacity_name: str, workspace: Optional[str] = None):
@@ -1899,11 +1898,10 @@ def assign_workspace_to_capacity(capacity_name: str, workspace: Optional[str] = 
     -------
     """
 
-    # https://learn.microsoft.com/en-us/rest/api/fabric/core/workspaces/assign-to-capacity?tabs=HTTP
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     dfC = fabric.list_capacities()
-    dfC_filt = dfC[dfC["Name"] == capacity_name]
+    dfC_filt = dfC[dfC["Display Name"] == capacity_name]
     capacity_id = dfC_filt["Id"].iloc[0]
 
     request_body = {"capacityId": capacity_id}
@@ -2315,3 +2313,37 @@ def assign_workspace_to_dataflow_storage(
         )
     else:
         print(f"{icons.red_dot} {response.status_code}")
+
+
+def list_capacities() -> pd.DataFrame:
+    """
+    Shows the capacities and their properties.
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the capacities and their properties
+    """
+
+    df = pd.DataFrame(
+        columns=["Id", "Display Name", "Sku", "Region", "State", "Admins"]
+    )
+
+    client = fabric.PowerBIRestClient()
+    response = client.get("/v1.0/myorg/capacities")
+
+    for i in response.json()["value"]:
+        new_data = {
+            "Id": i.get("id", {}).lower(),
+            "Display Name": i.get("displayName", {}),
+            "Sku": i.get("sku", {}),
+            "Region": i.get("region", {}),
+            "State": i.get("state", {}),
+            "Admins": [i.get("admins", [])],
+        }
+        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    return df

@@ -1,3 +1,4 @@
+import sempy
 import sempy.fabric as fabric
 import pandas as pd
 import re
@@ -30,6 +31,7 @@ def model_bpa_rules(
         A pandas dataframe containing the default rules for the run_model_bpa function.
     """
 
+    sempy.fabric._client._utils._init_analysis_services()
     import Microsoft.AnalysisServices.Tabular as TOM
 
     workspace = fabric.resolve_workspace_name(workspace)
