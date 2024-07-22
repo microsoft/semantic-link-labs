@@ -108,9 +108,9 @@ def get_measure_dependencies(dataset: str, workspace: Optional[str] = None):
                                             "Table Name": r["Table Name"],
                                             "Object Name": r["Object Name"],
                                             "Object Type": r["Object Type"],
-                                            "Referenced Object": dependency[5],
-                                            "Referenced Table": dependency[4],
-                                            "Referenced Object Type": dependency[6],
+                                            "Referenced Object": dependency[4],
+                                            "Referenced Table": dependency[3],
+                                            "Referenced Object Type": dependency[5],
                                             "Done": d,
                                             "Full Object Name": r["Full Object Name"],
                                             "Referenced Full Object Name": dependency[

@@ -1083,18 +1083,15 @@ def update_item(
         f"/v1/workspaces/{workspace_id}/{itemType}/{itemId}", json=request_body
     )
 
-    if response.status_code == 200:
-        if description is None:
-            print(
-                f"{icons.green_dot} The '{current_name}' {item_type} within the '{workspace}' workspace has been updated to be named '{new_name}'"
-            )
-        else:
-            print(
-                f"{icons.green_dot} The '{current_name}' {item_type} within the '{workspace}' workspace has been updated to be named '{new_name}' and have a description of '{description}'"
-            )
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+    if description is None:
+        print(
+            f"{icons.green_dot} The '{current_name}' {item_type} within the '{workspace}' workspace has been updated to be named '{new_name}'"
+        )
     else:
-        raise ValueError(
-            f"{icons.red_dot}: The '{current_name}' {item_type} within the '{workspace}' workspace was not updateds."
+        print(
+            f"{icons.green_dot} The '{current_name}' {item_type} within the '{workspace}' workspace has been updated to be named '{new_name}' and have a description of '{description}'"
         )
 
 
@@ -1536,50 +1533,47 @@ def list_shortcuts(
     response = client.get(
         f"/v1/workspaces/{workspace_id}/items/{lakehouse_id}/shortcuts"
     )
-    if response.status_code == 200:
-        for s in response.json()["value"]:
-            shortcutName = s.get("name")
-            shortcutPath = s.get("path")
-            source = list(s["target"].keys())[0]
-            (
-                sourceLakehouseName,
-                sourceWorkspaceName,
-                sourcePath,
-                connectionId,
-                location,
-                subpath,
-            ) = (None, None, None, None, None, None)
-            if source == "oneLake":
-                sourceLakehouseId = s.get("target", {}).get(source, {}).get("itemId")
-                sourcePath = s.get("target", {}).get(source, {}).get("path")
-                sourceWorkspaceId = (
-                    s.get("target", {}).get(source, {}).get("workspaceId")
-                )
-                sourceWorkspaceName = fabric.resolve_workspace_name(sourceWorkspaceId)
-                sourceLakehouseName = resolve_lakehouse_name(
-                    sourceLakehouseId, sourceWorkspaceName
-                )
-            else:
-                connectionId = s.get("target", {}).get(source, {}).get("connectionId")
-                location = s.get("target", {}).get(source, {}).get("location")
-                subpath = s.get("target", {}).get(source, {}).get("subpath")
 
-            new_data = {
-                "Shortcut Name": shortcutName,
-                "Shortcut Path": shortcutPath,
-                "Source": source,
-                "Source Lakehouse Name": sourceLakehouseName,
-                "Source Workspace Name": sourceWorkspaceName,
-                "Source Path": sourcePath,
-                "Source Connection ID": connectionId,
-                "Source Location": location,
-                "Source SubPath": subpath,
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+    for s in response.json()["value"]:
+        shortcutName = s.get("name")
+        shortcutPath = s.get("path")
+        source = list(s["target"].keys())[0]
+        (
+            sourceLakehouseName,
+            sourceWorkspaceName,
+            sourcePath,
+            connectionId,
+            location,
+            subpath,
+        ) = (None, None, None, None, None, None)
+        if source == "oneLake":
+            sourceLakehouseId = s.get("target", {}).get(source, {}).get("itemId")
+            sourcePath = s.get("target", {}).get(source, {}).get("path")
+            sourceWorkspaceId = s.get("target", {}).get(source, {}).get("workspaceId")
+            sourceWorkspaceName = fabric.resolve_workspace_name(sourceWorkspaceId)
+            sourceLakehouseName = resolve_lakehouse_name(
+                sourceLakehouseId, sourceWorkspaceName
+            )
+        else:
+            connectionId = s.get("target", {}).get(source, {}).get("connectionId")
+            location = s.get("target", {}).get(source, {}).get("location")
+            subpath = s.get("target", {}).get(source, {}).get("subpath")
 
-    print(
-        f"{icons.warning} This function relies on an API which is not yet official as of May 21, 2024. Once the API becomes official this function will work as expected."
-    )
+        new_data = {
+            "Shortcut Name": shortcutName,
+            "Shortcut Path": shortcutPath,
+            "Source": source,
+            "Source Lakehouse Name": sourceLakehouseName,
+            "Source Workspace Name": sourceWorkspaceName,
+            "Source Path": sourcePath,
+            "Source Connection ID": connectionId,
+            "Source Location": location,
+            "Source SubPath": subpath,
+        }
+        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
     return df
 
 
@@ -2109,12 +2103,11 @@ def update_spark_settings(
         f"/v1/workspaces/{workspace_id}/spark/settings", json=request_body
     )
 
-    if response.status_code == 200:
-        print(
-            f"{icons.green_dot} The spark settings within the '{workspace}' workspace have been updated accordingly."
-        )
-    else:
-        raise ValueError(f"{icons.red_dot} {response.status_code}")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+    print(
+        f"{icons.green_dot} The spark settings within the '{workspace}' workspace have been updated accordingly."
+    )
 
 
 def add_user_to_workspace(
@@ -2156,12 +2149,11 @@ def add_user_to_workspace(
         f"/v1.0/myorg/groups/{workspace_id}/users", json=request_body
     )
 
-    if response.status_code == 200:
-        print(
-            f"{icons.green_dot} The '{email_address}' user has been added as a{plural} '{role_name}' within the '{workspace}' workspace."
-        )
-    else:
-        print(f"{icons.red_dot} {response.status_code}")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+    print(
+        f"{icons.green_dot} The '{email_address}' user has been added as a{plural} '{role_name}' within the '{workspace}' workspace."
+    )
 
 
 def delete_user_from_workspace(email_address: str, workspace: Optional[str] = None):
@@ -2186,12 +2178,11 @@ def delete_user_from_workspace(email_address: str, workspace: Optional[str] = No
     client = fabric.PowerBIRestClient()
     response = client.delete(f"/v1.0/myorg/groups/{workspace_id}/users/{email_address}")
 
-    if response.status_code == 200:
-        print(
-            f"{icons.green_dot} The '{email_address}' user has been removed from accessing the '{workspace}' workspace."
-        )
-    else:
-        print(f"{icons.red_dot} {response.status_code}")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+    print(
+        f"{icons.green_dot} The '{email_address}' user has been removed from accessing the '{workspace}' workspace."
+    )
 
 
 def update_workspace_user(
@@ -2229,12 +2220,11 @@ def update_workspace_user(
     client = fabric.PowerBIRestClient()
     response = client.put(f"/v1.0/myorg/groups/{workspace_id}/users", json=request_body)
 
-    if response.status_code == 200:
-        print(
-            f"{icons.green_dot} The '{email_address}' user has been updated to a '{role_name}' within the '{workspace}' workspace."
-        )
-    else:
-        print(f"{icons.red_dot} {response.status_code}")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+    print(
+        f"{icons.green_dot} The '{email_address}' user has been updated to a '{role_name}' within the '{workspace}' workspace."
+    )
 
 
 def list_workspace_users(workspace: Optional[str] = None) -> pd.DataFrame:
@@ -2307,12 +2297,12 @@ def assign_workspace_to_dataflow_storage(
     response = client.post(
         f"/v1.0/myorg/groups/{workspace_id}/AssignToDataflowStorage", json=request_body
     )
-    if response.status_code == 200:
-        print(
-            f"{icons.green_dot} The '{dataflow_storage_account}' dataflow storage account has been assigned to the '{workspace}' workspacce."
-        )
-    else:
-        print(f"{icons.red_dot} {response.status_code}")
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+    print(
+        f"{icons.green_dot} The '{dataflow_storage_account}' dataflow storage account has been assigned to the '{workspace}' workspacce."
+    )
 
 
 def list_capacities() -> pd.DataFrame:

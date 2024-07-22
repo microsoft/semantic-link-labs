@@ -6,6 +6,7 @@ from sempy_labs._helper_functions import (
 )
 from typing import Optional
 import sempy_labs._icons as icons
+from sempy.fabric.exceptions import FabricHTTPException
 
 
 def create_shortcut_onelake(
@@ -194,9 +195,8 @@ def delete_shortcut(
         f"/v1/workspaces/{workspace_id}/items/{lakehouse_id}/shortcuts/Tables/{shortcut_name}"
     )
 
-    if response.status_code == 200:
-        print(
-            f"{icons.green_dot} The '{shortcut_name}' shortcut in the '{lakehouse}' within the '{workspace}' workspace has been deleted."
-        )
-    else:
-        raise ValueError(f"{icons.red_dot} The '{shortcut_name}' has not been deleted.")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+    print(
+        f"{icons.green_dot} The '{shortcut_name}' shortcut in the '{lakehouse}' within the '{workspace}' workspace has been deleted."
+    )

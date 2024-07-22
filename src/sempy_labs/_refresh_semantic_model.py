@@ -5,6 +5,7 @@ from typing import Any, List, Optional, Union
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from sempy_labs._helper_functions import resolve_workspace_name_and_id
+from sempy.fabric.exceptions import FabricHTTPException
 
 
 @log
@@ -171,9 +172,9 @@ def cancel_dataset_refresh(
     response = client.delete(
         f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/refreshes/{request_id}"
     )
-    if response.status_code == 200:
-        print(
-            f"{icons.green_dot} The '{request_id}' refresh request for the '{dataset}' semantic model within the '{workspace}' workspace has been cancelled."
-        )
-    else:
-        print(response.status_code)
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+    print(
+        f"{icons.green_dot} The '{request_id}' refresh request for the '{dataset}' semantic model within the '{workspace}' workspace has been cancelled."
+    )

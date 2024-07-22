@@ -3,6 +3,7 @@ from sempy_labs._helper_functions import resolve_dataset_id, resolve_report_id
 from typing import Optional, List
 from sempy._utils._log import log
 import sempy_labs._icons as icons
+from sempy.fabric.exceptions import FabricHTTPException
 
 
 @log
@@ -60,14 +61,11 @@ def report_rebind(
             json=request_body,
         )
 
-        if response.status_code == 200:
-            print(
-                f"{icons.green_dot} The '{rpt}' report has been successfully rebinded to the '{dataset}' semantic model."
-            )
-        else:
-            raise ValueError(
-                f"{icons.red_dot} The '{rpt}' report within the '{report_workspace}' workspace failed to rebind to the '{dataset}' semantic model within the '{dataset_workspace}' workspace."
-            )
+        if response.status_code != 200:
+            raise FabricHTTPException(response)
+        print(
+            f"{icons.green_dot} The '{rpt}' report has been successfully rebinded to the '{dataset}' semantic model."
+        )
 
 
 @log

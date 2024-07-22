@@ -11,6 +11,7 @@ from sempy_labs._helper_functions import (
 )
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 import sempy_labs._icons as icons
+from sempy.fabric.exceptions import FabricHTTPException
 
 
 def create_blank_semantic_model(

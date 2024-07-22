@@ -3,6 +3,7 @@ import pandas as pd
 from sempy_labs._helper_functions import resolve_dataset_id
 from typing import Optional
 import sempy_labs._icons as icons
+from sempy.fabric.exceptions import FabricHTTPException
 
 
 def qso_sync(dataset: str, workspace: Optional[str] = None):
@@ -38,14 +39,11 @@ def qso_sync(dataset: str, workspace: Optional[str] = None):
         f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/queryScaleOut/sync"
     )
 
-    if response.status_code == 200:
-        print(
-            f"{icons.green_dot} QSO sync initiated for the '{dataset}' semantic model within the '{workspace}' workspace."
-        )
-    else:
-        raise ValueError(
-            f"{icons.red_dot} QSO sync failed for the '{dataset}' semantic model within the '{workspace}' workspace."
-        )
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+    print(
+        f"{icons.green_dot} QSO sync initiated for the '{dataset}' semantic model within the '{workspace}' workspace."
+    )
 
 
 def qso_sync_status(dataset: str, workspace: Optional[str] = None):
@@ -99,54 +97,54 @@ def qso_sync_status(dataset: str, workspace: Optional[str] = None):
         f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/queryScaleOut/syncStatus"
     )
 
-    if response.status_code == 200:
-        o = response.json()
-        sos = o["scaleOutStatus"]
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
 
-        if sos == "Enabled":
+    o = response.json()
+    sos = o["scaleOutStatus"]
+
+    if sos == "Enabled":
+        new_data = {
+            "Scale Out Status": o["scaleOutStatus"],
+            "Sync Start Time": o["syncStartTime"],
+            "Sync End Time": o["syncEndTime"],
+            "Commit Version": o["commitVersion"],
+            "Commit Timestamp": o["commitTimestamp"],
+            "Target Sync Version": o["targetSyncVersion"],
+            "Target Sync Timestamp": o["targetSyncTimestamp"],
+            "Trigger Reason": o["triggerReason"],
+            "Min Active Read Version": o["minActiveReadVersion"],
+            "Min Active Read Timestamp": o["minActiveReadTimestamp"],
+        }
+        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+        for r in o["scaleOutReplicas"]:
             new_data = {
-                "Scale Out Status": o["scaleOutStatus"],
-                "Sync Start Time": o["syncStartTime"],
-                "Sync End Time": o["syncEndTime"],
-                "Commit Version": o["commitVersion"],
-                "Commit Timestamp": o["commitTimestamp"],
-                "Target Sync Version": o["targetSyncVersion"],
-                "Target Sync Timestamp": o["targetSyncTimestamp"],
-                "Trigger Reason": o["triggerReason"],
-                "Min Active Read Version": o["minActiveReadVersion"],
-                "Min Active Read Timestamp": o["minActiveReadTimestamp"],
+                "Replica ID": r["replicaId"],
+                "Replica Type": r["replicaType"],
+                "Replica Version": str(r["replicaVersion"]),
+                "Replica Timestamp": r["replicaTimestamp"],
             }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-            for r in o["scaleOutReplicas"]:
-                new_data = {
-                    "Replica ID": r["replicaId"],
-                    "Replica Type": r["replicaType"],
-                    "Replica Version": str(r["replicaVersion"]),
-                    "Replica Timestamp": r["replicaTimestamp"],
-                }
-                dfRep = pd.concat(
-                    [dfRep, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                )
-
-            df["Sync Start Time"] = pd.to_datetime(df["Sync Start Time"])
-            df["Sync End Time"] = pd.to_datetime(df["Sync End Time"])
-            df["Commit Timestamp"] = pd.to_datetime(df["Commit Timestamp"])
-            df["Target Sync Timestamp"] = pd.to_datetime(df["Target Sync Timestamp"])
-            df["Min Active Read Timestamp"] = pd.to_datetime(
-                df["Min Active Read Timestamp"]
+            dfRep = pd.concat(
+                [dfRep, pd.DataFrame(new_data, index=[0])], ignore_index=True
             )
-            dfRep["Replica Timestamp"] = pd.to_datetime(dfRep["Replica Timestamp"])
-            df["Commit Version"] = df["Commit Version"].astype("int")
-            df["Target Sync Version"] = df["Target Sync Version"].astype("int")
-            df["Min Active Read Version"] = df["Min Active Read Version"].astype("int")
 
-            return df, dfRep
-        else:
-            print(f"{sos}\n\n")
-            return df, dfRep
+        df["Sync Start Time"] = pd.to_datetime(df["Sync Start Time"])
+        df["Sync End Time"] = pd.to_datetime(df["Sync End Time"])
+        df["Commit Timestamp"] = pd.to_datetime(df["Commit Timestamp"])
+        df["Target Sync Timestamp"] = pd.to_datetime(df["Target Sync Timestamp"])
+        df["Min Active Read Timestamp"] = pd.to_datetime(
+            df["Min Active Read Timestamp"]
+        )
+        dfRep["Replica Timestamp"] = pd.to_datetime(dfRep["Replica Timestamp"])
+        df["Commit Version"] = df["Commit Version"].astype("int")
+        df["Target Sync Version"] = df["Target Sync Version"].astype("int")
+        df["Min Active Read Version"] = df["Min Active Read Version"].astype("int")
+
+        return df, dfRep
     else:
-        return response.status_code
+        print(f"{sos}\n\n")
+        return df, dfRep
 
 
 def disable_qso(dataset: str, workspace: Optional[str] = None):
@@ -181,14 +179,15 @@ def disable_qso(dataset: str, workspace: Optional[str] = None):
     response = client.patch(
         f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}", json=request_body
     )
-    if response.status_code == 200:
-        df = list_qso_settings(dataset=dataset, workspace=workspace)
-        print(
-            f"{icons.green_dot} Query scale out has been disabled for the '{dataset}' semantic model within the '{workspace}' workspace."
-        )
-        return df
-    else:
-        raise ValueError(f"{icons.red_dot} {response.status_code}")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    df = list_qso_settings(dataset=dataset, workspace=workspace)
+    print(
+        f"{icons.green_dot} Query scale out has been disabled for the '{dataset}' semantic model within the '{workspace}' workspace."
+    )
+
+    return df
 
 
 def set_qso(
@@ -248,14 +247,14 @@ def set_qso(
             f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}",
             json=request_body,
         )
-        if response.status_code == 200:
-            df = list_qso_settings(dataset=dataset, workspace=workspace)
-            print(
-                f"{icons.green_dot} Query scale out has been set on the '{dataset}' semantic model within the '{workspace}' workspace."
-            )
-            return df
-        else:
-            raise ValueError(f"{icons.red_dot} {response.status_code}")
+        if response.status_code != 200:
+            raise FabricHTTPException(response)
+
+        df = list_qso_settings(dataset=dataset, workspace=workspace)
+        print(
+            f"{icons.green_dot} Query scale out has been set on the '{dataset}' semantic model within the '{workspace}' workspace."
+        )
+        return df
     else:
         raise ValueError(
             f"{icons.red_dot} Failed to set the '{dataset}' semantic model within the '{workspace}' workspace to large semantic model storage format. This is a prerequisite for enabling Query Scale Out.\n\"https://learn.microsoft.com/power-bi/enterprise/service-premium-scale-out#prerequisites\""
@@ -314,13 +313,11 @@ def set_semantic_model_storage_format(
     response = client.patch(
         f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}", json=request_body
     )
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+    print(f"{icons.green_dot} Semantic model storage format set to '{storage_format}'.")
 
-    if response.status_code == 200:
-        return print(
-            f"{icons.green_dot} Semantic model storage format set to '{storage_format}'."
-        )
-    else:
-        raise ValueError(f"{icons.red_dot} {response.status_code}")
+    return response.status_code
 
 
 def list_qso_settings(dataset: Optional[str] = None, workspace: Optional[str] = None):
@@ -433,9 +430,8 @@ def set_workspace_default_storage_format(
     client = fabric.PowerBIRestClient()
     response = client.patch(f"/v1.0/myorg/groups/{workspace_id}", json=request_body)
 
-    if response.status_code == 200:
-        print(
-            f"{icons.green_dot} The default storage format for the '{workspace}' workspace has been updated to '{storage_format}."
-        )
-    else:
-        raise ValueError(f"{icons.red_dot} {response.status_code}")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+    print(
+        f"{icons.green_dot} The default storage format for the '{workspace}' workspace has been updated to '{storage_format}."
+    )

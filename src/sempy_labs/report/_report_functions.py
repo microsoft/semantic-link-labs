@@ -23,6 +23,7 @@ from sempy_labs._helper_functions import (
 from typing import Any, List, Optional, Union
 from sempy._utils._log import log
 import sempy_labs._icons as icons
+from sempy.fabric.exceptions import FabricHTTPException
 
 
 def get_report_json(
@@ -499,15 +500,12 @@ def clone_report(
         f"/v1.0/myorg/groups/{workspace_id}/reports/{reportId}/Clone", json=request_body
     )
 
-    if response.status_code == 200:
-        print(
-            f"{icons.green_dot} The '{report}' report has been successfully cloned as the '{cloned_report}' report within the"
-            f" '{target_workspace}' workspace using the '{target_dataset}' semantic model."
-        )
-    else:
-        raise ValueError(
-            f"{icons.red_dot} POST request failed with status code: {response.status_code}"
-        )
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+    print(
+        f"{icons.green_dot} The '{report}' report has been successfully cloned as the '{cloned_report}' report within the"
+        f" '{target_workspace}' workspace using the '{target_dataset}' semantic model."
+    )
 
 
 def launch_report(report: str, workspace: Optional[str] = None):
