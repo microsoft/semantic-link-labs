@@ -20,13 +20,12 @@ def clear_cache(dataset: str, workspace: Optional[str] = None):
     """
 
     workspace = fabric.resolve_workspace_name(workspace)
-
-    datasetID = resolve_dataset_id(dataset=dataset, workspace=workspace)
+    dataset_id = resolve_dataset_id(dataset=dataset, workspace=workspace)
 
     xmla = f"""
             <ClearCache xmlns="http://schemas.microsoft.com/analysisservices/2003/engine">
                 <Object>  
-                    <DatabaseID>{datasetID}</DatabaseID>
+                    <DatabaseID>{dataset_id}</DatabaseID>
                 </Object>
             </ClearCache>
             """

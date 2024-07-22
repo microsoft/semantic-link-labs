@@ -3972,7 +3972,7 @@ class TOMWrapper:
             Defaults to None which keeps the existing setting.
         """
 
-        obj = self.Tables[table_name].CalculationGroup.CalculationItems[
+        obj = self.model.Tables[table_name].CalculationGroup.CalculationItems[
             calculation_item_name
         ]
 

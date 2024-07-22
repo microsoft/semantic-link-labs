@@ -7,7 +7,7 @@ import sempy_labs._icons as icons
 
 def get_shared_expression(
     lakehouse: Optional[str] = None, workspace: Optional[str] = None
-):
+) -> str:
     """
     Dynamically generates the M expression used by a Direct Lake model for a given lakehouse.
 

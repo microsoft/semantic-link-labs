@@ -10,3 +10,4 @@ dependencies:
   - azure-identity==1.7.1
   - azure-storage-blob>=12.9.0
   - pandas-stubs
+  - types-tqdm

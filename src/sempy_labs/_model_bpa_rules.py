@@ -10,7 +10,7 @@ def model_bpa_rules(
     dataset: str,
     workspace: Optional[str | None] = None,
     dependencies: Optional[pd.DataFrame | None] = None,
-):
+) -> pd.DataFrame:
     """
     Shows the default rules for the semantic model BPA used by the run_model_bpa function.
 

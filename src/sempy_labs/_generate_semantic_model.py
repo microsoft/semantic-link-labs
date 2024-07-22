@@ -11,7 +11,6 @@ from sempy_labs._helper_functions import (
 )
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 import sempy_labs._icons as icons
-from sempy.fabric.exceptions import FabricHTTPException
 
 
 def create_blank_semantic_model(
@@ -34,8 +33,7 @@ def create_blank_semantic_model(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    if workspace is None:
-        workspace = fabric.resolve_workspace_name()
+    workspace = fabric.resolve_workspace_name()
 
     min_compat = 1500
 
@@ -196,11 +194,10 @@ def deploy_semantic_model(
         target_dataset = source_dataset
 
     if target_dataset == source_dataset and target_workspace == source_workspace:
-        print(
+        raise ValueError(
             f"{icons.red_dot} The 'dataset' and 'new_dataset' parameters have the same value. And, the 'workspace' and 'new_dataset_workspace' "
             f"parameters have the same value. At least one of these must be different. Please update the parameters."
         )
-        return
 
     bim = get_semantic_model_bim(dataset=source_dataset, workspace=source_workspace)
 
@@ -217,7 +214,7 @@ def get_semantic_model_bim(
     workspace: Optional[str] = None,
     save_to_file_name: Optional[str] = None,
     lakehouse_workspace: Optional[str] = None,
-):
+) -> dict:
     """
     Extracts the Model.bim file for a given semantic model.
 
@@ -238,7 +235,7 @@ def get_semantic_model_bim(
 
     Returns
     -------
-    str
+    dict
         The Model.bim file for the semantic model.
     """
 
@@ -279,7 +276,7 @@ def get_semantic_model_bim(
         with open(filePath, "w") as json_file:
             json.dump(bimJson, json_file, indent=4)
         print(
-            f"The .bim file for the '{dataset}' semantic model has been saved to the '{lakehouse}' in this location: '{filePath}'.\n\n"
+            f"{icons.green_dot} The .bim file for the '{dataset}' semantic model has been saved to the '{lakehouse}' in this location: '{filePath}'.\n\n"
         )
 
     return bimJson

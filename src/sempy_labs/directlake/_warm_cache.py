@@ -17,7 +17,7 @@ def warm_direct_lake_cache_perspective(
     perspective: str,
     add_dependencies: Optional[bool] = False,
     workspace: Optional[str] = None,
-):
+) -> pd.DataFrame:
     """
     Warms the cache of a Direct Lake semantic model by running a simple DAX query against the columns in a perspective.
 

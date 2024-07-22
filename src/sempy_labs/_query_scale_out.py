@@ -1,7 +1,10 @@
 import sempy.fabric as fabric
 import pandas as pd
-from sempy_labs._helper_functions import resolve_dataset_id
-from typing import Optional
+from sempy_labs._helper_functions import (
+    resolve_dataset_id, 
+    resolve_workspace_name_and_id
+)
+from typing import Optional, Tuple
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 
@@ -26,12 +29,7 @@ def qso_sync(dataset: str, workspace: Optional[str] = None):
 
     # https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/trigger-query-scale-out-sync-in-group
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
-
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
     dataset_id = resolve_dataset_id(dataset, workspace)
 
     client = fabric.PowerBIRestClient()
@@ -46,7 +44,7 @@ def qso_sync(dataset: str, workspace: Optional[str] = None):
     )
 
 
-def qso_sync_status(dataset: str, workspace: Optional[str] = None):
+def qso_sync_status(dataset: str, workspace: Optional[str] = None) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Returns the query scale-out sync status for the specified dataset from the specified workspace.
 
@@ -61,6 +59,8 @@ def qso_sync_status(dataset: str, workspace: Optional[str] = None):
 
     Returns
     -------
+    Tuple[pandas.DataFrame, pandas.DataFrame]
+        2 pandas dataframes showing the query scale-out sync status.
 
     """
 
@@ -84,12 +84,7 @@ def qso_sync_status(dataset: str, workspace: Optional[str] = None):
         columns=["Replica ID", "Replica Type", "Replica Version", "Replica Timestamp"]
     )
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
-
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
     dataset_id = resolve_dataset_id(dataset, workspace)
 
     client = fabric.PowerBIRestClient()
@@ -147,7 +142,7 @@ def qso_sync_status(dataset: str, workspace: Optional[str] = None):
         return df, dfRep
 
 
-def disable_qso(dataset: str, workspace: Optional[str] = None):
+def disable_qso(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Sets the max read-only replicas to 0, disabling query scale out.
 
@@ -162,15 +157,12 @@ def disable_qso(dataset: str, workspace: Optional[str] = None):
 
     Returns
     -------
+    pandas.DataFrame
+        A pandas dataframe showing the current query scale out settings.
 
     """
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
-
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
     dataset_id = resolve_dataset_id(dataset, workspace)
 
     request_body = {"queryScaleOutSettings": {"maxReadOnlyReplicas": "0"}}
@@ -195,7 +187,7 @@ def set_qso(
     auto_sync: Optional[bool] = True,
     max_read_only_replicas: Optional[int] = -1,
     workspace: Optional[str] = None,
-):
+) -> pd.DataFrame:
     """
     Sets the query scale out settings for a semantic model.
 
@@ -214,17 +206,14 @@ def set_qso(
 
     Returns
     -------
+    pandas.DataFrame
+        A pandas dataframe showing the current query scale-out settings.
 
     """
 
     # https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/update-dataset-in-group
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
-
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
     dataset_id = resolve_dataset_id(dataset, workspace)
 
     if max_read_only_replicas == 0:
@@ -283,12 +272,7 @@ def set_semantic_model_storage_format(
 
     """
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
-
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
     dataset_id = resolve_dataset_id(dataset, workspace)
 
     storage_format = storage_format.capitalize()
@@ -317,10 +301,8 @@ def set_semantic_model_storage_format(
         raise FabricHTTPException(response)
     print(f"{icons.green_dot} Semantic model storage format set to '{storage_format}'.")
 
-    return response.status_code
 
-
-def list_qso_settings(dataset: Optional[str] = None, workspace: Optional[str] = None):
+def list_qso_settings(dataset: Optional[str] = None, workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the query scale out settings for a semantic model (or all semantic models within a workspace).
 
@@ -339,11 +321,7 @@ def list_qso_settings(dataset: Optional[str] = None, workspace: Optional[str] = 
         A pandas dataframe showing the query scale out settings.
     """
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     if dataset is not None:
         dataset_id = resolve_dataset_id(dataset, workspace)
@@ -416,14 +394,10 @@ def set_workspace_default_storage_format(
 
     if storage_format not in storageFormats:
         print(
-            f"Invalid storage format. Please choose from these options: {storageFormats}."
+            f"{icons.red_dot} Invalid storage format. Please choose from these options: {storageFormats}."
         )
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     request_body = {"name": workspace, "defaultDatasetStorageFormat": storage_format}
 

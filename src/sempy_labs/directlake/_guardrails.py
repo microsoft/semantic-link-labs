@@ -27,7 +27,7 @@ def get_direct_lake_guardrails() -> pd.DataFrame:
     return df
 
 
-def get_sku_size(workspace: Optional[str] = None):
+def get_sku_size(workspace: Optional[str] = None) -> str:
     """
     Shows the SKU size for a workspace.
 

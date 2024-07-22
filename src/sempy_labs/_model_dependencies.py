@@ -8,7 +8,7 @@ from sempy._utils._log import log
 
 
 @log
-def get_measure_dependencies(dataset: str, workspace: Optional[str] = None):
+def get_measure_dependencies(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows all dependencies for all measures in a semantic model.
 
@@ -132,7 +132,7 @@ def get_measure_dependencies(dataset: str, workspace: Optional[str] = None):
 
 
 @log
-def get_model_calc_dependencies(dataset: str, workspace: Optional[str] = None):
+def get_model_calc_dependencies(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows all dependencies for all objects in a semantic model.
 
@@ -288,7 +288,7 @@ def measure_dependency_tree(
 
     if len(dfM_filt) == 0:
         print(
-            f"The '{measure_name}' measure does not exist in the '{dataset}' semantic model in the '{workspace}' workspace."
+            f"{icons.red_dot} The '{measure_name}' measure does not exist in the '{dataset}' semantic model in the '{workspace}' workspace."
         )
         return
 
