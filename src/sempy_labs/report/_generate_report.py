@@ -1,11 +1,9 @@
 import sempy.fabric as fabric
 import pandas as pd
-import json
-import base64
-import time
 from typing import Optional
-from sempy_labs._helper_functions import resolve_workspace_name_and_id
+from sempy_labs._helper_functions import resolve_workspace_name_and_id, _conv_b64
 import sempy_labs._icons as icons
+from sempy.fabric.exceptions import FabricHTTPException
 
 
 def create_report_from_reportjson(
@@ -36,10 +34,9 @@ def create_report_from_reportjson(
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    objectType = "Report"
+    dfI = fabric.list_items(workspace=workspace)
 
-    dfI_m = fabric.list_items(workspace=workspace, type="SemanticModel")
-    dfI_model = dfI_m[(dfI_m["Display Name"] == dataset)]
+    dfI_model = dfI[(dfI["Display Name"] == dataset) & (dfI["Type"] == "SemanticModel")]
 
     if len(dfI_model) == 0:
         raise ValueError(
@@ -48,8 +45,7 @@ def create_report_from_reportjson(
 
     datasetId = dfI_model["Id"].iloc[0]
 
-    dfI_r = fabric.list_items(workspace=workspace, type="Report")
-    dfI_rpt = dfI_r[(dfI_r["Display Name"] == report)]
+    dfI_rpt = dfI[(dfI["Display Name"] == report) & (dfI["Type"] == "Report")]
 
     if len(dfI_rpt) > 0:
         print(
@@ -73,83 +69,52 @@ def create_report_from_reportjson(
         },
     }
 
-    def conv_b64(file):
+    definitionPBIR = _conv_b64(defPBIR)
+    payloadReportJson = _conv_b64(report_json)
 
-        loadJson = json.dumps(file)
-        f = base64.b64encode(loadJson.encode("utf-8")).decode("utf-8")
+    request_body = {
+        "displayName": report,
+        "definition": {
+            "parts": [
+                {
+                    "path": "report.json",
+                    "payload": payloadReportJson,
+                    "payloadType": "InlineBase64",
+                },
+                {
+                    "path": "definition.pbir",
+                    "payload": definitionPBIR,
+                    "payloadType": "InlineBase64",
+                },
+            ]
+        },
+    }
 
-        return f
+    if theme_json is not None:
+        theme_payload = _conv_b64(theme_json)
+        theme_id = theme_json["payload"]["blob"]["displayName"]
+        theme_path = f"StaticResources/SharedResources/BaseThemes/{theme_id}.json"
 
-    definitionPBIR = conv_b64(defPBIR)
-    payloadReportJson = conv_b64(report_json)
-
-    if theme_json is None:
-        request_body = {
-            "displayName": report,
-            "type": objectType,
-            "definition": {
-                "parts": [
-                    {
-                        "path": "report.json",
-                        "payload": payloadReportJson,
-                        "payloadType": "InlineBase64",
-                    },
-                    {
-                        "path": "definition.pbir",
-                        "payload": definitionPBIR,
-                        "payloadType": "InlineBase64",
-                    },
-                ]
-            },
+        part = {
+            "path": theme_path,
+            "payload": theme_payload,
+            "payloadType": "InlineBase64",
         }
-    else:
-        payloadThemeJson = conv_b64(theme_json)
-        themeID = theme_json["payload"]["blob"]["displayName"]
-        themePath = "StaticResources/SharedResources/BaseThemes/" + themeID + ".json"
-        request_body = {
-            "displayName": report,
-            "type": objectType,
-            "definition": {
-                "parts": [
-                    {
-                        "path": "report.json",
-                        "payload": payloadReportJson,
-                        "payloadType": "InlineBase64",
-                    },
-                    {
-                        "path": themePath,
-                        "payload": payloadThemeJson,
-                        "payloadType": "InlineBase64",
-                    },
-                    {
-                        "path": "definition.pbir",
-                        "payload": definitionPBIR,
-                        "payloadType": "InlineBase64",
-                    },
-                ]
-            },
-        }
+        request_body["definition"]["parts"].append(part)
 
-    response = client.post(f"/v1/workspaces/{workspace_id}/items", json=request_body)
+    response = client.post(
+        f"/v1/workspaces/{workspace_id}/reports", json=request_body, lro_wait=True
+    )
 
-    if response.status_code == 201:
-        print(f"{icons.green_dot} Report creation succeeded")
-        print(response.json())
-    elif response.status_code == 202:
-        operationId = response.headers["x-ms-operation-id"]
-        response = client.get(f"/v1/operations/{operationId}")
-        response_body = json.loads(response.content)
-        while response_body["status"] != "Succeeded":
-            time.sleep(3)
-            response = client.get(f"/v1/operations/{operationId}")
-            response_body = json.loads(response.content)
-        response = client.get(f"/v1/operations/{operationId}/result")
-        print(f"{icons.green_dot} Report creation succeeded")
-        print(response.json())
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+    print(
+        f"{icons.green_dot} Succesfully created the '{report}' report within the '{workspace}' workspace."
+    )
 
 
 def update_report_from_reportjson(
-    report: str, report_json: str, workspace: Optional[str] = None
+    report: str, report_json: dict, workspace: Optional[str] = None
 ):
     """
     Updates a report based on a report.json file.
@@ -158,7 +123,7 @@ def update_report_from_reportjson(
     ----------
     report : str
         Name of the report.
-    report_json : str
+    report_json : dict
         The report.json file to be used to update the report.
     workspace : str, default=None
         The Fabric workspace name in which the report resides.
@@ -180,38 +145,12 @@ def update_report_from_reportjson(
     client = fabric.FabricRestClient()
 
     response = client.post(
-        f"/v1/workspaces/{workspace_id}/items/{reportId}/getDefinition"
+        f"/v1/workspaces/{workspace_id}/reports/{reportId}/getDefinition"
     )
     df_items = pd.json_normalize(response.json()["definition"]["parts"])
     df_items_filt = df_items[df_items["path"] == "definition.pbir"]
     rptDefFile = df_items_filt["payload"].iloc[0]
-    # datasetId = dfR_filt['Dataset Id'].iloc[0]
-    # datasetWorkspaceId = dfR_filt['Dataset Workspace Id'].iloc[0]
-
-    # defPBIR = {
-    # "version": "1.0",
-    # "datasetReference": {
-    #    "byPath": None,
-    #    "byConnection": {
-    #        "connectionString": None,
-    #        "pbiServiceModelId": None,
-    #        "pbiModelVirtualServerName": "sobe_wowvirtualserver",
-    #        "pbiModelDatabaseName": datasetId,
-    #        "name": "EntityDataSource",
-    #        "connectionType": "pbiServiceXmlaStyleLive"
-    #    }
-    # }
-    # }
-
-    def conv_b64(file):
-
-        loadJson = json.dumps(file)
-        f = base64.b64encode(loadJson.encode("utf-8")).decode("utf-8")
-
-        return f
-
-    # definitionPBIR = conv_b64(defPBIR)
-    payloadReportJson = conv_b64(report_json)
+    payloadReportJson = _conv_b64(report_json)
 
     request_body = {
         "displayName": report,
@@ -235,19 +174,11 @@ def update_report_from_reportjson(
     response = client.post(
         f"/v1/workspaces/{workspace_id}/reports/{reportId}/updateDefinition",
         json=request_body,
+        lro_wait=True,
     )
 
-    if response.status_code == 201:
-        print(f"{icons.green_dot} The '{report}' report has been successfully updated.")
-        # print(response.json())
-    elif response.status_code == 202:
-        operationId = response.headers["x-ms-operation-id"]
-        response = client.get(f"/v1/operations/{operationId}")
-        response_body = json.loads(response.content)
-        while response_body["status"] != "Succeeded":
-            time.sleep(3)
-            response = client.get(f"/v1/operations/{operationId}")
-            response_body = json.loads(response.content)
-        response = client.get(f"/v1/operations/{operationId}/result")
-        print(f"{icons.green_dot} The '{report}' report has been successfully updated.")
-        # print(response.json())
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+    print(
+        f"{icons.green_dot} The '{report}' report within the '{workspace}' workspace has been successfully updated."
+    )

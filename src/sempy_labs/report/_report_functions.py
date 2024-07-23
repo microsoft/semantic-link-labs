@@ -20,7 +20,7 @@ from sempy_labs._helper_functions import (
     language_validate,
     resolve_workspace_name_and_id,
 )
-from typing import Any, List, Optional, Union
+from typing import List, Optional, Union
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
@@ -30,7 +30,7 @@ def get_report_json(
     report: str,
     workspace: Optional[str] = None,
     save_to_file_name: Optional[str] = None,
-) -> Any:
+) -> dict:
     """
     Gets the report.json file content of a Power BI report.
 
@@ -47,7 +47,7 @@ def get_report_json(
 
     Returns
     -------
-    Any
+    dict
         The report.json file for a given Power BI report.
     """
 
@@ -240,9 +240,9 @@ def export_report(
         )
 
     if file_name is None:
-        file_name = report + fileExt
+        file_name = f"{report}{fileExt}"
     else:
-        file_name = file_name + fileExt
+        file_name = f"{file_name}{fileExt}"
 
     folderPath = "/lakehouse/default/Files"
     filePath = os.path.join(folderPath, file_name)

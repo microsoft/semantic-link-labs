@@ -5,7 +5,9 @@ from typing import Optional
 import sempy_labs._icons as icons
 
 
-def check_fallback_reason(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
+def check_fallback_reason(
+    dataset: str, workspace: Optional[str] = None
+) -> pd.DataFrame:
     """
     Shows the reason a table in a Direct Lake semantic model would fallback to DirectQuery.
 

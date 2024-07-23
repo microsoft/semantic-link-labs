@@ -6,8 +6,8 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_id,
 )
 import pandas as pd
-import json
-import time
+import base64
+import requests
 from pyspark.sql import SparkSession
 from typing import Optional
 import sempy_labs._icons as icons
@@ -990,29 +990,14 @@ def create_warehouse(
 
     client = fabric.FabricRestClient()
     response = client.post(
-        f"/v1/workspaces/{workspace_id}/warehouses/", json=request_body
+        f"/v1/workspaces/{workspace_id}/warehouses/", json=request_body, lro_wait=True
     )
 
-    if response.status_code == 201:
-        print(
-            f"{icons.green_dot} The '{warehouse}' warehouse has been created within the '{workspace}' workspace."
-        )
-    elif response.status_code == 202:
-        operationId = response.headers["x-ms-operation-id"]
-        response = client.get(f"/v1/operations/{operationId}")
-        response_body = json.loads(response.content)
-        while response_body["status"] != "Succeeded":
-            time.sleep(3)
-            response = client.get(f"/v1/operations/{operationId}")
-            response_body = json.loads(response.content)
-        response = client.get(f"/v1/operations/{operationId}/result")
-        print(
-            f"{icons.green_dot} The '{warehouse}' warehouse has been created within the '{workspace}' workspace."
-        )
-    else:
-        raise ValueError(
-            f"{icons.red_dot} Failed to create the '{warehouse}' warehouse within the '{workspace}' workspace."
-        )
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+    print(
+        f"{icons.green_dot} The '{warehouse}' warehouse has been created within the '{workspace}' workspace."
+    )
 
 
 def update_item(
@@ -1716,15 +1701,14 @@ def create_custom_pool(
 
     client = fabric.FabricRestClient()
     response = client.post(
-        f"/v1/workspaces/{workspace_id}/spark/pools", json=request_body
+        f"/v1/workspaces/{workspace_id}/spark/pools", json=request_body, lro_wait=True
     )
 
-    if response.status_code == 201:
-        print(
-            f"{icons.green_dot} The '{pool_name}' spark pool has been created within the '{workspace}' workspace."
-        )
-    else:
-        raise ValueError(f"{icons.red_dot} {response.status_code}")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+    print(
+        f"{icons.green_dot} The '{pool_name}' spark pool has been created within the '{workspace}' workspace."
+    )
 
 
 def update_custom_pool(
@@ -1902,15 +1886,16 @@ def assign_workspace_to_capacity(capacity_name: str, workspace: Optional[str] = 
 
     client = fabric.FabricRestClient()
     response = client.post(
-        f"/v1/workspaces/{workspace_id}/assignToCapacity", json=request_body
+        f"/v1/workspaces/{workspace_id}/assignToCapacity",
+        json=request_body,
+        lro_wait=True,
     )
 
-    if response.status_code == 202:
-        print(
-            f"{icons.green_dot} The '{workspace}' workspace has been assigned to the '{capacity_name}' capacity."
-        )
-    else:
-        raise ValueError(f"{icons.red_dot} {response.status_code}")
+    if response.status_code not in [200, 202]:
+        raise FabricHTTPException(response)
+    print(
+        f"{icons.green_dot} The '{workspace}' workspace has been assigned to the '{capacity_name}' capacity."
+    )
 
 
 def unassign_workspace_from_capacity(workspace: Optional[str] = None):
@@ -1932,14 +1917,15 @@ def unassign_workspace_from_capacity(workspace: Optional[str] = None):
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
-    response = client.post(f"/v1/workspaces/{workspace_id}/unassignFromCapacity")
+    response = client.post(
+        f"/v1/workspaces/{workspace_id}/unassignFromCapacity", lro_wait=True
+    )
 
-    if response.status_code == 202:
-        print(
-            f"{icons.green_dot} The '{workspace}' workspace has been unassigned from its capacity."
-        )
-    else:
-        raise ValueError(f"{icons.red_dot} {response.status_code}")
+    if response.status_code not in [200, 202]:
+        raise FabricHTTPException(response)
+    print(
+        f"{icons.green_dot} The '{workspace}' workspace has been unassigned from its capacity."
+    )
 
 
 def get_spark_settings(workspace: Optional[str] = None) -> pd.DataFrame:
@@ -2337,3 +2323,113 @@ def list_capacities() -> pd.DataFrame:
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
+
+
+def get_notebook_definition(notebook_name: str, workspace: Optional[str] = None):
+    """
+    Obtains the notebook definition.
+
+    Parameters
+    ----------
+    notebook_name : str
+        The name of the notebook.
+    workspace : str, default=None
+        The name of the workspace.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    ipynb
+        The notebook definition.
+    """
+
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    dfI = fabric.list_items(workspace=workspace, type="Notebook")
+    dfI_filt = dfI[dfI["Display Name"] == notebook_name]
+
+    if len(dfI_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} The '{notebook_name}' notebook does not exist within the '{workspace}' workspace."
+        )
+
+    notebook_id = dfI_filt["Id"].iloc[0]
+    client = fabric.FabricRestClient()
+    response = client.post(
+        f"v1/workspaces/{workspace_id}/notebooks/{notebook_id}/getDefinition",
+        lro_wait=True,
+    )
+    df_items = pd.json_normalize(response.json()["definition"]["parts"])
+    df_items_filt = df_items[df_items["path"] == "notebook-content.py"]
+    payload = df_items_filt["payload"].iloc[0]
+    itemFile = base64.b64decode(payload).decode("utf-8")
+
+    return itemFile
+
+
+def import_notebook_from_web(
+    notebook_name: str,
+    url: str,
+    description: Optional[str] = None,
+    workspace: Optional[str] = None,
+):
+    """
+    Creates a new notebook within a workspace based on a Jupyter notebook hosted in the web.
+
+    Parameters
+    ----------
+    notebook_name : str
+        The name of the notebook to be created.
+    url : str
+        The url of the Jupyter Notebook (.ipynb)
+    description : str, default=None
+        The description of the notebook.
+        Defaults to None which does not place a description.
+    workspace : str, default=None
+        The name of the workspace.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    """
+
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    client = fabric.FabricRestClient()
+    dfI = fabric.list_items(workspace=workspace, type="Notebook")
+    dfI_filt = dfI[dfI["Display Name"] == notebook_name]
+    if len(dfI_filt) > 0:
+        raise ValueError(
+            f"{icons.red_dot} The '{notebook_name}' already exists within the '{workspace}' workspace."
+        )
+
+    response = requests.get(url)
+    response.raise_for_status()
+    file_content = response.content
+    notebook_payload = base64.b64encode(file_content)
+
+    request_body = {
+        "displayName": notebook_name,
+        "definition": {
+            "format": "ipynb",
+            "parts": [
+                {
+                    "path": "notebook-content.py",
+                    "payload": notebook_payload,
+                    "payloadType": "InlineBase64",
+                }
+            ],
+        },
+    }
+    if description is not None:
+        request_body["description"] = description
+
+    response = client.post(
+        f"v1/workspaces/{workspace_id}/notebooks", json=request_body, lro_wait=True
+    )
+    if response.status_code not in [200, 202]:
+        raise FabricHTTPException(response)
+    print(
+        f"{icons.green_dot} The '{notebook_name}' notebook was created within the '{workspace}' workspace."
+    )

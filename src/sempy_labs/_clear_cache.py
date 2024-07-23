@@ -1,5 +1,5 @@
 import sempy.fabric as fabric
-from ._helper_functions import resolve_dataset_id
+from ._helper_functions import resolve_dataset_id, is_default_semantic_model
 from typing import Optional
 import sempy_labs._icons as icons
 
@@ -20,11 +20,17 @@ def clear_cache(dataset: str, workspace: Optional[str] = None):
     """
 
     workspace = fabric.resolve_workspace_name(workspace)
+    if is_default_semantic_model(dataset=dataset, workspace=workspace):
+        raise ValueError(
+            "Cannot run XMLA operations against a `default semantic model <https://learn.microsoft.com/fabric/data-warehouse/semantic-models>`_."
+            " Please choose a different semantic model."
+        )
+
     dataset_id = resolve_dataset_id(dataset=dataset, workspace=workspace)
 
     xmla = f"""
             <ClearCache xmlns="http://schemas.microsoft.com/analysisservices/2003/engine">
-                <Object>  
+                <Object>
                     <DatabaseID>{dataset_id}</DatabaseID>
                 </Object>
             </ClearCache>

@@ -2,15 +2,16 @@ import sempy.fabric as fabric
 import pandas as pd
 import json
 import base64
-import time
 import os
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
     resolve_workspace_name_and_id,
+    _conv_b64,
 )
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 import sempy_labs._icons as icons
+from sempy.fabric.exceptions import FabricHTTPException
 
 
 def create_blank_semantic_model(
@@ -87,9 +88,7 @@ def create_semantic_model_from_bim(
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    objectType = "SemanticModel"
-
-    dfI = fabric.list_items(workspace=workspace, type=objectType)
+    dfI = fabric.list_items(workspace=workspace, type="SemanticModel")
     dfI_filt = dfI[(dfI["Display Name"] == dataset)]
 
     if len(dfI_filt) > 0:
@@ -100,19 +99,11 @@ def create_semantic_model_from_bim(
     client = fabric.FabricRestClient()
     defPBIDataset = {"version": "1.0", "settings": {}}
 
-    def conv_b64(file):
-
-        loadJson = json.dumps(file)
-        f = base64.b64encode(loadJson.encode("utf-8")).decode("utf-8")
-
-        return f
-
-    payloadPBIDefinition = conv_b64(defPBIDataset)
-    payloadBim = conv_b64(bim_file)
+    payloadPBIDefinition = _conv_b64(defPBIDataset)
+    payloadBim = _conv_b64(bim_file)
 
     request_body = {
         "displayName": dataset,
-        "type": objectType,
         "definition": {
             "parts": [
                 {
@@ -129,26 +120,17 @@ def create_semantic_model_from_bim(
         },
     }
 
-    response = client.post(f"/v1/workspaces/{workspace_id}/items", json=request_body)
+    response = client.post(
+        f"/v1/workspaces/{workspace_id}/semanticModels",
+        json=request_body,
+        lro_wait=True,
+    )
 
-    if response.status_code == 201:
-        print(
-            f"{icons.green_dot} The '{dataset}' semantic model has been created within the '{workspace}' workspace."
-        )
-        print(response.json())
-    elif response.status_code == 202:
-        operationId = response.headers["x-ms-operation-id"]
-        response = client.get(f"/v1/operations/{operationId}")
-        response_body = json.loads(response.content)
-        while response_body["status"] != "Succeeded":
-            time.sleep(3)
-            response = client.get(f"/v1/operations/{operationId}")
-            response_body = json.loads(response.content)
-        response = client.get(f"/v1/operations/{operationId}/result")
-        print(
-            f"{icons.green_dot} The '{dataset}' semantic model has been created within the '{workspace}' workspace."
-        )
-        print(response.json())
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+    print(
+        f"{icons.green_dot} The '{dataset}' semantic model has been created within the '{workspace}' workspace."
+    )
 
 
 def deploy_semantic_model(

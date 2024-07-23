@@ -8,7 +8,9 @@ from sempy._utils._log import log
 
 
 @log
-def get_measure_dependencies(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
+def get_measure_dependencies(
+    dataset: str, workspace: Optional[str] = None
+) -> pd.DataFrame:
     """
     Shows all dependencies for all measures in a semantic model.
 
@@ -132,7 +134,9 @@ def get_measure_dependencies(dataset: str, workspace: Optional[str] = None) -> p
 
 
 @log
-def get_model_calc_dependencies(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
+def get_model_calc_dependencies(
+    dataset: str, workspace: Optional[str] = None
+) -> pd.DataFrame:
     """
     Shows all dependencies for all objects in a semantic model.
 

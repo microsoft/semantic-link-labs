@@ -1,8 +1,8 @@
 import sempy.fabric as fabric
 import pandas as pd
 from sempy_labs._helper_functions import (
-    resolve_dataset_id, 
-    resolve_workspace_name_and_id
+    resolve_dataset_id,
+    resolve_workspace_name_and_id,
 )
 from typing import Optional, Tuple
 import sempy_labs._icons as icons
@@ -44,7 +44,9 @@ def qso_sync(dataset: str, workspace: Optional[str] = None):
     )
 
 
-def qso_sync_status(dataset: str, workspace: Optional[str] = None) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def qso_sync_status(
+    dataset: str, workspace: Optional[str] = None
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Returns the query scale-out sync status for the specified dataset from the specified workspace.
 
@@ -302,7 +304,9 @@ def set_semantic_model_storage_format(
     print(f"{icons.green_dot} Semantic model storage format set to '{storage_format}'.")
 
 
-def list_qso_settings(dataset: Optional[str] = None, workspace: Optional[str] = None) -> pd.DataFrame:
+def list_qso_settings(
+    dataset: Optional[str] = None, workspace: Optional[str] = None
+) -> pd.DataFrame:
     """
     Shows the query scale out settings for a semantic model (or all semantic models within a workspace).
 

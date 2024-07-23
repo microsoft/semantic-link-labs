@@ -1,5 +1,7 @@
 import sempy.fabric as fabric
 import re
+import json
+import base64
 import pandas as pd
 from pyspark.sql import SparkSession
 from typing import Optional, Tuple
@@ -506,3 +508,78 @@ def resolve_workspace_name_and_id(workspace: Optional[str] = None) -> Tuple[str,
         workspace_id = fabric.resolve_workspace_id(workspace)
 
     return str(workspace), str(workspace_id)
+
+
+def _conv_b64(file):
+
+    loadJson = json.dumps(file)
+    f = base64.b64encode(loadJson.encode("utf-8")).decode("utf-8")
+
+    return f
+
+
+def is_default_semantic_model(dataset: str, workspace: Optional[str] = None) -> bool:
+    """
+    Identifies whether a semantic model is a default semantic model.
+
+    Parameters
+    ----------
+    dataset : str
+        The name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    bool
+        A True/False value indicating whether the semantic model is a default semantic model.
+    """
+
+    workspace = fabric.resolve_workspace_name(workspace)
+
+    dfI = fabric.list_items(workspace=workspace)
+    dfI_filt = dfI[
+        (dfI["Display Name"] == dataset)
+        & (dfI["Type"].isin(["Lakehouse", "SemanticModel", "SQLEndpoint"]))
+    ]
+
+    if len(dfI_filt) == 3:
+        result = True
+    else:
+        result = False
+
+    return result
+
+
+def resolve_item_type(item_id: UUID, workspace: Optional[str] = None) -> str:
+    """
+    Obtains the item type for a given Fabric Item Id within a Fabric workspace.
+
+    Parameters
+    ----------
+    item_id : UUID
+        The item/artifact Id.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    str
+        The item type for the item Id.
+    """
+
+    workspace = fabric.resolve_workspace_name(workspace)
+    dfI = fabric.list_items(workspace=workspace)
+    dfI_filt = dfI[dfI["Id"] == item_id]
+
+    if len(dfI_filt) == 0:
+        raise ValueError(
+            f"Invalid 'item_id' parameter. The '{item_id}' item was not found in the '{workspace}' workspace."
+        )
+    item_type = dfI_filt["Type"].iloc[0]
+
+    return item_type

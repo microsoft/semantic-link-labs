@@ -51,6 +51,8 @@ from sempy_labs._list_functions import (
     update_workspace_user,
     list_workspace_users,
     assign_workspace_to_dataflow_storage,
+    get_notebook_definition,
+    import_notebook_from_web,
 )
 
 from sempy_labs._helper_functions import (
@@ -66,6 +68,8 @@ from sempy_labs._helper_functions import (
     resolve_dataset_name,
     resolve_report_id,
     resolve_report_name,
+    is_default_semantic_model,
+    resolve_item_type,
     #  language_validate
 )
 
@@ -145,7 +149,7 @@ __all__ = [
     "resolve_dataset_name",
     "resolve_report_id",
     "resolve_report_name",
-    #'language_validate',
+    # 'language_validate',
     # "model_auto_build",
     "model_bpa_rules",
     "run_model_bpa",
@@ -164,7 +168,7 @@ __all__ = [
     "cancel_dataset_refresh",
     "translate_semantic_model",
     "vertipaq_analyzer",
-    #'visualize_vertipaq',
+    # 'visualize_vertipaq',
     "import_vertipaq_analyzer",
     "list_semantic_model_objects",
     "list_shortcuts",
@@ -181,4 +185,8 @@ __all__ = [
     "list_workspace_users",
     "assign_workspace_to_dataflow_storage",
     "list_capacities",
+    "is_default_semantic_model",
+    "resolve_item_type",
+    "get_notebook_definition",
+    "import_notebook_from_web",
 ]
