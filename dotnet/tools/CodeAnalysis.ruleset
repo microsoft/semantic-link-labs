@@ -1,0 +1,5 @@
+<RuleSet Name="SemPy Ruleset" Description="The exclusion set for fxcop analyzers" ToolsVersion="14.0">
+    <Rules AnalyzerId="StyleCop.Analyzers" RuleNamespace="StyleCop.Analyzers.DocumentationRules">
+        <Rule Id="SA1629"  Action="None" />          <!-- Documentation text should end with a period -->
+    </Rules>
+</RuleSet>
