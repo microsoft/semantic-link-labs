@@ -234,6 +234,8 @@ def get_semantic_model_bim(
         f"/v1/workspaces/{workspace_id}/items/{itemId}/getDefinition?format={fmt}",
         lro_wait=True,
     )
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
 
     df_items = pd.json_normalize(response.json()["definition"]["parts"])
     df_items_filt = df_items[df_items["path"] == "model.bim"]

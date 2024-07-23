@@ -487,6 +487,8 @@ def list_dashboards(workspace: Optional[str] = None) -> pd.DataFrame:
 
     client = fabric.PowerBIRestClient()
     response = client.get(f"/v1.0/myorg/groups/{workspace_id}/dashboards")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
 
     for v in response.json()["value"]:
         new_data = {
@@ -540,6 +542,8 @@ def list_lakehouses(workspace: Optional[str] = None) -> pd.DataFrame:
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/lakehouses/")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
 
     for v in response.json()["value"]:
         prop = v.get("properties", {})
@@ -592,6 +596,8 @@ def list_warehouses(workspace: Optional[str] = None) -> pd.DataFrame:
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/warehouses/")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
 
     for v in response.json()["value"]:
         prop = v.get("properties", {})
@@ -632,6 +638,8 @@ def list_sqlendpoints(workspace: Optional[str] = None) -> pd.DataFrame:
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/sqlEndpoints/")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
 
     for v in response.json()["value"]:
 
@@ -670,6 +678,8 @@ def list_mirroredwarehouses(workspace: Optional[str] = None) -> pd.DataFrame:
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/mirroredWarehouses/")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
 
     for v in response.json()["value"]:
 
@@ -716,6 +726,8 @@ def list_kqldatabases(workspace: Optional[str] = None) -> pd.DataFrame:
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/kqlDatabases/")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
 
     for v in response.json()["value"]:
         prop = v.get("properties", {})
@@ -757,6 +769,8 @@ def list_kqlquerysets(workspace: Optional[str] = None) -> pd.DataFrame:
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/kqlQuerysets/")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
 
     for v in response.json()["value"]:
 
@@ -793,6 +807,8 @@ def list_mlmodels(workspace: Optional[str] = None) -> pd.DataFrame:
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/mlModels/")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
 
     for v in response.json()["value"]:
         model_id = v.get("id")
@@ -832,6 +848,8 @@ def list_eventstreams(workspace: Optional[str] = None) -> pd.DataFrame:
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/eventstreams/")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
 
     for v in response.json()["value"]:
         model_id = v.get("id")
@@ -871,6 +889,8 @@ def list_datapipelines(workspace: Optional[str] = None) -> pd.DataFrame:
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/dataPipelines/")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
 
     for v in response.json()["value"]:
         model_id = v.get("id")
@@ -910,6 +930,8 @@ def list_mlexperiments(workspace: Optional[str] = None) -> pd.DataFrame:
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/mlExperiments/")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
 
     for v in response.json()["value"]:
 
@@ -946,6 +968,8 @@ def list_datamarts(workspace: Optional[str] = None) -> pd.DataFrame:
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/datamarts/")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
 
     for v in response.json()["value"]:
 
@@ -1184,6 +1208,8 @@ def list_dataflow_storage_accounts() -> pd.DataFrame:
     )
     client = fabric.PowerBIRestClient()
     response = client.get("/v1.0/myorg/dataflowStorageAccounts")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
 
     for v in response.json()["value"]:
 
@@ -1286,6 +1312,8 @@ def list_workspace_role_assignments(workspace: Optional[str] = None) -> pd.DataF
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/roleAssignments")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
 
     for i in response.json()["value"]:
         user_name = i.get("principal", {}).get("displayName")
@@ -1518,9 +1546,9 @@ def list_shortcuts(
     response = client.get(
         f"/v1/workspaces/{workspace_id}/items/{lakehouse_id}/shortcuts"
     )
-
     if response.status_code != 200:
         raise FabricHTTPException(response)
+
     for s in response.json()["value"]:
         shortcutName = s.get("name")
         shortcutPath = s.get("path")
@@ -1600,6 +1628,8 @@ def list_custom_pools(workspace: Optional[str] = None) -> pd.DataFrame:
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/spark/pools")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
 
     for i in response.json()["value"]:
 
@@ -1964,6 +1994,8 @@ def get_spark_settings(workspace: Optional[str] = None) -> pd.DataFrame:
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/spark/settings")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
 
     i = response.json()
     p = i.get("pool")
@@ -2235,6 +2267,8 @@ def list_workspace_users(workspace: Optional[str] = None) -> pd.DataFrame:
     df = pd.DataFrame(columns=["User Name", "Email Address", "Role", "Type", "User ID"])
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/roleAssignments")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
 
     for v in response.json()["value"]:
         p = v.get("principal", {})
@@ -2310,6 +2344,8 @@ def list_capacities() -> pd.DataFrame:
 
     client = fabric.PowerBIRestClient()
     response = client.get("/v1.0/myorg/capacities")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
 
     for i in response.json()["value"]:
         new_data = {
@@ -2360,6 +2396,8 @@ def get_notebook_definition(notebook_name: str, workspace: Optional[str] = None)
         f"v1/workspaces/{workspace_id}/notebooks/{notebook_id}/getDefinition",
         lro_wait=True,
     )
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
     df_items = pd.json_normalize(response.json()["definition"]["parts"])
     df_items_filt = df_items[df_items["path"] == "notebook-content.py"]
     payload = df_items_filt["payload"].iloc[0]
@@ -2405,7 +2443,8 @@ def import_notebook_from_web(
         )
 
     response = requests.get(url)
-    response.raise_for_status()
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
     file_content = response.content
     notebook_payload = base64.b64encode(file_content)
 

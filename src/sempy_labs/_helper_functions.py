@@ -545,12 +545,7 @@ def is_default_semantic_model(dataset: str, workspace: Optional[str] = None) -> 
         & (dfI["Type"].isin(["Lakehouse", "SemanticModel", "SQLEndpoint"]))
     ]
 
-    if len(dfI_filt) == 3:
-        result = True
-    else:
-        result = False
-
-    return result
+    return len(dfI_filt) == 3
 
 
 def resolve_item_type(item_id: UUID, workspace: Optional[str] = None) -> str:

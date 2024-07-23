@@ -86,7 +86,7 @@ def get_report_json(
         folderPath = "/lakehouse/default/Files"
         fileExt = ".json"
         if not save_to_file_name.endswith(fileExt):
-            save_to_file_name = save_to_file_name + fileExt
+            save_to_file_name = f"{save_to_file_name}{fileExt}"
         filePath = os.path.join(folderPath, save_to_file_name)
         with open(filePath, "w") as json_file:
             json.dump(reportJson, json_file, indent=4)
@@ -132,7 +132,7 @@ def report_dependency_tree(workspace: Optional[str] = None):
     node_dict = {}
     rootNode = Node(workspace)
     node_dict[workspace] = rootNode
-    rootNode.custom_property = workspace_icon + " "
+    rootNode.custom_property = f"{workspace_icon} "
 
     for i, r in dfR.iterrows():
         datasetName = r["Dataset Name"]
@@ -141,10 +141,10 @@ def report_dependency_tree(workspace: Optional[str] = None):
         if parentNode is None:
             parentNode = Node(datasetName, parent=rootNode)
             node_dict[datasetName] = parentNode
-        parentNode.custom_property = dataset_icon + " "
+        parentNode.custom_property = f"{dataset_icon} "
 
         child_node = Node(reportName, parent=parentNode)
-        child_node.custom_property = report_icon + " "
+        child_node.custom_property = f"{report_icon} "
 
     # Print the tree structure
     for pre, _, node in RenderTree(node_dict[workspace]):

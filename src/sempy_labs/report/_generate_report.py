@@ -147,6 +147,8 @@ def update_report_from_reportjson(
     response = client.post(
         f"/v1/workspaces/{workspace_id}/reports/{reportId}/getDefinition"
     )
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
     df_items = pd.json_normalize(response.json()["definition"]["parts"])
     df_items_filt = df_items[df_items["path"] == "definition.pbir"]
     rptDefFile = df_items_filt["payload"].iloc[0]
