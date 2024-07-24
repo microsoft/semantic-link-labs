@@ -25,6 +25,7 @@ def _init_dotnet_tools() -> None:
     assembly_path = my_path / "lib"
 
     sys.path.append(os.fspath(assembly_path))
+    clr.AddReference(os.fspath(assembly_path / "Dax.Metadata.dll"))
     clr.AddReference(
         os.fspath(assembly_path / "Microsoft.Fabric.SemanticLinkLabs.Tools.dll")
     )
@@ -33,11 +34,18 @@ def _init_dotnet_tools() -> None:
 
 
 def vpax_analyzer(
-    workspace: str, dataset: str, exclude_vpa: bool = False, exclude_tom: bool = False
+    workspace: str,
+    dataset: str,
+    exclude_vpa: bool = False,
+    exclude_tom: bool = False,
+    analyseDirectQuery: bool = False,
+    analyseDirectLake: str = "Full",
 ) -> None:
     _init_dotnet_tools()
 
+    import System
     from Microsoft.Fabric.SemanticLinkLabs import VpaxTools
+    from Dax.Metadata import DirectLakeExtractionMode
 
     tom_server = sempy.fabric.create_tom_server(workspace=workspace)
 
@@ -68,6 +76,8 @@ def vpax_analyzer(
                 dataset,
                 exclude_vpa,
                 exclude_tom,
+                analyseDirectQuery,
+                System.Enum.Parse(DirectLakeExtractionMode, analyseDirectLake),
                 temp_file_name,
             )
 

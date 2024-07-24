@@ -22,6 +22,8 @@ namespace Microsoft.Fabric.SemanticLinkLabs
         /// <param name="databaseName">The database name.</param>
         /// <param name="excludeVpa">Whether to exclude the VPA.</param>
         /// <param name="excludeTom">Whether to exclude the TOM.</param>
+        /// <param name="analyzeDirectQuery">Whether to analyse direct query.</param>
+        /// <param name="analyzeDirectLake">The direct lake mode.</param>
         /// <param name="destinationPath">The destination path.</param>
         public static void Export(
             TOM.Model model,
@@ -30,6 +32,8 @@ namespace Microsoft.Fabric.SemanticLinkLabs
             string databaseName,
             bool excludeVpa,
             bool excludeTom,
+            bool analyzeDirectQuery,
+            DirectLakeExtractionMode analyzeDirectLake,
             string destinationPath)
         {
             var thisAssembly = typeof(VpaxTools).Assembly;
@@ -41,8 +45,6 @@ namespace Microsoft.Fabric.SemanticLinkLabs
 
             var readStatisticsFromData = true;
             var sampleRows = 0; // RI violation sampling is not applicable to VPAX files
-            var analyzeDirectQuery = true;
-            var analyzeDirectLake = DirectLakeExtractionMode.Full;
 
             // Populate statistics from DMV
             DmvExtractor.PopulateFromDmv(daxModel, connection, serverName, databaseName, applicationName, applicationVersion);

@@ -16,6 +16,10 @@ jobs:
         with:
           python-version: "3.10"
 
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '6.0.x'
+
       - name: Get Date
         id: get-date
         run: echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
@@ -38,6 +42,9 @@ jobs:
           python-version: "3.10"
           environment-file: environment.yml
           channel-priority: strict
+
+      - name: Build .NET
+        run: dotnet build dotnet/tools -c Release
 
       - name: Install package
         shell: bash -el {0}
