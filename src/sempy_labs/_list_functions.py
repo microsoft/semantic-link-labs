@@ -422,10 +422,10 @@ def list_columns(
                 ].iloc[0]
 
                 # Build the query to be executed dynamically
-                query = query + f"COUNT(DISTINCT({scName})) AS {scName}, "
+                query = f"{query}COUNT(DISTINCT({scName})) AS {scName}, "
 
             query = query[:-2]
-            query = query + f" FROM {lakehouse}.{lakeTName}"
+            query = f"{query} FROM {lakehouse}.{lakeTName}"
             sql_statements.append((table_name, query))
 
             spark = SparkSession.builder.getOrCreate()

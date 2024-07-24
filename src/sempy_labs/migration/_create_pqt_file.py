@@ -85,7 +85,7 @@ def create_pqt_file(
         mdFilePath = os.path.join(subFolderPath, mdfileName)
         sb = "section Section1;"
         for table_name in dfP["Table Name"].unique():
-            tName = '#"' + table_name + '"'
+            tName = f'#"{table_name}"'
             sourceExpression = dfT.loc[
                 (dfT["Name"] == table_name), "Source Expression"
             ].iloc[0]
@@ -97,7 +97,7 @@ def create_pqt_file(
             ]
 
             if sourceType == "M" or refreshPolicy:
-                sb = sb + "\n" + "shared " + tName + " = "
+                sb = f"{sb}\nshared {tName} = "
 
             partitions_in_table = dfP.loc[
                 dfP["Table Name"] == table_name, "Partition Name"
@@ -127,16 +127,16 @@ def create_pqt_file(
                         pQuery = 'let\n\tSource = ""\nin\n\tSource'
 
                 if pSourceType == "M" and i == 1:
-                    sb = sb + pQuery + ";"
+                    sb = f"{sb}{pQuery};"
                 elif refreshPolicy and i == 1:
-                    sb = sb + sourceExpression + ";"
+                    sb = f"{sb}{sourceExpression};"
                 i += 1
 
         for index, row in dfE.iterrows():
             expr = row["Expression"]
             eName = row["Name"]
-            eName = '#"' + eName + '"'
-            sb = sb + "\n" + "shared " + eName + " = " + expr + ";"
+            eName = f'#"{eName}"'
+            sb = f"{sb}\nshared {eName} = {expr};"
 
         with open(mdFilePath, "w") as file:
             file.write(sb)
@@ -212,7 +212,7 @@ def create_pqt_file(
         )
 
         # STEP 5: Zip up the 4 files
-        zipFileName = file_name + ".zip"
+        zipFileName = f"{file_name}.zip"
         zipFilePath = os.path.join(folderPath, zipFileName)
         shutil.make_archive(zipFilePath[:-4], "zip", subFolderPath)
 

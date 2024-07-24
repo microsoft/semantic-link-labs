@@ -35,7 +35,7 @@ def get_measure_dependencies(
         dataset=dataset,
         workspace=workspace,
         dax_string="""
-        SELECT 
+        SELECT
          [TABLE] AS [Table Name]
         ,[OBJECT] AS [Object Name]
         ,[OBJECT_TYPE] AS [Object Type]
@@ -315,19 +315,19 @@ def measure_dependency_tree(
         if parent_node is None:
             parent_node = Node(parent_node_name)
             node_dict[parent_node_name] = parent_node
-        parent_node.custom_property = icons.measure_icon + " "
+        parent_node.custom_property = f"{icons.measure_icon} "
 
         # Create the child node
         child_node_name = ref_obj_name
         child_node = Node(child_node_name, parent=parent_node)
         if ref_obj_type == "Column":
             child_node.custom_property = (
-                icons.column_icon + " '" + ref_obj_table_name + "'"
+                f"{icons.column_icon} '{ref_obj_table_name}'"
             )
         elif ref_obj_type == "Table":
-            child_node.custom_property = icons.table_icon + " "
+            child_node.custom_property = f"{icons.table_icon} "
         elif ref_obj_type == "Measure":
-            child_node.custom_property = icons.measure_icon + " "
+            child_node.custom_property = f"{icons.measure_icon} "
 
         # Update the dictionary with the child node
         node_dict[child_node_name] = child_node

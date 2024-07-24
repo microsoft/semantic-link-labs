@@ -50,13 +50,13 @@ def export_model_to_onelake(
     {{
     'export': {{
     'layout': 'delta',
-    'type': 'full',  
-    'objects': [  
-        {{  
+    'type': 'full',
+    'objects': [
+        {{
         'database': '{dataset}'
-        }}  
-    ]  
-    }}  
+        }}
+    ]
+    }}
     }}
     """
 
@@ -120,7 +120,7 @@ def export_model_to_onelake(
 
         print(f"{icons.in_progress} Creating shortcuts...\n")
         for tableName in tables:
-            tablePath = "Tables/" + tableName
+            tablePath = f"Tables/{tableName}"
             shortcutName = tableName.replace(" ", "")
             request_body = {
                 "path": "Tables",

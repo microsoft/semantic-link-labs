@@ -255,7 +255,7 @@ def get_semantic_model_bim(
         folderPath = "/lakehouse/default/Files"
         fileExt = ".bim"
         if not save_to_file_name.endswith(fileExt):
-            save_to_file_name = save_to_file_name + fileExt
+            save_to_file_name = f"{save_to_file_name}{fileExt}"
         filePath = os.path.join(folderPath, save_to_file_name)
         with open(filePath, "w") as json_file:
             json.dump(bimJson, json_file, indent=4)

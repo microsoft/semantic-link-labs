@@ -257,7 +257,7 @@ def generate_aggs(
         delta_table_name=lakeTName,
     )
     df = spark.read.format("delta").load(fromTablePath)
-    tempTableName = "delta_table_" + lakeTName
+    tempTableName = f"delta_table_{lakeTName}"
     df.createOrReplaceTempView(tempTableName)
     sqlQuery = f"{query} \n FROM {tempTableName} {groupBy}"
 
@@ -460,7 +460,7 @@ def generate_aggs(
         print(expr)
         print(newExpr)
 
-        aggMName = mName + aggSuffix
+        aggMName = f"{mName}{aggSuffix}"
         measure = TOM.Measure()
         measure.Name = aggMName
         measure.IsHidden = True

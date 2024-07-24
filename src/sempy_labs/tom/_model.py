@@ -2585,7 +2585,7 @@ class TOMWrapper:
         for obj in objects:
             success = False
             for m in self.all_measures():
-                if obj == "[" + m.Name + "]" or obj == m.Name:
+                if obj == f"[{m.Name}]" or obj == m.Name:
                     expr = (
                         expr
                         + "\n\t"

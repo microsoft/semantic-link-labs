@@ -53,7 +53,7 @@ def create_shortcut_onelake(
         shortcut_name = table_name
 
     client = fabric.FabricRestClient()
-    tablePath = "Tables/" + table_name
+    tablePath = f"Tables/{table_name}"
 
     request_body = {
         "path": "Tables",

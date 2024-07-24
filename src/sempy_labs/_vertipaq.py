@@ -525,13 +525,13 @@ def vertipaq_analyzer(
 
         # Create CSV files based on dataframes
         for fileName, df in dataFrames.items():
-            filePath = os.path.join(subFolderPath, fileName + ext)
+            filePath = os.path.join(subFolderPath, f"{fileName}{ext}")
             df.to_csv(filePath, index=False)
 
         # Create a zip file and add CSV files to it
         with zipfile.ZipFile(zipFilePath, "w") as zipf:
             for fileName in dataFrames:
-                filePath = os.path.join(subFolderPath, fileName + ext)
+                filePath = os.path.join(subFolderPath, f"{fileName}{ext}")
                 zipf.write(filePath, os.path.basename(filePath))
 
         # Clean up: remove the individual CSV files
