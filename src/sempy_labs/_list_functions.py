@@ -2349,11 +2349,11 @@ def list_capacities() -> pd.DataFrame:
 
     for i in response.json()["value"]:
         new_data = {
-            "Id": i.get("id", {}).lower(),
-            "Display Name": i.get("displayName", {}),
-            "Sku": i.get("sku", {}),
-            "Region": i.get("region", {}),
-            "State": i.get("state", {}),
+            "Id": i.get("id").lower(),
+            "Display Name": i.get("displayName"),
+            "Sku": i.get("sku"),
+            "Region": i.get("region"),
+            "State": i.get("state"),
             "Admins": [i.get("admins", [])],
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)

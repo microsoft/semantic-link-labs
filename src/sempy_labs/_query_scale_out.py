@@ -102,25 +102,25 @@ def qso_sync_status(
 
     if sos == "Enabled":
         new_data = {
-            "Scale Out Status": o.get("scaleOutStatus", {}),
-            "Sync Start Time": o.get("syncStartTime", {}),
-            "Sync End Time": o.get("syncEndTime", {}),
-            "Commit Version": o.get("commitVersion", {}),
-            "Commit Timestamp": o.get("commitTimestamp", {}),
-            "Target Sync Version": o.get("targetSyncVersion", {}),
-            "Target Sync Timestamp": o.get("targetSyncTimestamp", {}),
-            "Trigger Reason": o.get("triggerReason", {}),
-            "Min Active Read Version": o.get("minActiveReadVersion", {}),
-            "Min Active Read Timestamp": o.get("minActiveReadTimestamp", {}),
+            "Scale Out Status": o.get("scaleOutStatus"),
+            "Sync Start Time": o.get("syncStartTime"),
+            "Sync End Time": o.get("syncEndTime"),
+            "Commit Version": o.get("commitVersion"),
+            "Commit Timestamp": o.get("commitTimestamp"),
+            "Target Sync Version": o.get("targetSyncVersion"),
+            "Target Sync Timestamp": o.get("targetSyncTimestamp"),
+            "Trigger Reason": o.get("triggerReason"),
+            "Min Active Read Version": o.get("minActiveReadVersion"),
+            "Min Active Read Timestamp": o.get("minActiveReadTimestamp"),
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
         for r in o.get("scaleOutReplicas", []):
             new_data = {
-                "Replica ID": r.get("replicaId", {}),
-                "Replica Type": r.get("replicaType", {}),
-                "Replica Version": str(r.get("replicaVersion", {})),
-                "Replica Timestamp": r.get("replicaTimestamp", {}),
+                "Replica ID": r.get("replicaId"),
+                "Replica Type": r.get("replicaType"),
+                "Replica Version": str(r.get("replicaVersion")),
+                "Replica Timestamp": r.get("replicaTimestamp"),
             }
             dfRep = pd.concat(
                 [dfRep, pd.DataFrame(new_data, index=[0])], ignore_index=True
