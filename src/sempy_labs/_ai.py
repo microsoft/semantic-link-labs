@@ -65,68 +65,6 @@ def optimize_semantic_model(dataset: str, workspace: Optional[str] = None):
             print(f"{icons.green_dot} The '{rule}' rule has been followed.")
 
 
-def generate_measure_descriptions(
-    dataset: str,
-    measures: Union[str, List[str]],
-    gpt_model: Optional[str] = "gpt-35-turbo",
-    workspace: Optional[str] = None,
-):
-
-    service_name = "synapseml-openai"
-
-    if isinstance(measures, str):
-        measures = [measures]
-
-    validModels = ["gpt-35-turbo", "gpt-35-turbo-16k", "gpt-4"]
-    if gpt_model not in validModels:
-        raise ValueError(
-            f"{icons.red_dot} The '{gpt_model}' model is not a valid model. Enter a gpt_model from this list: {validModels}."
-        )
-
-    dfM = fabric.list_measures(dataset=dataset, workspace=workspace)
-
-    if measures is not None:
-        dfM_filt = dfM[dfM["Measure Name"].isin(measures)]
-    else:
-        dfM_filt = dfM
-
-    df = dfM_filt[["Table Name", "Measure Name", "Measure Expression"]]
-
-    df["prompt"] = (
-        "The following is DAX code used by Microsoft Power BI. Please explain this code in simple terms:"
-        + df["Measure Expression"]
-    )
-
-    # Generate new column in df dataframe which has the AI-generated descriptions
-    completion = {
-        OpenAICompletion()
-        .setDeploymentName(gpt_model)
-        .setMaxTokens(200)
-        .setCustomServiceName(service_name)
-        .setPromptCol("prompt")
-        .setErrorCol("error")
-        .setOutputCol("completions")
-    }
-
-    completed_df = completion.transform(df).cache()
-    completed_df.select(
-        col("prompt"),
-        col("error"),
-        col("completions.choices.text").getItem(0).alias("text"),
-    )
-
-    # Update the model to use the new descriptions
-    # with connect_semantic_model(dataset=dataset, workspace=workspace, readonly=False) as tom:
-
-    # for t in m.Tables:
-    # tName = t.Name
-    # for ms in t.Measures:
-    # mName = ms.Name
-    # mDesc = promptValue
-
-    # m.SaveChanges()
-
-
 def generate_aggs(
     dataset: str,
     table_name: str,
