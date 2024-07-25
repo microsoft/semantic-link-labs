@@ -17,6 +17,9 @@ from sempy_labs._model_bpa_rules import model_bpa_rules
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
+from synapse.ml.services import Translate
+from pyspark.sql.functions import col, flatten
+from pyspark.sql.types import StructType, StructField, StringType
 
 
 @log
@@ -27,6 +30,7 @@ def run_model_bpa(
     export: Optional[bool] = False,
     return_dataframe: Optional[bool] = False,
     extended: Optional[bool] = False,
+    language: Optional[str] = None,
     **kwargs,
 ):
     """
@@ -48,6 +52,9 @@ def run_model_bpa(
         If True, returns a pandas dataframe instead of the visualization.
     extended : bool, default=False
         If True, runs the set_vertipaq_annotations function to collect Vertipaq Analyzer statistics to be used in the analysis of the semantic model.
+    language : str, default=None
+        Specifying a language code (i.e. 'it-IT' for Italian) will auto-translate the Category, Rule Name and Description into the specified language.
+        Defaults to None which resolves to English.
 
     Returns
     -------
@@ -64,6 +71,9 @@ def run_model_bpa(
     warnings.filterwarnings(
         "ignore",
         message="This pattern is interpreted as a regular expression, and has match groups.",
+    )
+    warnings.filterwarnings(
+        "ignore", category=UserWarning, message=".*Arrow optimization.*"
     )
 
     workspace = fabric.resolve_workspace_name(workspace)
@@ -88,6 +98,69 @@ def run_model_bpa(
         rules["Severity"].replace("Warning", "⚠️", inplace=True)
         rules["Severity"].replace("Error", "\u274C", inplace=True)
         rules["Severity"].replace("Info", "ℹ️", inplace=True)
+
+        # Translate
+        if language is not None:
+            rules_temp = rules.copy()
+            rules_temp = rules_temp.drop(["Expression", "URL", "Severity"], axis=1)
+
+            schema = StructType(
+                [
+                    StructField("Category", StringType(), True),
+                    StructField("Scope", StringType(), True),
+                    StructField("Rule Name", StringType(), True),
+                    StructField("Description", StringType(), True),
+                ]
+            )
+
+            spark = SparkSession.builder.getOrCreate()
+            dfRules = spark.createDataFrame(rules_temp, schema)
+
+            columns = ["Category", "Rule Name", "Description"]
+            for clm in columns:
+                translate = (
+                    Translate()
+                    .setTextCol(clm)
+                    .setToLanguage(language)
+                    .setOutputCol("translation")
+                    .setConcurrency(5)
+                )
+
+                if clm == "Rule Name":
+                    transDF = (
+                        translate.transform(dfRules)
+                        .withColumn(
+                            "translation", flatten(col("translation.translations"))
+                        )
+                        .withColumn("translation", col("translation.text"))
+                        .select(clm, "translation")
+                    )
+                else:
+                    transDF = (
+                        translate.transform(dfRules)
+                        .withColumn(
+                            "translation", flatten(col("translation.translations"))
+                        )
+                        .withColumn("translation", col("translation.text"))
+                        .select("Rule Name", clm, "translation")
+                    )
+
+                df_panda = transDF.toPandas()
+                rules = pd.merge(
+                    rules,
+                    df_panda[["Rule Name", "translation"]],
+                    on="Rule Name",
+                    how="left",
+                )
+
+                rules = rules.rename(columns={"translation": f"{clm}Translated"})
+                rules[f"{clm}Translated"] = rules[f"{clm}Translated"].apply(
+                    lambda x: x[0] if x is not None else None
+                )
+
+            for clm in columns:
+                rules = rules.drop([clm], axis=1)
+                rules = rules.rename(columns={f"{clm}Translated": clm})
 
         pd.set_option("display.max_colwidth", 1000)
 
