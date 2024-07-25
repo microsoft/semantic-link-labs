@@ -6,7 +6,6 @@ from sempy_labs._helper_functions import (
 )
 from typing import Optional, Tuple
 from uuid import UUID
-import sempy_labs._icons as icons
 
 
 def get_direct_lake_lakehouse(
@@ -49,13 +48,13 @@ def get_direct_lake_lakehouse(
         lakehouse_id = fabric.get_lakehouse_id()
         lakehouse = resolve_lakehouse_name(lakehouse_id, lakehouse_workspace)
 
-    dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
-    dfP_filt = dfP[dfP["Mode"] == "DirectLake"]
+    # dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
+    # dfP_filt = dfP[dfP["Mode"] == "DirectLake"]
 
-    if len(dfP_filt) == 0:
-        raise ValueError(
-            f"{icons.red_dot} The '{dataset}' semantic model within the '{workspace}' workspace is not in Direct Lake mode."
-        )
+    # if len(dfP_filt) == 0:
+    #    raise ValueError(
+    #        f"{icons.red_dot} The '{dataset}' semantic model within the '{workspace}' workspace is not in Direct Lake mode."
+    #    )
 
     sqlEndpointId = get_direct_lake_sql_endpoint(dataset, workspace)
 

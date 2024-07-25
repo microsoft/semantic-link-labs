@@ -321,9 +321,7 @@ def measure_dependency_tree(
         child_node_name = ref_obj_name
         child_node = Node(child_node_name, parent=parent_node)
         if ref_obj_type == "Column":
-            child_node.custom_property = (
-                f"{icons.column_icon} '{ref_obj_table_name}'"
-            )
+            child_node.custom_property = f"{icons.column_icon} '{ref_obj_table_name}'"
         elif ref_obj_type == "Table":
             child_node.custom_property = f"{icons.table_icon} "
         elif ref_obj_type == "Measure":

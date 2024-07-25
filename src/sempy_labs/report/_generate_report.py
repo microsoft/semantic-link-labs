@@ -106,7 +106,7 @@ def create_report_from_reportjson(
         f"/v1/workspaces/{workspace_id}/reports", json=request_body, lro_wait=True
     )
 
-    if response.status_code != 200:
+    if response.status_code not in [200, 201]:
         raise FabricHTTPException(response)
     print(
         f"{icons.green_dot} Succesfully created the '{report}' report within the '{workspace}' workspace."

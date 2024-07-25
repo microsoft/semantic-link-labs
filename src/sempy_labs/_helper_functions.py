@@ -286,26 +286,34 @@ def get_direct_lake_sql_endpoint(dataset: str, workspace: Optional[str] = None) 
         The ID of SQL Endpoint.
     """
 
+    from sempy_labs.tom import connect_semantic_model
+
     if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
-    dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
-    dfP_filt = dfP[dfP["Mode"] == "DirectLake"]
+    # dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
+    # dfP_filt = dfP[dfP["Mode"] == "DirectLake"]
 
-    if len(dfP_filt) == 0:
-        raise ValueError(
-            f"The '{dataset}' semantic model in the '{workspace}' workspace is not in Direct Lake mode."
-        )
+    # if len(dfP_filt) == 0:
+    #    raise ValueError(
+    #        f"The '{dataset}' semantic model in the '{workspace}' workspace is not in Direct Lake mode."
+    #    )
 
-    dfE = fabric.list_expressions(dataset=dataset, workspace=workspace)
-    dfE_filt = dfE[dfE["Name"] == "DatabaseQuery"]
-    expr = dfE_filt["Expression"].iloc[0]
+    with connect_semantic_model(
+        dataset=dataset, readonly=True, workspace=workspace
+    ) as tom:
+        sqlEndpointId = None
+        for e in tom.model.Expressions:
+            if e.Name == "DatabaseQuery":
+                expr = e.Expression
+                matches = re.findall(r'"([^"]*)"', expr)
+                sqlEndpointId = matches[1]
 
-    matches = re.findall(r'"([^"]*)"', expr)
-    sqlEndpointId = matches[1]
+        if sqlEndpointId is None:
+            raise ValueError("SQL Endpoint not found.")
 
-    return sqlEndpointId
+        return sqlEndpointId
 
 
 def generate_embedded_filter(filter: str):

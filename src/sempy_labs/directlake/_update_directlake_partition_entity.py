@@ -93,7 +93,8 @@ def add_table_to_direct_lake_semantic_model(
     dataset: str,
     table_name: str,
     lakehouse_table_name: str,
-    workspace: Optional[str | None] = None,
+    refresh: Optional[bool] = True,
+    workspace: Optional[str] = None,
 ):
     """
     Adds a table and all of its columns to a Direct Lake semantic model, based on a Fabric lakehouse table.
@@ -106,6 +107,8 @@ def add_table_to_direct_lake_semantic_model(
         Name of the table in the semantic model.
     lakehouse_table_name : str
         The name of the Fabric lakehouse table.
+    refresh : bool, default=True
+        Refreshes the table after it is added to the semantic model.
     workspace : str, default=None
         The name of the Fabric workspace in which the semantic model resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -128,9 +131,11 @@ def add_table_to_direct_lake_semantic_model(
         dataset=dataset, readonly=False, workspace=workspace
     ) as tom:
 
-        if tom.is_direct_lake() is False:
+        table_count = tom.model.Tables.Count
+
+        if tom.is_direct_lake() is False and table_count > 0:
             raise ValueError(
-                "This function is only valid for Direct Lake semantic models."
+                "This function is only valid for Direct Lake semantic models or semantic models with no tables."
             )
 
         if any(
@@ -194,4 +199,7 @@ def add_table_to_direct_lake_semantic_model(
                 f"{icons.green_dot} The '{lakeCName}' column has been added to the '{table_name}' table as a '{dt}' data type in the '{dataset}' semantic model within the '{workspace}' workspace."
             )
 
-        refresh_semantic_model(dataset=dataset, tables=table_name, workspace=workspace)
+        if refresh:
+            refresh_semantic_model(
+                dataset=dataset, tables=table_name, workspace=workspace
+            )

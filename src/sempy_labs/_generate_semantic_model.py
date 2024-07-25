@@ -126,7 +126,7 @@ def create_semantic_model_from_bim(
         lro_wait=True,
     )
 
-    if response.status_code != 200:
+    if response.status_code not in [200, 201]:
         raise FabricHTTPException(response)
     print(
         f"{icons.green_dot} The '{dataset}' semantic model has been created within the '{workspace}' workspace."

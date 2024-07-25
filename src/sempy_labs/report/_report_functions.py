@@ -39,7 +39,7 @@ def get_report_json(
     report : str
         Name of the Power BI report.
     workspace : str, default=None
-        The Fabric workspace name.
+        The Fabric workspace name in which the report exists.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     save_to_file_name : str, default=None
@@ -50,6 +50,8 @@ def get_report_json(
     dict
         The report.json file for a given Power BI report.
     """
+
+    from notebookutils import mssparkutils
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
@@ -82,7 +84,14 @@ def get_report_json(
             )
 
         lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse = resolve_lakehouse_name(lakehouse_id, workspace)
+        for mp in mssparkutils.fs.mounts():
+            if mp.mountPoint == "/default" and mp.storageType == "Lakehouse":
+                ind = mp.source.index("@")
+                lakehouse_workspace_id = mp.source[8:ind]
+                lakehouse_workspace = fabric.resolve_workspace_name(
+                    lakehouse_workspace_id
+                )
+        lakehouse = resolve_lakehouse_name(lakehouse_id, lakehouse_workspace)
         folderPath = "/lakehouse/default/Files"
         fileExt = ".json"
         if not save_to_file_name.endswith(fileExt):
