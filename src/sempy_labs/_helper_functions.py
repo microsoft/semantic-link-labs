@@ -307,7 +307,7 @@ def get_direct_lake_sql_endpoint(dataset: str, workspace: Optional[str] = None) 
         for e in tom.model.Expressions:
             if e.Name == "DatabaseQuery":
                 expr = e.Expression
-                matches = re.findall(r'"([^"]*)"', expr)
+                matches = re.findall(r'"([^"]+)"', expr)
                 sqlEndpointId = matches[1]
 
         if sqlEndpointId is None:
