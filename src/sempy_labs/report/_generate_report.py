@@ -1,7 +1,11 @@
 import sempy.fabric as fabric
 import pandas as pd
 from typing import Optional
-from sempy_labs._helper_functions import resolve_workspace_name_and_id, _conv_b64
+from sempy_labs._helper_functions import (
+    resolve_workspace_name_and_id,
+    _conv_b64,
+    resolve_report_id,
+)
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 
@@ -184,3 +188,35 @@ def update_report_from_reportjson(
     print(
         f"{icons.green_dot} The '{report}' report within the '{workspace}' workspace has been successfully updated."
     )
+
+
+def get_report_definition(report: str, workspace: Optional[str] = None) -> pd.DataFrame:
+    """
+    Gets the collection of definition files of a report.
+
+    Parameters
+    ----------
+    report : str
+        Name of the report.
+    workspace : str, default=None
+        The Fabric workspace name in which the report resides.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        The collection of report definition files within a pandas dataframe.
+    """
+
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    report_id = resolve_report_id(report=report, workspace=workspace)
+    client = fabric.FabricRestClient()
+    response = client.post(
+        f"/v1/workspaces/{workspace_id}/reports/{report_id}/getDefinition",
+        lro_wait=True,
+    )
+    rdef = pd.json_normalize(response.json()["definition"]["parts"])
+
+    return rdef

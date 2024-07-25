@@ -1,5 +1,6 @@
 from sempy_labs.report._generate_report import (
     create_report_from_reportjson,
+    get_report_definition,
     # update_report_from_reportjson,
 )
 from sempy_labs.report._report_functions import (
@@ -32,4 +33,5 @@ __all__ = [
     # translate_report_titles,
     "report_rebind",
     "report_rebind_all",
+    "get_report_definition",
 ]

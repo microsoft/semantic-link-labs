@@ -586,3 +586,57 @@ def resolve_item_type(item_id: UUID, workspace: Optional[str] = None) -> str:
     item_type = dfI_filt["Type"].iloc[0]
 
     return item_type
+
+
+def resolve_dataset_from_report(
+    report: str, workspace: Optional[str] = None
+) -> Tuple[UUID, str, UUID, str]:
+    """
+    Obtains the basic semantic model properties from which the report's data is sourced.
+
+    Parameters
+    ----------
+    report : str
+        The name of the Power BI report.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    Tuple[UUID, str, UUID, str]
+        The semantic model UUID, semantic model name, semantic model workspace UUID, semantic model workspace name
+    """
+
+    workspace = fabric.resolve_workspace_name(workspace)
+
+    dfR = fabric.list_reports(workspace=workspace)
+    dfR_filt = dfR[dfR["Name"] == report]
+    if len(dfR_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} The '{report}' report does not exist within the '{workspace}' workspace."
+        )
+    dataset_id = dfR_filt["Dataset Id"].iloc[0]
+    dataset_workspace_id = dfR_filt["Dataset Workspace Id"].iloc[0]
+    dataset_workspace = fabric.resolve_workspace_name(dataset_workspace_id)
+    dataset_name = resolve_dataset_name(
+        dataset_id=dataset_id, workspace=dataset_workspace
+    )
+
+    return dataset_id, dataset_name, dataset_workspace_id, dataset_workspace
+
+
+def _add_part(target_dict, path, payload):
+
+    part = {"path": path, "payload": payload, "payloadType": "InlineBase64"}
+
+    target_dict["definition"]["parts"].append(part)
+
+
+def _extract_json(dataframe: pd.DataFrame) -> dict:
+
+    payload = dataframe["payload"].iloc[0]
+    json_file = base64.b64decode(payload).decode("utf-8")
+
+    return json.loads(json_file)

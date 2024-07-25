@@ -4,6 +4,7 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
     create_relationship_name,
     resolve_lakehouse_id,
+    resolve_dataset_id,
 )
 import pandas as pd
 import base64
@@ -2361,7 +2362,9 @@ def list_capacities() -> pd.DataFrame:
     return df
 
 
-def get_notebook_definition(notebook_name: str, workspace: Optional[str] = None):
+def get_notebook_definition(
+    notebook_name: str, workspace: Optional[str] = None, decode: Optional[bool] = True
+):
     """
     Obtains the notebook definition.
 
@@ -2373,6 +2376,9 @@ def get_notebook_definition(notebook_name: str, workspace: Optional[str] = None)
         The name of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    decode : bool, default=True
+        If True, decodes the notebook definition file into .ipynb format.
+        If False, obtains the notebook definition file in base64 format.
 
     Returns
     -------
@@ -2401,9 +2407,13 @@ def get_notebook_definition(notebook_name: str, workspace: Optional[str] = None)
     df_items = pd.json_normalize(response.json()["definition"]["parts"])
     df_items_filt = df_items[df_items["path"] == "notebook-content.py"]
     payload = df_items_filt["payload"].iloc[0]
-    itemFile = base64.b64decode(payload).decode("utf-8")
 
-    return itemFile
+    if decode:
+        result = base64.b64decode(payload).decode("utf-8")
+    else:
+        result = payload
+
+    return result
 
 
 def import_notebook_from_web(
@@ -2472,3 +2482,30 @@ def import_notebook_from_web(
     print(
         f"{icons.green_dot} The '{notebook_name}' notebook was created within the '{workspace}' workspace."
     )
+
+
+def list_reports_using_semantic_model(
+    dataset: str, workspace: Optional[str] = None
+) -> pd.DataFrame:
+
+    df = pd.DataFrame(
+        columns=[
+            "Report Name",
+            "Report Id",
+            "Report Workspace Name",
+            "Report Workspace Id",
+        ]
+    )
+
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    dataset_id = resolve_dataset_id(dataset=dataset, workspace=workspace)
+    dfR = fabric.list_reports(workspace=workspace)
+    dfR_filt = dfR[dfR["Dataset Id"] == dataset_id][["Name", "Id"]]
+    dfR_filt = dfR_filt.rename(columns={"Name": "Report Name"})
+    dfR_filt = dfR_filt.rename(columns={"Id": "Report Id"})
+    dfR_filt["Report Workspace Name"] = workspace
+    dfR_filt["Report Workspace Id"] = workspace_id
+
+    df = pd.concat([df, dfR_filt], ignore_index=True)
+
+    return df
