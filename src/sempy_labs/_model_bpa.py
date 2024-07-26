@@ -201,11 +201,12 @@ def run_model_bpa(
         delta_table_name = "modelbparesults"
 
         lakehouse_id = fabric.get_lakehouse_id()
+        lake_workspace = fabric.get_workspace_id()
         lakehouse = resolve_lakehouse_name(
-            lakehouse_id=lakehouse_id, workspace=workspace
+            lakehouse_id=lakehouse_id, workspace=lake_workspace
         )
 
-        lakeT = get_lakehouse_tables(lakehouse=lakehouse, workspace=workspace)
+        lakeT = get_lakehouse_tables(lakehouse=lakehouse, workspace=lake_workspace)
         lakeT_filt = lakeT[lakeT["Table Name"] == delta_table_name]
 
         dfExport["Severity"].replace("⚠️", "Warning", inplace=True)

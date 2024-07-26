@@ -452,12 +452,13 @@ def vertipaq_analyzer(
         spark = SparkSession.builder.getOrCreate()
 
         lakehouse_id = fabric.get_lakehouse_id()
+        lake_workspace = fabric.resolve_workspace_name()
         lakehouse = resolve_lakehouse_name(
-            lakehouse_id=lakehouse_id, workspace=workspace
+            lakehouse_id=lakehouse_id, workspace=lake_workspace
         )
         lakeTName = "vertipaq_analyzer_model"
 
-        lakeT = get_lakehouse_tables(lakehouse=lakehouse, workspace=workspace)
+        lakeT = get_lakehouse_tables(lakehouse=lakehouse, workspace=lake_workspace)
         lakeT_filt = lakeT[lakeT["Table Name"] == lakeTName]
 
         query = f"SELECT MAX(RunId) FROM {lakehouse}.{lakeTName}"

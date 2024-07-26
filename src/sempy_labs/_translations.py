@@ -1,3 +1,4 @@
+import sempy
 import pandas as pd
 from typing import List, Optional, Union
 from sempy._utils._log import log
@@ -10,7 +11,7 @@ def translate_semantic_model(
     languages: Union[str, List[str]],
     exclude_characters: Optional[str] = None,
     workspace: Optional[str] = None,
-):
+) -> pd.DataFrame:
     """
     Translates names, descriptions, display folders for all objects in a semantic model.
 
@@ -29,6 +30,8 @@ def translate_semantic_model(
 
     Returns
     -------
+    pandas.DataFrame
+        Shows a pandas dataframe which displays all of the translations in the semantic model.
 
     """
 
@@ -302,3 +305,153 @@ def translate_semantic_model(
                                     lang,
                                     i,
                                 )
+    result = pd.DataFrame(
+        columns=[
+            "Language",
+            "Object Type",
+            "Table Name",
+            "Object Name",
+            "Translated Object Name",
+            "Description",
+            "Translated Description",
+            "Display Folder",
+            "Translated Display Folder",
+        ]
+    )
+    with connect_semantic_model(
+        dataset=dataset, readonly=True, workspace=workspace
+    ) as tom:
+
+        sempy.fabric._client._utils._init_analysis_services()
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        for c in tom.model.Cultures:
+            for tr in c.ObjectTranslations:
+                oType = str(tr.Object.ObjectType)
+                oName = tr.Object.Name
+                tValue = tr.Value
+                prop = str(tr.Property)
+
+                if tr.Object.ObjectType == TOM.ObjectType.Table:
+                    desc = tom.model.Tables[oName].Description
+                    new_data = {
+                        "Language": c.Name,
+                        "Table Name": oName,
+                        "Object Name": oName,
+                        "Object Type": oType,
+                        "Description": desc,
+                    }
+                    result = pd.concat(
+                        [result, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
+                    condition = (
+                        (result["Language"] == c.Name)
+                        & (result["Table Name"] == oName)
+                        & (result["Object Name"] == oName)
+                        & (result["Object Type"] == oType)
+                    )
+                elif tr.Object.ObjectType == TOM.ObjectType.Level:
+                    hierarchyName = tr.Object.Parent.Name
+                    tName = tr.Object.Parent.Parent.Name
+                    levelName = "'" + hierarchyName + "'[" + oName + "]"
+                    desc = (
+                        tom.model.Tables[tName]
+                        .Hierarchies[hierarchyName]
+                        .Levels[oName]
+                        .Description
+                    )
+                    new_data = {
+                        "Language": c.Name,
+                        "Table Name": tName,
+                        "Object Name": levelName,
+                        "Object Type": oType,
+                        "Description": desc,
+                    }
+                    result = pd.concat(
+                        [result, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
+                    condition = (
+                        (result["Language"] == c.Name)
+                        & (result["Table Name"] == tName)
+                        & (result["Object Name"] == levelName)
+                        & (result["Object Type"] == oType)
+                    )
+                elif tr.Object.ObjectType == TOM.ObjectType.Column:
+                    tName = tr.Object.Table.Name
+                    desc = tom.model.Tables[tName].Columns[oName].Description
+                    display_folder = (
+                        tom.model.Tables[tName].Columns[oName].DisplayFolder
+                    )
+                    new_data = {
+                        "Language": c.Name,
+                        "Table Name": tName,
+                        "Object Name": oName,
+                        "Object Type": oType,
+                        "Description": desc,
+                        "Display Folder": display_folder,
+                    }
+                    result = pd.concat(
+                        [result, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
+                    condition = (
+                        (result["Language"] == c.Name)
+                        & (result["Table Name"] == tName)
+                        & (result["Object Name"] == oName)
+                        & (result["Object Type"] == oType)
+                    )
+                elif tr.Object.ObjectType == TOM.ObjectType.Measure:
+                    tName = tr.Object.Table.Name
+                    desc = tom.model.Tables[tName].Measures[oName].Description
+                    display_folder = (
+                        tom.model.Tables[tName].Measures[oName].DisplayFolder
+                    )
+                    new_data = {
+                        "Language": c.Name,
+                        "Table Name": tName,
+                        "Object Name": oName,
+                        "Object Type": oType,
+                        "Description": desc,
+                        "Display Folder": display_folder,
+                    }
+                    result = pd.concat(
+                        [result, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
+                    condition = (
+                        (result["Language"] == c.Name)
+                        & (result["Table Name"] == tName)
+                        & (result["Object Name"] == oName)
+                        & (result["Object Type"] == oType)
+                    )
+                elif tr.Object.ObjectType == TOM.ObjectType.Hierarchy:
+                    tName = tr.Object.Table.Name
+                    desc = tom.model.Tables[tName].Hierarchies[oName].Description
+                    display_folder = (
+                        tom.model.Tables[tName].Hierarchies[oName].DisplayFolder
+                    )
+                    new_data = {
+                        "Language": c.Name,
+                        "Table Name": tName,
+                        "Object Name": oName,
+                        "Object Type": oType,
+                        "Description": desc,
+                        "Display Folder": display_folder,
+                    }
+                    result = pd.concat(
+                        [result, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
+                    condition = (
+                        (result["Language"] == c.Name)
+                        & (result["Table Name"] == tName)
+                        & (result["Object Name"] == oName)
+                        & (result["Object Type"] == oType)
+                    )
+
+                if prop == "Caption":
+                    result.loc[condition, "Translated Object Name"] = tValue
+                elif prop == "Description":
+                    result.loc[condition, "Translated Description"] = tValue
+                else:
+                    result.loc[condition, "Translated Display Folder"] = tValue
+        result.fillna("", inplace=True)
+
+    return result
