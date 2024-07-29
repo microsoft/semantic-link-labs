@@ -16,6 +16,7 @@ from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from typing import Optional
 import sempy_labs._icons as icons
 from sempy._utils._log import log
+from sempy.fabric.exceptions import FabricHTTPException
 
 
 @log
@@ -73,16 +74,29 @@ def get_lakehouse_tables(
     if count_rows:  # Setting countrows defaults to extended=True
         extended = True
 
+    if (
+        workspace_id != fabric.get_workspace_id()
+        and lakehouse_id != fabric.get_lakehouse_id()
+        and count_rows
+    ):
+        raise ValueError(
+            f"{icons.red_dot} If 'count_rows' is set to True, you must run this function against the default lakehouse attached to the notebook. "
+            "Count rows runs a spark query and cross-workspace spark queries are currently not supported."
+        )
+
     client = fabric.FabricRestClient()
     response = client.get(
         f"/v1/workspaces/{workspace_id}/lakehouses/{lakehouse_id}/tables"
     )
 
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
     for i in response.json()["data"]:
-        tName = i["name"]
-        tType = i["type"]
-        tFormat = i["format"]
-        tLocation = i["location"]
+        tName = i.get("name")
+        tType = i.get("type")
+        tFormat = i.get("format")
+        tLocation = i.get("location")
         if not extended:
             new_data = {
                 "Workspace Name": workspace,
