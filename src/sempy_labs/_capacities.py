@@ -48,10 +48,15 @@ def migrate_workspaces(
         )
     target_capacity_region = dfC_filt["Region"].iloc[0]
     # target_capacity_sku = dfC_filt['Sku'].iloc[0]
+    target_capacity_state = dfC_filt["State"].iloc[0]
 
     if source_capacity_region != target_capacity_region:
         raise ValueError(
             f"{icons.red_dot} The '{source_capacity}' and '{target_capacity}' are not in the same region."
+        )
+    if target_capacity_state != "Active":
+        raise ValueError(
+            f"{icons.red_dot} The '{target_capacity}' target capacity is inactive. The capacity must be active in order for workspaces to be migrated."
         )
 
     dfW = fabric.list_workspaces()

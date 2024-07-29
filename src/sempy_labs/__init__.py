@@ -1,10 +1,10 @@
 from sempy_labs._clear_cache import clear_cache
 
-#from sempy_labs._capacities import (
-#    migrate_workspaces,
-#    migrate_capacities,
-#    create_fabric_capacity,
-#)
+from sempy_labs._capacities import (
+    migrate_workspaces,
+    migrate_capacities,
+    create_fabric_capacity,
+)
 
 # from sempy_labs._connections import (
 # create_connection_cloud,
@@ -195,7 +195,7 @@ __all__ = [
     "resolve_item_type",
     "get_notebook_definition",
     "import_notebook_from_web",
-    #"migrate_workspaces",
-    #"migrate_capacities",
-    #"create_fabric_capacity",
+    "migrate_workspaces",
+    "migrate_capacities",
+    "create_fabric_capacity",
 ]
