@@ -5,7 +5,7 @@ import sempy_labs._icons as icons
 
 
 @log
-def migrate_capacity(
+def migrate_workspaces(
     source_capacity: str,
     target_capacity: str,
     workspaces: Optional[str | List[str]] = None,
@@ -341,7 +341,7 @@ def create_fabric_capacity(
 
 
 @log
-def f_sku_migration(
+def migrate_capacities(
     azure_subscription_id: str,
     key_vault: str,
     key_vault_tenant_id: str,
@@ -442,7 +442,7 @@ def f_sku_migration(
                     admin_email=admins,
                 )
                 # Migrate workspaces to new capacity
-                migrate_capacity(
+                migrate_workspaces(
                     source_capacity=cap_name,
                     target_capacity=tgt_capacity,
                     workspaces=None,
