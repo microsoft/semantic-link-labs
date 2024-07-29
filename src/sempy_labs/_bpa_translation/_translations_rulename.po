@@ -1,0 +1,6783 @@
+#
+msgid ""
+msgstr ""
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# it-IT
+msgid "Do not use floating point data types"
+msgstr "Non utilizzare tipi di dati a virgola mobile"
+
+# es-ES
+msgid "Do not use floating point data types"
+msgstr "No utilice tipos de datos de punto flotante"
+
+# he-IL
+msgid "Do not use floating point data types"
+msgstr "אל תשתמש בסוגי נתונים של נקודה צפה"
+
+# pt-PT
+msgid "Do not use floating point data types"
+msgstr "Não use tipos de dados de ponto flutuante"
+
+# zh-CN
+msgid "Do not use floating point data types"
+msgstr "不要使用浮点数据类型"
+
+# fr-FR
+msgid "Do not use floating point data types"
+msgstr "Ne pas utiliser de types de données à virgule flottante"
+
+# da-DK
+msgid "Do not use floating point data types"
+msgstr "Brug ikke flydende kommadatatyper"
+
+# cs-CZ
+msgid "Do not use floating point data types"
+msgstr "Nepoužívejte datové typy s plovoucí desetinnou čárkou"
+
+# de-DE
+msgid "Do not use floating point data types"
+msgstr "Verwenden Sie keine Gleitkomma-Datentypen."
+
+# el-GR
+msgid "Do not use floating point data types"
+msgstr "Μην χρησιμοποιείτε τύπους δεδομένων κινητής υποδιαστολής"
+
+# fa-IR
+msgid "Do not use floating point data types"
+msgstr "از انواع داده ممیز شناور استفاده نکنید"
+
+# ga-IE
+msgid "Do not use floating point data types"
+msgstr "Ná húsáid cineálacha sonraí snámhphointe"
+
+# hi-IN
+msgid "Do not use floating point data types"
+msgstr "फ़्लोटिंग पॉइंट डेटा प्रकारों का उपयोग न करें"
+
+# hu-HU
+msgid "Do not use floating point data types"
+msgstr "Ne használjon lebegőpontos adattípusokat"
+
+# is-IS
+msgid "Do not use floating point data types"
+msgstr "Ekki nota fljótandi gagnagerðir"
+
+# ja-JP
+msgid "Do not use floating point data types"
+msgstr "浮動小数点データ型は使用しないでください"
+
+# nl-NL
+msgid "Do not use floating point data types"
+msgstr "Gebruik geen gegevenstypen met drijvendekomma"
+
+# pl-PL
+msgid "Do not use floating point data types"
+msgstr "Nie należy używać typów danych zmiennoprzecinkowych"
+
+# pt-BR
+msgid "Do not use floating point data types"
+msgstr "Não use tipos de dados de ponto flutuante"
+
+# ru-RU
+msgid "Do not use floating point data types"
+msgstr "Не используйте типы данных с плавающей запятой"
+
+# te-IN
+msgid "Do not use floating point data types"
+msgstr "ఫ్లోటింగ్ పాయింట్ డేటా రకాలను ఉపయోగించవద్దు."
+
+# ta-IN
+msgid "Do not use floating point data types"
+msgstr "ஃப்ளோட்டிங் பாயிண்ட் டேட்டா வகைகளைப் பயன்படுத்த வேண்டாம்"
+
+# th-TH
+msgid "Do not use floating point data types"
+msgstr "อย่าใช้ชนิดข้อมูลทศนิยม"
+
+# zu-ZA
+msgid "Do not use floating point data types"
+msgstr "Ungasebenzisi izinhlobo zedatha yephuzu elintantayo"
+
+# am-ET
+msgid "Do not use floating point data types"
+msgstr "ተንሳፋፊ ነጥብ የመረጃ አይነቶች አይጠቀሙ"
+
+# ar-AE
+msgid "Do not use floating point data types"
+msgstr "لا تستخدم أنواع بيانات الفاصلة العائمة"
+
+# it-IT
+msgid "Avoid using calculated columns"
+msgstr "Evitare l'uso di colonne calcolate"
+
+# es-ES
+msgid "Avoid using calculated columns"
+msgstr "Evite el uso de columnas calculadas"
+
+# he-IL
+msgid "Avoid using calculated columns"
+msgstr "הימנעות משימוש בעמודות מחושבות"
+
+# pt-PT
+msgid "Avoid using calculated columns"
+msgstr "Evite usar colunas calculadas"
+
+# zh-CN
+msgid "Avoid using calculated columns"
+msgstr "避免使用计算列"
+
+# fr-FR
+msgid "Avoid using calculated columns"
+msgstr "Évitez d’utiliser des colonnes calculées"
+
+# da-DK
+msgid "Avoid using calculated columns"
+msgstr "Undgå at bruge beregnede kolonner"
+
+# cs-CZ
+msgid "Avoid using calculated columns"
+msgstr "Vyhněte se používání počítaných sloupců"
+
+# de-DE
+msgid "Avoid using calculated columns"
+msgstr "Vermeiden Sie die Verwendung berechneter Spalten"
+
+# el-GR
+msgid "Avoid using calculated columns"
+msgstr "Αποφύγετε τη χρήση υπολογιζόμενων στηλών"
+
+# fa-IR
+msgid "Avoid using calculated columns"
+msgstr "از استفاده از ستون های محاسبه شده خودداری کنید"
+
+# ga-IE
+msgid "Avoid using calculated columns"
+msgstr "Seachain colúin ríofa a úsáid"
+
+# hi-IN
+msgid "Avoid using calculated columns"
+msgstr "परिकलित स्तंभों का उपयोग करने से बचें"
+
+# hu-HU
+msgid "Avoid using calculated columns"
+msgstr "Kerülje a számított oszlopok használatát"
+
+# is-IS
+msgid "Avoid using calculated columns"
+msgstr "Forðastu að nota reiknaða dálka"
+
+# ja-JP
+msgid "Avoid using calculated columns"
+msgstr "計算列の使用を避ける"
+
+# nl-NL
+msgid "Avoid using calculated columns"
+msgstr "Vermijd het gebruik van berekende kolommen"
+
+# pl-PL
+msgid "Avoid using calculated columns"
+msgstr "Unikanie używania kolumn obliczeniowych"
+
+# pt-BR
+msgid "Avoid using calculated columns"
+msgstr "Evite usar colunas calculadas"
+
+# ru-RU
+msgid "Avoid using calculated columns"
+msgstr "Избегайте использования вычисляемых столбцов"
+
+# te-IN
+msgid "Avoid using calculated columns"
+msgstr "లెక్కించిన కాలమ్ లను ఉపయోగించడం మానుకోండి"
+
+# ta-IN
+msgid "Avoid using calculated columns"
+msgstr "கணக்கிடப்பட்ட நெடுவரிசைகளைப் பயன்படுத்துவதைத் தவிர்க்கவும்"
+
+# th-TH
+msgid "Avoid using calculated columns"
+msgstr "หลีกเลี่ยงการใช้คอลัมน์จากการคํานวณ"
+
+# zu-ZA
+msgid "Avoid using calculated columns"
+msgstr "Gwema ukusebenzisa amakholomu abalwe"
+
+# am-ET
+msgid "Avoid using calculated columns"
+msgstr "የተሰሉ ዓምዶችን ከመጠቀም ተቆጠቡ"
+
+# ar-AE
+msgid "Avoid using calculated columns"
+msgstr "تجنب استخدام الأعمدة المحسوبة"
+
+# it-IT
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "Verificare se le relazioni bidirezionali e molti-a-molti sono valide"
+
+# es-ES
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"Compruebe si las relaciones bidireccionales y de varios a varios son válidas"
+
+# he-IL
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "בדוק אם קשרי גומלין דו-כיווניים וקשרי גומלין של רבים לרבים חוקיים"
+
+# pt-PT
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"Verifique se as relações bidirecionais e muitos-para-muitos são válidas"
+
+# zh-CN
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "检查双向关系和多对多关系是否有效"
+
+# fr-FR
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"Vérifiez si les relations bidirectionnelles et plusieurs-à-plusieurs sont "
+"valides"
+
+# da-DK
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "Kontrollér, om tovejs- og mange-til-mange-relationer er gyldige"
+
+# cs-CZ
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "Zkontrolujte, zda jsou platné obousměrné relace a relace M:N"
+
+# de-DE
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "Überprüfen Sie, ob bidirektionale und m:n-Beziehungen gültig sind"
+
+# el-GR
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"Ελέγξτε εάν οι αμφίδρομες σχέσεις και οι σχέσεις πολλά-προς-πολλά είναι "
+"έγκυρες"
+
+# fa-IR
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "بررسی اینکه آیا روابط دو طرفه و چند به چند معتبر هستند یا خیر"
+
+# ga-IE
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "Seiceáil an bhfuil caidrimh dhéthreoch agus go leor le go leor bailí"
+
+# hi-IN
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "जांचें कि क्या द्वि-दिशात्मक और कई-से-कई संबंध मान्य हैं"
+
+# hu-HU
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"Ellenőrizze, hogy érvényesek-e a kétirányú és a több-a-többhöz kapcsolatok"
+
+# is-IS
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "Athugaðu hvort tvíátta og margátta tengsl séu gild"
+
+# ja-JP
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "双方向および多対多の関係が有効かどうかを確認する"
+
+# nl-NL
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "Controleer of bidirectionele en veel-op-veel-relaties geldig zijn"
+
+# pl-PL
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "Sprawdzanie, czy relacje dwukierunkowe i wiele-do-wielu są prawidłowe"
+
+# pt-BR
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"Verifique se as relações bidirecionais e muitos-para-muitos são válidas"
+
+# ru-RU
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"Проверка допустимости отношений «многонаправленный» и «многие ко многим»"
+
+# te-IN
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"ద్వి-దిశ మరియు అనేక-టు-అనేక సంబంధాలు చెల్లుబాటు అవుతాయో లేదో తనిఖీ చేయండి"
+
+# ta-IN
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"இரு திசை மற்றும் பல முதல் பல உறவுகள் செல்லுபடியாகுமா என்று சரிபார்க்கவும்"
+
+# th-TH
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "ตรวจสอบว่าความสัมพันธ์แบบสองทิศทางและแบบกลุ่มต่อกลุ่มถูกต้องหรือไม่"
+
+# zu-ZA
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"Hlola ukuthi ubudlelwane be-bi-directional kanye nobuningi obuningi "
+"buqinisekisiwe"
+
+# am-ET
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "ባለትዳሮች እና ብዙ-ብዙ ግንኙነቶች ተቀባይነት ያላቸው መሆናቸውን ያረጋግጡ"
+
+# ar-AE
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"تحقق مما إذا كانت العلاقات ثنائية الاتجاه والعلاقات بين متعدد إلى متعدد "
+"صالحة"
+
+# it-IT
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"Verificare se è necessaria la sicurezza dinamica a livello di riga (RLS)"
+
+# es-ES
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"Compruebe si es necesaria la seguridad dinámica de nivel de fila (RLS)"
+
+# he-IL
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "בדוק אם יש צורך באבטחה דינמית ברמת שורה (RLS)"
+
+# pt-PT
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"Verifique se a segurança dinâmica ao nível da linha (RLS) é necessária"
+
+# zh-CN
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "检查是否需要动态行级别安全性 （RLS）"
+
+# fr-FR
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"Vérifiez si la sécurité dynamique au niveau des lignes (RLS) est nécessaire"
+
+# da-DK
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "Kontrollér, om sikkerhed på dynamisk rækkeniveau (RLS) er nødvendig"
+
+# cs-CZ
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"Zkontrolujte, jestli je nutné dynamické zabezpečení na úrovni řádků (RLS)"
+
+# de-DE
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "Überprüfen Sie, ob Dynamic Row Level Security (RLS) erforderlich ist"
+
+# el-GR
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"Ελέγξτε εάν είναι απαραίτητη η δυναμική ασφάλεια σε επίπεδο γραμμών (RLS)"
+
+# fa-IR
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "بررسی کنید که آیا امنیت سطح ردیف پویا (RLS) ضروری است یا خیر"
+
+# ga-IE
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"Seiceáil an bhfuil slándáil dinimiciúil leibhéal as a chéile (RLS) "
+"riachtanach"
+
+# hi-IN
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "जांचें कि डायनेमिक पंक्ति स्तर सुरक्षा (RLS) आवश्यक है या नहीं"
+
+# hu-HU
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "Ellenőrizze, hogy szükség van-e dinamikus sorszintű biztonságra (RLS)"
+
+# is-IS
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "Athugaðu hvort breytilegt raðstigsöryggi (RLS) sé nauðsynlegt"
+
+# ja-JP
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "動的行レベル・セキュリティ (RLS) が必要かどうかを確認する"
+
+# nl-NL
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "Controleer of beveiliging op rijniveau (RLS) nodig is"
+
+# pl-PL
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"Sprawdzanie, czy są konieczne dynamiczne zabezpieczenia na poziomie wiersza"
+
+# pt-BR
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"Verificar se a RLS (segurança dinâmica em nível de linha) é necessária"
+
+# ru-RU
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"Проверьте, необходима ли динамическая безопасность на уровне строк (RLS)"
+
+# te-IN
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "డైనమిక్ రో లెవల్ సెక్యూరిటీ (RLS) అవసరమా అని చెక్ చేయండి"
+
+# ta-IN
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "டைனமிக் வரிசை நிலை பாதுகாப்பு (RLS) தேவையா என சரிபார்க்கவும்"
+
+# th-TH
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"ตรวจสอบว่าจําเป็นต้องมีการรักษาความปลอดภัยระดับแถวแบบไดนามิก (RLS) หรือไม่"
+
+# zu-ZA
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"Hlola ukuthi ukuphepha kwezinga le-row ashukumisayo (RLS) kuyadingeka yini"
+
+# am-ET
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "ቀጣይ ረድፍ ደረጃ ደህንነት (RLS) አስፈላጊ መሆኑን ያረጋግጡ"
+
+# ar-AE
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "تحقق مما إذا كان الأمان الديناميكي على مستوى الصف (RLS) ضروريا"
+
+# it-IT
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Evitare l'utilizzo di relazioni molti-a-molti nelle tabelle utilizzate per "
+"la sicurezza dinamica a livello di riga"
+
+# es-ES
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Evite el uso de relaciones de varios a varios en las tablas utilizadas para "
+"la seguridad de nivel de fila dinámica"
+
+# he-IL
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"הימנע משימוש בקשרי גומלין של רבים לרבים בטבלאות המשמשות לאבטחה דינאמית ברמת "
+"השורה"
+
+# pt-PT
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Evite usar relações muitos-para-muitos em tabelas usadas para segurança "
+"dinâmica em nível de linha"
+
+# zh-CN
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr "避免在用于动态行级别安全性的表上使用多对多关系"
+
+# fr-FR
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Évitez d’utiliser des relations plusieurs-à-plusieurs sur les tables "
+"utilisées pour la sécurité dynamique au niveau des lignes"
+
+# da-DK
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Undgå at bruge mange til mange-relationer i tabeller, der bruges til "
+"dynamisk sikkerhed på rækkeniveau"
+
+# cs-CZ
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Vyhněte se použití relací M:N u tabulek používaných pro dynamické "
+"zabezpečení na úrovni řádků"
+
+# de-DE
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Vermeiden Sie die Verwendung von m:n-Beziehungen für Tabellen, die für die "
+"dynamische Sicherheit auf Zeilenebene verwendet werden"
+
+# el-GR
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Αποφύγετε τη χρήση σχέσεων πολλά-προς-πολλά σε πίνακες που χρησιμοποιούνται "
+"για δυναμική ασφάλεια σε επίπεδο γραμμών"
+
+# fa-IR
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"از استفاده از روابط چند به چند در جداول مورد استفاده برای امنیت سطح ردیف "
+"پویا خودداری کنید."
+
+# ga-IE
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Seachain úsáid a bhaint as go leor caidrimh ar tháblaí a úsáidtear le "
+"haghaidh slándála dinimiciúil leibhéal as a chéile"
+
+# hi-IN
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"डायनेमिक पंक्ति स्तर सुरक्षा के लिए उपयोग की जाने वाली तालिकाओं पर "
+"कई-से-अनेक संबंधों का उपयोग करने से बचें"
+
+# hu-HU
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Kerülje a több-a-többhöz kapcsolatok használatát a dinamikus sorszintű "
+"biztonsághoz használt táblákon"
+
+# is-IS
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Forðastu að nota marga-til-marga vensl í töflum sem notaðar eru fyrir kvikt "
+"öryggi á línustigi"
+
+# ja-JP
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr "動的行レベルのセキュリティに使用されるテーブルで多対多の関係を使用しないようにします"
+
+# nl-NL
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Vermijd het gebruik van veel-op-veel-relaties in tabellen die worden "
+"gebruikt voor dynamische beveiliging op rijniveau"
+
+# pl-PL
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Unikanie używania relacji wiele-do-wielu w tabelach używanych do "
+"dynamicznych zabezpieczeń na poziomie wiersza"
+
+# pt-BR
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Evite usar relações muitos-para-muitos em tabelas usadas para segurança "
+"dinâmica em nível de linha"
+
+# ru-RU
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Избегайте использования связей \"многие ко многим\" в таблицах, используемых"
+" для динамической безопасности на уровне строк"
+
+# te-IN
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"డైనమిక్ వరుస స్థాయి భద్రత కొరకు ఉపయోగించే టేబుల్ లపై అనేక-టు-అనేక సంబంధాలను "
+"ఉపయోగించడం మానుకోండి."
+
+# ta-IN
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"டைனமிக் வரிசை நிலை பாதுகாப்பிற்காக பயன்படுத்தப்படும் அட்டவணைகளில் பல முதல் "
+"பல உறவுகளைப் பயன்படுத்துவதைத் தவிர்க்கவும்"
+
+# th-TH
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"หลีกเลี่ยงการใช้ความสัมพันธ์แบบกลุ่มต่อกลุ่มบนตารางที่ใช้สําหรับการรักษาความปลอดภัยระดับแถวแบบไดนามิก"
+
+# zu-ZA
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Gwema ukusebenzisa ubudlelwane obuningi kumatafula asetshenziselwa ukuphepha"
+" kwezinga le-row ashukumisayo"
+
+# am-ET
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr "ለቀጣይ ረድፍ ደረጃ ደህንነት በሚጠቀሙ ጠረጴዛዎች ላይ ብዙ-ብዙ ግንኙነቶችን ከመጠቀም ይቆጠቡ"
+
+# ar-AE
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"تجنب استخدام علاقات متعدد إلى متعدد على الجداول المستخدمة للأمان الديناميكي "
+"على مستوى الصف"
+
+# it-IT
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Le relazioni molti-a-molti devono essere unidirezionali"
+
+# es-ES
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Las relaciones de varios a varios deben ser unidireccionales"
+
+# he-IL
+msgid "Many-to-many relationships should be single-direction"
+msgstr "קשרי גומלין של רבים לרבים צריכים להיות חד-כיווניים"
+
+# pt-PT
+msgid "Many-to-many relationships should be single-direction"
+msgstr "As relações muitos-para-muitos devem ser unidirecionais"
+
+# zh-CN
+msgid "Many-to-many relationships should be single-direction"
+msgstr "多对多关系应该是单向的"
+
+# fr-FR
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Les relations plusieurs-à-plusieurs doivent être unidirectionnelles"
+
+# da-DK
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Mange til mange-relationer skal være enkeltrettede"
+
+# cs-CZ
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Relace M:N by měly být jednosměrné"
+
+# de-DE
+msgid "Many-to-many relationships should be single-direction"
+msgstr "m:n-Beziehungen sollten in eine Richtung gehen"
+
+# el-GR
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Οι σχέσεις πολλά-προς-πολλά πρέπει να είναι μονής κατεύθυνσης"
+
+# fa-IR
+msgid "Many-to-many relationships should be single-direction"
+msgstr "روابط چند به چند باید یک جهته باشد"
+
+# ga-IE
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Ba chóir go mbeadh go leor caidrimh aon-treo"
+
+# hi-IN
+msgid "Many-to-many relationships should be single-direction"
+msgstr "कई-से-कई रिश्ते एकल-दिशा वाले होने चाहिए"
+
+# hu-HU
+msgid "Many-to-many relationships should be single-direction"
+msgstr "A több-a-többhöz kapcsolatoknak egyirányúnak kell lenniük"
+
+# is-IS
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Margir-til-margir sambönd ættu að vera í eina átt"
+
+# ja-JP
+msgid "Many-to-many relationships should be single-direction"
+msgstr "多対多のリレーションシップは一方向である必要があります"
+
+# nl-NL
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Veel-op-veel-relaties moeten in één richting zijn"
+
+# pl-PL
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Relacje wiele-do-wielu powinny być jednokierunkowe"
+
+# pt-BR
+msgid "Many-to-many relationships should be single-direction"
+msgstr "As relações muitos-para-muitos devem ser unidirecionais"
+
+# ru-RU
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Отношения \"многие ко многим\" должны быть односторонними"
+
+# te-IN
+msgid "Many-to-many relationships should be single-direction"
+msgstr "అనేక బంధాలు సింగిల్ డైరెక్షన్ గా ఉండాలి."
+
+# ta-IN
+msgid "Many-to-many relationships should be single-direction"
+msgstr "பல முதல் பல உறவுகள் ஒற்றை திசையில் இருக்க வேண்டும்"
+
+# th-TH
+msgid "Many-to-many relationships should be single-direction"
+msgstr "ความสัมพันธ์แบบกลุ่มต่อกลุ่มควรเป็นแบบทิศทางเดียว"
+
+# zu-ZA
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Ubudlelwane obuningi kufanele kube isiqondiso esisodwa"
+
+# am-ET
+msgid "Many-to-many relationships should be single-direction"
+msgstr "ብዙ-ወደ-ብዙ ግንኙነት ነጠላ-አቅጣጫ መሆን አለበት"
+
+# ar-AE
+msgid "Many-to-many relationships should be single-direction"
+msgstr "يجب أن تكون العلاقات متعددة إلى متعددة أحادية الاتجاه"
+
+# it-IT
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Impostare IsAvailableInMdx su false nelle colonne non attributo"
+
+# es-ES
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"Establezca IsAvailableInMdx en false en columnas que no sean atributos"
+
+# he-IL
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "הגדר את IsAvailableInMdx ל- false בעמודות שאינן תכונות"
+
+# pt-PT
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Definir IsAvailableInMdx como false em colunas sem atributo"
+
+# zh-CN
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "在非属性列上将 IsAvailableInMdx 设置为 false"
+
+# fr-FR
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Définir IsAvailableInMdx à false sur les colonnes sans attributs"
+
+# da-DK
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"Indstil IsAvailableInMdx til false på kolonner, der ikke er attributter"
+
+# cs-CZ
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Nastavte IsAvailableInMdx na false u sloupců bez atributů"
+
+# de-DE
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Festlegen von IsAvailableInMdx auf false für Spalten ohne Attribut"
+
+# el-GR
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"Ορισμός της τιμής IsAvailableInMdx σε false σε στήλες που δεν είναι "
+"χαρακτηριστικά"
+
+# fa-IR
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "IsAvailableInMdx را روی false در ستون های غیر ویژگی تنظیم کنید"
+
+# ga-IE
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Socraigh IsAvailableInMdx go bréagach ar cholúin neamh-tréith"
+
+# hi-IN
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "IsAvailableInMdx को गैर-विशेषता स्तंभों पर false पर सेट करें"
+
+# hu-HU
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"Állítsa az IsAvailableInMdx értékét false értékre a nem attribútum "
+"oszlopokon"
+
+# is-IS
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Stilltu IsAvailableInMdx á false í dálkum sem ekki eru eigindir"
+
+# ja-JP
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "非属性列で IsAvailableInMdx を false に設定します"
+
+# nl-NL
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Stel IsAvailableInMdx in op false op kolommen zonder attribuut"
+
+# pl-PL
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"Ustaw wartość IsAvailableInMdx na false w kolumnach innych niż atrybuty"
+
+# pt-BR
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"Definir IsAvailableInMdx como false em colunas que não são de atributo"
+
+# ru-RU
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"Задайте для IsAvailableInMdx значение false для столбцов, не являющихся "
+"атрибутами"
+
+# te-IN
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"నాన్-ఆట్రిబ్యూట్ కాలమ్ లపై తప్పుగా లభ్యం అయ్యే Is లభ్యతInMdx సెట్ చేయండి"
+
+# ta-IN
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "IsAvailableInMdx ஐ பண்புக்கூறு அல்லாத நெடுவரிசைகளில் தவறாக அமைக்கவும்"
+
+# th-TH
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "ตั้งค่า IsAvailableInMdx เป็น false ในคอลัมน์ที่ไม่ใช่แอตทริบิวต์"
+
+# zu-ZA
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Setha i-IsAvailableInMdx ku-false kumakholomu angewona ama-attribute"
+
+# am-ET
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "IsAvailableInMdx በማያጠያይቅ ዓምዶች ላይ ወደ ሐሰት ይምረጥ"
+
+# ar-AE
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "تعيين IsAvailableInMdx إلى false على أعمدة غير سمة"
+
+# it-IT
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Impostare la proprietà 'Data Coverage Definition' nella partizione "
+"DirectQuery di una tabella ibrida"
+
+# es-ES
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Establecer la propiedad \"Definición de cobertura de datos\" en la partición"
+" DirectQuery de una tabla híbrida"
+
+# he-IL
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"הגדר את המאפיין 'הגדרת כיסוי נתונים' במחיצת DirectQuery של טבלה היברידית"
+
+# pt-PT
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Definir a propriedade 'Data Coverage Definition' na partição DirectQuery de "
+"uma tabela híbrida"
+
+# zh-CN
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr "在混合表的 DirectQuery 分区上设置“数据覆盖率定义”属性"
+
+# fr-FR
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Définir la propriété « Définition de la couverture des données » sur la "
+"partition DirectQuery d’une table hybride"
+
+# da-DK
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Angiv egenskaben \"Data Coverage Definition\" på DirectQuery-partitionen i "
+"en hybridtabel"
+
+# cs-CZ
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Nastavení vlastnosti Definice pokrytí dat v oddílu DirectQuery hybridní "
+"tabulky"
+
+# de-DE
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Festlegen der Eigenschaft \"Data Coverage Definition\" für die DirectQuery-"
+"Partition einer Hybridtabelle"
+
+# el-GR
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Ορισμός ιδιότητας \"Ορισμός κάλυψης δεδομένων\" στο διαμέρισμα DirectQuery "
+"ενός υβριδικού πίνακα"
+
+# fa-IR
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"ویژگی \"Data Coverage Definition\" را در پارتیشن DirectQuery یک جدول ترکیبی "
+"تنظیم کنید"
+
+# ga-IE
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Socraigh maoin 'Sainmhíniú ar Chumhdach Sonraí' ar dheighilt DirectQuery de "
+"thábla hibrideach"
+
+# hi-IN
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"हाइब्रिड तालिका के DirectQuery विभाजन पर 'डेटा कवरेज परिभाषा' गुण सेट करें"
+
+# hu-HU
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Állítsa be az \"Adatlefedettség definíciója\" tulajdonságot egy hibrid tábla"
+" DirectQuery-partícióján"
+
+# is-IS
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Stilltu eiginleikann 'Skilgreining gagnaþekju' á DirectQuery skipting "
+"blandaðrar töflu"
+
+# ja-JP
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"ハイブリッド テーブルの DirectQuery パーティションに 'Data Coverage Definition' プロパティを設定します"
+
+# nl-NL
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Stel de eigenschap 'Data Coverage Definition' in op de DirectQuery-partitie "
+"van een hybride tabel"
+
+# pl-PL
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Ustaw właściwość \"Definicja pokrycia danych\" na partycji DirectQuery "
+"tabeli hybrydowej"
+
+# pt-BR
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Definir a propriedade 'Definição de Cobertura de Dados' na partição "
+"DirectQuery de uma tabela híbrida"
+
+# ru-RU
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Установка свойства \"Data Coverage Definition\" в разделе DirectQuery "
+"гибридной таблицы"
+
+# te-IN
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"హైబ్రిడ్ టేబుల్ యొక్క డైరెక్ట్ క్వెరీ విభజనపై 'డేటా కవరేజ్ డెఫినిషన్' "
+"ప్రాపర్టీని సెట్ చేయండి"
+
+# ta-IN
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"ஒரு கலப்பின அட்டவணையின் DirectQuery பகிர்வில் 'தரவு கவரேஜ் வரையறை' குணத்தை "
+"அமைக்கவும்"
+
+# th-TH
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"ตั้งค่าคุณสมบัติ 'คําจํากัดความความครอบคลุมของข้อมูล' บนพาร์ติชัน "
+"DirectQuery ของตารางไฮบริด"
+
+# zu-ZA
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Setha impahla 'ye-Data Coverage Definition' ku-DirectQuery ukwahlukanisa "
+"itafula le-hybrid"
+
+# am-ET
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr "የውሂብ ጠረጴዛ በDirectQuery ክፍፍሉ ላይ 'የዳታ ሽፋን ፍቺ' ንብረት ያስቀምጡ"
+
+# ar-AE
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr "تعيين خاصية \"تعريف تغطية البيانات\" على قسم DirectQuery لجدول مختلط"
+
+# it-IT
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Impostare le tabelle delle dimensioni in modalità doppia anziché in modalità"
+" di importazione quando si usa DirectQuery nelle tabelle dei fatti"
+
+# es-ES
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Establecer las tablas de dimensiones en modo dual en lugar de importar al "
+"usar DirectQuery en tablas de hechos"
+
+# he-IL
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"הגדרת טבלאות ממדים למצב כפול במקום ייבוא בעת שימוש ב- DirectQuery בטבלאות "
+"עובדות"
+
+# pt-PT
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Definir tabelas de dimensões para modo duplo em vez de importar ao usar o "
+"DirectQuery em tabelas de fatos"
+
+# zh-CN
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr "在事实数据表上使用 DirectQuery 时，将维度表设置为双重模式，而不是导入"
+
+# fr-FR
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Définir les tables de dimensions en mode double au lieu de l’importation "
+"lors de l’utilisation de DirectQuery sur des tables de faits"
+
+# da-DK
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Indstil dimensionstabeller til dobbelttilstand i stedet for import, når du "
+"bruger DirectQuery på faktatabeller"
+
+# cs-CZ
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Nastavení tabulek dimenzí do duálního režimu místo importu při použití "
+"DirectQuery u tabulek faktů"
+
+# de-DE
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Festlegen von Dimensionstabellen auf den Dualmodus anstelle des Imports bei "
+"Verwendung von DirectQuery für Faktentabellen"
+
+# el-GR
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Ορισμός πινάκων διαστάσεων σε διπλή λειτουργία αντί για εισαγωγή κατά τη "
+"χρήση του DirectQuery σε πίνακες δεδομένων"
+
+# fa-IR
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"هنگام استفاده از DirectQuery در جداول فکت، جداول ابعاد را به جای وارد کردن "
+"روی حالت دوگانه تنظیم کنید"
+
+# ga-IE
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Socraigh táblaí toisí go mód dé in ionad allmhairiú agus DirectQuery á úsáid"
+" ar tháblaí fíricí"
+
+# hi-IN
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"तथ्य तालिकाओं पर DirectQuery का उपयोग करते समय आयाम तालिकाओं को आयात करने के"
+" बजाय दोहरे मोड में सेट करें"
+
+# hu-HU
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Dimenziótáblák beállítása kettős módba importálás helyett, ha a DirectQueryt"
+" ténytáblákon használja"
+
+# is-IS
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Stilltu víddartöflur á tvöfalda stillingu í stað innflutnings þegar "
+"DirectQuery er notað á staðreyndatöflum"
+
+# ja-JP
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"ファクト テーブルで DirectQuery を使用する場合、ディメンション テーブルをインポートではなくデュアル モードに設定するSet "
+"dimensions tables to dual mode using DirectQuery on fact tables"
+
+# nl-NL
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Stel dimensietabellen in op dubbele modus in plaats van importeren wanneer u"
+" DirectQuery gebruikt voor feitentabellen"
+
+# pl-PL
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Ustawianie tabel wymiarów w trybie podwójnym zamiast importu podczas "
+"korzystania z trybu DirectQuery w tabelach faktów"
+
+# pt-BR
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Definir tabelas de dimensões como modo duplo em vez de importar ao usar o "
+"DirectQuery em tabelas de fatos"
+
+# ru-RU
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Установка двойного режима таблиц измерений вместо импорта при использовании "
+"DirectQuery в таблицах фактов"
+
+# te-IN
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"ఫ్యాక్ట్ టేబుల్స్ పై డైరెక్ట్ క్వెరీని ఉపయోగిస్తున్నప్పుడు ఇంపోర్ట్ కు "
+"బదులుగా డైమెన్షన్స్ టేబుల్ లను డ్యూయల్ మోడ్ కు సెట్ చేయండి"
+
+# ta-IN
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"உண்மை அட்டவணைகளில் DirectQuery ஐப் பயன்படுத்தும் போது இறக்குமதிக்கு பதிலாக "
+"பரிமாண அட்டவணைகளை இரட்டை பயன்முறைக்கு அமைக்கவும்"
+
+# th-TH
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"ตั้งค่าตารางมิติเป็นโหมดคู่แทนการนําเข้าเมื่อใช้ DirectQuery "
+"บนตารางข้อเท็จจริง"
+
+# zu-ZA
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Setha ubukhulu amatafula kwimodi emibili esikhundleni sokungenisa uma "
+"usebenzisa i-DirectQuery kumathebula amaqiniso"
+
+# am-ET
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"DirectQuery በእውነታ ሠንጠረዦች ላይ ስትጠቀም ከውጭ ከማስገባት ይልቅ ስፋት ጠረጴዛዎችን ወደ ድርብ ዘዴ አስቀምጥ"
+
+# ar-AE
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"تعيين جداول الأبعاد إلى الوضع المزدوج بدلا من الاستيراد عند استخدام "
+"DirectQuery في جداول الحقائق"
+
+# it-IT
+msgid "Minimize Power Query transformations"
+msgstr "Ridurre al minimo le trasformazioni di Power Query"
+
+# es-ES
+msgid "Minimize Power Query transformations"
+msgstr "Minimizar las transformaciones de Power Query"
+
+# he-IL
+msgid "Minimize Power Query transformations"
+msgstr "מזעור המרות של Power Query"
+
+# pt-PT
+msgid "Minimize Power Query transformations"
+msgstr "Minimizar transformações do Power Query"
+
+# zh-CN
+msgid "Minimize Power Query transformations"
+msgstr "最小化 Power Query 转换"
+
+# fr-FR
+msgid "Minimize Power Query transformations"
+msgstr "Réduire les transformations Power Query"
+
+# da-DK
+msgid "Minimize Power Query transformations"
+msgstr "Minimer Power Query-transformationer"
+
+# cs-CZ
+msgid "Minimize Power Query transformations"
+msgstr "Minimalizace transformací Power Query"
+
+# de-DE
+msgid "Minimize Power Query transformations"
+msgstr "Minimieren von Power Query-Transformationen"
+
+# el-GR
+msgid "Minimize Power Query transformations"
+msgstr "Ελαχιστοποίηση μετασχηματισμών Power Query"
+
+# fa-IR
+msgid "Minimize Power Query transformations"
+msgstr "به حداقل رساندن تبدیلات Power Query"
+
+# ga-IE
+msgid "Minimize Power Query transformations"
+msgstr "Íoslaghdaigh claochluithe Iarratas Cumhachta"
+
+# hi-IN
+msgid "Minimize Power Query transformations"
+msgstr "Power Query रूपांतरणों को छोटा करना"
+
+# hu-HU
+msgid "Minimize Power Query transformations"
+msgstr "Power Query-átalakítások minimalizálása"
+
+# is-IS
+msgid "Minimize Power Query transformations"
+msgstr "Lágmarka Power Query umbreytingar"
+
+# ja-JP
+msgid "Minimize Power Query transformations"
+msgstr "Power Query 変換を最小限に抑える"
+
+# nl-NL
+msgid "Minimize Power Query transformations"
+msgstr "Power Query-transformaties minimaliseren"
+
+# pl-PL
+msgid "Minimize Power Query transformations"
+msgstr "Minimalizowanie przekształceń dodatku Power Query"
+
+# pt-BR
+msgid "Minimize Power Query transformations"
+msgstr "Minimizar transformações do Power Query"
+
+# ru-RU
+msgid "Minimize Power Query transformations"
+msgstr "Сведите к минимуму преобразования Power Query"
+
+# te-IN
+msgid "Minimize Power Query transformations"
+msgstr "కనిష్ట పవర్ Query పరివర్తనలు"
+
+# ta-IN
+msgid "Minimize Power Query transformations"
+msgstr "சக்தி வினவல் மாற்றங்களை குறைக்கவும்"
+
+# th-TH
+msgid "Minimize Power Query transformations"
+msgstr "ลดการแปลง Power Query ให้น้อยที่สุด"
+
+# zu-ZA
+msgid "Minimize Power Query transformations"
+msgstr "Nciphisa izinguquko ze-Power Query"
+
+# am-ET
+msgid "Minimize Power Query transformations"
+msgstr "የኃይል ጥያቄ ለውጥ መቀነስ"
+
+# ar-AE
+msgid "Minimize Power Query transformations"
+msgstr "تقليل تحويلات استعلام الطاقة"
+
+# it-IT
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"Si consideri uno schema a stella invece di un'architettura a fiocco di neve"
+
+# es-ES
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"Considere un esquema de estrella en lugar de una arquitectura de copo de "
+"nieve"
+
+# he-IL
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "שקול סכימת כוכבים במקום ארכיטקטורת פתיתי שלג"
+
+# pt-PT
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"Considere um esquema de estrelas em vez de uma arquitetura de flocos de neve"
+
+# zh-CN
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "考虑使用星型架构而不是雪花架构"
+
+# fr-FR
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"Considérez un schéma en étoile au lieu d’une architecture en forme de flocon"
+" de neige"
+
+# da-DK
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Overvej et stjerneskema i stedet for en snefnugarkitektur"
+
+# cs-CZ
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Zvažte hvězdicové schéma místo architektury sněhové vločky"
+
+# de-DE
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"Betrachten Sie ein Sternschema anstelle einer Schneeflockenarchitektur"
+
+# el-GR
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"Σκεφτείτε ένα αστρικό σχήμα αντί για μια αρχιτεκτονική νιφάδας χιονιού"
+
+# fa-IR
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "به جای معماری دانه برف، یک طرحواره ستاره ای را در نظر بگیرید"
+
+# ga-IE
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Smaoinigh ar scéimre réalta in ionad ailtireacht snowflake"
+
+# hi-IN
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "स्नोफ्लेक आर्किटेक्चर के बजाय स्टार-स्कीमा पर विचार करें"
+
+# hu-HU
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Fontolja meg a csillagsémát a hópehely architektúra helyett"
+
+# is-IS
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Lítum á stjörnuskema í stað snjókornaarkitektúrs"
+
+# ja-JP
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "スノーフレーク アーキテクチャの代わりにスター スキーマを検討してください"
+
+# nl-NL
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Overweeg een ster-schema in plaats van een sneeuwvlok-architectuur"
+
+# pl-PL
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Rozważ schemat gwiazdy zamiast architektury płatka śniegu"
+
+# pt-BR
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"Considere um esquema em estrela em vez de uma arquitetura de floco de neve"
+
+# ru-RU
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Рассмотрите схему типа «звезда» вместо архитектуры в виде снежинки"
+
+# te-IN
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "స్నోఫ్లేక్ ఆర్కిటెక్చర్ కు బదులుగా నక్షత్ర-స్కీమాను పరిగణించండి"
+
+# ta-IN
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"ஸ்னோஃப்ளேக் கட்டிடக்கலைக்கு பதிலாக ஒரு நட்சத்திர-திட்டத்தைக் கவனியுங்கள்"
+
+# th-TH
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "พิจารณา star-schema แทนสถาปัตยกรรมเกล็ดหิมะ"
+
+# zu-ZA
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Cabanga nge-star-schema esikhundleni sesakhiwo seqhwa"
+
+# am-ET
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "የበረዶ ቅንጣቶችን ንድፍ ከመሥራት ይልቅ ኮከብ-ሴማ እንደ ምሳሌ እንውሰድ"
+
+# ar-AE
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "ضع في اعتبارك مخطط النجوم بدلا من بنية ندفة الثلج"
+
+# it-IT
+msgid "Avoid using views when using Direct Lake mode"
+msgstr ""
+"Evitare di utilizzare le visualizzazioni quando si utilizza la modalità "
+"Direct Lake"
+
+# es-ES
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Evite el uso de vistas cuando se utilice el modo Direct Lake"
+
+# he-IL
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "הימנע משימוש בתצוגות בעת שימוש במצב Direct Lake"
+
+# pt-PT
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Evite usar modos de exibição ao usar o modo Direct Lake"
+
+# zh-CN
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "使用 Direct Lake 模式时避免使用视图"
+
+# fr-FR
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Évitez d’utiliser des vues lors de l’utilisation du mode Direct Lake"
+
+# da-DK
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Undgå at bruge visninger, når du bruger Direct Lake-tilstand"
+
+# cs-CZ
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Vyhněte se používání pohledů při použití režimu Direct Lake"
+
+# de-DE
+msgid "Avoid using views when using Direct Lake mode"
+msgstr ""
+"Vermeiden Sie die Verwendung von Ansichten bei Verwendung des Direct Lake-"
+"Modus"
+
+# el-GR
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Αποφύγετε τη χρήση προβολών κατά τη χρήση της λειτουργίας Direct Lake"
+
+# fa-IR
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "خودداری از استفاده از نماها هنگام استفاده از حالت Direct Lake"
+
+# ga-IE
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Seachain tuairimí a úsáid agus mód Direct Lake á úsáid agat"
+
+# hi-IN
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "डायरेक्ट लेक मोड का उपयोग करते समय दृश्यों का उपयोग करने से बचें"
+
+# hu-HU
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Kerülje a nézetek használatát a Direct Lake mód használatakor"
+
+# is-IS
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Forðastu að nota útsýni þegar þú notar Direct Lake ham"
+
+# ja-JP
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Direct Lake モードを使用する場合は、ビューの使用を避けてください"
+
+# nl-NL
+msgid "Avoid using views when using Direct Lake mode"
+msgstr ""
+"Vermijd het gebruik van weergaven bij het gebruik van de Direct Lake-modus"
+
+# pl-PL
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Unikaj używania widoków podczas korzystania z trybu Direct Lake"
+
+# pt-BR
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Evite usar exibições ao usar o modo Direct Lake"
+
+# ru-RU
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Избегайте использования видов при использовании режима Direct Lake"
+
+# te-IN
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "డైరెక్ట్ లేక్ మోడ్ ఉపయోగిస్తున్నప్పుడు వ్యూలను ఉపయోగించవద్దు"
+
+# ta-IN
+msgid "Avoid using views when using Direct Lake mode"
+msgstr ""
+"நேரடி ஏரி பயன்முறையைப் பயன்படுத்தும் போது காட்சிகளைப் பயன்படுத்துவதைத் "
+"தவிர்க்கவும்"
+
+# th-TH
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "หลีกเลี่ยงการใช้มุมมองเมื่อใช้โหมด Direct Lake"
+
+# zu-ZA
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Gwema ukusebenzisa imibono uma usebenzisa imodi ye-Direct Lake"
+
+# am-ET
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Direct Lake mode በሚጠቀሙበት ጊዜ እይታዎች መጠቀም ያስወግዱ"
+
+# ar-AE
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "تجنب استخدام طرق العرض عند استخدام وضع Direct Lake"
+
+# it-IT
+msgid "Avoid adding 0 to a measure"
+msgstr "Evitare di aggiungere 0 a una misura"
+
+# es-ES
+msgid "Avoid adding 0 to a measure"
+msgstr "Evite agregar 0 a una medida"
+
+# he-IL
+msgid "Avoid adding 0 to a measure"
+msgstr "הימנע מהוספת 0 למידה"
+
+# pt-PT
+msgid "Avoid adding 0 to a measure"
+msgstr "Evite adicionar 0 a uma medida"
+
+# zh-CN
+msgid "Avoid adding 0 to a measure"
+msgstr "避免将 0 添加到度量值"
+
+# fr-FR
+msgid "Avoid adding 0 to a measure"
+msgstr "Évitez d’ajouter 0 à une mesure"
+
+# da-DK
+msgid "Avoid adding 0 to a measure"
+msgstr "Undgå at føje 0 til en måling"
+
+# cs-CZ
+msgid "Avoid adding 0 to a measure"
+msgstr "Vyhněte se přidání 0 do měřítka"
+
+# de-DE
+msgid "Avoid adding 0 to a measure"
+msgstr "Vermeiden Sie das Hinzufügen von 0 zu einer Kennzahl"
+
+# el-GR
+msgid "Avoid adding 0 to a measure"
+msgstr "Αποφύγετε την προσθήκη 0 σε μια μέτρηση"
+
+# fa-IR
+msgid "Avoid adding 0 to a measure"
+msgstr "از افزودن 0 به یک اندازه گیری خودداری کنید"
+
+# ga-IE
+msgid "Avoid adding 0 to a measure"
+msgstr "Seachain 0 a chur le beart"
+
+# hi-IN
+msgid "Avoid adding 0 to a measure"
+msgstr "माप में 0 जोड़ने से बचें"
+
+# hu-HU
+msgid "Avoid adding 0 to a measure"
+msgstr "Ne adjon hozzá 0-t egy mértékhez"
+
+# is-IS
+msgid "Avoid adding 0 to a measure"
+msgstr "Forðastu að bæta 0 við mál"
+
+# ja-JP
+msgid "Avoid adding 0 to a measure"
+msgstr "メジャーに 0 を加算しないようにする"
+
+# nl-NL
+msgid "Avoid adding 0 to a measure"
+msgstr "Vermijd het toevoegen van 0 aan een meting"
+
+# pl-PL
+msgid "Avoid adding 0 to a measure"
+msgstr "Unikanie dodawania wartości 0 do miary"
+
+# pt-BR
+msgid "Avoid adding 0 to a measure"
+msgstr "Evite adicionar 0 a uma medida"
+
+# ru-RU
+msgid "Avoid adding 0 to a measure"
+msgstr "Избегайте добавления 0 к мере"
+
+# te-IN
+msgid "Avoid adding 0 to a measure"
+msgstr "కొలతకు 0 జోడించడం మానుకోండి"
+
+# ta-IN
+msgid "Avoid adding 0 to a measure"
+msgstr "ஒரு நடவடிக்கையில் 0 ஐச் சேர்ப்பதைத் தவிர்க்கவும்"
+
+# th-TH
+msgid "Avoid adding 0 to a measure"
+msgstr "หลีกเลี่ยงการเพิ่ม 0 ลงในการวัด"
+
+# zu-ZA
+msgid "Avoid adding 0 to a measure"
+msgstr "Gwema ukwengeza i-0 esilinganisweni"
+
+# am-ET
+msgid "Avoid adding 0 to a measure"
+msgstr "ወደ መለኪያ 0 ከመጨመር ተቆጠብ"
+
+# ar-AE
+msgid "Avoid adding 0 to a measure"
+msgstr "تجنب إضافة 0 إلى مقياس"
+
+# it-IT
+msgid "Reduce usage of calculated tables"
+msgstr "Ridurre l'utilizzo delle tabelle calcolate"
+
+# es-ES
+msgid "Reduce usage of calculated tables"
+msgstr "Reducir el uso de tablas calculadas"
+
+# he-IL
+msgid "Reduce usage of calculated tables"
+msgstr "צמצום השימוש בטבלאות מחושבות"
+
+# pt-PT
+msgid "Reduce usage of calculated tables"
+msgstr "Reduzir o uso de tabelas calculadas"
+
+# zh-CN
+msgid "Reduce usage of calculated tables"
+msgstr "减少计算表的使用量"
+
+# fr-FR
+msgid "Reduce usage of calculated tables"
+msgstr "Réduire l’utilisation des tables calculées"
+
+# da-DK
+msgid "Reduce usage of calculated tables"
+msgstr "Reducer brugen af beregnede tabeller"
+
+# cs-CZ
+msgid "Reduce usage of calculated tables"
+msgstr "Snížení využití počítaných tabulek"
+
+# de-DE
+msgid "Reduce usage of calculated tables"
+msgstr "Reduzieren Sie die Verwendung von berechneten Tabellen"
+
+# el-GR
+msgid "Reduce usage of calculated tables"
+msgstr "Μειώστε τη χρήση των υπολογιζόμενων πινάκων"
+
+# fa-IR
+msgid "Reduce usage of calculated tables"
+msgstr "کاهش استفاده از جداول محاسبه شده"
+
+# ga-IE
+msgid "Reduce usage of calculated tables"
+msgstr "Úsáid táblaí ríofa a laghdú"
+
+# hi-IN
+msgid "Reduce usage of calculated tables"
+msgstr "परिकलित तालिकाओं का उपयोग कम करें"
+
+# hu-HU
+msgid "Reduce usage of calculated tables"
+msgstr "A számított táblák használatának csökkentése"
+
+# is-IS
+msgid "Reduce usage of calculated tables"
+msgstr "Draga úr notkun á reiknuðum töflum"
+
+# ja-JP
+msgid "Reduce usage of calculated tables"
+msgstr "計算テーブルの使用量を削減"
+
+# nl-NL
+msgid "Reduce usage of calculated tables"
+msgstr "Verminder het gebruik van berekende tabellen"
+
+# pl-PL
+msgid "Reduce usage of calculated tables"
+msgstr "Zmniejszanie użycia tabel obliczeniowych"
+
+# pt-BR
+msgid "Reduce usage of calculated tables"
+msgstr "Reduzir o uso de tabelas calculadas"
+
+# ru-RU
+msgid "Reduce usage of calculated tables"
+msgstr "Сокращение использования вычисляемых таблиц"
+
+# te-IN
+msgid "Reduce usage of calculated tables"
+msgstr "లెక్కించిన పట్టికల వాడకాన్ని తగ్గించండి."
+
+# ta-IN
+msgid "Reduce usage of calculated tables"
+msgstr "கணக்கிடப்பட்ட அட்டவணைகளின் பயன்பாட்டைக் குறைக்கவும்"
+
+# th-TH
+msgid "Reduce usage of calculated tables"
+msgstr "ลดการใช้ตารางจากการคํานวณ"
+
+# zu-ZA
+msgid "Reduce usage of calculated tables"
+msgstr "Nciphisa ukusetshenziswa kwamatafula abalwe"
+
+# am-ET
+msgid "Reduce usage of calculated tables"
+msgstr "የስሌት ሠንጠረዦችን አጠቃቀም መቀነስ"
+
+# ar-AE
+msgid "Reduce usage of calculated tables"
+msgstr "تقليل استخدام الجداول المحسوبة"
+
+# it-IT
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"Ridurre l'utilizzo delle colonne calcolate che utilizzano la funzione "
+"RELATED"
+
+# es-ES
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "Reducir el uso de columnas calculadas que utilizan la función RELATED"
+
+# he-IL
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "צמצום השימוש בעמודות מחושבות המשתמשות בפונקציה RELATED"
+
+# pt-PT
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "Reduzir o uso de colunas calculadas que usam a função RELACIONADO"
+
+# zh-CN
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "减少使用 RELATED 函数的计算列的使用量"
+
+# fr-FR
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"Réduire l’utilisation des colonnes calculées qui utilisent la fonction "
+"RELATED"
+
+# da-DK
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "Reducere brugen af beregnede kolonner, der bruger funktionen RELATED"
+
+# cs-CZ
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "Omezení používání počítaných sloupců, které používají funkci RELATED"
+
+# de-DE
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"Reduzieren Sie die Verwendung von berechneten Spalten, die die RELATED-"
+"Funktion verwenden"
+
+# el-GR
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"Μειώστε τη χρήση των υπολογιζόμενων στηλών που χρησιμοποιούν τη συνάρτηση "
+"RELATED"
+
+# fa-IR
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"کاهش استفاده از ستون های محاسبه شده که از تابع RELATED استفاده می کنند"
+
+# ga-IE
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "Laghdaigh úsáid na gcolún ríofa a úsáideann an fheidhm GHAOLMHAR"
+
+# hi-IN
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "RELATED फ़ंक्शन का उपयोग करने वाले परिकलित स्तंभों का उपयोग कम करें"
+
+# hu-HU
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"A RELATED függvényt használó számított oszlopok használatának csökkentése"
+
+# is-IS
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "Draga úr notkun reiknaðra dálka sem nota aðgerðina TENGT"
+
+# ja-JP
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "RELATED 関数を使用する計算列の使用を減らす"
+
+# nl-NL
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"Verminder het gebruik van berekende kolommen die gebruikmaken van de functie"
+" RELATED"
+
+# pl-PL
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "Zmniejsz użycie kolumn obliczeniowych, które używają funkcji RELATED"
+
+# pt-BR
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "Reduzir o uso de colunas calculadas que usam a função RELATED"
+
+# ru-RU
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"Сокращение использования вычисляемых столбцов, использующих функцию RELATED"
+
+# te-IN
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "సంబంధిత విధిని ఉపయోగించే లెక్కించబడిన కాలమ్ ల వాడకాన్ని తగ్గించండి."
+
+# ta-IN
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"தொடர்புடைய செயல்பாட்டைப் பயன்படுத்தும் கணக்கிடப்பட்ட நெடுவரிசைகளின் "
+"பயன்பாட்டைக் குறைக்கவும்"
+
+# th-TH
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "ลดการใช้คอลัมน์จากการคํานวณที่ใช้ฟังก์ชัน RELATED"
+
+# zu-ZA
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"Nciphisa ukusetshenziswa kwamakholomu abalwe asebenzisa umsebenzi we-RELATED"
+
+# am-ET
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "ተዛማጅ ተግባርን የሚጠቀሙ የስሌት ዓምዶች አጠቃቀም መቀነስ"
+
+# ar-AE
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "تقليل استخدام الأعمدة المحسوبة التي تستخدم الدالة RELATED"
+
+# it-IT
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Evitare un'eccessiva relazione bidirezionale o molti-a-molti"
+
+# es-ES
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Evite las relaciones bidireccionales excesivas o de varios a muchos"
+
+# he-IL
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "הימנע מקשרי גומלין דו-כיווניים מוגזמים או מקשרי גומלין של רבים לרבים"
+
+# pt-PT
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Evite relações bidirecionais excessivas ou de muitos para muitos"
+
+# zh-CN
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "避免过多的双向或多对多关系"
+
+# fr-FR
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr ""
+"Évitez les relations bidirectionnelles ou plusieurs-à-plusieurs excessives"
+
+# da-DK
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Undgå for mange tovejs- eller mange-til-mange-relationer"
+
+# cs-CZ
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Vyhněte se nadměrnému počtu obousměrných relací nebo relací M:N"
+
+# de-DE
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Vermeiden Sie übermäßige bidirektionale oder m:n-Beziehungen"
+
+# el-GR
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr ""
+"Αποφύγετε τις υπερβολικές αμφίδρομες σχέσεις ή σχέσεις πολλά-προς-πολλά"
+
+# fa-IR
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "از روابط بیش از حد دو طرفه یا چند به چند خودداری کنید"
+
+# ga-IE
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Seachain caidrimh iomarcacha dhéthreoch nó go leor le go leor"
+
+# hi-IN
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "अत्यधिक द्वि-दिशात्मक या कई-से-कई संबंधों से बचें"
+
+# hu-HU
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Kerülje a túlzott kétirányú vagy több-a-többhöz kapcsolatokat"
+
+# is-IS
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Forðastu óhófleg tvíátta eða margátta sambönd"
+
+# ja-JP
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "過度の双方向または多対多の関係を避ける"
+
+# nl-NL
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Vermijd buitensporige bidirectionele of veel-op-veel-relaties"
+
+# pl-PL
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr ""
+"Unikanie nadmiernej liczby relacji dwukierunkowych lub relacji wiele-do-"
+"wielu"
+
+# pt-BR
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Evite relacionamentos bidirecionais excessivos ou muitos para muitos"
+
+# ru-RU
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr ""
+"Избегайте чрезмерных двунаправленных отношений или отношений «многие ко "
+"многим»"
+
+# te-IN
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "మితిమీరిన ద్వి-దిశ లేదా అనేక-టు-అనేక సంబంధాలను నివారించండి"
+
+# ta-IN
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "அதிகப்படியான இரு-திசை அல்லது பல உறவுகளைத் தவிர்க்கவும்"
+
+# th-TH
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "หลีกเลี่ยงความสัมพันธ์แบบสองทิศทางหรือแบบกลุ่มต่อกลุ่มมากเกินไป"
+
+# zu-ZA
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Gwema ubudlelwane ngokweqile be-bi-directional noma obuningi"
+
+# am-ET
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "ከልክ ያለፈ ባለት-አቅጣጫ ወይም ብዙ-ወደ-ብዙ ግንኙነት አስወግድ"
+
+# ar-AE
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "تجنب العلاقات المفرطة ثنائية الاتجاه أو العلاقات بين متعدد إلى متعدد"
+
+# it-IT
+msgid "Remove auto-date table"
+msgstr "Rimuovi la tabella della data automatica"
+
+# es-ES
+msgid "Remove auto-date table"
+msgstr "Eliminar la tabla de fecha automática"
+
+# he-IL
+msgid "Remove auto-date table"
+msgstr "הסרת טבלת תאריכים אוטומטיים"
+
+# pt-PT
+msgid "Remove auto-date table"
+msgstr "Remover tabela de data automática"
+
+# zh-CN
+msgid "Remove auto-date table"
+msgstr "删除自动日期表"
+
+# fr-FR
+msgid "Remove auto-date table"
+msgstr "Supprimer la table de date automatique"
+
+# da-DK
+msgid "Remove auto-date table"
+msgstr "Fjern tabel med automatisk datering"
+
+# cs-CZ
+msgid "Remove auto-date table"
+msgstr "Odebrat tabulku s automatickým datováním"
+
+# de-DE
+msgid "Remove auto-date table"
+msgstr "Entfernen der Tabelle mit automatischem Datum"
+
+# el-GR
+msgid "Remove auto-date table"
+msgstr "Κατάργηση πίνακα αυτόματης ημερομηνίας"
+
+# fa-IR
+msgid "Remove auto-date table"
+msgstr "حذف جدول تاریخ خودکار"
+
+# ga-IE
+msgid "Remove auto-date table"
+msgstr "Bain tábla uathoibríoch-dáta"
+
+# hi-IN
+msgid "Remove auto-date table"
+msgstr "ऑटो-डेट टेबल हटाएं"
+
+# hu-HU
+msgid "Remove auto-date table"
+msgstr "Automatikus dátumtáblázat eltávolítása"
+
+# is-IS
+msgid "Remove auto-date table"
+msgstr "Fjarlægja sjálfvirka dagsetningartöflu"
+
+# ja-JP
+msgid "Remove auto-date table"
+msgstr "自動日付テーブルを削除する"
+
+# nl-NL
+msgid "Remove auto-date table"
+msgstr "Tabel met automatische datums verwijderen"
+
+# pl-PL
+msgid "Remove auto-date table"
+msgstr "Usuń tabelę z automatyczną datą"
+
+# pt-BR
+msgid "Remove auto-date table"
+msgstr "Remover tabela de data automática"
+
+# ru-RU
+msgid "Remove auto-date table"
+msgstr "Удаление таблицы автодат"
+
+# te-IN
+msgid "Remove auto-date table"
+msgstr "ఆటో-డేట్ టేబుల్ తొలగించు"
+
+# ta-IN
+msgid "Remove auto-date table"
+msgstr "தானியங்கு தேதி அட்டவணையை அகற்று"
+
+# th-TH
+msgid "Remove auto-date table"
+msgstr "ลบตารางวันที่อัตโนมัติ"
+
+# zu-ZA
+msgid "Remove auto-date table"
+msgstr "Susa ithebula losuku oluzenzakalelayo"
+
+# am-ET
+msgid "Remove auto-date table"
+msgstr "የመኪና-ቀን ጠረጴዛ አስወግድ"
+
+# ar-AE
+msgid "Remove auto-date table"
+msgstr "إزالة جدول التاريخ التلقائي"
+
+# it-IT
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"Le tabelle data/calendario devono essere contrassegnate come tabella data"
+
+# es-ES
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"Las tablas de fecha/calendario deben marcarse como una tabla de fechas"
+
+# he-IL
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "טבלאות תאריך/לוח שנה צריכות להיות מסומנות כטבלת תאריכים"
+
+# pt-PT
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"As tabelas de data/calendário devem ser marcadas como uma tabela de data"
+
+# zh-CN
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "日期/日历表应标记为日期表"
+
+# fr-FR
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"Les tables de dates/calendriers doivent être marquées comme une table de "
+"dates"
+
+# da-DK
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "Dato-/kalendertabeller skal markeres som en datotabel"
+
+# cs-CZ
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"Tabulky kalendářních dat by měly být označeny jako tabulka kalendářních dat."
+
+# de-DE
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"Datums-/Kalendertabellen sollten als Datumstabelle gekennzeichnet werden"
+
+# el-GR
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"Οι πίνακες ημερομηνιών/ημερολογίου πρέπει να επισημαίνονται ως πίνακας "
+"ημερομηνιών"
+
+# fa-IR
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "جداول تاریخ/تقویم باید به عنوان جدول تاریخ علامت گذاری شوند"
+
+# ga-IE
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "Ba chóir táblaí dáta/féilire a mharcáil mar thábla dáta"
+
+# hi-IN
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"दिनांक/कैलेंडर तालिकाओं को दिनांक तालिका के रूप में चिह्नित किया जाना चाहिए"
+
+# hu-HU
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "A dátum-/naptártáblázatokat dátumtáblázatként kell megjelölni"
+
+# is-IS
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"Dagsetningar-/dagatalstöflur ættu að vera merktar sem dagsetningartafla"
+
+# ja-JP
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "日付/カレンダーテーブルは、日付テーブルとしてマークする必要があります"
+
+# nl-NL
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "Datum-/kalendertabellen moeten worden gemarkeerd als een datumtabel"
+
+# pl-PL
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "Tabele dat/kalendarzy powinny być oznaczone jako tabele dat"
+
+# pt-BR
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"As tabelas de data/calendário devem ser marcadas como uma tabela de datas"
+
+# ru-RU
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "Таблицы дат/календаря должны быть помечены как таблица дат"
+
+# te-IN
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "తేదీ/క్యాలెండర్ పట్టికలను తేదీ పట్టికగా మార్క్ చేయాలి."
+
+# ta-IN
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "தேதி / காலண்டர் அட்டவணைகள் தேதி அட்டவணையாக குறிக்கப்பட வேண்டும்"
+
+# th-TH
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "ตารางวันที่/ปฏิทินควรถูกทําเครื่องหมายเป็นตารางวันที่"
+
+# zu-ZA
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "Amatafula osuku/ikhalenda kufanele aphawulwe njengethebula losuku"
+
+# am-ET
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "የቀን/ቀን መቁጠሪያ ሠንጠረዦች የቀን ሠንጠረዥ ሆነው መታወቅ ይኖርባቸዋል"
+
+# ar-AE
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "يجب وضع علامة على جداول التاريخ / التقويم كجدول تواريخ"
+
+# it-IT
+msgid "Large tables should be partitioned"
+msgstr "Le tabelle di grandi dimensioni devono essere partizionate"
+
+# es-ES
+msgid "Large tables should be partitioned"
+msgstr "Las tablas grandes deben estar particionadas"
+
+# he-IL
+msgid "Large tables should be partitioned"
+msgstr "שולחנות גדולים צריכים להיות מחולקים למחיצות"
+
+# pt-PT
+msgid "Large tables should be partitioned"
+msgstr "Tabelas grandes devem ser particionadas"
+
+# zh-CN
+msgid "Large tables should be partitioned"
+msgstr "应对大型表进行分区"
+
+# fr-FR
+msgid "Large tables should be partitioned"
+msgstr "Les tables volumineuses doivent être partitionnées"
+
+# da-DK
+msgid "Large tables should be partitioned"
+msgstr "Store borde skal opdeles"
+
+# cs-CZ
+msgid "Large tables should be partitioned"
+msgstr "Velké tabulky by měly být rozdělené na oddíly."
+
+# de-DE
+msgid "Large tables should be partitioned"
+msgstr "Große Tabellen sollten partitioniert werden"
+
+# el-GR
+msgid "Large tables should be partitioned"
+msgstr "Τα μεγάλα τραπέζια πρέπει να χωριστούν"
+
+# fa-IR
+msgid "Large tables should be partitioned"
+msgstr "جداول بزرگ باید پارتیشن بندی شوند"
+
+# ga-IE
+msgid "Large tables should be partitioned"
+msgstr "Ba chóir táblaí móra a dheighilt"
+
+# hi-IN
+msgid "Large tables should be partitioned"
+msgstr "बड़ी तालिकाओं का विभाजन किया जाना चाहिए"
+
+# hu-HU
+msgid "Large tables should be partitioned"
+msgstr "A nagy táblákat particionálni kell"
+
+# is-IS
+msgid "Large tables should be partitioned"
+msgstr "Stórum borðum ætti að skipta"
+
+# ja-JP
+msgid "Large tables should be partitioned"
+msgstr "大きなテーブルはパーティション分割する必要があります"
+
+# nl-NL
+msgid "Large tables should be partitioned"
+msgstr "Grote tafels moeten worden gepartitioneerd"
+
+# pl-PL
+msgid "Large tables should be partitioned"
+msgstr "Duże tabele powinny być podzielone na partycje"
+
+# pt-BR
+msgid "Large tables should be partitioned"
+msgstr "Tabelas grandes devem ser particionadas"
+
+# ru-RU
+msgid "Large tables should be partitioned"
+msgstr "Большие таблицы должны быть секционированы"
+
+# te-IN
+msgid "Large tables should be partitioned"
+msgstr "పెద్ద టేబుళ్లను విభజించాలి"
+
+# ta-IN
+msgid "Large tables should be partitioned"
+msgstr "பெரிய அட்டவணைகள் பகிரப்பட வேண்டும்"
+
+# th-TH
+msgid "Large tables should be partitioned"
+msgstr "โต๊ะขนาดใหญ่ควรแบ่งพาร์ติชัน"
+
+# zu-ZA
+msgid "Large tables should be partitioned"
+msgstr "Amatafula amakhulu kufanele ahlukaniswe"
+
+# am-ET
+msgid "Large tables should be partitioned"
+msgstr "ትላልቅ ጠረጴዛዎች መከፋፈል አለባቸው"
+
+# ar-AE
+msgid "Large tables should be partitioned"
+msgstr "يجب تقسيم الجداول الكبيرة"
+
+# it-IT
+msgid "Limit row level security (RLS) logic"
+msgstr "Logica di sicurezza a livello di riga limite (RLS)"
+
+# es-ES
+msgid "Limit row level security (RLS) logic"
+msgstr "Limitar la lógica de seguridad de nivel de fila (RLS)"
+
+# he-IL
+msgid "Limit row level security (RLS) logic"
+msgstr "לוגיקת הגבלת אבטחה ברמת שורה (RLS)"
+
+# pt-PT
+msgid "Limit row level security (RLS) logic"
+msgstr "Lógica de segurança de nível de linha (RLS) de limite"
+
+# zh-CN
+msgid "Limit row level security (RLS) logic"
+msgstr "限制行级别安全性 （RLS） 逻辑"
+
+# fr-FR
+msgid "Limit row level security (RLS) logic"
+msgstr "Logique de sécurité au niveau des lignes (RLS) limitée"
+
+# da-DK
+msgid "Limit row level security (RLS) logic"
+msgstr "Begræns sikkerhed på rækkeniveau (RLS)"
+
+# cs-CZ
+msgid "Limit row level security (RLS) logic"
+msgstr "Logika omezení zabezpečení na úrovni řádků (RLS)"
+
+# de-DE
+msgid "Limit row level security (RLS) logic"
+msgstr "Grenzwert-RLS-Logik (Limit Row Level Security)"
+
+# el-GR
+msgid "Limit row level security (RLS) logic"
+msgstr "Λογική ασφάλειας ορίου επιπέδου γραμμών (RLS)"
+
+# fa-IR
+msgid "Limit row level security (RLS) logic"
+msgstr "منطق امنیت سطح ردیف (RLS) را محدود کنید"
+
+# ga-IE
+msgid "Limit row level security (RLS) logic"
+msgstr "Cuir teorainn le loighic slándála leibhéal an ró (RLS)"
+
+# hi-IN
+msgid "Limit row level security (RLS) logic"
+msgstr "पंक्ति स्तर सुरक्षा (RLS) तर्क सीमित करें"
+
+# hu-HU
+msgid "Limit row level security (RLS) logic"
+msgstr "Sorszintű biztonsági (RLS) logika korlátozása"
+
+# is-IS
+msgid "Limit row level security (RLS) logic"
+msgstr "Takmarka öryggi á raðstigi (RLS) rökfræði"
+
+# ja-JP
+msgid "Limit row level security (RLS) logic"
+msgstr "行レベル・セキュリティー (RLS) ロジックの制限"
+
+# nl-NL
+msgid "Limit row level security (RLS) logic"
+msgstr "Logica voor beveiliging op rijniveau (RLS) beperken"
+
+# pl-PL
+msgid "Limit row level security (RLS) logic"
+msgstr "Logika ograniczania zabezpieczeń na poziomie wiersza (RLS)"
+
+# pt-BR
+msgid "Limit row level security (RLS) logic"
+msgstr "Limitar a lógica de RLS (segurança em nível de linha)"
+
+# ru-RU
+msgid "Limit row level security (RLS) logic"
+msgstr "Ограничение логики безопасности на уровне строк (RLS)"
+
+# te-IN
+msgid "Limit row level security (RLS) logic"
+msgstr "వరుస స్థాయి భద్రత (RLS) లాజిక్ ని పరిమితం చేయండి"
+
+# ta-IN
+msgid "Limit row level security (RLS) logic"
+msgstr "வரம்பு வரிசை நிலை பாதுகாப்பு (RLS) தர்க்கம்"
+
+# th-TH
+msgid "Limit row level security (RLS) logic"
+msgstr "ตรรกะการรักษาความปลอดภัยระดับแถว (RLS) จํากัด"
+
+# zu-ZA
+msgid "Limit row level security (RLS) logic"
+msgstr "Umkhawulo wezinga lokugwedla ukuphepha (RLS) logic"
+
+# am-ET
+msgid "Limit row level security (RLS) logic"
+msgstr "ረድፍ ደረጃ ደህንነት (RLS) ሎጂክ ገደብ"
+
+# ar-AE
+msgid "Limit row level security (RLS) logic"
+msgstr "منطق الحد من الأمان على مستوى الصف (RLS)"
+
+# it-IT
+msgid "Model should have a date table"
+msgstr "Il modello deve avere una tabella data"
+
+# es-ES
+msgid "Model should have a date table"
+msgstr "El modelo debe tener una tabla de fechas"
+
+# he-IL
+msgid "Model should have a date table"
+msgstr "לדגם צריכה להיות טבלת תאריכים"
+
+# pt-PT
+msgid "Model should have a date table"
+msgstr "O modelo deve ter uma tabela de data"
+
+# zh-CN
+msgid "Model should have a date table"
+msgstr "模型应该有一个日期表"
+
+# fr-FR
+msgid "Model should have a date table"
+msgstr "Le modèle doit avoir une table de dates"
+
+# da-DK
+msgid "Model should have a date table"
+msgstr "Modellen skal have en datotabel"
+
+# cs-CZ
+msgid "Model should have a date table"
+msgstr "Model by měl mít tabulku kalendářních dat."
+
+# de-DE
+msgid "Model should have a date table"
+msgstr "Das Modell sollte über eine Datumstabelle verfügen"
+
+# el-GR
+msgid "Model should have a date table"
+msgstr "Το μοντέλο πρέπει να έχει πίνακα ημερομηνιών"
+
+# fa-IR
+msgid "Model should have a date table"
+msgstr "مدل باید دارای جدول تاریخ باشد"
+
+# ga-IE
+msgid "Model should have a date table"
+msgstr "Ba chóir go mbeadh tábla dáta ag an tsamhail"
+
+# hi-IN
+msgid "Model should have a date table"
+msgstr "मॉडल में डेट टेबल होना चाहिए"
+
+# hu-HU
+msgid "Model should have a date table"
+msgstr "A modellnek dátumtáblával kell rendelkeznie"
+
+# is-IS
+msgid "Model should have a date table"
+msgstr "Líkan ætti að hafa dagsetningartöflu"
+
+# ja-JP
+msgid "Model should have a date table"
+msgstr "モデルには日付テーブルが必要です"
+
+# nl-NL
+msgid "Model should have a date table"
+msgstr "Model moet een datumtabel hebben"
+
+# pl-PL
+msgid "Model should have a date table"
+msgstr "Model powinien mieć tabelę dat"
+
+# pt-BR
+msgid "Model should have a date table"
+msgstr "O modelo deve ter uma tabela de datas"
+
+# ru-RU
+msgid "Model should have a date table"
+msgstr "Модель должна иметь таблицу дат"
+
+# te-IN
+msgid "Model should have a date table"
+msgstr "మోడల్ కు తేదీ పట్టిక ఉండాలి"
+
+# ta-IN
+msgid "Model should have a date table"
+msgstr "மாடலில் தேதி அட்டவணை இருக்க வேண்டும்"
+
+# th-TH
+msgid "Model should have a date table"
+msgstr "โมเดลควรมีตารางวันที่"
+
+# zu-ZA
+msgid "Model should have a date table"
+msgstr "Imodeli kufanele ibe netafula losuku"
+
+# am-ET
+msgid "Model should have a date table"
+msgstr "ሞዴል ቀን ጠረጴዛ ሊኖረው ይገባል"
+
+# ar-AE
+msgid "Model should have a date table"
+msgstr "يجب أن يحتوي النموذج على جدول تواريخ"
+
+# it-IT
+msgid "Calculation items must have an expression"
+msgstr "Gli elementi di calcolo devono avere un'espressione"
+
+# es-ES
+msgid "Calculation items must have an expression"
+msgstr "Los elementos de cálculo deben tener una expresión"
+
+# he-IL
+msgid "Calculation items must have an expression"
+msgstr "פריטי חישוב חייבים לכלול ביטוי"
+
+# pt-PT
+msgid "Calculation items must have an expression"
+msgstr "Os itens de cálculo devem ter uma expressão"
+
+# zh-CN
+msgid "Calculation items must have an expression"
+msgstr "计算项必须具有表达式"
+
+# fr-FR
+msgid "Calculation items must have an expression"
+msgstr "Les éléments de calcul doivent avoir une expression"
+
+# da-DK
+msgid "Calculation items must have an expression"
+msgstr "Beregningselementer skal have et udtryk"
+
+# cs-CZ
+msgid "Calculation items must have an expression"
+msgstr "Položky výpočtu musí mít výraz"
+
+# de-DE
+msgid "Calculation items must have an expression"
+msgstr "Berechnungselemente müssen einen Ausdruck haben"
+
+# el-GR
+msgid "Calculation items must have an expression"
+msgstr "Τα στοιχεία υπολογισμού πρέπει να έχουν μια έκφραση"
+
+# fa-IR
+msgid "Calculation items must have an expression"
+msgstr "موارد محاسبه باید یک عبارت داشته باشند"
+
+# ga-IE
+msgid "Calculation items must have an expression"
+msgstr "Ní mór slonn a bheith ag míreanna ríofa"
+
+# hi-IN
+msgid "Calculation items must have an expression"
+msgstr "परिकलन आइटम्स में एक व्यंजक होना आवश्यक है"
+
+# hu-HU
+msgid "Calculation items must have an expression"
+msgstr "A számítási elemeknek kifejezéssel kell rendelkezniük"
+
+# is-IS
+msgid "Calculation items must have an expression"
+msgstr "Reikniatriði verða að hafa segð"
+
+# ja-JP
+msgid "Calculation items must have an expression"
+msgstr "計算項目には式が必要です"
+
+# nl-NL
+msgid "Calculation items must have an expression"
+msgstr "Berekeningsitems moeten een expressie hebben"
+
+# pl-PL
+msgid "Calculation items must have an expression"
+msgstr "Elementy obliczeń muszą zawierać wyrażenie"
+
+# pt-BR
+msgid "Calculation items must have an expression"
+msgstr "Os itens de cálculo devem ter uma expressão"
+
+# ru-RU
+msgid "Calculation items must have an expression"
+msgstr "Элементы вычислений должны иметь выражение"
+
+# te-IN
+msgid "Calculation items must have an expression"
+msgstr "లెక్కింపు ఐటమ్ లకు తప్పనిసరిగా వ్యక్తీకరణ ఉండాలి"
+
+# ta-IN
+msgid "Calculation items must have an expression"
+msgstr "கணக்கீட்டு உருப்படிகளில் ஒரு வெளிப்பாடு இருக்க வேண்டும்"
+
+# th-TH
+msgid "Calculation items must have an expression"
+msgstr "รายการการคํานวณต้องมีนิพจน์"
+
+# zu-ZA
+msgid "Calculation items must have an expression"
+msgstr "Izinto zokubala kumele zibe nenkulumo"
+
+# am-ET
+msgid "Calculation items must have an expression"
+msgstr "የስሌት እቃዎች መግለጫ ሊኖራቸው ይገባል"
+
+# ar-AE
+msgid "Calculation items must have an expression"
+msgstr "يجب أن تحتوي عناصر الحساب على تعبير"
+
+# it-IT
+msgid "Relationship columns should be of the same data type"
+msgstr "Le colonne delle relazioni devono essere dello stesso tipo di dati"
+
+# es-ES
+msgid "Relationship columns should be of the same data type"
+msgstr "Las columnas de relación deben ser del mismo tipo de datos"
+
+# he-IL
+msgid "Relationship columns should be of the same data type"
+msgstr "עמודות קשרי גומלין צריכות להיות מאותו סוג נתונים"
+
+# pt-PT
+msgid "Relationship columns should be of the same data type"
+msgstr "As colunas de relacionamento devem ser do mesmo tipo de dados"
+
+# zh-CN
+msgid "Relationship columns should be of the same data type"
+msgstr "关系列应具有相同的数据类型"
+
+# fr-FR
+msgid "Relationship columns should be of the same data type"
+msgstr "Les colonnes de relation doivent être du même type de données"
+
+# da-DK
+msgid "Relationship columns should be of the same data type"
+msgstr "Relationskolonner skal være af samme datatype"
+
+# cs-CZ
+msgid "Relationship columns should be of the same data type"
+msgstr "Sloupce relace by měly být stejného datového typu."
+
+# de-DE
+msgid "Relationship columns should be of the same data type"
+msgstr "Beziehungsspalten sollten denselben Datentyp aufweisen"
+
+# el-GR
+msgid "Relationship columns should be of the same data type"
+msgstr "Οι στήλες σχέσεων πρέπει να είναι του ίδιου τύπου δεδομένων"
+
+# fa-IR
+msgid "Relationship columns should be of the same data type"
+msgstr "ستون های رابطه باید از یک نوع داده باشند"
+
+# ga-IE
+msgid "Relationship columns should be of the same data type"
+msgstr "Ba cheart colúin chaidrimh a bheith den chineál céanna sonraí"
+
+# hi-IN
+msgid "Relationship columns should be of the same data type"
+msgstr "संबंध स्तंभ समान डेटा प्रकार के होने चाहिए"
+
+# hu-HU
+msgid "Relationship columns should be of the same data type"
+msgstr "A kapcsolati oszlopoknak azonos adattípusúaknak kell lenniük"
+
+# is-IS
+msgid "Relationship columns should be of the same data type"
+msgstr "Tengsladálkar ættu að vera af sömu gagnagerð"
+
+# ja-JP
+msgid "Relationship columns should be of the same data type"
+msgstr "リレーションシップ列は同じデータ型である必要があります"
+
+# nl-NL
+msgid "Relationship columns should be of the same data type"
+msgstr "Relatiekolommen moeten van hetzelfde gegevenstype zijn"
+
+# pl-PL
+msgid "Relationship columns should be of the same data type"
+msgstr "Kolumny relacji powinny być tego samego typu danych"
+
+# pt-BR
+msgid "Relationship columns should be of the same data type"
+msgstr "As colunas de relacionamento devem ser do mesmo tipo de dados"
+
+# ru-RU
+msgid "Relationship columns should be of the same data type"
+msgstr "Столбцы отношений должны иметь один и тот же тип данных"
+
+# te-IN
+msgid "Relationship columns should be of the same data type"
+msgstr "రిలేషన్ షిప్ కాలమ్ లు ఒకే డేటా టైప్ లో ఉండాలి."
+
+# ta-IN
+msgid "Relationship columns should be of the same data type"
+msgstr "உறவு பத்திகள் ஒரே தரவினத்தில் இருக்க வேண்டும்"
+
+# th-TH
+msgid "Relationship columns should be of the same data type"
+msgstr "คอลัมน์ความสัมพันธ์ควรเป็นชนิดข้อมูลเดียวกัน"
+
+# zu-ZA
+msgid "Relationship columns should be of the same data type"
+msgstr "Amakholomu obudlelwane kufanele abe uhlobo olufanayo lwedatha"
+
+# am-ET
+msgid "Relationship columns should be of the same data type"
+msgstr "የግንኙነት ዓምዶች ተመሳሳይ የመረጃ አይነት መሆን አለባቸው"
+
+# ar-AE
+msgid "Relationship columns should be of the same data type"
+msgstr "يجب أن تكون أعمدة العلاقة من نفس نوع البيانات"
+
+# it-IT
+msgid "Data columns must have a source column"
+msgstr "Le colonne di dati devono avere una colonna di origine"
+
+# es-ES
+msgid "Data columns must have a source column"
+msgstr "Las columnas de datos deben tener una columna de origen"
+
+# he-IL
+msgid "Data columns must have a source column"
+msgstr "עמודות נתונים חייבות לכלול עמודת מקור"
+
+# pt-PT
+msgid "Data columns must have a source column"
+msgstr "As colunas de dados devem ter uma coluna de origem"
+
+# zh-CN
+msgid "Data columns must have a source column"
+msgstr "数据列必须具有源列"
+
+# fr-FR
+msgid "Data columns must have a source column"
+msgstr "Les colonnes de données doivent avoir une colonne source"
+
+# da-DK
+msgid "Data columns must have a source column"
+msgstr "Datakolonner skal have en kildekolonne"
+
+# cs-CZ
+msgid "Data columns must have a source column"
+msgstr "Sloupce dat musí mít zdrojový sloupec."
+
+# de-DE
+msgid "Data columns must have a source column"
+msgstr "Datenspalten müssen eine Quellspalte haben"
+
+# el-GR
+msgid "Data columns must have a source column"
+msgstr "Οι στήλες δεδομένων πρέπει να έχουν μια στήλη προέλευσης"
+
+# fa-IR
+msgid "Data columns must have a source column"
+msgstr "ستون های داده باید دارای ستون منبع باشند"
+
+# ga-IE
+msgid "Data columns must have a source column"
+msgstr "Ní mór colún foinseach a bheith ag colúin sonraí"
+
+# hi-IN
+msgid "Data columns must have a source column"
+msgstr "डेटा स्तंभों में स्रोत स्तंभ होना आवश्यक है"
+
+# hu-HU
+msgid "Data columns must have a source column"
+msgstr "Az adatoszlopoknak forrásoszloppal kell rendelkezniük"
+
+# is-IS
+msgid "Data columns must have a source column"
+msgstr "Gagnadálkar verða að hafa upprunadálk"
+
+# ja-JP
+msgid "Data columns must have a source column"
+msgstr "データ列にはソース列が必要です"
+
+# nl-NL
+msgid "Data columns must have a source column"
+msgstr "Gegevenskolommen moeten een bronkolom hebben"
+
+# pl-PL
+msgid "Data columns must have a source column"
+msgstr "Kolumny danych muszą mieć kolumnę źródłową"
+
+# pt-BR
+msgid "Data columns must have a source column"
+msgstr "As colunas de dados devem ter uma coluna de origem"
+
+# ru-RU
+msgid "Data columns must have a source column"
+msgstr "Столбцы данных должны иметь исходный столбец"
+
+# te-IN
+msgid "Data columns must have a source column"
+msgstr "డేటా కాలమ్ లకు సోర్స్ కాలమ్ ఉండాలి"
+
+# ta-IN
+msgid "Data columns must have a source column"
+msgstr "தரவு நெடுவரிசைகள் மூல நெடுவரிசையைக் கொண்டிருக்க வேண்டும்"
+
+# th-TH
+msgid "Data columns must have a source column"
+msgstr "คอลัมน์ข้อมูลต้องมีคอลัมน์ต้นทาง"
+
+# zu-ZA
+msgid "Data columns must have a source column"
+msgstr "Amakholomu wedatha kumele abe nekholomu yomthombo"
+
+# am-ET
+msgid "Data columns must have a source column"
+msgstr "የዳታ አምዶች ምንጭ ዓምድ ሊኖራቸው ይገባል"
+
+# ar-AE
+msgid "Data columns must have a source column"
+msgstr "يجب أن تحتوي أعمدة البيانات على عمود مصدر"
+
+# it-IT
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Impostare IsAvailableInMdx su true nelle colonne necessarie"
+
+# es-ES
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Establezca IsAvailableInMdx en true en las columnas necesarias"
+
+# he-IL
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "הגדר את IsAvailableInMdx ל- true בעמודות הדרושות"
+
+# pt-PT
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Defina IsAvailableInMdx como true nas colunas necessárias"
+
+# zh-CN
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "在必要的列上将 IsAvailableInMdx 设置为 true"
+
+# fr-FR
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Définissez IsAvailableInMdx à true sur les colonnes nécessaires"
+
+# da-DK
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Indstil IsAvailableInMdx til sand på de nødvendige kolonner"
+
+# cs-CZ
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Nastavte IsAvailableInMdx na true u potřebných sloupců"
+
+# de-DE
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr ""
+"Legen Sie IsAvailableInMdx für die erforderlichen Spalten auf true fest."
+
+# el-GR
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Ορίστε το IsAvailableInMdx σε true στις απαραίτητες στήλες"
+
+# fa-IR
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "IsAvailableInMdx را روی true در ستون های ضروری تنظیم کنید"
+
+# ga-IE
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Socraigh IsAvailableInMdx le fíor ar cholúin riachtanacha"
+
+# hi-IN
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "IsAvailableInMdx को आवश्यक स्तंभों पर सही पर सेट करें"
+
+# hu-HU
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr ""
+"Állítsa az IsAvailableInMdx értékét true értékre a szükséges oszlopokon"
+
+# is-IS
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Stilltu IsAvailableInMdx á true í nauðsynlegum dálkum"
+
+# ja-JP
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "必要な列で IsAvailableInMdx を true に設定します"
+
+# nl-NL
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Stel IsAvailableInMdx in op true op de benodigde kolommen"
+
+# pl-PL
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Ustaw wartość IsAvailableInMdx na true w wymaganych kolumnach"
+
+# pt-BR
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Defina IsAvailableInMdx como true nas colunas necessárias"
+
+# ru-RU
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Установите IsAvailableInMdx в значение true для необходимых столбцов"
+
+# te-IN
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr ""
+"అవసరమైన కాలమ్ లపై లభ్యం అయ్యే Is లభ్యతInMdxను నిజం చేయడానికి సెట్ చేయండి"
+
+# ta-IN
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "IsAvailableInMdx ஐ தேவையான நெடுவரிசைகளில் உண்மையாக அமைக்கவும்"
+
+# th-TH
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "ตั้งค่า IsAvailableInMdx เป็น true ในคอลัมน์ที่จําเป็น"
+
+# zu-ZA
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Setha IsAvailableInMdx kuyiqiniso kumakholomu adingekayo"
+
+# am-ET
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "IsAvailableInMdx ን በአስፈላጊ ዓምዶች ላይ ወደ እውነት አስቀምጥ"
+
+# ar-AE
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "قم بتعيين IsAvailableInMdx إلى true على الأعمدة الضرورية"
+
+# it-IT
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"Evitare la funzione USERELATIONSHIP e la sicurezza a livello di riga nella "
+"stessa tabella"
+
+# es-ES
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "Evite la función USERELATIONSHIP y RLS en la misma tabla"
+
+# he-IL
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "הימנע מהפונקציה USERELATIONSHIP ומ- RLS כנגד אותה טבלה"
+
+# pt-PT
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "Evite a função USERELATIONSHIP e RLS na mesma tabela"
+
+# zh-CN
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "避免对同一表使用 USERELATIONSHIP 函数和 RLS"
+
+# fr-FR
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "Évitez la fonction USERELATIONSHIP et la RLS sur la même table"
+
+# da-DK
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"Undgå funktionen USERELATIONSHIP og sikkerhed på rækkeniveau i forhold til "
+"den samme tabel"
+
+# cs-CZ
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"Vyhněte se funkci USERELATIONSHIP a zabezpečení na úrovni řádků ve stejné "
+"tabulce"
+
+# de-DE
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"Vermeiden Sie die USERELATIONSHIP-Funktion und RLS für dieselbe Tabelle"
+
+# el-GR
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "Αποφύγετε τη συνάρτηση USERELATIONSHIP και το RLS στον ίδιο πίνακα"
+
+# fa-IR
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "از تابع USERELATIONSHIP و RLS در برابر یک جدول خودداری کنید"
+
+# ga-IE
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"Seachain an fheidhm USERELATIONSHIP agus RLS i gcoinne an tábla céanna"
+
+# hi-IN
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "USERELATIONSHIP फ़ंक्शन और RLS को समान तालिका के विरुद्ध टालें"
+
+# hu-HU
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "Kerülje a USERELATIONSHIP függvényt és az RLS-t ugyanazon a táblán"
+
+# is-IS
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "Forðastu aðgerðina USERELATIONSHIP og RLS gegn sömu töflu"
+
+# ja-JP
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "同じテーブルに対する USERELATIONSHIP 関数と RLS は避けてください"
+
+# nl-NL
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "Vermijd de functie USERELATIONSHIP en RLS voor dezelfde tabel"
+
+# pl-PL
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"Unikaj funkcji USERELATIONSHIP i zabezpieczeń na poziomie wiersza w tej "
+"samej tabeli"
+
+# pt-BR
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "Evite a função USERELATIONSHIP e a RLS na mesma tabela"
+
+# ru-RU
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"Избегайте использования функции USERELATIONSHIP и RLS для одной и той же "
+"таблицы"
+
+# te-IN
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"ఒకే టేబుల్ కు వ్యతిరేకంగా యూజర్ రిలేషన్ షిప్ ఫంక్షన్ మరియు RLSను "
+"పరిహరించండి."
+
+# ta-IN
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"ஒரே டேபிளுக்கு எதிராக USERELATIONSHIP செயல்பாடு மற்றும் RLS ஐ தவிர்க்கவும்"
+
+# th-TH
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "หลีกเลี่ยงฟังก์ชัน USERELATIONSHIP และ RLS กับตารางเดียวกัน"
+
+# zu-ZA
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"Gwema umsebenzi we-USERELATIONSHIP kanye ne-RLS ngokumelene netafula "
+"elifanayo"
+
+# am-ET
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "የ USERELATIONSHIP ተግባር እና RLS በተመሳሳይ ጠረጴዛ ላይ ያስወግዱ"
+
+# ar-AE
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "تجنب الدالة USERELATIONSHIP ومتلازمة تململ الساقين مقابل نفس الجدول"
+
+# it-IT
+msgid "Avoid using the IFERROR function"
+msgstr "Evitare di utilizzare la funzione SE.ERRORE"
+
+# es-ES
+msgid "Avoid using the IFERROR function"
+msgstr "Evite usar la función IFERROR"
+
+# he-IL
+msgid "Avoid using the IFERROR function"
+msgstr "הימנע משימוש בפונקציה IFERROR"
+
+# pt-PT
+msgid "Avoid using the IFERROR function"
+msgstr "Evite usar a função IFERROR"
+
+# zh-CN
+msgid "Avoid using the IFERROR function"
+msgstr "避免使用 IFERROR 函数"
+
+# fr-FR
+msgid "Avoid using the IFERROR function"
+msgstr "Évitez d’utiliser la fonction IFERROR"
+
+# da-DK
+msgid "Avoid using the IFERROR function"
+msgstr "Undgå at bruge funktionen HVISFEJL"
+
+# cs-CZ
+msgid "Avoid using the IFERROR function"
+msgstr "Vyhněte se použití funkce IFERROR"
+
+# de-DE
+msgid "Avoid using the IFERROR function"
+msgstr "Vermeiden Sie die Verwendung der WENNFEHLER-Funktion"
+
+# el-GR
+msgid "Avoid using the IFERROR function"
+msgstr "Αποφύγετε τη χρήση της συνάρτησης IFERROR"
+
+# fa-IR
+msgid "Avoid using the IFERROR function"
+msgstr "از استفاده از تابع IFERROR خودداری کنید"
+
+# ga-IE
+msgid "Avoid using the IFERROR function"
+msgstr "Seachain an fheidhm IFERROR a úsáid"
+
+# hi-IN
+msgid "Avoid using the IFERROR function"
+msgstr "IFERROR फ़ंक्शन का उपयोग करने से बचें"
+
+# hu-HU
+msgid "Avoid using the IFERROR function"
+msgstr "Kerülje a HAHIBA függvény használatát"
+
+# is-IS
+msgid "Avoid using the IFERROR function"
+msgstr "Forðastu að nota aðgerðina IFERROR"
+
+# ja-JP
+msgid "Avoid using the IFERROR function"
+msgstr "IFERROR 関数の使用は避けてください"
+
+# nl-NL
+msgid "Avoid using the IFERROR function"
+msgstr "Vermijd het gebruik van de ALS.FOUT-functie"
+
+# pl-PL
+msgid "Avoid using the IFERROR function"
+msgstr "Unikaj używania funkcji JEŻELI.BŁĄD"
+
+# pt-BR
+msgid "Avoid using the IFERROR function"
+msgstr "Evite usar a função IFERROR"
+
+# ru-RU
+msgid "Avoid using the IFERROR function"
+msgstr "Избегайте использования функции IFERROR"
+
+# te-IN
+msgid "Avoid using the IFERROR function"
+msgstr "IFERROR ఫంక్షన్ ని ఉపయోగించడం పరిహరించండి."
+
+# ta-IN
+msgid "Avoid using the IFERROR function"
+msgstr "IFERROR செயல்பாட்டைப் பயன்படுத்துவதைத் தவிர்க்கவும்"
+
+# th-TH
+msgid "Avoid using the IFERROR function"
+msgstr "หลีกเลี่ยงการใช้ฟังก์ชัน IFERROR"
+
+# zu-ZA
+msgid "Avoid using the IFERROR function"
+msgstr "Gwema ukusebenzisa umsebenzi we-IFERROR"
+
+# am-ET
+msgid "Avoid using the IFERROR function"
+msgstr "የ IFERROR ተግባርን ከመጠቀም ይቆጠቡ"
+
+# ar-AE
+msgid "Avoid using the IFERROR function"
+msgstr "تجنب استخدام الدالة IFERROR"
+
+# it-IT
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"Utilizzare la funzione TREATAS anziché INTERSECT per le relazioni virtuali"
+
+# es-ES
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"Utilice la función TREATAS en lugar de INTERSECT para las relaciones "
+"virtuales"
+
+# he-IL
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"השתמש בפונקציה TREATAS במקום בפונקציה INTERSECT עבור קשרי גומלין וירטואליים"
+
+# pt-PT
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"Use a função TREATAS em vez de INTERSECT para relacionamentos virtuais"
+
+# zh-CN
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "使用 TREATAS 函数而不是 INTERSECT 来处理虚拟关系"
+
+# fr-FR
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"Utiliser la fonction TREATAS au lieu de INTERSECT pour les relations "
+"virtuelles"
+
+# da-DK
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "Brug funktionen BEHANDL i stedet for SKÆRING til virtuelle relationer"
+
+# cs-CZ
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "Použití funkce TREATAS místo funkce INTERSECT pro virtuální relace"
+
+# de-DE
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"Verwenden Sie die Funktion TREATAS anstelle von INTERSECT für virtuelle "
+"Beziehungen"
+
+# el-GR
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"Χρησιμοποιήστε τη συνάρτηση TREATAS αντί για τη συνάρτηση INTERSECT για "
+"εικονικές σχέσεις"
+
+# fa-IR
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "استفاده از تابع TREATAS به جای INTERSECT برای روابط مجازی"
+
+# ga-IE
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"Bain úsáid as an fheidhm TREATAS in ionad INTERSECT do chaidrimh fhíorúla"
+
+# hi-IN
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"वर्चुअल संबंधों के लिए INTERSECT के बजाय TREATAS फ़ंक्शन का उपयोग करें"
+
+# hu-HU
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"Használja a TREATAS függvényt az INTERSECT helyett virtuális kapcsolatokhoz"
+
+# is-IS
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "Nota aðgerðina SKERA í stað SKERA fyrir sýndarvenslur"
+
+# ja-JP
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "仮想リレーションシップには、INTERSECT の代わりに TREATAS 関数を使用します"
+
+# nl-NL
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"Gebruik de functie TREATAS in plaats van INTERSECT voor virtuele relaties"
+
+# pl-PL
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"Używanie funkcji TREATAS zamiast funkcji PRZECIĘCIE dla relacji wirtualnych"
+
+# pt-BR
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"Use a função TREATAS em vez de INTERSECT para relacionamentos virtuais"
+
+# ru-RU
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"Использование функции TREATAS вместо INTERSECT для виртуальных отношений"
+
+# te-IN
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"వర్చువల్ రిలేషన్ షిప్ ల కొరకు ఇంటర్ సెక్ట్ కు బదులుగా ట్రీట్ ఆస్ ఫంక్షన్ ని "
+"ఉపయోగించండి."
+
+# ta-IN
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"மெய்நிகர் உறவுகளுக்கு INTERSECT க்கு பதிலாக TREATAS செயல்பாட்டைப் "
+"பயன்படுத்தவும்"
+
+# th-TH
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "ใช้ฟังก์ชัน TREATAS แทน INTERSECT สําหรับความสัมพันธ์แบบเสมือน"
+
+# zu-ZA
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"Sebenzisa umsebenzi we-TREATAS esikhundleni se-INTERSECT yobudlelwane "
+"obubonakalayo"
+
+# am-ET
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "የመተግበሪን ግንኙነት ኢንተርሴክት ይልቅ የ TREATAS ተግባር ይጠቀሙ"
+
+# ar-AE
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "استخدم الدالة TREATAS بدلا من INTERSECT للعلاقات الظاهرية"
+
+# it-IT
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"La funzione EVALUATEANDLOG non deve essere utilizzata nei modelli di "
+"produzione"
+
+# es-ES
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"La función EVALUATEANDLOG no se debe utilizar en modelos de producción"
+
+# he-IL
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "אין להשתמש בפונקציה EVALUATEANDLOG במודלי ייצור"
+
+# pt-PT
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "A função EVALUATEANDLOG não deve ser utilizada em modelos de produção"
+
+# zh-CN
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "EVALUATEANDLOG 函数不应在生产模型中使用"
+
+# fr-FR
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"La fonction EVALUATEANDLOG ne doit pas être utilisée dans les modèles de "
+"production"
+
+# da-DK
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "EVALUATEANDLOG-funktionen bør ikke bruges i produktionsmodeller"
+
+# cs-CZ
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "Funkce EVALUATEANDLOG by se neměla používat v produkčních modelech"
+
+# de-DE
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"Die Funktion EVALUATEANDLOG sollte nicht in Produktionsmodellen verwendet "
+"werden"
+
+# el-GR
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"Η συνάρτηση EVALUATEANDLOG δεν πρέπει να χρησιμοποιείται σε μοντέλα "
+"παραγωγής"
+
+# fa-IR
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "تابع EVALUATEANDLOG نباید در مدل های تولیدی استفاده شود"
+
+# ga-IE
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "Níor cheart feidhm EVALUATEANDLOG a úsáid i samhlacha táirgthe"
+
+# hi-IN
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "EVALUATEANDLOG फ़ंक्शन का उपयोग उत्पादन मॉडल में नहीं किया जाना चाहिए"
+
+# hu-HU
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "Az EVALUATEANDLOG függvény nem használható éles modellekben"
+
+# is-IS
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "Ekki má nota EVALUATEANDLOG aðgerðina í framleiðslulíkönum"
+
+# ja-JP
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "EVALUATEANDLOG 関数は、運用モデルでは使用しないでください"
+
+# nl-NL
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"De functie EVALUATEANDLOG mag niet worden gebruikt in productiemodellen"
+
+# pl-PL
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"Funkcja EVALUATEANDLOG nie powinna być używana w modelach produkcyjnych"
+
+# pt-BR
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "A função EVALUATEANDLOG não deve ser usada em modelos de produção"
+
+# ru-RU
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"Функцию EVALUATEANDLOG не следует использовать в производственных моделях"
+
+# te-IN
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "ప్రొడక్షన్ మోడల్స్ లో మదింపు మరియు లాగ్ ఫంక్షన్ ఉపయోగించరాదు."
+
+# ta-IN
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "EVALUATEANDLOG செயல்பாடு உற்பத்தி மாதிரிகளில் பயன்படுத்தப்படக்கூடாது"
+
+# th-TH
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "ไม่ควรใช้ฟังก์ชัน EVALUATEANDLOG ในแบบจําลองการผลิต"
+
+# zu-ZA
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"Umsebenzi we-EXPLOREANDLOG akufanele usetshenziswe kumamodeli wokukhiqiza"
+
+# am-ET
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "የEVALUATEANDLOG ተግባር በምርት ሞዴሎች ውስጥ ጥቅም ላይ መዋል የለበትም"
+
+# ar-AE
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "يجب عدم استخدام الدالة EVALUATEANDLOG في نماذج الإنتاج"
+
+# it-IT
+msgid "Measures should not be direct references of other measures"
+msgstr "Le misure non dovrebbero essere riferimenti diretti ad altre misure"
+
+# es-ES
+msgid "Measures should not be direct references of other measures"
+msgstr "Las medidas no deben ser referencias directas de otras medidas"
+
+# he-IL
+msgid "Measures should not be direct references of other measures"
+msgstr "אמצעים לא צריכים להיות הפניות ישירות של אמצעים אחרים"
+
+# pt-PT
+msgid "Measures should not be direct references of other measures"
+msgstr "As medidas não devem ser referências diretas de outras medidas"
+
+# zh-CN
+msgid "Measures should not be direct references of other measures"
+msgstr "这些措施不应直接参照其他措施"
+
+# fr-FR
+msgid "Measures should not be direct references of other measures"
+msgstr ""
+"Les mesures ne devraient pas être des références directes à d’autres mesures"
+
+# da-DK
+msgid "Measures should not be direct references of other measures"
+msgstr ""
+"Foranstaltninger bør ikke være direkte henvisninger til andre "
+"foranstaltninger"
+
+# cs-CZ
+msgid "Measures should not be direct references of other measures"
+msgstr "Opatření by neměla být přímými odkazy na jiná opatření"
+
+# de-DE
+msgid "Measures should not be direct references of other measures"
+msgstr ""
+"Die Maßnahmen sollten keine direkten Verweise auf andere Maßnahmen sein"
+
+# el-GR
+msgid "Measures should not be direct references of other measures"
+msgstr "Τα μέτρα δεν θα πρέπει να αποτελούν άμεσες αναφορές σε άλλα μέτρα"
+
+# fa-IR
+msgid "Measures should not be direct references of other measures"
+msgstr "اقدامات نباید ارجاع مستقیم به سایر اقدامات باشد"
+
+# ga-IE
+msgid "Measures should not be direct references of other measures"
+msgstr "Níor cheart bearta a bheith ina dtagairtí díreacha do bhearta eile"
+
+# hi-IN
+msgid "Measures should not be direct references of other measures"
+msgstr "उपाय अन्य उपायों के प्रत्यक्ष संदर्भ नहीं होने चाहिए"
+
+# hu-HU
+msgid "Measures should not be direct references of other measures"
+msgstr ""
+"Az intézkedések nem lehetnek más intézkedésekre való közvetlen hivatkozások"
+
+# is-IS
+msgid "Measures should not be direct references of other measures"
+msgstr "Ráðstafanir ættu ekki að vera beinar tilvísanir í aðrar ráðstafanir"
+
+# ja-JP
+msgid "Measures should not be direct references of other measures"
+msgstr "メジャーは、他のメジャーを直接参照しないでください"
+
+# nl-NL
+msgid "Measures should not be direct references of other measures"
+msgstr ""
+"Maatregelen mogen geen rechtstreekse verwijzingen zijn naar andere "
+"maatregelen"
+
+# pl-PL
+msgid "Measures should not be direct references of other measures"
+msgstr "Środki nie powinny być bezpośrednimi odniesieniami do innych środków"
+
+# pt-BR
+msgid "Measures should not be direct references of other measures"
+msgstr "As medidas não devem ser referências diretas a outras medidas"
+
+# ru-RU
+msgid "Measures should not be direct references of other measures"
+msgstr "Меры не должны быть прямыми ссылками на другие меры"
+
+# te-IN
+msgid "Measures should not be direct references of other measures"
+msgstr "చర్యలు ఇతర చర్యలకు ప్రత్యక్ష సూచనలు కాకూడదు."
+
+# ta-IN
+msgid "Measures should not be direct references of other measures"
+msgstr "நடவடிக்கைகள் மற்ற நடவடிக்கைகளின் நேரடி குறிப்புகளாக இருக்கக்கூடாது"
+
+# th-TH
+msgid "Measures should not be direct references of other measures"
+msgstr "มาตรการไม่ควรเป็นการอ้างอิงโดยตรงของมาตรการอื่น ๆ"
+
+# zu-ZA
+msgid "Measures should not be direct references of other measures"
+msgstr "Izinyathelo akufanele zibe izinkomba eziqondile zezinye izinyathelo"
+
+# am-ET
+msgid "Measures should not be direct references of other measures"
+msgstr "እርምጃዎች ሌሎች እርምጃዎች ቀጥተኛ ማጣቀሻ መሆን የለባቸውም"
+
+# ar-AE
+msgid "Measures should not be direct references of other measures"
+msgstr "وينبغي ألا تكون التدابير إشارات مباشرة إلى تدابير أخرى"
+
+# it-IT
+msgid "No two measures should have the same definition"
+msgstr "Non dovrebbero esserci due misure che hanno la stessa definizione"
+
+# es-ES
+msgid "No two measures should have the same definition"
+msgstr "No hay dos medidas que tengan la misma definición"
+
+# he-IL
+msgid "No two measures should have the same definition"
+msgstr "אין שני אמצעים שצריכים להיות בעלי הגדרה זהה"
+
+# pt-PT
+msgid "No two measures should have the same definition"
+msgstr "Não devem existir duas medidas com a mesma definição"
+
+# zh-CN
+msgid "No two measures should have the same definition"
+msgstr "任何两个度量值都不应具有相同的定义"
+
+# fr-FR
+msgid "No two measures should have the same definition"
+msgstr "Il n’y a pas deux mesures qui devraient avoir la même définition"
+
+# da-DK
+msgid "No two measures should have the same definition"
+msgstr "Ikke to foranstaltninger bør have samme definition"
+
+# cs-CZ
+msgid "No two measures should have the same definition"
+msgstr "Žádná dvě opatření by neměla mít stejnou definici"
+
+# de-DE
+msgid "No two measures should have the same definition"
+msgstr "Keine zwei Maßnahmen sollten die gleiche Definition haben"
+
+# el-GR
+msgid "No two measures should have the same definition"
+msgstr "Κανένα μέτρο δεν πρέπει να έχει τον ίδιο ορισμό"
+
+# fa-IR
+msgid "No two measures should have the same definition"
+msgstr "هیچ دو معیاری نباید تعریف یکسانی داشته باشند"
+
+# ga-IE
+msgid "No two measures should have the same definition"
+msgstr "Níor cheart an sainmhíniú céanna a bheith ag aon dá bheart"
+
+# hi-IN
+msgid "No two measures should have the same definition"
+msgstr "किसी भी दो उपायों की परिभाषा समान नहीं होनी चाहिए"
+
+# hu-HU
+msgid "No two measures should have the same definition"
+msgstr "Nincs két olyan intézkedés, amelynek ugyanaz a meghatározása"
+
+# is-IS
+msgid "No two measures should have the same definition"
+msgstr "Engir tveir mælikvarðar ættu að hafa sömu skilgreiningu"
+
+# ja-JP
+msgid "No two measures should have the same definition"
+msgstr "2 つのメジャーが同じ定義を持つ必要はありません"
+
+# nl-NL
+msgid "No two measures should have the same definition"
+msgstr "Geen twee maatregelen mogen dezelfde definitie hebben"
+
+# pl-PL
+msgid "No two measures should have the same definition"
+msgstr "Żadne dwa środki nie powinny mieć tej samej definicji"
+
+# pt-BR
+msgid "No two measures should have the same definition"
+msgstr "Não há duas medidas que tenham a mesma definição"
+
+# ru-RU
+msgid "No two measures should have the same definition"
+msgstr "Никакие две меры не должны иметь одинаковое определение"
+
+# te-IN
+msgid "No two measures should have the same definition"
+msgstr "ఏ రెండు చర్యలకు ఒకే నిర్వచనం ఉండకూడదు."
+
+# ta-IN
+msgid "No two measures should have the same definition"
+msgstr "எந்த இரண்டு நடவடிக்கைகளும் ஒரே வரையறையைக் கொண்டிருக்கக்கூடாது"
+
+# th-TH
+msgid "No two measures should have the same definition"
+msgstr "ไม่มีมาตรการสองข้อควรมีคําจํากัดความเหมือนกัน"
+
+# zu-ZA
+msgid "No two measures should have the same definition"
+msgstr "Azikho izinyathelo ezimbili okufanele zibe nencazelo efanayo"
+
+# am-ET
+msgid "No two measures should have the same definition"
+msgstr "ሁለት መለኪያዎች አንድ አይነት ፍቺ ሊኖራቸው አይገባም"
+
+# ar-AE
+msgid "No two measures should have the same definition"
+msgstr "لا ينبغي أن يكون لمقياسين نفس التعريف"
+
+# it-IT
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Evitare l'addizione o la sottrazione di valori costanti ai risultati delle "
+"divisioni"
+
+# es-ES
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Evite la suma o resta de valores constantes a los resultados de las "
+"divisiones"
+
+# he-IL
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "הימנע מחיבור או חיסור של ערכים קבועים לתוצאות של חלוקות"
+
+# pt-PT
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Evitar a adição ou subtração de valores constantes aos resultados das "
+"divisões"
+
+# zh-CN
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "避免对除法结果添加或减去常数值"
+
+# fr-FR
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Éviter l’addition ou la soustraction de valeurs constantes aux résultats des"
+" divisions"
+
+# da-DK
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Undgå addition eller subtraktion af konstante værdier til resultater af "
+"divisioner"
+
+# cs-CZ
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Vyhněte se sčítání nebo odčítání konstantních hodnot k výsledkům dělení"
+
+# de-DE
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Vermeiden der Addition oder Subtraktion von konstanten Werten zu den "
+"Ergebnissen von Divisionen"
+
+# el-GR
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Αποφύγετε την πρόσθεση ή την αφαίρεση σταθερών τιμών στα αποτελέσματα των "
+"διαιρέσεων"
+
+# fa-IR
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "از جمع یا تفریق مقادیر ثابت به نتایج تقسیمات خودداری کنید"
+
+# ga-IE
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Seachain luachanna tairiseacha a chur le torthaí rannáin nó iad a dhealú"
+
+# hi-IN
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "विभाजन के परिणामों के लिए निरंतर मूल्यों के जोड़ या घटाव से बचें"
+
+# hu-HU
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Kerülje az állandó értékek összeadását vagy kivonását az osztások "
+"eredményeiből"
+
+# is-IS
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Forðastu að leggja saman eða draga föst gildi frá niðurstöðum deilinga"
+
+# ja-JP
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "除算の結果に対する定数値の加算または減算を避ける"
+
+# nl-NL
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Vermijd het optellen of aftrekken van constante waarden aan de resultaten "
+"van delingen"
+
+# pl-PL
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Unikaj dodawania lub odejmowania wartości stałych do wyników dzielenia"
+
+# pt-BR
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Evite adição ou subtração de valores constantes aos resultados das divisões"
+
+# ru-RU
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Избегайте сложения или вычитания константных значений к результатам делений"
+
+# te-IN
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "విభజనల ఫలితాలకు స్థిర విలువలను జోడించడం లేదా తీసివేయడం పరిహరించండి"
+
+# ta-IN
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"வகுத்தலின் முடிவுகளுடன் மாறிலி மதிப்புகளைக் கூட்டுவதையோ அல்லது கழிப்பதையோ "
+"தவிர்க்கவும்"
+
+# th-TH
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "หลีกเลี่ยงการบวกหรือลบค่าคงที่เพื่อผลลัพธ์ของการหาร"
+
+# zu-ZA
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Gwema ukwengeza noma ukukhipha amanani ahlala njalo emiphumeleni yokuhlukana"
+
+# am-ET
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "የማያቋርጥ የሥነ ምግባር እሴቶችን በመከፋፈል ውጤት ላይ ከመጨመር ወይም ከማስቀረት ተቆጠቡ"
+
+# ar-AE
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "تجنب جمع أو طرح القيم الثابتة لنتائج القسمة"
+
+# it-IT
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Evitare di utilizzare la sintassi '1-(x/y)'"
+
+# es-ES
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Evite usar la sintaxis '1-(x/y)'"
+
+# he-IL
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "הימנע משימוש בתחביר '1-(x/y)'"
+
+# pt-PT
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Evite usar a sintaxe '1-(x/y)'"
+
+# zh-CN
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "避免使用“1-（x/y）”语法"
+
+# fr-FR
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Évitez d’utiliser la syntaxe '1-(x/y)'"
+
+# da-DK
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Undgå at bruge '1-(x/y)'-syntaks"
+
+# cs-CZ
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Vyhněte se použití syntaxe \"1-(x/y)\""
+
+# de-DE
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Vermeiden Sie die Verwendung der Syntax \"1-(x/y)\"."
+
+# el-GR
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Αποφύγετε τη χρήση σύνταξης '1-(x/y)'"
+
+# fa-IR
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "از استفاده از نحو \"1-(x/y)\" خودداری کنید"
+
+# ga-IE
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Seachain comhréir '1-(x/y)' a úsáid"
+
+# hi-IN
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "'1-(x/y)' सिंटैक्स का उपयोग करने से बचें"
+
+# hu-HU
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Kerülje az \"1-(x/y)\" szintaxis használatát"
+
+# is-IS
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Forðastu að nota \"1-(x/y)\" setningafræði"
+
+# ja-JP
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "'1-(x/y)' 構文の使用は避けてください"
+
+# nl-NL
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Vermijd het gebruik van de '1-(x/y)'-syntaxis"
+
+# pl-PL
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Unikaj używania składni \"1-(x/y)\""
+
+# pt-BR
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Evite usar a sintaxe '1-(x/y)'"
+
+# ru-RU
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Избегайте использования синтаксиса '1-(x/y)'"
+
+# te-IN
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "'1-(x/y)' వాక్యనిర్మాణాన్ని ఉపయోగించవద్దు."
+
+# ta-IN
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "'1-(x/y)' syntax பயன்படுத்துவதை தவிர்க்கவும்"
+
+# th-TH
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "หลีกเลี่ยงการใช้ไวยากรณ์ '1-(x/y)'"
+
+# zu-ZA
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Gwema ukusebenzisa i-syntax '1- (x / y)'"
+
+# am-ET
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "'1-(x/y)' ሲንታክስ ከመጠቀም ተቆጠቡ"
+
+# ar-AE
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "تجنب استخدام بناء الجملة \"1- (x / y)\""
+
+# it-IT
+msgid "Filter measure values by columns, not tables"
+msgstr "Filtrare i valori delle misure in base alle colonne, non alle tabelle"
+
+# es-ES
+msgid "Filter measure values by columns, not tables"
+msgstr "Filtrar valores de medida por columnas, no por tablas"
+
+# he-IL
+msgid "Filter measure values by columns, not tables"
+msgstr "סינון ערכי מדידה לפי עמודות, לא לפי טבלאות"
+
+# pt-PT
+msgid "Filter measure values by columns, not tables"
+msgstr "Filtrar valores de medida por colunas, não tabelas"
+
+# zh-CN
+msgid "Filter measure values by columns, not tables"
+msgstr "按列（而非表）筛选度量值"
+
+# fr-FR
+msgid "Filter measure values by columns, not tables"
+msgstr "Filtrez les valeurs de mesure par colonnes, et non par tables"
+
+# da-DK
+msgid "Filter measure values by columns, not tables"
+msgstr "Filtrere målingsværdier efter kolonner, ikke tabeller"
+
+# cs-CZ
+msgid "Filter measure values by columns, not tables"
+msgstr "Filtrování hodnot měr podle sloupců, ne podle tabulek"
+
+# de-DE
+msgid "Filter measure values by columns, not tables"
+msgstr "Filtern von Measurewerten nach Spalten, nicht nach Tabellen"
+
+# el-GR
+msgid "Filter measure values by columns, not tables"
+msgstr "Φιλτράρισμα τιμών μέτρησης κατά στήλες και όχι κατά πίνακες"
+
+# fa-IR
+msgid "Filter measure values by columns, not tables"
+msgstr "مقادیر اندازه گیری را بر اساس ستون ها فیلتر کنید، نه جداول"
+
+# ga-IE
+msgid "Filter measure values by columns, not tables"
+msgstr "Scag luachanna tomhais de réir colúin, ní táblaí"
+
+# hi-IN
+msgid "Filter measure values by columns, not tables"
+msgstr "मानों को स्तंभों के आधार पर फ़िल्टर करें, तालिकाओं के अनुसार नहीं"
+
+# hu-HU
+msgid "Filter measure values by columns, not tables"
+msgstr "A mértékértékek szűrése oszlopok, nem táblázatok szerint"
+
+# is-IS
+msgid "Filter measure values by columns, not tables"
+msgstr "Sía mæligildi eftir dálkum, ekki töflum"
+
+# ja-JP
+msgid "Filter measure values by columns, not tables"
+msgstr "メジャー値をテーブルではなく列でフィルタリングする"
+
+# nl-NL
+msgid "Filter measure values by columns, not tables"
+msgstr "Meetwaarden filteren op kolommen, niet op tabellen"
+
+# pl-PL
+msgid "Filter measure values by columns, not tables"
+msgstr "Filtrowanie wartości miar według kolumn, a nie tabel"
+
+# pt-BR
+msgid "Filter measure values by columns, not tables"
+msgstr "Filtrar valores de medida por colunas, não por tabelas"
+
+# ru-RU
+msgid "Filter measure values by columns, not tables"
+msgstr "Фильтрация значений мер по столбцам, а не по таблицам"
+
+# te-IN
+msgid "Filter measure values by columns, not tables"
+msgstr "ఫిల్టర్ విలువలను కాలమ్ ల ద్వారా లెక్కించండి, పట్టికలు కాదు"
+
+# ta-IN
+msgid "Filter measure values by columns, not tables"
+msgstr ""
+"வடிகட்டி அளவீட்டு மதிப்புகளை அட்டவணைகளால் அல்ல, நெடுவரிசைகளால் வடிகட்டவும்"
+
+# th-TH
+msgid "Filter measure values by columns, not tables"
+msgstr "กรองค่าการวัดผลตามคอลัมน์ ไม่ใช่ตาราง"
+
+# zu-ZA
+msgid "Filter measure values by columns, not tables"
+msgstr "Hlunga amanani okulinganisa ngamakholomu, hhayi amatafula"
+
+# am-ET
+msgid "Filter measure values by columns, not tables"
+msgstr "ማጣሪያ እሴት የሚለካው በዓምዶች እንጂ በጠረጴዛዎች አይደለም"
+
+# ar-AE
+msgid "Filter measure values by columns, not tables"
+msgstr "تصفية قياس القيم حسب الأعمدة، وليس الجداول"
+
+# it-IT
+msgid "Filter column values with proper syntax"
+msgstr "Filtrare i valori delle colonne con la sintassi corretta"
+
+# es-ES
+msgid "Filter column values with proper syntax"
+msgstr "Filtrar valores de columna con la sintaxis adecuada"
+
+# he-IL
+msgid "Filter column values with proper syntax"
+msgstr "סינון ערכי עמודות עם תחביר תקין"
+
+# pt-PT
+msgid "Filter column values with proper syntax"
+msgstr "Filtrar valores de coluna com sintaxe adequada"
+
+# zh-CN
+msgid "Filter column values with proper syntax"
+msgstr "使用正确的语法筛选列值"
+
+# fr-FR
+msgid "Filter column values with proper syntax"
+msgstr "Filtrer les valeurs de colonne avec la syntaxe appropriée"
+
+# da-DK
+msgid "Filter column values with proper syntax"
+msgstr "Filtrere kolonneværdier med korrekt syntaks"
+
+# cs-CZ
+msgid "Filter column values with proper syntax"
+msgstr "Filtrování hodnot sloupců se správnou syntaxí"
+
+# de-DE
+msgid "Filter column values with proper syntax"
+msgstr "Filtern von Spaltenwerten mit der richtigen Syntax"
+
+# el-GR
+msgid "Filter column values with proper syntax"
+msgstr "Φιλτράρισμα τιμών στηλών με σωστή σύνταξη"
+
+# fa-IR
+msgid "Filter column values with proper syntax"
+msgstr "فیلتر کردن مقادیر ستون با نحو مناسب"
+
+# ga-IE
+msgid "Filter column values with proper syntax"
+msgstr "Scag luachanna colúin le comhréir chuí"
+
+# hi-IN
+msgid "Filter column values with proper syntax"
+msgstr "उचित सिंटैक्स के साथ स्तंभ मानों को फ़िल्टर करें"
+
+# hu-HU
+msgid "Filter column values with proper syntax"
+msgstr "Oszlopértékek szűrése megfelelő szintaxissal"
+
+# is-IS
+msgid "Filter column values with proper syntax"
+msgstr "Sía dálkgildi með réttri setningafræði"
+
+# ja-JP
+msgid "Filter column values with proper syntax"
+msgstr "適切な構文で列の値をフィルタリングする"
+
+# nl-NL
+msgid "Filter column values with proper syntax"
+msgstr "Kolomwaarden filteren met de juiste syntaxis"
+
+# pl-PL
+msgid "Filter column values with proper syntax"
+msgstr "Filtrowanie wartości kolumn przy użyciu odpowiedniej składni"
+
+# pt-BR
+msgid "Filter column values with proper syntax"
+msgstr "Filtrar valores de coluna com sintaxe adequada"
+
+# ru-RU
+msgid "Filter column values with proper syntax"
+msgstr "Фильтруйте значения столбцов с правильным синтаксисом"
+
+# te-IN
+msgid "Filter column values with proper syntax"
+msgstr "సరైన వాక్యనిర్మాణంతో కాలమ్ విలువలను ఫిల్టర్ చేయండి"
+
+# ta-IN
+msgid "Filter column values with proper syntax"
+msgstr "நெடுவரிசை மதிப்புகளை சரியான தொடரியல் மூலம் வடிகட்டவும்"
+
+# th-TH
+msgid "Filter column values with proper syntax"
+msgstr "กรองค่าคอลัมน์ด้วยไวยากรณ์ที่เหมาะสม"
+
+# zu-ZA
+msgid "Filter column values with proper syntax"
+msgstr "Hlunga amanani ekholomu nge-syntax efanele"
+
+# am-ET
+msgid "Filter column values with proper syntax"
+msgstr "ትክክለኛ syntax ጋር የማጣሪያ ዓምድ እሴት"
+
+# ar-AE
+msgid "Filter column values with proper syntax"
+msgstr "تصفية قيم الأعمدة ذات بناء الجملة المناسب"
+
+# it-IT
+msgid "Use the DIVIDE function for division"
+msgstr "Utilizzare la funzione DIVIDI per la divisione"
+
+# es-ES
+msgid "Use the DIVIDE function for division"
+msgstr "Utilice la función DIVIDIR para la división"
+
+# he-IL
+msgid "Use the DIVIDE function for division"
+msgstr "שימוש בפונקציה DIVIDE לחלוקה"
+
+# pt-PT
+msgid "Use the DIVIDE function for division"
+msgstr "Use a função DIVIDIR para divisão"
+
+# zh-CN
+msgid "Use the DIVIDE function for division"
+msgstr "使用 DIVIDE 函数进行除法"
+
+# fr-FR
+msgid "Use the DIVIDE function for division"
+msgstr "Utiliser la fonction DIVIDE pour la division"
+
+# da-DK
+msgid "Use the DIVIDE function for division"
+msgstr "Brug funktionen DIVIDER til division"
+
+# cs-CZ
+msgid "Use the DIVIDE function for division"
+msgstr "K dělení použijte funkci DIVIDE"
+
+# de-DE
+msgid "Use the DIVIDE function for division"
+msgstr "Verwenden Sie die DIVIDE-Funktion für die Division"
+
+# el-GR
+msgid "Use the DIVIDE function for division"
+msgstr "Χρήση της συνάρτησης DIVIDE για διαίρεση"
+
+# fa-IR
+msgid "Use the DIVIDE function for division"
+msgstr "استفاده از تابع DIVIDE برای تقسیم"
+
+# ga-IE
+msgid "Use the DIVIDE function for division"
+msgstr "Bain úsáid as an fheidhm DIVIDE le haghaidh roinnte"
+
+# hi-IN
+msgid "Use the DIVIDE function for division"
+msgstr "विभाजन के लिए DIVIDE फ़ंक्शन का उपयोग करें"
+
+# hu-HU
+msgid "Use the DIVIDE function for division"
+msgstr "Az osztás függvény használata osztáshoz"
+
+# is-IS
+msgid "Use the DIVIDE function for division"
+msgstr "Nota aðgerðina DEILA fyrir deilingu"
+
+# ja-JP
+msgid "Use the DIVIDE function for division"
+msgstr "除算には DIVIDE 関数を使用します"
+
+# nl-NL
+msgid "Use the DIVIDE function for division"
+msgstr "Gebruik de functie DELEN voor deling"
+
+# pl-PL
+msgid "Use the DIVIDE function for division"
+msgstr "Używanie funkcji PODZIEL do dzielenia"
+
+# pt-BR
+msgid "Use the DIVIDE function for division"
+msgstr "Use a função DIVIDIR para divisão"
+
+# ru-RU
+msgid "Use the DIVIDE function for division"
+msgstr "Использование функции РАЗДЕЛИТЬ для деления"
+
+# te-IN
+msgid "Use the DIVIDE function for division"
+msgstr "విభజన కొరకు డివైడ్ విధిని ఉపయోగించండి"
+
+# ta-IN
+msgid "Use the DIVIDE function for division"
+msgstr "வகுத்தலுக்கு DIVIDE செயல்பாட்டைப் பயன்படுத்தவும்"
+
+# th-TH
+msgid "Use the DIVIDE function for division"
+msgstr "ใช้ฟังก์ชัน DIVIDE สําหรับการหาร"
+
+# zu-ZA
+msgid "Use the DIVIDE function for division"
+msgstr "Sebenzisa umsebenzi we-DIVIDE wokuhlukanisa"
+
+# am-ET
+msgid "Use the DIVIDE function for division"
+msgstr "ለመከፋፈል የ ክፍፍል አሰራር ይጠቀሙ"
+
+# ar-AE
+msgid "Use the DIVIDE function for division"
+msgstr "استخدم الدالة DIVIDE للتقسيم"
+
+# it-IT
+msgid "Column references should be fully qualified"
+msgstr "I riferimenti alle colonne devono essere pienamente qualificati"
+
+# es-ES
+msgid "Column references should be fully qualified"
+msgstr "Las referencias de columna deben estar completamente calificadas"
+
+# he-IL
+msgid "Column references should be fully qualified"
+msgstr "הפניות לעמודות צריכות להיות מוסמכות במלואן"
+
+# pt-PT
+msgid "Column references should be fully qualified"
+msgstr "As referências de coluna devem ser totalmente qualificadas"
+
+# zh-CN
+msgid "Column references should be fully qualified"
+msgstr "列引用应是完全限定的"
+
+# fr-FR
+msgid "Column references should be fully qualified"
+msgstr "Les références de colonne doivent être entièrement qualifiées"
+
+# da-DK
+msgid "Column references should be fully qualified"
+msgstr "Kolonnereferencer skal være fuldt kvalificerede"
+
+# cs-CZ
+msgid "Column references should be fully qualified"
+msgstr "Odkazy na sloupce by měly být plně kvalifikované."
+
+# de-DE
+msgid "Column references should be fully qualified"
+msgstr "Spaltenverweise sollten vollständig qualifiziert sein"
+
+# el-GR
+msgid "Column references should be fully qualified"
+msgstr "Οι αναφορές στηλών θα πρέπει να είναι πλήρως εξειδικευμένες"
+
+# fa-IR
+msgid "Column references should be fully qualified"
+msgstr "مراجع ستون باید کاملا واجد شرایط باشند"
+
+# ga-IE
+msgid "Column references should be fully qualified"
+msgstr "Ba cheart tagairtí colúin a bheith láncháilithe"
+
+# hi-IN
+msgid "Column references should be fully qualified"
+msgstr "स्तंभ संदर्भ पूरी तरह योग्य होने चाहिए"
+
+# hu-HU
+msgid "Column references should be fully qualified"
+msgstr "Az oszlophivatkozásoknak teljes mértékben minősítettnek kell lenniük"
+
+# is-IS
+msgid "Column references should be fully qualified"
+msgstr "Dálkatilvísanir ættu að vera fullgildar"
+
+# ja-JP
+msgid "Column references should be fully qualified"
+msgstr "列参照は完全修飾する必要があります"
+
+# nl-NL
+msgid "Column references should be fully qualified"
+msgstr "Kolomverwijzingen moeten volledig gekwalificeerd zijn"
+
+# pl-PL
+msgid "Column references should be fully qualified"
+msgstr "Odwołania do kolumn powinny być w pełni kwalifikowane"
+
+# pt-BR
+msgid "Column references should be fully qualified"
+msgstr "As referências de coluna devem ser totalmente qualificadas"
+
+# ru-RU
+msgid "Column references should be fully qualified"
+msgstr "Ссылки на столбцы должны быть полностью квалифицированными"
+
+# te-IN
+msgid "Column references should be fully qualified"
+msgstr "కాలమ్ రిఫరెన్స్ లు పూర్తిగా అర్హత కలిగి ఉండాలి"
+
+# ta-IN
+msgid "Column references should be fully qualified"
+msgstr "நெடுவரிசை குறிப்புகள் முழுமையாக தகுதி பெற்றிருக்க வேண்டும்"
+
+# th-TH
+msgid "Column references should be fully qualified"
+msgstr "การอ้างอิงคอลัมน์ควรมีคุณสมบัติครบถ้วน"
+
+# zu-ZA
+msgid "Column references should be fully qualified"
+msgstr "Izinkomba zekholomu kufanele zifaneleke ngokugcwele"
+
+# am-ET
+msgid "Column references should be fully qualified"
+msgstr "የዓምድ ማጣቀሻዎች ሙሉ ብቃት ሊኖራቸው ይገባል"
+
+# ar-AE
+msgid "Column references should be fully qualified"
+msgstr "يجب أن تكون مراجع الأعمدة مؤهلة تماما"
+
+# it-IT
+msgid "Measure references should be unqualified"
+msgstr "I riferimenti alle misure devono essere non qualificati"
+
+# es-ES
+msgid "Measure references should be unqualified"
+msgstr "Las referencias a medidas no deben estar calificadas"
+
+# he-IL
+msgid "Measure references should be unqualified"
+msgstr "הפניות מדידה צריכות להיות בלתי מסויגות;"
+
+# pt-PT
+msgid "Measure references should be unqualified"
+msgstr "As referências às medidas não devem ser qualificadas"
+
+# zh-CN
+msgid "Measure references should be unqualified"
+msgstr "度量引用应为不合格的"
+
+# fr-FR
+msgid "Measure references should be unqualified"
+msgstr "Les références de mesure ne doivent pas être qualifiées"
+
+# da-DK
+msgid "Measure references should be unqualified"
+msgstr "Referencer til målinger bør være ukvalificerede"
+
+# cs-CZ
+msgid "Measure references should be unqualified"
+msgstr "Odkazy na opatření by měly být bez výhrad"
+
+# de-DE
+msgid "Measure references should be unqualified"
+msgstr "Kennzahlenverweise sollten nicht qualifiziert sein"
+
+# el-GR
+msgid "Measure references should be unqualified"
+msgstr "Οι αναφορές στα μέτρα δεν πρέπει να είναι έγκυρες"
+
+# fa-IR
+msgid "Measure references should be unqualified"
+msgstr "ارجاعات اندازه گیری باید فاقد صلاحیت باشند"
+
+# ga-IE
+msgid "Measure references should be unqualified"
+msgstr "Ba cheart tagairtí birt a bheith neamhcháilithe"
+
+# hi-IN
+msgid "Measure references should be unqualified"
+msgstr "माप संदर्भ अयोग्य होने चाहिए"
+
+# hu-HU
+msgid "Measure references should be unqualified"
+msgstr "Az intézkedéshivatkozásoknak minősítés nélkülieknek kell lenniük"
+
+# is-IS
+msgid "Measure references should be unqualified"
+msgstr "Tilvísanir í mælikvarða ættu að vera óhæfar"
+
+# ja-JP
+msgid "Measure references should be unqualified"
+msgstr "メジャー参照は修飾されていない必要があります"
+
+# nl-NL
+msgid "Measure references should be unqualified"
+msgstr "Verwijzingen naar maatregelen moeten ongekwalificeerd zijn"
+
+# pl-PL
+msgid "Measure references should be unqualified"
+msgstr "Odwołania do miar powinny być niekwalifikowane"
+
+# pt-BR
+msgid "Measure references should be unqualified"
+msgstr "As referências de medida devem ser não qualificadas"
+
+# ru-RU
+msgid "Measure references should be unqualified"
+msgstr "Ссылки на меры должны быть неквалифицированными"
+
+# te-IN
+msgid "Measure references should be unqualified"
+msgstr "కొలత రిఫరెన్స్ లు అనర్హంగా ఉండాలి"
+
+# ta-IN
+msgid "Measure references should be unqualified"
+msgstr "அளவீட்டு குறிப்புகள் தகுதியற்றதாக இருக்க வேண்டும்"
+
+# th-TH
+msgid "Measure references should be unqualified"
+msgstr "การอ้างอิงการวัดควรไม่มีคุณสมบัติ"
+
+# zu-ZA
+msgid "Measure references should be unqualified"
+msgstr "Izinkomba zesilinganiso kufanele zingafaneleki"
+
+# am-ET
+msgid "Measure references should be unqualified"
+msgstr "የመለኪያ ማጣቀሻዎች ብቃት የሌላቸው መሆን አለባቸው"
+
+# ar-AE
+msgid "Measure references should be unqualified"
+msgstr "يجب أن تكون مراجع القياس غير مشروطة"
+
+# it-IT
+msgid "Inactive relationships that are never activated"
+msgstr "Relazioni inattive che non vengono mai attivate"
+
+# es-ES
+msgid "Inactive relationships that are never activated"
+msgstr "Relaciones inactivas que nunca se activan"
+
+# he-IL
+msgid "Inactive relationships that are never activated"
+msgstr "קשרי גומלין לא פעילים שלעולם אינם מופעלים"
+
+# pt-PT
+msgid "Inactive relationships that are never activated"
+msgstr "Relações inativas que nunca são ativadas"
+
+# zh-CN
+msgid "Inactive relationships that are never activated"
+msgstr "从未激活的不活动关系"
+
+# fr-FR
+msgid "Inactive relationships that are never activated"
+msgstr "Relations inactives qui ne sont jamais activées"
+
+# da-DK
+msgid "Inactive relationships that are never activated"
+msgstr "Inaktive relationer, der aldrig aktiveres"
+
+# cs-CZ
+msgid "Inactive relationships that are never activated"
+msgstr "Neaktivní relace, které nejsou nikdy aktivovány"
+
+# de-DE
+msgid "Inactive relationships that are never activated"
+msgstr "Inaktive Beziehungen, die nie aktiviert werden"
+
+# el-GR
+msgid "Inactive relationships that are never activated"
+msgstr "Ανενεργές σχέσεις που δεν ενεργοποιούνται ποτέ"
+
+# fa-IR
+msgid "Inactive relationships that are never activated"
+msgstr "روابط غیرفعال که هرگز فعال نمی شوند"
+
+# ga-IE
+msgid "Inactive relationships that are never activated"
+msgstr "Caidrimh neamhghníomhacha nach ngníomhaítear riamh"
+
+# hi-IN
+msgid "Inactive relationships that are never activated"
+msgstr "निष्क्रिय संबंध जो कभी सक्रिय नहीं होते हैं"
+
+# hu-HU
+msgid "Inactive relationships that are never activated"
+msgstr "Inaktív kapcsolatok, amelyek soha nincsenek aktiválva"
+
+# is-IS
+msgid "Inactive relationships that are never activated"
+msgstr "Óvirk sambönd sem eru aldrei virkjuð"
+
+# ja-JP
+msgid "Inactive relationships that are never activated"
+msgstr "アクティブ化されない非アクティブな関係"
+
+# nl-NL
+msgid "Inactive relationships that are never activated"
+msgstr "Inactieve relaties die nooit worden geactiveerd"
+
+# pl-PL
+msgid "Inactive relationships that are never activated"
+msgstr "Nieaktywne relacje, które nigdy nie są aktywowane"
+
+# pt-BR
+msgid "Inactive relationships that are never activated"
+msgstr "Relacionamentos inativos que nunca são ativados"
+
+# ru-RU
+msgid "Inactive relationships that are never activated"
+msgstr "Неактивные отношения, которые никогда не активируются"
+
+# te-IN
+msgid "Inactive relationships that are never activated"
+msgstr "ఎప్పటికీ యాక్టివేట్ చేయబడని నిష్క్రియాత్మక సంబంధాలు"
+
+# ta-IN
+msgid "Inactive relationships that are never activated"
+msgstr "ஒருபோதும் செயல்படுத்தப்படாத செயலற்ற உறவுகள்"
+
+# th-TH
+msgid "Inactive relationships that are never activated"
+msgstr "ความสัมพันธ์ที่ไม่ได้ใช้งานซึ่งไม่เคยเปิดใช้งาน"
+
+# zu-ZA
+msgid "Inactive relationships that are never activated"
+msgstr "Ubudlelwano obungasebenzi obungakaze busebenze"
+
+# am-ET
+msgid "Inactive relationships that are never activated"
+msgstr "ፈጽሞ የማይንቀሳቀሱ የቀዘቀዙ ግንኙነቶች"
+
+# ar-AE
+msgid "Inactive relationships that are never activated"
+msgstr "العلاقات غير النشطة التي لا يتم تنشيطها مطلقا"
+
+# it-IT
+msgid "Remove unnecessary columns"
+msgstr "Rimuovi le colonne non necessarie"
+
+# es-ES
+msgid "Remove unnecessary columns"
+msgstr "Eliminación de columnas innecesarias"
+
+# he-IL
+msgid "Remove unnecessary columns"
+msgstr "הסרת עמודות מיותרות"
+
+# pt-PT
+msgid "Remove unnecessary columns"
+msgstr "Remover colunas desnecessárias"
+
+# zh-CN
+msgid "Remove unnecessary columns"
+msgstr "删除不必要的列"
+
+# fr-FR
+msgid "Remove unnecessary columns"
+msgstr "Supprimer les colonnes inutiles"
+
+# da-DK
+msgid "Remove unnecessary columns"
+msgstr "Fjern unødvendige kolonner"
+
+# cs-CZ
+msgid "Remove unnecessary columns"
+msgstr "Odstranění nepotřebných sloupců"
+
+# de-DE
+msgid "Remove unnecessary columns"
+msgstr "Entfernen nicht benötigter Spalten"
+
+# el-GR
+msgid "Remove unnecessary columns"
+msgstr "Κατάργηση περιττών στηλών"
+
+# fa-IR
+msgid "Remove unnecessary columns"
+msgstr "ستون های غیر ضروری را حذف کنید"
+
+# ga-IE
+msgid "Remove unnecessary columns"
+msgstr "Bain colúin gan ghá"
+
+# hi-IN
+msgid "Remove unnecessary columns"
+msgstr "अनावश्यक कॉलम निकालें"
+
+# hu-HU
+msgid "Remove unnecessary columns"
+msgstr "Távolítsa el a felesleges oszlopokat"
+
+# is-IS
+msgid "Remove unnecessary columns"
+msgstr "Fjarlægja óþarfa dálka"
+
+# ja-JP
+msgid "Remove unnecessary columns"
+msgstr "不要な列を削除する"
+
+# nl-NL
+msgid "Remove unnecessary columns"
+msgstr "Onnodige kolommen verwijderen"
+
+# pl-PL
+msgid "Remove unnecessary columns"
+msgstr "Usuwanie niepotrzebnych kolumn"
+
+# pt-BR
+msgid "Remove unnecessary columns"
+msgstr "Remover colunas desnecessárias"
+
+# ru-RU
+msgid "Remove unnecessary columns"
+msgstr "Удалите ненужные столбцы"
+
+# te-IN
+msgid "Remove unnecessary columns"
+msgstr "అనవసరమైన కాలమ్ లను తొలగించండి"
+
+# ta-IN
+msgid "Remove unnecessary columns"
+msgstr "தேவையற்ற பத்திகளை அகற்றவும்"
+
+# th-TH
+msgid "Remove unnecessary columns"
+msgstr "ลบคอลัมน์ที่ไม่จําเป็น"
+
+# zu-ZA
+msgid "Remove unnecessary columns"
+msgstr "Susa amakholomu angadingekile"
+
+# am-ET
+msgid "Remove unnecessary columns"
+msgstr "አላስፈላጊ ዓምዶችን አስወግድ"
+
+# ar-AE
+msgid "Remove unnecessary columns"
+msgstr "إزالة الأعمدة غير الضرورية"
+
+# it-IT
+msgid "Remove unnecessary measures"
+msgstr "Rimuovi le misure non necessarie"
+
+# es-ES
+msgid "Remove unnecessary measures"
+msgstr "Elimine las medidas innecesarias"
+
+# he-IL
+msgid "Remove unnecessary measures"
+msgstr "הסרת אמצעים מיותרים"
+
+# pt-PT
+msgid "Remove unnecessary measures"
+msgstr "Remover medidas desnecessárias"
+
+# zh-CN
+msgid "Remove unnecessary measures"
+msgstr "删除不必要的措施"
+
+# fr-FR
+msgid "Remove unnecessary measures"
+msgstr "Supprimer les mesures inutiles"
+
+# da-DK
+msgid "Remove unnecessary measures"
+msgstr "Fjern unødvendige foranstaltninger"
+
+# cs-CZ
+msgid "Remove unnecessary measures"
+msgstr "Odstranění nepotřebných opatření"
+
+# de-DE
+msgid "Remove unnecessary measures"
+msgstr "Entfernen Sie unnötige Maßnahmen"
+
+# el-GR
+msgid "Remove unnecessary measures"
+msgstr "Κατάργηση περιττών μέτρων"
+
+# fa-IR
+msgid "Remove unnecessary measures"
+msgstr "اقدامات غیرضروری را حذف کنید"
+
+# ga-IE
+msgid "Remove unnecessary measures"
+msgstr "Bain bearta neamhriachtanacha"
+
+# hi-IN
+msgid "Remove unnecessary measures"
+msgstr "अनावश्यक उपायों को हटा दें"
+
+# hu-HU
+msgid "Remove unnecessary measures"
+msgstr "Távolítsa el a felesleges intézkedéseket"
+
+# is-IS
+msgid "Remove unnecessary measures"
+msgstr "Fjarlægðu óþarfa ráðstafanir"
+
+# ja-JP
+msgid "Remove unnecessary measures"
+msgstr "不要な対策を削除する"
+
+# nl-NL
+msgid "Remove unnecessary measures"
+msgstr "Overbodige maatregelen schrappen"
+
+# pl-PL
+msgid "Remove unnecessary measures"
+msgstr "Usuń niepotrzebne środki"
+
+# pt-BR
+msgid "Remove unnecessary measures"
+msgstr "Remova medidas desnecessárias"
+
+# ru-RU
+msgid "Remove unnecessary measures"
+msgstr "Избавьтесь от ненужных мер"
+
+# te-IN
+msgid "Remove unnecessary measures"
+msgstr "అనవసర చర్యలను తొలగించండి"
+
+# ta-IN
+msgid "Remove unnecessary measures"
+msgstr "தேவையற்ற நடவடிக்கைகளை நீக்கவும்"
+
+# th-TH
+msgid "Remove unnecessary measures"
+msgstr "ลบมาตรการที่ไม่จําเป็น"
+
+# zu-ZA
+msgid "Remove unnecessary measures"
+msgstr "Susa izinyathelo ezingadingekile"
+
+# am-ET
+msgid "Remove unnecessary measures"
+msgstr "አላስፈላጊ እርምጃዎችን አስወግድ"
+
+# ar-AE
+msgid "Remove unnecessary measures"
+msgstr "إزالة التدابير غير الضرورية"
+
+# it-IT
+msgid "Ensure tables have relationships"
+msgstr "Assicurarsi che le tabelle abbiano relazioni"
+
+# es-ES
+msgid "Ensure tables have relationships"
+msgstr "Asegúrese de que las tablas tengan relaciones"
+
+# he-IL
+msgid "Ensure tables have relationships"
+msgstr "ודא שלטבלאות יש קשרי גומלין"
+
+# pt-PT
+msgid "Ensure tables have relationships"
+msgstr "Garantir que as tabelas tenham relações"
+
+# zh-CN
+msgid "Ensure tables have relationships"
+msgstr "确保表具有关系"
+
+# fr-FR
+msgid "Ensure tables have relationships"
+msgstr "S’assurer que les tables ont des relations"
+
+# da-DK
+msgid "Ensure tables have relationships"
+msgstr "Sørg for, at tabeller har relationer"
+
+# cs-CZ
+msgid "Ensure tables have relationships"
+msgstr "Ujistěte se, že tabulky mají relace"
+
+# de-DE
+msgid "Ensure tables have relationships"
+msgstr "Stellen Sie sicher, dass Tabellen Beziehungen haben"
+
+# el-GR
+msgid "Ensure tables have relationships"
+msgstr "Βεβαιωθείτε ότι οι πίνακες έχουν σχέσεις"
+
+# fa-IR
+msgid "Ensure tables have relationships"
+msgstr "اطمینان حاصل کنید که جداول دارای روابط هستند"
+
+# ga-IE
+msgid "Ensure tables have relationships"
+msgstr "Cinntigh go bhfuil caidrimh ag táblaí"
+
+# hi-IN
+msgid "Ensure tables have relationships"
+msgstr "सुनिश्चित करें कि तालिकाओं में संबंध हैं"
+
+# hu-HU
+msgid "Ensure tables have relationships"
+msgstr "Győződjön meg arról, hogy a táblák rendelkeznek kapcsolatokkal"
+
+# is-IS
+msgid "Ensure tables have relationships"
+msgstr "Gakktu úr skugga um að töflur hafi tengsl"
+
+# ja-JP
+msgid "Ensure tables have relationships"
+msgstr "テーブルにリレーションシップがあることを確認する"
+
+# nl-NL
+msgid "Ensure tables have relationships"
+msgstr "Zorg ervoor dat tabellen relaties hebben"
+
+# pl-PL
+msgid "Ensure tables have relationships"
+msgstr "Upewnij się, że tabele mają relacje"
+
+# pt-BR
+msgid "Ensure tables have relationships"
+msgstr "Garantir que as tabelas tenham relações"
+
+# ru-RU
+msgid "Ensure tables have relationships"
+msgstr "Убедитесь, что у таблиц есть связи"
+
+# te-IN
+msgid "Ensure tables have relationships"
+msgstr "పట్టికలకు సంబంధాలు ఉండేలా చూసుకోండి."
+
+# ta-IN
+msgid "Ensure tables have relationships"
+msgstr "அட்டவணைகள் உறவுகளைக் கொண்டிருப்பதை உறுதிப்படுத்தவும்"
+
+# th-TH
+msgid "Ensure tables have relationships"
+msgstr "ตรวจสอบให้แน่ใจว่าตารางมีความสัมพันธ์"
+
+# zu-ZA
+msgid "Ensure tables have relationships"
+msgstr "Qinisekisa ukuthi amatafula anobudlelwano"
+
+# am-ET
+msgid "Ensure tables have relationships"
+msgstr "ጠረጴዛዎች ግንኙነት እንዳላቸው አረጋግጥ"
+
+# ar-AE
+msgid "Ensure tables have relationships"
+msgstr "التأكد من وجود علاقات بين الجداول"
+
+# it-IT
+msgid "Calculation groups with no calculation items"
+msgstr "Gruppi di calcolo senza elementi di calcolo"
+
+# es-ES
+msgid "Calculation groups with no calculation items"
+msgstr "Grupos de cálculo sin elementos de cálculo"
+
+# he-IL
+msgid "Calculation groups with no calculation items"
+msgstr "קבוצות חישוב ללא פריטי חישוב"
+
+# pt-PT
+msgid "Calculation groups with no calculation items"
+msgstr "Grupos de cálculo sem itens de cálculo"
+
+# zh-CN
+msgid "Calculation groups with no calculation items"
+msgstr "无计算项的计算组"
+
+# fr-FR
+msgid "Calculation groups with no calculation items"
+msgstr "Groupes de calcul sans éléments de calcul"
+
+# da-DK
+msgid "Calculation groups with no calculation items"
+msgstr "Beregningsgrupper uden beregningselementer"
+
+# cs-CZ
+msgid "Calculation groups with no calculation items"
+msgstr "Skupiny výpočtů bez výpočtových položek"
+
+# de-DE
+msgid "Calculation groups with no calculation items"
+msgstr "Kalkulationsgruppen ohne Kalkulationspositionen"
+
+# el-GR
+msgid "Calculation groups with no calculation items"
+msgstr "Ομάδες υπολογισμού χωρίς στοιχεία υπολογισμού"
+
+# fa-IR
+msgid "Calculation groups with no calculation items"
+msgstr "گروه های محاسباتی بدون آیتم های محاسباتی"
+
+# ga-IE
+msgid "Calculation groups with no calculation items"
+msgstr "Grúpaí ríofa gan aon ítimí ríofa"
+
+# hi-IN
+msgid "Calculation groups with no calculation items"
+msgstr "बिना परिकलन आइटम्स वाले परिकलन समूह"
+
+# hu-HU
+msgid "Calculation groups with no calculation items"
+msgstr "Számítási elemek nélküli számítási csoportok"
+
+# is-IS
+msgid "Calculation groups with no calculation items"
+msgstr "Reikniflokkar án útreikningsatriða"
+
+# ja-JP
+msgid "Calculation groups with no calculation items"
+msgstr "計算項目がない計算グループ"
+
+# nl-NL
+msgid "Calculation groups with no calculation items"
+msgstr "Berekeningsgroepen zonder berekeningsitems"
+
+# pl-PL
+msgid "Calculation groups with no calculation items"
+msgstr "Grupy obliczeń bez elementów obliczeniowych"
+
+# pt-BR
+msgid "Calculation groups with no calculation items"
+msgstr "Grupos de cálculo sem itens de cálculo"
+
+# ru-RU
+msgid "Calculation groups with no calculation items"
+msgstr "Группы расчетов без элементов расчета"
+
+# te-IN
+msgid "Calculation groups with no calculation items"
+msgstr "లెక్కింపు అంశాలు లేని గణన సమూహాలు"
+
+# ta-IN
+msgid "Calculation groups with no calculation items"
+msgstr "கணக்கீட்டு உருப்படிகள் இல்லாத கணக்கீட்டு குழுக்கள்"
+
+# th-TH
+msgid "Calculation groups with no calculation items"
+msgstr "กลุ่มการคํานวณที่ไม่มีรายการการคํานวณ"
+
+# zu-ZA
+msgid "Calculation groups with no calculation items"
+msgstr "Amaqembu okubala ngaphandle kwezinto zokubala"
+
+# am-ET
+msgid "Calculation groups with no calculation items"
+msgstr "የስሌት ዕቃዎች የሌሉባቸው የስሌት ቡድኖች"
+
+# ar-AE
+msgid "Calculation groups with no calculation items"
+msgstr "مجموعات الحساب التي لا تحتوي على عناصر حسابية"
+
+# it-IT
+msgid "Visible objects with no description"
+msgstr "Oggetti visibili senza descrizione"
+
+# es-ES
+msgid "Visible objects with no description"
+msgstr "Objetos visibles sin descripción"
+
+# he-IL
+msgid "Visible objects with no description"
+msgstr "אובייקטים גלויים ללא תיאור"
+
+# pt-PT
+msgid "Visible objects with no description"
+msgstr "Objetos visíveis sem descrição"
+
+# zh-CN
+msgid "Visible objects with no description"
+msgstr "没有描述的可见对象"
+
+# fr-FR
+msgid "Visible objects with no description"
+msgstr "Objets visibles sans description"
+
+# da-DK
+msgid "Visible objects with no description"
+msgstr "Synlige objekter uden beskrivelse"
+
+# cs-CZ
+msgid "Visible objects with no description"
+msgstr "Viditelné objekty bez popisu"
+
+# de-DE
+msgid "Visible objects with no description"
+msgstr "Sichtbare Objekte ohne Beschreibung"
+
+# el-GR
+msgid "Visible objects with no description"
+msgstr "Ορατά αντικείμενα χωρίς περιγραφή"
+
+# fa-IR
+msgid "Visible objects with no description"
+msgstr "اشیاء قابل مشاهده بدون توضیحات"
+
+# ga-IE
+msgid "Visible objects with no description"
+msgstr "Réada infheicthe gan tuairisc"
+
+# hi-IN
+msgid "Visible objects with no description"
+msgstr "बिना विवरण के दृश्यमान वस्तुएं"
+
+# hu-HU
+msgid "Visible objects with no description"
+msgstr "Látható objektumok leírás nélkül"
+
+# is-IS
+msgid "Visible objects with no description"
+msgstr "Sýnilegir hlutir án lýsingar"
+
+# ja-JP
+msgid "Visible objects with no description"
+msgstr "説明のない表示オブジェクト"
+
+# nl-NL
+msgid "Visible objects with no description"
+msgstr "Zichtbare objecten zonder beschrijving"
+
+# pl-PL
+msgid "Visible objects with no description"
+msgstr "Widoczne obiekty bez opisu"
+
+# pt-BR
+msgid "Visible objects with no description"
+msgstr "Objetos visíveis sem descrição"
+
+# ru-RU
+msgid "Visible objects with no description"
+msgstr "Видимые объекты без описания"
+
+# te-IN
+msgid "Visible objects with no description"
+msgstr "వివరణ లేని వస్తువులు"
+
+# ta-IN
+msgid "Visible objects with no description"
+msgstr "விளக்கம் இல்லாமல் காணக்கூடிய பொருள்கள்"
+
+# th-TH
+msgid "Visible objects with no description"
+msgstr "วัตถุที่มองเห็นได้โดยไม่มีคําอธิบาย"
+
+# zu-ZA
+msgid "Visible objects with no description"
+msgstr "Izinto ezibonakalayo ngaphandle kwencazelo"
+
+# am-ET
+msgid "Visible objects with no description"
+msgstr "ምንም መግለጫ የሌላቸው የሚታዩ ነገሮች"
+
+# ar-AE
+msgid "Visible objects with no description"
+msgstr "كائنات مرئية بدون وصف"
+
+# it-IT
+msgid "Provide format string for 'Date' columns"
+msgstr "Specificare la stringa di formato per le colonne 'Data'"
+
+# es-ES
+msgid "Provide format string for 'Date' columns"
+msgstr "Proporcionar cadena de formato para las columnas \"Fecha\""
+
+# he-IL
+msgid "Provide format string for 'Date' columns"
+msgstr "ספק מחרוזת תבנית עבור עמודות 'תאריך'"
+
+# pt-PT
+msgid "Provide format string for 'Date' columns"
+msgstr "Fornecer cadeia de caracteres de formato para colunas 'Data'"
+
+# zh-CN
+msgid "Provide format string for 'Date' columns"
+msgstr "为“日期”列提供格式字符串"
+
+# fr-FR
+msgid "Provide format string for 'Date' columns"
+msgstr "Fournir une chaîne de format pour les colonnes 'Date'"
+
+# da-DK
+msgid "Provide format string for 'Date' columns"
+msgstr "Angiv formatstreng for kolonnerne \"Dato\""
+
+# cs-CZ
+msgid "Provide format string for 'Date' columns"
+msgstr "Zadání formátovacího řetězce pro sloupce Datum"
+
+# de-DE
+msgid "Provide format string for 'Date' columns"
+msgstr "Geben Sie eine Formatzeichenfolge für \"Date\"-Spalten an"
+
+# el-GR
+msgid "Provide format string for 'Date' columns"
+msgstr "Παροχή συμβολοσειράς μορφής για στήλες \"Ημερομηνία\""
+
+# fa-IR
+msgid "Provide format string for 'Date' columns"
+msgstr "رشته فرمت را برای ستون های \"تاریخ\" ارائه دهید"
+
+# ga-IE
+msgid "Provide format string for 'Date' columns"
+msgstr "Cuir teaghrán formáide ar fáil do cholúin 'Dáta'"
+
+# hi-IN
+msgid "Provide format string for 'Date' columns"
+msgstr "'दिनांक' स्तंभों के लिए स्वरूप स्ट्रिंग प्रदान करें"
+
+# hu-HU
+msgid "Provide format string for 'Date' columns"
+msgstr "Adja meg a \"Dátum\" oszlopok formázási karakterláncát"
+
+# is-IS
+msgid "Provide format string for 'Date' columns"
+msgstr "Gefa upp sniðstreng fyrir dálka \"Dagsetning\""
+
+# ja-JP
+msgid "Provide format string for 'Date' columns"
+msgstr "'Date' 列の書式指定文字列を指定する"
+
+# nl-NL
+msgid "Provide format string for 'Date' columns"
+msgstr "Opmaak string voor 'Datum'-kolommen"
+
+# pl-PL
+msgid "Provide format string for 'Date' columns"
+msgstr "Podaj ciąg formatu dla kolumn \"Data\""
+
+# pt-BR
+msgid "Provide format string for 'Date' columns"
+msgstr "Fornecer cadeia de caracteres de formato para colunas de 'Data'"
+
+# ru-RU
+msgid "Provide format string for 'Date' columns"
+msgstr "Укажите строку формата для столбцов \"Дата\""
+
+# te-IN
+msgid "Provide format string for 'Date' columns"
+msgstr "'తేదీ' కాలమ్ ల కొరకు ఫార్మాట్ స్ట్రింగ్ అందించండి"
+
+# ta-IN
+msgid "Provide format string for 'Date' columns"
+msgstr "'தேதி' நெடுவரிசைகளுக்கான வடிவமைப்பு சரத்தை வழங்கவும்"
+
+# th-TH
+msgid "Provide format string for 'Date' columns"
+msgstr "ระบุสตริงรูปแบบสําหรับคอลัมน์ 'วันที่'"
+
+# zu-ZA
+msgid "Provide format string for 'Date' columns"
+msgstr "Nikeza umucu wefomethi yamakholomu 'Osuku'"
+
+# am-ET
+msgid "Provide format string for 'Date' columns"
+msgstr "ለ 'ቀን' ዓምዶች ፎርማት አውታረ መረብ ን ያቅርበው"
+
+# ar-AE
+msgid "Provide format string for 'Date' columns"
+msgstr "توفير سلسلة تنسيق لأعمدة \"التاريخ\""
+
+# it-IT
+msgid "Do not summarize numeric columns"
+msgstr "Non riepilogare le colonne numeriche"
+
+# es-ES
+msgid "Do not summarize numeric columns"
+msgstr "No resumir columnas numéricas"
+
+# he-IL
+msgid "Do not summarize numeric columns"
+msgstr "אל תסכם עמודות מספריות"
+
+# pt-PT
+msgid "Do not summarize numeric columns"
+msgstr "Não resumir colunas numéricas"
+
+# zh-CN
+msgid "Do not summarize numeric columns"
+msgstr "不汇总数值列"
+
+# fr-FR
+msgid "Do not summarize numeric columns"
+msgstr "Ne pas résumer les colonnes numériques"
+
+# da-DK
+msgid "Do not summarize numeric columns"
+msgstr "Opsummer ikke numeriske kolonner"
+
+# cs-CZ
+msgid "Do not summarize numeric columns"
+msgstr "Nevytvářet souhrn číselných sloupců"
+
+# de-DE
+msgid "Do not summarize numeric columns"
+msgstr "Numerische Spalten nicht zusammenfassen"
+
+# el-GR
+msgid "Do not summarize numeric columns"
+msgstr "Χωρίς σύνοψη αριθμητικών στηλών"
+
+# fa-IR
+msgid "Do not summarize numeric columns"
+msgstr "ستون های عددی را خلاصه نکنید"
+
+# ga-IE
+msgid "Do not summarize numeric columns"
+msgstr "Ná déan achoimre ar cholúin uimhriúla"
+
+# hi-IN
+msgid "Do not summarize numeric columns"
+msgstr "सांख्यिक स्तंभों को सारांशित न करें"
+
+# hu-HU
+msgid "Do not summarize numeric columns"
+msgstr "Numerikus oszlopok összegzésének mellőzése"
+
+# is-IS
+msgid "Do not summarize numeric columns"
+msgstr "Ekki taka saman tölulega dálka"
+
+# ja-JP
+msgid "Do not summarize numeric columns"
+msgstr "数値列を集計しない"
+
+# nl-NL
+msgid "Do not summarize numeric columns"
+msgstr "Numerieke kolommen niet samenvatten"
+
+# pl-PL
+msgid "Do not summarize numeric columns"
+msgstr "Nie sumuj kolumn liczbowych"
+
+# pt-BR
+msgid "Do not summarize numeric columns"
+msgstr "Não resumir colunas numéricas"
+
+# ru-RU
+msgid "Do not summarize numeric columns"
+msgstr "Не суммируйте числовые столбцы"
+
+# te-IN
+msgid "Do not summarize numeric columns"
+msgstr "సంఖ్యా కాలమ్ లను సంక్షిప్తీకరించవద్దు."
+
+# ta-IN
+msgid "Do not summarize numeric columns"
+msgstr "எண் நெடுவரிசைகளை சுருக்க வேண்டாம்"
+
+# th-TH
+msgid "Do not summarize numeric columns"
+msgstr "ไม่สรุปคอลัมน์ตัวเลข"
+
+# zu-ZA
+msgid "Do not summarize numeric columns"
+msgstr "Ungafingqi amakholomu ezinombolo"
+
+# am-ET
+msgid "Do not summarize numeric columns"
+msgstr "የቁጥር ዓምዶችን አታጠቃልል"
+
+# ar-AE
+msgid "Do not summarize numeric columns"
+msgstr "عدم تلخيص الأعمدة الرقمية"
+
+# it-IT
+msgid "Provide format string for measures"
+msgstr "Specificare la stringa di formato per le misure"
+
+# es-ES
+msgid "Provide format string for measures"
+msgstr "Proporcionar cadena de formato para las medidas"
+
+# he-IL
+msgid "Provide format string for measures"
+msgstr "ספק מחרוזת תבנית עבור מידות"
+
+# pt-PT
+msgid "Provide format string for measures"
+msgstr "Fornecer cadeia de caracteres de formato para medidas"
+
+# zh-CN
+msgid "Provide format string for measures"
+msgstr "为度量值提供格式字符串"
+
+# fr-FR
+msgid "Provide format string for measures"
+msgstr "Fournir une chaîne de format pour les mesures"
+
+# da-DK
+msgid "Provide format string for measures"
+msgstr "Angiv formatstreng for målinger"
+
+# cs-CZ
+msgid "Provide format string for measures"
+msgstr "Zadání formátovacího řetězce pro míry"
+
+# de-DE
+msgid "Provide format string for measures"
+msgstr "Bereitstellen einer Formatzeichenfolge für Measures"
+
+# el-GR
+msgid "Provide format string for measures"
+msgstr "Παροχή συμβολοσειράς μορφής για μετρήσεις"
+
+# fa-IR
+msgid "Provide format string for measures"
+msgstr "رشته فرمت را برای اندازه گیری ها ارائه دهید"
+
+# ga-IE
+msgid "Provide format string for measures"
+msgstr "Tabhair teaghrán formáide do bhearta"
+
+# hi-IN
+msgid "Provide format string for measures"
+msgstr "उपायों के लिए प्रारूप स्ट्रिंग प्रदान करें"
+
+# hu-HU
+msgid "Provide format string for measures"
+msgstr "Formázási karakterlánc megadása mértékekhez"
+
+# is-IS
+msgid "Provide format string for measures"
+msgstr "Gefa upp sniðstreng fyrir mælingar"
+
+# ja-JP
+msgid "Provide format string for measures"
+msgstr "メジャーの書式指定文字列を指定する"
+
+# nl-NL
+msgid "Provide format string for measures"
+msgstr "Opmaak tekenreeks voor metingen opgeven"
+
+# pl-PL
+msgid "Provide format string for measures"
+msgstr "Podaj ciąg formatu dla miar"
+
+# pt-BR
+msgid "Provide format string for measures"
+msgstr "Fornecer cadeia de caracteres de formato para medidas"
+
+# ru-RU
+msgid "Provide format string for measures"
+msgstr "Предоставление строки формата для мер"
+
+# te-IN
+msgid "Provide format string for measures"
+msgstr "చర్యల కొరకు ఫార్మాట్ స్ట్రింగ్ అందించండి"
+
+# ta-IN
+msgid "Provide format string for measures"
+msgstr "அளவீடுகளுக்கு வடிவமைப்பு சரத்தை வழங்கவும்"
+
+# th-TH
+msgid "Provide format string for measures"
+msgstr "จัดเตรียมสตริงรูปแบบสําหรับการวัดผล"
+
+# zu-ZA
+msgid "Provide format string for measures"
+msgstr "Nikeza umucu wefomethi yezinyathelo"
+
+# am-ET
+msgid "Provide format string for measures"
+msgstr "ለመለኪያ ፎርማት አውታረ መረብ አቅርበው"
+
+# ar-AE
+msgid "Provide format string for measures"
+msgstr "توفير سلسلة تنسيق للمقاييس"
+
+# it-IT
+msgid "Add data category for columns"
+msgstr "Aggiungere una categoria di dati per le colonne"
+
+# es-ES
+msgid "Add data category for columns"
+msgstr "Agregar categoría de datos para columnas"
+
+# he-IL
+msgid "Add data category for columns"
+msgstr "הוספת קטגוריית נתונים עבור עמודות"
+
+# pt-PT
+msgid "Add data category for columns"
+msgstr "Adicionar categoria de dados para colunas"
+
+# zh-CN
+msgid "Add data category for columns"
+msgstr "为列添加数据类别"
+
+# fr-FR
+msgid "Add data category for columns"
+msgstr "Ajouter une catégorie de données pour les colonnes"
+
+# da-DK
+msgid "Add data category for columns"
+msgstr "Tilføj datakategori for kolonner"
+
+# cs-CZ
+msgid "Add data category for columns"
+msgstr "Přidání kategorie dat pro sloupce"
+
+# de-DE
+msgid "Add data category for columns"
+msgstr "Hinzufügen einer Datenkategorie für Spalten"
+
+# el-GR
+msgid "Add data category for columns"
+msgstr "Προσθήκη κατηγορίας δεδομένων για στήλες"
+
+# fa-IR
+msgid "Add data category for columns"
+msgstr "افزودن دسته داده برای ستون ها"
+
+# ga-IE
+msgid "Add data category for columns"
+msgstr "Cuir catagóir sonraí le haghaidh colúin"
+
+# hi-IN
+msgid "Add data category for columns"
+msgstr "स्तंभों के लिए डेटा श्रेणी जोड़ना"
+
+# hu-HU
+msgid "Add data category for columns"
+msgstr "Adatkategória hozzáadása oszlopokhoz"
+
+# is-IS
+msgid "Add data category for columns"
+msgstr "Bæta við gagnaflokki fyrir dálka"
+
+# ja-JP
+msgid "Add data category for columns"
+msgstr "列のデータ カテゴリを追加する"
+
+# nl-NL
+msgid "Add data category for columns"
+msgstr "Gegevenscategorie voor kolommen toevoegen"
+
+# pl-PL
+msgid "Add data category for columns"
+msgstr "Dodawanie kategorii danych dla kolumn"
+
+# pt-BR
+msgid "Add data category for columns"
+msgstr "Adicionar categoria de dados para colunas"
+
+# ru-RU
+msgid "Add data category for columns"
+msgstr "Добавление категории данных для столбцов"
+
+# te-IN
+msgid "Add data category for columns"
+msgstr "కాలమ్ ల కొరకు డేటా కేటగిరీని జోడించు"
+
+# ta-IN
+msgid "Add data category for columns"
+msgstr "நெடுவரிசைகளுக்கான தரவு வகையைச் சேர்க்கவும்"
+
+# th-TH
+msgid "Add data category for columns"
+msgstr "เพิ่มประเภทข้อมูลสําหรับคอลัมน์"
+
+# zu-ZA
+msgid "Add data category for columns"
+msgstr "Engeza isigaba sedatha yamakholomu"
+
+# am-ET
+msgid "Add data category for columns"
+msgstr "ለዓምዶች የመረጃ ምድብ ጨምር"
+
+# ar-AE
+msgid "Add data category for columns"
+msgstr "إضافة فئة بيانات للأعمدة"
+
+# it-IT
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Le percentuali devono essere formattate con separatori delle migliaia e 1 "
+"decimale"
+
+# es-ES
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Los porcentajes deben tener un formato con separadores de miles y 1 decimal"
+
+# he-IL
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "יש לעצב אחוזים עם מפרידי אלפים ונקודה עשרונית אחת"
+
+# pt-PT
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"As percentagens devem ser formatadas com separadores de milhares e 1 decimal"
+
+# zh-CN
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "百分比的格式应为千位分隔符和 1 位小数"
+
+# fr-FR
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Les pourcentages doivent être formatés avec des milliers de séparateurs et 1"
+" décimale"
+
+# da-DK
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "Procenter skal formateres med tusindtalsseparatorer og 1 decimal"
+
+# cs-CZ
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Procenta by měla být formátována s oddělovači tisíců a 1 desetinnou čárkou."
+
+# de-DE
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Prozentsätze sollten mit Tausendertrennzeichen und 1 Dezimalstelle "
+"formatiert werden"
+
+# el-GR
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Τα ποσοστά πρέπει να μορφοποιούνται με διαχωριστικά χιλιάδων και 1 δεκαδικό"
+
+# fa-IR
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "درصدها باید با هزاران جداکننده و 1 اعشار قالب بندی شوند"
+
+# ga-IE
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Ba cheart céatadáin a fhormáidiú leis na mílte deighilteoirí agus 1 "
+"dheachúil"
+
+# hi-IN
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "प्रतिशत को हजारों विभाजक और 1 दशमलव के साथ स्वरूपित किया जाना चाहिए"
+
+# hu-HU
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"A százalékértékeket ezreselválasztóval és 1 tizedesjellel kell formázni"
+
+# is-IS
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "Prósentur ættu að vera sniðnar með þúsundaskiltáknum og 1 aukastaf"
+
+# ja-JP
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "パーセンテージは、千の位の区切り記号と小数点以下 1 桁で書式設定する必要があります"
+
+# nl-NL
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Percentages moeten worden opgemaakt met scheidingstekens voor duizendtallen "
+"en 1 decimaal"
+
+# pl-PL
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Wartości procentowe powinny być sformatowane z separatorami tysięcy i 1 "
+"miejscem dziesiętnym"
+
+# pt-BR
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"As porcentagens devem ser formatadas com separadores de milhares e 1 casa "
+"decimal"
+
+# ru-RU
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Проценты должны быть отформатированы с помощью разделителей тысяч и 1 знака "
+"после запятой"
+
+# te-IN
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "శాతాలను వేల సెపరేటర్లు మరియు 1 దశాంశాలతో ఫార్మాట్ చేయాలి."
+
+# ta-IN
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"சதவீதங்கள் ஆயிரக்கணக்கான பிரிப்பான்கள் மற்றும் 1 தசமத்துடன் வடிவமைக்கப்பட "
+"வேண்டும்"
+
+# th-TH
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "เปอร์เซ็นต์ควรจัดรูปแบบด้วยตัวคั่นหลักพันและทศนิยม 1 ตัว"
+
+# zu-ZA
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Amaphesenti kufanele ahlelwe ngezinkulungwane zezihlukanisi kanye ne-1 "
+"decimal"
+
+# am-ET
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "በመቶ አሃዝ በሺህ የሚቆጠሩ ሴፓራቶሮች እና 1 ዴሲማል መሰል መሆን አለበት"
+
+# ar-AE
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "يجب تنسيق النسب المئوية بآلاف الفواصل و 1 عشري"
+
+# it-IT
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"I numeri interi devono essere formattati con separatori delle migliaia e "
+"senza decimali"
+
+# es-ES
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Los números enteros deben tener formato con separadores de miles y sin "
+"decimales"
+
+# he-IL
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "יש לעצב מספרים שלמים עם מפרידי אלפים וללא מספרים עשרוניים"
+
+# pt-PT
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Os números inteiros devem ser formatados com separadores de milhares e sem "
+"decimais"
+
+# zh-CN
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "整数的格式应使用千位分隔符，并且不能使用小数"
+
+# fr-FR
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Les nombres entiers doivent être formatés avec des milliers de séparateurs "
+"et sans décimales"
+
+# da-DK
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "Hele tal skal formateres med tusindtalsseparatorer og ingen decimaler"
+
+# cs-CZ
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Celá čísla by měla být formátována s oddělovači tisíců a bez desetinných "
+"míst."
+
+# de-DE
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Ganze Zahlen sollten mit Tausendertrennzeichen und ohne Dezimalzahlen "
+"formatiert werden"
+
+# el-GR
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Οι ακέραιοι αριθμοί πρέπει να μορφοποιούνται με διαχωριστικά χιλιάδων και "
+"χωρίς δεκαδικά ψηφία"
+
+# fa-IR
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "اعداد کامل باید با هزاران جداکننده و بدون اعشار قالب بندی شوند"
+
+# ga-IE
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Ba cheart slánuimhreacha a fhormáidiú leis na mílte deighilteoirí agus gan "
+"aon deachúlacha"
+
+# hi-IN
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"पूर्ण संख्याओं को हजारों विभाजकों के साथ स्वरूपित किया जाना चाहिए और दशमलव "
+"नहीं होना चाहिए"
+
+# hu-HU
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Az egész számokat ezreselválasztójellel kell formázni, tizedesjegyek nélkül"
+
+# is-IS
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Heilar tölur ættu að vera sniðnar með þúsundaskiltáknum og engum aukastöfum"
+
+# ja-JP
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "整数は、小数点以下の桁数ではなく、千の位の区切り記号で書式設定する必要があります"
+
+# nl-NL
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Gehele getallen moeten worden opgemaakt met scheidingstekens voor "
+"duizendtallen en geen decimalen"
+
+# pl-PL
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Liczby całkowite powinny być sformatowane z separatorami tysięcy, a nie z "
+"ułamkami dziesiętnymi"
+
+# pt-BR
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Os números inteiros devem ser formatados com separadores de milhares e sem "
+"decimais"
+
+# ru-RU
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Целые числа должны быть отформатированы с помощью разделителей тысяч и без "
+"десятичных дробей"
+
+# te-IN
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "మొత్తం సంఖ్యలను వేల సెపరేటర్లతో ఫార్మాట్ చేయాలి మరియు దశాంశాలు లేవు."
+
+# ta-IN
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"முழு எண்கள் ஆயிரக்கணக்கான பிரிப்பான்களுடன் வடிவமைக்கப்பட வேண்டும், தசமங்கள் "
+"இல்லாமல் இருக்க வேண்டும்"
+
+# th-TH
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "จํานวนเต็มควรจัดรูปแบบด้วยตัวคั่นหลักพันและไม่มีทศนิยม"
+
+# zu-ZA
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Izinombolo eziphelele kufanele zihlelwe ngezinkulungwane zezihlukanisi futhi"
+" akukho ama-decimals"
+
+# am-ET
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "ሙሉ ቁጥሮች በሺህ የሚቆጠሩ ሴፓራቶሮች ና ምንም ዴሲማል የሌላቸው መሆን አለባቸው"
+
+# ar-AE
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "يجب تنسيق الأعداد الصحيحة بآلاف الفواصل وبدون كسور عشرية"
+
+# it-IT
+msgid "Hide foreign keys"
+msgstr "Nascondi le chiavi esterne"
+
+# es-ES
+msgid "Hide foreign keys"
+msgstr "Ocultar claves foráneas"
+
+# he-IL
+msgid "Hide foreign keys"
+msgstr "הסתרת מפתחות זרים"
+
+# pt-PT
+msgid "Hide foreign keys"
+msgstr "Ocultar chaves estrangeiras"
+
+# zh-CN
+msgid "Hide foreign keys"
+msgstr "隐藏外键"
+
+# fr-FR
+msgid "Hide foreign keys"
+msgstr "Masquer les clés étrangères"
+
+# da-DK
+msgid "Hide foreign keys"
+msgstr "Skjul fremmede nøgler"
+
+# cs-CZ
+msgid "Hide foreign keys"
+msgstr "Skrytí cizích klíčů"
+
+# de-DE
+msgid "Hide foreign keys"
+msgstr "Fremdschlüssel ausblenden"
+
+# el-GR
+msgid "Hide foreign keys"
+msgstr "Απόκρυψη ξένων κλειδιών"
+
+# fa-IR
+msgid "Hide foreign keys"
+msgstr "پنهان کردن کلیدهای خارجی"
+
+# ga-IE
+msgid "Hide foreign keys"
+msgstr "Folaigh eochracha eachtracha"
+
+# hi-IN
+msgid "Hide foreign keys"
+msgstr "विदेशी कुंजी छुपाएं"
+
+# hu-HU
+msgid "Hide foreign keys"
+msgstr "Idegen kulcsok elrejtése"
+
+# is-IS
+msgid "Hide foreign keys"
+msgstr "Fela erlenda lykla"
+
+# ja-JP
+msgid "Hide foreign keys"
+msgstr "外部キーの非表示"
+
+# nl-NL
+msgid "Hide foreign keys"
+msgstr "Vreemde sleutels verbergen"
+
+# pl-PL
+msgid "Hide foreign keys"
+msgstr "Ukrywanie kluczy obcych"
+
+# pt-BR
+msgid "Hide foreign keys"
+msgstr "Ocultar chaves estrangeiras"
+
+# ru-RU
+msgid "Hide foreign keys"
+msgstr "Скрыть внешние ключи"
+
+# te-IN
+msgid "Hide foreign keys"
+msgstr "విదేశీ కీలను దాచండి"
+
+# ta-IN
+msgid "Hide foreign keys"
+msgstr "வெளிநாட்டு விசைகளை மறை"
+
+# th-TH
+msgid "Hide foreign keys"
+msgstr "ซ่อนคีย์ต่างประเทศ"
+
+# zu-ZA
+msgid "Hide foreign keys"
+msgstr "Fihla okhiye bangaphandle"
+
+# am-ET
+msgid "Hide foreign keys"
+msgstr "የውጭ ቁልፎችን መደበቅ"
+
+# ar-AE
+msgid "Hide foreign keys"
+msgstr "إخفاء المفاتيح الخارجية"
+
+# it-IT
+msgid "Mark primary keys"
+msgstr "Contrassegnare le chiavi primarie"
+
+# es-ES
+msgid "Mark primary keys"
+msgstr "Marcar claves principales"
+
+# he-IL
+msgid "Mark primary keys"
+msgstr "סימון מפתחות ראשיים"
+
+# pt-PT
+msgid "Mark primary keys"
+msgstr "Marcar chaves primárias"
+
+# zh-CN
+msgid "Mark primary keys"
+msgstr "标记主键"
+
+# fr-FR
+msgid "Mark primary keys"
+msgstr "Marquer les clés primaires"
+
+# da-DK
+msgid "Mark primary keys"
+msgstr "Markér primære nøgler"
+
+# cs-CZ
+msgid "Mark primary keys"
+msgstr "Označení primárních klíčů"
+
+# de-DE
+msgid "Mark primary keys"
+msgstr "Markieren von Primärschlüsseln"
+
+# el-GR
+msgid "Mark primary keys"
+msgstr "Σήμανση πρωτευόντων κλειδιών"
+
+# fa-IR
+msgid "Mark primary keys"
+msgstr "علامت گذاری کلیدهای اصلی"
+
+# ga-IE
+msgid "Mark primary keys"
+msgstr "Marcáil eochracha príomhúla"
+
+# hi-IN
+msgid "Mark primary keys"
+msgstr "प्राथमिक कुंजियों को चिह्नित करें"
+
+# hu-HU
+msgid "Mark primary keys"
+msgstr "Elsődleges kulcsok megjelölése"
+
+# is-IS
+msgid "Mark primary keys"
+msgstr "Merktu aðallykla"
+
+# ja-JP
+msgid "Mark primary keys"
+msgstr "プライマリ・キーのマーク"
+
+# nl-NL
+msgid "Mark primary keys"
+msgstr "Primaire sleutels markeren"
+
+# pl-PL
+msgid "Mark primary keys"
+msgstr "Oznaczanie kluczy podstawowych"
+
+# pt-BR
+msgid "Mark primary keys"
+msgstr "Marcar chaves primárias"
+
+# ru-RU
+msgid "Mark primary keys"
+msgstr "Маркировка первичных ключей"
+
+# te-IN
+msgid "Mark primary keys"
+msgstr "ప్రాథమిక కీలను మార్క్ చేయండి"
+
+# ta-IN
+msgid "Mark primary keys"
+msgstr "முதன்மை விசைகளை குறிக்கவும்"
+
+# th-TH
+msgid "Mark primary keys"
+msgstr "ทําเครื่องหมายคีย์หลัก"
+
+# zu-ZA
+msgid "Mark primary keys"
+msgstr "Phawula okhiye abaphambili"
+
+# am-ET
+msgid "Mark primary keys"
+msgstr "የማርቆስ ዋና ቁልፍ"
+
+# ar-AE
+msgid "Mark primary keys"
+msgstr "وضع علامة على المفاتيح الأساسية"
+
+# it-IT
+msgid "Month (as a string) must be sorted"
+msgstr "Il mese (come stringa) deve essere ordinato"
+
+# es-ES
+msgid "Month (as a string) must be sorted"
+msgstr "El mes (como una cadena) debe ordenarse"
+
+# he-IL
+msgid "Month (as a string) must be sorted"
+msgstr "יש למיין חודש (כמחרוזת)"
+
+# pt-PT
+msgid "Month (as a string) must be sorted"
+msgstr "O mês (como uma cadeia de caracteres) deve ser classificado"
+
+# zh-CN
+msgid "Month (as a string) must be sorted"
+msgstr "月份（作为字符串）必须排序"
+
+# fr-FR
+msgid "Month (as a string) must be sorted"
+msgstr "Le mois (sous forme de chaîne) doit être trié"
+
+# da-DK
+msgid "Month (as a string) must be sorted"
+msgstr "Måned (som en streng) skal sorteres"
+
+# cs-CZ
+msgid "Month (as a string) must be sorted"
+msgstr "Měsíc (jako řetězec) musí být seřazen"
+
+# de-DE
+msgid "Month (as a string) must be sorted"
+msgstr "Monat (als Zeichenfolge) muss sortiert werden"
+
+# el-GR
+msgid "Month (as a string) must be sorted"
+msgstr "Ο μήνας (ως συμβολοσειρά) πρέπει να ταξινομηθεί"
+
+# fa-IR
+msgid "Month (as a string) must be sorted"
+msgstr "ماه (به عنوان رشته) باید مرتب شود"
+
+# ga-IE
+msgid "Month (as a string) must be sorted"
+msgstr "Ní mór mí (mar theaghrán) a shórtáil"
+
+# hi-IN
+msgid "Month (as a string) must be sorted"
+msgstr "माह (स्ट्रिंग के रूप में) सॉर्ट किया जाना चाहिए"
+
+# hu-HU
+msgid "Month (as a string) must be sorted"
+msgstr "A hónapot (karakterláncként) rendezni kell"
+
+# is-IS
+msgid "Month (as a string) must be sorted"
+msgstr "Mánuður (sem strengur) verður að flokka"
+
+# ja-JP
+msgid "Month (as a string) must be sorted"
+msgstr "月(文字列として)はソートする必要があります"
+
+# nl-NL
+msgid "Month (as a string) must be sorted"
+msgstr "Maand (als een tekenreeks) moet worden gesorteerd"
+
+# pl-PL
+msgid "Month (as a string) must be sorted"
+msgstr "Miesiąc (jako ciąg) musi być posortowany"
+
+# pt-BR
+msgid "Month (as a string) must be sorted"
+msgstr "Mês (como uma string) deve ser classificado"
+
+# ru-RU
+msgid "Month (as a string) must be sorted"
+msgstr "Месяц (в виде строки) должен быть отсортирован"
+
+# te-IN
+msgid "Month (as a string) must be sorted"
+msgstr "నెలను (తీగగా) క్రమబద్ధీకరించాలి."
+
+# ta-IN
+msgid "Month (as a string) must be sorted"
+msgstr "மாதம் (ஒரு சரமாக) வரிசைப்படுத்தப்பட வேண்டும்"
+
+# th-TH
+msgid "Month (as a string) must be sorted"
+msgstr "ต้องเรียงลําดับเดือน (เป็นสตริง)"
+
+# zu-ZA
+msgid "Month (as a string) must be sorted"
+msgstr "Inyanga (njengentambo) kumele ihlelwe"
+
+# am-ET
+msgid "Month (as a string) must be sorted"
+msgstr "ወር (እንደ አውታር) መለየት አለበት"
+
+# ar-AE
+msgid "Month (as a string) must be sorted"
+msgstr "يجب فرز الشهر (كسلسلة)"
+
+# it-IT
+msgid "Relationship columns should be of integer data type"
+msgstr "Le colonne delle relazioni devono essere di tipo integer"
+
+# es-ES
+msgid "Relationship columns should be of integer data type"
+msgstr "Las columnas de relación deben ser del tipo de datos entero"
+
+# he-IL
+msgid "Relationship columns should be of integer data type"
+msgstr "עמודות קשרי גומלין צריכות להיות מסוג נתונים שלמים"
+
+# pt-PT
+msgid "Relationship columns should be of integer data type"
+msgstr "As colunas de relacionamento devem ser do tipo de dados inteiros"
+
+# zh-CN
+msgid "Relationship columns should be of integer data type"
+msgstr "关系列应为整数数据类型"
+
+# fr-FR
+msgid "Relationship columns should be of integer data type"
+msgstr "Les colonnes de relation doivent être de type entier"
+
+# da-DK
+msgid "Relationship columns should be of integer data type"
+msgstr "Relationskolonner skal være af heltalsdatatypen"
+
+# cs-CZ
+msgid "Relationship columns should be of integer data type"
+msgstr "Sloupce relace by měly být celočíselného datového typu"
+
+# de-DE
+msgid "Relationship columns should be of integer data type"
+msgstr "Beziehungsspalten sollten vom Datentyp \"Integer\" sein"
+
+# el-GR
+msgid "Relationship columns should be of integer data type"
+msgstr "Οι στήλες σχέσεων πρέπει να είναι ακέραιου τύπου δεδομένων"
+
+# fa-IR
+msgid "Relationship columns should be of integer data type"
+msgstr "ستون های رابطه باید از نوع داده های عدد صحیح باشند"
+
+# ga-IE
+msgid "Relationship columns should be of integer data type"
+msgstr "Ba chóir colúin Gaol a bheith de chineál slánuimhir sonraí"
+
+# hi-IN
+msgid "Relationship columns should be of integer data type"
+msgstr "संबंध स्तंभ पूर्णांक डेटा प्रकार के होने चाहिए"
+
+# hu-HU
+msgid "Relationship columns should be of integer data type"
+msgstr "A kapcsolati oszlopoknak egész szám adattípusúnak kell lenniük"
+
+# is-IS
+msgid "Relationship columns should be of integer data type"
+msgstr "Tengsladálkar ættu að vera af heiltölu gagnagerð"
+
+# ja-JP
+msgid "Relationship columns should be of integer data type"
+msgstr "リレーションシップ列は整数データ型である必要があります"
+
+# nl-NL
+msgid "Relationship columns should be of integer data type"
+msgstr "Relatiekolommen moeten van het gegevenstype geheel getal zijn"
+
+# pl-PL
+msgid "Relationship columns should be of integer data type"
+msgstr "Kolumny relacji powinny mieć typ danych liczb całkowitych"
+
+# pt-BR
+msgid "Relationship columns should be of integer data type"
+msgstr "As colunas de relacionamento devem ser do tipo de dados inteiro"
+
+# ru-RU
+msgid "Relationship columns should be of integer data type"
+msgstr "Столбцы отношений должны иметь целочисленный тип данных"
+
+# te-IN
+msgid "Relationship columns should be of integer data type"
+msgstr "రిలేషన్ షిప్ కాలమ్ లు పూర్తి సంఖ్యల డేటా రకానికి చెందినవిగా ఉండాలి."
+
+# ta-IN
+msgid "Relationship columns should be of integer data type"
+msgstr "உறவு நெடுவரிசைகள் முழுஎண் தரவினமாக இருக்க வேண்டும்"
+
+# th-TH
+msgid "Relationship columns should be of integer data type"
+msgstr "คอลัมน์ความสัมพันธ์ควรเป็นชนิดข้อมูลจํานวนเต็ม"
+
+# zu-ZA
+msgid "Relationship columns should be of integer data type"
+msgstr "Amakholomu obudlelwane kufanele abe ngohlobo lwedatha ye-integer"
+
+# am-ET
+msgid "Relationship columns should be of integer data type"
+msgstr "የግንኙነት ዓምዶች integer data type መሆን አለባቸው"
+
+# ar-AE
+msgid "Relationship columns should be of integer data type"
+msgstr "يجب أن تكون أعمدة العلاقة من نوع بيانات عدد صحيح"
+
+# it-IT
+msgid "Provide format string for \"Month\" columns"
+msgstr "Specificare la stringa di formato per le colonne \"Mese\""
+
+# es-ES
+msgid "Provide format string for \"Month\" columns"
+msgstr "Proporcionar cadena de formato para las columnas \"Mes\""
+
+# he-IL
+msgid "Provide format string for \"Month\" columns"
+msgstr "ספק מחרוזת תבנית עבור עמודות \"חודש\""
+
+# pt-PT
+msgid "Provide format string for \"Month\" columns"
+msgstr "Fornecer cadeia de caracteres de formato para colunas \"Mês\""
+
+# zh-CN
+msgid "Provide format string for \"Month\" columns"
+msgstr "为“Month”列提供格式字符串"
+
+# fr-FR
+msgid "Provide format string for \"Month\" columns"
+msgstr "Fournir une chaîne de format pour les colonnes « Mois »"
+
+# da-DK
+msgid "Provide format string for \"Month\" columns"
+msgstr "Angiv formatstreng for kolonnerne \"Måned\""
+
+# cs-CZ
+msgid "Provide format string for \"Month\" columns"
+msgstr "Zadejte formátovací řetězec pro sloupce \"Měsíc\""
+
+# de-DE
+msgid "Provide format string for \"Month\" columns"
+msgstr "Geben Sie eine Formatzeichenfolge für \"Monat\"-Spalten an"
+
+# el-GR
+msgid "Provide format string for \"Month\" columns"
+msgstr "Παροχή συμβολοσειράς μορφής για στήλες \"Μήνας\""
+
+# fa-IR
+msgid "Provide format string for \"Month\" columns"
+msgstr "رشته فرمت را برای ستون های \"Month\" ارائه دهید"
+
+# ga-IE
+msgid "Provide format string for \"Month\" columns"
+msgstr "Cuir teaghrán formáide ar fáil do cholúin \"Mí\""
+
+# hi-IN
+msgid "Provide format string for \"Month\" columns"
+msgstr "\"महीना\" स्तंभों के लिए स्वरूप स्ट्रिंग प्रदान करें"
+
+# hu-HU
+msgid "Provide format string for \"Month\" columns"
+msgstr "Adja meg a \"Hónap\" oszlopok formázási karakterláncát"
+
+# is-IS
+msgid "Provide format string for \"Month\" columns"
+msgstr "Gefa upp sniðstreng fyrir dálka \"Mánuður\""
+
+# ja-JP
+msgid "Provide format string for \"Month\" columns"
+msgstr "\"Month\" 列の書式指定文字列を指定する"
+
+# nl-NL
+msgid "Provide format string for \"Month\" columns"
+msgstr "Geef een notatietekenreeks op voor kolommen met een maand"
+
+# pl-PL
+msgid "Provide format string for \"Month\" columns"
+msgstr "Podaj ciąg formatu dla kolumn \"Miesiąc\""
+
+# pt-BR
+msgid "Provide format string for \"Month\" columns"
+msgstr "Forneça a cadeia de caracteres de formato para colunas \"Mês\""
+
+# ru-RU
+msgid "Provide format string for \"Month\" columns"
+msgstr "Укажите строку формата для столбцов \"Месяц\""
+
+# te-IN
+msgid "Provide format string for \"Month\" columns"
+msgstr "\"నెల\" కాలమ్ ల కొరకు ఫార్మాట్ స్ట్రింగ్ అందించండి"
+
+# ta-IN
+msgid "Provide format string for \"Month\" columns"
+msgstr "\"மாதம்\" நெடுவரிசைகளுக்கான வடிவமைப்பு சரத்தை வழங்கவும்"
+
+# th-TH
+msgid "Provide format string for \"Month\" columns"
+msgstr "ระบุสตริงรูปแบบสําหรับคอลัมน์ \"เดือน\""
+
+# zu-ZA
+msgid "Provide format string for \"Month\" columns"
+msgstr "Nikeza umucu wefomethi yamakholomu \"Inyanga\""
+
+# am-ET
+msgid "Provide format string for \"Month\" columns"
+msgstr "ለ\"ወር\" ዓምዶች ፎርማት አውታረ መረብ አቅርበው"
+
+# ar-AE
+msgid "Provide format string for \"Month\" columns"
+msgstr "توفير سلسلة تنسيق لأعمدة \"الشهر\""
+
+# it-IT
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Formattare le colonne dei flag come stringhe di valore Sì/No"
+
+# es-ES
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Dar formato a las columnas de marca como cadenas de valor Sí/No"
+
+# he-IL
+msgid "Format flag columns as Yes/No value strings"
+msgstr "עיצוב עמודות דגל כמחרוזות ערך כן/לא"
+
+# pt-PT
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Formatar colunas de sinalizador como cadeias de valores Sim/Não"
+
+# zh-CN
+msgid "Format flag columns as Yes/No value strings"
+msgstr "将标志列的格式设置为“是/否”值字符串"
+
+# fr-FR
+msgid "Format flag columns as Yes/No value strings"
+msgstr ""
+"Formater les colonnes d’indicateur en tant que chaînes de valeur Oui/Non"
+
+# da-DK
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Formatere flagkolonner som Ja/Nej-værdistrenge"
+
+# cs-CZ
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Formátování sloupců příznaků jako řetězců hodnot Ano/Ne"
+
+# de-DE
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Formatieren von Flagspalten als Ja/Nein-Wertzeichenfolgen"
+
+# el-GR
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Μορφοποίηση στηλών σημαίας ως συμβολοσειρές τιμών Ναι/Όχι"
+
+# fa-IR
+msgid "Format flag columns as Yes/No value strings"
+msgstr "قالب بندی ستون های پرچم به عنوان رشته های مقدار بله/خیر"
+
+# ga-IE
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Formáidigh colúin bratach mar Tá / Níl teaghráin luach"
+
+# hi-IN
+msgid "Format flag columns as Yes/No value strings"
+msgstr "ध्वज स्तंभों को हाँ/नहीं मान स्ट्रिंग के रूप में स्वरूपित करें"
+
+# hu-HU
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Jelölőoszlopok formázása Igen/Nem érték-karakterláncként"
+
+# is-IS
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Sníða flaggdálka sem Já/Nei gildisstrengi"
+
+# ja-JP
+msgid "Format flag columns as Yes/No value strings"
+msgstr "フラグ列を Yes/No 値文字列として書式設定します"
+
+# nl-NL
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Vlagkolommen opmaken als Ja/Nee-waardetekenreeksen"
+
+# pl-PL
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Formatowanie kolumn flagi jako ciągów wartości Tak/Nie"
+
+# pt-BR
+msgid "Format flag columns as Yes/No value strings"
+msgstr ""
+"Formatar colunas de sinalizador como cadeias de caracteres de valor Sim/Não"
+
+# ru-RU
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Форматирование столбцов флагов в виде строк значений «Да/Нет»"
+
+# te-IN
+msgid "Format flag columns as Yes/No value strings"
+msgstr "ఫ్లాగ్ కాలమ్ లను అవును/కాదు వాల్యూ స్ట్రింగ్ లుగా ఫార్మాట్ చేయండి"
+
+# ta-IN
+msgid "Format flag columns as Yes/No value strings"
+msgstr "கொடி நெடுவரிசைகளை ஆம்/இல்லை மதிப்பு சரங்களாக வடிவமைக்கவும்"
+
+# th-TH
+msgid "Format flag columns as Yes/No value strings"
+msgstr "จัดรูปแบบคอลัมน์ธงเป็นสตริงค่าใช่/ไม่ใช่"
+
+# zu-ZA
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Hlela amakholomu efulegi njengezintambo zenani likaYebo / Cha"
+
+# am-ET
+msgid "Format flag columns as Yes/No value strings"
+msgstr "ፎርማት የባንዲራ ዓምዶች እንደ አዎ/አይደለም ዋጋ አውታረ መረብ"
+
+# ar-AE
+msgid "Format flag columns as Yes/No value strings"
+msgstr "تنسيق أعمدة العلم كسلاسل قيم نعم / لا"
+
+# it-IT
+msgid "Objects should not start or end with a space"
+msgstr "Gli oggetti non devono iniziare o terminare con uno spazio"
+
+# es-ES
+msgid "Objects should not start or end with a space"
+msgstr "Los objetos no deben comenzar ni terminar con un espacio"
+
+# he-IL
+msgid "Objects should not start or end with a space"
+msgstr "אובייקטים אינם אמורים להתחיל או להסתיים ברווח"
+
+# pt-PT
+msgid "Objects should not start or end with a space"
+msgstr "Os objetos não devem começar ou terminar com um espaço"
+
+# zh-CN
+msgid "Objects should not start or end with a space"
+msgstr "对象不应以空格开头或结尾"
+
+# fr-FR
+msgid "Objects should not start or end with a space"
+msgstr "Les objets ne doivent pas commencer ou se terminer par un espace"
+
+# da-DK
+msgid "Objects should not start or end with a space"
+msgstr "Objekter må ikke starte eller slutte med et mellemrum"
+
+# cs-CZ
+msgid "Objects should not start or end with a space"
+msgstr "Objekty by neměly začínat ani končit mezerou"
+
+# de-DE
+msgid "Objects should not start or end with a space"
+msgstr "Objekte sollten nicht mit einem Leerzeichen beginnen oder enden"
+
+# el-GR
+msgid "Objects should not start or end with a space"
+msgstr ""
+"Τα αντικείμενα δεν πρέπει να ξεκινούν ή να τελειώνουν με κενό διάστημα"
+
+# fa-IR
+msgid "Objects should not start or end with a space"
+msgstr "آبجکت ها نباید با فاصله شروع یا پایان شوند"
+
+# ga-IE
+msgid "Objects should not start or end with a space"
+msgstr "Níor chóir go dtosódh nó go gcríochnódh réada le spás"
+
+# hi-IN
+msgid "Objects should not start or end with a space"
+msgstr "ऑब्जेक्ट को किसी स्थान से प्रारंभ या समाप्त नहीं होना चाहिए"
+
+# hu-HU
+msgid "Objects should not start or end with a space"
+msgstr "Az objektumok nem kezdődhetnek vagy végződhetnek szóközzel"
+
+# is-IS
+msgid "Objects should not start or end with a space"
+msgstr "Hlutir ættu ekki að byrja eða enda á bili"
+
+# ja-JP
+msgid "Objects should not start or end with a space"
+msgstr "オブジェクトの先頭または末尾をスペースにすることはできません"
+
+# nl-NL
+msgid "Objects should not start or end with a space"
+msgstr "Objecten mogen niet beginnen of eindigen met een spatie"
+
+# pl-PL
+msgid "Objects should not start or end with a space"
+msgstr "Obiekty nie powinny zaczynać się ani kończyć spacją"
+
+# pt-BR
+msgid "Objects should not start or end with a space"
+msgstr "Os objetos não devem começar ou terminar com um espaço"
+
+# ru-RU
+msgid "Objects should not start or end with a space"
+msgstr "Объекты не должны начинаться или заканчиваться пробелом"
+
+# te-IN
+msgid "Objects should not start or end with a space"
+msgstr "ఆబ్జెక్ట్ లు స్పేస్ తో ప్రారంభం కాకూడదు లేదా ముగియరాదు."
+
+# ta-IN
+msgid "Objects should not start or end with a space"
+msgstr "பொருள்கள் இடைவெளியுடன் தொடங்கவோ அல்லது முடிவடையவோ கூடாது"
+
+# th-TH
+msgid "Objects should not start or end with a space"
+msgstr "วัตถุไม่ควรขึ้นต้นหรือลงท้ายด้วยช่องว่าง"
+
+# zu-ZA
+msgid "Objects should not start or end with a space"
+msgstr "Izinto akufanele ziqale noma ziphele ngesikhala"
+
+# am-ET
+msgid "Objects should not start or end with a space"
+msgstr "እቃዎች በቦታ መጀመር ወይም ማብቃት የለባቸውም"
+
+# ar-AE
+msgid "Objects should not start or end with a space"
+msgstr "يجب ألا تبدأ الكائنات أو تنتهي بمسافة"
+
+# it-IT
+msgid "First letter of objects must be capitalized"
+msgstr "La prima lettera degli oggetti deve essere maiuscola"
+
+# es-ES
+msgid "First letter of objects must be capitalized"
+msgstr "La primera letra de los objetos debe escribirse en mayúscula"
+
+# he-IL
+msgid "First letter of objects must be capitalized"
+msgstr "האות הראשונה של אובייקטים חייבת להיות רישית"
+
+# pt-PT
+msgid "First letter of objects must be capitalized"
+msgstr "A primeira letra dos objetos deve ser maiúscula"
+
+# zh-CN
+msgid "First letter of objects must be capitalized"
+msgstr "宾语的第一个字母必须大写"
+
+# fr-FR
+msgid "First letter of objects must be capitalized"
+msgstr "La première lettre des objets doit être en majuscule"
+
+# da-DK
+msgid "First letter of objects must be capitalized"
+msgstr "Første bogstav i objekter skal skrives med stort"
+
+# cs-CZ
+msgid "First letter of objects must be capitalized"
+msgstr "První písmeno objektů musí být velké"
+
+# de-DE
+msgid "First letter of objects must be capitalized"
+msgstr "Der erste Buchstabe von Objekten muss groß geschrieben werden"
+
+# el-GR
+msgid "First letter of objects must be capitalized"
+msgstr "Το πρώτο γράμμα των αντικειμένων πρέπει να είναι κεφαλαίο"
+
+# fa-IR
+msgid "First letter of objects must be capitalized"
+msgstr "حرف اول اشیاء باید با حروف بزرگ نوشته شود"
+
+# ga-IE
+msgid "First letter of objects must be capitalized"
+msgstr "Ní mór an chéad litir rudaí a chaipitliú"
+
+# hi-IN
+msgid "First letter of objects must be capitalized"
+msgstr "वस्तुओं के पहले अक्षर को कैपिटल किया जाना चाहिए"
+
+# hu-HU
+msgid "First letter of objects must be capitalized"
+msgstr "Az objektumok első betűjét nagybetűvel kell írni"
+
+# is-IS
+msgid "First letter of objects must be capitalized"
+msgstr "Fyrsti stafur hluta verður að vera með hástöfum"
+
+# ja-JP
+msgid "First letter of objects must be capitalized"
+msgstr "オブジェクトの最初の文字は大文字にする必要があります"
+
+# nl-NL
+msgid "First letter of objects must be capitalized"
+msgstr ""
+"De eerste letter van objecten moet met een hoofdletter worden geschreven"
+
+# pl-PL
+msgid "First letter of objects must be capitalized"
+msgstr "Pierwsza litera w obiektach musi być wielka"
+
+# pt-BR
+msgid "First letter of objects must be capitalized"
+msgstr "A primeira letra dos objetos deve ser maiúscula"
+
+# ru-RU
+msgid "First letter of objects must be capitalized"
+msgstr "Первая буква дополнения должна быть заглавной"
+
+# te-IN
+msgid "First letter of objects must be capitalized"
+msgstr "వస్తువుల యొక్క మొదటి అక్షరాన్ని క్యాపిటల్ చేయాలి"
+
+# ta-IN
+msgid "First letter of objects must be capitalized"
+msgstr "பொருள்களின் முதல் எழுத்து பெரியதாக இருக்க வேண்டும்"
+
+# th-TH
+msgid "First letter of objects must be capitalized"
+msgstr "ตัวอักษรตัวแรกของวัตถุต้องเป็นตัวพิมพ์ใหญ่"
+
+# zu-ZA
+msgid "First letter of objects must be capitalized"
+msgstr "Incwadi yokuqala yezinto kumele i-capitalized"
+
+# am-ET
+msgid "First letter of objects must be capitalized"
+msgstr "የእቃዎች የመጀመሪያ ፊደል መጠቀም አለበት"
+
+# ar-AE
+msgid "First letter of objects must be capitalized"
+msgstr "يجب كتابة الحرف الأول من الكائنات بأحرف كبيرة"
+
+# it-IT
+msgid "Object names must not contain special characters"
+msgstr "I nomi degli oggetti non devono contenere caratteri speciali"
+
+# es-ES
+msgid "Object names must not contain special characters"
+msgstr "Los nombres de objeto no deben contener caracteres especiales"
+
+# he-IL
+msgid "Object names must not contain special characters"
+msgstr "שמות אובייקטים אינם יכולים להכיל תווים מיוחדים"
+
+# pt-PT
+msgid "Object names must not contain special characters"
+msgstr "Os nomes de objetos não devem conter caracteres especiais"
+
+# zh-CN
+msgid "Object names must not contain special characters"
+msgstr "对象名称不得包含特殊字符"
+
+# fr-FR
+msgid "Object names must not contain special characters"
+msgstr "Les noms d’objet ne doivent pas contenir de caractères spéciaux"
+
+# da-DK
+msgid "Object names must not contain special characters"
+msgstr "Objektnavne må ikke indeholde specialtegn"
+
+# cs-CZ
+msgid "Object names must not contain special characters"
+msgstr "Názvy objektů nesmí obsahovat speciální znaky."
+
+# de-DE
+msgid "Object names must not contain special characters"
+msgstr "Objektnamen dürfen keine Sonderzeichen enthalten"
+
+# el-GR
+msgid "Object names must not contain special characters"
+msgstr "Τα ονόματα αντικειμένων δεν πρέπει να περιέχουν ειδικούς χαρακτήρες"
+
+# fa-IR
+msgid "Object names must not contain special characters"
+msgstr "نام اشیاء نباید حاوی کاراکترهای خاصی باشد"
+
+# ga-IE
+msgid "Object names must not contain special characters"
+msgstr "Ní ceadmhach carachtair speisialta a bheith in ainmneacha réada"
+
+# hi-IN
+msgid "Object names must not contain special characters"
+msgstr "ऑब्जेक्ट नामों में विशेष वर्ण नहीं होने चाहिए"
+
+# hu-HU
+msgid "Object names must not contain special characters"
+msgstr "Az objektumnevek nem tartalmazhatnak speciális karaktereket"
+
+# is-IS
+msgid "Object names must not contain special characters"
+msgstr "Hlutaheiti mega ekki innihalda sérstafi"
+
+# ja-JP
+msgid "Object names must not contain special characters"
+msgstr "オブジェクト名に特殊文字を含めることはできません"
+
+# nl-NL
+msgid "Object names must not contain special characters"
+msgstr "Objectnamen mogen geen speciale tekens bevatten"
+
+# pl-PL
+msgid "Object names must not contain special characters"
+msgstr "Nazwy obiektów nie mogą zawierać znaków specjalnych"
+
+# pt-BR
+msgid "Object names must not contain special characters"
+msgstr "Os nomes dos objetos não devem conter caracteres especiais"
+
+# ru-RU
+msgid "Object names must not contain special characters"
+msgstr "Имена объектов не должны содержать специальных символов"
+
+# te-IN
+msgid "Object names must not contain special characters"
+msgstr "ఆబ్జెక్ట్ పేర్లలో ప్రత్యేక అక్షరాలు ఉండరాదు."
+
+# ta-IN
+msgid "Object names must not contain special characters"
+msgstr "பொருள் பெயர்களில் சிறப்பு கேரக்டர்கள் இருக்கக்கூடாது"
+
+# th-TH
+msgid "Object names must not contain special characters"
+msgstr "ชื่อวัตถุต้องไม่มีอักขระพิเศษ"
+
+# zu-ZA
+msgid "Object names must not contain special characters"
+msgstr "Amagama ento akumele ibe nezinhlamvu ezikhethekile"
+
+# am-ET
+msgid "Object names must not contain special characters"
+msgstr "የግዕዝ ስሞች ልዩ ፊደሎችን መያዝ የለባቸውም"
+
+# ar-AE
+msgid "Object names must not contain special characters"
+msgstr "يجب ألا تحتوي أسماء الكائنات على أحرف خاصة"

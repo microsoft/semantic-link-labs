@@ -20,6 +20,8 @@ import sempy_labs._icons as icons
 from synapse.ml.services import Translate
 from pyspark.sql.functions import col, flatten
 from pyspark.sql.types import StructType, StructField, StringType
+import polib
+import os
 
 
 @log
@@ -76,7 +78,39 @@ def run_model_bpa(
         "ignore", category=UserWarning, message=".*Arrow optimization.*"
     )
 
+    language_list = [
+        "it-IT",
+        "es-ES",
+        "he-IL",
+        "pt-PT",
+        "zh-CN",
+        "fr-FR",
+        "da-DK",
+        "cs-CZ",
+        "de-DE",
+        "el-GR",
+        "fa-IR",
+        "ga-IE",
+        "hi-IN",
+        "hu-HU",
+        "is-IS",
+        "ja-JP",
+        "nl-NL",
+        "pl-PL",
+        "pt-BR",
+        "ru-RU",
+        "te-IN",
+        "ta-IN",
+        "th-TH",
+        "zu-ZA",
+        "am-ET",
+        "ar-AE",
+    ]
+
     workspace = fabric.resolve_workspace_name(workspace)
+
+    if language is not None and language not in language_list:
+        print(f"{icons.yellow_dot} The '{language}' is not in our predefined language list. Please file an issue and let us know which language you are using: `<https://github.com/microsoft/semantic-link-labs/issues/new?assignees=&labels=&projects=&template=bug_report.md&title=>`_.")
 
     if extended:
         with connect_semantic_model(
@@ -90,17 +124,23 @@ def run_model_bpa(
 
         dep = get_model_calc_dependencies(dataset=dataset, workspace=workspace)
 
-        if rules is None:
+        # Translations
+        if language is not None and rules is None and language in language_list:
+            # Use the polib to get the translations without using spark
             rules = model_bpa_rules(
                 dataset=dataset, workspace=workspace, dependencies=dep
             )
-
-        rules["Severity"].replace("Warning", "⚠️", inplace=True)
-        rules["Severity"].replace("Error", "\u274C", inplace=True)
-        rules["Severity"].replace("Info", "ℹ️", inplace=True)
-
-        # Translate
-        if language is not None:
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            for c in ["Category", "Description", "Rule Name"]:
+                po = polib.pofile(
+                    f"{current_dir}/_bpa_translation/_translations_{c.lower().replace(' ','')}.po"
+                )
+                for entry in po:
+                    if entry.tcomment == language:
+                        rules.loc[rules["Rule Name"] == entry.msgid, c] = entry.msgstr
+        elif language is not None and (rules is not None or language not in language_list):
+            rules = model_bpa_rules(dataset=dataset, workspace=workspace, dependencies=dep)
+            # Use spark to get the translations
             rules_temp = rules.copy()
             rules_temp = rules_temp.drop(["Expression", "URL", "Severity"], axis=1)
 
@@ -161,6 +201,14 @@ def run_model_bpa(
             for clm in columns:
                 rules = rules.drop([clm], axis=1)
                 rules = rules.rename(columns={f"{clm}Translated": clm})
+        elif rules is None:
+            rules = model_bpa_rules(
+                dataset=dataset, workspace=workspace, dependencies=dep
+            )
+
+        rules["Severity"].replace("Warning", "⚠️", inplace=True)
+        rules["Severity"].replace("Error", "\u274C", inplace=True)
+        rules["Severity"].replace("Info", "ℹ️", inplace=True)
 
         pd.set_option("display.max_colwidth", 1000)
 
