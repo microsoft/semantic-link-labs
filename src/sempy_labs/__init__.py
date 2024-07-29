@@ -1,6 +1,6 @@
 from sempy_labs._clear_cache import clear_cache
 
-# from sempy_labs._capacities import (
+#from sempy_labs._capacities import (
 #    migrate_capacity,
 #    f_sku_migration,
 #    create_fabric_capacity,
@@ -195,7 +195,7 @@ __all__ = [
     "resolve_item_type",
     "get_notebook_definition",
     "import_notebook_from_web",
-    # "migrate_capacity",
-    # "f_sku_migration",
-    # "create_fabric_capacity",
+    #"migrate_capacity",
+    #"f_sku_migration",
+    #"create_fabric_capacity",
 ]
