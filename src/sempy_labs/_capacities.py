@@ -256,9 +256,7 @@ def create_fabric_capacity(
         # Attempt to get the resource group
         try:
             rg = resource_client.resource_groups.get(resource_group)
-            if rg.location == region:
-                pass  # print(f"{icons.green_dot} The '{resource_group}' resource group already exists in the '{region}' region.")
-            else:
+            if rg.location != region:
                 print(
                     f"{icons.yellow_dot} The '{resource_group}' resource group exists, but in a different region."
                 )
