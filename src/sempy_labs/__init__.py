@@ -77,7 +77,7 @@ from sempy_labs._helper_functions import (
 #  from sempy_labs._model_auto_build import model_auto_build
 from sempy_labs._model_bpa_bulk import (
     run_model_bpa_bulk,
-    # create_model_bpa_semantic_model,
+    create_model_bpa_semantic_model,
 )
 from sempy_labs._model_bpa import run_model_bpa
 from sempy_labs._model_bpa_rules import model_bpa_rules
@@ -196,5 +196,5 @@ __all__ = [
     "import_notebook_from_web",
     # "list_reports_using_semantic_model",
     "run_model_bpa_bulk",
-    # "create_model_bpa_semantic_model"
+    "create_model_bpa_semantic_model",
 ]

@@ -164,7 +164,7 @@ def create_model_bpa_semantic_model(
     lakehouse_workspace: Optional[str] = None,
 ):
     """
-    Dynamically generates a semantic model based on the 'modelbparesults' delta table which contains the Best Practice Analyzer results.
+    Dynamically generates a Direct Lake semantic model based on the 'modelbparesults' delta table which contains the Best Practice Analyzer results.
     This semantic model used in combination with the corresponding Best Practice Analyzer report can be used to analyze multiple semantic models
     on multiple workspaces at once (and over time).
 
@@ -246,6 +246,10 @@ def create_model_bpa_semantic_model(
                 )
             c.Name = c.Name.replace("_", " ")
 
+        # Implement pattern for base measures
+        def get_expr(table_name, calculation):
+            return f"IF(HASONEFILTER({table_name}[RunId]),{calculation},CALCULATE({calculation},FILTER(VALUES({table_name}[RunId]),{table_name}[RunId] = [Max Run Id])))"
+
         # Add measures
         if not any(m.Name == "Max Run Id" for m in tom.all_measures()):
             tom.add_measure(
@@ -259,7 +263,7 @@ def create_model_bpa_semantic_model(
             tom.add_measure(
                 table_name=t_name,
                 measure_name="Models",
-                expression=f"IF(HASONEFILTER({t_name_full}[RunId]),{calc},CALCULATE({calc},FILTER(VALUES({t_name_full}[RunId]),{t_name_full}[RunId] = [Max Run Id])))",
+                expression=get_expr(t_name_full, calc),
                 format_string="#,0",
             )
         if not any(m.Name == "Workspaces" for m in tom.all_measures()):
@@ -267,7 +271,7 @@ def create_model_bpa_semantic_model(
             tom.add_measure(
                 table_name=t_name,
                 measure_name="Workspaces",
-                expression=f"IF(HASONEFILTER({t_name_full}[RunId]),{calc},CALCULATE({calc},FILTER(VALUES({t_name_full}[RunId]),{t_name_full}[RunId] = [Max Run Id])))",
+                expression=get_expr(t_name_full, calc),
                 format_string="#,0",
             )
         if not any(m.Name == "Violations" for m in tom.all_measures()):
@@ -275,7 +279,7 @@ def create_model_bpa_semantic_model(
             tom.add_measure(
                 table_name=t_name,
                 measure_name="Violations",
-                expression=f"IF(HASONEFILTER({t_name_full}[RunId]),{calc},CALCULATE({calc},FILTER(VALUES({t_name_full}[RunId]),{t_name_full}[RunId] = [Max Run Id])))",
+                expression=get_expr(t_name_full, calc),
                 format_string="#,0",
             )
         if not any(m.Name == "Error Violations" for m in tom.all_measures()):
@@ -286,11 +290,11 @@ def create_model_bpa_semantic_model(
                 format_string="#,0",
             )
         if not any(m.Name == "Rules Violated" for m in tom.all_measures()):
-            calc = "COUNTROWS(DISTINCT({t_name_full}[Rule Name]))"
+            calc = f"COUNTROWS(DISTINCT({t_name_full}[Rule Name]))"
             tom.add_measure(
                 table_name=t_name,
                 measure_name="Rules Violated",
-                expression=f"IF(HASONEFILTER({t_name_full}[RunId]),{calc},CALCULATE({calc},FILTER(VALUES({t_name_full}[RunId]),{t_name_full}[RunId] = [Max Run Id])))",
+                expression=get_expr(t_name_full, calc),
                 format_string="#,0",
             )
         if not any(m.Name == "Rule Severity" for m in tom.all_measures()):

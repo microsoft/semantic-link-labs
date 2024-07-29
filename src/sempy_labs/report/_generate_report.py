@@ -264,25 +264,22 @@ def create_model_bpa_report(
             f"The '{dataset}' semantic model does not exist within the '{dataset_workspace}' workspace."
         )
 
-    #dfR = fabric.list_reports(workspace=dataset_workspace)
-    #dfR_filt = dfR[dfR["Name"] == report]
+    dfR = fabric.list_reports(workspace=dataset_workspace)
+    dfR_filt = dfR[dfR["Name"] == report]
 
-
-    #current_dir = os.path.dirname(__file__)
-    #json_file_path = os.path.join(current_dir, '_BPAReportTemplate.json')
-    json_file_path = '/root/semantic-link-labs/src/sempy_labs/report/_BPAReportTemplate.json'
-    with open(json_file_path, 'r') as file:
+    current_dir = os.path.dirname(__file__)
+    json_file_path = os.path.join(current_dir, "_BPAReportTemplate.json")
+    with open(json_file_path, "r") as file:
         report_json = json.load(file)
-        print(report_json)
 
-        #if len(dfR_filt) > 0:
-        #    update_report_from_reportjson(
-        #        report=report, report_json=report_json, workspace=dataset_workspace
-        #    )
-        #else:
-        #    create_report_from_reportjson(
-        #        report=report,
-        #        dataset=dataset,
-        #        report_json=report_json,
-        #        workspace=dataset_workspace,
-        #    )
+        if len(dfR_filt) > 0:
+            update_report_from_reportjson(
+                report=report, report_json=report_json, workspace=dataset_workspace
+            )
+        else:
+            create_report_from_reportjson(
+                report=report,
+                dataset=dataset,
+                report_json=report_json,
+                workspace=dataset_workspace,
+            )
