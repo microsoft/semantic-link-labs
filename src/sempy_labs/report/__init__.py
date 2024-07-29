@@ -1,7 +1,8 @@
 from sempy_labs.report._generate_report import (
     create_report_from_reportjson,
     get_report_definition,
-    # update_report_from_reportjson,
+    update_report_from_reportjson,
+    create_model_bpa_report,
 )
 from sempy_labs.report._report_functions import (
     get_report_json,
@@ -21,7 +22,7 @@ from sempy_labs.report._report_rebind import (
 
 __all__ = [
     "create_report_from_reportjson",
-    # "update_report_from_reportjson",
+    "update_report_from_reportjson",
     "get_report_json",
     # report_dependency_tree,
     "export_report",
@@ -34,4 +35,5 @@ __all__ = [
     "report_rebind",
     "report_rebind_all",
     "get_report_definition",
+    "create_model_bpa_report",
 ]

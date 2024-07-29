@@ -148,6 +148,7 @@ def update_report_from_reportjson(
     reportId = dfR_filt["Id"].iloc[0]
     client = fabric.FabricRestClient()
 
+    # Get the existing PBIR file
     response = client.post(
         f"/v1/workspaces/{workspace_id}/reports/{reportId}/getDefinition"
     )
@@ -159,8 +160,6 @@ def update_report_from_reportjson(
     payloadReportJson = _conv_b64(report_json)
 
     request_body = {
-        "displayName": report,
-        "type": "Report",
         "definition": {
             "parts": [
                 {
@@ -174,7 +173,7 @@ def update_report_from_reportjson(
                     "payloadType": "InlineBase64",
                 },
             ]
-        },
+        }
     }
 
     response = client.post(
@@ -220,3 +219,70 @@ def get_report_definition(report: str, workspace: Optional[str] = None) -> pd.Da
     rdef = pd.json_normalize(response.json()["definition"]["parts"])
 
     return rdef
+
+
+def create_model_bpa_report(
+    report: Optional[str] = "BPAReport",
+    dataset: Optional[str] = "BPAModel",
+    dataset_workspace: Optional[str] = None,
+):
+    """
+    Dynamically generates a Best Practice Analyzer report for analyzing semantic models.
+
+    Parameters
+    ----------
+    report : str, default=None
+        Name of the report.
+        Defaults to 'BPAReport'.
+    dataset : str, default='BPAModel'
+        Name of the semantic model which feeds this report.
+    dataset_workspace : str, default=None
+        The Fabric workspace name in which the semantic model resides.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    """
+
+    import json
+    import os
+
+    # report_template_url = "https://raw.githubusercontent.com/m-kovalsky/Tabular/master/BPA/BPAReportTemplate.json"
+    # response = requests.get(report_template_url)
+    # if response.status_code != 200:
+    #    raise FabricHTTPException(response)
+    # report_json = json.loads(response.content)
+
+    # Function to load JSON data
+
+    dfI = fabric.list_items(workspace=dataset_workspace, type="SemanticModel")
+    dfI_filt = dfI[dfI["Display Name"] == dataset]
+
+    if len(dfI_filt) == 0:
+        raise ValueError(
+            f"The '{dataset}' semantic model does not exist within the '{dataset_workspace}' workspace."
+        )
+
+    #dfR = fabric.list_reports(workspace=dataset_workspace)
+    #dfR_filt = dfR[dfR["Name"] == report]
+
+
+    #current_dir = os.path.dirname(__file__)
+    #json_file_path = os.path.join(current_dir, '_BPAReportTemplate.json')
+    json_file_path = '/root/semantic-link-labs/src/sempy_labs/report/_BPAReportTemplate.json'
+    with open(json_file_path, 'r') as file:
+        report_json = json.load(file)
+        print(report_json)
+
+        #if len(dfR_filt) > 0:
+        #    update_report_from_reportjson(
+        #        report=report, report_json=report_json, workspace=dataset_workspace
+        #    )
+        #else:
+        #    create_report_from_reportjson(
+        #        report=report,
+        #        dataset=dataset,
+        #        report_json=report_json,
+        #        workspace=dataset_workspace,
+        #    )
