@@ -419,6 +419,9 @@ def migrate_capacities(
         admins = r["Admins"]
         tgt_capacity = f"{cap_name}{capacity_suffix}"
 
+        # Check if target capacity exists
+        dfC_filt = dfC[dfC["Display Name"] == tgt_capacity]
+
         if sku_size[:1] == "A" and use_existing_rg_for_A_sku:
             rg = None
         else:
@@ -431,19 +434,24 @@ def migrate_capacities(
 
         if sku_size in p_sku_list:
             if capacities is None or cap_name in capacities:
-                # Create new Fabric capacity
-                create_fabric_capacity(
-                    capacity_name=tgt_capacity,
-                    azure_subscription_id=azure_subscription_id,
-                    key_vault=key_vault,
-                    key_vault_tenant_id=key_vault_tenant_id,
-                    key_vault_client_id=key_vault_client_id,
-                    key_vault_client_secret=key_vault_client_secret,
-                    resource_group=rg,
-                    region=region,
-                    sku=sku_mapping.get(sku_size),
-                    admin_email=admins,
-                )
+                # Only create the capacity if it does not already exist
+                if len(dfC_filt) != 0:
+                    print(
+                        f"{icons.yellow_dot} Skipping creating a new capacity for '{cap_name}' as the '{tgt_capacity}' capacity already exists."
+                    )
+                else:
+                    create_fabric_capacity(
+                        capacity_name=tgt_capacity,
+                        azure_subscription_id=azure_subscription_id,
+                        key_vault=key_vault,
+                        key_vault_tenant_id=key_vault_tenant_id,
+                        key_vault_client_id=key_vault_client_id,
+                        key_vault_client_secret=key_vault_client_secret,
+                        resource_group=rg,
+                        region=region,
+                        sku=sku_mapping.get(sku_size),
+                        admin_email=admins,
+                    )
                 # Migrate workspaces to new capacity
                 migrate_workspaces(
                     source_capacity=cap_name,
