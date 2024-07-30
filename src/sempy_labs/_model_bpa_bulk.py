@@ -41,6 +41,8 @@ def run_model_bpa_bulk(
     -------
     """
 
+    import pyspark.sql.functions as F
+
     if not lakehouse_attached():
         raise ValueError(
             "No lakehouse is attached to this notebook. Must attach a lakehouse to the notebook."
@@ -70,11 +72,11 @@ def run_model_bpa_bulk(
     )
     lakeT = get_lakehouse_tables(lakehouse=lakehouse, workspace=lakehouse_workspace)
     lakeT_filt = lakeT[lakeT["Table Name"] == output_table]
-    query = f"SELECT MAX(RunId) FROM {lakehouse}.{output_table}"
+    # query = f"SELECT MAX(RunId) FROM {lakehouse}.{output_table}"
     if len(lakeT_filt) == 0:
         runId = 1
     else:
-        dfSpark = spark.sql(query)
+        dfSpark = spark.table(f"`{lakehouse_id}`.{output_table}").select(F.max("RunId"))
         maxRunId = dfSpark.collect()[0][0]
         runId = maxRunId + 1
 

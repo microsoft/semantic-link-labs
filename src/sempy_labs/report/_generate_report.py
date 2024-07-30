@@ -301,14 +301,8 @@ def create_model_bpa_report(
     json_file_path = os.path.join(current_dir, "_BPAReportTemplate.json")
     with open(json_file_path, "r") as file:
         report_json = json.load(file)
-        part = {
-            "path": r['path'],
-            "payload": r['payload'],
-            "payloadType": "InlineBase64"
-        }
-        request_body['definition']['parts'].append(part)
 
-     if len(dfR_filt) > 0:
+    if len(dfR_filt) > 0:
         update_report_from_reportjson(
             report=report, report_json=report_json, workspace=dataset_workspace
         )
