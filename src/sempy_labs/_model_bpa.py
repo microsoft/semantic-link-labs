@@ -10,6 +10,7 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
     create_relationship_name,
     save_as_delta_table,
+    resolve_dataset_id
 )
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
@@ -223,22 +224,44 @@ def run_model_bpa(
             maxRunId = dfSpark.collect()[0][0]
             runId = maxRunId + 1
 
+        dfC = fabric.list_capacities()
+        dfW = fabric.list_workspaces()
+        dfW_filt = dfW[dfW['Name'] == workspace]
+        capacity_id = dfW_filt['Capacity Id'].iloc[0]
+        dfC_filt = dfC[dfC['Id'] == capacity_id]
+        if len(dfC_filt) == 1:
+            capacity_name = dfC_filt['Display Name'].iloc[0]
+        else:
+            capacity_name = None
         now = datetime.datetime.now()
         dfD = fabric.list_datasets(workspace=workspace, mode="rest")
         dfD_filt = dfD[dfD["Dataset Name"] == dataset]
         configured_by = dfD_filt["Configured By"].iloc[0]
         dfExport["Workspace Name"] = workspace
+        dfExport['Workspace Id'] = fabric.resolve_workspace_id(workspace)
+        dfExport['Capacity Name'] = capacity_name
+        dfExport['Capacity Id'] = capacity_id
         dfExport["Dataset Name"] = dataset
+        dfExport['Configured By'] = configured_by
+        dfExport["Dataset Id"] = resolve_dataset_id(dataset, workspace)
         dfExport["Timestamp"] = now
         dfExport["RunId"] = runId
         dfExport["Configured By"] = configured_by
 
         dfExport["RunId"] = dfExport["RunId"].astype("int")
 
-        colName = "Workspace Name"
+        colName = "Capacity Name"
         dfExport.insert(0, colName, dfExport.pop(colName))
-        colName = "Dataset Name"
+        colName = "Capacity Id"
         dfExport.insert(1, colName, dfExport.pop(colName))
+        colName = "Workspace Name"
+        dfExport.insert(2, colName, dfExport.pop(colName))
+        colName = "Workspace Id"
+        dfExport.insert(3, colName, dfExport.pop(colName))
+        colName = "Dataset Name"
+        dfExport.insert(4, colName, dfExport.pop(colName))
+        colName = "Configured By"
+        dfExport.insert(5, colName, dfExport.pop(colName))
 
         dfExport.columns = dfExport.columns.str.replace(" ", "_")
         save_as_delta_table(
