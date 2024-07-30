@@ -24,3 +24,5 @@ data_type_mapping = {
 measure_icon = "\u2211"
 table_icon = "\u229E"
 column_icon = "\u229F"
+model_bpa_name = "ModelBPA"
+report_bpa_name = "ReportBPA"

@@ -49,8 +49,12 @@ def run_model_bpa_bulk(
         )
 
     cols = [
+        "Capacity Name",
+        "Capacity Id",
         "Workspace Name",
+        "Workspace Id",
         "Dataset Name",
+        "Dataset Id",
         "Configured By",
         "Rule Name",
         "Category",
@@ -83,9 +87,17 @@ def run_model_bpa_bulk(
     if isinstance(workspace, str):
         workspace = [workspace]
 
+    dfC = fabric.list_capacities()
     dfW = fabric.list_workspaces()
     for i, r in dfW.iterrows():
         wksp = r["Name"]
+        wksp_id = r["Id"]
+        capacity_id = r["Capacity Id"]
+        dfC_filt = dfC[dfC["Id"] == capacity_id]
+        if len(dfC_filt) == 1:
+            capacity_name = dfC_filt["Display Name"].iloc[0]
+        else:
+            capacity_name = None
         if workspace is None or wksp in workspace:
             df = pd.DataFrame(columns=cols)
             dfD = fabric.list_datasets(workspace=wksp, mode="rest")
@@ -101,14 +113,15 @@ def run_model_bpa_bulk(
                     or set(["Lakehouse", "SemanticModel"]).issubset(set(x["Type"]))
                 )
                 default_semantic_models = filtered_df["Display Name"].unique().tolist()
-                # Skip BPAModel :)
-                skip_models = default_semantic_models + ["BPAModel"]
+                # Skip ModelBPA :)
+                skip_models = default_semantic_models + [icons.model_bpa_name]
                 dfD_filt = dfD[~dfD["Dataset Name"].isin(skip_models)]
 
                 if len(dfD_filt) > 0:
                     for i2, r2 in dfD_filt.iterrows():
                         dataset_name = r2["Dataset Name"]
                         config_by = r2["Configured By"]
+                        dataset_id = r2["Dataset Id"]
                         print(
                             f"{icons.in_progress} Collecting BPA stats for the '{dataset_name}' semantic model within the '{wksp}' workspace."
                         )
@@ -121,8 +134,12 @@ def run_model_bpa_bulk(
                                 rules=rules,
                                 extended=extended,
                             )
+                            bpa_df["Capacity Id"] = capacity_id
+                            bpa_df["Capacity Name"] = capacity_name
                             bpa_df["Workspace Name"] = wksp
+                            bpa_df["Workspace Id"] = wksp_id
                             bpa_df["Dataset Name"] = dataset_name
+                            bpa_df["Dataset Id"] = dataset_id
                             bpa_df["Configured By"] = config_by
                             bpa_df["Timestamp"] = now
                             bpa_df["RunId"] = runId
@@ -161,7 +178,7 @@ def run_model_bpa_bulk(
 
 
 def create_model_bpa_semantic_model(
-    dataset: Optional[str] = "BPAModel",
+    dataset: Optional[str] = icons.model_bpa_name,
     lakehouse: Optional[str] = None,
     lakehouse_workspace: Optional[str] = None,
 ):
@@ -174,7 +191,7 @@ def create_model_bpa_semantic_model(
 
     Parameters
     ----------
-    dataset : str, default='BPAModel'
+    dataset : str, default='ModelBPA'
         Name of the semantic model to be created.
     lakehouse : str, default=None
         Name of the Fabric lakehouse which contains the 'modelbparesults' delta table.
@@ -236,8 +253,12 @@ def create_model_bpa_semantic_model(
         for c in tom.all_columns():
             if c.Name == "Dataset_Name":
                 c.Name = "Model"
+            elif c.Name == "Dataset_Id":
+                c.Name = "Model Id"
             elif c.Name == "Workspace_Name":
                 c.Name = "Workspace"
+            elif c.Name == "Capacity_Name":
+                c.Name = "Capacity"
             elif c.Name == "Configured_By":
                 c.Name = "Model Owner"
             elif c.Name == "URL":
@@ -258,6 +279,14 @@ def create_model_bpa_semantic_model(
                 table_name=t_name,
                 measure_name="Max Run Id",
                 expression=f"CALCULATE(MAX({t_name_full}[RunId]),{t_name_full}[RunId])",
+                format_string="#,0",
+            )
+        if not any(m.Name == "Capacities" for m in tom.all_measures()):
+            calc = f"COUNTROWS(DISTINCT({t_name_full}[Capacity]))"
+            tom.add_measure(
+                table_name=t_name,
+                measure_name="Capacities",
+                expression=get_expr(t_name_full, calc),
                 format_string="#,0",
             )
         if not any(m.Name == "Models" for m in tom.all_measures()):

@@ -1,5 +1,7 @@
 import sempy.fabric as fabric
 import pandas as pd
+import json
+import os
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
@@ -222,8 +224,8 @@ def get_report_definition(report: str, workspace: Optional[str] = None) -> pd.Da
 
 
 def create_model_bpa_report(
-    report: Optional[str] = "BPAModel",
-    dataset: Optional[str] = "BPAModel",
+    report: Optional[str] = icons.model_bpa_name,
+    dataset: Optional[str] = icons.model_bpa_name,
     dataset_workspace: Optional[str] = None,
 ):
     """
@@ -231,11 +233,12 @@ def create_model_bpa_report(
 
     Parameters
     ----------
-    report : str, default=None
+    report : str, default='ModelBPA'
         Name of the report.
-        Defaults to 'BPAModel'.
-    dataset : str, default='BPAModel'
+        Defaults to 'ModelBPA'.
+    dataset : str, default='ModelBPA'
         Name of the semantic model which feeds this report.
+        Defaults to 'ModelBPA'
     dataset_workspace : str, default=None
         The Fabric workspace name in which the semantic model resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -245,9 +248,7 @@ def create_model_bpa_report(
     -------
     """
 
-    import json
-    import os
-    from sempy_labs._helper_functions import _conv_b64
+    # from sempy_labs._helper_functions import resolve_dataset_id
 
     dfI = fabric.list_items(workspace=dataset_workspace, type="SemanticModel")
     dfI_filt = dfI[dfI["Display Name"] == dataset]
@@ -259,14 +260,15 @@ def create_model_bpa_report(
 
     dfR = fabric.list_reports(workspace=dataset_workspace)
     dfR_filt = dfR[dfR["Name"] == report]
+    # dataset_id = resolve_dataset_id(dataset=dataset, workspace=dataset_workspace)
 
     current_dir = os.path.dirname(__file__)
-    #directory_path = os.path.join(current_dir, "_bpareporttemplate")
-    #len_dir_path = len(directory_path) + 1
+    # directory_path = os.path.join(current_dir, "_bpareporttemplate")
+    # len_dir_path = len(directory_path) + 1
 
-    request_body = {"displayName": report, "definition": {"parts": []}}
+    # request_body = {"displayName": report, "definition": {"parts": []}}
 
-    #def get_all_file_paths(directory):
+    # def get_all_file_paths(directory):
     #    file_paths = []
 
     #    for root, directories, files in os.walk(directory):
@@ -276,12 +278,16 @@ def create_model_bpa_report(
 
     #    return file_paths
 
-    #all_files = get_all_file_paths(directory_path)
+    # all_files = get_all_file_paths(directory_path)
 
-    #for file_path in all_files:
+    # for file_path in all_files:
     #    fp = file_path[len_dir_path:]
     #    with open(file_path, "r") as file:
     #        json_file = json.load(file)
+    #        if fp == 'definition.pbir':
+    #            conn_string = f"Data Source=powerbi://api.powerbi.com/v1.0/myorg/{dataset_workspace};Initial Catalog={dataset};Integrated Security=ClaimsToken"
+    #            json_file['datasetReference']['byConnection']['connectionString'] = conn_string
+    #            json_file['datasetReference']['byConnection']['pbiModelDatabaseName'] = dataset_id
     #        part = {
     #            "path": fp,
     #            "payload": _conv_b64(json_file),
@@ -290,13 +296,13 @@ def create_model_bpa_report(
 
     #    request_body["definition"]["parts"].append(part)
 
-    #_create_report(
+    # _create_report(
     #    report=report,
     #    request_body=request_body,
     #    dataset=dataset,
     #    report_workspace=dataset_workspace,
     #    dataset_workspace=dataset_workspace,
-    #)
+    # )
 
     json_file_path = os.path.join(current_dir, "_BPAReportTemplate.json")
     with open(json_file_path, "r") as file:
