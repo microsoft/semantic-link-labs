@@ -257,68 +257,68 @@ def create_model_bpa_report(
             f"The '{dataset}' semantic model does not exist within the '{dataset_workspace}' workspace."
         )
 
-    # dfR = fabric.list_reports(workspace=dataset_workspace)
-    # dfR_filt = dfR[dfR["Name"] == report]
+    dfR = fabric.list_reports(workspace=dataset_workspace)
+    dfR_filt = dfR[dfR["Name"] == report]
 
     current_dir = os.path.dirname(__file__)
-    directory_path = os.path.join(current_dir, "_bpareporttemplate")
-    len_dir_path = len(directory_path) + 1
+    #directory_path = os.path.join(current_dir, "_bpareporttemplate")
+    #len_dir_path = len(directory_path) + 1
 
     request_body = {"displayName": report, "definition": {"parts": []}}
 
-    def get_all_file_paths(directory):
-        file_paths = []
+    #def get_all_file_paths(directory):
+    #    file_paths = []
 
-        for root, directories, files in os.walk(directory):
-            for filename in files:
-                full_path = os.path.join(root, filename)
-                file_paths.append(full_path)
+    #    for root, directories, files in os.walk(directory):
+    #        for filename in files:
+    #            full_path = os.path.join(root, filename)
+    #            file_paths.append(full_path)
 
-        return file_paths
+    #    return file_paths
 
-    all_files = get_all_file_paths(directory_path)
+    #all_files = get_all_file_paths(directory_path)
 
-    for file_path in all_files:
-        fp = file_path[len_dir_path:]
-        with open(file_path, "r") as file:
-            json_file = json.load(file)
-            part = {
-                "path": fp,
-                "payload": _conv_b64(json_file),
-                "payloadType": "InlineBase64",
-            }
+    #for file_path in all_files:
+    #    fp = file_path[len_dir_path:]
+    #    with open(file_path, "r") as file:
+    #        json_file = json.load(file)
+    #        part = {
+    #            "path": fp,
+    #            "payload": _conv_b64(json_file),
+    #            "payloadType": "InlineBase64",
+    #        }
 
-        request_body["definition"]["parts"].append(part)
+    #    request_body["definition"]["parts"].append(part)
 
-    _create_report(
-        report=report,
-        request_body=request_body,
-        dataset=dataset,
-        report_workspace=dataset_workspace,
-        dataset_workspace=dataset_workspace,
-    )
+    #_create_report(
+    #    report=report,
+    #    request_body=request_body,
+    #    dataset=dataset,
+    #    report_workspace=dataset_workspace,
+    #    dataset_workspace=dataset_workspace,
+    #)
 
-    # json_file_path = os.path.join(current_dir, "_BPAReportTemplate.json")
-    # with open(json_file_path, "r") as file:
-    # report_json = json.load(file)
-    #    part = {
-    #        "path": r['path'],
-    #        "payload": r['payload'],
-    #        "payloadType": "InlineBase64"
-    #    }
-    #    request_body['definition']['parts'].append(part)
+    json_file_path = os.path.join(current_dir, "_BPAReportTemplate.json")
+    with open(json_file_path, "r") as file:
+        report_json = json.load(file)
+        part = {
+            "path": r['path'],
+            "payload": r['payload'],
+            "payloadType": "InlineBase64"
+        }
+        request_body['definition']['parts'].append(part)
 
-    # if len(dfR_filt) > 0:
-    #    update_report_from_reportjson(
-    #        report=report, report_json=report_json, workspace=dataset_workspace
-    #    )
-    # else:
-    #    create_report_from_reportjson(
-    #        report=report,
-    #        dataset=dataset,
-    #        report_json=report_json,
-    #        workspace=dataset_workspace,
-    #    )
+     if len(dfR_filt) > 0:
+        update_report_from_reportjson(
+            report=report, report_json=report_json, workspace=dataset_workspace
+        )
+    else:
+        create_report_from_reportjson(
+            report=report,
+            dataset=dataset,
+            report_json=report_json,
+            workspace=dataset_workspace,
+        )
 
 
 def _create_report(
