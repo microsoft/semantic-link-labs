@@ -1918,7 +1918,6 @@ def assign_workspace_to_capacity(capacity_name: str, workspace: Optional[str] = 
     response = client.post(
         f"/v1/workspaces/{workspace_id}/assignToCapacity",
         json=request_body,
-        lro_wait=True,
     )
 
     if response.status_code not in [200, 202]:
