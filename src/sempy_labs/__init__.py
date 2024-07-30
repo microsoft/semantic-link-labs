@@ -57,6 +57,7 @@ from sempy_labs._list_functions import (
 )
 
 from sempy_labs._helper_functions import (
+    resolve_workspace_capacity,
     create_abfss_path,
     format_dax_object_name,
     create_relationship_name,
@@ -191,4 +192,5 @@ __all__ = [
     "get_notebook_definition",
     "import_notebook_from_web",
     # "list_reports_using_semantic_model"
+    "resolve_workspace_capacity",
 ]

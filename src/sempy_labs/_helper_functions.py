@@ -640,3 +640,33 @@ def _extract_json(dataframe: pd.DataFrame) -> dict:
     json_file = base64.b64decode(payload).decode("utf-8")
 
     return json.loads(json_file)
+
+
+def resolve_workspace_capacity(workspace: Optional[str] = None) -> Tuple[UUID, str]:
+    """
+    Obtains the Capacity Id and Capacity Name for a given workspace.
+
+    Parameters
+    ----------
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    Tuple[UUID, str]
+        The Capacity Id; The Capacity Name.
+    """
+
+    workspace = fabric.resolve_workspace_name(workspace)
+    dfW = fabric.list_workspaces(filter=f"name eq '{workspace}'")
+    capacity_id = dfW["Capacity Id"].iloc[0]
+    dfC = fabric.list_capacities()
+    dfC_filt = dfC[dfC["Id"] == capacity_id]
+    if len(dfC_filt) == 1:
+        capacity_name = dfC_filt["Display Name"].iloc[0]
+    else:
+        capacity_name = None
+
+    return capacity_id, capacity_name
