@@ -123,7 +123,8 @@ def create_fabric_capacity(
     from azure.mgmt.resource.resources.models import DeploymentMode
 
     capacity_suffix = "fsku"
-    # is the format of the region provided in list_capacities the same which is required for the create_fabric_capacity function?
+
+    # list source: https://learn.microsoft.com/fabric/admin/region-availability
     region_list = [
         "West Central US",
         "Australia East",
