@@ -107,10 +107,28 @@ def run_model_bpa(
         "ar-AE",
     ]
 
+    # Map languages to the closest language (first 2 letters matching)
+    def map_language(language, language_list):
+
+        if language in language_list:
+            return language
+
+        language_prefix = language[:2]
+        for lang_code in language_list:
+            if lang_code.startswith(language_prefix):
+                return lang_code
+
+        return None
+
+    if language is not None:
+        language = map_language(language, language_list)
+
     workspace = fabric.resolve_workspace_name(workspace)
 
     if language is not None and language not in language_list:
-        print(f"{icons.yellow_dot} The '{language}' is not in our predefined language list. Please file an issue and let us know which language you are using: `<https://github.com/microsoft/semantic-link-labs/issues/new?assignees=&labels=&projects=&template=bug_report.md&title=>`_.")
+        print(
+            f"{icons.yellow_dot} The '{language}' language code is not in our predefined language list. Please file an issue and let us know which language code you are using: https://github.com/microsoft/semantic-link-labs/issues/new?assignees=&labels=&projects=&template=bug_report.md&title=."
+        )
 
     if extended:
         with connect_semantic_model(
@@ -124,12 +142,7 @@ def run_model_bpa(
 
         dep = get_model_calc_dependencies(dataset=dataset, workspace=workspace)
 
-        # Translations
-        if language is not None and rules is None and language in language_list:
-            # Use the polib to get the translations without using spark
-            rules = model_bpa_rules(
-                dataset=dataset, workspace=workspace, dependencies=dep
-            )
+        def translate_using_po(rule_file):
             current_dir = os.path.dirname(os.path.abspath(__file__))
             for c in ["Category", "Description", "Rule Name"]:
                 po = polib.pofile(
@@ -137,11 +150,12 @@ def run_model_bpa(
                 )
                 for entry in po:
                     if entry.tcomment == language:
-                        rules.loc[rules["Rule Name"] == entry.msgid, c] = entry.msgstr
-        elif language is not None and (rules is not None or language not in language_list):
-            rules = model_bpa_rules(dataset=dataset, workspace=workspace, dependencies=dep)
-            # Use spark to get the translations
-            rules_temp = rules.copy()
+                        rule_file.loc[rule_file["Rule Name"] == entry.msgid, c] = (
+                            entry.msgstr
+                        )
+
+        def translate_using_spark(rule_file):
+            rules_temp = rule_file.copy()
             rules_temp = rules_temp.drop(["Expression", "URL", "Severity"], axis=1)
 
             schema = StructType(
@@ -186,25 +200,41 @@ def run_model_bpa(
                     )
 
                 df_panda = transDF.toPandas()
-                rules = pd.merge(
-                    rules,
+                rule_file = pd.merge(
+                    rule_file,
                     df_panda[["Rule Name", "translation"]],
                     on="Rule Name",
                     how="left",
                 )
 
-                rules = rules.rename(columns={"translation": f"{clm}Translated"})
-                rules[f"{clm}Translated"] = rules[f"{clm}Translated"].apply(
+                rule_file = rule_file.rename(
+                    columns={"translation": f"{clm}Translated"}
+                )
+                rule_file[f"{clm}Translated"] = rule_file[f"{clm}Translated"].apply(
                     lambda x: x[0] if x is not None else None
                 )
 
             for clm in columns:
-                rules = rules.drop([clm], axis=1)
-                rules = rules.rename(columns={f"{clm}Translated": clm})
-        elif rules is None:
+                rule_file = rule_file.drop([clm], axis=1)
+                rule_file = rule_file.rename(columns={f"{clm}Translated": clm})
+
+            return rule_file
+
+        translated = False
+
+        # Translations
+        if language is not None and rules is None and language in language_list:
             rules = model_bpa_rules(
                 dataset=dataset, workspace=workspace, dependencies=dep
             )
+            translate_using_po(rules)
+            translated = True
+        if rules is None:
+            rules = model_bpa_rules(
+                dataset=dataset, workspace=workspace, dependencies=dep
+            )
+        if language is not None and not translated:
+            rules = translate_using_spark(rules)
 
         rules["Severity"].replace("Warning", "⚠️", inplace=True)
         rules["Severity"].replace("Error", "\u274C", inplace=True)
