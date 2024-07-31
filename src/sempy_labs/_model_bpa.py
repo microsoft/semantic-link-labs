@@ -10,7 +10,7 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
     create_relationship_name,
     save_as_delta_table,
-    resolve_dataset_id
+    resolve_dataset_id,
 )
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
@@ -226,11 +226,11 @@ def run_model_bpa(
 
         dfC = fabric.list_capacities()
         dfW = fabric.list_workspaces()
-        dfW_filt = dfW[dfW['Name'] == workspace]
-        capacity_id = dfW_filt['Capacity Id'].iloc[0]
-        dfC_filt = dfC[dfC['Id'] == capacity_id]
+        dfW_filt = dfW[dfW["Name"] == workspace]
+        capacity_id = dfW_filt["Capacity Id"].iloc[0]
+        dfC_filt = dfC[dfC["Id"] == capacity_id]
         if len(dfC_filt) == 1:
-            capacity_name = dfC_filt['Display Name'].iloc[0]
+            capacity_name = dfC_filt["Display Name"].iloc[0]
         else:
             capacity_name = None
         now = datetime.datetime.now()
@@ -238,11 +238,11 @@ def run_model_bpa(
         dfD_filt = dfD[dfD["Dataset Name"] == dataset]
         configured_by = dfD_filt["Configured By"].iloc[0]
         dfExport["Workspace Name"] = workspace
-        dfExport['Workspace Id'] = fabric.resolve_workspace_id(workspace)
-        dfExport['Capacity Name'] = capacity_name
-        dfExport['Capacity Id'] = capacity_id
+        dfExport["Workspace Id"] = fabric.resolve_workspace_id(workspace)
+        dfExport["Capacity Name"] = capacity_name
+        dfExport["Capacity Id"] = capacity_id
         dfExport["Dataset Name"] = dataset
-        dfExport['Configured By'] = configured_by
+        dfExport["Configured By"] = configured_by
         dfExport["Dataset Id"] = resolve_dataset_id(dataset, workspace)
         dfExport["Timestamp"] = now
         dfExport["RunId"] = runId
