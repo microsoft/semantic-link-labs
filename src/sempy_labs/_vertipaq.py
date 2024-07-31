@@ -11,6 +11,7 @@ from sempy_labs._helper_functions import (
     format_dax_object_name,
     get_direct_lake_sql_endpoint,
     resolve_lakehouse_name,
+    resolve_dataset_id,
 )
 from sempy_labs._list_functions import list_relationships
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
@@ -483,16 +484,42 @@ def vertipaq_analyzer(
             f"{icons.in_progress} Saving Vertipaq Analyzer to delta tables in the lakehouse...\n"
         )
         now = datetime.datetime.now()
+        dfD = fabric.list_datasets(workspace=workspace, mode="rest")
+        dfD_filt = dfD[dfD["Dataset Name"] == dataset]
+        configured_by = dfD_filt["Configured By"].iloc[0]
+        dfW = fabric.list_workspaces(filter=f"name eq '{workspace}'")
+        capacity_id = dfW["Capacity Id"].iloc[0]
+        dfC = fabric.list_capacities()
+        dfC_filt = dfC[dfC["Id"] == capacity_id]
+        if len(dfC_filt) == 1:
+            capacity_name = dfC_filt["Display Name"].iloc[0]
+        else:
+            capacity_name = None
         for key, (obj, df) in dfMap.items():
             df["Timestamp"] = now
+            df["Capacity Name"] = capacity_name
+            df["Capacity Id"] = capacity_id
+            df["Configured By"] = configured_by
             df["Workspace Name"] = workspace
+            df["Workspace Id"] = fabric.resolve_workspace_id(workspace)
             df["Dataset Name"] = dataset
+            df["Dataset Id"] = resolve_dataset_id(dataset, workspace)
             df["RunId"] = runId
 
-            colName = "Workspace Name"
+            colName = "Capacity Name"
             df.insert(0, colName, df.pop(colName))
-            colName = "Dataset Name"
+            colName = "Capacity Id"
             df.insert(1, colName, df.pop(colName))
+            colName = "Workspace Name"
+            df.insert(2, colName, df.pop(colName))
+            colName = "Workspace Id"
+            df.insert(3, colName, df.pop(colName))
+            colName = "Dataset Name"
+            df.insert(4, colName, df.pop(colName))
+            colName = "Dataset Id"
+            df.insert(5, colName, df.pop(colName))
+            colName = "Configured By"
+            df.insert(6, colName, df.pop(colName))
 
             df.columns = df.columns.str.replace(" ", "_")
 
