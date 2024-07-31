@@ -72,6 +72,9 @@ from sempy_labs._helper_functions import (
     resolve_report_name,
     is_default_semantic_model,
     resolve_item_type,
+    get_capacity_id,
+    get_capacity_name,
+    resolve_capacity_name,
     #  language_validate
 )
 
@@ -193,4 +196,7 @@ __all__ = [
     "import_notebook_from_web",
     # "list_reports_using_semantic_model"
     "resolve_workspace_capacity",
+    "get_capacity_id",
+    "get_capacity_name",
+    "resolve_capacity_name",
 ]

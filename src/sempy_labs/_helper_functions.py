@@ -644,7 +644,7 @@ def _extract_json(dataframe: pd.DataFrame) -> dict:
 
 def resolve_workspace_capacity(workspace: Optional[str] = None) -> Tuple[UUID, str]:
     """
-    Obtains the Capacity Id and Capacity Name for a given workspace.
+    Obtains the capacity Id and capacity name for a given workspace.
 
     Parameters
     ----------
@@ -656,7 +656,7 @@ def resolve_workspace_capacity(workspace: Optional[str] = None) -> Tuple[UUID, s
     Returns
     -------
     Tuple[UUID, str]
-        The Capacity Id; The Capacity Name.
+        capacity Id; capacity came.
     """
 
     workspace = fabric.resolve_workspace_name(workspace)
@@ -670,3 +670,79 @@ def resolve_workspace_capacity(workspace: Optional[str] = None) -> Tuple[UUID, s
         capacity_name = None
 
     return capacity_id, capacity_name
+
+
+def get_capacity_id(workspace: Optional[str]) -> UUID:
+
+    """
+    Obtains the Capacity Id for a given workspace.
+
+    Parameters
+    ----------
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    UUID
+        The capacity Id.
+    """
+
+    workspace = fabric.resolve_workspace_name(workspace)
+    dfW = fabric.list_workspaces(filter=f"name eq '{workspace}'")
+    if len(dfW) == 0:
+        raise ValueError(f"{icons.red_dot} The '{workspace}' does not exist'.")
+
+    return dfW["Capacity Id"].iloc[0]
+
+
+def get_capacity_name(workspace: Optional[str]) -> str:
+    """
+    Obtains the capacity name for a given workspace.
+
+    Parameters
+    ----------
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    str
+        The capacity name.
+    """
+
+    capacity_id = get_capacity_id(workspace)
+    dfC = fabric.list_capacities()
+    dfC_filt = dfC[dfC['Id'] == capacity_id]
+    if len(dfC_filt) == 0:
+        raise ValueError(f"{icons.red_dot} The '{capacity_id}' capacity Id does not exist.")
+
+    return dfC_filt['Display Name'].iloc[0]
+
+
+def resolve_capacity_name(capacity_id: UUID) -> str:
+    """
+    Obtains the capacity name for a given capacity Id.
+
+    Parameters
+    ----------
+    capacity_id : UUID
+        The capacity Id.
+
+    Returns
+    -------
+    str
+        The capacity name.
+    """
+
+    dfC = fabric.list_capacities()
+    dfC_filt = dfC[dfC['Id'] == capacity_id]
+
+    if len(dfC_filt) == 0:
+        raise ValueError(f"{icons.red_dot} The '{capacity_id}' capacity Id does not exist.")
+
+    return dfC_filt['Display Name'].iloc[0]
