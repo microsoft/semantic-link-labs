@@ -8,6 +8,7 @@ start_bold = "\033[1m"
 end_bold = "\033[0m"
 bullet = "\u2022"
 warning = "⚠️"
+info = "ℹ️"
 data_type_mapping = {
     "string": "String",
     "bigint": "Int64",

@@ -1889,7 +1889,9 @@ def delete_custom_pool(pool_name: str, workspace: Optional[str | None] = None):
     )
 
 
-def assign_workspace_to_capacity(capacity_name: str, workspace: Optional[str] = None):
+def assign_workspace_to_capacity(
+    capacity_name: str, workspace: Optional[str] = None
+) -> bool:
     """
     Assigns a workspace to a capacity.
 
@@ -1925,6 +1927,7 @@ def assign_workspace_to_capacity(capacity_name: str, workspace: Optional[str] = 
     print(
         f"{icons.green_dot} The '{workspace}' workspace has been assigned to the '{capacity_name}' capacity."
     )
+    return True
 
 
 def unassign_workspace_from_capacity(workspace: Optional[str] = None):

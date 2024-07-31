@@ -9,7 +9,7 @@ def migrate_workspaces(
     source_capacity: str,
     target_capacity: str,
     workspaces: Optional[str | List[str]] = None,
-):
+) -> int:
     """
     This function migrates the workspace(s) from one capacity to another capacity.
     Limitation: source & target capacities must be in the same region.
@@ -31,6 +31,8 @@ def migrate_workspaces(
 
     if isinstance(workspaces, str):
         workspaces = [workspaces]
+
+    migrated_workspace_count = 0
 
     dfC = fabric.list_capacities()
     dfC_filt = dfC[dfC["Display Name"] == source_capacity]
@@ -70,16 +72,19 @@ def migrate_workspaces(
             else:
                 continue
 
-            assign_workspace_to_capacity(
+            if assign_workspace_to_capacity(
                 capacity_name=target_capacity, workspace=workspace
-            )
+            ):
+                migrated_workspace_count += 1
+
+    return migrated_workspace_count
 
 
 @log
 def create_fabric_capacity(
     capacity_name: str,
     azure_subscription_id: str,
-    key_vault: str,
+    key_vault_uri: str,
     key_vault_tenant_id: str,
     key_vault_client_id: str,
     key_vault_client_secret: str,
@@ -97,8 +102,8 @@ def create_fabric_capacity(
         Name of the Fabric capacity.
     azure_subscription_id : str
         The Azure subscription ID.
-    key_vault : str
-        The name of the `Azure key vault <https://azure.microsoft.com/products/key-vault>`_.
+    key_vault_uri : str
+        The name of the `Azure key vault <https://azure.microsoft.com/products/key-vault>`_ URI. Example: "https://<Key Vault Name>.vault.azure.net/"
     key_vault_tenant_id : str
         The name of the Azure key vault secret storing the Tenant ID.
     key_vault_client_id : str
@@ -198,7 +203,7 @@ def create_fabric_capacity(
         )
 
     deployment_name = "CapacityTest"
-    key_vault_uri = f"https://{key_vault}.vault.azure.net/"
+
     tenant_id = mssparkutils.credentials.getSecret(key_vault_uri, key_vault_tenant_id)
     client_id = mssparkutils.credentials.getSecret(key_vault_uri, key_vault_client_id)
     client_secret = mssparkutils.credentials.getSecret(
@@ -315,13 +320,14 @@ def create_fabric_capacity(
 @log
 def migrate_capacities(
     azure_subscription_id: str,
-    key_vault: str,
+    key_vault_uri: str,
     key_vault_tenant_id: str,
     key_vault_client_id: str,
     key_vault_client_secret: str,
     resource_group: str | dict,
     capacities: Optional[str | List[str]] = None,
     use_existing_rg_for_A_sku: Optional[bool] = True,
+    p_sku_only: Optional[bool] = True,
 ):
     """
     This function creates new Fabric capacities for given A or P sku capacities and reassigns their workspaces to the newly created capacity.
@@ -330,8 +336,8 @@ def migrate_capacities(
     ----------
     azure_subscription_id : str
         The Azure subscription ID.
-    key_vault : str
-        The name of the `Azure key vault <https://azure.microsoft.com/products/key-vault>`_.
+    key_vault_uri : str
+        The name of the `Azure key vault <https://azure.microsoft.com/products/key-vault>`_ URI. Example: "https://<Key Vault Name>.vault.azure.net/"
     key_vault_tenant_id : str
         The name of the Azure key vault secret storing the Tenant ID.
     key_vault_client_id : str
@@ -346,7 +352,10 @@ def migrate_capacities(
     capacities : str | List[str], default=None
         The capacity(ies) to migrate from A/P -> F sku.
         Defaults to None which migrates all accessible A/P sku capacities to F skus.
+    p_sku_only : bool, default=True
+        If set to True, only migrates P skus. If set to False, migrates both P and A skus.
     use_existing_rg_for_A_sku : bool, default=True
+        If True, the F sku inherits the resource group from the A sku (for A sku migrations)
 
     Returns
     -------
@@ -386,6 +395,7 @@ def migrate_capacities(
         region = r["Region"]
         sku_size = r["Sku"]
         admins = r["Admins"]
+        capacity_id = r["Id"]
         tgt_capacity = f"{cap_name}{capacity_suffix}"
 
         # Check if target capacity exists
@@ -403,27 +413,52 @@ def migrate_capacities(
 
         if sku_size in p_sku_list:
             if capacities is None or cap_name in capacities:
-                # Only create the capacity if it does not already exist
-                if len(dfC_filt) != 0:
-                    print(
-                        f"{icons.yellow_dot} Skipping creating a new capacity for '{cap_name}' as the '{tgt_capacity}' capacity already exists."
+                if (p_sku_only and sku_size.startswith("P")) or p_sku_only is False:
+                    # Only create the capacity if it does not already exist
+                    if len(dfC_filt) != 0:
+                        print(
+                            f"{icons.info} Skipping creating a new capacity for '{cap_name}' as the '{tgt_capacity}' capacity already exists."
+                        )
+                    else:
+                        create_fabric_capacity(
+                            capacity_name=tgt_capacity,
+                            azure_subscription_id=azure_subscription_id,
+                            key_vault_uri=key_vault_uri,
+                            key_vault_tenant_id=key_vault_tenant_id,
+                            key_vault_client_id=key_vault_client_id,
+                            key_vault_client_secret=key_vault_client_secret,
+                            resource_group=rg,
+                            region=region,
+                            sku=sku_mapping.get(sku_size),
+                            admin_email=admins,
+                        )
+                    # Migrate workspaces to new capacity
+                    dfW = fabric.list_workspaces(
+                        filter=f"capacityId eq '{capacity_id.upper()}'"
                     )
-                else:
-                    create_fabric_capacity(
-                        capacity_name=tgt_capacity,
-                        azure_subscription_id=azure_subscription_id,
-                        key_vault=key_vault,
-                        key_vault_tenant_id=key_vault_tenant_id,
-                        key_vault_client_id=key_vault_client_id,
-                        key_vault_client_secret=key_vault_client_secret,
-                        resource_group=rg,
-                        region=region,
-                        sku=sku_mapping.get(sku_size),
-                        admin_email=admins,
-                    )
-                # Migrate workspaces to new capacity
-                migrate_workspaces(
-                    source_capacity=cap_name,
-                    target_capacity=tgt_capacity,
-                    workspaces=None,
-                )
+                    workspace_count = len(dfW)
+                    if (
+                        migrate_workspaces(
+                            source_capacity=cap_name,
+                            target_capacity=tgt_capacity,
+                            workspaces=None,
+                        )
+                        == workspace_count
+                    ):
+                        print(
+                            f"{icons.green_dot} All workspaces within the '{cap_name}' capacity were succesfully migrated to the '{tgt_capacity}' capacity."
+                        )
+                    # Rollback if not all workspaces were migrated
+                    else:
+                        print(
+                            f"{icons.warning} Not all workspaces were succesfully migrated from the '{cap_name}' capacity to the '{tgt_capacity}' capacity."
+                            f"{icons.in_progress} Rolling back workspace assignments for the '{cap_name}' capacity."
+                        )
+                        migrate_workspaces(
+                            source_capacity=tgt_capacity,
+                            target_capacity=cap_name,
+                            workspaces=None,
+                        )
+                        print(
+                            f"{icons.green_dot} Workspace assignments for the '{cap_name}' capacity have been rolled back."
+                        )
