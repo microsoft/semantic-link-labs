@@ -2,7 +2,7 @@ import sempy.fabric as fabric
 from typing import Optional, List
 from sempy._utils._log import log
 import sempy_labs._icons as icons
-import os
+from sempy.fabric.exceptions import FabricHTTPException
 
 
 @log
@@ -523,3 +523,122 @@ def delete_capacity(
     )
 
     print(f"{icons.green_dot} The '{capacity_name}' has been deleted.")
+
+
+def migrate_capacity_settings(source_capacity: str, target_capacity: str):
+    """
+    This function migrates a capacity's settings to another capacity.
+
+    Parameters
+    ----------
+    source_capacity : str
+        Name of the source capacity.
+    target_capacity : str
+        Name of the target capacity.
+
+    Returns
+    -------
+    """
+
+    dfC = fabric.list_capacities()
+    dfC_filt = dfC[dfC["Display Name"] == source_capacity]
+    if len(dfC_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} The '{source_capacity}' capacity does not exist."
+        )
+    source_capacity_id = dfC_filt["Id"].iloc[0].upper()
+    dfC_filt = dfC[dfC["Display Name"] == target_capacity]
+    if len(dfC_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} The '{target_capacity}' capacity does not exist."
+        )
+    target_capacity_id = dfC_filt["Id"].iloc[0].upper()
+
+    workloads = [
+        "AI",
+        "ADM",
+        "CDSA",
+        "DMS",
+        "RsRdlEngine",
+        "ScreenshotEngine",
+        "AS",
+        "QES",
+        "DMR",
+        "ESGLake",
+        "NLS",
+        "lake",
+        "TIPS",
+        "Kusto",
+        "Lakehouse",
+        "SparkCore",
+        "DI",
+    ]
+
+    client = fabric.PowerBIRestClient()
+    for workload in workloads:
+        response_get = client.get(
+            f"capacities/{source_capacity_id}/capacityCustomParameters?workloadIds={workload}"
+        )
+        if response_get.status_code != 200:
+            raise FabricHTTPException(response_get)
+        request_body = response_get.json()
+        response_put = client.put(
+            f"capacities/{target_capacity_id}/capacityCustomParameters?workloadIds={workload}",
+            json=request_body,
+        )
+        if response_put.status_code != 200:
+            raise FabricHTTPException(response_put)
+        print(
+            f"{icons.green_dot} The '{workload}' capacity settings have been migrated from the '{source_capacity}' capacity to the '{target_capacity}' capacity."
+        )
+    print(
+        f"{icons.green_dot} The settings of the '{source_capacity}' capacity have been migrated to the '{target_capacity}' capacity."
+    )
+
+
+def migrate_delegated_tenant_settings(source_capacity: str, target_capacity: str):
+    """
+    This function migrates a capacity's delegated tenant settings to another capacity.
+    Important: This function requires the user to be a tenant admin.
+
+    Parameters
+    ----------
+    source_capacity : str
+        Name of the source capacity.
+    target_capacity : str
+        Name of the target capacity.
+
+    Returns
+    -------
+    """
+
+    dfC = fabric.list_capacities()
+    dfC_filt = dfC[dfC["Display Name"] == source_capacity]
+    if len(dfC_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} The '{source_capacity}' capacity does not exist."
+        )
+    source_capacity_id = dfC_filt["Id"].iloc[0].upper()
+    dfC_filt = dfC[dfC["Display Name"] == target_capacity]
+    if len(dfC_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} The '{target_capacity}' capacity does not exist."
+        )
+    target_capacity_id = dfC_filt["Id"].iloc[0].upper()
+
+    client = fabric.PowerBIRestClient()
+    response_get = client.get(
+        f"metadata/tenantsettings/selfserve?capacityObjectId={source_capacity_id}"
+    )
+    if response_get.status_code != 200:
+        raise FabricHTTPException(response_get)
+    request_body = response_get.json()
+    response_put = client.put(
+        f"metadata/tenantsettings/selfserve?capacityObjectId={target_capacity_id}",
+        json=request_body,
+    )
+    if response_put.status_code != 200:
+        raise FabricHTTPException(response_put)
+    print(
+        f"{icons.green_dot} Delegated tenant settings have been migrated from the '{source_capacity}' capacity to the '{target_capacity}' capacity."
+    )

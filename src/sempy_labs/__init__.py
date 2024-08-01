@@ -5,6 +5,8 @@ from sempy_labs._capacities import (
     migrate_capacities,
     create_fabric_capacity,
     delete_capacity,
+    migrate_delegated_tenant_settings,
+    migrate_capacity_settings,
 )
 
 # from sempy_labs._connections import (
@@ -200,4 +202,6 @@ __all__ = [
     "migrate_capacities",
     "create_fabric_capacity",
     "delete_capacity",
+    "migrate_delegated_tenant_settings",
+    "migrate_capacity_settings",
 ]
