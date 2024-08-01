@@ -15,6 +15,7 @@ import json
 import base64
 from sempy._utils._log import log
 import sempy_labs._icons as icons
+from sempy.fabric.exceptions import FabricHTTPException
 
 _vis_type_mapping = {
     "barChart": "Bar chart",
@@ -163,6 +164,7 @@ class ReportWrapper:
     _workspace: str
     _readonly: bool
 
+    @log
     def __init__(
         self,
         report: str,
@@ -210,6 +212,9 @@ class ReportWrapper:
             json=request_body,
         )
 
+        if response.status_code != 200:
+            raise FabricHTTPException(response)
+
         return response.status_code
 
     def resolve_page_name(self, page_name: str) -> Tuple[str, str, str]:
@@ -243,8 +248,7 @@ class ReportWrapper:
         ):
             valid_page_name = page_name
             dfV_filt = dfV[
-                (dfV["Page Name"] == page_name)
-                & (dfV["Visual Name"] == visual_name)
+                (dfV["Page Name"] == page_name) & (dfV["Visual Name"] == visual_name)
             ]
             file_path = dfV_filt["File Path"].iloc[0]
             valid_display_name = dfV_filt["Page Display Name"].iloc[0]
@@ -1375,13 +1379,13 @@ class ReportWrapper:
             obj_file = base64.b64decode(payload).decode("utf-8")
             obj_json = json.loads(obj_file)
 
-            for e in obj_json.get("entities", {}):
-                table_name = e.get("name", {})
-                for m in e.get("measures", {}):
-                    measure_name = m.get("name", {})
-                    expr = m.get("expression", {})
-                    data_type = m.get("dataType", {})
-                    format_string = m.get("formatString", {})
+            for e in obj_json.get("entities", []):
+                table_name = e.get("name")
+                for m in e.get("measures", []):
+                    measure_name = m.get("name")
+                    expr = m.get("expression")
+                    data_type = m.get("dataType")
+                    format_string = m.get("formatString")
 
                     new_data = {
                         "Measure Name": measure_name,
@@ -1421,15 +1425,10 @@ class ReportWrapper:
         _add_part(request_body, pages_file, file_payload)
 
         if not self._readonly:
-            upd = self.update_report(request_body=request_body)
-            if upd == 200:
-                print(
-                    f"{icons.green_dot} The '{page_name}' page has been set as the active page in the '{self._report}' report within the '{self._workspace}' workspace."
-                )
-            else:
-                print(
-                    f"{icons.red_dot} The '{page_name}' page was not set as the active page in the '{self._report}' report within the '{self._workspace}' workspace."
-                )
+            self.update_report(request_body=request_body)
+            print(
+                f"{icons.green_dot} The '{page_name}' page has been set as the active page in the '{self._report}' report within the '{self._workspace}' workspace."
+            )
 
     def set_page_type(self, page_name: str, page_type: str):
 
@@ -1477,11 +1476,8 @@ class ReportWrapper:
                 _add_part(request_body, r["path"], r["payload"])
 
         if not self._readonly:
-            upd = self.update_report(request_body=request_body)
-            if upd == 200:
-                print(f"{icons.green_dot} The ")
-            else:
-                print(f"{icons.red_dot} The ")
+            self.update_report(request_body=request_body)
+            print(f"")
 
     def remove_unnecessary_custom_visuals(self):
 
@@ -1519,15 +1515,10 @@ class ReportWrapper:
             _add_part(request_body, file_path, file_payload)
 
         if not self._readonly:
-            upd = self.update_report(request_body=request_body)
-            if upd == 200:
-                print(
-                    f"{icons.green_dot} The {cv_remove} custom visuals have been removed from the '{self._report}' report within the '{self._workspace}' workspace."
-                )
-            else:
-                raise ValueError(
-                    f"{icons.red_dot} Custom visuals were not removed from the '{self._report}' report within the '{self._workspace}' workspace."
-                )
+            self.update_report(request_body=request_body)
+            print(
+                f"{icons.green_dot} The {cv_remove} custom visuals have been removed from the '{self._report}' report within the '{self._workspace}' workspace."
+            )
 
     def migrate_report_level_measures(self, measures: Optional[str | List[str]] = None):
 
@@ -1549,8 +1540,10 @@ class ReportWrapper:
 
         request_body = {"definition": {"parts": []}}
 
+        rpt_file = "definition/reportExtensions.json"
+
         rd = self.rdef
-        rd_filt = rd[rd["path"] == "definition/reportExtensions.json"]
+        rd_filt = rd[rd["path"] == rpt_file]
         payload = rd_filt["payload"].iloc[0]
         extFile = base64.b64decode(payload).decode("utf-8")
         extJson = json.loads(extFile)
@@ -1591,21 +1584,18 @@ class ReportWrapper:
                     entity for entity in extJson["entities"] if entity["measures"]
                 ]
                 file_payload = _conv_b64(extJson)
-                _add_part(request_body, file_name, file_payload)
+                _add_part(request_body, rpt_file, file_payload)
 
         # Add unchanged payloads
         for i, r in rd.iterrows():
-            if r["path"] != file_name:
+            if r["path"] != rpt_file:
                 _add_part(request_body, r["path"], r["payload"])
 
         if not self._readonly:
-            upd = self.update_report(request_body=request_body)
-            if upd == 200:
-                print(
-                    f"{icons.green_dot} The report-level measures have been migrated to the '{dataset_name}' semantic model within the '{dataset_workspace}' workspace."
-                )
-            else:
-                print(f"{icons.red_dot} Error...")
+            self.update_report(request_body=request_body)
+            print(
+                f"{icons.green_dot} The report-level measures have been migrated to the '{dataset_name}' semantic model within the '{dataset_workspace}' workspace."
+            )
 
     def set_theme(self, theme_json: str):
 
@@ -1684,15 +1674,10 @@ class ReportWrapper:
             _add_part(request_body, filePath, file_payload)
 
         if not self._readonly:
-            upd = self.update_report(request_body=request_body)
-            if upd == 200:
-                print(
-                    f"{icons.green_dot} The '{theme_name}' theme has been set as the theme for the '{self._report}' report within the '{self._workspace}' workspace."
-                )
-            else:
-                print(
-                    f"{icons.red_dot} The '{theme_name}' theme has not been set as the theme for the '{self._report}' report within the '{self._workspace}' workspace."
-                )
+            self.update_report(request_body=request_body)
+            print(
+                f"{icons.green_dot} The '{theme_name}' theme has been set as the theme for the '{self._report}' report within the '{self._workspace}' workspace."
+            )           
 
     def set_page_visibility(self, page_name: str, hidden: bool):
 
@@ -1718,13 +1703,10 @@ class ReportWrapper:
                 _add_part(request_body, path, payload)
 
         if not self._readonly:
-            upd = self.update_report(request_body=request_body)
-            if upd == 200:
-                print(
-                    f"{icons.green_dot} The '{page_name}' page has been set to {visibility}."
-                )
-            else:
-                print(f"{icons.red_dot}")
+            self.update_report(request_body=request_body)
+            print(
+                f"{icons.green_dot} The '{page_name}' page has been set to {visibility}."
+            )
 
     def hide_tooltip_drillthrough_pages(self):
 
@@ -1774,13 +1756,10 @@ class ReportWrapper:
                 _add_part(request_body, file_path, payload)
 
         if not self._readonly:
-            upd = self.update_report(request_body=request_body)
-            if upd == 200:
-                print(
-                    f"{icons.green_dot} Show items with data has been disabled for all visuals in the '{self._report}' report within the '{self._workspace}' workspace."
-                )
-            else:
-                print(f"{icons.red_dot}")
+            self.update_report(request_body=request_body)            
+            print(
+                f"{icons.green_dot} Show items with data has been disabled for all visuals in the '{self._report}' report within the '{self._workspace}' workspace."
+            )           
 
     def get_annotation_value(self, object_name: str, object_type: str, name: str):
 
@@ -1891,29 +1870,24 @@ class ReportWrapper:
                 a = update_annotation(payload=payload)
                 _add_part(request_body, path, _conv_b64(a))
             else:
-                _add_part(request_body, path, file_payload)
+                _add_part(request_body, path, payload)
 
         if not self._readonly:
-            upd = self.update_report(request_body=request_body)
-            if upd == 200:
-                if object_type == "Report":
-                    print(
-                        f"{icons.green_dot} The annotation '{name}' has been set on the report with the '{value}' value."
-                    )
-                elif object_type == "Page":
-                    print(
-                        f"{icons.green_dot} The annotation '{name}' has been set on the '{object_name}' page with the '{value}' value."
-                    )
-                elif object_type == "Visual":
-                    print(
-                        f"{icons.green_dot} The annotation '{name}' has been set on the '{visual_id}' visual on the '{page_display}' page with the '{value}' value."
-                    )
-            else:
-                print(f"{icons.red_dot}")
+            self.update_report(request_body=request_body)
+            if object_type == "Report":
+                print(
+                    f"{icons.green_dot} The '{name}' annotation has been set on the report with the '{value}' value."
+                )
+            elif object_type == "Page":
+                print(
+                    f"{icons.green_dot} The '{name}' annotation has been set on the '{object_name}' page with the '{value}' value."
+                )
+            elif object_type == "Visual":
+                print(
+                    f"{icons.green_dot} The '{name}' annotation has been set on the '{visual_id}' visual on the '{page_display}' page with the '{value}' value."
+                )
 
-    def adjust_settings(
-        setting_type: str, setting_name: str, setting_value: bool
-    ):  # Meta function
+    def adjust_settings(self, setting_type: str, setting_name: str, setting_value: bool):  # Meta function
 
         valid_setting_types = ["settings", "slowDataSourceSettings"]
         valid_settings = [
@@ -1948,6 +1922,8 @@ class ReportWrapper:
                 f"The '{setting_name}' is not a valid setting. Valid options: {valid_slow_settings}."
             )
 
+        request_body = {"definition": {"parts": []}}
+
         rd = self.rdef
         for i, r in rd.iterrows():
             path = r["path"]
@@ -1955,7 +1931,7 @@ class ReportWrapper:
             if path == "definition/report.json":
                 obj_file = base64.b64decode(payload).decode("utf-8")
                 obj_json = json.loads(obj_file)
-                if value is False:
+                if setting_value is False:
                     if setting_name in obj_json.get(setting_type, {}):
                         del obj_json[setting_type][setting_name]
                 else:
@@ -2095,7 +2071,7 @@ class ReportWrapper:
         )
 
     def close(self):
-        if not self._readonly and self.report is not None:
+        if not self._readonly and self._report is not None:
             print("saving...")
 
-            self.report = None
+            self._report = None
