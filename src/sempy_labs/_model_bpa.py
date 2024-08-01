@@ -110,18 +110,22 @@ def run_model_bpa(
     # Map languages to the closest language (first 2 letters matching)
     def map_language(language, language_list):
 
+        mapped = False
+
         if language in language_list:
+            mapped is True
             return language
 
         language_prefix = language[:2]
         for lang_code in language_list:
             if lang_code.startswith(language_prefix):
+                mapped is True
                 return lang_code
+        if not mapped:
+            return language
 
-        return None
-
-    if language is not None:
-        language = map_language(language, language_list)
+        if language is not None:
+            language = map_language(language, language_list)
 
     workspace = fabric.resolve_workspace_name(workspace)
 
@@ -144,12 +148,13 @@ def run_model_bpa(
 
         def translate_using_po(rule_file):
             current_dir = os.path.dirname(os.path.abspath(__file__))
+            translation_file = (
+                f"{current_dir}/_bpa_translation/_translations_{language}.po"
+            )
             for c in ["Category", "Description", "Rule Name"]:
-                po = polib.pofile(
-                    f"{current_dir}/_bpa_translation/_translations_{c.lower().replace(' ','')}.po"
-                )
+                po = polib.pofile(translation_file)
                 for entry in po:
-                    if entry.tcomment == language:
+                    if entry.tcomment == c.lower().replace(" ", "_"):
                         rule_file.loc[rule_file["Rule Name"] == entry.msgid, c] = (
                             entry.msgstr
                         )
