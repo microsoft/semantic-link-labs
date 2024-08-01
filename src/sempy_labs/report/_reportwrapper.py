@@ -70,6 +70,24 @@ _vis_type_mapping = {
 def list_reports_using_semantic_model(
     dataset: str, workspace: Optional[str] = None
 ) -> pd.DataFrame:
+    """
+    Shows a list of all the reports which use a given semantic model.
+    Limitation: This only shows reports in the same workspace as the semantic model.
+
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the reports which use a given semantic model.
+    """
 
     df = pd.DataFrame(
         columns=[
@@ -184,6 +202,7 @@ class ReportWrapper:
         if len(self.rdef[self.rdef["path"] == "definition/report.json"]) == 0:
             raise ValueError(
                 f"{icons.red_dot} The ReportWrapper function requires the report to be in the PBIR format."
+                "See here for details: https://powerbi.microsoft.com/blog/power-bi-enhanced-report-format-pbir-in-power-bi-desktop-developer-mode-preview/"
             )
 
     # Helper functions
@@ -218,6 +237,19 @@ class ReportWrapper:
         return response.status_code
 
     def resolve_page_name(self, page_name: str) -> Tuple[str, str, str]:
+        """
+        Obtains the page name, page display name, and the file path for a given page in a report.
+
+        Parameters
+        ----------
+        page_name : str
+            The name of the page of the report - either the page name (GUID) or the page display name.
+
+        Returns
+        -------
+        Tuple[str, str, str] Page name, page display name, file path from the report definition.
+
+        """
 
         dfP = self.list_pages()
         if any(r["Page Name"] == page_name for i, r in dfP.iterrows()):
@@ -240,6 +272,21 @@ class ReportWrapper:
     def resolve_visual_name(
         self, page_name: str, visual_name: str
     ) -> Tuple[str, str, str, str]:
+        """
+        Obtains the page name, page display name, and the file path for a given page in a report.
+
+        Parameters
+        ----------
+        page_name : str
+            The name of the page of the report - either the page name (GUID) or the page display name.
+        visual_name : str
+            The name of the visual of the report.
+
+        Returns
+        -------
+        Tuple[str, str, str, str] Page name, page display name, visual name, file path from the report definition.
+
+        """
 
         dfV = self.list_visuals()
         if any(
@@ -270,7 +317,7 @@ class ReportWrapper:
 
         return valid_page_name, valid_display_name, visual_name, file_path
 
-    def __visual_page_mapping(self):
+    def __visual_page_mapping(self) -> Tuple[dict, dict]:
 
         page_mapping = {}
         visual_mapping = {}
@@ -301,6 +348,17 @@ class ReportWrapper:
 
     # List functions
     def list_custom_visuals(self) -> pd.DataFrame:
+        """
+        Shows a list of all custom visuals used in the report.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        pandas.DataFrame
+            A pandas dataframe containing a list of all the custom visuals used in the report.
+        """
 
         self.__populate_custom_visual_display_names()
 
@@ -316,6 +374,19 @@ class ReportWrapper:
         return df
 
     def list_report_filters(self, extended: Optional[bool] = False) -> pd.DataFrame:
+        """
+        Shows a list of all report filters used in the report.
+
+        Parameters
+        ----------
+        extended : bool, default=False
+            If set to True, adds a column 'Valid' identifying whether the object is a valid object within the semantic model used by the report.
+
+        Returns
+        -------
+        pandas.DataFrame
+            A pandas dataframe containing a list of all the report filters used in the report.
+        """
 
         from sempy_labs.tom import connect_semantic_model
 
@@ -438,6 +509,19 @@ class ReportWrapper:
         return df
 
     def list_page_filters(self, extended: Optional[bool] = False) -> pd.DataFrame:
+        """
+        Shows a list of all page filters used in the report.
+
+        Parameters
+        ----------
+        extended : bool, default=False
+            If set to True, adds a column 'Valid' identifying whether the object is a valid object within the semantic model used by the report.
+
+        Returns
+        -------
+        pandas.DataFrame
+            A pandas dataframe containing a list of all the page filters used in the report.
+        """
 
         from sempy_labs.tom import connect_semantic_model
 
@@ -572,6 +656,19 @@ class ReportWrapper:
         return df
 
     def list_visual_filters(self, extended: Optional[bool] = False) -> pd.DataFrame:
+        """
+        Shows a list of all visual filters used in the report.
+
+        Parameters
+        ----------
+        extended : bool, default=False
+            If set to True, adds a column 'Valid' identifying whether the object is a valid object within the semantic model used by the report.
+
+        Returns
+        -------
+        pandas.DataFrame
+            A pandas dataframe containing a list of all the visual filters used in the report.
+        """
 
         from sempy_labs.tom import connect_semantic_model
 
@@ -710,6 +807,17 @@ class ReportWrapper:
         return df
 
     def list_visual_interactions(self) -> pd.DataFrame:
+        """
+        Shows a list of all modified `visual interactions <https://learn.microsoft.com/power-bi/create-reports/service-reports-visual-interactions?tabs=powerbi-desktop>`_ used in the report.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        pandas.DataFrame
+            A pandas dataframe containing a list of all modified visual interactions used in the report.
+        """
 
         rd = self.rdef
         df = pd.DataFrame(
@@ -750,6 +858,17 @@ class ReportWrapper:
         return df
 
     def list_pages(self) -> pd.DataFrame:
+        """
+        Shows a list of all pages in the report.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        pandas.DataFrame
+            A pandas dataframe containing a list of all pages in the report.
+        """
 
         rd = self.rdef
         df = pd.DataFrame(
@@ -865,6 +984,17 @@ class ReportWrapper:
         return df
 
     def list_visuals(self) -> pd.DataFrame:
+        """
+        Shows a list of all visuals in the report.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        pandas.DataFrame
+            A pandas dataframe containing a list of all visuals in the report.
+        """
 
         rd = self.rdef
         df = pd.DataFrame(
@@ -1071,6 +1201,19 @@ class ReportWrapper:
         return df
 
     def list_visual_objects(self, extended: Optional[bool] = False) -> pd.DataFrame:
+        """
+        Shows a list of all semantic model objects used in each visual in the report.
+
+        Parameters
+        ----------
+        extended : bool, default=False
+            If set to True, adds a column 'Valid' identifying whether the object is a valid object within the semantic model used by the report.
+
+        Returns
+        -------
+        pandas.DataFrame
+            A pandas dataframe containing a list of all semantic model objects used in each visual in the report.
+        """
 
         from sempy_labs.tom import connect_semantic_model
 
@@ -1195,7 +1338,23 @@ class ReportWrapper:
 
         return df
 
-    def list_semantic_model_objects(self, extended=False) -> pd.DataFrame:
+    def list_semantic_model_objects(
+        self, extended: Optional[bool] = False
+    ) -> pd.DataFrame:
+        """
+        Shows a list of all semantic model objects (measures, columns, hierarchies) that are used in the report and where the objects
+        were used (i.e. visual, report filter, page filter, visual filter).
+
+        Parameters
+        ----------
+        extended : bool, default=False
+            If set to True, adds a column 'Valid' identifying whether the object is a valid object within the semantic model used by the report.
+
+        Returns
+        -------
+        pandas.DataFrame
+            A pandas dataframe showing the semantic model objects used in the report.
+        """
 
         from sempy_labs.tom import connect_semantic_model
 
@@ -1266,35 +1425,43 @@ class ReportWrapper:
                 )
             )
 
+            def check_validity(tom, row):
+                object_validators = {
+                    "Measure": lambda: any(
+                        o.Name == row["Object Name"] for o in tom.all_measures()
+                    ),
+                    "Column": lambda: any(
+                        format_dax_object_name(c.Parent.Name, c.Name)
+                        == format_dax_object_name(row["Table Name"], row["Object Name"])
+                        for c in tom.all_columns()
+                    ),
+                    "Hierarchy": lambda: any(
+                        format_dax_object_name(h.Parent.Name, h.Name)
+                        == format_dax_object_name(row["Table Name"], row["Object Name"])
+                        for h in tom.all_hierarchies()
+                    ),
+                }
+                return object_validators.get(row["Object Type"], lambda: False)()
+
             with connect_semantic_model(
                 dataset=dataset_name, readonly=True, workspace=dataset_workspace
             ) as tom:
-                for index, row in df.iterrows():
-                    obj_type = row["Object Type"]
-                    if obj_type == "Measure":
-                        df.at[index, "Valid"] = any(
-                            o.Name == row["Object Name"] for o in tom.all_measures()
-                        )
-                    elif obj_type == "Column":
-                        df.at[index, "Valid"] = any(
-                            format_dax_object_name(c.Parent.Name, c.Name)
-                            == format_dax_object_name(
-                                row["Table Name"], row["Object Name"]
-                            )
-                            for c in tom.all_columns()
-                        )
-                    elif obj_type == "Hierarchy":
-                        df.at[index, "Valid"] = any(
-                            format_dax_object_name(h.Parent.Name, h.Name)
-                            == format_dax_object_name(
-                                row["Table Name"], row["Object Name"]
-                            )
-                            for h in tom.all_hierarchies()
-                        )
+                df["Valid"] = df.apply(lambda row: check_validity(tom, row), axis=1)
 
         return df
 
     def list_bookmarks(self) -> pd.DataFrame:
+        """
+        Shows a list of all bookmarks in the report.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        pandas.DataFrame
+            A pandas dataframe containing a list of all bookmarks in the report.
+        """
 
         rd = self.rdef
         df = pd.DataFrame(
@@ -1361,6 +1528,17 @@ class ReportWrapper:
         return df
 
     def list_report_level_measures(self) -> pd.DataFrame:
+        """
+        Shows a list of all `report-level measures <https://learn.microsoft.com/power-bi/transform-model/desktop-measures#report-level-measures>`_ in the report.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        pandas.DataFrame
+            A pandas dataframe containing a list of all report-level measures in the report.
+        """
 
         df = pd.DataFrame(
             columns=[
@@ -1477,7 +1655,9 @@ class ReportWrapper:
 
         if not self._readonly:
             self.update_report(request_body=request_body)
-            print(f"The '{page_display}' page has been updated to the '{page_type}' page type.")
+            print(
+                f"The '{page_display}' page has been updated to the '{page_type}' page type."
+            )
 
     def remove_unnecessary_custom_visuals(self):
 
@@ -1790,7 +1970,9 @@ class ReportWrapper:
                 p_name = match.group(1)
                 v_name = match.group(2)
             else:
-                raise ValueError("Invalid page/visual name within the 'object_name' parameter. Valid format: 'Page 1'[f8dvo24PdJ39fp6]")
+                raise ValueError(
+                    "Invalid page/visual name within the 'object_name' parameter. Valid format: 'Page 1'[f8dvo24PdJ39fp6]"
+                )
             valid_page_name, valid_display_name, visual_name, file_path = (
                 self.resolve_visual_name(page_name=p_name, visual_name=v_name)
             )
@@ -1894,7 +2076,9 @@ class ReportWrapper:
                     f"{icons.green_dot} The '{name}' annotation has been set on the '{visual_id}' visual on the '{page_display}' page with the '{value}' value."
                 )
 
-    def __adjust_settings(self, setting_type: str, setting_name: str, setting_value: bool):  # Meta function
+    def __adjust_settings(
+        self, setting_type: str, setting_name: str, setting_value: bool
+    ):  # Meta function
 
         valid_setting_types = ["settings", "slowDataSourceSettings"]
         valid_settings = [

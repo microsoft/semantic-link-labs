@@ -1,3 +1,5 @@
+from sempy_labs.report._reportwrapper import ReportWrapper
+
 from sempy_labs.report._generate_report import (
     create_report_from_reportjson,
     get_report_definition,
@@ -34,4 +36,5 @@ __all__ = [
     "report_rebind",
     "report_rebind_all",
     "get_report_definition",
+    "ReportWrapper",
 ]
