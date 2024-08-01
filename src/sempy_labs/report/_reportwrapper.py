@@ -95,7 +95,7 @@ def list_reports_using_semantic_model(
     return df
 
 
-def report_status(dataset: str, workspace: Optional[str] = None):
+def _report_status(dataset: str, workspace: Optional[str] = None):
 
     from sempy_labs.tom import connect_semantic_model
 
@@ -187,7 +187,7 @@ class ReportWrapper:
             )
 
     # Helper functions
-    def _populate_custom_visual_display_names(self):
+    def __populate_custom_visual_display_names(self):
 
         url1 = "https://catalogapi.azure.com/offers?api-version=2018-08-01-beta&storefront=appsource&$filter=offerType+eq+%27PowerBIVisuals%27"
         url2 = f"{url1}&$skiptoken=W3sidG9rZW4iOiIrUklEOn4yVk53QUxkRkVIeEJhUUFBQUFCQUNBPT0jUlQ6MSNUUkM6MTk3I0lTVjoyI0lFTzo2NTU2NyNRQ0Y6OCIsInJhbmdlIjp7Im1pbiI6IjA1QzFFNzBCM0IzOTUwIiwibWF4IjoiMDVDMUU3QUIxN0U3QTYifX1d"
@@ -270,7 +270,7 @@ class ReportWrapper:
 
         return valid_page_name, valid_display_name, visual_name, file_path
 
-    def _visual_page_mapping(self):
+    def __visual_page_mapping(self):
 
         page_mapping = {}
         visual_mapping = {}
@@ -302,7 +302,7 @@ class ReportWrapper:
     # List functions
     def list_custom_visuals(self) -> pd.DataFrame:
 
-        self._populate_custom_visual_display_names()
+        self.__populate_custom_visual_display_names()
 
         df = pd.DataFrame(columns=["Custom Visual Name", "Custom Visual Display Name"])
         rd = self.rdef
@@ -592,7 +592,7 @@ class ReportWrapper:
                 "Used",
             ]
         )
-        page_mapping, visual_mapping = self._visual_page_mapping()
+        page_mapping, visual_mapping = self.__visual_page_mapping()
 
         def find_entity_property_pairs(data, result=None, keys_path=None):
 
@@ -896,8 +896,8 @@ class ReportWrapper:
             ]
         )
         dfCV = self.list_custom_visuals()
-        page_mapping, visual_mapping = self._visual_page_mapping()
-        self._populate_custom_visual_display_names()
+        page_mapping, visual_mapping = self.__visual_page_mapping()
+        self.__populate_custom_visual_display_names()
 
         def contains_key(data, keys_to_check):
             if isinstance(data, dict):
@@ -1075,7 +1075,7 @@ class ReportWrapper:
         from sempy_labs.tom import connect_semantic_model
 
         rd = self.rdef
-        page_mapping, visual_mapping = self._visual_page_mapping()
+        page_mapping, visual_mapping = self.__visual_page_mapping()
         df = pd.DataFrame(columns=["Page Name", "Page Display Name", "Visual Name"])
 
         def contains_key(data, keys_to_check):
@@ -1477,7 +1477,7 @@ class ReportWrapper:
 
         if not self._readonly:
             self.update_report(request_body=request_body)
-            print(f"")
+            print(f"The '{page_display}' page has been updated to the '{page_type}' page type.")
 
     def remove_unnecessary_custom_visuals(self):
 
@@ -1599,14 +1599,29 @@ class ReportWrapper:
 
     def set_theme(self, theme_json: str):
 
-        file_path = f"/lakehouse/default/Files/{theme_json}"
+        theme_file_path = f"/lakehouse/default/Files/{theme_json}"
         report_path = "definition/report.json"
         theme_version = "5.5.4"
-
-        if not file_path.endswith(".json"):
-            file_path = f"{file_path}.json"
-
         request_body = {"definition": {"parts": []}}
+
+        if not theme_file_path.endswith(".json"):
+            theme_file_path = f"{theme_file_path}.json"
+
+        # Add theme.json file to request_body
+        with open(theme_file_path, "r", encoding="utf-8-sig") as file:
+            data = json.load(file)
+            theme_name = data["name"]
+            theme_name_full = f"{theme_name}.json"
+            file_payload = _conv_b64(data)
+            filePath = f"StaticResources/RegisteredResources/{theme_name_full}"
+
+            _add_part(request_body, filePath, file_payload)
+
+            new_theme = {
+                "name": theme_name_full,
+                "path": theme_name_full,
+                "type": "CustomTheme",
+            }
 
         rd = self.rdef
         for i, r in rd.iterrows():
@@ -1614,6 +1629,7 @@ class ReportWrapper:
             payload = r["payload"]
             if path != report_path:
                 _add_part(request_body, path, payload)
+            # Update the report.json file
             else:
                 rptFile = base64.b64decode(payload).decode("utf-8")
                 rptJson = json.loads(rptFile)
@@ -1657,27 +1673,11 @@ class ReportWrapper:
                 file_payload = _conv_b64(rptJson)
                 _add_part(request_body, path, file_payload)
 
-        # Add theme.json file to request_body
-        with open(file_path, "r", encoding="utf-8-sig") as file:
-            data = json.load(file)
-            theme_name = data["name"]
-            theme_name_full = f"{theme_name}.json"
-            file_payload = _conv_b64(data)
-            filePath = f"StaticResources/RegisteredResources/{theme_name_full}"
-
-            new_theme = {
-                "name": theme_name_full,
-                "path": theme_name_full,
-                "type": "CustomTheme",
-            }
-
-            _add_part(request_body, filePath, file_payload)
-
         if not self._readonly:
             self.update_report(request_body=request_body)
             print(
                 f"{icons.green_dot} The '{theme_name}' theme has been set as the theme for the '{self._report}' report within the '{self._workspace}' workspace."
-            )           
+            )
 
     def set_page_visibility(self, page_name: str, hidden: bool):
 
@@ -1756,10 +1756,10 @@ class ReportWrapper:
                 _add_part(request_body, file_path, payload)
 
         if not self._readonly:
-            self.update_report(request_body=request_body)            
+            self.update_report(request_body=request_body)
             print(
                 f"{icons.green_dot} Show items with data has been disabled for all visuals in the '{self._report}' report within the '{self._workspace}' workspace."
-            )           
+            )
 
     def get_annotation_value(self, object_name: str, object_type: str, name: str):
 
@@ -1784,8 +1784,15 @@ class ReportWrapper:
             obj_file = base64.b64decode(payload).decode("utf-8")
             obj_json = json.loads(obj_file)
         elif object_type == "Visual":
+            pattern = r"'([^']+)'\[([^]]+)\]"
+            match = re.search(pattern, object_name)
+            if match:
+                p_name = match.group(1)
+                v_name = match.group(2)
+            else:
+                raise ValueError("Invalid page/visual name within the 'object_name' parameter. Valid format: 'Page 1'[f8dvo24PdJ39fp6]")
             valid_page_name, valid_display_name, visual_name, file_path = (
-                self.resolve_visual_name(page_name=page_id, visual_name=visual_name)
+                self.resolve_visual_name(page_name=p_name, visual_name=v_name)
             )
             rd_filt = rd[rd["path"] == file_path]
             payload = rd_filt["payload"].iloc[0]
@@ -1796,7 +1803,7 @@ class ReportWrapper:
 
         return value
 
-    def remove_annotation(self, object_name: str, object_type: str, name: str):
+    def __remove_annotation(self, object_name: str, object_type: str, name: str):
 
         object_types = ["Visual", "Page", "Report"]
         object_type = object_type.capitalize()
@@ -1887,7 +1894,7 @@ class ReportWrapper:
                     f"{icons.green_dot} The '{name}' annotation has been set on the '{visual_id}' visual on the '{page_display}' page with the '{value}' value."
                 )
 
-    def adjust_settings(self, setting_type: str, setting_name: str, setting_value: bool):  # Meta function
+    def __adjust_settings(self, setting_type: str, setting_name: str, setting_value: bool):  # Meta function
 
         valid_setting_types = ["settings", "slowDataSourceSettings"]
         valid_settings = [
@@ -1949,7 +1956,7 @@ class ReportWrapper:
             else:
                 print(f"{icons.red_dot}")
 
-    def persist_filters(self, value: Optional[bool] = False):
+    def __persist_filters(self, value: Optional[bool] = False):
         """
         Don't allow end user to save filters on this file in the Power BI service.
         """
@@ -1960,7 +1967,7 @@ class ReportWrapper:
             setting_value=value,
         )
 
-    def hide_visual_header(self, value: Optional[bool] = False):
+    def __hide_visual_header(self, value: Optional[bool] = False):
         """
         Hide the visual header in reading view.
         """
@@ -1971,7 +1978,7 @@ class ReportWrapper:
             setting_value=value,
         )
 
-    def default_cross_filtering(self, value: Optional[bool] = False):
+    def __default_cross_filtering(self, value: Optional[bool] = False):
         """
         Change the default visual interaction from cross highlighting to cross filtering.
         """
@@ -1982,7 +1989,7 @@ class ReportWrapper:
             setting_value=value,
         )
 
-    def modern_visual_header(self, value: Optional[bool] = True):
+    def __modern_visual_header(self, value: Optional[bool] = True):
         """
         Use the modern visual header with updated styling options.
         """
@@ -1993,7 +2000,7 @@ class ReportWrapper:
             setting_value=value,
         )
 
-    def show_default_summarization_type(self, value: Optional[bool] = True):
+    def __show_default_summarization_type(self, value: Optional[bool] = True):
         """
         For aggregated fields, always show the default summarization type.
         """
@@ -2004,7 +2011,7 @@ class ReportWrapper:
             setting_value=value,
         )
 
-    def modern_visual_tooltips(self, value: Optional[bool] = True):
+    def __modern_visual_tooltips(self, value: Optional[bool] = True):
         """
         Use modern visual tooltips with drill actions and updated styling.
         """
@@ -2015,7 +2022,7 @@ class ReportWrapper:
             setting_value=value,
         )
 
-    def user_can_change_filter_types(self, value: Optional[bool] = True):
+    def __user_can_change_filter_types(self, value: Optional[bool] = True):
         """
         Allow users to change filter types.
         """
@@ -2026,7 +2033,7 @@ class ReportWrapper:
             setting_value=value,
         )
 
-    def disable_search_filter_pane(self, value: Optional[bool] = False):
+    def __disable_search_filter_pane(self, value: Optional[bool] = False):
         """
         Enable search for the filter pane.
         """
@@ -2037,7 +2044,7 @@ class ReportWrapper:
             setting_value=value,
         )
 
-    def enable_cross_repor_drillthrough(self, value: Optional[bool] = False):
+    def __enable_cross_repor_drillthrough(self, value: Optional[bool] = False):
         """
         Allow visuals in this report to use drillthrough targets from other reports.
         """
@@ -2048,7 +2055,7 @@ class ReportWrapper:
             setting_value=value,
         )
 
-    def disable_default_cross_highlighting(self, value: Optional[bool] = False):
+    def __disable_default_cross_highlighting(self, value: Optional[bool] = False):
         """
         Disable cross highlighting/filtering by default.
         """
@@ -2059,7 +2066,7 @@ class ReportWrapper:
             setting_value=value,
         )
 
-    def add_slicer_apply_button(self, value: Optional[bool] = False):
+    def __add_slicer_apply_button(self, value: Optional[bool] = False):
         """
         Add an Apply button to each individual slicer (not recommended).
         """
