@@ -9,10 +9,12 @@ def migrate_workspaces(
     source_capacity: str,
     target_capacity: str,
     workspaces: Optional[str | List[str]] = None,
-) -> int:
+):
     """
     This function migrates the workspace(s) from one capacity to another capacity.
     Limitation: source & target capacities must be in the same region.
+    If not all the workspaces succesfully migrated to the target capacity, the migrated workspaces will rollback to be assigned
+    to the source capacity.
 
     Parameters
     ----------
@@ -31,8 +33,6 @@ def migrate_workspaces(
 
     if isinstance(workspaces, str):
         workspaces = [workspaces]
-
-    migrated_workspace_count = 0
 
     dfC = fabric.list_capacities()
     dfC_filt = dfC[dfC["Display Name"] == source_capacity]
@@ -61,23 +61,44 @@ def migrate_workspaces(
             f"{icons.red_dot} The '{target_capacity}' target capacity is inactive. The capacity must be active in order for workspaces to be migrated."
         )
 
-    dfW = fabric.list_workspaces()
+    dfW = fabric.list_workspaces(filter=f"capacityId = '{source_capacity_id.upper()}'")
+    if workspaces is None:
+        workspace_count = len(dfW)
+    else:
+        workspace_count = len(workspaces)
+    migrated_workspaces = []
+
     for i, r in dfW.iterrows():
         workspace = r["Name"]
-        capacity_id = r["Capacity Id"]
 
-        if capacity_id == source_capacity_id:
-            if workspaces is None or workspace in workspaces:
-                pass
-            else:
-                continue
+        if workspaces is None or workspace in workspaces:
+            pass
+        else:
+            continue
 
-            if assign_workspace_to_capacity(
-                capacity_name=target_capacity, workspace=workspace
-            ):
-                migrated_workspace_count += 1
+        if assign_workspace_to_capacity(
+            capacity_name=target_capacity, workspace=workspace
+        ):
+            migrated_workspaces.append(workspace)
 
-    return migrated_workspace_count
+    if len(migrated_workspaces) < workspace_count:
+        print(
+            f"{icons.warning} Not all workspaces in the '{source_capacity}' capacity were migrated to the '{target_capacity}' capacity."
+        )
+        print(f"{icons.in_progress} Initiating rollback...")
+        for i, r in dfW.iterrows():
+            workspace = r["Name"]
+            if workspace in migrated_workspaces:
+                assign_workspace_to_capacity(
+                    capacity_name=source_capacity, workspace=workspace
+                )
+        print(
+            f"{icons.green_dot} Rollback of the workspaces to the '{source_capacity}' capacity is complete."
+        )
+    else:
+        print(
+            f"{icons.green_dot} All workspaces were migrated from the '{source_capacity}' capacity to the '{target_capacity}' capacity succesfully."
+        )
 
 
 @log
@@ -395,7 +416,6 @@ def migrate_capacities(
         region = r["Region"]
         sku_size = r["Sku"]
         admins = r["Admins"]
-        capacity_id = r["Id"]
         tgt_capacity = f"{cap_name}{capacity_suffix}"
 
         # Check if target capacity exists
@@ -433,32 +453,8 @@ def migrate_capacities(
                             admin_email=admins,
                         )
                     # Migrate workspaces to new capacity
-                    dfW = fabric.list_workspaces(
-                        filter=f"capacityId eq '{capacity_id.upper()}'"
+                    migrate_workspaces(
+                        source_capacity=cap_name,
+                        target_capacity=tgt_capacity,
+                        workspaces=None,
                     )
-                    workspace_count = len(dfW)
-                    if (
-                        migrate_workspaces(
-                            source_capacity=cap_name,
-                            target_capacity=tgt_capacity,
-                            workspaces=None,
-                        )
-                        == workspace_count
-                    ):
-                        print(
-                            f"{icons.green_dot} All workspaces within the '{cap_name}' capacity were succesfully migrated to the '{tgt_capacity}' capacity."
-                        )
-                    # Rollback if not all workspaces were migrated
-                    else:
-                        print(
-                            f"{icons.warning} Not all workspaces were succesfully migrated from the '{cap_name}' capacity to the '{tgt_capacity}' capacity."
-                            f"{icons.in_progress} Rolling back workspace assignments for the '{cap_name}' capacity."
-                        )
-                        migrate_workspaces(
-                            source_capacity=tgt_capacity,
-                            target_capacity=cap_name,
-                            workspaces=None,
-                        )
-                        print(
-                            f"{icons.green_dot} Workspace assignments for the '{cap_name}' capacity have been rolled back."
-                        )
