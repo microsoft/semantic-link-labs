@@ -3,6 +3,9 @@ from typing import Optional, List
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
+from sempy_labs._helper_functions import save_as_delta_table
+from sempy_labs.lakehouse import lakehouse_attached
+from sempy_labs._list_functions import assign_workspace_to_capacity
 
 
 @log
@@ -30,7 +33,6 @@ def migrate_workspaces(
     Returns
     -------
     """
-    from sempy_labs._list_functions import assign_workspace_to_capacity
 
     if isinstance(workspaces, str):
         workspaces = [workspaces]
@@ -411,6 +413,24 @@ def migrate_capacities(
     p_sku_list = list(sku_mapping.keys())
 
     dfC = list_capacities()
+    dfW = fabric.list_workspaces()
+
+    # Save existing capacity and workspace info to delta tables in the lakehouse
+    if not lakehouse_attached:
+        raise ValueError(
+            "Invalid lakehouse. Please attach a lakehouse to this notebook."
+        )
+
+    save_as_delta_table(
+        dataframe=dfC,
+        delta_table_name="migration_list_capacities",
+        write_mode="overwrite",
+    )
+    save_as_delta_table(
+        dataframe=dfW,
+        delta_table_name="migration_list_workspaces",
+        write_mode="overwrite",
+    )
 
     for i, r in dfC.iterrows():
         cap_name = r["Display Name"]
