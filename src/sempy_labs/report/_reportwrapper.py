@@ -360,12 +360,14 @@ class ReportWrapper:
         return page_mapping, visual_mapping
 
     # List functions
-    def list_custom_visuals(self) -> pd.DataFrame:
+    def list_custom_visuals(self, extended: Optional[bool] = False) -> pd.DataFrame:
         """
         Shows a list of all custom visuals used in the report.
 
         Parameters
         ----------
+        extended : bool, default=False
+            If True, adds extra columns to the resulting dataframe.
 
         Returns
         -------
@@ -383,6 +385,11 @@ class ReportWrapper:
         df["Custom Visual Display Name"] = df["Custom Visual Name"].apply(
             lambda x: _vis_type_mapping.get(x, x)
         )
+
+        if extended:
+            df["Used in Report"] = df["Custom Visual Name"].isin(
+                self.list_visuals()["Type"]
+            )
 
         return df
 
@@ -996,12 +1003,15 @@ class ReportWrapper:
 
         return df
 
-    def list_visuals(self) -> pd.DataFrame:
+    def list_visuals(self, extended: Optional[bool] = False) -> pd.DataFrame:
         """
         Shows a list of all visuals in the report.
 
         Parameters
         ----------
+        extended : bool, default=False
+            If True, adds a column showing the Visual Object Count (number of measures/columns/hierarchies used in the visual).
+            Defaults to False.
 
         Returns
         -------
@@ -1038,7 +1048,11 @@ class ReportWrapper:
                 "Has Sparkline",
             ]
         )
-        dfCV = self.list_custom_visuals()
+
+        rd_filt = rd[rd["path"] == "definition/report.json"]
+        payload = rd_filt["payload"].iloc[0]
+        rptJson = _extract_json(rd_filt)
+        custom_visuals = rptJson.get("publicCustomVisuals", [])
         page_mapping, visual_mapping = self.__visual_page_mapping()
         self.__populate_custom_visual_display_names()
 
@@ -1181,7 +1195,7 @@ class ReportWrapper:
                     "Display Type": visual_type_display,
                     "Title": title,
                     "SubTitle": sub_title,
-                    "Custom Visual": visual_type in dfCV["Custom Visual Name"].values,
+                    "Custom Visual": visual_type in custom_visuals,
                     "Alt Text": alt_text,
                     "Show Items With No Data": show_all_data,
                     "Divider": divider,
@@ -1210,6 +1224,23 @@ class ReportWrapper:
         df[bool_cols] = df[bool_cols].astype(bool)
         df[int_cols] = df[int_cols].astype(int)
         df[float_cols] = df[float_cols].astype(float)
+
+        if extended:
+            grouped_df = (
+                self.list_visual_objects()
+                .groupby(["Page Name", "Visual Name"])
+                .size()
+                .reset_index(name="Visual Object Count")
+            )
+
+            df = pd.merge(
+                df,
+                grouped_df,
+                left_on=["Page Name", "Visual Name"],
+                right_on=["Page Name", "Visual Name"],
+                how="left",
+            )
+            df["Visual Object Count"] = df["Visual Object Count"].fillna(0).astype(int)
 
         return df
 
