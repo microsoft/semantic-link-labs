@@ -1,6 +1,7 @@
 import sempy.fabric as fabric
 from sempy_labs._helper_functions import (
     resolve_dataset_id,
+    resolve_report_id,
     format_dax_object_name,
     resolve_dataset_from_report,
     _conv_b64,
@@ -194,6 +195,8 @@ class ReportWrapper:
 
         self._report = report
         self._workspace = workspace
+        self._workspace_id = fabric.resolve_workspace_id(workspace)
+        self._report_id = resolve_report_id(report, workspace)
         self._readonly = readonly
         self.rdef = get_report_definition(
             report=self._report, workspace=self._workspace
@@ -225,16 +228,26 @@ class ReportWrapper:
 
     def update_report(self, request_body: dict):
 
+        import time
+
         client = fabric.FabricRestClient()
         response = client.post(
             f"/v1/workspaces/{self._workspace_id}/reports/{self._report_id}/updateDefinition",
             json=request_body,
         )
 
-        if response.status_code != 200:
+        if response.status_code not in [200, 202]:
             raise FabricHTTPException(response)
-
-        return response.status_code
+        if response.status_code == 202:
+            operationId = response.headers["x-ms-operation-id"]
+            response = client.get(f"/v1/operations/{operationId}")
+            response_body = json.loads(response.content)
+            while response_body["status"] not in ["Succeeded", "Failed"]:
+                time.sleep(1)
+                response = client.get(f"/v1/operations/{operationId}")
+                response_body = json.loads(response.content)
+            if response_body["status"] != "Succeeded":
+                raise FabricHTTPException(response)
 
     def resolve_page_name(self, page_name: str) -> Tuple[str, str, str]:
         """
@@ -1777,31 +1790,55 @@ class ReportWrapper:
                 f"{icons.green_dot} The report-level measures have been migrated to the '{dataset_name}' semantic model within the '{dataset_workspace}' workspace."
             )
 
-    def set_theme(self, theme_json: str):
+    def set_theme(self, theme_file_path: str):
+        """
+        Sets a custom theme for a report based on a theme .json file.
 
-        theme_file_path = f"/lakehouse/default/Files/{theme_json}"
+        Parameters
+        ----------
+        theme_file_path : str
+            The file path of the theme.json file. This can either be from a Fabric lakehouse or from the web.
+            Examples:
+                file_path = '/lakehouse/default/Files/CY23SU09.json'
+                file_path = 'https://raw.githubusercontent.com/PowerBiDevCamp/FabricUserApiDemo/main/FabricUserApiDemo/DefinitionTemplates/Shared/Reports/StaticResources/SharedResources/BaseThemes/CY23SU08.json'
+
+        Returns
+        -------
+        """
+
+        import requests
+
         report_path = "definition/report.json"
         theme_version = "5.5.4"
         request_body = {"definition": {"parts": []}}
 
         if not theme_file_path.endswith(".json"):
-            theme_file_path = f"{theme_file_path}.json"
+            raise ValueError(
+                f"{icons.red_dot} The theme file path must be a .json file."
+            )
+        elif theme_file_path.startswith("https://"):
+            response = requests.get(theme_file_path)
+            json_file = response.json()
+        elif theme_file_path.startswith("/lakehouse"):
+            with open(theme_file_path, "r", encoding="utf-8-sig") as file:
+                json_file = json.load(file)
+        else:
+            ValueError(f"{icons.red_dot} Incorrect theme file path value.")
+
+        theme_name = json_file["name"]
+        theme_name_full = f"{theme_name}.json"
 
         # Add theme.json file to request_body
-        with open(theme_file_path, "r", encoding="utf-8-sig") as file:
-            data = json.load(file)
-            theme_name = data["name"]
-            theme_name_full = f"{theme_name}.json"
-            file_payload = _conv_b64(data)
-            filePath = f"StaticResources/RegisteredResources/{theme_name_full}"
+        file_payload = _conv_b64(json_file)
+        filePath = f"StaticResources/RegisteredResources/{theme_name_full}"
 
-            _add_part(request_body, filePath, file_payload)
+        _add_part(request_body, filePath, file_payload)
 
-            new_theme = {
-                "name": theme_name_full,
-                "path": theme_name_full,
-                "type": "CustomTheme",
-            }
+        new_theme = {
+            "name": theme_name_full,
+            "path": theme_name_full,
+            "type": "CustomTheme",
+        }
 
         rd = self.rdef
         for i, r in rd.iterrows():
