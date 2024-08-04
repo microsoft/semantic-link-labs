@@ -1591,11 +1591,21 @@ class ReportWrapper:
 
         return df
 
-    # Automate functions
+    # Automation functions
     def set_active_page(self, page_name: str):
+        """
+        Sets the active page (first page displayed when opening a report) for a report.
+
+        Parameters
+        ----------
+        page_name : str
+            The page name or page display name of the report.
+
+        Returns
+        -------
+        """
 
         pages_file = "definition/pages/pages.json"
-
         request_body = {"definition": {"parts": []}}
 
         rd = self.rdef
@@ -1673,18 +1683,30 @@ class ReportWrapper:
             )
 
     def remove_unnecessary_custom_visuals(self):
+        """
+        Removes any custom visuals within the report that are not used in the report.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        """
 
         dfCV = self.list_custom_visuals()
         dfV = self.list_visuals()
         rd = self.rdef
         cv_remove = []
+        cv_remove_display = []
         request_body = {"definition": {"parts": []}}
 
         for i, r in dfCV.iterrows():
             cv = r["Custom Visual Name"]
+            cv_display = r["Custom Visual Display Name"]
             dfV_filt = dfV[dfV["Type"] == cv]
             if len(dfV_filt) == 0:
                 cv_remove.append(cv)  # Add to the list for removal
+                cv_remove_display.append(cv_display)
         if len(cv_remove) == 0:
             print(
                 f"{icons.green_dot} There are no unnecessary custom visuals in the '{self._report}' report within the '{self._workspace}' workspace."
@@ -1703,26 +1725,31 @@ class ReportWrapper:
                     if item not in cv_remove
                 ]
 
-                file_payload = _conv_b64(rpt_json)
+                payload = _conv_b64(rpt_json)
 
-            _add_part(request_body, file_path, file_payload)
+            _add_part(request_body, file_path, payload)
 
         if not self._readonly:
             self.update_report(request_body=request_body)
             print(
-                f"{icons.green_dot} The {cv_remove} custom visuals have been removed from the '{self._report}' report within the '{self._workspace}' workspace."
+                f"{icons.green_dot} The {cv_remove_display} custom visuals have been removed from the '{self._report}' report within the '{self._workspace}' workspace."
             )
 
     def migrate_report_level_measures(self, measures: Optional[str | List[str]] = None):
+        """
+        Moves all report-level measures from the report to the semantic model on which the report is based.
+
+        Parameters
+        ----------
+        measures : str | List[str], default=None
+            A measure or list of measures to move to the semantic model.
+            Defaults to None which resolves to moving all report-level measures to the semantic model.
+
+        Returns
+        -------
+        """
 
         from sempy_labs.tom import connect_semantic_model
-
-        dataset_id, dataset_name, dataset_workspace_id, dataset_workspace = (
-            resolve_dataset_from_report(report=self._report, workspace=self._workspace)
-        )
-
-        if isinstance(measures, str):
-            measures = [measures]
 
         rlm = self.list_report_level_measures()
         if len(rlm) == 0:
@@ -1731,8 +1758,14 @@ class ReportWrapper:
             )
             return
 
-        request_body = {"definition": {"parts": []}}
+        dataset_id, dataset_name, dataset_workspace_id, dataset_workspace = (
+            resolve_dataset_from_report(report=self._report, workspace=self._workspace)
+        )
 
+        if isinstance(measures, str):
+            measures = [measures]
+
+        request_body = {"definition": {"parts": []}}
         rpt_file = "definition/reportExtensions.json"
 
         rd = self.rdef
@@ -1781,8 +1814,10 @@ class ReportWrapper:
 
         # Add unchanged payloads
         for i, r in rd.iterrows():
-            if r["path"] != rpt_file:
-                _add_part(request_body, r["path"], r["payload"])
+            path = r["path"]
+            payload = r["payload"]
+            if path != rpt_file:
+                _add_part(request_body, path, payload)
 
         if not self._readonly:
             self.update_report(request_body=request_body)
@@ -1897,6 +1932,20 @@ class ReportWrapper:
             )
 
     def set_page_visibility(self, page_name: str, hidden: bool):
+        """
+        Sets whether a report page is visible or hidden.
+
+        Parameters
+        ----------
+        page_name : str
+            The page name or page display name of the report.
+        hidden : bool
+            If set to True, hides the report page.
+            If set to False, makes the report page visible.
+
+        Returns
+        -------
+        """
 
         rd = self.rdef
         page_id, page_display, file_path = self.resolve_page_name(page_name=page_name)
@@ -1926,10 +1975,19 @@ class ReportWrapper:
             )
 
     def hide_tooltip_drillthrough_pages(self):
+        """
+        Hides all tooltip pages and drillthrough pages in a report.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        """
 
         dfP = self.list_pages()
         dfP_filt = dfP[
-            (dfP["Type"] == "Tooltip") or (dfP["Drillthrough Target Page"] == True)
+            (dfP["Type"] == "Tooltip") | (dfP["Drillthrough Target Page"] == True)
         ]
 
         if len(dfP_filt) == 0:
@@ -1943,8 +2001,27 @@ class ReportWrapper:
             self.set_page_visibility(page_name=page_name, hidden=True)
 
     def disable_show_items_with_no_data(self):
+        """
+        Disables the `show items with no data <https://learn.microsoft.com/power-bi/create-reports/desktop-show-items-no-data>`_ property in all visuals within the report.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        """
 
         request_body = {"definition": {"parts": []}}
+
+        def delete_key_in_json(obj, key_to_delete):
+            if isinstance(obj, dict):
+                if key_to_delete in obj:
+                    del obj[key_to_delete]
+                for key, value in obj.items():
+                    delete_key_in_json(value, key_to_delete)
+            elif isinstance(obj, list):
+                for item in obj:
+                    delete_key_in_json(item, key_to_delete)
 
         rd = self.rdef
         for i, r in rd.iterrows():
@@ -1958,16 +2035,8 @@ class ReportWrapper:
                 # page_id, page_display = resolve_page_name(report=report, page_name=page_name, workspace=workspace)
                 objFile = base64.b64decode(payload).decode("utf-8")
                 objJson = json.loads(objFile)
-                show_all_data = (
-                    objJson.get("visual", {})
-                    .get("query", {})
-                    .get("queryState", {})
-                    .get("Values", {})
-                    .get("showAll", {})
-                )
-                if show_all_data:
-                    del show_all_data
-                    # print(f"Show items with no data has been disabled for the '{visual_name}' visual on the '{page_display} page in the '{report}' report within the '{workspace}' workspace.")
+                delete_key_in_json(objJson, "showAll")
+                # print(f"Show items with no data has been disabled for the '{visual_name}' visual on the '{page_display} page in the '{report}' report within the '{workspace}' workspace.")
                 _add_part(request_body, file_path, _conv_b64(objJson))
             else:
                 _add_part(request_body, file_path, payload)
