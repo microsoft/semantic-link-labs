@@ -6,6 +6,7 @@ from sempy.fabric.exceptions import FabricHTTPException
 from sempy_labs._helper_functions import save_as_delta_table
 from sempy_labs.lakehouse import lakehouse_attached
 from sempy_labs._list_functions import assign_workspace_to_capacity
+import pandas as pd
 
 
 @log
@@ -574,45 +575,119 @@ def migrate_capacity_settings(source_capacity: str, target_capacity: str):
         )
     target_capacity_id = dfC_filt["Id"].iloc[0].upper()
 
-    workloads = [
-        "AI",
-        "ADM",
-        "CDSA",
-        "DMS",
-        "RsRdlEngine",
-        "ScreenshotEngine",
-        "AS",
-        "QES",
-        "DMR",
-        "ESGLake",
-        "NLS",
-        "lake",
-        "TIPS",
-        "Kusto",
-        "Lakehouse",
-        "SparkCore",
-        "DI",
-    ]
+    workloads_params = "capacityCustomParameters?workloadIds=AI&workloadIds=ADM&workloadIds=CDSA&workloadIds=DMS&workloadIds=RsRdlEngine&workloadIds=ScreenshotEngine&workloadIds=AS&workloadIds=QES&workloadIds=DMR&workloadIds=ESGLake&workloadIds=NLS&workloadIds=lake&workloadIds=TIPS&workloadIds=Kusto&workloadIds=Lakehouse&workloadIds=SparkCore&workloadIds=DI&workloadIds=Notebook&workloadIds=ML&workloadIds=ES&workloadIds=Reflex&workloadIds=Must&workloadIds=dmh&workloadIds=PowerBI&workloadIds=HLS"
 
     client = fabric.PowerBIRestClient()
-    for workload in workloads:
-        response_get = client.get(
-            f"capacities/{source_capacity_id}/capacityCustomParameters?workloadIds={workload}"
-        )
-        if response_get.status_code != 200:
-            raise FabricHTTPException(response_get)
-        request_body = response_get.json()
-        response_put = client.put(
-            f"capacities/{target_capacity_id}/capacityCustomParameters?workloadIds={workload}",
-            json=request_body,
-        )
-        if response_put.status_code != 200:
-            raise FabricHTTPException(response_put)
-        print(
-            f"{icons.green_dot} The '{workload}' capacity settings have been migrated from the '{source_capacity}' capacity to the '{target_capacity}' capacity."
-        )
+    response_get_source = client.get(
+        f"capacities/{source_capacity_id}/{workloads_params}"
+    )
+    if response_get_source.status_code != 200:
+        raise FabricHTTPException(response_get_source)
+
+    response_source_json = response_get_source.json().get(
+        "capacityCustomParameters", {}
+    )
+
+    # Create payload for put request
+    def remove_empty_workloads(data):
+        keys_to_remove = [
+            key for key, value in data.items() if not value["workloadCustomParameters"]
+        ]
+        for key in keys_to_remove:
+            del data[key]
+
+    remove_empty_workloads(response_source_json)
+
+    settings_json = {}
+    settings_json["capacityCustomParameters"] = {}
+
+    for workload in response_source_json:
+        if workload not in ["AI"]:
+            settings_json["capacityCustomParameters"][workload] = {}
+            settings_json["capacityCustomParameters"][workload][
+                "workloadCustomParameters"
+            ] = {}
+
+            for workload_part in response_source_json[workload].values():
+                for workload_item in workload_part:
+                    setting_name = workload_item["name"]
+                    setting_value = workload_item["value"]
+                    if setting_value is None:
+                        settings_json["capacityCustomParameters"][workload][
+                            "workloadCustomParameters"
+                        ][setting_name] = setting_value
+                    elif setting_value is False:
+                        settings_json["capacityCustomParameters"][workload][
+                            "workloadCustomParameters"
+                        ][setting_name] = False
+                    elif setting_value is True:
+                        settings_json["capacityCustomParameters"][workload][
+                            "workloadCustomParameters"
+                        ][setting_name] = True
+                    else:
+                        settings_json["capacityCustomParameters"][workload][
+                            "workloadCustomParameters"
+                        ][setting_name] = str(setting_value)
+
+    response_put = client.put(
+        f"capacities/{target_capacity_id}/{workloads_params}",
+        json=settings_json,
+    )
+    if response_put.status_code != 204:
+        raise FabricHTTPException(response_put)
+
     print(
         f"{icons.green_dot} The settings of the '{source_capacity}' capacity have been migrated to the '{target_capacity}' capacity."
+    )
+
+
+def migrate_capacity_disaster_recovery(source_capacity: str, target_capacity: str):
+    """
+    This function migrates a capacity's disaster recovery settings to another capacity.
+
+    Parameters
+    ----------
+    source_capacity : str
+        Name of the source capacity.
+    target_capacity : str
+        Name of the target capacity.
+
+    Returns
+    -------
+    """
+
+    dfC = fabric.list_capacities()
+    dfC_filt = dfC[dfC["Display Name"] == source_capacity]
+    if len(dfC_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} The '{source_capacity}' capacity does not exist."
+        )
+    source_capacity_id = dfC_filt["Id"].iloc[0].upper()
+    dfC_filt = dfC[dfC["Display Name"] == target_capacity]
+    if len(dfC_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} The '{target_capacity}' capacity does not exist."
+        )
+    target_capacity_id = dfC_filt["Id"].iloc[0].upper()
+
+    client = fabric.PowerBIRestClient()
+
+    response_get_source = client.get(f"capacities/{source_capacity_id}/config")
+    if response_get_source.status_code != 200:
+        raise FabricHTTPException(response_get_source)
+
+    request_body = {}
+    value = response_get_source.json()["bcdr"]["config"]
+    request_body["config"] = value
+
+    response_put = client.put(
+        f"capacities/{target_capacity_id}/fabricbcdr", json=request_body
+    )
+
+    if response_put.status_code != 204:
+        raise FabricHTTPException(response_put)
+    print(
+        f"{icons.green_dot} Disaster recover settings have been migrated from the '{source_capacity}' capacity to the '{target_capacity}' capacity."
     )
 
 
@@ -662,3 +737,38 @@ def migrate_delegated_tenant_settings(source_capacity: str, target_capacity: str
     print(
         f"{icons.green_dot} Delegated tenant settings have been migrated from the '{source_capacity}' capacity to the '{target_capacity}' capacity."
     )
+
+
+def list_vcores():
+
+    df = pd.DataFrame(columns=["Total Purchased Cores", "Available Cores"])
+
+    client = fabric.PowerBIRestClient()
+    response = client.get("capacities/vcores")
+    if response.status_code != 200:
+        FabricHTTPException(response)
+    response_json = response.json()
+    new_data = {
+        "Total Purchased Cores": response_json.get("totalPurchasedCores"),
+        "Available Cores": response_json.get("availableCores"),
+    }
+    df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    int_cols = ["Total Purchased Cores", "Available Cores"]
+    df[int_cols] = df[int_cols].astype(int)
+
+    return df
+
+
+def get_capacity_resource_governance(capacity_name: str):
+
+    dfC = fabric.list_capacities()
+    dfC_filt = dfC[dfC["Display Name"] == capacity_name]
+    capacity_id = dfC_filt["Id"].iloc[0].upper()
+    client = fabric.PowerBIRestClient()
+    response = client.get(f"capacities/{capacity_id}/resourceGovernance")
+
+    if response.status_code != 200:
+        FabricHTTPException(response)
+
+    return response.json()["workloadSettings"]

@@ -7,6 +7,9 @@ from sempy_labs._capacities import (
     delete_capacity,
     migrate_delegated_tenant_settings,
     migrate_capacity_settings,
+    get_capacity_resource_governance,
+    migrate_capacity_disaster_recovery,
+    list_vcores,
 )
 
 # from sempy_labs._connections import (
@@ -204,4 +207,7 @@ __all__ = [
     "delete_capacity",
     "migrate_delegated_tenant_settings",
     "migrate_capacity_settings",
+    "get_capacity_resource_governance",
+    "list_vcores",
+    "migrate_capacity_disaster_recovery",
 ]
