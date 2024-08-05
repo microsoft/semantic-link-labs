@@ -772,3 +772,101 @@ def get_capacity_resource_governance(capacity_name: str):
         FabricHTTPException(response)
 
     return response.json()["workloadSettings"]
+
+
+def migrate_access_settings(source_capacity: str, target_capacity: str):
+    """
+    This function migrates the access settings from a source capacity to a target capacity.
+
+    Parameters
+    ----------
+    source_capacity : str
+        Name of the source capacity.
+    target_capacity : str
+        Name of the target capacity.
+
+    Returns
+    -------
+    """
+
+    dfC = fabric.list_capacities()
+    dfC_filt = dfC[dfC["Display Name"] == source_capacity]
+    if len(dfC_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} The '{source_capacity}' capacity does not exist."
+        )
+    source_capacity_id = dfC_filt["Id"].iloc[0].upper()
+    dfC_filt = dfC[dfC["Display Name"] == target_capacity]
+    if len(dfC_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} The '{target_capacity}' capacity does not exist."
+        )
+    target_capacity_id = dfC_filt["Id"].iloc[0].upper()
+
+    client = fabric.PowerBIRestClient()
+    response_get_source = client.get(f"capacities/{source_capacity_id}")
+    if response_get_source.status_code != 200:
+        raise FabricHTTPException(response_get_source)
+
+    access_settings = response_get_source.json().get("access", {})
+
+    response_put = client.put(
+        f"capacities/{target_capacity_id}/access",
+        json=access_settings,
+    )
+    if response_put.status_code != 204:
+        raise FabricHTTPException(response_put)
+
+    print(
+        f"{icons.green_dot} The access settings of the '{source_capacity}' capacity have been migrated to the '{target_capacity}' capacity."
+    )
+
+
+def migrate_notification_settings(source_capacity: str, target_capacity: str):
+    """
+    This function migrates the notification settings from a source capacity to a target capacity.
+
+    Parameters
+    ----------
+    source_capacity : str
+        Name of the source capacity.
+    target_capacity : str
+        Name of the target capacity.
+
+    Returns
+    -------
+    """
+
+    dfC = fabric.list_capacities()
+    dfC_filt = dfC[dfC["Display Name"] == source_capacity]
+    if len(dfC_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} The '{source_capacity}' capacity does not exist."
+        )
+    source_capacity_id = dfC_filt["Id"].iloc[0].upper()
+    dfC_filt = dfC[dfC["Display Name"] == target_capacity]
+    if len(dfC_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} The '{target_capacity}' capacity does not exist."
+        )
+    target_capacity_id = dfC_filt["Id"].iloc[0].upper()
+
+    client = fabric.PowerBIRestClient()
+    response_get_source = client.get(f"capacities/{source_capacity_id}")
+    if response_get_source.status_code != 200:
+        raise FabricHTTPException(response_get_source)
+
+    notification_settings = response_get_source.json().get(
+        "capacityNotificationSettings", {}
+    )
+
+    response_put = client.put(
+        f"capacities/{target_capacity_id}/notificationSettings",
+        json=notification_settings,
+    )
+    if response_put.status_code != 204:
+        raise FabricHTTPException(response_put)
+
+    print(
+        f"{icons.green_dot} The notification settings of the '{source_capacity}' capacity have been migrated to the '{target_capacity}' capacity."
+    )

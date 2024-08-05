@@ -10,6 +10,8 @@ from sempy_labs._capacities import (
     get_capacity_resource_governance,
     migrate_capacity_disaster_recovery,
     list_vcores,
+    migrate_notification_settings,
+    migrate_access_settings,
 )
 
 # from sempy_labs._connections import (
@@ -210,4 +212,6 @@ __all__ = [
     "get_capacity_resource_governance",
     "list_vcores",
     "migrate_capacity_disaster_recovery",
+    "migrate_notification_settings",
+    "migrate_access_settings",
 ]
