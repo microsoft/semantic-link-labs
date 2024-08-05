@@ -42,7 +42,7 @@ def report_bpa_rules() -> pd.DataFrame:
                 "Warning",
                 "Reduce usage of filters on measures",
                 lambda df: df["Object Type"] == "Measure",
-                "Measure filters may cause performance degradation, especially against a large dataset.",
+                "Measure filters may cause performance degradation, especially against a large semantic model.",
             ),
             (
                 "Performance",
@@ -69,7 +69,7 @@ def report_bpa_rules() -> pd.DataFrame:
                 "Using custom visuals may lead to performance degradation.",
             ),
             (
-                "Performance",
+                "Maintenance",
                 "Report Level Measure",
                 "Warning",
                 "Move report-level measures into the semantic model.",

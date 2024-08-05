@@ -14,6 +14,7 @@ import pandas as pd
 import re
 import json
 import base64
+import time
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
@@ -235,8 +236,6 @@ class ReportWrapper:
         return web_url
 
     def update_report(self, request_body: dict):
-
-        import time
 
         client = fabric.FabricRestClient()
         response = client.post(
