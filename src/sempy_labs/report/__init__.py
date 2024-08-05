@@ -20,6 +20,8 @@ from sempy_labs.report._report_rebind import (
     report_rebind,
     report_rebind_all,
 )
+from sempy_labs.report._report_bpa_rules import report_bpa_rules
+from sempy_labs.report._report_bpa import run_report_bpa
 
 __all__ = [
     "create_report_from_reportjson",
@@ -37,4 +39,6 @@ __all__ = [
     "report_rebind_all",
     "get_report_definition",
     "ReportWrapper",
+    "report_bpa_rules",
+    "run_report_bpa",
 ]

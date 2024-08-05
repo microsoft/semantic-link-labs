@@ -9,7 +9,7 @@ def report_bpa_rules() -> pd.DataFrame:
                 "Custom Visual",
                 "Warning",
                 "Remove custom visuals which are not used in the report",
-                lambda df: df["Used In Report"] == False,
+                lambda df: df["Used in Report"] == False,
                 "Removing unused custom visuals from a report may lead to faster report performance.",
             ),
             (
@@ -67,6 +67,14 @@ def report_bpa_rules() -> pd.DataFrame:
                 "Reduce usage of custom visuals",
                 lambda df: df["Custom Visual Name"] == df["Custom Visual Name"],
                 "Using custom visuals may lead to performance degradation.",
+            ),
+            (
+                "Performance",
+                "Report Level Measure",
+                "Warning",
+                "Move report-level measures into the semantic model.",
+                lambda df: df["Measure Name"] == df["Measure Name"],
+                "It is a best practice to keep measures defined in the semantic model and not in the report.",
             ),
             # ('Performance', 'Custom Visual', 'Warning', "Set 'Edit Interactions' for non-data visuals to 'none'",
             # lambda df: df['Custom Visual Name'] == df['Custom Visual Name'],

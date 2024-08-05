@@ -226,6 +226,14 @@ class ReportWrapper:
                 displayName = i.get("displayName")
                 _vis_type_mapping[vizId] = displayName
 
+    def _get_web_url(self):
+
+        dfR = fabric.list_reports(workspace=self._workspace)
+        dfR_filt = dfR[dfR["Name"] == self._report]
+        web_url = dfR_filt["Web Url"].iloc[0]
+
+        return web_url
+
     def update_report(self, request_body: dict):
 
         import time
@@ -535,7 +543,7 @@ class ReportWrapper:
         Parameters
         ----------
         extended : bool, default=False
-            If set to True, adds a column 'Valid' identifying whether the object is a valid object within the semantic model used by the report.
+            If set to True, adds more columns showing additional properties.
 
         Returns
         -------
@@ -672,6 +680,9 @@ class ReportWrapper:
                             )
                             for h in tom.all_hierarchies()
                         )
+
+            web_url = self._get_web_url()
+            df["Web Url"] = web_url + "/" + df["Page Name"]
 
         return df
 
@@ -877,12 +888,14 @@ class ReportWrapper:
 
         return df
 
-    def list_pages(self) -> pd.DataFrame:
+    def list_pages(self, extended: Optional[bool] = False) -> pd.DataFrame:
         """
         Shows a list of all pages in the report.
 
         Parameters
         ----------
+        extended : bool, default=False
+            Adds columns showing additional properties.
 
         Returns
         -------
@@ -998,8 +1011,23 @@ class ReportWrapper:
 
         df.loc[df["Page Name"] == activePage, "Active"] = True
 
+        int_cols = [
+            "Width",
+            "Height",
+            "Page Filter Count",
+            "Visual Count",
+            "Visible Visual Count",
+            "Data Visual Count",
+        ]
+        df[int_cols] = df[int_cols].astype(int)
+
         bool_cols = ["Hidden", "Active", "Drillthrough Target Page"]
         df[bool_cols] = df[bool_cols].astype(bool)
+
+        if extended:
+            web_url = self._get_web_url()
+
+            df["Web Url"] = web_url + "/" + df["Page Name"]
 
         return df
 
@@ -1046,6 +1074,7 @@ class ReportWrapper:
                 "Column SubTotals",
                 "Data Visual",
                 "Has Sparkline",
+                "Visual Filter Count",
             ]
         )
 
@@ -1081,6 +1110,9 @@ class ReportWrapper:
                 visual_type = visual_json.get("visual", {}).get("visualType", "Group")
                 visual_type_display = _vis_type_mapping.get(visual_type, visual_type)
                 cst_value, rst_value, slicer_type = False, False, "N/A"
+                visual_filter_count = len(
+                    visual_json.get("filterConfig", {}).get("filters", [])
+                )
 
                 title = (
                     visual_json.get("visual", {})
@@ -1204,6 +1236,7 @@ class ReportWrapper:
                     "Slicer Type": slicer_type,
                     "Data Visual": is_data_visual,
                     "Has Sparkline": has_sparkline,
+                    "Visual Filter Count": visual_filter_count,
                 }
 
                 df = pd.concat(
@@ -1220,7 +1253,7 @@ class ReportWrapper:
             "Column SubTotals",
         ]
         float_cols = ["X", "Y", "Width", "Height"]
-        int_cols = ["Z"]
+        int_cols = ["Z", "Visual Filter Count"]
         df[bool_cols] = df[bool_cols].astype(bool)
         df[int_cols] = df[int_cols].astype(int)
         df[float_cols] = df[float_cols].astype(float)
