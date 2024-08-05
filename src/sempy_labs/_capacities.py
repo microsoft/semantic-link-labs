@@ -575,7 +575,7 @@ def migrate_capacity_settings(source_capacity: str, target_capacity: str):
         )
     target_capacity_id = dfC_filt["Id"].iloc[0].upper()
 
-    workloads_params = "capacityCustomParameters?workloadIds=AI&workloadIds=ADM&workloadIds=CDSA&workloadIds=DMS&workloadIds=RsRdlEngine&workloadIds=ScreenshotEngine&workloadIds=AS&workloadIds=QES&workloadIds=DMR&workloadIds=ESGLake&workloadIds=NLS&workloadIds=lake&workloadIds=TIPS&workloadIds=Kusto&workloadIds=Lakehouse&workloadIds=SparkCore&workloadIds=DI&workloadIds=Notebook&workloadIds=ML&workloadIds=ES&workloadIds=Reflex&workloadIds=Must&workloadIds=dmh&workloadIds=PowerBI&workloadIds=HLS"
+    workloads_params = "capacityCustomParameters?workloadIds=ADM&workloadIds=CDSA&workloadIds=DMS&workloadIds=RsRdlEngine&workloadIds=ScreenshotEngine&workloadIds=AS&workloadIds=QES&workloadIds=DMR&workloadIds=ESGLake&workloadIds=NLS&workloadIds=lake&workloadIds=TIPS&workloadIds=Kusto&workloadIds=Lakehouse&workloadIds=SparkCore&workloadIds=DI&workloadIds=Notebook&workloadIds=ML&workloadIds=ES&workloadIds=Reflex&workloadIds=Must&workloadIds=dmh&workloadIds=PowerBI&workloadIds=HLS"
 
     client = fabric.PowerBIRestClient()
     response_get_source = client.get(
@@ -616,18 +616,18 @@ def migrate_capacity_settings(source_capacity: str, target_capacity: str):
                         settings_json["capacityCustomParameters"][workload][
                             "workloadCustomParameters"
                         ][setting_name] = setting_value
-                    elif setting_value is False:
+                    elif isinstance(setting_value, bool):
                         settings_json["capacityCustomParameters"][workload][
                             "workloadCustomParameters"
-                        ][setting_name] = False
-                    elif setting_value is True:
-                        settings_json["capacityCustomParameters"][workload][
-                            "workloadCustomParameters"
-                        ][setting_name] = True
-                    else:
+                        ][setting_name] = bool(setting_value)
+                    elif isinstance(setting_value, str):
                         settings_json["capacityCustomParameters"][workload][
                             "workloadCustomParameters"
                         ][setting_name] = str(setting_value)
+                    else:
+                        settings_json["capacityCustomParameters"][workload][
+                            "workloadCustomParameters"
+                        ][setting_name] = setting_value
 
     response_put = client.put(
         f"capacities/{target_capacity_id}/{workloads_params}",
