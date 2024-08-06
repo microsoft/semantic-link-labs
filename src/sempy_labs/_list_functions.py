@@ -2456,7 +2456,9 @@ def import_notebook_from_web(
     starting_text = "https://github.com/"
     starting_text_len = len(starting_text)
     if url.startswith(starting_text):
-        url = f"https://raw.githubusercontent.com/{url[starting_text_len:]}".replace('/blob/', '/')
+        url = f"https://raw.githubusercontent.com/{url[starting_text_len:]}".replace(
+            "/blob/", "/"
+        )
 
     response = requests.get(url)
     if response.status_code != 200:

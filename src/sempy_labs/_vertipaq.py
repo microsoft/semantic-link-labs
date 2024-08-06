@@ -12,6 +12,8 @@ from sempy_labs._helper_functions import (
     get_direct_lake_sql_endpoint,
     resolve_lakehouse_name,
     resolve_dataset_id,
+    save_as_delta_table,
+    resolve_workspace_capacity,
 )
 from sempy_labs._list_functions import list_relationships
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
@@ -487,14 +489,8 @@ def vertipaq_analyzer(
         dfD = fabric.list_datasets(workspace=workspace, mode="rest")
         dfD_filt = dfD[dfD["Dataset Name"] == dataset]
         configured_by = dfD_filt["Configured By"].iloc[0]
-        dfW = fabric.list_workspaces(filter=f"name eq '{workspace}'")
-        capacity_id = dfW["Capacity Id"].iloc[0]
-        dfC = fabric.list_capacities()
-        dfC_filt = dfC[dfC["Id"] == capacity_id]
-        if len(dfC_filt) == 1:
-            capacity_name = dfC_filt["Display Name"].iloc[0]
-        else:
-            capacity_name = None
+        capacity_id, capacity_name = resolve_workspace_capacity(workspace=workspace)
+
         for key, (obj, df) in dfMap.items():
             df["Timestamp"] = now
             df["Capacity Name"] = capacity_name
@@ -524,10 +520,8 @@ def vertipaq_analyzer(
             df.columns = df.columns.str.replace(" ", "_")
 
             delta_table_name = f"VertipaqAnalyzer_{obj}".lower()
-            spark_df = spark.createDataFrame(df)
-            spark_df.write.mode("append").format("delta").saveAsTable(delta_table_name)
-            print(
-                f"{icons.bullet} Vertipaq Analyzer results for '{obj}' have been appended to the '{delta_table_name}' delta table."
+            save_as_delta_table(
+                dataframe=df, delta_table_name=delta_table_name, write_mode="append"
             )
 
     # Export vertipaq to zip file within the lakehouse

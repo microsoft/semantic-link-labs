@@ -673,7 +673,6 @@ def resolve_workspace_capacity(workspace: Optional[str] = None) -> Tuple[UUID, s
 
 
 def get_capacity_id(workspace: Optional[str] = None) -> UUID:
-
     """
     Obtains the Capacity Id for a given workspace.
 
@@ -717,11 +716,13 @@ def get_capacity_name(workspace: Optional[str] = None) -> str:
 
     capacity_id = get_capacity_id(workspace)
     dfC = fabric.list_capacities()
-    dfC_filt = dfC[dfC['Id'] == capacity_id]
+    dfC_filt = dfC[dfC["Id"] == capacity_id]
     if len(dfC_filt) == 0:
-        raise ValueError(f"{icons.red_dot} The '{capacity_id}' capacity Id does not exist.")
+        raise ValueError(
+            f"{icons.red_dot} The '{capacity_id}' capacity Id does not exist."
+        )
 
-    return dfC_filt['Display Name'].iloc[0]
+    return dfC_filt["Display Name"].iloc[0]
 
 
 def resolve_capacity_name(capacity_id: Optional[UUID] = None) -> str:
@@ -745,9 +746,11 @@ def resolve_capacity_name(capacity_id: Optional[UUID] = None) -> str:
         return get_capacity_name()
 
     dfC = fabric.list_capacities()
-    dfC_filt = dfC[dfC['Id'] == capacity_id]
+    dfC_filt = dfC[dfC["Id"] == capacity_id]
 
     if len(dfC_filt) == 0:
-        raise ValueError(f"{icons.red_dot} The '{capacity_id}' capacity Id does not exist.")
+        raise ValueError(
+            f"{icons.red_dot} The '{capacity_id}' capacity Id does not exist."
+        )
 
-    return dfC_filt['Display Name'].iloc[0]
+    return dfC_filt["Display Name"].iloc[0]

@@ -9,15 +9,16 @@ from sempy_labs._helper_functions import (
     format_dax_object_name,
     resolve_lakehouse_name,
     create_relationship_name,
+    save_as_delta_table,
+    resolve_workspace_capacity,
+    resolve_dataset_id,
 )
-from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
-from sempy_labs.lakehouse._lakehouse import lakehouse_attached
+from sempy_labs.lakehouse import get_lakehouse_tables, lakehouse_attached
 from sempy_labs.tom import connect_semantic_model
 from sempy_labs._model_bpa_rules import model_bpa_rules
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
-from synapse.ml.services import Translate
 from pyspark.sql.functions import col, flatten
 from pyspark.sql.types import StructType, StructField, StringType
 import polib
@@ -63,6 +64,8 @@ def run_model_bpa(
     pandas.DataFrame
         A pandas dataframe in HTML format showing semantic model objects which violated the best practice analyzer rules.
     """
+
+    from synapse.ml.services import Translate
 
     if "extend" in kwargs:
         print(
@@ -380,23 +383,40 @@ def run_model_bpa(
             runId = maxRunId + 1
 
         now = datetime.datetime.now()
+        dfD = fabric.list_datasets(workspace=workspace, mode="rest")
+        dfD_filt = dfD[dfD["Dataset Name"] == dataset]
+        configured_by = dfD_filt["Configured By"].iloc[0]
+        capacity_id, capacity_name = resolve_workspace_capacity(workspace=workspace)
+        dfExport["Capacity Name"] = capacity_name
+        dfExport["Capacity Id"] = capacity_id
         dfExport["Workspace Name"] = workspace
+        dfExport["Workspace Id"] = fabric.resolve_workspace_id(workspace)
         dfExport["Dataset Name"] = dataset
+        dfExport["Dataset Id"] = resolve_dataset_id(dataset, workspace)
+        dfExport["Configured By"] = configured_by
         dfExport["Timestamp"] = now
         dfExport["RunId"] = runId
 
         dfExport["RunId"] = dfExport["RunId"].astype("int")
 
-        colName = "Workspace Name"
+        colName = "Capacity Name"
         dfExport.insert(0, colName, dfExport.pop(colName))
-        colName = "Dataset Name"
+        colName = "Capacity Id"
         dfExport.insert(1, colName, dfExport.pop(colName))
+        colName = "Workspace Name"
+        dfExport.insert(2, colName, dfExport.pop(colName))
+        colName = "Workspace Id"
+        dfExport.insert(3, colName, dfExport.pop(colName))
+        colName = "Dataset Name"
+        dfExport.insert(4, colName, dfExport.pop(colName))
+        colName = "Workspace Id"
+        dfExport.insert(5, colName, dfExport.pop(colName))
+        colName = "Configured By"
+        dfExport.insert(6, colName, dfExport.pop(colName))
 
         dfExport.columns = dfExport.columns.str.replace(" ", "_")
-        spark_df = spark.createDataFrame(dfExport)
-        spark_df.write.mode("append").format("delta").saveAsTable(delta_table_name)
-        print(
-            f"{icons.green_dot} Model Best Practice Analyzer results for the '{dataset}' semantic model have been appended to the '{delta_table_name}' delta table."
+        save_as_delta_table(
+            dataframe=dfExport, delta_table_name=delta_table_name, write_mode="append"
         )
 
     if return_dataframe:
