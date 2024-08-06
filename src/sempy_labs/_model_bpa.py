@@ -17,6 +17,11 @@ from sempy_labs._model_bpa_rules import model_bpa_rules
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
+from synapse.ml.services import Translate
+from pyspark.sql.functions import col, flatten
+from pyspark.sql.types import StructType, StructField, StringType
+import polib
+import os
 
 
 @log
@@ -27,6 +32,7 @@ def run_model_bpa(
     export: Optional[bool] = False,
     return_dataframe: Optional[bool] = False,
     extended: Optional[bool] = False,
+    language: Optional[str] = None,
     **kwargs,
 ):
     """
@@ -48,6 +54,9 @@ def run_model_bpa(
         If True, returns a pandas dataframe instead of the visualization.
     extended : bool, default=False
         If True, runs the set_vertipaq_annotations function to collect Vertipaq Analyzer statistics to be used in the analysis of the semantic model.
+    language : str, default=None
+        Specifying a language code (i.e. 'it-IT' for Italian) will auto-translate the Category, Rule Name and Description into the specified language.
+        Defaults to None which resolves to English.
 
     Returns
     -------
@@ -65,8 +74,65 @@ def run_model_bpa(
         "ignore",
         message="This pattern is interpreted as a regular expression, and has match groups.",
     )
+    warnings.filterwarnings(
+        "ignore", category=UserWarning, message=".*Arrow optimization.*"
+    )
+
+    language_list = [
+        "it-IT",
+        "es-ES",
+        "he-IL",
+        "pt-PT",
+        "zh-CN",
+        "fr-FR",
+        "da-DK",
+        "cs-CZ",
+        "de-DE",
+        "el-GR",
+        "fa-IR",
+        "ga-IE",
+        "hi-IN",
+        "hu-HU",
+        "is-IS",
+        "ja-JP",
+        "nl-NL",
+        "pl-PL",
+        "pt-BR",
+        "ru-RU",
+        "te-IN",
+        "ta-IN",
+        "th-TH",
+        "zu-ZA",
+        "am-ET",
+        "ar-AE",
+    ]
+
+    # Map languages to the closest language (first 2 letters matching)
+    def map_language(language, language_list):
+
+        mapped = False
+
+        if language in language_list:
+            mapped is True
+            return language
+
+        language_prefix = language[:2]
+        for lang_code in language_list:
+            if lang_code.startswith(language_prefix):
+                mapped is True
+                return lang_code
+        if not mapped:
+            return language
+
+        if language is not None:
+            language = map_language(language, language_list)
 
     workspace = fabric.resolve_workspace_name(workspace)
+
+    if language is not None and language not in language_list:
+        print(
+            f"{icons.yellow_dot} The '{language}' language code is not in our predefined language list. Please file an issue and let us know which language code you are using: https://github.com/microsoft/semantic-link-labs/issues/new?assignees=&labels=&projects=&template=bug_report.md&title=."
+        )
 
     if extended:
         with connect_semantic_model(
@@ -80,10 +146,100 @@ def run_model_bpa(
 
         dep = get_model_calc_dependencies(dataset=dataset, workspace=workspace)
 
+        def translate_using_po(rule_file):
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            translation_file = (
+                f"{current_dir}/_bpa_translation/_translations_{language}.po"
+            )
+            for c in ["Category", "Description", "Rule Name"]:
+                po = polib.pofile(translation_file)
+                for entry in po:
+                    if entry.tcomment == c.lower().replace(" ", "_"):
+                        rule_file.loc[rule_file["Rule Name"] == entry.msgid, c] = (
+                            entry.msgstr
+                        )
+
+        def translate_using_spark(rule_file):
+            rules_temp = rule_file.copy()
+            rules_temp = rules_temp.drop(["Expression", "URL", "Severity"], axis=1)
+
+            schema = StructType(
+                [
+                    StructField("Category", StringType(), True),
+                    StructField("Scope", StringType(), True),
+                    StructField("Rule Name", StringType(), True),
+                    StructField("Description", StringType(), True),
+                ]
+            )
+
+            spark = SparkSession.builder.getOrCreate()
+            dfRules = spark.createDataFrame(rules_temp, schema)
+
+            columns = ["Category", "Rule Name", "Description"]
+            for clm in columns:
+                translate = (
+                    Translate()
+                    .setTextCol(clm)
+                    .setToLanguage(language)
+                    .setOutputCol("translation")
+                    .setConcurrency(5)
+                )
+
+                if clm == "Rule Name":
+                    transDF = (
+                        translate.transform(dfRules)
+                        .withColumn(
+                            "translation", flatten(col("translation.translations"))
+                        )
+                        .withColumn("translation", col("translation.text"))
+                        .select(clm, "translation")
+                    )
+                else:
+                    transDF = (
+                        translate.transform(dfRules)
+                        .withColumn(
+                            "translation", flatten(col("translation.translations"))
+                        )
+                        .withColumn("translation", col("translation.text"))
+                        .select("Rule Name", clm, "translation")
+                    )
+
+                df_panda = transDF.toPandas()
+                rule_file = pd.merge(
+                    rule_file,
+                    df_panda[["Rule Name", "translation"]],
+                    on="Rule Name",
+                    how="left",
+                )
+
+                rule_file = rule_file.rename(
+                    columns={"translation": f"{clm}Translated"}
+                )
+                rule_file[f"{clm}Translated"] = rule_file[f"{clm}Translated"].apply(
+                    lambda x: x[0] if x is not None else None
+                )
+
+            for clm in columns:
+                rule_file = rule_file.drop([clm], axis=1)
+                rule_file = rule_file.rename(columns={f"{clm}Translated": clm})
+
+            return rule_file
+
+        translated = False
+
+        # Translations
+        if language is not None and rules is None and language in language_list:
+            rules = model_bpa_rules(
+                dataset=dataset, workspace=workspace, dependencies=dep
+            )
+            translate_using_po(rules)
+            translated = True
         if rules is None:
             rules = model_bpa_rules(
                 dataset=dataset, workspace=workspace, dependencies=dep
             )
+        if language is not None and not translated:
+            rules = translate_using_spark(rules)
 
         rules["Severity"].replace("Warning", "⚠️", inplace=True)
         rules["Severity"].replace("Error", "\u274C", inplace=True)
