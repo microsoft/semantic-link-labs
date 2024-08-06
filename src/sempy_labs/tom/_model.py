@@ -3737,9 +3737,9 @@ class TOMWrapper:
         self,
         table_name: str,
         partition_name: str,
-        expression: Optional[str | None] = None,
-        mode: Optional[str | None] = None,
-        description: Optional[str | None] = None,
+        expression: Optional[str] = None,
+        mode: Optional[str] = None,
+        description: Optional[str] = None,
     ):
         """
         Updates an M partition for a table within a semantic model.
@@ -3779,11 +3779,11 @@ class TOMWrapper:
     def update_measure(
         self,
         measure_name: str,
-        expression: Optional[str | None] = None,
-        format_string: Optional[str | None] = None,
-        hidden: Optional[bool | None] = None,
-        description: Optional[str | None] = None,
-        display_folder: Optional[str | None] = None,
+        expression: Optional[str] = None,
+        format_string: Optional[str] = None,
+        hidden: Optional[bool] = None,
+        description: Optional[str] = None,
+        display_folder: Optional[str] = None,
     ):
         """
         Updates a measure within a semantic model.
@@ -3828,16 +3828,16 @@ class TOMWrapper:
         self,
         table_name: str,
         column_name: str,
-        source_column: Optional[str | None] = None,
-        data_type: Optional[str | None] = None,
-        expression: Optional[str | None] = None,
-        format_string: Optional[str | None] = None,
-        hidden: Optional[bool | None] = None,
-        description: Optional[str | None] = None,
-        display_folder: Optional[str | None] = None,
-        data_category: Optional[str | None] = None,
-        key: Optional[bool | None] = None,
-        summarize_by: Optional[str | None] = None,
+        source_column: Optional[str] = None,
+        data_type: Optional[str] = None,
+        expression: Optional[str] = None,
+        format_string: Optional[str] = None,
+        hidden: Optional[bool] = None,
+        description: Optional[str] = None,
+        display_folder: Optional[str] = None,
+        data_category: Optional[str] = None,
+        key: Optional[bool] = None,
+        summarize_by: Optional[str] = None,
     ):
         """
         Updates a column within a semantic model.
@@ -3910,8 +3910,8 @@ class TOMWrapper:
     def update_role(
         self,
         role_name: str,
-        model_permission: Optional[str | None] = None,
-        description: Optional[str | None] = None,
+        model_permission: Optional[str] = None,
+        description: Optional[str] = None,
     ):
         """
         Updates a role within a semantic model.
@@ -3944,10 +3944,10 @@ class TOMWrapper:
         self,
         table_name: str,
         calculation_item_name: str,
-        expression: Optional[str | None] = None,
-        ordinal: Optional[int | None] = None,
-        format_string_expression: Optional[str | None] = None,
-        description: Optional[str | None] = None,
+        expression: Optional[str] = None,
+        ordinal: Optional[int] = None,
+        format_string_expression: Optional[str] = None,
+        description: Optional[str] = None,
     ):
         """
         Updates a calculation item within a semantic model.
