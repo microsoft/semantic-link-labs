@@ -274,64 +274,73 @@ def create_model_bpa_semantic_model(
             return f"IF(HASONEFILTER({table_name}[RunId]),{calculation},CALCULATE({calculation},FILTER(VALUES({table_name}[RunId]),{table_name}[RunId] = [Max Run Id])))"
 
         # Add measures
-        if not any(m.Name == "Max Run Id" for m in tom.all_measures()):
+        int_format = "#,0"
+        m_name = "Max Run Id"
+        if not any(m.Name == m_name for m in tom.all_measures()):
             tom.add_measure(
                 table_name=t_name,
-                measure_name="Max Run Id",
+                measure_name=m_name,
                 expression=f"CALCULATE(MAX({t_name_full}[RunId]),{t_name_full}[RunId])",
-                format_string="#,0",
+                format_string=int_format,
             )
-        if not any(m.Name == "Capacities" for m in tom.all_measures()):
+        m_name = "Capacities"
+        if not any(m.Name == m_name for m in tom.all_measures()):
             calc = f"COUNTROWS(DISTINCT({t_name_full}[Capacity]))"
             tom.add_measure(
                 table_name=t_name,
-                measure_name="Capacities",
+                measure_name=m_name,
                 expression=get_expr(t_name_full, calc),
-                format_string="#,0",
+                format_string=int_format,
             )
-        if not any(m.Name == "Models" for m in tom.all_measures()):
+        m_name = "Models"
+        if not any(m.Name == m_name for m in tom.all_measures()):
             calc = f"COUNTROWS(DISTINCT({t_name_full}[Model]))"
             tom.add_measure(
                 table_name=t_name,
-                measure_name="Models",
+                measure_name=m_name,
                 expression=get_expr(t_name_full, calc),
-                format_string="#,0",
+                format_string=int_format,
             )
-        if not any(m.Name == "Workspaces" for m in tom.all_measures()):
+        m_name = "Workspaces"
+        if not any(m.Name == m_name for m in tom.all_measures()):
             calc = f"COUNTROWS(DISTINCT({t_name_full}[Workspace]))"
             tom.add_measure(
                 table_name=t_name,
-                measure_name="Workspaces",
+                measure_name=m_name,
                 expression=get_expr(t_name_full, calc),
-                format_string="#,0",
+                format_string=int_format,
             )
-        if not any(m.Name == "Violations" for m in tom.all_measures()):
+        m_name = "Violations"
+        if not any(m.Name == m_name for m in tom.all_measures()):
             calc = f"COUNTROWS({t_name_full})"
             tom.add_measure(
                 table_name=t_name,
-                measure_name="Violations",
+                measure_name=m_name,
                 expression=get_expr(t_name_full, calc),
-                format_string="#,0",
+                format_string=int_format,
             )
-        if not any(m.Name == "Error Violations" for m in tom.all_measures()):
+        m_name = "Error Violations"
+        if not any(m.Name == m_name for m in tom.all_measures()):
             tom.add_measure(
                 table_name=t_name,
-                measure_name="Error Violations",
+                measure_name=m_name,
                 expression=f'CALCULATE([Violations],{t_name_full}[Severity]="Error")',
-                format_string="#,0",
+                format_string=int_format,
             )
-        if not any(m.Name == "Rules Violated" for m in tom.all_measures()):
+        m_name = "Rules Violated"
+        if not any(m.Name == m_name for m in tom.all_measures()):
             calc = f"COUNTROWS(DISTINCT({t_name_full}[Rule Name]))"
             tom.add_measure(
                 table_name=t_name,
-                measure_name="Rules Violated",
+                measure_name=m_name,
                 expression=get_expr(t_name_full, calc),
-                format_string="#,0",
+                format_string=int_format,
             )
-        if not any(m.Name == "Rule Severity" for m in tom.all_measures()):
+        m_name = "Rule Severity"
+        if not any(m.Name == m_name for m in tom.all_measures()):
             tom.add_measure(
                 table_name=t_name,
-                measure_name="Rule Severity",
+                measure_name=m_name,
                 expression=f"IF(ISFILTERED({t_name_full}[Rule Name]),IF( HASONEVALUE({t_name_full}[Rule Name]),MIN({t_name_full}[Severity])))",
             )
         # tom.add_measure(table_name=t_name, measure_name='Rules Followed', expression="[Rules] - [Rules Violated]")

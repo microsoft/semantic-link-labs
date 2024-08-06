@@ -562,12 +562,8 @@ def is_default_semantic_model(dataset: str, workspace: Optional[str] = None) -> 
         or set(["Lakehouse", "SemanticModel"]).issubset(set(x["Type"]))
     )
     default_semantic_models = filtered_df["Display Name"].unique().tolist()
-    if dataset in default_semantic_models:
-        result = True
-    else:
-        result = False
 
-    return result
+    return dataset in default_semantic_models
 
 
 def resolve_item_type(item_id: UUID, workspace: Optional[str] = None) -> str:
