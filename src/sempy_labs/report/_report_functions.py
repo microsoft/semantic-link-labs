@@ -84,14 +84,8 @@ def get_report_json(
             )
 
         lakehouse_id = fabric.get_lakehouse_id()
-        for mp in mssparkutils.fs.mounts():
-            if mp.mountPoint == "/default" and mp.storageType == "Lakehouse":
-                ind = mp.source.index("@")
-                lakehouse_workspace_id = mp.source[8:ind]
-                lakehouse_workspace = fabric.resolve_workspace_name(
-                    lakehouse_workspace_id
-                )
-        lakehouse = resolve_lakehouse_name(lakehouse_id, lakehouse_workspace)
+        lake_workspace = fabric.resolve_workspace_name()
+        lakehouse = resolve_lakehouse_name(lakehouse_id, lake_workspace)
         folderPath = "/lakehouse/default/Files"
         fileExt = ".json"
         if not save_to_file_name.endswith(fileExt):
