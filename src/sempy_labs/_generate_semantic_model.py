@@ -251,7 +251,8 @@ def get_semantic_model_bim(
             )
 
         lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse = resolve_lakehouse_name(lakehouse_id, lakehouse_workspace)
+        lake_workspace = fabric.resolve_workspace_name()
+        lakehouse = resolve_lakehouse_name(lakehouse_id, lake_workspace)
         folderPath = "/lakehouse/default/Files"
         fileExt = ".bim"
         if not save_to_file_name.endswith(fileExt):
