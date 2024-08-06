@@ -81,8 +81,6 @@ def report_rebind_all(
 
     Parameters
     ----------
-    report : str
-        Name of the Power BI report.
     dataset : str
         Name of the semantic model currently binded to the reports.
     new_dataset : str
