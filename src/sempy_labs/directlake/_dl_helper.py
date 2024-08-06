@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 from typing import Optional, List, Union
 import sempy_labs._icons as icons
+import datetime
+import time
 
 
 def check_fallback_reason(
@@ -78,11 +80,11 @@ def generate_direct_lake_semantic_model(
     Parameters
     ----------
     dataset : str
-        Name of the semantic model.
+        Name of the semantic model to be created.
     lakehouse_tables : str | List[str]
         The table(s) within the Fabric lakehouse to add to the semantic model. All columns from these tables will be added to the semantic model.
     workspace : str, default=None
-        The Fabric workspace name.
+        The Fabric workspace name in which the semantic model will reside.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     lakehouse : str, default=None
@@ -110,10 +112,16 @@ def generate_direct_lake_semantic_model(
         lakehouse_tables = [lakehouse_tables]
 
     dfLT = get_lakehouse_tables(lakehouse=lakehouse, workspace=lakehouse_workspace)
+
+    # Validate lakehouse tables
+    for t in lakehouse_tables:
+        if t not in dfLT["Table Name"].values:
+            raise ValueError(
+                f"{icons.red_dot} The '{t}' table does not exist as a delta table in the '{lakehouse}' within the '{workspace}' workspace."
+            )
+
     dfLC = get_lakehouse_columns(lakehouse=lakehouse, workspace=lakehouse_workspace)
-
     expr = get_shared_expression(lakehouse=lakehouse, workspace=lakehouse_workspace)
-
     dfD = fabric.list_datasets(workspace=workspace)
     dfD_filt = dfD[dfD["Dataset Name"] == dataset]
     dfD_filt_len = len(dfD_filt)
@@ -129,30 +137,39 @@ def generate_direct_lake_semantic_model(
 
     create_blank_semantic_model(dataset=dataset, workspace=workspace)
 
-    with connect_semantic_model(
-        dataset=dataset, workspace=workspace, readonly=False
-    ) as tom:
-        tom.add_expression(name="DatabaseQuery", expression=expr)
+    start_time = datetime.datetime.now()
+    timeout = datetime.timedelta(minutes=1)
+    success = False
+    expression_name = "DatabaseQuery"
 
-        for t in lakehouse_tables:
-            if t not in dfLT["Table Name"].values:
-                raise ValueError(
-                    f"{icons.red_dot} The '{t}' table does not exist as a delta table in the '{lakehouse}' within the '{workspace}' workspace."
-                )
+    while not success:
+        try:
 
-            tom.add_table(name=t)
-            tom.add_entity_partition(table_name=t, entity_name=t)
-            dfLC_filt = dfLC[dfLC["Table Name"] == t]
-            for i, r in dfLC_filt.iterrows():
-                lakeCName = r["Column Name"]
-                dType = r["Data Type"]
-                dt = icons.data_type_mapping.get(dType)
-                tom.add_data_column(
-                    table_name=t,
-                    column_name=lakeCName,
-                    source_column=lakeCName,
-                    data_type=dt,
-                )
+            with connect_semantic_model(
+                dataset=dataset, workspace=workspace, readonly=False
+            ) as tom:
+                success = True
+                if not any(e.Name == expression_name for e in tom.model.Expressions):
+                    tom.add_expression(name=expression_name, expression=expr)
+
+                for t in lakehouse_tables:
+                    tom.add_table(name=t)
+                    tom.add_entity_partition(table_name=t, entity_name=t)
+                    dfLC_filt = dfLC[dfLC["Table Name"] == t]
+                    for i, r in dfLC_filt.iterrows():
+                        lakeCName = r["Column Name"]
+                        dType = r["Data Type"]
+                        dt = icons.data_type_mapping.get(dType)
+                        tom.add_data_column(
+                            table_name=t,
+                            column_name=lakeCName,
+                            source_column=lakeCName,
+                            data_type=dt,
+                        )
+        except Exception:
+            if datetime.datetime.now() - start_time > timeout:
+                break
+            time.sleep(1)
 
     if refresh:
         refresh_semantic_model(dataset=dataset, workspace=workspace)

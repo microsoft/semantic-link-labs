@@ -6,7 +6,7 @@ from datetime import datetime
 from sempy_labs._helper_functions import format_dax_object_name
 from sempy_labs._list_functions import list_relationships
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
-from sempy_labs.directlake._fallback import check_fallback_reason
+from sempy_labs.directlake._dl_helper import check_fallback_reason
 from contextlib import contextmanager
 from typing import List, Iterator, Optional, Union, TYPE_CHECKING
 from sempy._utils._log import log

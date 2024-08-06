@@ -1,6 +1,6 @@
 from sempy_labs.directlake._directlake_schema_compare import direct_lake_schema_compare
 from sempy_labs.directlake._directlake_schema_sync import direct_lake_schema_sync
-from sempy_labs.directlake._fallback import (
+from sempy_labs.directlake._dl_helper import (
     check_fallback_reason,
     generate_direct_lake_semantic_model,
 )
