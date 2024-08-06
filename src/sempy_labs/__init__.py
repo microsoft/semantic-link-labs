@@ -11,6 +11,7 @@ from sempy_labs._capacities import (
     list_vcores,
     migrate_notification_settings,
     migrate_access_settings,
+    migrate_delegated_tenant_settings,
 )
 
 # from sempy_labs._connections import (
@@ -212,4 +213,5 @@ __all__ = [
     "migrate_capacity_disaster_recovery",
     "migrate_notification_settings",
     "migrate_access_settings",
+    "migrate_delegated_tenant_settings",
 ]

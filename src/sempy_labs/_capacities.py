@@ -481,6 +481,12 @@ def migrate_capacities(
                         workspaces=None,
                     )
 
+                    migrate_capacity_settings(source_capacity=cap_name, target_capacity=tgt_capacity)
+                    migrate_access_settings(source_capacity=cap_name, target_capacity=tgt_capacity)
+                    migrate_notification_settings(source_capacity=cap_name, target_capacity=tgt_capacity)
+                    # migrate_delegated_tenant_settings(source_capacity=cap_name, target_capacity=tgt_capacity)
+                    # migrate_capacity_disaster_recovery(source_capacity=cap_name, target_capacity=tgt_capacity)
+
 
 @log
 def delete_capacity(
@@ -861,39 +867,35 @@ def migrate_delegated_tenant_settings(source_capacity: str, target_capacity: str
     if response_get.status_code != 200:
         raise FabricHTTPException(response_get)
 
-    response_json = response_get.json().get('Overrides', [])
+    response_json = response_get.json().get("Overrides", [])
 
     payload = {}
-    payload['featureSwitches'] = {}
-    payload['properties'] = []
+    payload["featureSwitches"] = []
+    payload["properties"] = []
 
     for o in response_json:
-        if o.get('id').upper() == source_capacity_id:
-            for setting in o.get('tenantSettings', []):
-                setting_name = setting.get('settingName')
-                #group = setting.get('enabledSecurityGroups', [])
-                if setting_name == 'FabricGAWorkloads':
+        if o.get("id").upper() == source_capacity_id:
+            for setting in o.get("tenantSettings", []):
+                setting_name = setting.get("settingName")
+                if setting_name == "FabricGAWorkloads":  #  Remove this
                     feature_switch = {
                         "switchId": -1,
                         "switchName": setting_name,
                         "isEnabled": setting.get("enabled", False),
                         "isGranular": setting.get("canSpecifySecurityGroups", False),
-                        #"allowedSecurityGroups": [
-                        #    {
-                        #        "id": group.get("graphId"),
-                        #        "name": group.get("name"),
-                        #        "isEmailEnabled": False  # Assuming default value
-                        #    } for group in setting.get("enabledSecurityGroups", [])
-                        #],
-                        "deniedSecurityGroups": []  # Assuming no denied security groups in the response
+                        "allowedSecurityGroups": setting.get(
+                            "enabledSecurityGroups", []
+                        ),
+                        "deniedSecurityGroups": setting.get(
+                            "excludedSecurityGroups", []
+                        ),
                     }
-                    payload['featureSwitches'].append(feature_switch)
+                    payload["featureSwitches"].append(feature_switch)
 
     client = fabric.PowerBIRestClient()
-
     response_put = client.put(
         f"metadata/tenantsettings/selfserve?capacityObjectId={target_capacity_id}",
-        json="",
+        json=payload,
     )
     if response_put.status_code != 204:
         raise FabricHTTPException(response_put)
