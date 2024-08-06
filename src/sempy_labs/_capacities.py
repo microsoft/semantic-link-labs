@@ -481,11 +481,21 @@ def migrate_capacities(
                         workspaces=None,
                     )
 
-                    migrate_capacity_settings(source_capacity=cap_name, target_capacity=tgt_capacity)
-                    migrate_access_settings(source_capacity=cap_name, target_capacity=tgt_capacity)
-                    migrate_notification_settings(source_capacity=cap_name, target_capacity=tgt_capacity)
-                    # migrate_delegated_tenant_settings(source_capacity=cap_name, target_capacity=tgt_capacity)
-                    # migrate_capacity_disaster_recovery(source_capacity=cap_name, target_capacity=tgt_capacity)
+                    migrate_capacity_settings(
+                        source_capacity=cap_name, target_capacity=tgt_capacity
+                    )
+                    migrate_access_settings(
+                        source_capacity=cap_name, target_capacity=tgt_capacity
+                    )
+                    migrate_notification_settings(
+                        source_capacity=cap_name, target_capacity=tgt_capacity
+                    )
+                    migrate_delegated_tenant_settings(
+                        source_capacity=cap_name, target_capacity=tgt_capacity
+                    )
+                    migrate_disaster_recovery_settings(
+                        source_capacity=cap_name, target_capacity=tgt_capacity
+                    )
 
 
 @log
@@ -499,7 +509,7 @@ def delete_capacity(
     resource_group: str,
 ):
     """
-    This function deltes a capacity within an Azure subscription.
+    This function deletes a capacity within an Azure subscription.
 
     Parameters
     ----------
@@ -647,7 +657,7 @@ def migrate_capacity_settings(source_capacity: str, target_capacity: str):
     )
 
 
-def migrate_capacity_disaster_recovery(source_capacity: str, target_capacity: str):
+def migrate_disaster_recovery_settings(source_capacity: str, target_capacity: str):
     """
     This function migrates a capacity's disaster recovery settings to another capacity.
 
@@ -677,7 +687,6 @@ def migrate_capacity_disaster_recovery(source_capacity: str, target_capacity: st
     target_capacity_id = dfC_filt["Id"].iloc[0].upper()
 
     client = fabric.PowerBIRestClient()
-
     response_get_source = client.get(f"capacities/{source_capacity_id}/config")
     if response_get_source.status_code != 200:
         raise FabricHTTPException(response_get_source)
@@ -690,10 +699,10 @@ def migrate_capacity_disaster_recovery(source_capacity: str, target_capacity: st
         f"capacities/{target_capacity_id}/fabricbcdr", json=request_body
     )
 
-    if response_put.status_code != 204:
+    if response_put.status_code != 202:
         raise FabricHTTPException(response_put)
     print(
-        f"{icons.green_dot} Disaster recover settings have been migrated from the '{source_capacity}' capacity to the '{target_capacity}' capacity."
+        f"{icons.green_dot} Disaster recovery settings have been migrated from the '{source_capacity}' capacity to the '{target_capacity}' capacity."
     )
 
 
@@ -869,37 +878,43 @@ def migrate_delegated_tenant_settings(source_capacity: str, target_capacity: str
 
     response_json = response_get.json().get("Overrides", [])
 
-    payload = {}
-    payload["featureSwitches"] = []
-    payload["properties"] = []
-
     for o in response_json:
         if o.get("id").upper() == source_capacity_id:
             for setting in o.get("tenantSettings", []):
                 setting_name = setting.get("settingName")
-                if setting_name == "FabricGAWorkloads":  #  Remove this
-                    feature_switch = {
-                        "switchId": -1,
-                        "switchName": setting_name,
-                        "isEnabled": setting.get("enabled", False),
-                        "isGranular": setting.get("canSpecifySecurityGroups", False),
-                        "allowedSecurityGroups": setting.get(
-                            "enabledSecurityGroups", []
-                        ),
-                        "deniedSecurityGroups": setting.get(
-                            "excludedSecurityGroups", []
-                        ),
-                    }
-                    payload["featureSwitches"].append(feature_switch)
+                feature_switch = {
+                    "switchId": -1,
+                    "switchName": setting_name,
+                    "isEnabled": setting.get("enabled", False),
+                    "isGranular": setting.get("canSpecifySecurityGroups", False),
+                    "allowedSecurityGroups": [
+                        {
+                            "id": group.get("graphId"),
+                            "name": group.get("name"),
+                            "isEmailEnabled": False,
+                        }
+                        for group in setting.get("enabledSecurityGroups", [])
+                    ],
+                    "deniedSecurityGroups": [
+                        {
+                            "id": group.get("graphId"),
+                            "name": group.get("name"),
+                            "isEmailEnabled": False,
+                        }
+                        for group in setting.get("excludedSecurityGroups", [])
+                    ],
+                }
 
-    client = fabric.PowerBIRestClient()
-    response_put = client.put(
-        f"metadata/tenantsettings/selfserve?capacityObjectId={target_capacity_id}",
-        json=payload,
-    )
-    if response_put.status_code != 204:
-        raise FabricHTTPException(response_put)
+                payload = {"featureSwitches": [feature_switch], "properties": []}
 
-    print(
-        f"{icons.green_dot} The delegated tenant settings of the '{source_capacity}' capacity have been migrated to the '{target_capacity}' capacity."
-    )
+                client = fabric.PowerBIRestClient()
+                response_put = client.put(
+                    f"metadata/tenantsettings/selfserve?capacityObjectId={target_capacity_id}",
+                    json=payload,
+                )
+                if response_put.status_code != 200:
+                    raise FabricHTTPException(response_put)
+
+                print(
+                    f"{icons.green_dot} The delegated tenant settings for the '{setting_name}' feature switch of the '{source_capacity}' capacity have been migrated to the '{target_capacity}' capacity."
+                )
