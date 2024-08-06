@@ -2110,7 +2110,7 @@ class ReportWrapper:
                 f"{icons.green_dot} Show items with data has been disabled for all visuals in the '{self._report}' report within the '{self._workspace}' workspace."
             )
 
-    def get_annotation_value(self, object_name: str, object_type: str, name: str):
+    def __get_annotation_value(self, object_name: str, object_type: str, name: str):
 
         object_types = ["Visual", "Page", "Report"]
         object_type = object_type.capitalize()
@@ -2163,7 +2163,7 @@ class ReportWrapper:
                 f"{icons.red_dot} Invalid object type. Valid options: {object_types}."
             )
 
-    def set_annotation(self, object_name: str, object_type: str, name: str, value: str):
+    def __set_annotation(self, object_name: str, object_type: str, name: str, value: str):
 
         object_types = ["Visual", "Page", "Report"]
         object_type = object_type.capitalize()

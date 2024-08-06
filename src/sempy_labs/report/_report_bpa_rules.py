@@ -51,6 +51,7 @@ def report_bpa_rules() -> pd.DataFrame:
                 "Avoid setting 'Show items with no data' on columns",
                 lambda df: df["Show Items With No Data"],
                 "This setting will show all column values for all columns in the visual which may lead to performance degradation.",
+                "https://learn.microsoft.com/power-bi/create-reports/desktop-show-items-no-data",
             ),
             (
                 "Performance",
@@ -88,6 +89,7 @@ def report_bpa_rules() -> pd.DataFrame:
             "Rule Name",
             "Expression",
             "Description",
+            "URL",
         ],
     )
 
