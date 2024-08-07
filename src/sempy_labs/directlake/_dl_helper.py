@@ -144,7 +144,6 @@ def generate_direct_lake_semantic_model(
 
     while not success:
         try:
-
             with connect_semantic_model(
                 dataset=dataset, workspace=workspace, readonly=False
             ) as tom:
