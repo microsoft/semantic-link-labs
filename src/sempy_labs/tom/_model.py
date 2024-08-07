@@ -229,6 +229,7 @@ class TOMWrapper:
         hidden: Optional[bool] = False,
         description: Optional[str] = None,
         display_folder: Optional[str] = None,
+        format_string_expression: Optional[str] = None,
     ):
         """
         Adds a measure to the semantic model.
@@ -249,6 +250,8 @@ class TOMWrapper:
             A description of the measure.
         display_folder : str, default=None
             The display folder in which the measure will reside.
+        format_string_expression : str, default=None
+            The format string expression.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
@@ -262,6 +265,10 @@ class TOMWrapper:
             obj.Description = description
         if display_folder is not None:
             obj.DisplayFolder = display_folder
+        if format_string_expression is not None:
+            fsd = TOM.FormatStringDefinition()
+            fsd.Expression = format_string_expression
+            obj.FormatStringDefinition = fsd
 
         self.model.Tables[table_name].Measures.Add(obj)
 
@@ -524,7 +531,6 @@ class TOMWrapper:
         import Microsoft.AnalysisServices.Tabular as TOM
 
         obj = TOM.CalculationItem()
-        fsd = TOM.FormatStringDefinition()
         obj.Name = calculation_item_name
         obj.Expression = expression
         if ordinal is not None:
@@ -532,7 +538,9 @@ class TOMWrapper:
         if description is not None:
             obj.Description = description
         if format_string_expression is not None:
-            obj.FormatStringDefinition = fsd.Expression = format_string_expression
+            fsd = TOM.FormatStringDefinition()
+            fsd.Expression = format_string_expression
+            obj.FormatStringDefinition = fsd
         self.model.Tables[table_name].CalculationGroup.CalculationItems.Add(obj)
 
     def add_role(
