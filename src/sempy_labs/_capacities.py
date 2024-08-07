@@ -419,7 +419,7 @@ def migrate_capacities(
     # Save existing capacity and workspace info to delta tables in the lakehouse
     if not lakehouse_attached:
         raise ValueError(
-            "Invalid lakehouse. Please attach a lakehouse to this notebook."
+            f"{icons.red_dot} Invalid lakehouse. Please attach a lakehouse to this notebook."
         )
 
     save_as_delta_table(
@@ -433,7 +433,20 @@ def migrate_capacities(
         write_mode="overwrite",
     )
 
-    for i, r in dfC.iterrows():
+    if capacities is None:
+        dfC_filt = dfC.copy()
+    else:
+        dfC_filt = dfC[dfC["Display Name"].isin(capacities)]
+
+    if p_sku_only:
+        dfC_filt = dfC_filt[dfC_filt["Sku"].str.startswith("P")]
+    else:
+        dfC_filt = dfC_filt[
+            (dfC_filt["Sku"].str.startswith("P"))
+            | (dfC_filt["Sku"].str.startswith("A"))
+        ]
+
+    for i, r in dfC_filt.iterrows():
         cap_name = r["Display Name"]
         region = r["Region"]
         sku_size = r["Sku"]
@@ -441,7 +454,7 @@ def migrate_capacities(
         tgt_capacity = f"{cap_name}{capacity_suffix}"
 
         # Check if target capacity exists
-        dfC_filt = dfC[dfC["Display Name"] == tgt_capacity]
+        dfC_tgt = dfC[dfC["Display Name"] == tgt_capacity]
 
         if sku_size[:1] == "A" and use_existing_rg_for_A_sku:
             rg = None
@@ -454,48 +467,46 @@ def migrate_capacities(
                 raise ValueError(f"{icons.red_dot} Invalid 'resource_group' parameter.")
 
         if sku_size in p_sku_list:
-            if capacities is None or cap_name in capacities:
-                if (p_sku_only and sku_size.startswith("P")) or p_sku_only is False:
-                    # Only create the capacity if it does not already exist
-                    if len(dfC_filt) != 0:
-                        print(
-                            f"{icons.info} Skipping creating a new capacity for '{cap_name}' as the '{tgt_capacity}' capacity already exists."
-                        )
-                    else:
-                        create_fabric_capacity(
-                            capacity_name=tgt_capacity,
-                            azure_subscription_id=azure_subscription_id,
-                            key_vault_uri=key_vault_uri,
-                            key_vault_tenant_id=key_vault_tenant_id,
-                            key_vault_client_id=key_vault_client_id,
-                            key_vault_client_secret=key_vault_client_secret,
-                            resource_group=rg,
-                            region=region,
-                            sku=sku_mapping.get(sku_size),
-                            admin_email=admins,
-                        )
-                    # Migrate workspaces to new capacity
-                    migrate_workspaces(
-                        source_capacity=cap_name,
-                        target_capacity=tgt_capacity,
-                        workspaces=None,
-                    )
+            # Only create the capacity if it does not already exist
+            if len(dfC_tgt) != 0:
+                print(
+                    f"{icons.info} Skipping creating a new capacity for '{cap_name}' as the '{tgt_capacity}' capacity already exists."
+                )
+            else:
+                create_fabric_capacity(
+                    capacity_name=tgt_capacity,
+                    azure_subscription_id=azure_subscription_id,
+                    key_vault_uri=key_vault_uri,
+                    key_vault_tenant_id=key_vault_tenant_id,
+                    key_vault_client_id=key_vault_client_id,
+                    key_vault_client_secret=key_vault_client_secret,
+                    resource_group=rg,
+                    region=region,
+                    sku=sku_mapping.get(sku_size),
+                    admin_email=admins,
+                )
+            # Migrate workspaces to new capacity
+            migrate_workspaces(
+                source_capacity=cap_name,
+                target_capacity=tgt_capacity,
+                workspaces=None,
+            )
 
-                    migrate_capacity_settings(
-                        source_capacity=cap_name, target_capacity=tgt_capacity
-                    )
-                    migrate_access_settings(
-                        source_capacity=cap_name, target_capacity=tgt_capacity
-                    )
-                    migrate_notification_settings(
-                        source_capacity=cap_name, target_capacity=tgt_capacity
-                    )
-                    migrate_delegated_tenant_settings(
-                        source_capacity=cap_name, target_capacity=tgt_capacity
-                    )
-                    migrate_disaster_recovery_settings(
-                        source_capacity=cap_name, target_capacity=tgt_capacity
-                    )
+            migrate_capacity_settings(
+                source_capacity=cap_name, target_capacity=tgt_capacity
+            )
+            migrate_access_settings(
+                source_capacity=cap_name, target_capacity=tgt_capacity
+            )
+            migrate_notification_settings(
+                source_capacity=cap_name, target_capacity=tgt_capacity
+            )
+            migrate_delegated_tenant_settings(
+                source_capacity=cap_name, target_capacity=tgt_capacity
+            )
+            migrate_disaster_recovery_settings(
+                source_capacity=cap_name, target_capacity=tgt_capacity
+            )
 
 
 @log
