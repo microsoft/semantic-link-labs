@@ -65,7 +65,7 @@ def migrate_workspaces(
             f"{icons.red_dot} The '{target_capacity}' target capacity is inactive. The capacity must be active in order for workspaces to be migrated."
         )
 
-    dfW = fabric.list_workspaces(filter=f"capacityId = '{source_capacity_id.upper()}'")
+    dfW = fabric.list_workspaces(filter=f"capacityId eq '{source_capacity_id.upper()}'")
     if workspaces is None:
         workspace_count = len(dfW)
     else:
