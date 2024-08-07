@@ -446,7 +446,7 @@ def migrate_capacities(
             & (~dfC_filt["Sku"].str.startswith("PP"))
         ]
 
-    dfC_filt = dfC_filt.copy()
+    dfC_filt = dfC_filt.copy()  # Something strange is happening here. Without this a key error on Display Name occurs
 
     if len(dfC_filt) == 0:
         print(f"{icons.info} There are no valid capacities to migrate.")
