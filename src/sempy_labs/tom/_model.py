@@ -229,6 +229,7 @@ class TOMWrapper:
         hidden: Optional[bool] = False,
         description: Optional[str] = None,
         display_folder: Optional[str] = None,
+        format_string_expression: Optional[str] = None,
     ):
         """
         Adds a measure to the semantic model.
@@ -249,6 +250,8 @@ class TOMWrapper:
             A description of the measure.
         display_folder : str, default=None
             The display folder in which the measure will reside.
+        format_string_expression : str, default=None
+            The format string expression.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
@@ -262,6 +265,10 @@ class TOMWrapper:
             obj.Description = description
         if display_folder is not None:
             obj.DisplayFolder = display_folder
+        if format_string_expression is not None:
+            fsd = TOM.FormatStringDefinition()
+            fsd.Expression = format_string_expression
+            obj.FormatStringDefinition = fsd
 
         self.model.Tables[table_name].Measures.Add(obj)
 
@@ -498,9 +505,9 @@ class TOMWrapper:
         table_name: str,
         calculation_item_name: str,
         expression: str,
-        ordinal: Optional[int] = None,
-        format_string_expression: Optional[str] = None,
+        ordinal: Optional[int] = None,        
         description: Optional[str] = None,
+        format_string_expression: Optional[str] = None,
     ):
         """
         Adds a `calculation item <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculationitem?view=analysisservices-dotnet>`_ to
@@ -524,7 +531,6 @@ class TOMWrapper:
         import Microsoft.AnalysisServices.Tabular as TOM
 
         obj = TOM.CalculationItem()
-        fsd = TOM.FormatStringDefinition()
         obj.Name = calculation_item_name
         obj.Expression = expression
         if ordinal is not None:
@@ -532,7 +538,9 @@ class TOMWrapper:
         if description is not None:
             obj.Description = description
         if format_string_expression is not None:
-            obj.FormatStringDefinition = fsd.Expression = format_string_expression
+            fsd = TOM.FormatStringDefinition()
+            fsd.Expression = format_string_expression
+            obj.FormatStringDefinition = fsd
         self.model.Tables[table_name].CalculationGroup.CalculationItems.Add(obj)
 
     def add_role(
@@ -3779,11 +3787,12 @@ class TOMWrapper:
     def update_measure(
         self,
         measure_name: str,
-        expression: Optional[str] = None,
-        format_string: Optional[str] = None,
-        hidden: Optional[bool] = None,
-        description: Optional[str] = None,
-        display_folder: Optional[str] = None,
+        expression: Optional[str | None] = None,
+        format_string: Optional[str | None] = None,
+        hidden: Optional[bool | None] = None,
+        description: Optional[str | None] = None,
+        display_folder: Optional[str | None] = None,
+        format_string_expression: Optional[str] = None,
     ):
         """
         Updates a measure within a semantic model.
@@ -3807,6 +3816,9 @@ class TOMWrapper:
         display_folder : str, default=None
             The display folder in which the measure will reside.
             Defaults to None which keeps the existing setting.
+        format_string_expression : str, default=None
+            The format string expression for the calculation item.
+            Defaults to None which keeps the existing setting.
         """
 
         table_name = next(
@@ -3823,6 +3835,10 @@ class TOMWrapper:
             m.Description = description
         if display_folder is not None:
             m.DisplayFolder = display_folder
+        if format_string_expression is not None:
+            fsd = TOM.FormatStringDefinition()
+            fsd.Expression = format_string_expression
+            m.FormatStringDefinition = fsd
 
     def update_column(
         self,
@@ -3945,9 +3961,9 @@ class TOMWrapper:
         table_name: str,
         calculation_item_name: str,
         expression: Optional[str] = None,
-        ordinal: Optional[int] = None,
-        format_string_expression: Optional[str] = None,
+        ordinal: Optional[int] = None,        
         description: Optional[str] = None,
+        format_string_expression: Optional[str] = None,
     ):
         """
         Updates a calculation item within a semantic model.
@@ -3964,11 +3980,11 @@ class TOMWrapper:
         ordinal : int, default=None
             The ordinal of the calculation item.
             Defaults to None which keeps the existing setting.
-        format_string_expression : str, default=None
-            The format string expression for the calculation item.
-            Defaults to None which keeps the existing setting.
         description : str, default=None
             The description of the role.
+            Defaults to None which keeps the existing setting.
+        format_string_expression : str, default=None
+            The format string expression for the calculation item.
             Defaults to None which keeps the existing setting.
         """
 
@@ -3979,7 +3995,9 @@ class TOMWrapper:
         if expression is not None:
             obj.Expression = expression
         if format_string_expression is not None:
-            obj.FormatStringDefinition.Expression = format_string_expression
+            fsd = TOM.FormatStringDefinition()
+            fsd.Expression = format_string_expression
+            obj.FormatStringDefinition.Expression = fsd
         if ordinal is not None:
             obj.Ordinal = ordinal
         if description is not None:
