@@ -16,6 +16,7 @@ def refresh_semantic_model(
     refresh_type: Optional[str] = None,
     retry_count: Optional[int] = 0,
     apply_refresh_policy: Optional[bool] = True,
+    max_parallelism: Optional[int] = 10,
     workspace: Optional[str] = None,
 ):
     """
@@ -35,6 +36,10 @@ def refresh_semantic_model(
         Number of times the operation retries before failing.
     apply_refresh_policy : bool, default=True
         If an incremental refresh policy is defined, determines whether to apply the policy. Modes are true or false. If the policy isn't applied, the full process leaves partition definitions unchanged, and fully refreshes all partitions in the table. If commitMode is transactional, applyRefreshPolicy can be true or false. If commitMode is partialBatch, applyRefreshPolicy of true isn't supported, and applyRefreshPolicy must be set to false.
+    max_parallelism : int, default=10
+        Determines the maximum number of threads that can run the processing commands in parallel.
+        This value aligns with the MaxParallelism property that can be set in the TMSL Sequence command or by using other methods.
+        Defaults to 10.
     workspace : str, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -90,6 +95,7 @@ def refresh_semantic_model(
             refresh_type=refresh_type,
             retry_count=retry_count,
             apply_refresh_policy=apply_refresh_policy,
+            max_parallelism=max_parallelism,
         )
     else:
         requestID = fabric.refresh_dataset(
@@ -98,6 +104,7 @@ def refresh_semantic_model(
             refresh_type=refresh_type,
             retry_count=retry_count,
             apply_refresh_policy=apply_refresh_policy,
+            max_parallelism=max_parallelism,
             objects=objects,
         )
     print(

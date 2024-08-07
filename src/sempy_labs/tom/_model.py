@@ -3792,6 +3792,7 @@ class TOMWrapper:
         hidden: Optional[bool | None] = None,
         description: Optional[str | None] = None,
         display_folder: Optional[str | None] = None,
+        format_string_expression: Optional[str] = None,
     ):
         """
         Updates a measure within a semantic model.
@@ -3815,6 +3816,9 @@ class TOMWrapper:
         display_folder : str, default=None
             The display folder in which the measure will reside.
             Defaults to None which keeps the existing setting.
+        format_string_expression : str, default=None
+            The format string expression for the calculation item.
+            Defaults to None which keeps the existing setting.
         """
 
         table_name = next(
@@ -3831,6 +3835,10 @@ class TOMWrapper:
             m.Description = description
         if display_folder is not None:
             m.DisplayFolder = display_folder
+        if format_string_expression is not None:
+            fsd = TOM.FormatStringDefinition()
+            fsd.Expression = format_string_expression
+            m.FormatStringDefinition = fsd
 
     def update_column(
         self,
@@ -3954,8 +3962,8 @@ class TOMWrapper:
         calculation_item_name: str,
         expression: Optional[str | None] = None,
         ordinal: Optional[int | None] = None,
-        format_string_expression: Optional[str | None] = None,
         description: Optional[str | None] = None,
+        format_string_expression: Optional[str | None] = None,
     ):
         """
         Updates a calculation item within a semantic model.
@@ -3972,11 +3980,11 @@ class TOMWrapper:
         ordinal : int, default=None
             The ordinal of the calculation item.
             Defaults to None which keeps the existing setting.
-        format_string_expression : str, default=None
-            The format string expression for the calculation item.
-            Defaults to None which keeps the existing setting.
         description : str, default=None
             The description of the role.
+            Defaults to None which keeps the existing setting.
+        format_string_expression : str, default=None
+            The format string expression for the calculation item.
             Defaults to None which keeps the existing setting.
         """
 
@@ -3987,7 +3995,9 @@ class TOMWrapper:
         if expression is not None:
             obj.Expression = expression
         if format_string_expression is not None:
-            obj.FormatStringDefinition.Expression = format_string_expression
+            fsd = TOM.FormatStringDefinition()
+            fsd.Expression = format_string_expression
+            obj.FormatStringDefinition.Expression = fsd
         if ordinal is not None:
             obj.Ordinal = ordinal
         if description is not None:
