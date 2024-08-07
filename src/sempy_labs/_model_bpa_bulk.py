@@ -154,11 +154,9 @@ def run_model_bpa_bulk(
                         except Exception:
                             print(
                                 f"{icons.red_dot} BPA Issue: The '{dataset_name}' semantic model within the '{wksp}' workspace."
-                            )
+                            )                    
 
-                    df["Severity"].replace(icons.warning, "Warning", inplace=True)
-                    df["Severity"].replace(icons.error, "Error", inplace=True)
-                    df["Severity"].replace(icons.info, "Info", inplace=True)
+                    df["Severity"].replace(icons.severity_mapping, inplace=True)
 
                     # Append save results individually for each workspace (so as not to create a giant dataframe)
                     print(

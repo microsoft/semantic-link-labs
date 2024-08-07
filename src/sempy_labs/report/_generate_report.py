@@ -244,8 +244,6 @@ def create_model_bpa_report(
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
-    Returns
-    -------
     """
 
     # from sempy_labs._helper_functions import resolve_dataset_id
