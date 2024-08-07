@@ -299,9 +299,6 @@ def export_report(
     reportId = dfI_filt["Id"].iloc[0]
     client = fabric.PowerBIRestClient()
 
-    dfVisual = list_report_visuals(report=report, workspace=workspace)
-    dfPage = list_report_pages(report=report, workspace=workspace)
-
     if (
         export_format in ["BMP", "EMF", "GIF", "JPEG", "TIFF"]
         and reportType == "PaginatedReport"
@@ -328,6 +325,8 @@ def export_report(
 
             request_body["powerBIReportConfiguration"]["pages"] = []
 
+            dfPage = list_report_pages(report=report, workspace=workspace)
+
             for page in page_name:
                 dfPage_filt = dfPage[dfPage["Page ID"] == page]
                 if len(dfPage_filt) == 0:
@@ -348,6 +347,9 @@ def export_report(
             request_body = {"format": export_format, "powerBIReportConfiguration": {}}
 
             request_body["powerBIReportConfiguration"]["pages"] = []
+
+            dfVisual = list_report_visuals(report=report, workspace=workspace)
+
             a = 0
             for page in page_name:
                 visual = visual_name[a]
