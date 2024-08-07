@@ -302,16 +302,19 @@ def export_report(
     dfVisual = list_report_visuals(report=report, workspace=workspace)
     dfPage = list_report_pages(report=report, workspace=workspace)
 
-    if (
-        export_format in ["BMP", "EMF", "GIF", "JPEG", "TIFF"]
-        and reportType == "PaginatedReport"
-    ):
+    if reportType == "PaginatedReport":
         request_body = {
-            "format": "IMAGE",
-            "paginatedReportConfiguration": {
-                "formatSettings": {"OutputFormat": export_format.lower()}
-            },
+            "format": export_format,
+            "paginatedReportConfiguration": {},
         }
+        if export_format in ["BMP", "EMF", "GIF", "JPEG", "TIFF"]:
+            request_body["format"] = "IMAGE"
+            request_body["paginatedReportConfiguration"]["formatSettings"] = {"OutputFormat": export_format.lower()}
+        if paginated_report_parameters is not None:
+            request_body["paginatedReportConfiguration"]["parameterValues"] = []
+            for k, v in paginated_report_parameters.items():
+                request_body["paginatedReportConfiguration"]["parameterValues"].append({"name": k, "value": v})
+
     elif bookmark_name is None and page_name is None and visual_name is None:
         request_body = {"format": export_format}
     elif bookmark_name is not None:
