@@ -414,7 +414,7 @@ def migrate_capacities(
     p_sku_list = list(sku_mapping.keys())
 
     dfC = list_capacities()
-    dfW = fabric.list_workspaces()
+    # dfW = fabric.list_workspaces()
 
     # Save existing capacity and workspace info to delta tables in the lakehouse
     if not lakehouse_attached:
@@ -422,16 +422,16 @@ def migrate_capacities(
             f"{icons.red_dot} Invalid lakehouse. Please attach a lakehouse to this notebook."
         )
 
-    save_as_delta_table(
-        dataframe=dfC,
-        delta_table_name="migration_list_capacities",
-        write_mode="overwrite",
-    )
-    save_as_delta_table(
-        dataframe=dfW,
-        delta_table_name="migration_list_workspaces",
-        write_mode="overwrite",
-    )
+    # save_as_delta_table(
+    #    dataframe=dfC,
+    #    delta_table_name="migration_list_capacities",
+    #    write_mode="overwrite",
+    # )
+    # save_as_delta_table(
+    #    dataframe=dfW,
+    #    delta_table_name="migration_list_workspaces",
+    #    write_mode="overwrite",
+    # )
 
     if capacities is None:
         dfC_filt = dfC.copy()
@@ -442,9 +442,15 @@ def migrate_capacities(
         dfC_filt = dfC_filt[dfC_filt["Sku"].str.startswith("P")]
     else:
         dfC_filt = dfC_filt[
-            (dfC_filt["Sku"].str.startswith("P"))
-            | (dfC_filt["Sku"].str.startswith("A"))
+            (dfC_filt["Sku"].str.startswith(("P", "A")))
+            & (~dfC_filt["Sku"].str.startswith("PP"))
         ]
+
+    dfC_filt = dfC_filt.copy()
+
+    if len(dfC_filt) == 0:
+        print(f"{icons.info} There are no valid capacities to migrate.")
+        return
 
     for i, r in dfC_filt.iterrows():
         cap_name = r["Display Name"]
