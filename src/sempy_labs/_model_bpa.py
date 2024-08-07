@@ -244,9 +244,9 @@ def run_model_bpa(
         if language is not None and not translated:
             rules = translate_using_spark(rules)
 
-        rules["Severity"].replace("Warning", "⚠️", inplace=True)
-        rules["Severity"].replace("Error", "\u274C", inplace=True)
-        rules["Severity"].replace("Info", "ℹ️", inplace=True)
+        rules["Severity"].replace("Warning", icons.warning, inplace=True)
+        rules["Severity"].replace("Error", icons.error, inplace=True)
+        rules["Severity"].replace("Info", icons.info, inplace=True)
 
         pd.set_option("display.max_colwidth", 1000)
 
@@ -350,8 +350,7 @@ def run_model_bpa(
         ]
 
     if export:
-        lakeAttach = lakehouse_attached()
-        if lakeAttach is False:
+        if not lakehouse_attached():
             raise ValueError(
                 f"{icons.red_dot} In order to save the Best Practice Analyzer results, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
             )
@@ -368,9 +367,9 @@ def run_model_bpa(
         lakeT = get_lakehouse_tables(lakehouse=lakehouse, workspace=lake_workspace)
         lakeT_filt = lakeT[lakeT["Table Name"] == delta_table_name]
 
-        dfExport["Severity"].replace("⚠️", "Warning", inplace=True)
-        dfExport["Severity"].replace("\u274C", "Error", inplace=True)
-        dfExport["Severity"].replace("ℹ️", "Info", inplace=True)
+        dfExport["Severity"].replace(icons.warning, "Warning", inplace=True)
+        dfExport["Severity"].replace(icons.error, "Error", inplace=True)
+        dfExport["Severity"].replace(icons.info, "Info", inplace=True)
 
         spark = SparkSession.builder.getOrCreate()
         query = f"SELECT MAX(RunId) FROM {lakehouse}.{delta_table_name}"
@@ -382,6 +381,15 @@ def run_model_bpa(
             maxRunId = dfSpark.collect()[0][0]
             runId = maxRunId + 1
 
+        dfC = fabric.list_capacities()
+        dfW = fabric.list_workspaces()
+        dfW_filt = dfW[dfW["Name"] == workspace]
+        capacity_id = dfW_filt["Capacity Id"].iloc[0]
+        dfC_filt = dfC[dfC["Id"] == capacity_id]
+        if len(dfC_filt) == 1:
+            capacity_name = dfC_filt["Display Name"].iloc[0]
+        else:
+            capacity_name = None
         now = datetime.datetime.now()
         dfD = fabric.list_datasets(workspace=workspace, mode="rest")
         dfD_filt = dfD[dfD["Dataset Name"] == dataset]
@@ -396,6 +404,7 @@ def run_model_bpa(
         dfExport["Configured By"] = configured_by
         dfExport["Timestamp"] = now
         dfExport["RunId"] = runId
+        dfExport["Configured By"] = configured_by
 
         dfExport["RunId"] = dfExport["RunId"].astype("int")
 
@@ -409,14 +418,15 @@ def run_model_bpa(
         dfExport.insert(3, colName, dfExport.pop(colName))
         colName = "Dataset Name"
         dfExport.insert(4, colName, dfExport.pop(colName))
-        colName = "Workspace Id"
-        dfExport.insert(5, colName, dfExport.pop(colName))
         colName = "Configured By"
-        dfExport.insert(6, colName, dfExport.pop(colName))
+        dfExport.insert(5, colName, dfExport.pop(colName))
 
         dfExport.columns = dfExport.columns.str.replace(" ", "_")
         save_as_delta_table(
-            dataframe=dfExport, delta_table_name=delta_table_name, write_mode="append"
+            dataframe=dfExport,
+            delta_table_name=delta_table_name,
+            write_mode="append",
+            merge_schema=True,
         )
 
     if return_dataframe:

@@ -388,6 +388,7 @@ def save_as_delta_table(
     dataframe,
     delta_table_name: str,
     write_mode: str,
+    merge_schema: Optional[bool] = False,
     lakehouse: Optional[str] = None,
     workspace: Optional[str] = None,
 ):
@@ -402,6 +403,8 @@ def save_as_delta_table(
         The name of the delta table.
     write_mode : str
         The write mode for the save operation. Options: 'append', 'overwrite'.
+    merge_schema : bool, default=False
+        Merges the schemas of the dataframe to the delta table.
     lakehouse : str, default=None
         The Fabric lakehouse used by the Direct Lake semantic model.
         Defaults to None which resolves to the lakehouse attached to the notebook.
@@ -453,7 +456,13 @@ def save_as_delta_table(
         lakehouse_workspace_id=workspace_id,
         delta_table_name=delta_table_name,
     )
-    spark_df.write.mode(write_mode).format("delta").save(filePath)
+
+    if merge_schema:
+        spark_df.write.mode(write_mode).format("delta").option(
+            "mergeSchema", "true"
+        ).save(filePath)
+    else:
+        spark_df.write.mode(write_mode).format("delta").save(filePath)
     print(
         f"{icons.green_dot} The dataframe has been saved as the '{delta_table_name}' table in the '{lakehouse}' lakehouse within the '{workspace}' workspace."
     )
@@ -551,12 +560,13 @@ def is_default_semantic_model(dataset: str, workspace: Optional[str] = None) -> 
     workspace = fabric.resolve_workspace_name(workspace)
 
     dfI = fabric.list_items(workspace=workspace)
-    dfI_filt = dfI[
-        (dfI["Display Name"] == dataset)
-        & (dfI["Type"].isin(["Lakehouse", "SemanticModel", "SQLEndpoint"]))
-    ]
+    filtered_df = dfI.groupby("Display Name").filter(
+        lambda x: set(["Warehouse", "SemanticModel"]).issubset(set(x["Type"]))
+        or set(["Lakehouse", "SemanticModel"]).issubset(set(x["Type"]))
+    )
+    default_semantic_models = filtered_df["Display Name"].unique().tolist()
 
-    return len(dfI_filt) == 3
+    return dataset in default_semantic_models
 
 
 def resolve_item_type(item_id: UUID, workspace: Optional[str] = None) -> str:

@@ -8,6 +8,8 @@ start_bold = "\033[1m"
 end_bold = "\033[0m"
 bullet = "\u2022"
 warning = "⚠️"
+error = "\u274C"
+info = "ℹ️"
 data_type_mapping = {
     "string": "String",
     "int": "Int64",
@@ -24,3 +26,10 @@ data_type_mapping = {
 measure_icon = "\u2211"
 table_icon = "\u229E"
 column_icon = "\u229F"
+model_bpa_name = "ModelBPA"
+report_bpa_name = "ReportBPA"
+severity_mapping = {
+    warning: "Warning",
+    error: "Error",
+    info: "Info"
+}

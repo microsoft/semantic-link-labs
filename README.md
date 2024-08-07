@@ -25,8 +25,9 @@ If you have ideas for new features/functions, please [request a feature](https:/
 ## Once installed, run this code to import the library into your notebook
 ```python
 import sempy_labs as labs
-from sempy_labs import migration, report, directlake
+from sempy_labs import migration, directlake
 from sempy_labs import lakehouse as lake
+from sempy_labs import report as rep
 from sempy_labs.tom import connect_semantic_model
 ```
 

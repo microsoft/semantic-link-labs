@@ -79,6 +79,10 @@ from sempy_labs._helper_functions import (
 )
 
 #  from sempy_labs._model_auto_build import model_auto_build
+from sempy_labs._model_bpa_bulk import (
+    run_model_bpa_bulk,
+    create_model_bpa_semantic_model,
+)
 from sempy_labs._model_bpa import run_model_bpa
 from sempy_labs._model_bpa_rules import model_bpa_rules
 from sempy_labs._model_dependencies import (
@@ -199,4 +203,6 @@ __all__ = [
     "get_capacity_id",
     "get_capacity_name",
     "resolve_capacity_name",
+    "run_model_bpa_bulk",
+    "create_model_bpa_semantic_model",
 ]
