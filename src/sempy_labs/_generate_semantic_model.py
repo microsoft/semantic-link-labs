@@ -34,7 +34,7 @@ def create_blank_semantic_model(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    workspace = fabric.resolve_workspace_name()
+    workspace = fabric.resolve_workspace_name(workspace)
 
     min_compat = 1500
 
