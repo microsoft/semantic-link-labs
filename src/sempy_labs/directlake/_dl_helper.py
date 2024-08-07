@@ -3,8 +3,7 @@ import numpy as np
 import pandas as pd
 from typing import Optional, List, Union
 import sempy_labs._icons as icons
-import datetime
-import time
+from sempy_labs._helper_functions import retry
 
 
 def check_fallback_reason(
@@ -137,38 +136,32 @@ def generate_direct_lake_semantic_model(
 
     create_blank_semantic_model(dataset=dataset, workspace=workspace)
 
-    start_time = datetime.datetime.now()
-    timeout = datetime.timedelta(minutes=1)
-    success = False
     expression_name = "DatabaseQuery"
 
-    while not success:
-        try:
-            with connect_semantic_model(
-                dataset=dataset, workspace=workspace, readonly=False
-            ) as tom:
-                success = True
-                if not any(e.Name == expression_name for e in tom.model.Expressions):
-                    tom.add_expression(name=expression_name, expression=expr)
+    @retry(sleep_time=1, timeout_error_message="Function timed out after 1 minute")
+    def dyn_create_model():
+        with connect_semantic_model(
+            dataset=dataset, workspace=workspace, readonly=False
+        ) as tom:
+            if not any(e.Name == expression_name for e in tom.model.Expressions):
+                tom.add_expression(name=expression_name, expression=expr)
 
-                for t in lakehouse_tables:
-                    tom.add_table(name=t)
-                    tom.add_entity_partition(table_name=t, entity_name=t)
-                    dfLC_filt = dfLC[dfLC["Table Name"] == t]
-                    for i, r in dfLC_filt.iterrows():
-                        lakeCName = r["Column Name"]
-                        dType = r["Data Type"]
-                        dt = icons.data_type_mapping.get(dType)
-                        tom.add_data_column(
-                            table_name=t,
-                            column_name=lakeCName,
-                            source_column=lakeCName,
-                            data_type=dt,
-                        )
-        except Exception:
-            if datetime.datetime.now() - start_time > timeout:
-                break
-            time.sleep(1)
+            for t in lakehouse_tables:
+                tom.add_table(name=t)
+                tom.add_entity_partition(table_name=t, entity_name=t)
+                dfLC_filt = dfLC[dfLC["Table Name"] == t]
+                for i, r in dfLC_filt.iterrows():
+                    lakeCName = r["Column Name"]
+                    dType = r["Data Type"]
+                    dt = icons.data_type_mapping.get(dType)
+                    tom.add_data_column(
+                        table_name=t,
+                        column_name=lakeCName,
+                        source_column=lakeCName,
+                        data_type=dt,
+                    )
+
+    dyn_create_model()
 
     if refresh:
         refresh_semantic_model(dataset=dataset, workspace=workspace)
