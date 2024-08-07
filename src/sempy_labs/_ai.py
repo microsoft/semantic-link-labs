@@ -12,7 +12,7 @@ import sempy_labs._icons as icons
 def optimize_semantic_model(dataset: str, workspace: Optional[str] = None):
 
     from ._model_bpa import run_model_bpa
-    from .directlake._fallback import check_fallback_reason
+    from .directlake._dl_helper import check_fallback_reason
     from ._helper_functions import format_dax_object_name
 
     modelBPA = run_model_bpa(

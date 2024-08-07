@@ -3,6 +3,9 @@ import re
 import json
 import base64
 import pandas as pd
+from functools import wraps
+import datetime
+import time
 from pyspark.sql import SparkSession
 from typing import Optional, Tuple
 from uuid import UUID
@@ -754,3 +757,21 @@ def resolve_capacity_name(capacity_id: Optional[UUID] = None) -> str:
         )
 
     return dfC_filt["Display Name"].iloc[0]
+
+
+def retry(sleep_time: int, timeout_error_message: str):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            start_time = datetime.datetime.now()
+            timeout = datetime.timedelta(minutes=1)
+            while datetime.datetime.now() - start_time <= timeout:
+                try:
+                    return func(*args, **kwargs)
+                except Exception:
+                    time.sleep(sleep_time)
+            raise TimeoutError(timeout_error_message)
+
+        return wrapper
+
+    return decorator
