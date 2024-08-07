@@ -97,7 +97,7 @@ def run_report_bpa(
             df_output["Object Type"] = scope
             df_output["Severity"] = row["Severity"]
             df_output["Description"] = row["Description"]
-            df_output['URL'] = row['URL']
+            df_output["URL"] = row["URL"]
 
             df_outputs.append(df_output)
 
@@ -122,11 +122,11 @@ def run_report_bpa(
         ]
     ]
 
-    #pd.merge(finalDF, dfP[['Page Display Name', 'Web Url']], left_on='Object Name', right_on='Page Display Name', how='left')
+    # pd.merge(finalDF, dfP[['Page Display Name', 'Web Url']], left_on='Object Name', right_on='Page Display Name', how='left')
 
-    #finalDF.rename(
+    # finalDF.rename(
     #    columns={"Web Url": "Page Url"}, inplace=True
-    #)
+    # )
 
     # for i, r in finalDF.iterrows():
     #    object_type = r["Object Type"]
@@ -234,7 +234,7 @@ def run_report_bpa(
                 "Severity",
                 "Description",
                 "URL",
-                "Page Url"
+                "Page Url",
             ]
         ]
         .sort_values(["Category", "Rule Name", "Object Type", "Object Name"])
@@ -307,7 +307,7 @@ def run_report_bpa(
                 content_html += f'<td class="tooltip" onmouseover="adjustTooltipPosition(event)"><a href="{row["URL"]}">{row["Rule Name"]}</a><span class="tooltiptext">{row["Description"]}</span></td>'
             elif pd.notnull(row["Description"]):
                 content_html += f'<td class="tooltip" onmouseover="adjustTooltipPosition(event)">{row["Rule Name"]}<span class="tooltiptext">{row["Description"]}</span></td>'
-            elif pd.notnull(row['Page Url']):
+            elif pd.notnull(row["Page Url"]):
                 content_html += f'<td class="tooltip" onmouseover="adjustTooltipPosition(event)"><a href="{row["Page Url"]}">{row["Object Name"]}</a></td>'
             else:
                 content_html += f'<td>{row["Rule Name"]}</td>'

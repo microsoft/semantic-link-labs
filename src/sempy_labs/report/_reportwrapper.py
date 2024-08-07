@@ -1,6 +1,5 @@
 import sempy.fabric as fabric
 from sempy_labs._helper_functions import (
-    resolve_dataset_id,
     resolve_report_id,
     format_dax_object_name,
     resolve_dataset_from_report,
@@ -18,6 +17,7 @@ import time
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
+from sempy_labs._list_functions import list_reports_using_semantic_model
 
 _vis_type_mapping = {
     "barChart": "Bar chart",
@@ -67,52 +67,6 @@ _vis_type_mapping = {
     "shape": "Shape",
     "Group": "Group",
 }
-
-
-def list_reports_using_semantic_model(
-    dataset: str, workspace: Optional[str] = None
-) -> pd.DataFrame:
-    """
-    Shows a list of all the reports which use a given semantic model.
-    Limitation: This only shows reports in the same workspace as the semantic model.
-
-    Parameters
-    ----------
-    dataset : str
-        Name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-    pandas.DataFrame
-        A pandas dataframe showing the reports which use a given semantic model.
-    """
-
-    df = pd.DataFrame(
-        columns=[
-            "Report Name",
-            "Report Id",
-            "Report Workspace Name",
-            "Report Workspace Id",
-        ]
-    )
-
-    workspace = fabric.resolve_workspace_name(workspace)
-    workspace_id = fabric.resolve_workspace_id(workspace)
-    dataset_id = resolve_dataset_id(dataset=dataset, workspace=workspace)
-    dfR = fabric.list_reports(workspace=workspace)
-    dfR_filt = dfR[dfR["Dataset Id"] == dataset_id][["Name", "Id"]]
-    dfR_filt = dfR_filt.rename(columns={"Name": "Report Name"})
-    dfR_filt = dfR_filt.rename(columns={"Id": "Report Id"})
-    dfR_filt["Report Workspace Name"] = workspace
-    dfR_filt["Report Workspace Id"] = workspace_id
-
-    df = pd.concat([df, dfR_filt], ignore_index=True)
-
-    return df
 
 
 def _report_status(dataset: str, workspace: Optional[str] = None):
@@ -2163,7 +2117,9 @@ class ReportWrapper:
                 f"{icons.red_dot} Invalid object type. Valid options: {object_types}."
             )
 
-    def __set_annotation(self, object_name: str, object_type: str, name: str, value: str):
+    def __set_annotation(
+        self, object_name: str, object_type: str, name: str, value: str
+    ):
 
         object_types = ["Visual", "Page", "Report"]
         object_type = object_type.capitalize()
