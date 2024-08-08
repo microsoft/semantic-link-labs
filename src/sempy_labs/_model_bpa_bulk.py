@@ -123,7 +123,7 @@ def run_model_bpa_bulk(
                     config_by = r2["Configured By"]
                     dataset_id = r2["Dataset Id"]
                     print(
-                        f"{icons.in_progress} Collecting BPA stats for the '{dataset_name}' semantic model within the '{wksp}' workspace."
+                        f"{icons.in_progress} Collecting Model BPA stats for the '{dataset_name}' semantic model within the '{wksp}' workspace."
                     )
                     try:
                         bpa_df = run_model_bpa(

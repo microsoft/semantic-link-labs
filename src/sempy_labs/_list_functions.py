@@ -2492,6 +2492,23 @@ def import_notebook_from_web(
 def list_reports_using_semantic_model(
     dataset: str, workspace: Optional[str] = None
 ) -> pd.DataFrame:
+    """
+    Shows a list of all the reports (in all workspaces) which use a given semantic model.
+
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the reports which use a given semantic model.
+    """
 
     df = pd.DataFrame(
         columns=[
@@ -2502,15 +2519,28 @@ def list_reports_using_semantic_model(
         ]
     )
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-    dataset_id = resolve_dataset_id(dataset=dataset, workspace=workspace)
-    dfR = fabric.list_reports(workspace=workspace)
-    dfR_filt = dfR[dfR["Dataset Id"] == dataset_id][["Name", "Id"]]
-    dfR_filt = dfR_filt.rename(columns={"Name": "Report Name"})
-    dfR_filt = dfR_filt.rename(columns={"Id": "Report Id"})
-    dfR_filt["Report Workspace Name"] = workspace
-    dfR_filt["Report Workspace Id"] = workspace_id
+    workspace = fabric.resolve_workspace_name(workspace)
+    dataset_id = resolve_dataset_id(dataset, workspace)
+    client = fabric.PowerBIRestClient()
+    response = client.get(
+        f"metadata/relations/downstream/dataset/{dataset_id}?apiVersion=3"
+    )
 
-    df = pd.concat([df, dfR_filt], ignore_index=True)
+    response_json = response.json()
+
+    for i in response_json.get("artifacts", []):
+        object_workspace_id = i.get("workspace", {}).get("objectId")
+        object_type = i.get("typeName")
+
+        if object_type == "Report":
+            new_data = {
+                "Report Name": i.get("displayName"),
+                "Report Id": i.get("objectId"),
+                "Report Workspace Name": fabric.resolve_workspace_name(
+                    object_workspace_id
+                ),
+                "Report Workspace Id": object_workspace_id,
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
