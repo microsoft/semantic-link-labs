@@ -2,7 +2,12 @@ import sempy.fabric as fabric
 import pandas as pd
 import datetime
 from pyspark.sql import SparkSession
-from sempy_labs._helper_functions import resolve_lakehouse_name, save_as_delta_table
+from sempy_labs._helper_functions import (
+    resolve_lakehouse_name,
+    save_as_delta_table,
+    resolve_workspace_capacity,
+    retry,
+)
 from sempy_labs.lakehouse import get_lakehouse_tables, lakehouse_attached
 from sempy_labs._model_bpa import run_model_bpa
 from typing import Optional, List
@@ -87,94 +92,90 @@ def run_model_bpa_bulk(
     if isinstance(workspace, str):
         workspace = [workspace]
 
-    dfC = fabric.list_capacities()
     dfW = fabric.list_workspaces()
-    for i, r in dfW.iterrows():
+    if workspace is None:
+        dfW_filt = dfW.copy()
+    else:
+        dfW_filt = dfW[dfW["Name"].isin(workspace)]
+
+    for i, r in dfW_filt.iterrows():
         wksp = r["Name"]
         wksp_id = r["Id"]
-        capacity_id = r["Capacity Id"]
-        dfC_filt = dfC[dfC["Id"] == capacity_id]
-        if len(dfC_filt) == 1:
-            capacity_name = dfC_filt["Display Name"].iloc[0]
-        else:
-            capacity_name = None
-        if workspace is None or wksp in workspace:
-            df = pd.DataFrame(columns=cols)
-            dfD = fabric.list_datasets(workspace=wksp, mode="rest")
+        capacity_id, capacity_name = resolve_workspace_capacity(workspace=wksp)
+        df = pd.DataFrame(columns=cols)
+        dfD = fabric.list_datasets(workspace=wksp, mode="rest")
 
-            if len(dfD) > 0:
-                dfI = fabric.list_items(workspace=wksp)
+        # Exclude default semantic models
+        if len(dfD) > 0:
+            dfI = fabric.list_items(workspace=wksp)
+            filtered_df = dfI.groupby("Display Name").filter(
+                lambda x: set(["Warehouse", "SemanticModel"]).issubset(set(x["Type"]))
+                or set(["Lakehouse", "SemanticModel"]).issubset(set(x["Type"]))
+            )
+            default_semantic_models = filtered_df["Display Name"].unique().tolist()
+            # Skip ModelBPA :)
+            skip_models = default_semantic_models + [icons.model_bpa_name]
+            dfD_filt = dfD[~dfD["Dataset Name"].isin(skip_models)]
 
-                # Exclude default semantic models
-                filtered_df = dfI.groupby("Display Name").filter(
-                    lambda x: set(["Warehouse", "SemanticModel"]).issubset(
-                        set(x["Type"])
+            if len(dfD_filt) > 0:
+                for i2, r2 in dfD_filt.iterrows():
+                    dataset_name = r2["Dataset Name"]
+                    config_by = r2["Configured By"]
+                    dataset_id = r2["Dataset Id"]
+                    print(
+                        f"{icons.in_progress} Collecting BPA stats for the '{dataset_name}' semantic model within the '{wksp}' workspace."
                     )
-                    or set(["Lakehouse", "SemanticModel"]).issubset(set(x["Type"]))
-                )
-                default_semantic_models = filtered_df["Display Name"].unique().tolist()
-                # Skip ModelBPA :)
-                skip_models = default_semantic_models + [icons.model_bpa_name]
-                dfD_filt = dfD[~dfD["Dataset Name"].isin(skip_models)]
-
-                if len(dfD_filt) > 0:
-                    for i2, r2 in dfD_filt.iterrows():
-                        dataset_name = r2["Dataset Name"]
-                        config_by = r2["Configured By"]
-                        dataset_id = r2["Dataset Id"]
-                        print(
-                            f"{icons.in_progress} Collecting BPA stats for the '{dataset_name}' semantic model within the '{wksp}' workspace."
+                    try:
+                        bpa_df = run_model_bpa(
+                            dataset=dataset_name,
+                            workspace=wksp,
+                            language=language,
+                            return_dataframe=True,
+                            rules=rules,
+                            extended=extended,
                         )
-                        try:
-                            bpa_df = run_model_bpa(
-                                dataset=dataset_name,
-                                workspace=wksp,
-                                language=language,
-                                return_dataframe=True,
-                                rules=rules,
-                                extended=extended,
-                            )
-                            bpa_df["Capacity Id"] = capacity_id
-                            bpa_df["Capacity Name"] = capacity_name
-                            bpa_df["Workspace Name"] = wksp
-                            bpa_df["Workspace Id"] = wksp_id
-                            bpa_df["Dataset Name"] = dataset_name
-                            bpa_df["Dataset Id"] = dataset_id
-                            bpa_df["Configured By"] = config_by
-                            bpa_df["Timestamp"] = now
-                            bpa_df["RunId"] = runId
-                            bpa_df = bpa_df[cols]
+                        bpa_df["Capacity Id"] = capacity_id
+                        bpa_df["Capacity Name"] = capacity_name
+                        bpa_df["Workspace Name"] = wksp
+                        bpa_df["Workspace Id"] = wksp_id
+                        bpa_df["Dataset Name"] = dataset_name
+                        bpa_df["Dataset Id"] = dataset_id
+                        bpa_df["Configured By"] = config_by
+                        bpa_df["Timestamp"] = now
+                        bpa_df["RunId"] = runId
+                        bpa_df = bpa_df[cols]
 
-                            bpa_df["RunId"] = bpa_df["RunId"].astype("int")
+                        bpa_df["RunId"] = bpa_df["RunId"].astype("int")
 
-                            df = pd.concat([df, bpa_df], ignore_index=True)
-                            print(
-                                f"{icons.green_dot} Collected BPA stats for the '{dataset_name}' semantic model within the '{wksp}' workspace."
-                            )
-                        except Exception:
-                            print(
-                                f"{icons.red_dot} BPA Issue: The '{dataset_name}' semantic model within the '{wksp}' workspace."
-                            )                    
+                        df = pd.concat([df, bpa_df], ignore_index=True)
+                        print(
+                            f"{icons.green_dot} Collected Model BPA stats for the '{dataset_name}' semantic model within the '{wksp}' workspace."
+                        )
+                    except Exception:
+                        print(
+                            f"{icons.red_dot} Model BPA failed for the '{dataset_name}' semantic model within the '{wksp}' workspace."
+                        )
 
-                    df["Severity"].replace(icons.severity_mapping, inplace=True)
+                df["Severity"].replace(icons.severity_mapping, inplace=True)
 
-                    # Append save results individually for each workspace (so as not to create a giant dataframe)
-                    print(
-                        f"{icons.in_progress} Saving the BPA results of the '{wksp}' workspace to the '{output_table}' within the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace..."
-                    )
-                    save_as_delta_table(
-                        dataframe=df,
-                        delta_table_name=output_table,
-                        write_mode="append",
-                        merge_schema=True,
-                    )
-                    print(
-                        f"{icons.green_dot} Saved BPA results to the '{output_table}' delta table."
-                    )
+                # Append save results individually for each workspace (so as not to create a giant dataframe)
+                print(
+                    f"{icons.in_progress} Saving the Model BPA results of the '{wksp}' workspace to the '{output_table}' within the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace..."
+                )
+                save_as_delta_table(
+                    dataframe=df,
+                    delta_table_name=output_table,
+                    write_mode="append",
+                    merge_schema=True,
+                )
+                print(
+                    f"{icons.green_dot} Saved BPA results to the '{output_table}' delta table."
+                )
 
     print(f"{icons.green_dot} Bulk BPA scan complete.")
 
 
+@log
 def create_model_bpa_semantic_model(
     dataset: Optional[str] = icons.model_bpa_name,
     lakehouse: Optional[str] = None,
@@ -224,124 +225,132 @@ def create_model_bpa_semantic_model(
 
     # Create blank model
     create_blank_semantic_model(dataset=dataset, workspace=lakehouse_workspace)
-    table_exists = False
-    with connect_semantic_model(
-        dataset=dataset, readonly=False, workspace=lakehouse_workspace
-    ) as tom:
-        t_name = "BPAResults"
-        t_name_full = f"'{t_name}'"
-        # Create the shared expression
-        if not any(e.Name == "DatabaseQuery" for e in tom.model.Expressions):
-            tom.add_expression(name="DatabaseQuery", expression=expr)
-        # Add the table to the model
-        if any(t.Name == t_name for t in tom.model.Tables):
-            table_exists = True
-    if not table_exists:
-        add_table_to_direct_lake_semantic_model(
-            dataset=dataset,
-            table_name=t_name,
-            lakehouse_table_name="modelbparesults",
-            workspace=lakehouse_workspace,
-            refresh=False,
-        )
-    with connect_semantic_model(
-        dataset=dataset, readonly=False, workspace=lakehouse_workspace
-    ) as tom:
-        # Fix column names
-        for c in tom.all_columns():
-            if c.Name == "Dataset_Name":
-                c.Name = "Model"
-            elif c.Name == "Dataset_Id":
-                c.Name = "Model Id"
-            elif c.Name == "Workspace_Name":
-                c.Name = "Workspace"
-            elif c.Name == "Capacity_Name":
-                c.Name = "Capacity"
-            elif c.Name == "Configured_By":
-                c.Name = "Model Owner"
-            elif c.Name == "URL":
-                c.DataCategory = "WebURL"
-            elif c.Name == "RunId":
-                tom.set_summarize_by(
-                    table_name=c.Parent.Name, column_name=c.Name, value="None"
+
+    @retry(
+        sleep_time=1,
+        timeout_error_message=f"{icons.red_dot} Function timed out after 1 minute",
+    )
+    def dyn_create_model():
+        table_exists = False
+        with connect_semantic_model(
+            dataset=dataset, readonly=False, workspace=lakehouse_workspace
+        ) as tom:
+            t_name = "BPAResults"
+            t_name_full = f"'{t_name}'"
+            # Create the shared expression
+            if not any(e.Name == "DatabaseQuery" for e in tom.model.Expressions):
+                tom.add_expression(name="DatabaseQuery", expression=expr)
+            # Add the table to the model
+            if any(t.Name == t_name for t in tom.model.Tables):
+                table_exists = True
+        if not table_exists:
+            add_table_to_direct_lake_semantic_model(
+                dataset=dataset,
+                table_name=t_name,
+                lakehouse_table_name="modelbparesults",
+                workspace=lakehouse_workspace,
+                refresh=False,
+            )
+        with connect_semantic_model(
+            dataset=dataset, readonly=False, workspace=lakehouse_workspace
+        ) as tom:
+            # Fix column names
+            for c in tom.all_columns():
+                if c.Name == "Dataset_Name":
+                    c.Name = "Model"
+                elif c.Name == "Dataset_Id":
+                    c.Name = "Model Id"
+                elif c.Name == "Workspace_Name":
+                    c.Name = "Workspace"
+                elif c.Name == "Capacity_Name":
+                    c.Name = "Capacity"
+                elif c.Name == "Configured_By":
+                    c.Name = "Model Owner"
+                elif c.Name == "URL":
+                    c.DataCategory = "WebURL"
+                elif c.Name == "RunId":
+                    tom.set_summarize_by(
+                        table_name=c.Parent.Name, column_name=c.Name, value="None"
+                    )
+                c.Name = c.Name.replace("_", " ")
+
+            # Implement pattern for base measures
+            def get_expr(table_name, calculation):
+                return f"IF(HASONEFILTER({table_name}[RunId]),{calculation},CALCULATE({calculation},FILTER(VALUES({table_name}[RunId]),{table_name}[RunId] = [Max Run Id])))"
+
+            # Add measures
+            int_format = "#,0"
+            m_name = "Max Run Id"
+            if not any(m.Name == m_name for m in tom.all_measures()):
+                tom.add_measure(
+                    table_name=t_name,
+                    measure_name=m_name,
+                    expression=f"CALCULATE(MAX({t_name_full}[RunId]),{t_name_full}[RunId])",
+                    format_string=int_format,
                 )
-            c.Name = c.Name.replace("_", " ")
+            m_name = "Capacities"
+            if not any(m.Name == m_name for m in tom.all_measures()):
+                calc = f"COUNTROWS(DISTINCT({t_name_full}[Capacity]))"
+                tom.add_measure(
+                    table_name=t_name,
+                    measure_name=m_name,
+                    expression=get_expr(t_name_full, calc),
+                    format_string=int_format,
+                )
+            m_name = "Models"
+            if not any(m.Name == m_name for m in tom.all_measures()):
+                calc = f"COUNTROWS(DISTINCT({t_name_full}[Model]))"
+                tom.add_measure(
+                    table_name=t_name,
+                    measure_name=m_name,
+                    expression=get_expr(t_name_full, calc),
+                    format_string=int_format,
+                )
+            m_name = "Workspaces"
+            if not any(m.Name == m_name for m in tom.all_measures()):
+                calc = f"COUNTROWS(DISTINCT({t_name_full}[Workspace]))"
+                tom.add_measure(
+                    table_name=t_name,
+                    measure_name=m_name,
+                    expression=get_expr(t_name_full, calc),
+                    format_string=int_format,
+                )
+            m_name = "Violations"
+            if not any(m.Name == m_name for m in tom.all_measures()):
+                calc = f"COUNTROWS({t_name_full})"
+                tom.add_measure(
+                    table_name=t_name,
+                    measure_name=m_name,
+                    expression=get_expr(t_name_full, calc),
+                    format_string=int_format,
+                )
+            m_name = "Error Violations"
+            if not any(m.Name == m_name for m in tom.all_measures()):
+                tom.add_measure(
+                    table_name=t_name,
+                    measure_name=m_name,
+                    expression=f'CALCULATE([Violations],{t_name_full}[Severity]="Error")',
+                    format_string=int_format,
+                )
+            m_name = "Rules Violated"
+            if not any(m.Name == m_name for m in tom.all_measures()):
+                calc = f"COUNTROWS(DISTINCT({t_name_full}[Rule Name]))"
+                tom.add_measure(
+                    table_name=t_name,
+                    measure_name=m_name,
+                    expression=get_expr(t_name_full, calc),
+                    format_string=int_format,
+                )
+            m_name = "Rule Severity"
+            if not any(m.Name == m_name for m in tom.all_measures()):
+                tom.add_measure(
+                    table_name=t_name,
+                    measure_name=m_name,
+                    expression=f"IF(ISFILTERED({t_name_full}[Rule Name]),IF( HASONEVALUE({t_name_full}[Rule Name]),MIN({t_name_full}[Severity])))",
+                )
+            # tom.add_measure(table_name=t_name, measure_name='Rules Followed', expression="[Rules] - [Rules Violated]")
 
-        # Implement pattern for base measures
-        def get_expr(table_name, calculation):
-            return f"IF(HASONEFILTER({table_name}[RunId]),{calculation},CALCULATE({calculation},FILTER(VALUES({table_name}[RunId]),{table_name}[RunId] = [Max Run Id])))"
-
-        # Add measures
-        int_format = "#,0"
-        m_name = "Max Run Id"
-        if not any(m.Name == m_name for m in tom.all_measures()):
-            tom.add_measure(
-                table_name=t_name,
-                measure_name=m_name,
-                expression=f"CALCULATE(MAX({t_name_full}[RunId]),{t_name_full}[RunId])",
-                format_string=int_format,
-            )
-        m_name = "Capacities"
-        if not any(m.Name == m_name for m in tom.all_measures()):
-            calc = f"COUNTROWS(DISTINCT({t_name_full}[Capacity]))"
-            tom.add_measure(
-                table_name=t_name,
-                measure_name=m_name,
-                expression=get_expr(t_name_full, calc),
-                format_string=int_format,
-            )
-        m_name = "Models"
-        if not any(m.Name == m_name for m in tom.all_measures()):
-            calc = f"COUNTROWS(DISTINCT({t_name_full}[Model]))"
-            tom.add_measure(
-                table_name=t_name,
-                measure_name=m_name,
-                expression=get_expr(t_name_full, calc),
-                format_string=int_format,
-            )
-        m_name = "Workspaces"
-        if not any(m.Name == m_name for m in tom.all_measures()):
-            calc = f"COUNTROWS(DISTINCT({t_name_full}[Workspace]))"
-            tom.add_measure(
-                table_name=t_name,
-                measure_name=m_name,
-                expression=get_expr(t_name_full, calc),
-                format_string=int_format,
-            )
-        m_name = "Violations"
-        if not any(m.Name == m_name for m in tom.all_measures()):
-            calc = f"COUNTROWS({t_name_full})"
-            tom.add_measure(
-                table_name=t_name,
-                measure_name=m_name,
-                expression=get_expr(t_name_full, calc),
-                format_string=int_format,
-            )
-        m_name = "Error Violations"
-        if not any(m.Name == m_name for m in tom.all_measures()):
-            tom.add_measure(
-                table_name=t_name,
-                measure_name=m_name,
-                expression=f'CALCULATE([Violations],{t_name_full}[Severity]="Error")',
-                format_string=int_format,
-            )
-        m_name = "Rules Violated"
-        if not any(m.Name == m_name for m in tom.all_measures()):
-            calc = f"COUNTROWS(DISTINCT({t_name_full}[Rule Name]))"
-            tom.add_measure(
-                table_name=t_name,
-                measure_name=m_name,
-                expression=get_expr(t_name_full, calc),
-                format_string=int_format,
-            )
-        m_name = "Rule Severity"
-        if not any(m.Name == m_name for m in tom.all_measures()):
-            tom.add_measure(
-                table_name=t_name,
-                measure_name=m_name,
-                expression=f"IF(ISFILTERED({t_name_full}[Rule Name]),IF( HASONEVALUE({t_name_full}[Rule Name]),MIN({t_name_full}[Severity])))",
-            )
-        # tom.add_measure(table_name=t_name, measure_name='Rules Followed', expression="[Rules] - [Rules Violated]")
+    dyn_create_model()
 
     # Refresh the model
     refresh_semantic_model(dataset=dataset, workspace=lakehouse_workspace)

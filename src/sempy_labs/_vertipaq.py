@@ -492,7 +492,6 @@ def vertipaq_analyzer(
         capacity_id, capacity_name = resolve_workspace_capacity(workspace=workspace)
 
         for key, (obj, df) in dfMap.items():
-            df["Timestamp"] = now
             df["Capacity Name"] = capacity_name
             df["Capacity Id"] = capacity_id
             df["Configured By"] = configured_by
@@ -501,6 +500,7 @@ def vertipaq_analyzer(
             df["Dataset Name"] = dataset
             df["Dataset Id"] = resolve_dataset_id(dataset, workspace)
             df["RunId"] = runId
+            df["Timestamp"] = now
 
             colName = "Capacity Name"
             df.insert(0, colName, df.pop(colName))
@@ -521,7 +521,10 @@ def vertipaq_analyzer(
 
             delta_table_name = f"VertipaqAnalyzer_{obj}".lower()
             save_as_delta_table(
-                dataframe=df, delta_table_name=delta_table_name, write_mode="append"
+                dataframe=df,
+                delta_table_name=delta_table_name,
+                write_mode="append",
+                merge_schema=True,
             )
 
     # Export vertipaq to zip file within the lakehouse

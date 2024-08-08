@@ -367,9 +367,7 @@ def run_model_bpa(
         lakeT = get_lakehouse_tables(lakehouse=lakehouse, workspace=lake_workspace)
         lakeT_filt = lakeT[lakeT["Table Name"] == delta_table_name]
 
-        dfExport["Severity"].replace(icons.warning, "Warning", inplace=True)
-        dfExport["Severity"].replace(icons.error, "Error", inplace=True)
-        dfExport["Severity"].replace(icons.info, "Info", inplace=True)
+        dfExport["Severity"].replace(icons.severity_mapping, inplace=True)
 
         spark = SparkSession.builder.getOrCreate()
         query = f"SELECT MAX(RunId) FROM {lakehouse}.{delta_table_name}"
@@ -381,15 +379,6 @@ def run_model_bpa(
             maxRunId = dfSpark.collect()[0][0]
             runId = maxRunId + 1
 
-        dfC = fabric.list_capacities()
-        dfW = fabric.list_workspaces()
-        dfW_filt = dfW[dfW["Name"] == workspace]
-        capacity_id = dfW_filt["Capacity Id"].iloc[0]
-        dfC_filt = dfC[dfC["Id"] == capacity_id]
-        if len(dfC_filt) == 1:
-            capacity_name = dfC_filt["Display Name"].iloc[0]
-        else:
-            capacity_name = None
         now = datetime.datetime.now()
         dfD = fabric.list_datasets(workspace=workspace, mode="rest")
         dfD_filt = dfD[dfD["Dataset Name"] == dataset]

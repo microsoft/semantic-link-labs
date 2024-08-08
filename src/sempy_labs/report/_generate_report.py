@@ -9,6 +9,7 @@ from sempy_labs._helper_functions import (
     resolve_report_id,
 )
 import sempy_labs._icons as icons
+from sempy._utils._log import log
 from sempy.fabric.exceptions import FabricHTTPException
 
 
@@ -223,6 +224,7 @@ def get_report_definition(report: str, workspace: Optional[str] = None) -> pd.Da
     return rdef
 
 
+@log
 def create_model_bpa_report(
     report: Optional[str] = icons.model_bpa_name,
     dataset: Optional[str] = icons.model_bpa_name,

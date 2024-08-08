@@ -1,9 +1,12 @@
 import sempy.fabric as fabric
 import re
 import datetime
-import time
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
-from sempy_labs._helper_functions import resolve_lakehouse_name, format_dax_object_name
+from sempy_labs._helper_functions import (
+    resolve_lakehouse_name,
+    format_dax_object_name,
+    retry,
+)
 from sempy_labs.tom import connect_semantic_model
 from typing import Optional
 from sempy._utils._log import log
@@ -76,74 +79,67 @@ def migrate_calc_tables_to_semantic_model(
         )
         return
 
-    start_time = datetime.datetime.now()
-    timeout = datetime.timedelta(minutes=1)
-    success = False
+    @retry(
+        sleep_time=1,
+        timeout_error_message=f"{icons.red_dot} Function timed out after 1 minute",
+    )
+    def dyn_create():
+        with connect_semantic_model(
+            dataset=new_dataset, readonly=False, workspace=new_dataset_workspace
+        ) as tom:
+            for tName in dfC_filt["Table Name"].unique():
+                if tName.lower() in lc["Table Name"].values:
+                    if not any(t.Name == tName for t in tom.model.Tables):
+                        tom.add_table(name=tName)
+                        tom.add_entity_partition(
+                            table_name=tName,
+                            entity_name=tName.replace(" ", "_").lower(),
+                        )
 
-    while not success:
-        try:
-            with connect_semantic_model(
-                dataset=new_dataset, readonly=False, workspace=new_dataset_workspace
-            ) as tom:
-                success = True
-                for tName in dfC_filt["Table Name"].unique():
-                    if tName.lower() in lc["Table Name"].values:
-                        if not any(t.Name == tName for t in tom.model.Tables):
-                            tom.add_table(name=tName)
-                            tom.add_entity_partition(
-                                table_name=tName,
-                                entity_name=tName.replace(" ", "_").lower(),
-                            )
+                columns_in_table = dfC_filt.loc[
+                    dfC_filt["Table Name"] == tName, "Column Name"
+                ].unique()
 
-                    columns_in_table = dfC_filt.loc[
-                        dfC_filt["Table Name"] == tName, "Column Name"
-                    ].unique()
+                for cName in columns_in_table:
+                    scName = dfC.loc[
+                        (dfC["Table Name"] == tName) & (dfC["Column Name"] == cName),
+                        "Source",
+                    ].iloc[0]
+                    cDataType = dfC.loc[
+                        (dfC["Table Name"] == tName) & (dfC["Column Name"] == cName),
+                        "Data Type",
+                    ].iloc[0]
+                    # cType = dfC.loc[
+                    #    (dfC["Table Name"] == tName)
+                    #    & (dfC["Column Name"] == cName),
+                    #    "Type",
+                    # ].iloc[0]
 
-                    for cName in columns_in_table:
-                        scName = dfC.loc[
-                            (dfC["Table Name"] == tName)
-                            & (dfC["Column Name"] == cName),
-                            "Source",
-                        ].iloc[0]
-                        cDataType = dfC.loc[
-                            (dfC["Table Name"] == tName)
-                            & (dfC["Column Name"] == cName),
-                            "Data Type",
-                        ].iloc[0]
-                        # cType = dfC.loc[
-                        #    (dfC["Table Name"] == tName)
-                        #    & (dfC["Column Name"] == cName),
-                        #    "Type",
-                        # ].iloc[0]
+                    # av = tom.get_annotation_value(object = tom.model, name = tName)
 
-                        # av = tom.get_annotation_value(object = tom.model, name = tName)
+                    # if cType == 'CalculatedTableColumn':
+                    # lakeColumn = scName.replace(' ','_')
+                    # elif cType == 'Calculated':
+                    pattern = r"\[([^]]+)\]"
 
-                        # if cType == 'CalculatedTableColumn':
-                        # lakeColumn = scName.replace(' ','_')
-                        # elif cType == 'Calculated':
-                        pattern = r"\[([^]]+)\]"
+                    matches = re.findall(pattern, scName)
+                    lakeColumn = matches[0].replace(" ", "")
+                    if not any(
+                        c.Name == cName and c.Parent.Name == tName
+                        for c in tom.all_columns()
+                    ):
+                        tom.add_data_column(
+                            table_name=tName,
+                            column_name=cName,
+                            source_column=lakeColumn,
+                            data_type=cDataType,
+                        )
+                        print(
+                            f"{icons.green_dot} The {format_dax_object_name(tName,cName)} column has been added."
+                        )
 
-                        matches = re.findall(pattern, scName)
-                        lakeColumn = matches[0].replace(" ", "")
-                        if not any(
-                            c.Name == cName and c.Parent.Name == tName
-                            for c in tom.all_columns()
-                        ):
-                            tom.add_data_column(
-                                table_name=tName,
-                                column_name=cName,
-                                source_column=lakeColumn,
-                                data_type=cDataType,
-                            )
-                            print(
-                                f"{icons.green_dot} The {format_dax_object_name(tName,cName)} column has been added."
-                            )
+            print(
+                f"\n{icons.green_dot} All viable calculated tables have been added to the model."
+            )
 
-                print(
-                    f"\n{icons.green_dot} All viable calculated tables have been added to the model."
-                )
-
-        except Exception:
-            if datetime.datetime.now() - start_time > timeout:
-                break
-            time.sleep(1)
+    dyn_create()

@@ -77,7 +77,7 @@ def report_rebind_all(
     report_workspace: Optional[str | List[str]] = None,
 ):
     """
-    Rebinds all reports in a workspace which are bound to a specific semantic model to a new semantic model.
+    Rebinds all reports across all workspaces which are bound to a specific semantic model to a new semantic model.
 
     Parameters
     ----------
@@ -95,35 +95,42 @@ def report_rebind_all(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     report_workspace : str | List[str], default=None
         The name(s) of the Fabric workspace(s) in which the report(s) reside(s).
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-
+        Defaults to None which finds all reports in all workspaces which use the semantic model and rebinds them to
+        the new semantic model.
     """
 
-    dataset_workspace = fabric.resolve_workspace_name()
+    from sempy_labs._list_functions import list_reports_using_semantic_model
+
+    dataset_workspace = fabric.resolve_workspace_name(dataset_workspace)
 
     if new_dataset_workpace is None:
         new_dataset_workpace = dataset_workspace
 
-    if report_workspace is None:
-        report_workspace = dataset_workspace
-
     if isinstance(report_workspace, str):
         report_workspace = [report_workspace]
 
-    datasetId = resolve_dataset_id(dataset, dataset_workspace)
+    dfR = list_reports_using_semantic_model(
+        dataset=dataset, workspace=dataset_workspace
+    )
 
-    for rw in report_workspace:
-        dfRep = fabric.list_reports(workspace=rw)
-        dfRep_filt = dfRep[dfRep["Dataset Id"] == datasetId]
-        for i, r in dfRep_filt.iterrows():
-            rptName = r["Name"]
-            report_rebind(
-                report=rptName,
-                dataset=new_dataset,
-                report_workspace=rw,
-                dataset_workspace=new_dataset_workpace,
-            )
+    if len(dfR) == 0:
+        print(
+            f"{icons.info} The '{dataset}' semantic model within the '{dataset_workspace}' workspace has no dependent reports."
+        )
+        return
+
+    if report_workspace is None:
+        dfR_filt = dfR.copy()
+    else:
+        dfR_filt = dfR[dfR["Report Workspace Name"].isin(report_workspace)]
+
+    for i, r in dfR_filt.iterrows():
+        rpt_name = r["Report Name"]
+        rpt_wksp = r["Report Workspace Name"]
+
+        report_rebind(
+            report=rpt_name,
+            dataset=new_dataset,
+            report_workspace=rpt_wksp,
+            dataset_workspace=new_dataset_workpace,
+        )

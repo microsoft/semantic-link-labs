@@ -38,8 +38,7 @@ def get_object_level_security(
 
     from sempy_labs.tom import connect_semantic_model
 
-    if workspace is None:
-        workspace = fabric.resolve_workspace_name()
+    workspace = fabric.resolve_workspace_name(workspace)
 
     df = pd.DataFrame(columns=["Role Name", "Object Type", "Table Name", "Object Name"])
 
@@ -102,7 +101,7 @@ def list_tables(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
         A pandas dataframe showing the semantic model's tables and their properties.
     """
 
-    workspace = fabric.resolve_workspace_name()
+    workspace = fabric.resolve_workspace_name(workspace)
 
     df = fabric.list_tables(
         dataset=dataset,
@@ -139,7 +138,7 @@ def list_annotations(dataset: str, workspace: Optional[str] = None) -> pd.DataFr
 
     from sempy_labs.tom import connect_semantic_model
 
-    workspace = fabric.resolve_workspace_name()
+    workspace = fabric.resolve_workspace_name(workspace)
 
     df = pd.DataFrame(
         columns=[
@@ -382,8 +381,7 @@ def list_columns(
         get_direct_lake_lakehouse,
     )
 
-    if workspace is None:
-        workspace = fabric.resolve_workspace_name()
+    workspace = fabric.resolve_workspace_name(workspace)
 
     dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
 
@@ -1128,8 +1126,7 @@ def list_relationships(
         A pandas dataframe showing the object level security for the semantic model.
     """
 
-    if workspace is None:
-        workspace = fabric.resolve_workspace_name()
+    workspace = fabric.resolve_workspace_name(workspace)
 
     dfR = fabric.list_relationships(dataset=dataset, workspace=workspace)
 
@@ -1852,7 +1849,7 @@ def update_custom_pool(
     )
 
 
-def delete_custom_pool(pool_name: str, workspace: Optional[str | None] = None):
+def delete_custom_pool(pool_name: str, workspace: Optional[str] = None):
     """
     Deletes a `custom pool <https://learn.microsoft.com/fabric/data-engineering/create-custom-spark-pools>`_ within a workspace.
 

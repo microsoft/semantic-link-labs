@@ -505,7 +505,7 @@ class TOMWrapper:
         table_name: str,
         calculation_item_name: str,
         expression: str,
-        ordinal: Optional[int] = None,        
+        ordinal: Optional[int] = None,
         description: Optional[str] = None,
         format_string_expression: Optional[str] = None,
     ):
@@ -3787,11 +3787,11 @@ class TOMWrapper:
     def update_measure(
         self,
         measure_name: str,
-        expression: Optional[str | None] = None,
-        format_string: Optional[str | None] = None,
-        hidden: Optional[bool | None] = None,
-        description: Optional[str | None] = None,
-        display_folder: Optional[str | None] = None,
+        expression: Optional[str] = None,
+        format_string: Optional[str] = None,
+        hidden: Optional[bool] = None,
+        description: Optional[str] = None,
+        display_folder: Optional[str] = None,
         format_string_expression: Optional[str] = None,
     ):
         """
@@ -3961,7 +3961,7 @@ class TOMWrapper:
         table_name: str,
         calculation_item_name: str,
         expression: Optional[str] = None,
-        ordinal: Optional[int] = None,        
+        ordinal: Optional[int] = None,
         description: Optional[str] = None,
         format_string_expression: Optional[str] = None,
     ):

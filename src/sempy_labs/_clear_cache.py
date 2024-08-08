@@ -22,8 +22,8 @@ def clear_cache(dataset: str, workspace: Optional[str] = None):
     workspace = fabric.resolve_workspace_name(workspace)
     if is_default_semantic_model(dataset=dataset, workspace=workspace):
         raise ValueError(
-            "Cannot run XMLA operations against a `default semantic model <https://learn.microsoft.com/fabric/data-warehouse/semantic-models>`_."
-            " Please choose a different semantic model."
+            f"{icons.red_dot} Cannot run XMLA operations against a default semantic model. Please choose a different semantic model. "
+            "See here for more information: https://learn.microsoft.com/fabric/data-warehouse/semantic-models"
         )
 
     dataset_id = resolve_dataset_id(dataset=dataset, workspace=workspace)

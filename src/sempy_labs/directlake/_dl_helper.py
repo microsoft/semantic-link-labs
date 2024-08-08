@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from typing import Optional, List, Union
 import sempy_labs._icons as icons
+from sempy._utils._log import log
 from sempy_labs._helper_functions import retry
 
 
@@ -41,9 +42,9 @@ def check_fallback_reason(
         dataset=dataset,
         workspace=workspace,
         dax_string="""
-    SELECT [TableName] AS [Table Name],[FallbackReason] AS [FallbackReasonID]
-    FROM $SYSTEM.TMSCHEMA_DELTA_TABLE_METADATA_STORAGES
-    """,
+            SELECT [TableName] AS [Table Name],[FallbackReason] AS [FallbackReasonID]
+            FROM $SYSTEM.TMSCHEMA_DELTA_TABLE_METADATA_STORAGES
+            """,
     )
 
     value_mapping = {
@@ -64,6 +65,7 @@ def check_fallback_reason(
     return df
 
 
+@log
 def generate_direct_lake_semantic_model(
     dataset: str,
     lakehouse_tables: Union[str, List[str]],
@@ -136,10 +138,12 @@ def generate_direct_lake_semantic_model(
 
     create_blank_semantic_model(dataset=dataset, workspace=workspace)
 
-    expression_name = "DatabaseQuery"
-
-    @retry(sleep_time=1, timeout_error_message="Function timed out after 1 minute")
+    @retry(
+        sleep_time=1,
+        timeout_error_message=f"{icons.red_dot} Function timed out after 1 minute",
+    )
     def dyn_create_model():
+        expression_name = "DatabaseQuery"
         with connect_semantic_model(
             dataset=dataset, workspace=workspace, readonly=False
         ) as tom:

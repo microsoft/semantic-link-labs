@@ -37,8 +37,9 @@ def optimize_lakehouse_tables(
 
     Parameters
     ----------
-    tables : str | List[str] | None
-        The table(s) to optimize. If no tables are specified, all tables in the lakehouse will be optimized.
+    tables : str | List[str], default=None
+        The table(s) to optimize.
+        Defaults to None which resovles to optimizing all tables within the lakehouse.
     lakehouse : str, default=None
         The Fabric lakehouse.
         Defaults to None which resolves to the lakehouse attached to the notebook.
