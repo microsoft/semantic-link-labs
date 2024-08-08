@@ -83,3 +83,73 @@ def optimize_lakehouse_tables(
             f"{icons.green_dot} The '{tableName}' table has been optimized. ({str(i)}/{str(tableCount)})"
         )
         i += 1
+
+@log
+def vacuum_lakehouse_tables(
+    tables: Optional[Union[str, List[str]]] = None,
+    lakehouse: Optional[str] = None,
+    workspace: Optional[str] = None,
+    retention_days: Optional[int] = None
+):
+    """
+    Runs the `VACUUM <https://docs.delta.io/latest/delta-utility.html#remove-files-no-longer-referenced-by-a-delta-table>`_ function over the specified lakehouse tables.
+
+    Parameters
+    ----------
+    tables : str | List[str] | None
+        The table(s) to vacuum. If no tables are specified, all tables in the lakehouse will be optimized.
+    lakehouse : str, default=None
+        The Fabric lakehouse.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    workspace : str, default=None
+        The Fabric workspace used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    retention_days : int, default=None
+        The number of days to retain historical versions of Delta table files.
+        Files older than this retention period will be deleted during the vacuum operation.
+        If not specified, the default retention period configured for the Delta table will be used.
+        The default retention period is 7 days unless manually configured via table properties.
+    """
+
+    from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
+    from delta import DeltaTable
+
+    workspace = fabric.resolve_workspace_name(workspace)
+
+    if lakehouse is None:
+        lakehouse_id = fabric.get_lakehouse_id()
+        lakehouse = resolve_lakehouse_name(lakehouse_id, workspace)
+
+    lakeTables = get_lakehouse_tables(lakehouse=lakehouse, workspace=workspace)
+    lakeTablesDelta = lakeTables[lakeTables["Format"] == "delta"]
+
+    if isinstance(tables, str):
+        tables = [tables]
+
+    if tables is not None:
+        tables_filt = lakeTablesDelta[lakeTablesDelta["Table Name"].isin(tables)]
+    else:
+        tables_filt = lakeTablesDelta.copy()
+
+    tableCount = len(tables_filt)
+
+    spark = SparkSession.builder.getOrCreate()
+    spark.conf.set("spark.databricks.delta.vacuum.parallelDelete.enabled", "true")
+
+    i = 1
+    for _, r in (bar := tqdm(tables_filt.iterrows())):
+        tableName = r["Table Name"]
+        tablePath = r["Location"]
+        bar.set_description(f"Vacuuming the '{tableName}' table...")
+        deltaTable = DeltaTable.forPath(spark, tablePath)
+        
+        if retention_days is None:
+            deltaTable.vacuum()
+        else:
+            deltaTable.vacuum(retention_days)
+
+        print(
+            f"{icons.green_dot} The '{tableName}' table has been vacuumed. ({str(i)}/{str(tableCount)})"
+        )
+        i += 1
