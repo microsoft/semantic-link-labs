@@ -3,7 +3,6 @@ from typing import Optional, List
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
-from sempy_labs._helper_functions import save_as_delta_table
 from sempy_labs.lakehouse import lakehouse_attached
 from sempy_labs._list_functions import assign_workspace_to_capacity
 import pandas as pd
@@ -446,7 +445,9 @@ def migrate_capacities(
             & (~dfC_filt["Sku"].str.startswith("PP"))
         ]
 
-    dfC_filt = dfC_filt.copy()  # Something strange is happening here. Without this a key error on Display Name occurs
+    dfC_filt = (
+        dfC_filt.copy()
+    )  # Something strange is happening here. Without this a key error on Display Name occurs
 
     if len(dfC_filt) == 0:
         print(f"{icons.info} There are no valid capacities to migrate.")
