@@ -2488,8 +2488,7 @@ def list_reports_using_semantic_model(
     dataset: str, workspace: Optional[str] = None
 ) -> pd.DataFrame:
     """
-    Shows a list of all the reports which use a given semantic model.
-    Limitation: This only shows reports in the same workspace as the semantic model.
+    Shows a list of all the reports (in all workspaces) which use a given semantic model.
 
     Parameters
     ----------
