@@ -166,18 +166,20 @@ def update_report_from_reportjson(
     )
     if response.status_code not in [200, 202]:
         raise FabricHTTPException(response)
+    if response.status_code == 200:
+        result = response.json()
     if response.status_code == 202:
         operationId = response.headers["x-ms-operation-id"]
         response = client.get(f"/v1/operations/{operationId}")
         response_body = json.loads(response.content)
-        while response_body["status"] not in ["Succeeded", "Failed"]:
+        while response_body["status"] != "Succeeded":
             time.sleep(1)
             response = client.get(f"/v1/operations/{operationId}")
             response_body = json.loads(response.content)
-        if response_body["status"] != "Succeeded":
-            raise FabricHTTPException(response)
+        response = client.get(f"/v1/operations/{operationId}/result")
+        result = response.json()
 
-    df_items = pd.json_normalize(response.json()["definition"]["parts"])
+    df_items = pd.json_normalize(result["definition"]["parts"])
     df_items_filt = df_items[df_items["path"] == "definition.pbir"]
     rptDefFile = df_items_filt["payload"].iloc[0]
     payloadReportJson = _conv_b64(report_json)

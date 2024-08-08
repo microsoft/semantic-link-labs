@@ -398,6 +398,8 @@ def vertipaq_analyzer(
         by="Used Size", ascending=False
     )
     dfH_filt.reset_index(drop=True, inplace=True)
+    dfH_filt.fillna({'Used Size': 0})
+    dfH_filt['Used Size'] = dfH_filt['Used Size'].astype(int)
     export_Hier = dfH_filt.copy()
     intList = ["Used Size"]
     dfH_filt[intList] = dfH_filt[intList].applymap("{:,}".format)
@@ -423,6 +425,7 @@ def vertipaq_analyzer(
         index=[0],
     )
     dfModel.reset_index(drop=True, inplace=True)
+    dfModel['Default Mode'] = dfModel['Default Mode'].astype(str)
     export_Model = dfModel.copy()
     intList = ["Total Size", "Table Count", "Column Count"]
     dfModel[intList] = dfModel[intList].applymap("{:,}".format)

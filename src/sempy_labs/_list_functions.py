@@ -9,6 +9,8 @@ from sempy_labs._helper_functions import (
 import pandas as pd
 import base64
 import requests
+import time
+import json
 from pyspark.sql import SparkSession
 from typing import Optional
 import sempy_labs._icons as icons
@@ -2397,11 +2399,23 @@ def get_notebook_definition(
     client = fabric.FabricRestClient()
     response = client.post(
         f"v1/workspaces/{workspace_id}/notebooks/{notebook_id}/getDefinition",
-        lro_wait=True,
     )
-    if response.status_code != 200:
+    if response.status_code not in [200, 202]:
         raise FabricHTTPException(response)
-    df_items = pd.json_normalize(response.json()["definition"]["parts"])
+    if response.status_code == 200:
+        result = response.json()
+    if response.status_code == 202:
+        operationId = response.headers["x-ms-operation-id"]
+        response = client.get(f"/v1/operations/{operationId}")
+        response_body = json.loads(response.content)
+        while response_body["status"] != "Succeeded":
+            time.sleep(1)
+            response = client.get(f"/v1/operations/{operationId}")
+            response_body = json.loads(response.content)
+        response = client.get(f"/v1/operations/{operationId}/result")
+        result = response.json()
+
+    df_items = pd.json_normalize(result["definition"]["parts"])
     df_items_filt = df_items[df_items["path"] == "notebook-content.py"]
     payload = df_items_filt["payload"].iloc[0]
 
@@ -2480,10 +2494,20 @@ def import_notebook_from_web(
         request_body["description"] = description
 
     response = client.post(
-        f"v1/workspaces/{workspace_id}/notebooks", json=request_body, lro_wait=True
+        f"v1/workspaces/{workspace_id}/notebooks", json=request_body
     )
-    if response.status_code not in [200, 202]:
+    if response.status_code not in [201, 202]:
         raise FabricHTTPException(response)
+    if response.status_code == 202:
+        operationId = response.headers["x-ms-operation-id"]
+        response = client.get(f"/v1/operations/{operationId}")
+        response_body = json.loads(response.content)
+        while response_body["status"] not in ["Succeeded", "Failed"]:
+            time.sleep(1)
+            response = client.get(f"/v1/operations/{operationId}")
+            response_body = json.loads(response.content)
+        if response_body["status"] != "Succeeded":
+            raise FabricHTTPException(response)
     print(
         f"{icons.green_dot} The '{notebook_name}' notebook was created within the '{workspace}' workspace."
     )
