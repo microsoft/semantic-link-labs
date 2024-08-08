@@ -2,6 +2,7 @@ import sempy.fabric as fabric
 import pandas as pd
 import json
 import os
+import time
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
@@ -109,12 +110,20 @@ def create_report_from_reportjson(
         }
         request_body["definition"]["parts"].append(part)
 
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/reports", json=request_body, lro_wait=True
-    )
+    response = client.post(f"/v1/workspaces/{workspace_id}/reports", json=request_body)
 
-    if response.status_code not in [200, 201]:
+    if response.status_code not in [201, 202]:
         raise FabricHTTPException(response)
+    if response.status_code == 202:
+        operationId = response.headers["x-ms-operation-id"]
+        response = client.get(f"/v1/operations/{operationId}")
+        response_body = json.loads(response.content)
+        while response_body["status"] not in ["Succeeded", "Failed"]:
+            time.sleep(1)
+            response = client.get(f"/v1/operations/{operationId}")
+            response_body = json.loads(response.content)
+        if response_body["status"] != "Succeeded":
+            raise FabricHTTPException(response)
     print(
         f"{icons.green_dot} Succesfully created the '{report}' report within the '{workspace}' workspace."
     )
@@ -155,8 +164,19 @@ def update_report_from_reportjson(
     response = client.post(
         f"/v1/workspaces/{workspace_id}/reports/{reportId}/getDefinition"
     )
-    if response.status_code != 200:
+    if response.status_code not in [200, 202]:
         raise FabricHTTPException(response)
+    if response.status_code == 202:
+        operationId = response.headers["x-ms-operation-id"]
+        response = client.get(f"/v1/operations/{operationId}")
+        response_body = json.loads(response.content)
+        while response_body["status"] not in ["Succeeded", "Failed"]:
+            time.sleep(1)
+            response = client.get(f"/v1/operations/{operationId}")
+            response_body = json.loads(response.content)
+        if response_body["status"] != "Succeeded":
+            raise FabricHTTPException(response)
+
     df_items = pd.json_normalize(response.json()["definition"]["parts"])
     df_items_filt = df_items[df_items["path"] == "definition.pbir"]
     rptDefFile = df_items_filt["payload"].iloc[0]
@@ -182,11 +202,21 @@ def update_report_from_reportjson(
     response = client.post(
         f"/v1/workspaces/{workspace_id}/reports/{reportId}/updateDefinition",
         json=request_body,
-        lro_wait=True,
     )
 
-    if response.status_code != 200:
+    if response.status_code not in [200, 202]:
         raise FabricHTTPException(response)
+    if response.status_code == 202:
+        operationId = response.headers["x-ms-operation-id"]
+        response = client.get(f"/v1/operations/{operationId}")
+        response_body = json.loads(response.content)
+        while response_body["status"] not in ["Succeeded", "Failed"]:
+            time.sleep(1)
+            response = client.get(f"/v1/operations/{operationId}")
+            response_body = json.loads(response.content)
+        if response_body["status"] != "Succeeded":
+            raise FabricHTTPException(response)
+
     print(
         f"{icons.green_dot} The '{report}' report within the '{workspace}' workspace has been successfully updated."
     )
