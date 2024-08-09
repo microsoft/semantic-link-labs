@@ -5,7 +5,9 @@ import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 from sempy_labs.lakehouse import lakehouse_attached
 from sempy_labs._list_functions import assign_workspace_to_capacity
+from sempy_labs.admin._basic_functions import assign_workspaces_to_capacity
 import pandas as pd
+import datetime
 
 
 @log
@@ -480,6 +482,7 @@ def migrate_capacities(
                     f"{icons.info} Skipping creating a new capacity for '{cap_name}' as the '{tgt_capacity}' capacity already exists."
                 )
             else:
+                start_time = datetime.datetime.now()
                 create_fabric_capacity(
                     capacity_name=tgt_capacity,
                     azure_subscription_id=azure_subscription_id,
@@ -492,27 +495,59 @@ def migrate_capacities(
                     sku=sku_mapping.get(sku_size),
                     admin_email=admins,
                 )
+                end_time = datetime.datetime.now()
+                print(
+                    f"Total time for creating the Fabric capacity is {str((end_time - start_time).total_seconds())}"
+                )
             # Migrate workspaces to new capacity
-            migrate_workspaces(
-                source_capacity=cap_name,
-                target_capacity=tgt_capacity,
-                workspaces=None,
+            assign_workspaces_to_capacity(
+                source_capacity=cap_name, target_capacity=tgt_capacity, workspace=None
             )
 
+            # Migrate settings to new capacity
+            start_time = datetime.datetime.now()
             migrate_capacity_settings(
                 source_capacity=cap_name, target_capacity=tgt_capacity
             )
+            end_time = datetime.datetime.now()
+            print(
+                f"Total time for migrating capacity settings is {str((end_time - start_time).total_seconds())}"
+            )
+
+            start_time = datetime.datetime.now()
             migrate_access_settings(
                 source_capacity=cap_name, target_capacity=tgt_capacity
             )
+            end_time = datetime.datetime.now()
+            print(
+                f"Total time for migrating access settings is {str((end_time - start_time).total_seconds())}"
+            )
+
+            start_time = datetime.datetime.now()
             migrate_notification_settings(
                 source_capacity=cap_name, target_capacity=tgt_capacity
             )
+            end_time = datetime.datetime.now()
+            print(
+                f"Total time for migrating notification settings is {str((end_time - start_time).total_seconds())}"
+            )
+
+            start_time = datetime.datetime.now()
             migrate_delegated_tenant_settings(
                 source_capacity=cap_name, target_capacity=tgt_capacity
             )
+            end_time = datetime.datetime.now()
+            print(
+                f"Total time for migrating delegated tenant settings is {str((end_time - start_time).total_seconds())}"
+            )
+
+            start_time = datetime.datetime.now()
             migrate_disaster_recovery_settings(
                 source_capacity=cap_name, target_capacity=tgt_capacity
+            )
+            end_time = datetime.datetime.now()
+            print(
+                f"Total time for migrating disaster recovery settings is {str((end_time - start_time).total_seconds())}"
             )
 
 

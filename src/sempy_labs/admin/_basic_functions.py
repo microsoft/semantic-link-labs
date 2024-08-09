@@ -3,6 +3,7 @@ from typing import Optional, List
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
+import datetime
 
 
 @log
@@ -43,19 +44,30 @@ def assign_workspaces_to_capacity(
         dfW = fabric.list_workspaces()
         workspaces = dfW[dfW["Name"].isin(workspace)]["Name"].values
 
-    request_body = {
-        "targetCapacityObjectId": target_capacity_id,
-        "workspacesToAssign": workspaces,
-    }
+    batch_size = 999
+    batches = [
+        workspaces[i:i + batch_size] for i in range(0, len(workspaces), batch_size)
+    ]
+    for batch in batches:
+        batch_length = len(batch)
+        start_time = datetime.datetime.now()
+        request_body = {
+            "targetCapacityObjectId": target_capacity_id,
+            "workspacesToAssign": batch,
+        }
 
-    client = fabric.PowerBIRestClient()
-    response = client.post(
-        "/v1.0/myorg/admin/capacities/AssignWorkspaces",
-        json=request_body,
-    )
+        client = fabric.PowerBIRestClient()
+        response = client.post(
+            "/v1.0/myorg/admin/capacities/AssignWorkspaces",
+            json=request_body,
+        )
 
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+        if response.status_code != 200:
+            raise FabricHTTPException(response)
+        end_time = datetime.datetime.now()
+        print(
+            f"Total time for assigning {str(batch_length)} workspaces is {str((end_time - start_time).total_seconds())}"
+        )
     print(
         f"{icons.green_dot} The workspaces have been assigned to the '{target_capacity}' capacity."
     )
