@@ -4,6 +4,7 @@ from sempy._utils._log import log
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 import datetime
+import numpy as np
 
 
 @log
@@ -39,21 +40,24 @@ def assign_workspaces_to_capacity(
     if workspace is None:
         workspaces = fabric.list_workspaces(
             filter=f"capacityId eq '{source_capacity_id.upper()}'"
-        )["Name"].values
+        )["Id"].values
     else:
         dfW = fabric.list_workspaces()
-        workspaces = dfW[dfW["Name"].isin(workspace)]["Name"].values
+        workspaces = dfW[dfW["Name"].isin(workspace)]["Id"].values
 
+    workspaces = np.array(workspaces)
     batch_size = 999
-    batches = [
-        workspaces[i:i + batch_size] for i in range(0, len(workspaces), batch_size)
-    ]
-    for batch in batches:
+    for i in range(0, len(workspaces), batch_size):
+        batch = workspaces[i : i + batch_size].tolist()
         batch_length = len(batch)
         start_time = datetime.datetime.now()
         request_body = {
-            "targetCapacityObjectId": target_capacity_id,
-            "workspacesToAssign": batch,
+            "capacityMigrationAssignments": [
+                {
+                    "targetCapacityObjectId": target_capacity_id.upper(),
+                    "workspacesToAssign": batch,
+                }
+            ]
         }
 
         client = fabric.PowerBIRestClient()
