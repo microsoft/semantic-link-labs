@@ -151,10 +151,11 @@ def run_model_bpa_bulk(
                         print(
                             f"{icons.green_dot} Collected Model BPA stats for the '{dataset_name}' semantic model within the '{wksp}' workspace."
                         )
-                    except Exception:
+                    except Exception as e:
                         print(
                             f"{icons.red_dot} Model BPA failed for the '{dataset_name}' semantic model within the '{wksp}' workspace."
                         )
+                        print(e)
 
                 df["Severity"].replace(icons.severity_mapping, inplace=True)
 
