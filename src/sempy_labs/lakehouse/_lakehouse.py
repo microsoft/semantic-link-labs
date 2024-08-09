@@ -89,7 +89,7 @@ def vacuum_lakehouse_tables(
     tables: Optional[Union[str, List[str]]] = None,
     lakehouse: Optional[str] = None,
     workspace: Optional[str] = None,
-    retention_days: Optional[int] = None
+    retain_n_hours: Optional[int] = None
 ):
     """
     Runs the `VACUUM <https://docs.delta.io/latest/delta-utility.html#remove-files-no-longer-referenced-by-a-delta-table>`_ function over the specified lakehouse tables.
@@ -105,11 +105,11 @@ def vacuum_lakehouse_tables(
         The Fabric workspace used by the lakehouse.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    retention_days : int, default=None
-        The number of days to retain historical versions of Delta table files.
+    retain_n_hours : int, default=None
+        The number of hours to retain historical versions of Delta table files.
         Files older than this retention period will be deleted during the vacuum operation.
         If not specified, the default retention period configured for the Delta table will be used.
-        The default retention period is 7 days unless manually configured via table properties.
+        The default retention period is 168 hours (7 days) unless manually configured via table properties.
     """
 
     from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
@@ -144,10 +144,10 @@ def vacuum_lakehouse_tables(
         bar.set_description(f"Vacuuming the '{tableName}' table...")
         deltaTable = DeltaTable.forPath(spark, tablePath)
         
-        if retention_days is None:
+        if retain_n_hours is None:
             deltaTable.vacuum()
         else:
-            deltaTable.vacuum(retention_days)
+            deltaTable.vacuum(retain_n_hours)
 
         print(
             f"{icons.green_dot} The '{tableName}' table has been vacuumed. ({str(i)}/{str(tableCount)})"
