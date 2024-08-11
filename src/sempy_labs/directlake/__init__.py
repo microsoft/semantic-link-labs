@@ -3,7 +3,7 @@ from sempy_labs.directlake._directlake_schema_sync import direct_lake_schema_syn
 from sempy_labs.directlake._dl_helper import (
     check_fallback_reason,
     generate_direct_lake_semantic_model,
-    get_direct_lake_source
+    get_direct_lake_source,
 )
 from sempy_labs.directlake._get_directlake_lakehouse import get_direct_lake_lakehouse
 from sempy_labs.directlake._get_shared_expression import get_shared_expression

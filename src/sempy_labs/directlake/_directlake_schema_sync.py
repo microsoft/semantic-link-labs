@@ -1,7 +1,8 @@
 import sempy
 import sempy.fabric as fabric
 import pandas as pd
-from sempy_labs.lakehouse._get_lakehouse_columns import get_lakehouse_columns
+from sempy_labs.lakehouse import get_lakehouse_columns
+from sempy_labs.directlake import get_direct_lake_source
 from sempy_labs.tom import connect_semantic_model
 from sempy_labs._helper_functions import (
     format_dax_object_name,
@@ -49,23 +50,11 @@ def direct_lake_schema_sync(
 
     workspace = fabric.resolve_workspace_name(workspace)
 
-    if lakehouse_workspace is None:
-        lakehouse_workspace = workspace
+    artifact_type, lakehouse_name, lakehouse_id, lakehouse_workspace_id = get_direct_lake_source(dataset=dataset, workspace=workspace)
+    lakehouse_workspace = fabric.resolve_workspace_name(lakehouse_workspace_id)
 
-    if lakehouse is None:
-        lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse = resolve_lakehouse_name(lakehouse_id, lakehouse_workspace)
-
-    sqlEndpointId = get_direct_lake_sql_endpoint(dataset, workspace)
-
-    dfI = fabric.list_items(workspace=lakehouse_workspace, type="SQLEndpoint")
-    dfI_filt = dfI[(dfI["Id"] == sqlEndpointId)]
-
-    if len(dfI_filt) == 0:
-        raise ValueError(
-            f"{icons.red_dot} The SQL Endpoint in the '{dataset}' semantic model in the '{workspace} workspace does not point to the "
-            f"'{lakehouse}' lakehouse in the '{lakehouse_workspace}' workspace as specified."
-        )
+    if artifact_type == 'Warehouse':
+        raise ValueError(f"{icons.red_dot} This function is only valid for Direct Lake semantic models which source from Fabric lakehouses (not warehouses).")
 
     dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
     dfP_filt = dfP[dfP["Source Type"] == "Entity"]
@@ -78,7 +67,7 @@ def direct_lake_schema_sync(
         dfC_filt["Query"], dfC_filt["Source"]
     )
 
-    lc = get_lakehouse_columns(lakehouse, lakehouse_workspace)
+    lc = get_lakehouse_columns(lakehouse_name, lakehouse_workspace)
     lc_filt = lc[lc["Table Name"].isin(dfP_filt["Query"].values)]
 
     with connect_semantic_model(

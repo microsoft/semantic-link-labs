@@ -174,7 +174,7 @@ def generate_direct_lake_semantic_model(
 
 def get_direct_lake_source(
     dataset: str, workspace: Optional[str] = None
-) -> Tuple[str, UUID, UUID]:
+) -> Tuple[str, str, UUID, UUID]:
     """
     Obtains the source information for a direct lake semantic model.
 
@@ -189,9 +189,9 @@ def get_direct_lake_source(
 
     Returns
     -------
-    Tuple[str, UUID, UUID]
-        If the source of the direct lake semantic model is a lakehouse this will return: 'Lakehouse', SQL Endpoint Id, Workspace Id
-        If the source of the direct lake semantic model is a warehouse this will return: 'Warehouse', Warehouse Id, Workspace Id
+    Tuple[str, str, UUID, UUID]
+        If the source of the direct lake semantic model is a lakehouse this will return: 'Lakehouse', Lakehouse Name, SQL Endpoint Id, Workspace Id
+        If the source of the direct lake semantic model is a warehouse this will return: 'Warehouse', Warehouse Name, Warehouse Id, Workspace Id
         If the semantic model is not a Direct Lake semantic model, it will return None, None, None.
     """
 
@@ -210,16 +210,18 @@ def get_direct_lake_source(
         "metadata/relations/upstream?apiVersion=3", json=request_body
     )
     artifacts = response.json().get("artifacts", [])
-    sql_id, sql_workspace_id, artifact_type = None, None, None
+    sql_id, sql_object_name, sql_workspace_id, artifact_type = None, None, None, None
 
     for artifact in artifacts:
         object_type = artifact.get("typeName")
+        display_name = artifact.get("displayName")
         if object_type in ["Datawarehouse", "Lakewarehouse"]:
             artifact_type = (
                 "Warehouse" if object_type == "Datawarehouse" else "Lakehouse"
             )
             sql_id = artifact.get("objectId")
             sql_workspace_id = artifact.get("workspace", {}).get("objectId")
+            sql_object_name = display_name
             break
 
-    return artifact_type, sql_id, sql_workspace_id
+    return artifact_type, sql_object_name, sql_id, sql_workspace_id

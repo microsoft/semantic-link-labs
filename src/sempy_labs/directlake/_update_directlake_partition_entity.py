@@ -1,7 +1,7 @@
 import sempy.fabric as fabric
 from sempy_labs.tom import connect_semantic_model
-from sempy_labs._helper_functions import resolve_lakehouse_name
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
+from sempy_labs.directlake import get_direct_lake_source
 from typing import List, Optional, Union
 import sempy_labs._icons as icons
 
@@ -40,12 +40,8 @@ def update_direct_lake_partition_entity(
 
     workspace = fabric.resolve_workspace_name(workspace)
 
-    if lakehouse_workspace is None:
-        lakehouse_workspace = workspace
-
-    if lakehouse is None:
-        lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse = resolve_lakehouse_name(lakehouse_id, lakehouse_workspace)
+    artifact_type, lakehouse_name, lakehouse_id, lakehouse_workspace_id = get_direct_lake_source(dataset=dataset, workspace=workspace)
+    lakehouse_workspace = fabric.resolve_workspace_name(lakehouse_workspace_id)
 
     # Support both str & list types
     if isinstance(table_name, str):
@@ -85,7 +81,7 @@ def update_direct_lake_partition_entity(
                 tom.model.Tables[tName].Partitions[part_name].EntityName = eName
                 print(
                     f"{icons.green_dot} The '{tName}' table in the '{dataset}' semantic model has been updated to point to the '{eName}' table "
-                    f"in the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace."
+                    f"in the '{lakehouse_name}' lakehouse within the '{lakehouse_workspace}' workspace."
                 )
 
 

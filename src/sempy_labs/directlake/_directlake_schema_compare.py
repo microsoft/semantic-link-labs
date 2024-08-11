@@ -6,7 +6,8 @@ from sempy_labs._helper_functions import (
     get_direct_lake_sql_endpoint,
 )
 from IPython.display import display
-from sempy_labs.lakehouse._get_lakehouse_columns import get_lakehouse_columns
+from sempy_labs.lakehouse import get_lakehouse_columns
+from sempy_labs.directlake import get_direct_lake_source
 from sempy_labs._list_functions import list_tables
 from typing import Optional
 import sempy_labs._icons as icons
@@ -42,23 +43,13 @@ def direct_lake_schema_compare(
 
     workspace = fabric.resolve_workspace_name(workspace)
 
-    if lakehouse_workspace is None:
-        lakehouse_workspace = workspace
+    artifact_type, lakehouse_name, lakehouse_id, lakehouse_workspace_id = get_direct_lake_source(dataset=dataset, workspace=workspace)
+    lakehouse_workspace = fabric.resolve_workspace_name(lakehouse_workspace_id)
 
-    if lakehouse is None:
-        lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse = resolve_lakehouse_name(lakehouse_id, lakehouse_workspace)
+    if artifact_type == 'Warehouse':
+        raise ValueError(f"{icons.red_dot} This function is only valid for Direct Lake semantic models which source from Fabric lakehouses (not warehouses).")
 
     dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
-    sqlEndpointId = get_direct_lake_sql_endpoint(dataset, workspace)
-    dfI = fabric.list_items(workspace=lakehouse_workspace, type="SQLEndpoint")
-    dfI_filt = dfI[(dfI["Id"] == sqlEndpointId)]
-
-    if len(dfI_filt) == 0:
-        raise ValueError(
-            f"{icons.red_dot} The SQL Endpoint in the '{dataset}' semantic model in the '{workspace} workspace does not point to the "
-            f"'{lakehouse}' lakehouse in the '{lakehouse_workspace}' workspace as specified."
-        )
 
     if not any(r["Mode"] == "DirectLake" for i, r in dfP.iterrows()):
         raise ValueError(
@@ -67,7 +58,7 @@ def direct_lake_schema_compare(
 
     dfT = list_tables(dataset, workspace)
     dfC = fabric.list_columns(dataset=dataset, workspace=workspace)
-    lc = get_lakehouse_columns(lakehouse, lakehouse_workspace)
+    lc = get_lakehouse_columns(lakehouse_name, lakehouse_workspace)
 
     dfT.rename(columns={"Type": "Table Type"}, inplace=True)
     dfP_filt = dfP[dfP["Mode"] == "DirectLake"]
@@ -93,21 +84,21 @@ def direct_lake_schema_compare(
 
     if len(missingtbls) == 0:
         print(
-            f"{icons.green_dot} All tables exist in the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace."
+            f"{icons.green_dot} All tables exist in the '{lakehouse_name}' lakehouse within the '{lakehouse_workspace}' workspace."
         )
     else:
         print(
             f"{icons.yellow_dot} The following tables exist in the '{dataset}' semantic model within the '{workspace}' workspace"
-            f" but do not exist in the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace."
+            f" but do not exist in the '{lakehouse_name}' lakehouse within the '{lakehouse_workspace}' workspace."
         )
         display(missingtbls)
     if len(missingcols) == 0:
         print(
-            f"{icons.green_dot} All columns exist in the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace."
+            f"{icons.green_dot} All columns exist in the '{lakehouse_name}' lakehouse within the '{lakehouse_workspace}' workspace."
         )
     else:
         print(
             f"{icons.yellow_dot} The following columns exist in the '{dataset}' semantic model within the '{workspace}' workspace "
-            f"but do not exist in the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace."
+            f"but do not exist in the '{lakehouse_name}' lakehouse within the '{lakehouse_workspace}' workspace."
         )
         display(missingcols)

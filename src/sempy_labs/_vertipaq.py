@@ -9,15 +9,14 @@ import warnings
 from pyspark.sql import SparkSession
 from sempy_labs._helper_functions import (
     format_dax_object_name,
-    get_direct_lake_sql_endpoint,
     resolve_lakehouse_name,
     resolve_dataset_id,
     save_as_delta_table,
     resolve_workspace_capacity,
 )
 from sempy_labs._list_functions import list_relationships
-from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
-from sempy_labs.lakehouse._lakehouse import lakehouse_attached
+from sempy_labs.lakehouse import lakehouse_attached, get_lakehouse_tables
+from sempy_labs.directlake import get_direct_lake_source
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
@@ -28,8 +27,8 @@ def vertipaq_analyzer(
     dataset: str,
     workspace: Optional[str] = None,
     export: Optional[str] = None,
-    lakehouse_workspace: Optional[str] = None,
     read_stats_from_data: Optional[bool] = False,
+    **kwargs,
 ):
     """
     Displays an HTML visualization of the Vertipaq Analyzer statistics from a semantic model.
@@ -46,10 +45,6 @@ def vertipaq_analyzer(
         Specifying 'zip' will export the results to a zip file in your lakehouse (which can be imported using the import_vertipaq_analyzer function.
         Specifying 'table' will export the results to delta tables (appended) in your lakehouse.
         Default value: None.
-    lakehouse_workspace : str, default=None
-        The Fabric workspace used by the lakehouse (for Direct Lake semantic models).
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
     read_stats_from_data : bool, default=False
         Setting this parameter to true has the function get Column Cardinality and Missing Rows using DAX (Direct Lake semantic models achieve this using a Spark query to the lakehouse).
 
@@ -60,15 +55,18 @@ def vertipaq_analyzer(
 
     from sempy_labs.tom import connect_semantic_model
 
+    if "lakehouse_workspace" in kwargs:
+        print(
+            f"{icons.info} The 'lakehouse_workspace' parameter has been deprecated as it is no longer necessary. Please remove this parameter from the function going forward."
+        )
+        del kwargs["lakehouse_workspace"]
+
     pd.options.mode.copy_on_write = True
     warnings.filterwarnings(
         "ignore", message="createDataFrame attempted Arrow optimization*"
     )
 
     workspace = fabric.resolve_workspace_name(workspace)
-
-    if lakehouse_workspace is None:
-        lakehouse_workspace = workspace
 
     dfT = fabric.list_tables(dataset=dataset, extended=True, workspace=workspace)
     dfT.rename(columns={"Name": "Table Name"}, inplace=True)
@@ -80,6 +78,9 @@ def vertipaq_analyzer(
     dfR["From Object"] = format_dax_object_name(dfR["From Table"], dfR["From Column"])
     dfR["To Object"] = format_dax_object_name(dfR["To Table"], dfR["To Column"])
     dfP = fabric.list_partitions(dataset=dataset, extended=True, workspace=workspace)
+    artifact_type, lakehouse_name, lakehouse_id, lakehouse_workspace_id = (
+        get_direct_lake_source(dataset=dataset, workspace=workspace)
+    )
 
     with connect_semantic_model(
         dataset=dataset, readonly=True, workspace=workspace
@@ -94,7 +95,7 @@ def vertipaq_analyzer(
 
     # Direct Lake
     if read_stats_from_data:
-        if is_direct_lake:
+        if is_direct_lake and artifact_type == "Lakehouse":
             dfC = pd.merge(
                 dfC,
                 dfP[["Table Name", "Query", "Source Type"]],
@@ -105,69 +106,54 @@ def vertipaq_analyzer(
                 (dfC["Source Type"] == "Entity")
                 & (~dfC["Column Name"].str.startswith("RowNumber-"))
             ]
-            sqlEndpointId = get_direct_lake_sql_endpoint(dataset, workspace)
 
-            # Get lakehouse name from SQL Endpoint ID
-            dfI = fabric.list_items(workspace=lakehouse_workspace, type="SQLEndpoint")
-            dfI_filt = dfI[(dfI["Id"] == sqlEndpointId)]
-
-            if len(dfI_filt) == 0:
-                raise ValueError(
-                    f"{icons.red_dot} The lakehouse (SQL Endpoint) used by the '{dataset}' semantic model does not reside in the '{lakehouse_workspace}' workspace."
-                    "Please update the lakehouse_workspace parameter."
+            object_workspace = fabric.resolve_workspace_name(lakehouse_workspace_id)
+            current_workspace_id = fabric.get_workspace_id()
+            if current_workspace_id != lakehouse_workspace_id:
+                lakeTables = get_lakehouse_tables(
+                    lakehouse=lakehouse_name, workspace=object_workspace
                 )
-            else:
-                lakehouseName = dfI_filt["Display Name"].iloc[0]
 
-                current_workspace_id = fabric.get_workspace_id()
-                current_workspace = fabric.resolve_workspace_name(current_workspace_id)
-                if current_workspace != lakehouse_workspace:
-                    lakeTables = get_lakehouse_tables(
-                        lakehouse=lakehouseName, workspace=lakehouse_workspace
-                    )
+            sql_statements = []
+            spark = SparkSession.builder.getOrCreate()
+            # Loop through tables
+            for lakeTName in dfC_flt["Query"].unique():
+                query = "SELECT "
+                columns_in_table = dfC_flt.loc[
+                    dfC_flt["Query"] == lakeTName, "Source"
+                ].unique()
 
-                sql_statements = []
-                spark = SparkSession.builder.getOrCreate()
-                # Loop through tables
-                for lakeTName in dfC_flt["Query"].unique():
-                    query = "SELECT "
-                    columns_in_table = dfC_flt.loc[
-                        dfC_flt["Query"] == lakeTName, "Source"
-                    ].unique()
+                # Loop through columns within those tables
+                for scName in columns_in_table:
+                    query = query + f"COUNT(DISTINCT(`{scName}`)) AS `{scName}`, "
 
-                    # Loop through columns within those tables
-                    for scName in columns_in_table:
-                        query = query + f"COUNT(DISTINCT({scName})) AS {scName}, "
+                query = query[:-2]
+                if lakehouse_workspace_id == current_workspace_id:
+                    query = query + f" FROM {lakehouse_name}.{lakeTName}"
+                else:
+                    lakeTables_filt = lakeTables[lakeTables["Table Name"] == lakeTName]
+                    tPath = lakeTables_filt["Location"].iloc[0]
 
-                    query = query[:-2]
-                    if lakehouse_workspace == current_workspace:
-                        query = query + f" FROM {lakehouseName}.{lakeTName}"
-                    else:
-                        lakeTables_filt = lakeTables[
-                            lakeTables["Table Name"] == lakeTName
-                        ]
-                        tPath = lakeTables_filt["Location"].iloc[0]
+                    df = spark.read.format("delta").load(tPath)
+                    tempTableName = "delta_table_" + lakeTName
+                    df.createOrReplaceTempView(tempTableName)
+                    query = query + f" FROM {tempTableName}"
+                sql_statements.append((lakeTName, query))
 
-                        df = spark.read.format("delta").load(tPath)
-                        tempTableName = "delta_table_" + lakeTName
-                        df.createOrReplaceTempView(tempTableName)
-                        query = query + f" FROM {tempTableName}"
-                    sql_statements.append((lakeTName, query))
+            for o in sql_statements:
+                tName = o[0]
+                query = o[1]
 
-                for o in sql_statements:
-                    tName = o[0]
-                    query = o[1]
+                df = spark.sql(query)
 
-                    df = spark.sql(query)
+                for column in df.columns:
+                    x = df.collect()[0][column]
+                    for i, r in dfC.iterrows():
+                        if r["Query"] == tName and r["Source"] == column:
+                            dfC.at[i, "Cardinality"] = x
 
-                    for column in df.columns:
-                        x = df.collect()[0][column]
-                        for i, r in dfC.iterrows():
-                            if r["Query"] == tName and r["Source"] == column:
-                                dfC.at[i, "Cardinality"] = x
-
-                # Remove column added temporarily
-                dfC.drop(columns=["Query", "Source Type"], inplace=True)
+            # Remove column added temporarily
+            dfC.drop(columns=["Query", "Source Type"], inplace=True)
 
             # Direct Lake missing rows
             dfR = pd.merge(
@@ -214,11 +200,11 @@ def vertipaq_analyzer(
                 toTable = r["To Lake Table"]
                 toColumn = r["To Lake Column"]
 
-                if lakehouse_workspace == current_workspace:
+                if lakehouse_workspace_id == current_workspace_id:
                     query = f"select count(f.{fromColumn}) as {fromColumn}\nfrom {fromTable} as f\nleft join {toTable} as c on f.{fromColumn} = c.{toColumn}\nwhere c.{toColumn} is null"
                 else:
-                    tempTableFrom = "delta_table_" + fromTable
-                    tempTableTo = "delta_table_" + toTable
+                    tempTableFrom = f"delta_table_{fromTable}"
+                    tempTableTo = f"delta_table_{toTable}"
 
                     query = f"select count(f.{fromColumn}) as {fromColumn}\nfrom {tempTableFrom} as f\nleft join {tempTableTo} as c on f.{fromColumn} = c.{toColumn}\nwhere c.{toColumn} is null"
 
@@ -229,7 +215,7 @@ def vertipaq_analyzer(
                 dfR.at[i, "Missing Rows"] = missingRows
 
             dfR["Missing Rows"] = dfR["Missing Rows"].astype(int)
-        else:
+        elif not is_direct_lake:
             # Calculate missing rows using DAX for non-direct lake
             for i, r in dfR.iterrows():
                 fromTable = r["From Table"]
@@ -398,7 +384,7 @@ def vertipaq_analyzer(
         by="Used Size", ascending=False
     )
     dfH_filt.reset_index(drop=True, inplace=True)
-    dfH_filt.fillna({"Used Size": 0})
+    dfH_filt.fillna({"Used Size": 0}, inplace=True)
     dfH_filt["Used Size"] = dfH_filt["Used Size"].astype(int)
     export_Hier = dfH_filt.copy()
     intList = ["Used Size"]
