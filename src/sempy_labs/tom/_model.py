@@ -2562,7 +2562,9 @@ class TOMWrapper:
         t.Partitions.Add(par)
         self.model.Tables.Add(t)
 
-    def add_field_parameter(self, table_name: str, objects: List[str]):
+    def add_field_parameter(
+        self, table_name: str, objects: List[str], object_names: List[str] = None
+    ):
         """
         Adds a `field parameter <https://learn.microsoft.com/power-bi/create-reports/power-bi-field-parameters>`_ to the semantic model.
 
@@ -2574,6 +2576,9 @@ class TOMWrapper:
             The columns/measures to be included in the field parameter.
             Columns must be specified as such : 'Table Name'[Column Name].
             Measures may be formatted as '[Measure Name]' or 'Measure Name'.
+        object_names : List[str], default=None
+            The corresponding visible name for the measures/columns in the objects list.
+            Defaults to None which shows the measure/column name.
         """
 
         import Microsoft.AnalysisServices.Tabular as TOM
@@ -2588,38 +2593,30 @@ class TOMWrapper:
                 f"{icons.red_dot} There must be more than one object (column/measure) within the objects parameter."
             )
 
+        if object_names is not None and len(objects) != len(object_names):
+            raise ValueError(
+                f"{icons.red_dot} If the 'object_names' parameter is specified, it must correspond exactly to the 'objects' parameter."
+            )
+
         expr = ""
         i = 0
         for obj in objects:
+            index = objects.index(obj)
             success = False
             for m in self.all_measures():
-                if obj == f"[{m.Name}]" or obj == m.Name:
-                    expr = (
-                        expr
-                        + "\n\t"
-                        + '("'
-                        + m.Name
-                        + '", NAMEOF(['
-                        + m.Name
-                        + "]), "
-                        + str(i)
-                        + "),"
-                    )
+                obj_name = m.Name
+                if obj == f"[{obj_name}]" or obj == obj_name:
+                    if object_names is not None:
+                        obj_name = object_names[index]
+                    expr = f'{expr}\n\t("{obj_name}", NAMEOF([{m.Name}]), {str(i)}),'
                     success = True
             for c in self.all_columns():
+                obj_name = c.Name
                 fullObjName = format_dax_object_name(c.Parent.Name, c.Name)
                 if obj == fullObjName or obj == c.Parent.Name + "[" + c.Name + "]":
-                    expr = (
-                        expr
-                        + "\n\t"
-                        + '("'
-                        + c.Name
-                        + '", NAMEOF('
-                        + fullObjName
-                        + "), "
-                        + str(i)
-                        + "),"
-                    )
+                    if object_names is not None:
+                        obj_name = object_names[index]
+                    expr = f'{expr}\n\t("{obj_name}", NAMEOF({fullObjName}), {str(i)}),'
                     success = True
             if not success:
                 raise ValueError(
