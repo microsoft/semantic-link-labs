@@ -2493,9 +2493,7 @@ def import_notebook_from_web(
     if description is not None:
         request_body["description"] = description
 
-    response = client.post(
-        f"v1/workspaces/{workspace_id}/notebooks", json=request_body
-    )
+    response = client.post(f"v1/workspaces/{workspace_id}/notebooks", json=request_body)
     if response.status_code not in [201, 202]:
         raise FabricHTTPException(response)
     if response.status_code == 202:
@@ -2566,5 +2564,56 @@ def list_reports_using_semantic_model(
                 "Report Workspace Id": object_workspace_id,
             }
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    return df
+
+
+def list_dataset_gateways(
+    dataset: str, workspace: Optional[str] = None
+) -> pd.DataFrame:
+    """
+    Shows a list of the gateways used by a semantic model.
+
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the gateways used by a semantic model.
+    """
+
+    # https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/discover-gateways-in-group
+
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    dataset_id = resolve_dataset_id(dataset, workspace)
+
+    df = pd.DataFrame(
+        columns=["Gateway Id", "Gateway Name", "Type", "Exponent", "Modulus"]
+    )
+    client = fabric.PowerBIRestClient()
+    response = client.get(
+        f"v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/Default.DiscoverGateways"
+    )
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    for i in response.json()["value"]:
+        new_data = {
+            "Gateway Id": i.get("id"),
+            "Gateway Name": i.get("name"),
+            "Type": i.get("type"),
+            "Exponent": i.get("publicKey", {}).get("exponent"),
+            "Modulus": i.get("publicKey", {}).get("modulus"),
+        }
+
+        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
