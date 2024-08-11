@@ -12,7 +12,7 @@ import requests
 import time
 import json
 from pyspark.sql import SparkSession
-from typing import Optional
+from typing import Optional, List
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 
@@ -2572,7 +2572,7 @@ def list_dataset_gateways(
     dataset: str, workspace: Optional[str] = None
 ) -> pd.DataFrame:
     """
-    Shows a list of the gateways used by a semantic model.
+    Shows a list of gateways that the specified dataset from the specified workspace can be bound to.
 
     Parameters
     ----------
@@ -2586,7 +2586,7 @@ def list_dataset_gateways(
     Returns
     -------
     pandas.DataFrame
-        A pandas dataframe showing the gateways used by a semantic model.
+        A pandas dataframe showing a list of gateways that the specified dataset from the specified workspace can be bound to.
     """
 
     # https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/discover-gateways-in-group
@@ -2617,3 +2617,333 @@ def list_dataset_gateways(
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
+
+
+def bind_dataset_to_gateway(
+    dataset: str,
+    gateway: str,
+    workspace: Optional[str] = None,
+    datasource_object_ids: Optional[str | List[str]] = None,
+):
+    """
+    Binds a semantic model to a gateway.
+
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    gateway : str
+        Name of the gateway.
+    datasource_object_ids : str | List[str], default=None
+        The unique identifiers for the data sources in the gateway.
+        Defaults to None as it is not required.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    # https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/bind-to-gateway-in-group
+
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    dataset_id = resolve_dataset_id(dataset, workspace)
+    if isinstance(datasource_object_ids, str):
+        datasource_object_ids = [datasource_object_ids]
+
+    dfG = fabric.list_gateways()
+    dfG_filt = dfG[dfG["Gateway Name"] == gateway]
+    if len(dfG_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} The '{gateway}' gateway is not a valid gateway."
+        )
+    gateway_id = dfG_filt["Gateway Id"].iloc[0]
+
+    request_body = {"gatewayObjectId": gateway_id}
+    if datasource_object_ids is not None:
+        request_body["datasourceObjectIds"] = datasource_object_ids
+
+    client = fabric.PowerBIRestClient()
+    response = client.post(
+        f"v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/Default.BindToGateway",
+        json=request_body,
+    )
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    print(
+        f"{icons.green_dot} The '{gateway}' gateway has been binded to the '{dataset}' semantic model within the '{workspace}' workspace."
+    )
+
+
+def connect_workspace_to_git(
+    organization_name: str,
+    project_name: str,
+    repository_name: str,
+    branch_name: str,
+    directory_name: str,
+    git_provider_type: str = "AzureDevOps",
+    workspace: Optional[str] = None,
+):
+
+    # https://learn.microsoft.com/en-us/rest/api/fabric/core/git/connect?tabs=HTTP
+
+    workspace, workspace_id = resolve_workspace_name_and_id(workspace)
+
+    request_body = {
+        "gitProviderDetails": {
+            "organizationName": organization_name,
+            "projectName": project_name,
+            "gitProviderType": git_provider_type,
+            "repositoryName": repository_name,
+            "branchName": branch_name,
+            "directoryName": directory_name,
+        }
+    }
+
+    client = fabric.FabricRestClient()
+    response = client.post(
+        f"/v1/workspaces/{workspace_id}/git/connect", json=request_body
+    )
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    print(
+        f"{icons.green_dot} The '{workspace}' workspace has been connected to the '{project_name}' Git project within the '{repository_name}' repository."
+    )
+
+
+def disconnect_workspace_from_git(workspace: Optional[str] = None):
+
+    # https://learn.microsoft.com/en-us/rest/api/fabric/core/git/disconnect?tabs=HTTP
+
+    workspace, workspace_id = resolve_workspace_name_and_id(workspace)
+
+    client = fabric.FabricRestClient()
+    response = client.post(f"/v1/workspaces/{workspace_id}/git/disconnect")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    print(
+        f"{icons.green_dot} The '{workspace}' workspace has been disconnected from Git."
+    )
+
+
+def get_git_status(workspace: Optional[str] = None) -> pd.DataFrame:
+
+    # https://learn.microsoft.com/en-us/rest/api/fabric/core/git/get-status?tabs=HTTP
+
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+
+    df = pd.DataFrame(
+        columns=[
+            "Workspace Head",
+            "Remote Commit Hash",
+            "Object ID",
+            "Logical ID",
+            "Item Type",
+            "Item Name",
+            "Workspace Change",
+            "Remote Change",
+            "Conflict Type",
+        ]
+    )
+
+    client = fabric.FabricRestClient()
+    response = client.get(f"/v1/workspaces/{workspace_id}/git/status", lro_wait=True)
+
+    if response not in [200, 202]:
+        raise FabricHTTPException(response)
+
+    for v in response.json().get("value", []):
+        changes = v.get("changes", [])
+        item_metadata = changes.get("itemMetadata", {})
+        item_identifier = item_metadata.get("itemIdentifier", {})
+
+        new_data = {
+            "Workspace Head": v.get("workspaceHead"),
+            "Remote Commit Hash": v.get("remoteCommitHash"),
+            "Object ID": item_identifier.get("objectId"),
+            "Logical ID": item_identifier.get("logicalId"),
+            "Item Type": item_metadata.get("itemType"),
+            "Item Name": item_metadata.get("displayName"),
+            "Remote Change": changes.get("remoteChange"),
+            "Workspace Change": changes.get("workspaceChange"),
+            "Conflict Type": changes.get("conflictType"),
+        }
+        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    return df
+
+
+def get_git_connection(workspace: Optional[str] = None) -> pd.DataFrame:
+
+    # https://learn.microsoft.com/en-us/rest/api/fabric/core/git/get-status?tabs=HTTP
+
+    workspace, workspace_id = resolve_workspace_name_and_id(workspace)
+
+    df = pd.DataFrame(
+        columns=[
+            "Organization Name",
+            "Project Name",
+            "Git Provider Type",
+            "Repository Name",
+            "Branch Name",
+            "Directory Name",
+            "Workspace Head",
+            "Last Sync Time",
+            "Git Connection State",
+        ]
+    )
+
+    client = fabric.FabricRestClient()
+    response = client.get(f"/v1/workspaces/{workspace_id}/git/connection")
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    for v in response.json().get("value", []):
+        provider_details = v.get("gitProviderDetails", {})
+        sync_details = v.get("gitSyncDetails", {})
+        new_data = {
+            "Organization Name": provider_details.get("organizationName"),
+            "Project Name": provider_details.get("projectName"),
+            "Git Provider Type": provider_details.get("gitProviderType"),
+            "Repository Name": provider_details.get("repositoryName"),
+            "Branch Name": provider_details.get("branchName"),
+            "Directory Name": provider_details.get("directoryName"),
+            "Workspace Head": sync_details.get("head"),
+            "Last Sync Time": sync_details.get("lastSyncTime"),
+            "Git Conneciton State": v.get("gitConnectionState"),
+        }
+        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    return df
+
+
+def initialize_git_connection(workspace: Optional[str] = None):
+
+    # https://learn.microsoft.com/en-us/rest/api/fabric/core/git/initialize-connection?tabs=HTTP
+
+    workspace, workspace_id = resolve_workspace_name_and_id(workspace)
+
+    client = fabric.FabricRestClient()
+    response = client.post(
+        f"/v1/workspaces/{workspace_id}/git/initializeConnection", lro_wait=True
+    )
+
+    if response not in [200, 202]:
+        raise FabricHTTPException(response)
+
+    print(f"The '{workspace}' workspace git connection has been initialized.")
+
+
+def commit_to_git(
+    comment: str, item_ids: str | List[str] = None, workspace: Optional[str] = None
+):
+    """
+    Commits all or a selection of items within a workspace to Git.
+
+    Parameters
+    ----------
+    comment : str
+        The Git commit comment.
+    item_ids : str | List[str], default=None
+        A list of item Ids to commit to Git.
+        Defaults to None which commits all items to Git.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    # https://learn.microsoft.com/en-us/rest/api/fabric/core/git/commit-to-git?tabs=HTTP
+
+    workspace, workspace_id = resolve_workspace_name_and_id(workspace)
+
+    gs = get_git_status(workspace=workspace)
+    workspace_head = gs["Workspace Head"].iloc[0]
+
+    if item_ids is None:
+        commit_mode = "All"
+    else:
+        commit_mode = "Selective"
+
+    if isinstance(item_ids, str):
+        item_ids = [item_ids]
+
+    request_body = {
+        "mode": commit_mode,
+        "workspaceHead": workspace_head,
+        "comment": comment,
+    }
+
+    if item_ids is not None:
+        request_body["items"] = [{"objectId": item_id} for item_id in item_ids]
+
+    client = fabric.FabricRestClient()
+    response = client.post(
+        f"/v1/workspaces/{workspace_id}/git/commitToGit",
+        json=request_body,
+        lro_wait=True,
+    )
+
+    if response.status_code not in [200, 202]:
+        raise FabricHTTPException(response)
+
+    if commit_mode == "All":
+        print(
+            f"{icons.green_dot} All items within the '{workspace}' workspace have been committed to Git."
+        )
+    else:
+        print(
+            f"{icons.green_dot} The {item_ids} items ithin the '{workspace}' workspace have been committed to Git."
+        )
+
+
+def update_from_git(
+    workspace_head: str,
+    remote_commit_hash: str,
+    conflict_resolution_policy: str,
+    allow_override: Optional[bool] = False,
+    workspace: Optional[str] = None,
+):
+
+    # https://learn.microsoft.com/en-us/rest/api/fabric/core/git/update-from-git?tabs=HTTP
+
+    workspace, workspace_id = resolve_workspace_name_and_id(workspace)
+
+    conflict_resolution_policies = ["PreferWorkspace", "PreferRemote"]
+    if "remote" in conflict_resolution_policies.lower():
+        conflict_resolution_policies = "PreferRemote"
+    elif "workspace" in conflict_resolution_policies.lower():
+        conflict_resolution_policies = "PreferWorkspace"
+
+    if conflict_resolution_policy not in conflict_resolution_policies:
+        raise ValueError(
+            f"{icons.red_dot} Invalid conflict resolution policy. Valid options: {conflict_resolution_policies}."
+        )
+
+    request_body = {
+        "workspaceHead": workspace_head,
+        "remoteCommitHash": remote_commit_hash,
+        "conflictResolution": {
+            "conflictResolutionType": "Workspace",
+            "conflictResolutionPolicy": conflict_resolution_policy,
+        },
+        "options": {"allowOverrideItems": allow_override},
+    }
+
+    client = fabric.FabricRestClient()
+    response = client.post(
+        f"/v1/workspaces/{workspace_id}/git/updateFromGit",
+        json=request_body,
+        lro_wait=True,
+    )
+
+    if response not in [200, 202]:
+        raise FabricHTTPException(response)
+
+    print(
+        f"The '{workspace}' workspace has been updated with commits pushed to the connected branch."
+    )
