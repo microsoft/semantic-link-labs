@@ -1,10 +1,11 @@
 import sempy.fabric as fabric
 import numpy as np
 import pandas as pd
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Tuple
+from uuid import UUID
 import sempy_labs._icons as icons
 from sempy._utils._log import log
-from sempy_labs._helper_functions import retry
+from sempy_labs._helper_functions import retry, resolve_dataset_id
 
 
 def check_fallback_reason(
@@ -169,3 +170,56 @@ def generate_direct_lake_semantic_model(
 
     if refresh:
         refresh_semantic_model(dataset=dataset, workspace=workspace)
+
+
+def get_direct_lake_source(
+    dataset: str, workspace: Optional[str] = None
+) -> Tuple[str, UUID, UUID]:
+    """
+    Obtains the source information for a direct lake semantic model.
+
+    Parameters
+    ----------
+    dataset : str
+        The name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    Tuple[str, UUID, UUID]
+        If the source of the direct lake semantic model is a lakehouse this will return: 'Lakehouse', SQL Endpoint Id, Workspace Id
+        If the source of the direct lake semantic model is a warehouse this will return: 'Warehouse', Warehouse Id, Workspace Id
+        If the semantic model is not a Direct Lake semantic model, it will return None, None, None.
+    """
+
+    workspace = fabric.resolve_workspace_name(workspace)
+    dataset_id = resolve_dataset_id(dataset, workspace)
+    client = fabric.PowerBIRestClient()
+    request_body = {
+        "artifacts": [
+            {
+                "objectId": dataset_id,
+                "type": "dataset",
+            }
+        ]
+    }
+    response = client.post(
+        "metadata/relations/upstream?apiVersion=3", json=request_body
+    )
+    artifacts = response.json().get("artifacts", [])
+    sql_id, sql_workspace_id, artifact_type = None, None, None
+
+    for artifact in artifacts:
+        object_type = artifact.get("typeName")
+        if object_type in ["Datawarehouse", "Lakewarehouse"]:
+            artifact_type = (
+                "Warehouse" if object_type == "Datawarehouse" else "Lakehouse"
+            )
+            sql_id = artifact.get("objectId")
+            sql_workspace_id = artifact.get("workspace", {}).get("objectId")
+            break
+
+    return artifact_type, sql_id, sql_workspace_id

@@ -2493,9 +2493,7 @@ def import_notebook_from_web(
     if description is not None:
         request_body["description"] = description
 
-    response = client.post(
-        f"v1/workspaces/{workspace_id}/notebooks", json=request_body
-    )
+    response = client.post(f"v1/workspaces/{workspace_id}/notebooks", json=request_body)
     if response.status_code not in [201, 202]:
         raise FabricHTTPException(response)
     if response.status_code == 202:
