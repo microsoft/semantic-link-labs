@@ -1,7 +1,8 @@
+import sempy
 import sempy.fabric as fabric
 from sempy_labs.tom import connect_semantic_model
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
-from sempy_labs.directlake import get_direct_lake_source
+from sempy_labs.directlake._dl_helper import get_direct_lake_source
 from typing import List, Optional, Union
 import sempy_labs._icons as icons
 
@@ -11,8 +12,7 @@ def update_direct_lake_partition_entity(
     table_name: Union[str, List[str]],
     entity_name: Union[str, List[str]],
     workspace: Optional[str] = None,
-    lakehouse: Optional[str] = None,
-    lakehouse_workspace: Optional[str] = None,
+    **kwargs,
 ):
     """
     Remaps a table (or tables) in a Direct Lake semantic model to a table in a lakehouse.
@@ -29,18 +29,29 @@ def update_direct_lake_partition_entity(
         The Fabric workspace name in which the semantic model exists.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    lakehouse : str, default=None
-        The Fabric lakehouse used by the Direct Lake semantic model.
-        Defaults to None which resolves to the lakehouse attached to the notebook.
-    lakehouse_workspace : str, default=None
-        The Fabric workspace used by the lakehouse.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
     """
+
+    if "lakehouse" in kwargs:
+        print(
+            "The 'lakehouse' parameter has been deprecated as it is no longer necessary. Please remove this parameter from the function going forward."
+        )
+        del kwargs["lakehouse"]
+    if "lakehouse_workspace" in kwargs:
+        print(
+            "The 'lakehouse_workspace' parameter has been deprecated as it is no longer necessary. Please remove this parameter from the function going forward."
+        )
+        del kwargs["lakehouse_workspace"]
 
     workspace = fabric.resolve_workspace_name(workspace)
 
-    artifact_type, lakehouse_name, lakehouse_id, lakehouse_workspace_id = get_direct_lake_source(dataset=dataset, workspace=workspace)
+    artifact_type, lakehouse_name, lakehouse_id, lakehouse_workspace_id = (
+        get_direct_lake_source(dataset=dataset, workspace=workspace)
+    )
+
+    if artifact_type == "Warehouse":
+        raise ValueError(
+            f"{icons.red_dot} This function is only valid for Direct Lake semantic models which source from lakehouses, not warehouses."
+        )
     lakehouse_workspace = fabric.resolve_workspace_name(lakehouse_workspace_id)
 
     # Support both str & list types
@@ -66,7 +77,7 @@ def update_direct_lake_partition_entity(
         for tName in table_name:
             i = table_name.index(tName)
             eName = entity_name[i]
-            part_name = (
+            part_name = next(
                 p.Name
                 for t in tom.model.Tables
                 for p in t.Partitions
@@ -114,14 +125,23 @@ def add_table_to_direct_lake_semantic_model(
     -------
     """
 
+    sempy.fabric._client._utils._init_analysis_services()
     import Microsoft.AnalysisServices.Tabular as TOM
     from sempy_labs.lakehouse._get_lakehouse_columns import get_lakehouse_columns
     from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
-    from sempy_labs.directlake._get_directlake_lakehouse import (
-        get_direct_lake_lakehouse,
-    )
 
     workspace = fabric.resolve_workspace_name(workspace)
+
+    artifact_type, lakehouse_name, lakehouse_id, lakehouse_workspace_id = (
+        get_direct_lake_source(dataset=dataset, workspace=workspace)
+    )
+
+    if artifact_type == "Warehouse":
+        raise ValueError(
+            f"{icons.red_dot} This function is only valid for Direct Lake semantic models which source from Fabric lakehouses (not warehouses)."
+        )
+
+    lakehouse_workspace = fabric.resolve_workspace_name(lakehouse_workspace_id)
 
     with connect_semantic_model(
         dataset=dataset, readonly=False, workspace=workspace
@@ -155,19 +175,19 @@ def add_table_to_direct_lake_semantic_model(
                 f"The '{table_name}' table already exists in the '{dataset}' semantic model within the '{workspace}' workspace."
             )
 
-        lake_name, lake_id = get_direct_lake_lakehouse(
-            dataset=dataset, workspace=workspace
+        dfL = get_lakehouse_tables(
+            lakehouse=lakehouse_name, workspace=lakehouse_workspace
         )
-
-        dfL = get_lakehouse_tables(lakehouse=lake_name, workspace=workspace)
         dfL_filt = dfL[dfL["Table Name"] == lakehouse_table_name]
 
         if len(dfL_filt) == 0:
             raise ValueError(
-                f"The '{lakehouse_table_name}' table does not exist in the '{lake_name}' lakehouse within the '{workspace}' workspace."
+                f"The '{lakehouse_table_name}' table does not exist in the '{lakehouse_name}' lakehouse within the '{lakehouse_workspace}' workspace."
             )
 
-        dfLC = get_lakehouse_columns(lakehouse=lake_name, workspace=workspace)
+        dfLC = get_lakehouse_columns(
+            lakehouse=lakehouse_name, workspace=lakehouse_workspace
+        )
         dfLC_filt = dfLC[dfLC["Table Name"] == lakehouse_table_name]
 
         tom.add_table(name=table_name)

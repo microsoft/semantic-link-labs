@@ -1,14 +1,8 @@
 import sempy
 import sempy.fabric as fabric
-import pandas as pd
 from sempy_labs.lakehouse import get_lakehouse_columns
-from sempy_labs.directlake import get_direct_lake_source
+from sempy_labs.directlake._dl_helper import get_direct_lake_source
 from sempy_labs.tom import connect_semantic_model
-from sempy_labs._helper_functions import (
-    format_dax_object_name,
-    resolve_lakehouse_name,
-    get_direct_lake_sql_endpoint,
-)
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
@@ -19,8 +13,7 @@ def direct_lake_schema_sync(
     dataset: str,
     workspace: Optional[str] = None,
     add_to_model: Optional[bool] = False,
-    lakehouse: Optional[str] = None,
-    lakehouse_workspace: Optional[str] = None,
+    **kwargs,
 ):
     """
     Shows/adds columns which exist in the lakehouse but do not exist in the semantic model (only for tables in the semantic model).
@@ -35,72 +28,79 @@ def direct_lake_schema_sync(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     add_to_model : bool, default=False
         If set to True, columns which exist in the lakehouse but do not exist in the semantic model are added to the semantic model. No new tables are added.
-    lakehouse : str, default=None
-        The Fabric lakehouse used by the Direct Lake semantic model.
-        Defaults to None which resolves to the lakehouse attached to the notebook.
-    lakehouse_workspace : str, default=None
-        The Fabric workspace used by the lakehouse.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
     sempy.fabric._client._utils._init_analysis_services()
     import Microsoft.AnalysisServices.Tabular as TOM
     import System
 
+    if "lakehouse" in kwargs:
+        print(
+            "The 'lakehouse' parameter has been deprecated as it is no longer necessary. Please remove this parameter from the function going forward."
+        )
+        del kwargs["lakehouse"]
+    if "lakehouse_workspace" in kwargs:
+        print(
+            "The 'lakehouse_workspace' parameter has been deprecated as it is no longer necessary. Please remove this parameter from the function going forward."
+        )
+        del kwargs["lakehouse_workspace"]
+
     workspace = fabric.resolve_workspace_name(workspace)
 
-    artifact_type, lakehouse_name, lakehouse_id, lakehouse_workspace_id = get_direct_lake_source(dataset=dataset, workspace=workspace)
+    artifact_type, lakehouse_name, lakehouse_id, lakehouse_workspace_id = (
+        get_direct_lake_source(dataset=dataset, workspace=workspace)
+    )
+
+    if artifact_type == "Warehouse":
+        raise ValueError(
+            f"{icons.red_dot} This function is only valid for Direct Lake semantic models which source from Fabric lakehouses (not warehouses)."
+        )
     lakehouse_workspace = fabric.resolve_workspace_name(lakehouse_workspace_id)
 
-    if artifact_type == 'Warehouse':
-        raise ValueError(f"{icons.red_dot} This function is only valid for Direct Lake semantic models which source from Fabric lakehouses (not warehouses).")
-
-    dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
-    dfP_filt = dfP[dfP["Source Type"] == "Entity"]
-    dfC = fabric.list_columns(dataset=dataset, workspace=workspace)
-    dfC_filt = dfC[dfC["Table Name"].isin(dfP_filt["Table Name"].values)]
-    dfC_filt = pd.merge(
-        dfC_filt, dfP_filt[["Table Name", "Query"]], on="Table Name", how="left"
-    )
-    dfC_filt["Column Object"] = format_dax_object_name(
-        dfC_filt["Query"], dfC_filt["Source"]
-    )
+    if artifact_type == "Warehouse":
+        raise ValueError(
+            f"{icons.red_dot} This function is only valid for Direct Lake semantic models which source from Fabric lakehouses (not warehouses)."
+        )
 
     lc = get_lakehouse_columns(lakehouse_name, lakehouse_workspace)
-    lc_filt = lc[lc["Table Name"].isin(dfP_filt["Query"].values)]
 
     with connect_semantic_model(
         dataset=dataset, readonly=False, workspace=workspace
     ) as tom:
 
-        for i, r in lc_filt.iterrows():
+        for i, r in lc.iterrows():
             lakeTName = r["Table Name"]
             lakeCName = r["Column Name"]
-            fullColName = r["Full Column Name"]
             dType = r["Data Type"]
 
-            if fullColName not in dfC_filt["Column Object"].values:
-                dfL = dfP_filt[dfP_filt["Query"] == lakeTName]
-                tName = dfL["Table Name"].iloc[0]
-                if add_to_model:
-                    col = TOM.DataColumn()
-                    col.Name = lakeCName
-                    col.SourceColumn = lakeCName
-                    dt = icons.data_type_mapping.get(dType)
-                    try:
-                        col.DataType = System.Enum.Parse(TOM.DataType, dt)
-                    except Exception as e:
-                        raise ValueError(
-                            f"{icons.red_dot} Failed to map '{dType}' data type to the semantic model data types."
-                        ) from e
+            if any(
+                p.Source.EntityName == lakeTName
+                for p in tom.all_partitions()
+                if p.SourceType == TOM.PartitionSourceType.Entity
+            ):
+                table_name = next(
+                    t.Name
+                    for t in tom.model.Tables
+                    for p in t.Partitions
+                    if p.SourceType == TOM.PartitionSourceType.Entity
+                    and p.Source.EntityName == lakeTName
+                )
 
-                    tom.model.Tables[tName].Columns.Add(col)
+                if not any(
+                    c.SourceColumn == lakeCName and c.Parent.Name == table_name
+                    for c in tom.all_columns()
+                ):
                     print(
-                        f"{icons.green_dot} The '{lakeCName}' column has been added to the '{tName}' table as a '{dt}' "
-                        f"data type within the '{dataset}' semantic model within the '{workspace}' workspace."
+                        f"{icons.yellow_dot} The '{lakeCName}' column exists in the '{lakeTName}' lakehouse table but not in the '{dataset}' semantic model within the '{workspace}' workspace."
                     )
-                else:
-                    print(
-                        f"{icons.yellow_dot} The {fullColName} column exists in the lakehouse but not in the '{tName}' table in the '{dataset}' semantic model within the '{workspace}' workspace."
-                    )
+                    if add_to_model:
+                        dt = icons.data_type_mapping.get(dType)
+                        tom.add_data_column(
+                            table_name=table_name,
+                            column_name=lakeCName,
+                            source_column=lakeCName,
+                            data_type=System.Enum.Parse(TOM.DataType, dt),
+                        )
+                        print(
+                            f"{icons.green_dot} The '{lakeCName}' column in the '{lakeTName}' lakehouse table was added to the '{dataset}' semantic model within the '{workspace}' workspace."
+                        )

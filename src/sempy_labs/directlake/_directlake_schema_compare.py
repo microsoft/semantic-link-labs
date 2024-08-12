@@ -2,12 +2,10 @@ import sempy.fabric as fabric
 import pandas as pd
 from sempy_labs._helper_functions import (
     format_dax_object_name,
-    resolve_lakehouse_name,
-    get_direct_lake_sql_endpoint,
 )
 from IPython.display import display
 from sempy_labs.lakehouse import get_lakehouse_columns
-from sempy_labs.directlake import get_direct_lake_source
+from sempy_labs.directlake._dl_helper import get_direct_lake_source
 from sempy_labs._list_functions import list_tables
 from typing import Optional
 import sempy_labs._icons as icons
@@ -18,8 +16,7 @@ from sempy._utils._log import log
 def direct_lake_schema_compare(
     dataset: str,
     workspace: Optional[str] = None,
-    lakehouse: Optional[str] = None,
-    lakehouse_workspace: Optional[str] = None,
+    **kwargs,
 ):
     """
     Checks that all the tables in a Direct Lake semantic model map to tables in their corresponding lakehouse and that the columns in each table exist.
@@ -32,22 +29,30 @@ def direct_lake_schema_compare(
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    lakehouse : str, default=None
-        The Fabric lakehouse used by the Direct Lake semantic model.
-        Defaults to None which resolves to the lakehouse attached to the notebook.
-    lakehouse_workspace : str, default=None
-        The Fabric workspace used by the lakehouse.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
     """
+
+    if "lakehouse" in kwargs:
+        print(
+            "The 'lakehouse' parameter has been deprecated as it is no longer necessary. Please remove this parameter from the function going forward."
+        )
+        del kwargs["lakehouse"]
+    if "lakehouse_workspace" in kwargs:
+        print(
+            "The 'lakehouse_workspace' parameter has been deprecated as it is no longer necessary. Please remove this parameter from the function going forward."
+        )
+        del kwargs["lakehouse_workspace"]
 
     workspace = fabric.resolve_workspace_name(workspace)
 
-    artifact_type, lakehouse_name, lakehouse_id, lakehouse_workspace_id = get_direct_lake_source(dataset=dataset, workspace=workspace)
+    artifact_type, lakehouse_name, lakehouse_id, lakehouse_workspace_id = (
+        get_direct_lake_source(dataset=dataset, workspace=workspace)
+    )
     lakehouse_workspace = fabric.resolve_workspace_name(lakehouse_workspace_id)
 
-    if artifact_type == 'Warehouse':
-        raise ValueError(f"{icons.red_dot} This function is only valid for Direct Lake semantic models which source from Fabric lakehouses (not warehouses).")
+    if artifact_type == "Warehouse":
+        raise ValueError(
+            f"{icons.red_dot} This function is only valid for Direct Lake semantic models which source from Fabric lakehouses (not warehouses)."
+        )
 
     dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
 
