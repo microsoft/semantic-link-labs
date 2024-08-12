@@ -206,19 +206,25 @@ def migrate_calc_tables_to_lakehouse(
                                     sleep_time=1,
                                     timeout_error_message=f"{icons.red_dot} Function timed out after 1 minute",
                                 )
-                                def dyn_set_annotations():
+                                def dyn_connect():
                                     with connect_semantic_model(
-                                        dataset=new_dataset,
-                                        readonly=False,
-                                        workspace=new_dataset_workspace,
+                                        dataset=new_dataset, readonly=True, workspace=new_dataset_workspace
                                     ) as tom2:
-                                        tom2.set_annotation(
-                                            object=tom2.model,
-                                            name=t.Name,
-                                            value=daxQuery,
-                                        )
 
-                                dyn_set_annotations()
+                                        tom2.model
+
+                                dyn_connect()
+
+                                with connect_semantic_model(
+                                    dataset=new_dataset,
+                                    readonly=False,
+                                    workspace=new_dataset_workspace,
+                                ) as tom2:
+                                    tom2.set_annotation(
+                                        object=tom2.model,
+                                        name=t.Name,
+                                        value=daxQuery,
+                                    )
 
                                 print(
                                     f"{icons.green_dot} Calculated table '{t.Name}' has been created as delta table '{delta_table_name.lower()}' "
@@ -287,102 +293,108 @@ def migrate_field_parameters(
         sleep_time=1,
         timeout_error_message=f"{icons.red_dot} Function timed out after 1 minute",
     )
-    def dyn_create():
+    def dyn_connect():
         with connect_semantic_model(
-            dataset=new_dataset, workspace=new_dataset_workspace, readonly=False
+            dataset=new_dataset, readonly=True, workspace=new_dataset_workspace
         ) as tom:
 
-            for i, r in dfP_filt.iterrows():
-                tName = r["Table Name"]
-                query = r["Query"]
+            tom.model
 
-                # For field parameters, remove calc columns from the query
-                rows = query.strip().split("\n")
-                filtered_rows = [
-                    row
-                    for row in rows
-                    if not any(
-                        value in row for value in dfC_CalcColumn["Column Object"].values
-                    )
+    dyn_connect()
+
+    with connect_semantic_model(
+        dataset=new_dataset, workspace=new_dataset_workspace, readonly=False
+    ) as tom:
+
+        for i, r in dfP_filt.iterrows():
+            tName = r["Table Name"]
+            query = r["Query"]
+
+            # For field parameters, remove calc columns from the query
+            rows = query.strip().split("\n")
+            filtered_rows = [
+                row
+                for row in rows
+                if not any(
+                    value in row for value in dfC_CalcColumn["Column Object"].values
+                )
+            ]
+            updated_query_string = "\n".join(filtered_rows)
+
+            # Remove extra comma
+            lines = updated_query_string.strip().split("\n")
+            lines[-2] = lines[-2].rstrip(",")
+            expr = "\n".join(lines)
+
+            try:
+                par = TOM.Partition()
+                par.Name = tName
+
+                parSource = TOM.CalculatedPartitionSource()
+                par.Source = parSource
+                parSource.Expression = expr
+
+                tbl = TOM.Table()
+                tbl.Name = tName
+                tbl.Partitions.Add(par)
+
+                columns = ["Value1", "Value2", "Value3"]
+
+                for colName in columns:
+                    col = TOM.CalculatedTableColumn()
+                    col.Name = colName
+                    col.SourceColumn = "[" + colName + "]"
+                    col.DataType = TOM.DataType.String
+
+                    tbl.Columns.Add(col)
+
+                tom.model.Tables.Add(tbl)
+
+                ep = TOM.JsonExtendedProperty()
+                ep.Name = "ParameterMetadata"
+                ep.Value = '{"version":3,"kind":2}'
+
+                rcd = TOM.RelatedColumnDetails()
+                gpc = TOM.GroupByColumn()
+                gpc.GroupingColumn = tom.model.Tables[tName].Columns["Value2"]
+                rcd.GroupByColumns.Add(gpc)
+
+                # Update column properties
+                tom.model.Tables[tName].Columns["Value2"].IsHidden = True
+                tom.model.Tables[tName].Columns["Value3"].IsHidden = True
+                tom.model.Tables[tName].Columns[
+                    "Value3"
+                ].DataType = TOM.DataType.Int64
+                tom.model.Tables[tName].Columns["Value1"].SortByColumn = (
+                    tom.model.Tables[tName].Columns["Value3"]
+                )
+                tom.model.Tables[tName].Columns["Value2"].SortByColumn = (
+                    tom.model.Tables[tName].Columns["Value3"]
+                )
+                tom.model.Tables[tName].Columns["Value2"].ExtendedProperties.Add(ep)
+                tom.model.Tables[tName].Columns["Value1"].RelatedColumnDetails = rcd
+
+                dfC_filt1 = dfC[
+                    (dfC["Table Name"] == tName) & (dfC["Source"] == "[Value1]")
                 ]
-                updated_query_string = "\n".join(filtered_rows)
+                col1 = dfC_filt1["Column Name"].iloc[0]
+                dfC_filt2 = dfC[
+                    (dfC["Table Name"] == tName) & (dfC["Source"] == "[Value2]")
+                ]
+                col2 = dfC_filt2["Column Name"].iloc[0]
+                dfC_filt3 = dfC[
+                    (dfC["Table Name"] == tName) & (dfC["Source"] == "[Value3]")
+                ]
+                col3 = dfC_filt3["Column Name"].iloc[0]
 
-                # Remove extra comma
-                lines = updated_query_string.strip().split("\n")
-                lines[-2] = lines[-2].rstrip(",")
-                expr = "\n".join(lines)
+                tom.model.Tables[tName].Columns["Value1"].Name = col1
+                tom.model.Tables[tName].Columns["Value2"].Name = col2
+                tom.model.Tables[tName].Columns["Value3"].Name = col3
 
-                try:
-                    par = TOM.Partition()
-                    par.Name = tName
-
-                    parSource = TOM.CalculatedPartitionSource()
-                    par.Source = parSource
-                    parSource.Expression = expr
-
-                    tbl = TOM.Table()
-                    tbl.Name = tName
-                    tbl.Partitions.Add(par)
-
-                    columns = ["Value1", "Value2", "Value3"]
-
-                    for colName in columns:
-                        col = TOM.CalculatedTableColumn()
-                        col.Name = colName
-                        col.SourceColumn = "[" + colName + "]"
-                        col.DataType = TOM.DataType.String
-
-                        tbl.Columns.Add(col)
-
-                    tom.model.Tables.Add(tbl)
-
-                    ep = TOM.JsonExtendedProperty()
-                    ep.Name = "ParameterMetadata"
-                    ep.Value = '{"version":3,"kind":2}'
-
-                    rcd = TOM.RelatedColumnDetails()
-                    gpc = TOM.GroupByColumn()
-                    gpc.GroupingColumn = tom.model.Tables[tName].Columns["Value2"]
-                    rcd.GroupByColumns.Add(gpc)
-
-                    # Update column properties
-                    tom.model.Tables[tName].Columns["Value2"].IsHidden = True
-                    tom.model.Tables[tName].Columns["Value3"].IsHidden = True
-                    tom.model.Tables[tName].Columns[
-                        "Value3"
-                    ].DataType = TOM.DataType.Int64
-                    tom.model.Tables[tName].Columns["Value1"].SortByColumn = (
-                        tom.model.Tables[tName].Columns["Value3"]
-                    )
-                    tom.model.Tables[tName].Columns["Value2"].SortByColumn = (
-                        tom.model.Tables[tName].Columns["Value3"]
-                    )
-                    tom.model.Tables[tName].Columns["Value2"].ExtendedProperties.Add(ep)
-                    tom.model.Tables[tName].Columns["Value1"].RelatedColumnDetails = rcd
-
-                    dfC_filt1 = dfC[
-                        (dfC["Table Name"] == tName) & (dfC["Source"] == "[Value1]")
-                    ]
-                    col1 = dfC_filt1["Column Name"].iloc[0]
-                    dfC_filt2 = dfC[
-                        (dfC["Table Name"] == tName) & (dfC["Source"] == "[Value2]")
-                    ]
-                    col2 = dfC_filt2["Column Name"].iloc[0]
-                    dfC_filt3 = dfC[
-                        (dfC["Table Name"] == tName) & (dfC["Source"] == "[Value3]")
-                    ]
-                    col3 = dfC_filt3["Column Name"].iloc[0]
-
-                    tom.model.Tables[tName].Columns["Value1"].Name = col1
-                    tom.model.Tables[tName].Columns["Value2"].Name = col2
-                    tom.model.Tables[tName].Columns["Value3"].Name = col3
-
-                    print(
-                        f"{icons.green_dot} The '{tName}' table has been added as a field parameter to the '{new_dataset}' semantic model in the '{new_dataset_workspace}' workspace."
-                    )
-                except Exception:
-                    print(
-                        f"{icons.red_dot} The '{tName}' table has not been added as a field parameter."
-                    )
-
-    dyn_create()
+                print(
+                    f"{icons.green_dot} The '{tName}' table has been added as a field parameter to the '{new_dataset}' semantic model in the '{new_dataset_workspace}' workspace."
+                )
+            except Exception:
+                print(
+                    f"{icons.red_dot} The '{tName}' table has not been added as a field parameter."
+                )

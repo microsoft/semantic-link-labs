@@ -142,30 +142,36 @@ def generate_direct_lake_semantic_model(
         sleep_time=1,
         timeout_error_message=f"{icons.red_dot} Function timed out after 1 minute",
     )
-    def dyn_create_model():
-        expression_name = "DatabaseQuery"
+    def dyn_connect():
         with connect_semantic_model(
-            dataset=dataset, workspace=workspace, readonly=False
+            dataset=dataset, readonly=True, workspace=workspace
         ) as tom:
-            if not any(e.Name == expression_name for e in tom.model.Expressions):
-                tom.add_expression(name=expression_name, expression=expr)
 
-            for t in lakehouse_tables:
-                tom.add_table(name=t)
-                tom.add_entity_partition(table_name=t, entity_name=t)
-                dfLC_filt = dfLC[dfLC["Table Name"] == t]
-                for i, r in dfLC_filt.iterrows():
-                    lakeCName = r["Column Name"]
-                    dType = r["Data Type"]
-                    dt = icons.data_type_mapping.get(dType)
-                    tom.add_data_column(
-                        table_name=t,
-                        column_name=lakeCName,
-                        source_column=lakeCName,
-                        data_type=dt,
-                    )
+            tom.model
 
-    dyn_create_model()
+    dyn_connect()
+
+    expression_name = "DatabaseQuery"
+    with connect_semantic_model(
+        dataset=dataset, workspace=workspace, readonly=False
+    ) as tom:
+        if not any(e.Name == expression_name for e in tom.model.Expressions):
+            tom.add_expression(name=expression_name, expression=expr)
+
+        for t in lakehouse_tables:
+            tom.add_table(name=t)
+            tom.add_entity_partition(table_name=t, entity_name=t)
+            dfLC_filt = dfLC[dfLC["Table Name"] == t]
+            for i, r in dfLC_filt.iterrows():
+                lakeCName = r["Column Name"]
+                dType = r["Data Type"]
+                dt = icons.data_type_mapping.get(dType)
+                tom.add_data_column(
+                    table_name=t,
+                    column_name=lakeCName,
+                    source_column=lakeCName,
+                    data_type=dt,
+                )
 
     if refresh:
         refresh_semantic_model(dataset=dataset, workspace=workspace)
