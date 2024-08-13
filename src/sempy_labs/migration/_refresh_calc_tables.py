@@ -85,25 +85,17 @@ def refresh_calc_tables(dataset: str, workspace: Optional[str] = None):
                             # dataType = dfC_type['Data Type'].iloc[0]
 
                             if dataType == "Int64":
-                                df[new_column_name] = df[new_column_name].astype(
-                                    int
-                                )
+                                df[new_column_name] = df[new_column_name].astype(int)
                             elif dataType in ["Decimal", "Double"]:
-                                df[new_column_name] = df[new_column_name].astype(
-                                    float
-                                )
+                                df[new_column_name] = df[new_column_name].astype(float)
                             elif dataType == "Boolean":
-                                df[new_column_name] = df[new_column_name].astype(
-                                    bool
-                                )
+                                df[new_column_name] = df[new_column_name].astype(bool)
                             elif dataType == "DateTime":
                                 df[new_column_name] = pd.to_datetime(
                                     df[new_column_name]
                                 )
                             else:
-                                df[new_column_name] = df[new_column_name].astype(
-                                    str
-                                )
+                                df[new_column_name] = df[new_column_name].astype(str)
                     # else:
                     #    second_column_name = df.columns[1]
                     #    third_column_name = df.columns[2]
@@ -129,4 +121,3 @@ def refresh_calc_tables(dataset: str, workspace: Optional[str] = None):
                     raise ValueError(
                         f"{icons.red_dot} Failed to create calculated table '{tName}' as a delta table in the lakehouse."
                     ) from e
-

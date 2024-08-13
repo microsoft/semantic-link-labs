@@ -208,7 +208,9 @@ def migrate_calc_tables_to_lakehouse(
                                 )
                                 def dyn_connect():
                                     with connect_semantic_model(
-                                        dataset=new_dataset, readonly=True, workspace=new_dataset_workspace
+                                        dataset=new_dataset,
+                                        readonly=True,
+                                        workspace=new_dataset_workspace,
                                     ) as tom2:
 
                                         tom2.model
@@ -362,9 +364,7 @@ def migrate_field_parameters(
                 # Update column properties
                 tom.model.Tables[tName].Columns["Value2"].IsHidden = True
                 tom.model.Tables[tName].Columns["Value3"].IsHidden = True
-                tom.model.Tables[tName].Columns[
-                    "Value3"
-                ].DataType = TOM.DataType.Int64
+                tom.model.Tables[tName].Columns["Value3"].DataType = TOM.DataType.Int64
                 tom.model.Tables[tName].Columns["Value1"].SortByColumn = (
                     tom.model.Tables[tName].Columns["Value3"]
                 )

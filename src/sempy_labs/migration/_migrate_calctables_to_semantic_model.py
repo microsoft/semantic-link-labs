@@ -149,4 +149,3 @@ def migrate_calc_tables_to_semantic_model(
         print(
             f"\n{icons.green_dot} All viable calculated tables have been added to the model."
         )
-

@@ -48,7 +48,6 @@ def migrate_model_objects_to_semantic_model(
     dfT = list_tables(dataset, workspace)
     dfC = fabric.list_columns(dataset=dataset, workspace=workspace)
     dfM = fabric.list_measures(dataset=dataset, workspace=workspace)
-    dfR = fabric.list_relationships(dataset=dataset, workspace=workspace)
     dfRole = fabric.get_roles(dataset=dataset, workspace=workspace)
     dfRLS = fabric.get_row_level_security_permissions(
         dataset=dataset, workspace=workspace
@@ -77,7 +76,22 @@ def migrate_model_objects_to_semantic_model(
 
     dyn_connect()
 
-    with connect_semantic_model(dataset=new_dataset, readonly=False, workspace=new_dataset_workspace) as tom:
+    @retry(
+        sleep_time=1,
+        timeout_error_message=f"{icons.red_dot} Function timed out after 1 minute",
+    )
+    def dyn_connect2():
+        with connect_semantic_model(
+            dataset=dataset, readonly=True, workspace=workspace
+        ) as tom:
+
+            tom.model
+
+    dyn_connect2()
+
+    with connect_semantic_model(
+        dataset=new_dataset, readonly=False, workspace=new_dataset_workspace
+    ) as tom:
 
         isDirectLake = tom.is_direct_lake()
 
@@ -127,9 +141,7 @@ def migrate_model_objects_to_semantic_model(
                                 o.Name == sbc and o.Parent.Name == c.Parent.Name
                                 for o in tom.all_columns()
                             ):
-                                c.SortByColumn = tom.model.Tables[t.Name].Columns[
-                                    sbc
-                                ]
+                                c.SortByColumn = tom.model.Tables[t.Name].Columns[sbc]
                             else:
                                 print(
                                     f"{icons.red_dot} Failed to create '{sbc}' as a Sort By Column for the '{c.Name}' in the '{t.Name}' table."
@@ -200,14 +212,12 @@ def migrate_model_objects_to_semantic_model(
         for cgName in dfCI["Calculation Group Name"].unique():
 
             isHidden = bool(
-                dfCI.loc[(dfCI["Calculation Group Name"] == cgName), "Hidden"].iloc[
-                    0
-                ]
+                dfCI.loc[(dfCI["Calculation Group Name"] == cgName), "Hidden"].iloc[0]
             )
             prec = int(
-                dfCI.loc[
-                    (dfCI["Calculation Group Name"] == cgName), "Precedence"
-                ].iloc[0]
+                dfCI.loc[(dfCI["Calculation Group Name"] == cgName), "Precedence"].iloc[
+                    0
+                ]
             )
             desc = dfCI.loc[
                 (dfCI["Calculation Group Name"] == cgName), "Description"
@@ -228,9 +238,7 @@ def migrate_model_objects_to_semantic_model(
                 # print(
                 #    f"\n{icons.in_progress} Updating calculation group column names..."
                 # )
-                dfC_filt = dfC[
-                    (dfC["Table Name"] == cgName) & (dfC["Hidden"] == False)
-                ]
+                dfC_filt = dfC[(dfC["Table Name"] == cgName) & (dfC["Hidden"] == False)]
                 colName = dfC_filt["Column Name"].iloc[0]
                 tom.model.Tables[cgName].Columns["Name"].Name = colName
 
@@ -260,8 +268,7 @@ def migrate_model_objects_to_semantic_model(
                 ].iloc[0]
 
                 if not any(
-                    ci.CalculationGroup.Parent.Name == cgName
-                    and ci.Name == calcItem
+                    ci.CalculationGroup.Parent.Name == cgName and ci.Name == calcItem
                     for ci in tom.all_calculation_items()
                 ):
                     tom.add_calculation_item(
@@ -276,87 +283,70 @@ def migrate_model_objects_to_semantic_model(
                     )
 
         print(f"\n{icons.in_progress} Creating relationships...")
-        for index, row in dfR.iterrows():
-            fromTable = row["From Table"]
-            fromColumn = row["From Column"]
-            toTable = row["To Table"]
-            toColumn = row["To Column"]
-            isActive = row["Active"]
-            cfb = row["Cross Filtering Behavior"]
-            sfb = row["Security Filtering Behavior"]
-            rori = row["Rely On Referential Integrity"]
-            mult = row["Multiplicity"]
+        with connect_semantic_model(
+            dataset=dataset, readonly=True, workspace=workspace
+        ) as tom_old:
 
-            card_mapping = {"m": "Many", "1": "One", "0": "None"}
+            for r in tom_old.model.Relationships:
+                relName = create_relationship_name(
+                    r.FromTable.Name, r.FromColumn.Name, r.ToTable.Name, r.ToColumn.Name
+                )
 
-            fromCard = card_mapping.get(mult[0])
-            toCard = card_mapping.get(mult[-1])
-
-            relName = create_relationship_name(
-                fromTable, fromColumn, toTable, toColumn
-            )
-
-            if any(
-                r.FromTable.Name == fromTable
-                and r.FromColumn.Name == fromColumn
-                and r.ToTable.Name == toTable
-                and r.ToColumn.Name == toColumn
-                for r in tom.model.Relationships
-            ):
-                print(
-                    f"{icons.yellow_dot} {relName} already exists as a relationship in the semantic model."
-                )
-            elif isDirectLake and any(
-                r.FromTable.Name == fromTable
-                and r.FromColumn.Name == fromColumn
-                and r.ToTable.Name == toTable
-                and r.ToColumn.Name == toColumn
-                and (
-                    r.FromColumn.DataType == "DateTime"
-                    or r.ToColumn.DataType == "DateTime"
-                )
-                for r in tom.model.Relationships
-            ):
-                print(
-                    f"{icons.yellow_dot} {relName} was not created since relationships based on DateTime columns are not supported."
-                )
-            elif isDirectLake and any(
-                r.FromTable.Name == fromTable
-                and r.FromColumn.Name == fromColumn
-                and r.ToTable.Name == toTable
-                and r.ToColumn.Name == toColumn
-                and (r.FromColumn.DataType != r.ToColumn.DataType)
-                for r in tom.model.Relationships
-            ):
-                print(
-                    f"{icons.yellow_dot} {relName} was not created since columns used in a relationship must have the same data type."
-                )
-            else:
-                if not any(
-                    r.FromTable.Name == fromTable
-                    and r.FromColumn.Name == fromColumn
-                    and r.ToTable.Name == toTable
-                    and r.ToColumn.Name == toColumn
-                    for r in tom.model.Relationships
+                # Do not create relationship if
+                # Already exists
+                if any(
+                    rel.FromTable.Name == r.FromTable.Name
+                    and rel.FromColumn.Name == r.FromColumn.Name
+                    and rel.ToTable.Name == r.ToTable.Name
+                    and rel.ToColumn.Name == r.ToColumn.Name
+                    for rel in tom.model.Relationships
                 ):
+                    print(
+                        f"{icons.warning} The {relName} relationship was not created as it already exists in the '{new_dataset}' semantic model within the '{new_dataset_workspace}' workspace."
+                    )
+
+                # DL
+                elif isDirectLake and r.FromColumn.DataType != r.ToColumn.DataType:
+                    print(
+                        f"{icons.warning} The {relName} relationship was not created as Direct Lake does not support relationships based on columns with different data types."
+                    )
+                elif isDirectLake and (
+                    r.FromColumn.DataType == TOM.DataType.DateTime
+                    or r.ToColumn.DataType == TOM.DataType.DateTime
+                ):
+                    print(
+                        f"{icons.red_dot} The {relName} relationship was not created as Direct Lake does not support relationships based on columns of DateTime data type."
+                    )
+
+                elif isDirectLake and (
+                    any(
+                        c.Name == r.FromColumn.Name
+                        and c.Parent.Name == r.FromTable.Name
+                        for c in tom_old.all_calculated_columns()
+                    )
+                    or any(
+                        c.Name == r.ToColumn.Name and c.Parent.Name == r.ToTable.Name
+                        for c in tom_old.all_calculated_columns()
+                    )
+                ):
+                    print(
+                        f"{icons.red_dot} The {relName} relationship was not created as Direct Lake does not support calculated columns."
+                    )
+                else:
                     tom.add_relationship(
-                        from_table=fromTable,
-                        from_column=fromColumn,
-                        to_table=toTable,
-                        to_column=toColumn,
-                        from_cardinality=fromCard,
-                        to_cardinality=toCard,
-                        cross_filtering_behavior=cfb,
-                        security_filtering_behavior=sfb,
-                        rely_on_referential_integrity=rori,
-                        is_active=isActive,
+                        from_table=r.FromTable.Name,
+                        from_column=r.FromColumn.Name,
+                        to_table=r.ToTable.Name,
+                        to_column=r.ToColumn.Name,
+                        from_cardinality=str(r.FromCardinality),
+                        to_cardinality=str(r.ToCardinality),
+                        cross_filtering_behavior=str(r.CrossFilteringBehavior),
+                        security_filtering_behavior=str(r.SecurityFilteringBehavior),
+                        rely_on_referential_integrity=r.RelyOnReferentialIntegrity,
+                        is_active=r.IsActive,
                     )
                     print(
                         f"{icons.green_dot} The {relName} relationship has been added."
-                    )
-                else:
-                    print(
-                        f"{icons.red_dot} The {relName} relationship was not added."
                     )
 
         print(f"\n{icons.in_progress} Creating roles...")
@@ -396,9 +386,7 @@ def migrate_model_objects_to_semantic_model(
 
             if not any(p.Name == pName for p in tom.model.Perspectives):
                 tom.add_perspective(perspective_name=pName)
-                print(
-                    f"{icons.green_dot} The '{pName}' perspective has been added."
-                )
+                print(f"{icons.green_dot} The '{pName}' perspective has been added.")
 
         print(f"\n{icons.in_progress} Adding objects to perspectives...")
         for index, row in dfP.iterrows():
@@ -492,9 +480,7 @@ def migrate_model_objects_to_semantic_model(
                     matches = re.findall(pattern, oName)
                     hName = matches[0]
                     tom.set_translation(
-                        object=tom.model.Tables[tName]
-                        .Hierarchies[hName]
-                        .Levels[lName],
+                        object=tom.model.Tables[tName].Hierarchies[hName].Levels[lName],
                         language=trName,
                         property=prop,
                         value=translation,
