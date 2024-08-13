@@ -151,7 +151,8 @@ def create_fabric_capacity(
     from notebookutils import mssparkutils
     from azure.mgmt.resource import ResourceManagementClient
     from azure.identity import ClientSecretCredential
-    from azure.mgmt.resource.resources.models import DeploymentMode
+
+    # from azure.mgmt.resource.resources.models import DeploymentMode
 
     capacity_suffix = "fsku"
 
@@ -241,6 +242,9 @@ def create_fabric_capacity(
         client_secret=client_secret,
     )
 
+    token = credential.get_token("https://management.azure.com/.default").token
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+
     resource_client = ResourceManagementClient(credential, azure_subscription_id)
 
     if resource_group is None:
@@ -315,54 +319,48 @@ def create_fabric_capacity(
     #     "outputs": {},
     # }
 
-    #parameters = {
+    # parameters = {
     #    "name": {"value": capacity_name},
     #    "location": {"value": region},
     #    "sku": {"value": sku},
     #    "admin": {"value": admin_email},
     #    "tagValues": {"value": {}},
-    #}
+    # }
 
     request_body = {
-        "properties": {
-            "administration": {
-             "members": admin_email
-            }
-        },
-        "sku": {
-            "name": sku,
-            "tier": "Fabric"
-        },
-        "location": region
+        "properties": {"administration": {"members": admin_email}},
+        "sku": {"name": sku, "tier": "Fabric"},
+        "location": region,
     }
 
     # Deploy the ARM template with the loaded parameters
     print(
-        f"{icons.in_progress} Creating the '{capacity_name}' capacity within the '{region}' region..."
+        f"{icons.in_progress} Creating the '{capacity_name}' capacity as an '{sku}' SKU within the '{region}' region..."
     )
 
-    client = fabric.PowerBIRestClient()
+    client = fabric.PowerBIRestClient("https://management.azure.com/")
     response = client.put(
-        f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{rg}/providers/Microsoft.Fabric/capacities/{capacity_name}?api-version=2023-11-01",
-        json=request_body
+        f"subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}?api-version=2023-11-01",
+        json=request_body,
+        headers=headers,
     )
 
     if response.status_code not in [200, 201]:
         raise FabricHTTPException(response)
 
-    #deployment_properties = {
+    # deployment_properties = {
     #    "properties": {
     #        "template": template,
     #        "parameters": parameters,
     #        "mode": DeploymentMode.incremental,
     #    }
-    #}
-    #deployment_async_operation = resource_client.deployments.begin_create_or_update(
+    # }
+    # deployment_async_operation = resource_client.deployments.begin_create_or_update(
     #    resource_group, deployment_name, deployment_properties
-    #)
-    #deployment_async_operation.wait()
+    # )
+    # deployment_async_operation.wait()
     print(
-        f"{icons.green_dot} Successfully created the '{capacity_name}' capacity within the '{region}'"
+        f"{icons.green_dot} Successfully created the '{capacity_name}' capacity within the '{region}' region."
     )
 
 
