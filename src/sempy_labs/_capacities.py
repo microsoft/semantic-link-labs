@@ -228,7 +228,7 @@ def create_fabric_capacity(
             f"{icons.red_dot} Invalid region. Valid options: {valid_regions}."
         )
 
-    deployment_name = "CapacityTest"
+    # deployment_name = "CapacityTest"
 
     tenant_id = mssparkutils.credentials.getSecret(key_vault_uri, key_vault_tenant_id)
     client_id = mssparkutils.credentials.getSecret(key_vault_uri, key_vault_client_id)
@@ -275,69 +275,92 @@ def create_fabric_capacity(
                 f"{icons.green_dot} Provisioned resource group with ID: {rg_result.id}"
             )
 
-    template = {
-        "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-        "contentVersion": "1.0.0.1",
-        "parameters": {
-            "name": {"type": "string"},
-            "location": {"type": "string"},
-            "sku": {
-                "type": "string",
-                "allowedValues": [
-                    "F2",
-                    "F4",
-                    "F8",
-                    "F16",
-                    "F32",
-                    "F64",
-                    "F128",
-                    "F256",
-                    "F512",
-                    "F1024",
-                    "F2048",
-                ],
-            },
-            "admin": {"type": "array"},
-            "tagValues": {"type": "object", "defaultValue": {}},
-        },
-        "variables": {},
-        "resources": [
-            {
-                "apiVersion": "2022-07-01-preview",
-                "name": "[parameters('name')]",
-                "location": "[parameters('location')]",
-                "sku": {"name": "[parameters('sku')]", "tier": "Fabric"},
-                "properties": {"administration": {"members": "[parameters('admin')]"}},
-                "type": "Microsoft.Fabric/capacities",
-                "tags": "[parameters('tagValues')]",
-            }
-        ],
-        "outputs": {},
-    }
+    # template = {
+    #     "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    #     "contentVersion": "1.0.0.1",
+    #     "parameters": {
+    #         "name": {"type": "string"},
+    #         "location": {"type": "string"},
+    #         "sku": {
+    #             "type": "string",
+    #             "allowedValues": [
+    #                 "F2",
+    #                 "F4",
+    #                 "F8",
+    #                 "F16",
+    #                 "F32",
+    #                 "F64",
+    #                 "F128",
+    #                 "F256",
+    #                 "F512",
+    #                 "F1024",
+    #                 "F2048",
+    #             ],
+    #         },
+    #         "admin": {"type": "array"},
+    #         "tagValues": {"type": "object", "defaultValue": {}},
+    #     },
+    #     "variables": {},
+    #     "resources": [
+    #         {
+    #             "apiVersion": "2022-07-01-preview",
+    #             "name": "[parameters('name')]",
+    #             "location": "[parameters('location')]",
+    #             "sku": {"name": "[parameters('sku')]", "tier": "Fabric"},
+    #             "properties": {"administration": {"members": "[parameters('admin')]"}},
+    #             "type": "Microsoft.Fabric/capacities",
+    #             "tags": "[parameters('tagValues')]",
+    #         }
+    #     ],
+    #     "outputs": {},
+    # }
 
-    parameters = {
-        "name": {"value": capacity_name},
-        "location": {"value": region},
-        "sku": {"value": sku},
-        "admin": {"value": admin_email},
-        "tagValues": {"value": {}},
+    #parameters = {
+    #    "name": {"value": capacity_name},
+    #    "location": {"value": region},
+    #    "sku": {"value": sku},
+    #    "admin": {"value": admin_email},
+    #    "tagValues": {"value": {}},
+    #}
+
+    request_body = {
+        "properties": {
+            "administration": {
+             "members": admin_email
+            }
+        },
+        "sku": {
+            "name": sku,
+            "tier": "Fabric"
+        },
+        "location": region
     }
 
     # Deploy the ARM template with the loaded parameters
     print(
         f"{icons.in_progress} Creating the '{capacity_name}' capacity within the '{region}' region..."
     )
-    deployment_properties = {
-        "properties": {
-            "template": template,
-            "parameters": parameters,
-            "mode": DeploymentMode.incremental,
-        }
-    }
-    deployment_async_operation = resource_client.deployments.begin_create_or_update(
-        resource_group, deployment_name, deployment_properties
+
+    client = fabric.PowerBIRestClient()
+    response = client.put(
+        f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{rg}/providers/Microsoft.Fabric/capacities/{capacity_name}?api-version=2023-11-01",
+        json=request_body
     )
-    deployment_async_operation.wait()
+
+    if response.status_code not in [200, 201]:
+        raise FabricHTTPException(response)
+
+    #deployment_properties = {
+    #    "properties": {
+    #        "template": template,
+    #        "parameters": parameters,
+    #        "mode": DeploymentMode.incremental,
+    #    }
+    #}
+    #deployment_async_operation = resource_client.deployments.begin_create_or_update(
+    #    resource_group, deployment_name, deployment_properties
+    #)
+    #deployment_async_operation.wait()
     print(
         f"{icons.green_dot} Successfully created the '{capacity_name}' capacity within the '{region}'"
     )
