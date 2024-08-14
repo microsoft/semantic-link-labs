@@ -23,3 +23,4 @@ data_type_mapping = {
 measure_icon = "\u2211"
 table_icon = "\u229E"
 column_icon = "\u229F"
+azure_api_version = "2023-11-01"

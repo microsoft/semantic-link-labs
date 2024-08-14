@@ -1,5 +1,5 @@
 import sempy.fabric as fabric
-from typing import Optional, List
+from typing import Optional, List, Tuple
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
@@ -9,6 +9,36 @@ from sempy_labs.admin._basic_functions import assign_workspaces_to_capacity
 import pandas as pd
 import datetime
 import requests
+
+
+def get_azure_token_credentials(
+    key_vault_uri: str,
+    key_vault_tenant_id: str,
+    key_vault_client_id: str,
+    key_vault_client_secret: str,
+) -> Tuple[str, str, dict]:
+
+    from notebookutils import mssparkutils
+    from azure.identity import ClientSecretCredential
+
+    tenant_id = mssparkutils.credentials.getSecret(key_vault_uri, key_vault_tenant_id)
+    client_id = mssparkutils.credentials.getSecret(key_vault_uri, key_vault_client_id)
+    client_secret = mssparkutils.credentials.getSecret(
+        key_vault_uri, key_vault_client_secret
+    )
+
+    credential = ClientSecretCredential(
+        tenant_id=tenant_id, client_id=client_id, client_secret=client_secret
+    )
+
+    token = credential.get_token("https://management.azure.com/.default").token
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+
+    return token, credential, headers
 
 
 @log
@@ -32,9 +62,6 @@ def migrate_workspaces(
     workspaces : str | List[str], default=None
         The name of the workspace(s) specified will be reassigned from the source capacity to the target capacity.
         Defaults to None which will reassign all workspaces in the source capacity to the target capacity.
-
-    Returns
-    -------
     """
 
     if isinstance(workspaces, str):
@@ -145,15 +172,9 @@ def create_fabric_capacity(
         The `sku size <https://azure.microsoft.com/pricing/details/microsoft-fabric/>`_ of the Fabric capacity.
     admin_email : str | List[str]
         The email address(es) of the admin(s) of the Fabric capacity.
-
-    Returns
-    -------
     """
-    from notebookutils import mssparkutils
-    from azure.mgmt.resource import ResourceManagementClient
-    from azure.identity import ClientSecretCredential
 
-    # from azure.mgmt.resource.resources.models import DeploymentMode
+    from azure.mgmt.resource import ResourceManagementClient
 
     capacity_suffix = "fsku"
 
@@ -233,21 +254,12 @@ def create_fabric_capacity(
             f"{icons.red_dot} Invalid region. Valid options: {valid_regions}."
         )
 
-    # deployment_name = "CapacityTest"
-
-    tenant_id = mssparkutils.credentials.getSecret(key_vault_uri, key_vault_tenant_id)
-    client_id = mssparkutils.credentials.getSecret(key_vault_uri, key_vault_client_id)
-    client_secret = mssparkutils.credentials.getSecret(
-        key_vault_uri, key_vault_client_secret
+    azure_token, credential, headers = get_azure_token_credentials(
+        key_vault_uri=key_vault_uri,
+        key_vault_tenant_id=key_vault_tenant_id,
+        key_vault_client_id=key_vault_client_id,
+        key_vault_client_secret=key_vault_client_secret,
     )
-    credential = ClientSecretCredential(
-        tenant_id=tenant_id,
-        client_id=client_id,
-        client_secret=client_secret,
-    )
-
-    token = credential.get_token("https://management.azure.com/.default").token
-    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
     resource_client = ResourceManagementClient(credential, azure_subscription_id)
 
@@ -283,83 +295,23 @@ def create_fabric_capacity(
                 f"{icons.green_dot} Provisioned resource group with ID: {rg_result.id}"
             )
 
-    # template = {
-    #     "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-    #     "contentVersion": "1.0.0.1",
-    #     "parameters": {
-    #         "name": {"type": "string"},
-    #         "location": {"type": "string"},
-    #         "sku": {
-    #             "type": "string",
-    #             "allowedValues": [
-    #                 "F2",
-    #                 "F4",
-    #                 "F8",
-    #                 "F16",
-    #                 "F32",
-    #                 "F64",
-    #                 "F128",
-    #                 "F256",
-    #                 "F512",
-    #                 "F1024",
-    #                 "F2048",
-    #             ],
-    #         },
-    #         "admin": {"type": "array"},
-    #         "tagValues": {"type": "object", "defaultValue": {}},
-    #     },
-    #     "variables": {},
-    #     "resources": [
-    #         {
-    #             "apiVersion": "2022-07-01-preview",
-    #             "name": "[parameters('name')]",
-    #             "location": "[parameters('location')]",
-    #             "sku": {"name": "[parameters('sku')]", "tier": "Fabric"},
-    #             "properties": {"administration": {"members": "[parameters('admin')]"}},
-    #             "type": "Microsoft.Fabric/capacities",
-    #             "tags": "[parameters('tagValues')]",
-    #         }
-    #     ],
-    #     "outputs": {},
-    # }
-
-    # parameters = {
-    #    "name": {"value": capacity_name},
-    #    "location": {"value": region},
-    #    "sku": {"value": sku},
-    #    "admin": {"value": admin_email},
-    #    "tagValues": {"value": {}},
-    # }
-
     request_body = {
         "properties": {"administration": {"members": admin_email}},
         "sku": {"name": sku, "tier": "Fabric"},
         "location": region,
     }
 
-    # Deploy the ARM template with the loaded parameters
     print(
         f"{icons.in_progress} Creating the '{capacity_name}' capacity as an '{sku}' SKU within the '{region}' region..."
     )
 
-    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}?api-version=2023-11-01"
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}?api-version={icons.azure_api_version}"
 
     response = requests.put(url, headers=headers, json=request_body)
 
     if response.status_code not in [200, 201]:
         raise FabricHTTPException(response)
 
-    # deployment_properties = {
-    #    "properties": {
-    #        "template": template,
-    #        "parameters": parameters,
-    #        "mode": DeploymentMode.incremental,
-    #    }
-    # }
-    # deployment_async_operation = resource_client.deployments.begin_create_or_update(
-    #    resource_group, deployment_name, deployment_properties
-    # )
-    # deployment_async_operation.wait()
     print(
         f"{icons.green_dot} Successfully created the '{capacity_name}' capacity within the '{region}' region."
     )
@@ -993,3 +945,141 @@ def migrate_delegated_tenant_settings(source_capacity: str, target_capacity: str
                 print(
                     f"{icons.green_dot} The delegated tenant settings for the '{setting_name}' feature switch of the '{source_capacity}' capacity have been migrated to the '{target_capacity}' capacity."
                 )
+
+
+def suspend_fabric_capacity(
+    capacity_name: str,
+    azure_subscription_id: str,
+    resource_group: str,
+    key_vault_uri: str,
+    key_vault_tenant_id: str,
+    key_vault_client_id: str,
+    key_vault_client_secret: str,
+):
+    # https://learn.microsoft.com/en-us/rest/api/microsoftfabric/fabric-capacities/suspend?view=rest-microsoftfabric-2023-11-01&tabs=HTTP
+
+    azure_token, credential, headers = get_azure_token_credentials(
+        key_vault_uri=key_vault_uri,
+        key_vault_tenant_id=key_vault_tenant_id,
+        key_vault_client_id=key_vault_client_id,
+        key_vault_client_secret=key_vault_client_secret,
+    )
+
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}/suspend?api-version={icons.azure_api_version}"
+
+    response = requests.post(url, headers=headers)
+
+    if response.status_code != 202:
+        raise FabricHTTPException(response)
+
+    print(f"{icons.green_dot} The '{capacity_name} capacity has been suspended.")
+
+
+def resume_fabric_capacity(
+    capacity_name: str,
+    azure_subscription_id: str,
+    resource_group: str,
+    key_vault_uri: str,
+    key_vault_tenant_id: str,
+    key_vault_client_id: str,
+    key_vault_client_secret: str,
+):
+    # https://learn.microsoft.com/en-us/rest/api/microsoftfabric/fabric-capacities/resume?view=rest-microsoftfabric-2023-11-01&tabs=HTTP
+
+    azure_token, credential, headers = get_azure_token_credentials(
+        key_vault_uri=key_vault_uri,
+        key_vault_tenant_id=key_vault_tenant_id,
+        key_vault_client_id=key_vault_client_id,
+        key_vault_client_secret=key_vault_client_secret,
+    )
+
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}/resume?api-version={icons.azure_api_version}"
+
+    response = requests.post(url, headers=headers)
+
+    if response.status_code != 202:
+        raise FabricHTTPException(response)
+
+    print(f"{icons.green_dot} The '{capacity_name} capacity has been resumed.")
+
+
+def delete_fabric_capacity(
+    capacity_name: str,
+    azure_subscription_id: str,
+    resource_group: str,
+    key_vault_uri: str,
+    key_vault_tenant_id: str,
+    key_vault_client_id: str,
+    key_vault_client_secret: str,
+):
+    # https://learn.microsoft.com/en-us/rest/api/microsoftfabric/fabric-capacities/delete?view=rest-microsoftfabric-2023-11-01&tabs=HTTP
+
+    azure_token, credential, headers = get_azure_token_credentials(
+        key_vault_uri=key_vault_uri,
+        key_vault_tenant_id=key_vault_tenant_id,
+        key_vault_client_id=key_vault_client_id,
+        key_vault_client_secret=key_vault_client_secret,
+    )
+
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}?api-version={icons.azure_api_version}"
+
+    response = requests.delete(url, headers=headers)
+
+    if response.status_code != 202:
+        raise FabricHTTPException(response)
+
+    print(f"{icons.green_dot} The '{capacity_name} capacity has been deleted.")
+
+
+def update_fabric_capacity(
+    capacity_name: str,
+    azure_subscription_id: str,
+    resource_group: str,
+    key_vault_uri: str,
+    key_vault_tenant_id: str,
+    key_vault_client_id: str,
+    key_vault_client_secret: str,
+    sku: Optional[str] = None,
+    admin_members: Optional[str | List[str]] = None,
+    tags: Optional[dict] = None,
+):
+
+    # https://learn.microsoft.com/en-us/rest/api/microsoftfabric/fabric-capacities/update?view=rest-microsoftfabric-2023-11-01&tabs=HTTP
+
+    if isinstance(admin_members, str):
+        admin_members = [admin_members]
+    if tags is not None and not isinstance(tags, dict):
+        raise ValueError(
+            f"{icons.red_dot} If specified, the 'tags' parameter must be a dictionary."
+        )
+
+    azure_token, credential, headers = get_azure_token_credentials(
+        key_vault_uri=key_vault_uri,
+        key_vault_tenant_id=key_vault_tenant_id,
+        key_vault_client_id=key_vault_client_id,
+        key_vault_client_secret=key_vault_client_secret,
+    )
+
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}/resume?api-version={icons.azure_api_version}"
+
+    payload = {}
+    if sku is not None:
+        payload["sku"] = {"name": sku, "tier": "Fabric"}
+    if tags is not None:
+        payload["tags"] = tags
+    if admin_members is not None:
+        payload["properties"] = {"administration": {"members": [admin_members]}}
+
+    if payload == {}:
+        raise ValueError(
+            f"{icons.warning} No parameters have been set to update the '{capacity_name}' capacity."
+        )
+
+    response = requests.patch(url, headers=headers, data=payload)
+
+    if response.status_code != 202:
+        raise FabricHTTPException(response)
+
+    print(
+        f"{icons.green_dot} The '{capacity_name} capacity has been updated accordingly."
+    )

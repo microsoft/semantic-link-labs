@@ -12,6 +12,10 @@ from sempy_labs._capacities import (
     migrate_notification_settings,
     migrate_access_settings,
     migrate_delegated_tenant_settings,
+    resume_fabric_capacity,
+    suspend_fabric_capacity,
+    update_fabric_capacity,
+    delete_fabric_capacity,
 )
 
 # from sempy_labs._connections import (
@@ -214,4 +218,8 @@ __all__ = [
     "migrate_notification_settings",
     "migrate_access_settings",
     "migrate_delegated_tenant_settings",
+    "resume_fabric_capacity",
+    "suspend_fabric_capacity",
+    "update_fabric_capacity",
+    "delete_fabric_capacity",
 ]
