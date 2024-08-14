@@ -5,6 +5,7 @@ import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 import datetime
 import numpy as np
+import pandas as pd
 
 
 @log
@@ -75,3 +76,41 @@ def assign_workspaces_to_capacity(
     print(
         f"{icons.green_dot} The workspaces have been assigned to the '{target_capacity}' capacity."
     )
+
+
+def list_capacities() -> pd.DataFrame:
+    """
+    Shows the a list of capacities and their properties.
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the capacities and their properties
+    """
+
+    df = pd.DataFrame(
+        columns=["Capacity Id", "Capacity Name", "Sku", "Region", "State", "Admins"]
+    )
+
+    client = fabric.PowerBIRestClient()
+    response = client.get("/v1.0/myorg/admin/capacities")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    response = client.get("/v1.0/myorg/capacities")
+
+    for i in response.json().get("value", []):
+        new_data = {
+            "Capacity Id": i.get("id").lower(),
+            "Capacity Name": i.get("displayName"),
+            "Sku": i.get("sku"),
+            "Region": i.get("region"),
+            "State": i.get("state"),
+            "Admins": [i.get("admins", [])],
+        }
+        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    return df

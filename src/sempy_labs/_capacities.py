@@ -8,6 +8,7 @@ from sempy_labs._list_functions import assign_workspace_to_capacity
 from sempy_labs.admin._basic_functions import assign_workspaces_to_capacity
 import pandas as pd
 import datetime
+import requests
 
 
 @log
@@ -117,7 +118,7 @@ def create_fabric_capacity(
     resource_group: str,
     region: str,
     sku: str,
-    admin_email: List[str],
+    admin_email: str | List[str],
 ):
     """
     This function creates a new Fabric capacity within an Azure subscription.
@@ -142,7 +143,7 @@ def create_fabric_capacity(
         The name of the region in which the capacity will be created.
     sku : str
         The `sku size <https://azure.microsoft.com/pricing/details/microsoft-fabric/>`_ of the Fabric capacity.
-    admin_email : List[str]
+    admin_email : str | List[str]
         The email address(es) of the admin(s) of the Fabric capacity.
 
     Returns
@@ -155,6 +156,9 @@ def create_fabric_capacity(
     # from azure.mgmt.resource.resources.models import DeploymentMode
 
     capacity_suffix = "fsku"
+
+    if isinstance(admin_email, str):
+        admin_email = [admin_email]
 
     # list source: https://learn.microsoft.com/fabric/admin/region-availability
     region_list = [
@@ -338,12 +342,9 @@ def create_fabric_capacity(
         f"{icons.in_progress} Creating the '{capacity_name}' capacity as an '{sku}' SKU within the '{region}' region..."
     )
 
-    client = fabric.PowerBIRestClient("https://management.azure.com/")
-    response = client.put(
-        f"subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}?api-version=2023-11-01",
-        json=request_body,
-        headers=headers,
-    )
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}?api-version=2023-11-01"
+
+    response = requests.put(url, headers=headers, json=request_body)
 
     if response.status_code not in [200, 201]:
         raise FabricHTTPException(response)
