@@ -145,7 +145,8 @@ def create_fabric_capacity(
     resource_group: str,
     region: str,
     sku: str,
-    admin_email: str | List[str],
+    admin_members: str | List[str],
+    tags: Optional[dict] = None,
 ):
     """
     This function creates a new Fabric capacity within an Azure subscription.
@@ -170,7 +171,7 @@ def create_fabric_capacity(
         The name of the region in which the capacity will be created.
     sku : str
         The `sku size <https://azure.microsoft.com/pricing/details/microsoft-fabric/>`_ of the Fabric capacity.
-    admin_email : str | List[str]
+    admin_members : str | List[str]
         The email address(es) of the admin(s) of the Fabric capacity.
     """
 
@@ -178,8 +179,8 @@ def create_fabric_capacity(
 
     capacity_suffix = "fsku"
 
-    if isinstance(admin_email, str):
-        admin_email = [admin_email]
+    if isinstance(admin_members, str):
+        admin_members = [admin_members]
 
     # list source: https://learn.microsoft.com/fabric/admin/region-availability
     region_list = [
@@ -295,11 +296,19 @@ def create_fabric_capacity(
                 f"{icons.green_dot} Provisioned resource group with ID: {rg_result.id}"
             )
 
-    request_body = {
-        "properties": {"administration": {"members": admin_email}},
+    payload = {
+        "properties": {"administration": {"members": admin_members}},
         "sku": {"name": sku, "tier": "Fabric"},
         "location": region,
     }
+
+    # Add SLL tag
+    if tags is None:
+        payload["tags"] = {"SLL": 1}
+    else:
+        if "tags" not in payload:
+            payload["tags"] = tags
+        payload["tags"]["SLL"] = 1
 
     print(
         f"{icons.in_progress} Creating the '{capacity_name}' capacity as an '{sku}' SKU within the '{region}' region..."
@@ -307,7 +316,7 @@ def create_fabric_capacity(
 
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}?api-version={icons.azure_api_version}"
 
-    response = requests.put(url, headers=headers, json=request_body)
+    response = requests.put(url, headers=headers, json=payload)
 
     if response.status_code not in [200, 201]:
         raise FabricHTTPException(response)
@@ -467,7 +476,7 @@ def migrate_capacities(
                     resource_group=rg,
                     region=region,
                     sku=sku_mapping.get(sku_size),
-                    admin_email=admins,
+                    admin_members=admins,
                 )
                 end_time = datetime.datetime.now()
                 print(
@@ -1065,10 +1074,16 @@ def update_fabric_capacity(
     payload = {}
     if sku is not None:
         payload["sku"] = {"name": sku, "tier": "Fabric"}
-    if tags is not None:
-        payload["tags"] = tags
     if admin_members is not None:
         payload["properties"] = {"administration": {"members": [admin_members]}}
+
+    # Add SLL tag
+    if tags is None:
+        payload["tags"] = {"SLL": 1}
+    else:
+        if "tags" not in payload:
+            payload["tags"] = tags
+        payload["tags"]["SLL"] = 1
 
     if payload == {}:
         raise ValueError(
@@ -1083,3 +1098,33 @@ def update_fabric_capacity(
     print(
         f"{icons.green_dot} The '{capacity_name} capacity has been updated accordingly."
     )
+
+
+def check_fabric_capacity_name_availablility(
+    capacity_name: str,
+    azure_subscription_id: str,
+    region: str,
+    key_vault_uri: str,
+    key_vault_tenant_id: str,
+    key_vault_client_id: str,
+    key_vault_client_secret: str,
+) -> bool:
+    # https://learn.microsoft.com/en-us/rest/api/microsoftfabric/fabric-capacities/check-name-availability?view=rest-microsoftfabric-2023-11-01&tabs=HTTP
+
+    azure_token, credential, headers = get_azure_token_credentials(
+        key_vault_uri=key_vault_uri,
+        key_vault_tenant_id=key_vault_tenant_id,
+        key_vault_client_id=key_vault_client_id,
+        key_vault_client_secret=key_vault_client_secret,
+    )
+
+    payload = {"name": capacity_name, "type": "Microsoft.Fabric/capacities"}
+
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/providers/Microsoft.Fabric/locations/{region}/checkNameAvailability?api-version={icons.azure_api_version}"
+
+    response = requests.post(url, headers=headers, data=payload)
+
+    if response.status_code != 202:
+        raise FabricHTTPException(response)
+
+    return bool(response.json().get("nameAvailable"))
