@@ -1,9 +1,12 @@
 import sempy
 import sempy.fabric as fabric
 import re
-import time
 from sempy_labs._list_functions import list_tables
-from sempy_labs._helper_functions import create_relationship_name, retry
+from sempy_labs._helper_functions import (
+    create_relationship_name,
+    retry,
+    format_dax_object_name,
+)
 from sempy_labs.tom import connect_semantic_model
 from typing import Optional
 from sempy._utils._log import log
@@ -292,8 +295,7 @@ def migrate_model_objects_to_semantic_model(
                     r.FromTable.Name, r.FromColumn.Name, r.ToTable.Name, r.ToColumn.Name
                 )
 
-                # Do not create relationship if
-                # Already exists
+                # Relationship already exists
                 if any(
                     rel.FromTable.Name == r.FromTable.Name
                     and rel.FromColumn.Name == r.FromColumn.Name
@@ -305,11 +307,12 @@ def migrate_model_objects_to_semantic_model(
                         f"{icons.warning} The {relName} relationship was not created as it already exists in the '{new_dataset}' semantic model within the '{new_dataset_workspace}' workspace."
                     )
 
-                # DL
+                # Direct Lake with incompatible column data types
                 elif isDirectLake and r.FromColumn.DataType != r.ToColumn.DataType:
                     print(
                         f"{icons.warning} The {relName} relationship was not created as Direct Lake does not support relationships based on columns with different data types."
                     )
+                # Direct Lake using DateTime columns
                 elif isDirectLake and (
                     r.FromColumn.DataType == TOM.DataType.DateTime
                     or r.ToColumn.DataType == TOM.DataType.DateTime
@@ -317,21 +320,45 @@ def migrate_model_objects_to_semantic_model(
                     print(
                         f"{icons.red_dot} The {relName} relationship was not created as Direct Lake does not support relationships based on columns of DateTime data type."
                     )
-
-                elif isDirectLake and (
-                    any(
+                # Columns do not exist in the new semantic model
+                elif not any(
+                    c.Name == r.FromColumn.Name and c.Parent.Name == r.FromTable.Name
+                    for c in tom.all_columns()
+                ) or not any(
+                    c.Name == r.ToColumn.Name and c.Parent.Name == r.ToTable.Name
+                    for c in tom.all_columns()
+                ):
+                    # Direct lake and based on calculated column
+                    if isDirectLake and (
+                        any(
+                            c.Name == r.FromColumn.Name
+                            and c.Parent.Name == r.FromTable.Name
+                            for c in tom_old.all_calculated_columns()
+                        )
+                        or any(
+                            c.Name == r.ToColumn.Name
+                            and c.Parent.Name == r.ToTable.Name
+                            for c in tom_old.all_calculated_columns()
+                        )
+                    ):
+                        print(
+                            f"{icons.red_dot} The {relName} relationship was not created as the necssary column(s) do not exist. This is due to Direct Lake not supporting calculated columns."
+                        )
+                    elif not any(
                         c.Name == r.FromColumn.Name
                         and c.Parent.Name == r.FromTable.Name
-                        for c in tom_old.all_calculated_columns()
-                    )
-                    or any(
+                        for c in tom.all_columns()
+                    ):
+                        print(
+                            f"{icons.red_dot} The {relName} relationship cannot be created because the {format_dax_object_name(r.FromTable.Name, r.FromColumn.Name)} column is not available in the '{new_dataset}' semantic model within the '{new_dataset_workspace}' workspace."
+                        )
+                    elif not any(
                         c.Name == r.ToColumn.Name and c.Parent.Name == r.ToTable.Name
-                        for c in tom_old.all_calculated_columns()
-                    )
-                ):
-                    print(
-                        f"{icons.red_dot} The {relName} relationship was not created as Direct Lake does not support calculated columns."
-                    )
+                        for c in tom.all_columns()
+                    ):
+                        print(
+                            f"{icons.red_dot} The {relName} relationship cannot be created because the {format_dax_object_name(r.ToTable.Name, r.ToColumn.Name)} column is not available in the '{new_dataset}' semantic model within the '{new_dataset_workspace}' workspace."
+                        )
                 else:
                     tom.add_relationship(
                         from_table=r.FromTable.Name,
