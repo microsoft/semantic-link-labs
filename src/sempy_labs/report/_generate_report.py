@@ -8,6 +8,7 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _conv_b64,
     resolve_report_id,
+    lro,
 )
 import sempy_labs._icons as icons
 from sempy._utils._log import log
@@ -148,38 +149,10 @@ def update_report_from_reportjson(
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    dfR = fabric.list_reports(workspace=workspace)
-    dfR_filt = dfR[(dfR["Name"] == report) & (dfR["Report Type"] == "PowerBIReport")]
-
-    if len(dfR_filt) == 0:
-        raise ValueError(
-            f"{icons.red_dot} The '{report}' report does not exist in the '{workspace}' workspace."
-        )
-
-    reportId = dfR_filt["Id"].iloc[0]
-    client = fabric.FabricRestClient()
+    report_id = resolve_report_id(report=report, workspace=workspace)
 
     # Get the existing PBIR file
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/reports/{reportId}/getDefinition"
-    )
-    if response.status_code not in [200, 202]:
-        raise FabricHTTPException(response)
-    if response.status_code == 200:
-        result = response.json()
-    if response.status_code == 202:
-        operationId = response.headers["x-ms-operation-id"]
-        response = client.get(f"/v1/operations/{operationId}")
-        response_body = json.loads(response.content)
-        while response_body["status"] != "Succeeded":
-            time.sleep(1)
-            response = client.get(f"/v1/operations/{operationId}")
-            response_body = json.loads(response.content)
-        response = client.get(f"/v1/operations/{operationId}/result")
-        result = response.json()
-
-    df_items = pd.json_normalize(result["definition"]["parts"])
+    df_items = get_report_definition(report=report, workspace=workspace)
     df_items_filt = df_items[df_items["path"] == "definition.pbir"]
     rptDefFile = df_items_filt["payload"].iloc[0]
     payloadReportJson = _conv_b64(report_json)
@@ -201,23 +174,13 @@ def update_report_from_reportjson(
         }
     }
 
+    client = fabric.FabricRestClient()
     response = client.post(
-        f"/v1/workspaces/{workspace_id}/reports/{reportId}/updateDefinition",
+        f"/v1/workspaces/{workspace_id}/reports/{report_id}/updateDefinition",
         json=request_body,
     )
 
-    if response.status_code not in [200, 202]:
-        raise FabricHTTPException(response)
-    if response.status_code == 202:
-        operationId = response.headers["x-ms-operation-id"]
-        response = client.get(f"/v1/operations/{operationId}")
-        response_body = json.loads(response.content)
-        while response_body["status"] not in ["Succeeded", "Failed"]:
-            time.sleep(1)
-            response = client.get(f"/v1/operations/{operationId}")
-            response_body = json.loads(response.content)
-        if response_body["status"] != "Succeeded":
-            raise FabricHTTPException(response)
+    lro(client, response, return_status_code=True)
 
     print(
         f"{icons.green_dot} The '{report}' report within the '{workspace}' workspace has been successfully updated."
@@ -251,21 +214,7 @@ def get_report_definition(report: str, workspace: Optional[str] = None) -> pd.Da
         f"/v1/workspaces/{workspace_id}/reports/{report_id}/getDefinition",
     )
 
-    if response.status_code not in [200, 202]:
-        raise FabricHTTPException(response)
-    if response.status_code == 200:
-        result = response.json()
-    if response.status_code == 202:
-        operationId = response.headers["x-ms-operation-id"]
-        response = client.get(f"/v1/operations/{operationId}")
-        response_body = json.loads(response.content)
-        while response_body["status"] != "Succeeded":
-            time.sleep(1)
-            response = client.get(f"/v1/operations/{operationId}")
-            response_body = json.loads(response.content)
-        response = client.get(f"/v1/operations/{operationId}/result")
-        result = response.json()
-
+    result = lro(client, response).json()
     rdef = pd.json_normalize(result["definition"]["parts"])
 
     return rdef

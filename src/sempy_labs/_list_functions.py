@@ -5,6 +5,7 @@ from sempy_labs._helper_functions import (
     create_relationship_name,
     resolve_lakehouse_id,
     resolve_dataset_id,
+    _decode_b64,
 )
 import pandas as pd
 import base64
@@ -2420,7 +2421,7 @@ def get_notebook_definition(
     payload = df_items_filt["payload"].iloc[0]
 
     if decode:
-        result = base64.b64decode(payload).decode("utf-8")
+        result = _decode_b64(payload)
     else:
         result = payload
 

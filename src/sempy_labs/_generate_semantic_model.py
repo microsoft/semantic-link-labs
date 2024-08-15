@@ -1,17 +1,18 @@
 import sempy.fabric as fabric
 import pandas as pd
 import json
-import base64
 import os
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
     resolve_workspace_name_and_id,
+    resolve_dataset_id,
     _conv_b64,
+    _decode_b64,
+    lro,
 )
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 import sempy_labs._icons as icons
-from sempy.fabric.exceptions import FabricHTTPException
 
 
 def create_blank_semantic_model(
@@ -123,11 +124,10 @@ def create_semantic_model_from_bim(
     response = client.post(
         f"/v1/workspaces/{workspace_id}/semanticModels",
         json=request_body,
-        lro_wait=True,
     )
 
-    if response.status_code not in [200, 201]:
-        raise FabricHTTPException(response)
+    lro(client, response, status_codes=[201, 202])
+
     print(
         f"{icons.green_dot} The '{dataset}' semantic model has been created within the '{workspace}' workspace."
     )
@@ -222,25 +222,18 @@ def get_semantic_model_bim(
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-    if lakehouse_workspace is None:
-        lakehouse_workspace = workspace
 
     fmt = "TMSL"
     client = fabric.FabricRestClient()
-    itemList = fabric.list_items(workspace=workspace, type="SemanticModel")
-    itemListFilt = itemList[(itemList["Display Name"] == dataset)]
-    itemId = itemListFilt["Id"].iloc[0]
+    dataset_id = resolve_dataset_id(dataset=dataset, workspace=workspace)
     response = client.post(
-        f"/v1/workspaces/{workspace_id}/items/{itemId}/getDefinition?format={fmt}",
-        lro_wait=True,
+        f"/v1/workspaces/{workspace_id}/semanticModels/{dataset_id}/getDefinition?format={fmt}",
     )
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    df_items = pd.json_normalize(response.json()["definition"]["parts"])
+    result = lro(client, response).json()
+    df_items = pd.json_normalize(result["definition"]["parts"])
     df_items_filt = df_items[df_items["path"] == "model.bim"]
     payload = df_items_filt["payload"].iloc[0]
-    bimFile = base64.b64decode(payload).decode("utf-8")
+    bimFile = _decode_b64(payload)
     bimJson = json.loads(bimFile)
 
     if save_to_file_name is not None:

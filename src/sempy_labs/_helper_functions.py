@@ -7,9 +7,10 @@ from functools import wraps
 import datetime
 import time
 from pyspark.sql import SparkSession
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 from uuid import UUID
 import sempy_labs._icons as icons
+from sempy.fabric.exceptions import FabricHTTPException
 
 
 def create_abfss_path(
@@ -530,12 +531,27 @@ def resolve_workspace_name_and_id(workspace: Optional[str] = None) -> Tuple[str,
     return str(workspace), str(workspace_id)
 
 
+def _extract_json(dataframe: pd.DataFrame) -> dict:
+
+    payload = dataframe["payload"].iloc[0]
+    json_file = _decode_b64(payload)
+
+    return json.loads(json_file)
+
+
 def _conv_b64(file):
 
     loadJson = json.dumps(file)
     f = base64.b64encode(loadJson.encode("utf-8")).decode("utf-8")
 
     return f
+
+
+def _decode_b64(file, format: Optional[str] = "utf-8"):
+
+    result = base64.b64decode(file).decode(format)
+
+    return result
 
 
 def is_default_semantic_model(dataset: str, workspace: Optional[str] = None) -> bool:
@@ -645,14 +661,6 @@ def _add_part(target_dict, path, payload):
     part = {"path": path, "payload": payload, "payloadType": "InlineBase64"}
 
     target_dict["definition"]["parts"].append(part)
-
-
-def _extract_json(dataframe: pd.DataFrame) -> dict:
-
-    payload = dataframe["payload"].iloc[0]
-    json_file = base64.b64decode(payload).decode("utf-8")
-
-    return json.loads(json_file)
 
 
 def resolve_workspace_capacity(workspace: Optional[str] = None) -> Tuple[UUID, str]:
@@ -785,3 +793,37 @@ def retry(sleep_time: int, timeout_error_message: str):
         return wrapper
 
     return decorator
+
+
+def lro(
+    client,
+    response,
+    status_codes: Optional[List[str]] = [200, 202],
+    sleep_time: Optional[int] = 1,
+    return_status_code: Optional[bool] = False,
+):
+
+    if response.status_code not in status_codes:
+        raise FabricHTTPException(response)
+    if response.status_code == status_codes[0]:
+        if return_status_code:
+            result = response.status_code
+        else:
+            result = response
+    if response.status_code == status_codes[1]:
+        operationId = response.headers["x-ms-operation-id"]
+        response = client.get(f"/v1/operations/{operationId}")
+        response_body = json.loads(response.content)
+        while response_body["status"] not in ["Succeeded", "Failed"]:
+            time.sleep(sleep_time)
+            response = client.get(f"/v1/operations/{operationId}")
+            response_body = json.loads(response.content)
+        if response_body["status"] != "Succeeded":
+            raise FabricHTTPException(response)
+        if return_status_code:
+            result = response.status_code
+        else:
+            response = client.get(f"/v1/operations/{operationId}/result")
+            result = response
+
+    return result

@@ -19,6 +19,8 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
     language_validate,
     resolve_workspace_name_and_id,
+    lro,
+    _decode_b64,
 )
 from typing import List, Optional, Union
 from sempy._utils._log import log
@@ -51,40 +53,21 @@ def get_report_json(
         The report.json file for a given Power BI report.
     """
 
-    from sempy_labs._helper_functions import resolve_report_id
-
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
     report_id = resolve_report_id(report=report, workspace=workspace)
-    fmt = 'PBIR-Legacy'
+    fmt = "PBIR-Legacy"
 
     client = fabric.FabricRestClient()
     response = client.post(
         f"/v1/workspaces/{workspace_id}/reports/{report_id}/getDefinition?format={fmt}"
     )
 
-    if response.status_code not in [200, 202]:
-        raise FabricHTTPException(response)
-    if response.status_code == 200:
-        result = response.json()
-    if response.status_code == 202:
-        operationId = response.headers["x-ms-operation-id"]
-        response = client.get(f"/v1/operations/{operationId}")
-        response_body = json.loads(response.content)
-        while response_body["status"] not in ["Succeeded", "Failed"]:
-            time.sleep(1)
-            response = client.get(f"/v1/operations/{operationId}")
-            response_body = json.loads(response.content)
-        if response_body["status"] != "Succeeded":
-            raise FabricHTTPException(response)
-        response = client.get(f"/v1/operations/{operationId}/result")
-        result = response.json()
-
+    result = lro(client, response).json()
     df_items = pd.json_normalize(result["definition"]["parts"])
     df_items_filt = df_items[df_items["path"] == "report.json"]
     payload = df_items_filt["payload"].iloc[0]
-
-    reportFile = base64.b64decode(payload).decode("utf-8")
-    reportJson = json.loads(reportFile)
+    report_file = _decode_b64(payload)
+    report_json = json.loads(report_file)
 
     if save_to_file_name is not None:
         lakeAttach = lakehouse_attached()
@@ -102,12 +85,12 @@ def get_report_json(
             save_to_file_name = f"{save_to_file_name}{fileExt}"
         filePath = os.path.join(folderPath, save_to_file_name)
         with open(filePath, "w") as json_file:
-            json.dump(reportJson, json_file, indent=4)
+            json.dump(report_json, json_file, indent=4)
         print(
             f"{icons.green_dot} The report.json file for the '{report}' report has been saved to the '{lakehouse}' in this location: '{filePath}'.\n\n"
         )
 
-    return reportJson
+    return report_json
 
 
 def report_dependency_tree(workspace: Optional[str] = None):
