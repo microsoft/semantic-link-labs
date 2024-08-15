@@ -3,9 +3,23 @@ from typing import Optional, List
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 import pandas as pd
+from uuid import UUID
 
 
-def resolve_domain_id(domain_name: str):
+def resolve_domain_id(domain_name: str) -> UUID:
+    """
+    Obtains the domain Id for a given domain name.
+
+    Parameters
+    ----------
+    domain_name : str
+        The domain name
+
+    Returns
+    -------
+    UUID
+        The domain Id.
+    """
 
     dfL = list_domains()
     dfL_filt = dfL[dfL["Domain Name"] == domain_name]
@@ -15,7 +29,21 @@ def resolve_domain_id(domain_name: str):
     return dfL_filt["Domain ID"].iloc[0]
 
 
-def list_domains(non_empty_only: Optional[bool] = False):
+def list_domains(non_empty_only: Optional[bool] = False) -> pd.DataFrame:
+    """
+    Shows a list of domains.
+
+    Parameters
+    ----------
+    non_empty_only : bool, default=False
+        When True, only return domains that have at least one workspace containing an item.
+        Defaults to False.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of the domains.
+    """
 
     # https://learn.microsoft.com/en-us/rest/api/fabric/admin/domains/list-domains?tabs=HTTP
 
@@ -51,7 +79,20 @@ def list_domains(non_empty_only: Optional[bool] = False):
     return df
 
 
-def list_domain_workspaces(domain_name: str):
+def list_domain_workspaces(domain_name: str) -> pd.DataFrame:
+    """
+    Shows a list of workspaces within the domain.
+
+    Parameters
+    ----------
+    domain_name : str
+        The domain name.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of workspaces within the domain.
+    """
 
     # https://learn.microsoft.com/en-us/rest/api/fabric/admin/domains/list-domain-workspaces?tabs=HTTP
 
@@ -80,6 +121,18 @@ def create_domain(
     description: Optional[str] = None,
     parent_domain_name: Optional[str] = None,
 ):
+    """
+    Creates a new domain.
+
+    Parameters
+    ----------
+    domain_name : str
+        The domain name.
+    description : str, default=None
+        The domain description.
+    parent_domain_name : str, default=None
+        The parent domain name.
+    """
 
     # https://learn.microsoft.com/en-us/rest/api/fabric/admin/domains/create-domain?tabs=HTTP
 
@@ -103,6 +156,14 @@ def create_domain(
 
 
 def delete_domain(domain_name: str):
+    """
+    Deletes a domain.
+
+    Parameters
+    ----------
+    domain_name : str
+        The domain name.
+    """
 
     # https://learn.microsoft.com/en-us/rest/api/fabric/admin/domains/delete-domain?tabs=HTTP
 
@@ -122,6 +183,18 @@ def update_domain(
     description: Optional[str] = None,
     contributors_scope: Optional[str] = None,
 ):
+    """
+    Updates a domain's properties.
+
+    Parameters
+    ----------
+    domain_name : str
+        The domain name.
+    description : str, default=None
+        The domain description.
+    contributors_scope : str, default=None
+        The domain `contributor scope <https://learn.microsoft.com/rest/api/fabric/admin/domains/update-domain?tabs=HTTP#contributorsscopetype>`_.
+    """
 
     # https://learn.microsoft.com/en-us/rest/api/fabric/admin/domains/update-domain?tabs=HTTP
 
@@ -154,6 +227,16 @@ def update_domain(
 def assign_domain_workspaces_by_capacities(
     domain_name: str, capacity_names: str | List[str]
 ):
+    """
+    Assigns all workspaces that reside on the specified capacities to the specified domain.
+
+    Parameters
+    ----------
+    domain_name : str
+        The domain name.
+    capacity_names : str | List[str]
+        The capacity names.
+    """
 
     # https://learn.microsoft.com/en-us/rest/api/fabric/admin/domains/assign-domain-workspaces-by-capacities?tabs=HTTP
 
@@ -202,6 +285,16 @@ def assign_domain_workspaces_by_capacities(
 
 
 def assign_domain_workspaces(domain_name: str, workspace_names: str | List[str]):
+    """
+    Assigns workspaces to the specified domain by workspace.
+
+    Parameters
+    ----------
+    domain_name : str
+        The domain name.
+    workspace_names : str | List[str]
+        The Fabric workspace(s).
+    """
 
     # https://learn.microsoft.com/en-us/rest/api/fabric/admin/domains/assign-domain-workspaces-by-ids?tabs=HTTP
 
@@ -246,6 +339,14 @@ def assign_domain_workspaces(domain_name: str, workspace_names: str | List[str])
 
 
 def unassign_all_domain_workspaces(domain_name: str):
+    """
+    Unassigns all workspaces from the specified domain.
+
+    Parameters
+    ----------
+    domain_name : str
+        The domain name.
+    """
 
     # https://learn.microsoft.com/en-us/rest/api/fabric/admin/domains/unassign-all-domain-workspaces?tabs=HTTP
 
@@ -262,6 +363,16 @@ def unassign_all_domain_workspaces(domain_name: str):
 
 
 def unassign_domain_workspaces(domain_name: str, workspace_names: str | List[str]):
+    """
+    Unassigns workspaces from the specified domain by workspace.
+
+    Parameters
+    ----------
+    domain_name : str
+        The domain name.
+    workspace_names : str | List[str]
+        The Fabric workspace(s).
+    """
 
     # https://learn.microsoft.com/en-us/rest/api/fabric/admin/domains/unassign-domain-workspaces-by-ids?tabs=HTTP
 

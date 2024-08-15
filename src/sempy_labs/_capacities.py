@@ -709,9 +709,6 @@ def migrate_disaster_recovery_settings(source_capacity: str, target_capacity: st
         Name of the source capacity.
     target_capacity : str
         Name of the target capacity.
-
-    Returns
-    -------
     """
 
     dfC = fabric.list_capacities()
@@ -748,7 +745,7 @@ def migrate_disaster_recovery_settings(source_capacity: str, target_capacity: st
     )
 
 
-def list_vcores():
+def list_vcores() -> pd.DataFrame:
 
     df = pd.DataFrame(columns=["Total Purchased Cores", "Available Cores"])
 

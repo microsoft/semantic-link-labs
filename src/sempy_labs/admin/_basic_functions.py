@@ -114,7 +114,15 @@ def list_capacities() -> pd.DataFrame:
     return df
 
 
-def list_tenant_settings():
+def list_tenant_settings() -> pd.DataFrame:
+    """
+    Lists all tenant settings.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the tenant settings.
+    """
 
     # https://learn.microsoft.com/en-us/rest/api/fabric/admin/tenants/list-tenant-settings?tabs=HTTP
 
