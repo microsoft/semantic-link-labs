@@ -161,22 +161,35 @@ def assign_domain_workspaces_by_capacities(
 
     domain_id = resolve_domain_id(domain_name)
 
-    dfC = list_capacities()
-    dfC_filt = dfC[dfC["Name"].isin(capacity_names)]
+    if isinstance(capacity_names, str):
+        capacity_names = [capacity_names]
 
-    if len(dfC_filt) < len(capacity_names):
+    dfC = list_capacities()
+
+    # Check for invalid capacities
+    invalid_capacities = [
+        name for name in capacity_names if name not in dfC["Display Name"].values
+    ]
+
+    if len(invalid_capacities) == 1:
         raise ValueError(
-            f"{icons.red_dot} An invalid capacity was specified."  # TODO identify invalid capacities
+            f"{icons.red_dot} The {invalid_capacities} capacity is not valid."
+        )
+    elif len(invalid_capacities) > 1:
+        raise ValueError(
+            f"{icons.red_dot} The {invalid_capacities} capacities are not valid."
         )
 
-    capacity_list = list(dfC_filt["Id"])
+    # Get list of capacity Ids for the payload
+    dfC_filt = dfC[dfC["Display Name"].isin(capacity_names)]
+    capacity_list = list(dfC_filt["Id"].str.upper())
 
-    request_body = {"capacitiesIds": capacity_list}
+    payload = {"capacitiesIds": capacity_list}
 
     client = fabric.FabricRestClient()
     response = client.post(
         f"/v1/admin/domains/{domain_id}/assignWorkspacesByCapacities",
-        json=request_body,
+        json=payload,
         lro_wait=True,  # TODO remove lro_wait
     )
 
@@ -185,4 +198,105 @@ def assign_domain_workspaces_by_capacities(
 
     print(
         f"{icons.green_dot} The workspaces in the {capacity_names} capacities have been assigned to the '{domain_name}' domain."
+    )
+
+
+def assign_domain_workspaces(domain_name: str, workspace_names: str | List[str]):
+
+    # https://learn.microsoft.com/en-us/rest/api/fabric/admin/domains/assign-domain-workspaces-by-ids?tabs=HTTP
+
+    domain_id = resolve_domain_id(domain_name=domain_name)
+
+    if isinstance(workspace_names, str):
+        workspace_names = [workspace_names]
+
+    dfW = fabric.list_workspaces()
+
+    # Check for invalid capacities
+    invalid_workspaces = [
+        name for name in workspace_names if name not in dfW["Name"].values
+    ]
+
+    if len(invalid_workspaces) == 1:
+        raise ValueError(
+            f"{icons.red_dot} The {invalid_workspaces} workspace is not valid."
+        )
+    elif len(invalid_workspaces) > 1:
+        raise ValueError(
+            f"{icons.red_dot} The {invalid_workspaces} workspaces are not valid."
+        )
+
+    dfW_filt = dfW[dfW["Name"].isin(workspace_names)]
+    workspace_list = list(dfW_filt["Id"])
+
+    payload = {"workspacesIds": workspace_list}
+
+    client = fabric.FabricRestClient()
+    response = client.post(
+        f"/v1/admin/domains/{domain_id}/assignWorkspaces",
+        json=payload,
+        lro_wait=True,  # TODO remove lro_wait
+    )
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+    print(
+        f"{icons.green_dot} The {workspace_names} workspaces have been assigned to the '{domain_name}' domain."
+    )
+
+
+def unassign_all_domain_workspaces(domain_name: str):
+
+    # https://learn.microsoft.com/en-us/rest/api/fabric/admin/domains/unassign-all-domain-workspaces?tabs=HTTP
+
+    domain_id = resolve_domain_id(domain_name=domain_name)
+
+    client = fabric.FabricRestClient()
+    response = client.post(f"/v1/admin/domains/{domain_id}/unassignAllWorkspaces")
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+    print(
+        f"{icons.green_dot} All workspaces assigned to the '{domain_name}' domain have been unassigned."
+    )
+
+
+def unassign_domain_workspaces(domain_name: str, workspace_names: str | List[str]):
+
+    # https://learn.microsoft.com/en-us/rest/api/fabric/admin/domains/unassign-domain-workspaces-by-ids?tabs=HTTP
+
+    domain_id = resolve_domain_id(domain_name=domain_name)
+
+    if isinstance(workspace_names, str):
+        workspace_names = [workspace_names]
+
+    dfW = fabric.list_workspaces()
+
+    # Check for invalid capacities
+    invalid_workspaces = [
+        name for name in workspace_names if name not in dfW["Name"].values
+    ]
+
+    if len(invalid_workspaces) == 1:
+        raise ValueError(
+            f"{icons.red_dot} The {invalid_workspaces} workspace is not valid."
+        )
+    elif len(invalid_workspaces) > 1:
+        raise ValueError(
+            f"{icons.red_dot} The {invalid_workspaces} workspaces are not valid."
+        )
+
+    dfW_filt = dfW[dfW["Name"].isin(workspace_names)]
+    workspace_list = list(dfW_filt["Id"])
+
+    payload = {"workspacesIds": workspace_list}
+    client = fabric.FabricRestClient()
+    response = client.post(
+        f"/v1/admin/domains/{domain_id}/unassignWorkspaces", json=payload
+    )
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+    print(
+        f"{icons.green_dot} The {workspace_names} workspaces assigned to the '{domain_name}' domain have been unassigned."
     )

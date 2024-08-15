@@ -2,7 +2,6 @@ import sempy.fabric as fabric
 from typing import Optional, List
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
-from sempy_labs._helper_functions import resolve_workspace_name_and_id
 import datetime
 import numpy as np
 import pandas as pd
