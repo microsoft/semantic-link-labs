@@ -11,6 +11,18 @@ import datetime
 import requests
 
 
+def _add_sll_tag(payload, tags):
+
+    if tags is None:
+        payload["tags"] = {"SLL": 1}
+    else:
+        if "tags" not in payload:
+            payload["tags"] = tags
+        payload["tags"]["SLL"] = 1
+
+    return payload
+
+
 def get_azure_token_credentials(
     key_vault_uri: str,
     key_vault_tenant_id: str,
@@ -302,13 +314,7 @@ def create_fabric_capacity(
         "location": region,
     }
 
-    # Add SLL tag
-    if tags is None:
-        payload["tags"] = {"SLL": 1}
-    else:
-        if "tags" not in payload:
-            payload["tags"] = tags
-        payload["tags"]["SLL"] = 1
+    payload = _add_sll_tag(payload, tags)
 
     print(
         f"{icons.in_progress} Creating the '{capacity_name}' capacity as an '{sku}' SKU within the '{region}' region..."
@@ -1069,7 +1075,7 @@ def update_fabric_capacity(
         key_vault_client_secret=key_vault_client_secret,
     )
 
-    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}/resume?api-version={icons.azure_api_version}"
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}?api-version={icons.azure_api_version}"
 
     payload = {}
     if sku is not None:
@@ -1077,13 +1083,7 @@ def update_fabric_capacity(
     if admin_members is not None:
         payload["properties"] = {"administration": {"members": [admin_members]}}
 
-    # Add SLL tag
-    if tags is None:
-        payload["tags"] = {"SLL": 1}
-    else:
-        if "tags" not in payload:
-            payload["tags"] = tags
-        payload["tags"]["SLL"] = 1
+    payload = _add_sll_tag(payload, tags)
 
     if payload == {}:
         raise ValueError(

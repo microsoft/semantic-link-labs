@@ -1,14 +1,13 @@
 import sempy.fabric as fabric
 from typing import Optional, List
-from sempy._utils._log import log
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
+from sempy_labs._helper_functions import resolve_workspace_name_and_id
 import datetime
 import numpy as np
 import pandas as pd
 
 
-@log
 def assign_workspaces_to_capacity(
     source_capacity: str,
     target_capacity: str,
@@ -112,5 +111,43 @@ def list_capacities() -> pd.DataFrame:
             "Admins": [i.get("admins", [])],
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    return df
+
+
+def list_tenant_settings():
+
+    # https://learn.microsoft.com/en-us/rest/api/fabric/admin/tenants/list-tenant-settings?tabs=HTTP
+
+    client = fabric.FabricRestClient()
+    response = client.get("/v1/admin/tenantsettings")
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    df = pd.DataFrame(
+        columns=[
+            "Setting Name",
+            "Title",
+            "Enabled",
+            "Can Specify Security Groups",
+            "Tenant Setting Group",
+            "Enabled Security Groups",
+        ]
+    )
+
+    for i in response.json().get("tenantSettings", []):
+        new_data = {
+            "Setting Name": i.get("settingName"),
+            "Title": i.get("title"),
+            "Enabled": i.get("enabled"),
+            "Can Specify Security Groups": i.get("canSpecifySecurityGroups"),
+            "Tenant Setting Group": i.get("tenantSettingGroup"),
+            "Enabled Security Groups": i.get("enabledSecurityGroups", []),
+        }
+        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    bool_cols = ["Enabled", "Can Specify Security Groups"]
+    df[bool_cols] = df[bool_cols].astype(bool)
 
     return df
