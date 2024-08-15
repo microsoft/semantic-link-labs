@@ -90,62 +90,67 @@ def migrate_tables_columns_to_semantic_model(
             sleep_time=1,
             timeout_error_message=f"{icons.red_dot} Function timed out after 1 minute",
         )
-        def dyn_create():
+        def dyn_connect():
             with connect_semantic_model(
-                dataset=new_dataset, readonly=False, workspace=new_dataset_workspace
+                dataset=new_dataset, readonly=True, workspace=new_dataset_workspace
             ) as tom:
-                if not any(e.Name == "DatabaseQuery" for e in tom.model.Expressions):
-                    tom.add_expression("DatabaseQuery", expression=shEx)
-                    print(
-                        f"{icons.green_dot} The 'DatabaseQuery' expression has been added."
-                    )
 
-                for i, r in dfT_filt.iterrows():
-                    tName = r["Name"]
-                    tDC = r["Data Category"]
-                    tHid = bool(r["Hidden"])
-                    tDesc = r["Description"]
+                tom.model
 
-                    if not any(t.Name == tName for t in tom.model.Tables):
-                        tom.add_table(
-                            name=tName,
-                            description=tDesc,
-                            data_category=tDC,
-                            hidden=tHid,
-                        )
-                        tom.add_entity_partition(
-                            table_name=tName, entity_name=tName.replace(" ", "_")
-                        )
-                        print(f"{icons.green_dot} The '{tName}' table has been added.")
+        dyn_connect()
 
-                for i, r in dfC_filt.iterrows():
-                    tName = r["Table Name"]
-                    cName = r["Column Name"]
-                    scName = r["Source"].replace(" ", "_")
-                    cHid = bool(r["Hidden"])
-                    cDataType = r["Data Type"]
-
-                    if not any(
-                        c.Name == cName and c.Parent.Name == tName
-                        for c in tom.all_columns()
-                    ):
-                        tom.add_data_column(
-                            table_name=tName,
-                            column_name=cName,
-                            source_column=scName,
-                            hidden=cHid,
-                            data_type=cDataType,
-                        )
-                        print(
-                            f"{icons.green_dot} The '{tName}'[{cName}] column has been added."
-                        )
-
+        with connect_semantic_model(
+            dataset=new_dataset, readonly=False, workspace=new_dataset_workspace
+        ) as tom:
+            if not any(e.Name == "DatabaseQuery" for e in tom.model.Expressions):
+                tom.add_expression("DatabaseQuery", expression=shEx)
                 print(
-                    f"\n{icons.green_dot} All regular tables and columns have been added to the '{new_dataset}' semantic model."
+                    f"{icons.green_dot} The 'DatabaseQuery' expression has been added."
                 )
 
-        dyn_create()
+            for i, r in dfT_filt.iterrows():
+                tName = r["Name"]
+                tDC = r["Data Category"]
+                tHid = bool(r["Hidden"])
+                tDesc = r["Description"]
 
+                if not any(t.Name == tName for t in tom.model.Tables):
+                    tom.add_table(
+                        name=tName,
+                        description=tDesc,
+                        data_category=tDC,
+                        hidden=tHid,
+                    )
+                    tom.add_entity_partition(
+                        table_name=tName, entity_name=tName.replace(" ", "_")
+                    )
+                    print(f"{icons.green_dot} The '{tName}' table has been added.")
+
+            for i, r in dfC_filt.iterrows():
+                tName = r["Table Name"]
+                cName = r["Column Name"]
+                scName = r["Source"].replace(" ", "_")
+                cHid = bool(r["Hidden"])
+                cDataType = r["Data Type"]
+
+                if not any(
+                    c.Name == cName and c.Parent.Name == tName
+                    for c in tom.all_columns()
+                ):
+                    tom.add_data_column(
+                        table_name=tName,
+                        column_name=cName,
+                        source_column=scName,
+                        hidden=cHid,
+                        data_type=cDataType,
+                    )
+                    print(
+                        f"{icons.green_dot} The '{tName}'[{cName}] column has been added."
+                    )
+
+            print(
+                f"\n{icons.green_dot} All regular tables and columns have been added to the '{new_dataset}' semantic model."
+            )
     else:
         print(
             f"{icons.red_dot} Lakehouse not attached to notebook and lakehouse/lakehouse_workspace are not specified. Please add your lakehouse to this notebook"

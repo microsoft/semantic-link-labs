@@ -1,9 +1,9 @@
+import sempy
 import sempy.fabric as fabric
 import json
 import os
 import shutil
 import xml.etree.ElementTree as ET
-from sempy_labs._list_functions import list_tables
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from sempy._utils._log import log
 from typing import Optional
@@ -32,6 +32,10 @@ def create_pqt_file(
         The name of the Power Query Template file to be generated.
     """
 
+    sempy.fabric._client._utils._init_analysis_services()
+    import Microsoft.AnalysisServices.Tabular as TOM
+    from sempy_labs.tom import connect_semantic_model
+
     lakeAttach = lakehouse_attached()
 
     if lakeAttach is False:
@@ -45,12 +49,16 @@ def create_pqt_file(
     subFolderPath = os.path.join(folderPath, "pqtnewfolder")
     os.makedirs(subFolderPath, exist_ok=True)
 
-    dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
-    dfT = list_tables(dataset, workspace)
-    dfE = fabric.list_expressions(dataset=dataset, workspace=workspace)
-
-    # Check if M-partitions are used
-    if any(dfP["Source Type"] == "M"):
+    with connect_semantic_model(
+        dataset=dataset, workspace=workspace, readonly=True
+    ) as tom:
+        if not any(
+            p.SourceType == TOM.PartitionSourceType.M for p in tom.all_partitions()
+        ) and not any(t.RefreshPolicy for t in tom.model.Tables):
+            print(
+                f"{icons.info} The '{dataset}' semantic model within the '{workspace}' workspace has no Power Query logic."
+            )
+            return
 
         class QueryMetadata:
             def __init__(
@@ -84,59 +92,33 @@ def create_pqt_file(
         mdfileName = "MashupDocument.pq"
         mdFilePath = os.path.join(subFolderPath, mdfileName)
         sb = "section Section1;"
-        for table_name in dfP["Table Name"].unique():
-            tName = f'#"{table_name}"'
-            sourceExpression = dfT.loc[
-                (dfT["Name"] == table_name), "Source Expression"
-            ].iloc[0]
-            refreshPolicy = dfT.loc[(dfT["Name"] == table_name), "Refresh Policy"].iloc[
-                0
-            ]
-            sourceType = dfP.loc[(dfP["Table Name"] == table_name), "Source Type"].iloc[
-                0
-            ]
+        for t in tom.model.Tables:
+            table_name = t.Name
+            if any(str(p.SourceType) == "M" for p in t.Partitions) or t.RefreshPolicy:
+                sb = f'{sb}\nshared #"{table_name}" = '
+                i = 0
+                for p in t.Partitions:
+                    if i == 0:
+                        if str(p.SourceType) == "M":
+                            query = p.Source.Expression
+                        elif t.RefreshPolicy:
+                            query = t.RefreshPolicy.SourceExpression
 
-            if sourceType == "M" or refreshPolicy:
-                sb = f"{sb}\nshared {tName} = "
+                    i += 1
 
-            partitions_in_table = dfP.loc[
-                dfP["Table Name"] == table_name, "Partition Name"
-            ].unique()
-
-            i = 1
-            for partition_name in partitions_in_table:
-                pSourceType = dfP.loc[
-                    (dfP["Table Name"] == table_name)
-                    & (dfP["Partition Name"] == partition_name),
-                    "Source Type",
-                ].iloc[0]
-                pQuery = dfP.loc[
-                    (dfP["Table Name"] == table_name)
-                    & (dfP["Partition Name"] == partition_name),
-                    "Query",
-                ].iloc[0]
-
-                if pQuery is not None:
+                if query is not None:
                     pQueryNoSpaces = (
-                        pQuery.replace(" ", "")
+                        query.replace(" ", "")
                         .replace("\n", "")
                         .replace("\t", "")
                         .replace("\r", "")
                     )
                     if pQueryNoSpaces.startswith('letSource=""'):
-                        pQuery = 'let\n\tSource = ""\nin\n\tSource'
+                        query = 'let\n\tSource = ""\nin\n\tSource'
+                sb = f"{sb}{query};"
 
-                if pSourceType == "M" and i == 1:
-                    sb = f"{sb}{pQuery};"
-                elif refreshPolicy and i == 1:
-                    sb = f"{sb}{sourceExpression};"
-                i += 1
-
-        for index, row in dfE.iterrows():
-            expr = row["Expression"]
-            eName = row["Name"]
-            eName = f'#"{eName}"'
-            sb = f"{sb}\nshared {eName} = {expr};"
+        for e in tom.model.Expressions:
+            sb = f'{sb}\nshared #"{e.Name}" = {e.Expression};'
 
         with open(mdFilePath, "w") as file:
             file.write(sb)
@@ -146,24 +128,24 @@ def create_pqt_file(
         mmFilePath = os.path.join(subFolderPath, mmfileName)
         queryMetadata = []
 
-        for tName in dfP["Table Name"].unique():
-            sourceType = dfP.loc[(dfP["Table Name"] == tName), "Source Type"].iloc[0]
-            refreshPolicy = dfT.loc[(dfT["Name"] == tName), "Refresh Policy"].iloc[0]
-            if sourceType == "M" or refreshPolicy:
+        for t in tom.model.Tables:
+            table_name = t.Name
+            if t.RefreshPolicy or any(
+                p.SourceType == TOM.PartitionSourceType.M for p in t.Partitions
+            ):
                 queryMetadata.append(
-                    QueryMetadata(tName, None, None, None, True, False)
+                    QueryMetadata(table_name, None, None, None, True, False)
                 )
 
-        for i, r in dfE.iterrows():
-            eName = r["Name"]
-            eKind = r["Kind"]
-            if eKind == "M":
+        for e in tom.model.Expressions:
+            e_name = e.Name
+            if str(e.Kind) == "M":
                 queryMetadata.append(
-                    QueryMetadata(eName, None, None, None, True, False)
+                    QueryMetadata(e_name, None, None, None, True, False)
                 )
             else:
                 queryMetadata.append(
-                    QueryMetadata(eName, None, None, None, False, False)
+                    QueryMetadata(e_name, None, None, None, False, False)
                 )
 
         rootObject = RootObject("en-US", "2.126.453.0", queryMetadata)
@@ -194,16 +176,6 @@ def create_pqt_file(
         ns = "http://schemas.openxmlformats.org/package/2006/content-types"
         ET.register_namespace("", ns)
         types = ET.Element("{%s}Types" % ns)
-        # default1 = ET.SubElement(
-        #    types,
-        #    "{%s}Default" % ns,
-        #    {"Extension": "json", "ContentType": "application/json"},
-        # )
-        # default2 = ET.SubElement(
-        #    types,
-        #    "{%s}Default" % ns,
-        #    {"Extension": "pq", "ContentType": "application/x-ms-m"},
-        # )
         xmlDocument = ET.ElementTree(types)
         xmlFileName = "[Content_Types].xml"
         xmlFilePath = os.path.join(subFolderPath, xmlFileName)
@@ -228,9 +200,4 @@ def create_pqt_file(
 
         print(
             f"{icons.green_dot} '{file_name}.pqt' has been created based on the '{dataset}' semantic model in the '{workspace}' workspace within the Files section of your lakehouse."
-        )
-
-    else:
-        print(
-            f"{icons.yellow_dot} The '{dataset}' semantic model in the '{workspace}' workspace does not use Power Query so a Power Query Template file cannot be generated."
         )

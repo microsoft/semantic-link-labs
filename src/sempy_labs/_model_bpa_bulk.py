@@ -231,127 +231,133 @@ def create_model_bpa_semantic_model(
         sleep_time=1,
         timeout_error_message=f"{icons.red_dot} Function timed out after 1 minute",
     )
-    def dyn_create_model():
-        table_exists = False
+    def dyn_connect():
         with connect_semantic_model(
-            dataset=dataset, readonly=False, workspace=lakehouse_workspace
+            dataset=dataset, readonly=True, workspace=lakehouse_workspace
         ) as tom:
-            t_name = "BPAResults"
-            t_name_full = f"'{t_name}'"
-            # Create the shared expression
-            if not any(e.Name == "DatabaseQuery" for e in tom.model.Expressions):
-                tom.add_expression(name="DatabaseQuery", expression=expr)
-            # Add the table to the model
-            if any(t.Name == t_name for t in tom.model.Tables):
-                table_exists = True
-        if not table_exists:
-            add_table_to_direct_lake_semantic_model(
-                dataset=dataset,
+
+            tom.model
+
+    dyn_connect()
+
+    table_exists = False
+    with connect_semantic_model(
+        dataset=dataset, readonly=False, workspace=lakehouse_workspace
+    ) as tom:
+        t_name = "BPAResults"
+        t_name_full = f"'{t_name}'"
+        # Create the shared expression
+        if not any(e.Name == "DatabaseQuery" for e in tom.model.Expressions):
+            tom.add_expression(name="DatabaseQuery", expression=expr)
+        # Add the table to the model
+        if any(t.Name == t_name for t in tom.model.Tables):
+            table_exists = True
+    if not table_exists:
+        add_table_to_direct_lake_semantic_model(
+            dataset=dataset,
+            table_name=t_name,
+            lakehouse_table_name="modelbparesults",
+            workspace=lakehouse_workspace,
+            refresh=False,
+        )
+    with connect_semantic_model(
+        dataset=dataset, readonly=False, workspace=lakehouse_workspace
+    ) as tom:
+        # Fix column names
+        for c in tom.all_columns():
+            if c.Name == "Dataset_Name":
+                c.Name = "Model"
+            elif c.Name == "Dataset_Id":
+                c.Name = "Model Id"
+            elif c.Name == "Workspace_Name":
+                c.Name = "Workspace"
+            elif c.Name == "Capacity_Name":
+                c.Name = "Capacity"
+            elif c.Name == "Configured_By":
+                c.Name = "Model Owner"
+            elif c.Name == "URL":
+                c.DataCategory = "WebURL"
+            elif c.Name == "RunId":
+                tom.set_summarize_by(
+                    table_name=c.Parent.Name, column_name=c.Name, value="None"
+                )
+            c.Name = c.Name.replace("_", " ")
+
+        # Implement pattern for base measures
+        def get_expr(table_name, calculation):
+            return f"IF(HASONEFILTER({table_name}[RunId]),{calculation},CALCULATE({calculation},FILTER(VALUES({table_name}[RunId]),{table_name}[RunId] = [Max Run Id])))"
+
+        # Add measures
+        int_format = "#,0"
+        m_name = "Max Run Id"
+        if not any(m.Name == m_name for m in tom.all_measures()):
+            tom.add_measure(
                 table_name=t_name,
-                lakehouse_table_name="modelbparesults",
-                workspace=lakehouse_workspace,
-                refresh=False,
+                measure_name=m_name,
+                expression=f"CALCULATE(MAX({t_name_full}[RunId]),{t_name_full}[RunId])",
+                format_string=int_format,
             )
-        with connect_semantic_model(
-            dataset=dataset, readonly=False, workspace=lakehouse_workspace
-        ) as tom:
-            # Fix column names
-            for c in tom.all_columns():
-                if c.Name == "Dataset_Name":
-                    c.Name = "Model"
-                elif c.Name == "Dataset_Id":
-                    c.Name = "Model Id"
-                elif c.Name == "Workspace_Name":
-                    c.Name = "Workspace"
-                elif c.Name == "Capacity_Name":
-                    c.Name = "Capacity"
-                elif c.Name == "Configured_By":
-                    c.Name = "Model Owner"
-                elif c.Name == "URL":
-                    c.DataCategory = "WebURL"
-                elif c.Name == "RunId":
-                    tom.set_summarize_by(
-                        table_name=c.Parent.Name, column_name=c.Name, value="None"
-                    )
-                c.Name = c.Name.replace("_", " ")
-
-            # Implement pattern for base measures
-            def get_expr(table_name, calculation):
-                return f"IF(HASONEFILTER({table_name}[RunId]),{calculation},CALCULATE({calculation},FILTER(VALUES({table_name}[RunId]),{table_name}[RunId] = [Max Run Id])))"
-
-            # Add measures
-            int_format = "#,0"
-            m_name = "Max Run Id"
-            if not any(m.Name == m_name for m in tom.all_measures()):
-                tom.add_measure(
-                    table_name=t_name,
-                    measure_name=m_name,
-                    expression=f"CALCULATE(MAX({t_name_full}[RunId]),{t_name_full}[RunId])",
-                    format_string=int_format,
-                )
-            m_name = "Capacities"
-            if not any(m.Name == m_name for m in tom.all_measures()):
-                calc = f"COUNTROWS(DISTINCT({t_name_full}[Capacity]))"
-                tom.add_measure(
-                    table_name=t_name,
-                    measure_name=m_name,
-                    expression=get_expr(t_name_full, calc),
-                    format_string=int_format,
-                )
-            m_name = "Models"
-            if not any(m.Name == m_name for m in tom.all_measures()):
-                calc = f"COUNTROWS(DISTINCT({t_name_full}[Model]))"
-                tom.add_measure(
-                    table_name=t_name,
-                    measure_name=m_name,
-                    expression=get_expr(t_name_full, calc),
-                    format_string=int_format,
-                )
-            m_name = "Workspaces"
-            if not any(m.Name == m_name for m in tom.all_measures()):
-                calc = f"COUNTROWS(DISTINCT({t_name_full}[Workspace]))"
-                tom.add_measure(
-                    table_name=t_name,
-                    measure_name=m_name,
-                    expression=get_expr(t_name_full, calc),
-                    format_string=int_format,
-                )
-            m_name = "Violations"
-            if not any(m.Name == m_name for m in tom.all_measures()):
-                calc = f"COUNTROWS({t_name_full})"
-                tom.add_measure(
-                    table_name=t_name,
-                    measure_name=m_name,
-                    expression=get_expr(t_name_full, calc),
-                    format_string=int_format,
-                )
-            m_name = "Error Violations"
-            if not any(m.Name == m_name for m in tom.all_measures()):
-                tom.add_measure(
-                    table_name=t_name,
-                    measure_name=m_name,
-                    expression=f'CALCULATE([Violations],{t_name_full}[Severity]="Error")',
-                    format_string=int_format,
-                )
-            m_name = "Rules Violated"
-            if not any(m.Name == m_name for m in tom.all_measures()):
-                calc = f"COUNTROWS(DISTINCT({t_name_full}[Rule Name]))"
-                tom.add_measure(
-                    table_name=t_name,
-                    measure_name=m_name,
-                    expression=get_expr(t_name_full, calc),
-                    format_string=int_format,
-                )
-            m_name = "Rule Severity"
-            if not any(m.Name == m_name for m in tom.all_measures()):
-                tom.add_measure(
-                    table_name=t_name,
-                    measure_name=m_name,
-                    expression=f"IF(ISFILTERED({t_name_full}[Rule Name]),IF( HASONEVALUE({t_name_full}[Rule Name]),MIN({t_name_full}[Severity])))",
-                )
-            # tom.add_measure(table_name=t_name, measure_name='Rules Followed', expression="[Rules] - [Rules Violated]")
-
-    dyn_create_model()
+        m_name = "Capacities"
+        if not any(m.Name == m_name for m in tom.all_measures()):
+            calc = f"COUNTROWS(DISTINCT({t_name_full}[Capacity]))"
+            tom.add_measure(
+                table_name=t_name,
+                measure_name=m_name,
+                expression=get_expr(t_name_full, calc),
+                format_string=int_format,
+            )
+        m_name = "Models"
+        if not any(m.Name == m_name for m in tom.all_measures()):
+            calc = f"COUNTROWS(DISTINCT({t_name_full}[Model]))"
+            tom.add_measure(
+                table_name=t_name,
+                measure_name=m_name,
+                expression=get_expr(t_name_full, calc),
+                format_string=int_format,
+            )
+        m_name = "Workspaces"
+        if not any(m.Name == m_name for m in tom.all_measures()):
+            calc = f"COUNTROWS(DISTINCT({t_name_full}[Workspace]))"
+            tom.add_measure(
+                table_name=t_name,
+                measure_name=m_name,
+                expression=get_expr(t_name_full, calc),
+                format_string=int_format,
+            )
+        m_name = "Violations"
+        if not any(m.Name == m_name for m in tom.all_measures()):
+            calc = f"COUNTROWS({t_name_full})"
+            tom.add_measure(
+                table_name=t_name,
+                measure_name=m_name,
+                expression=get_expr(t_name_full, calc),
+                format_string=int_format,
+            )
+        m_name = "Error Violations"
+        if not any(m.Name == m_name for m in tom.all_measures()):
+            tom.add_measure(
+                table_name=t_name,
+                measure_name=m_name,
+                expression=f'CALCULATE([Violations],{t_name_full}[Severity]="Error")',
+                format_string=int_format,
+            )
+        m_name = "Rules Violated"
+        if not any(m.Name == m_name for m in tom.all_measures()):
+            calc = f"COUNTROWS(DISTINCT({t_name_full}[Rule Name]))"
+            tom.add_measure(
+                table_name=t_name,
+                measure_name=m_name,
+                expression=get_expr(t_name_full, calc),
+                format_string=int_format,
+            )
+        m_name = "Rule Severity"
+        if not any(m.Name == m_name for m in tom.all_measures()):
+            tom.add_measure(
+                table_name=t_name,
+                measure_name=m_name,
+                expression=f"IF(ISFILTERED({t_name_full}[Rule Name]),IF( HASONEVALUE({t_name_full}[Rule Name]),MIN({t_name_full}[Severity])))",
+            )
+        # tom.add_measure(table_name=t_name, measure_name='Rules Followed', expression="[Rules] - [Rules Violated]")
 
     # Refresh the model
     refresh_semantic_model(dataset=dataset, workspace=lakehouse_workspace)
