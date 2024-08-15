@@ -51,25 +51,35 @@ def get_report_json(
         The report.json file for a given Power BI report.
     """
 
-    from notebookutils import mssparkutils
+    from sempy_labs._helper_functions import resolve_report_id
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    report_id = resolve_report_id(report=report, workspace=workspace)
+    fmt = 'PBIR-Legacy'
 
     client = fabric.FabricRestClient()
-
-    dfI = fabric.list_items(workspace=workspace, type="Report")
-    dfI_filt = dfI[(dfI["Display Name"] == report)]
-
-    if len(dfI_filt) == 0:
-        raise ValueError(
-            f"{icons.red_dot} The '{report}' report does not exist in the '{workspace}' workspace."
-        )
-
-    itemId = dfI_filt["Id"].iloc[0]
     response = client.post(
-        f"/v1/workspaces/{workspace_id}/items/{itemId}/getDefinition"
+        f"/v1/workspaces/{workspace_id}/reports/{report_id}/getDefinition?format={fmt}"
     )
-    df_items = pd.json_normalize(response.json()["definition"]["parts"])
+
+    if response.status_code not in [200, 202]:
+        raise FabricHTTPException(response)
+    if response.status_code == 200:
+        result = response.json()
+    if response.status_code == 202:
+        operationId = response.headers["x-ms-operation-id"]
+        response = client.get(f"/v1/operations/{operationId}")
+        response_body = json.loads(response.content)
+        while response_body["status"] not in ["Succeeded", "Failed"]:
+            time.sleep(1)
+            response = client.get(f"/v1/operations/{operationId}")
+            response_body = json.loads(response.content)
+        if response_body["status"] != "Succeeded":
+            raise FabricHTTPException(response)
+        response = client.get(f"/v1/operations/{operationId}/result")
+        result = response.json()
+
+    df_items = pd.json_normalize(result["definition"]["parts"])
     df_items_filt = df_items[df_items["path"] == "report.json"]
     payload = df_items_filt["payload"].iloc[0]
 

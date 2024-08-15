@@ -249,9 +249,24 @@ def get_report_definition(report: str, workspace: Optional[str] = None) -> pd.Da
     client = fabric.FabricRestClient()
     response = client.post(
         f"/v1/workspaces/{workspace_id}/reports/{report_id}/getDefinition",
-        lro_wait=True,
     )
-    rdef = pd.json_normalize(response.json()["definition"]["parts"])
+
+    if response.status_code not in [200, 202]:
+        raise FabricHTTPException(response)
+    if response.status_code == 200:
+        result = response.json()
+    if response.status_code == 202:
+        operationId = response.headers["x-ms-operation-id"]
+        response = client.get(f"/v1/operations/{operationId}")
+        response_body = json.loads(response.content)
+        while response_body["status"] != "Succeeded":
+            time.sleep(1)
+            response = client.get(f"/v1/operations/{operationId}")
+            response_body = json.loads(response.content)
+        response = client.get(f"/v1/operations/{operationId}/result")
+        result = response.json()
+
+    rdef = pd.json_normalize(result["definition"]["parts"])
 
     return rdef
 
