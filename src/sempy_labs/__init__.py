@@ -17,6 +17,8 @@ from sempy_labs._capacities import (
     update_fabric_capacity,
     delete_fabric_capacity,
     check_fabric_capacity_name_availablility,
+    delete_embedded_capacity,
+    delete_premium_capacity,
 )
 
 # from sempy_labs._connections import (
@@ -224,4 +226,6 @@ __all__ = [
     "update_fabric_capacity",
     "delete_fabric_capacity",
     "check_fabric_capacity_name_availablility",
+    "delete_embedded_capacity",
+    "delete_premium_capacity",
 ]

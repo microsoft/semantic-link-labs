@@ -1015,6 +1015,55 @@ def resume_fabric_capacity(
     print(f"{icons.green_dot} The '{capacity_name} capacity has been resumed.")
 
 
+def delete_embedded_capacity(    
+    capacity_name: str,
+    azure_subscription_id: str,
+    resource_group: str,
+    key_vault_uri: str,
+    key_vault_tenant_id: str,
+    key_vault_client_id: str,
+    key_vault_client_secret: str,
+):
+
+    # https://learn.microsoft.com/en-us/rest/api/power-bi-embedded/capacities/delete?view=rest-power-bi-embedded-2021-01-01&tabs=HTTP
+
+    azure_token, credential, headers = get_azure_token_credentials(
+        key_vault_uri=key_vault_uri,
+        key_vault_tenant_id=key_vault_tenant_id,
+        key_vault_client_id=key_vault_client_id,
+        key_vault_client_secret=key_vault_client_secret,
+    )
+
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.PowerBIDedicated/capacities/{capacity_name}?api-version={icons.azure_api_version}"
+
+    response = requests.delete(url, headers=headers)
+
+    if response.status_code not in [200, 202]:
+        raise FabricHTTPException(response)
+
+    print(f"{icons.green_dot} The '{capacity_name} capacity has been deleted.")
+
+
+def delete_premium_capacity(capacity_name: str):
+
+    dfC = fabric.list_capacities()
+
+    dfC_filt = dfC[dfC["Display Name"] == capacity_name]
+    if len(dfC_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} The '{capacity_name}' capacity does not exist."
+        )
+    capacity_id = dfC_filt["Id"].iloc[0].upper()
+
+    client = fabric.FabricRestClient()
+    response = client.delete(f"capacities/{capacity_id}")
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    print(f"{icons.green_dot} The '{capacity_name}' capacity has been deleted.")
+    
+
 def delete_fabric_capacity(
     capacity_name: str,
     azure_subscription_id: str,
