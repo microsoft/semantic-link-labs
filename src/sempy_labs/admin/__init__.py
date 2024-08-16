@@ -2,6 +2,10 @@ from sempy_labs.admin._basic_functions import (
     assign_workspaces_to_capacity,
     list_capacities,
     list_tenant_settings,
+    list_capacities_delegated_tenant_settings,
+    unassign_workspaces_from_capacity,
+    list_external_data_shares,
+    revoke_external_data_share,
 )
 from sempy_labs.admin._domains import (
     list_domains,
@@ -30,4 +34,8 @@ __all__ = [
     "resolve_domain_id",
     "unassign_domain_workspaces",
     "unassign_all_domain_workspaces",
+    "list_capacities_delegated_tenant_settings",
+    "unassign_workspaces_from_capacity",
+    "list_external_data_shares",
+    "revoke_external_data_share",
 ]
