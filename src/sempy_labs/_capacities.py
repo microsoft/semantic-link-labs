@@ -5,7 +5,10 @@ import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 from sempy_labs.lakehouse import lakehouse_attached
 from sempy_labs._list_functions import assign_workspace_to_capacity
-from sempy_labs.admin._basic_functions import assign_workspaces_to_capacity
+from sempy_labs.admin._basic_functions import (
+    assign_workspaces_to_capacity,
+    _list_capacities_meta,
+)
 import pandas as pd
 import datetime
 import requests
@@ -79,7 +82,7 @@ def migrate_workspaces(
     if isinstance(workspaces, str):
         workspaces = [workspaces]
 
-    dfC = fabric.list_capacities()
+    dfC = _list_capacities_meta()
     dfC_filt = dfC[dfC["Display Name"] == source_capacity]
     if len(dfC_filt) == 0:
         raise ValueError(
@@ -1015,7 +1018,7 @@ def resume_fabric_capacity(
     print(f"{icons.green_dot} The '{capacity_name} capacity has been resumed.")
 
 
-def delete_embedded_capacity(    
+def delete_embedded_capacity(
     capacity_name: str,
     azure_subscription_id: str,
     resource_group: str,
@@ -1062,7 +1065,7 @@ def delete_premium_capacity(capacity_name: str):
         raise FabricHTTPException(response)
 
     print(f"{icons.green_dot} The '{capacity_name}' capacity has been deleted.")
-    
+
 
 def delete_fabric_capacity(
     capacity_name: str,

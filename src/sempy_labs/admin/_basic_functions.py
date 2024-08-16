@@ -98,8 +98,6 @@ def list_capacities() -> pd.DataFrame:
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    response = client.get("/v1.0/myorg/capacities")
-
     for i in response.json().get("value", []):
         new_data = {
             "Capacity Id": i.get("id").lower(),
@@ -150,11 +148,40 @@ def list_tenant_settings() -> pd.DataFrame:
             "Enabled": i.get("enabled"),
             "Can Specify Security Groups": i.get("canSpecifySecurityGroups"),
             "Tenant Setting Group": i.get("tenantSettingGroup"),
-            "Enabled Security Groups": i.get("enabledSecurityGroups", []),
+            "Enabled Security Groups": [i.get("enabledSecurityGroups", [])],
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     bool_cols = ["Enabled", "Can Specify Security Groups"]
     df[bool_cols] = df[bool_cols].astype(bool)
+
+    return df
+
+
+def _list_capacities_meta() -> pd.DataFrame:
+
+    df = pd.DataFrame(
+        columns=["Capacity Id", "Capacity Name", "Sku", "Region", "State", "Admins"]
+    )
+
+    client = fabric.PowerBIRestClient()
+    try:
+        response = client.get("/v1.0/myorg/admin/capacities")
+    except Exception as e:
+        if e.status_code not in [200, 401]:
+            raise FabricHTTPException(response)
+        elif e.status_code == 401:
+            response = client.get("/v1.0/myorg/capacities")
+
+    for i in response.json().get("value", []):
+        new_data = {
+            "Capacity Id": i.get("id").lower(),
+            "Capacity Name": i.get("displayName"),
+            "Sku": i.get("sku"),
+            "Region": i.get("region"),
+            "State": i.get("state"),
+            "Admins": [i.get("admins", [])],
+        }
+        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
