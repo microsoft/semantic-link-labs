@@ -311,7 +311,7 @@ def list_capacities_delegated_tenant_settings(return_dataframe: Optional[bool] =
     response_json = response.json()
 
     if return_dataframe:
-        for i in response_json.get("overrides", []):
+        for i in response_json.get("Overrides", []):
             tenant_settings = i.get("tenantSettings", [])
             prop = tenant_settings.get("properties", [])
             new_data = {
