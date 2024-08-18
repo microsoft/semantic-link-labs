@@ -175,11 +175,29 @@ def migrate_model_objects_to_semantic_model(
             cols = r["Column Name"]
             lvls = r["Level Name"]
 
-            if not any(
+            missing_columns = []
+            for col in cols:
+                if not any(
+                    c.Name == col
+                    for t in tom.model.Tables
+                    if t.Name == tName
+                    for c in t.Columns
+                ):
+                    missing_columns.append(col)
+
+            if any(
                 t.Name == tName and h.Name == hName
                 for t in tom.model.Tables
                 for h in t.Hierarchies
             ):
+                print(
+                    f"{icons.warning} The '{hName}' hierarchy within the '{tName}' table already exists."
+                )
+            elif len(missing_columns) > 0:
+                print(
+                    f"{icons.red_dot} The '{hName}' hierarchy within the '{tName}' table cannot be created as the {missing_columns} column)s) do not exist."
+                )
+            else:
                 tom.add_hierarchy(
                     table_name=tName,
                     hierarchy_name=hName,
