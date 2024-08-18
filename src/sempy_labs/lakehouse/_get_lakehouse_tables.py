@@ -111,7 +111,9 @@ def get_lakehouse_tables(
                     "Type": tType,
                     "Location": tLocation,
                 }
-                df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+                df = pd.concat(
+                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                )
             else:
                 sku_value = get_sku_size(workspace)
                 guardrail = get_directlake_guardrails_for_sku(sku_value)
@@ -174,7 +176,9 @@ def get_lakehouse_tables(
                     df[intColumns] = df[intColumns].astype(int)
 
                 df["SKU"] = guardrail["Fabric SKUs"].iloc[0]
-                df["Parquet File Guardrail"] = guardrail["Parquet files per table"].iloc[0]
+                df["Parquet File Guardrail"] = guardrail[
+                    "Parquet files per table"
+                ].iloc[0]
                 df["Row Group Guardrail"] = guardrail["Row groups per table"].iloc[0]
                 df["Row Count Guardrail"] = (
                     guardrail["Rows per table (millions)"].iloc[0] * 1000000
@@ -183,7 +187,9 @@ def get_lakehouse_tables(
                 df["Parquet File Guardrail Hit"] = (
                     df["Files"] > df["Parquet File Guardrail"]
                 )
-                df["Row Group Guardrail Hit"] = df["Row Groups"] > df["Row Group Guardrail"]
+                df["Row Group Guardrail Hit"] = (
+                    df["Row Groups"] > df["Row Group Guardrail"]
+                )
 
                 if count_rows:
                     df["Row Count Guardrail Hit"] = (

@@ -6,6 +6,8 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_id,
     resolve_dataset_id,
     _decode_b64,
+    pagination,
+    lro,
 )
 import pandas as pd
 import base64
@@ -492,7 +494,7 @@ def list_dashboards(workspace: Optional[str] = None) -> pd.DataFrame:
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    for v in response.json()["value"]:
+    for v in response.json().get("value", []):
         new_data = {
             "Dashboard ID": v.get("id"),
             "Dashboard Name": v.get("displayName"),
@@ -543,25 +545,29 @@ def list_lakehouses(workspace: Optional[str] = None) -> pd.DataFrame:
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/lakehouses/")
+    response = client.get(f"/v1/workspaces/{workspace_id}/lakehouses")
+
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    for v in response.json()["value"]:
-        prop = v.get("properties", {})
-        sqlEPProp = prop.get("sqlEndpointProperties", {})
+    responses = pagination(client, response)
 
-        new_data = {
-            "Lakehouse Name": v.get("displayName"),
-            "Lakehouse ID": v.get("id"),
-            "Description": v.get("description"),
-            "OneLake Tables Path": prop.get("oneLakeTablesPath"),
-            "OneLake Files Path": prop.get("oneLakeFilesPath"),
-            "SQL Endpoint Connection String": sqlEPProp.get("connectionString"),
-            "SQL Endpoint ID": sqlEPProp.get("id"),
-            "SQL Endpoint Provisioning Status": sqlEPProp.get("provisioningStatus"),
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    for r in responses:
+        for v in r.get("value", []):
+            prop = v.get("properties", {})
+            sqlEPProp = prop.get("sqlEndpointProperties", {})
+
+            new_data = {
+                "Lakehouse Name": v.get("displayName"),
+                "Lakehouse ID": v.get("id"),
+                "Description": v.get("description"),
+                "OneLake Tables Path": prop.get("oneLakeTablesPath"),
+                "OneLake Files Path": prop.get("oneLakeFilesPath"),
+                "SQL Endpoint Connection String": sqlEPProp.get("connectionString"),
+                "SQL Endpoint ID": sqlEPProp.get("id"),
+                "SQL Endpoint Provisioning Status": sqlEPProp.get("provisioningStatus"),
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
 
@@ -597,22 +603,25 @@ def list_warehouses(workspace: Optional[str] = None) -> pd.DataFrame:
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/warehouses/")
+    response = client.get(f"/v1/workspaces/{workspace_id}/warehouses")
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    for v in response.json()["value"]:
-        prop = v.get("properties", {})
+    responses = pagination(client, response)
 
-        new_data = {
-            "Warehouse Name": v.get("displayName"),
-            "Warehouse ID": v.get("id"),
-            "Description": v.get("description"),
-            "Connection Info": prop.get("connectionInfo"),
-            "Created Date": prop.get("createdDate"),
-            "Last Updated Time": prop.get("lastUpdatedTime"),
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    for r in responses:
+        for v in r.get("value", []):
+            prop = v.get("properties", {})
+
+            new_data = {
+                "Warehouse Name": v.get("displayName"),
+                "Warehouse ID": v.get("id"),
+                "Description": v.get("description"),
+                "Connection Info": prop.get("connectionInfo"),
+                "Created Date": prop.get("createdDate"),
+                "Last Updated Time": prop.get("lastUpdatedTime"),
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
 
@@ -639,18 +648,21 @@ def list_sqlendpoints(workspace: Optional[str] = None) -> pd.DataFrame:
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/sqlEndpoints/")
+    response = client.get(f"/v1/workspaces/{workspace_id}/sqlEndpoints")
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    for v in response.json()["value"]:
+    responses = pagination(client, response)
 
-        new_data = {
-            "SQL Endpoint ID": v.get("id"),
-            "SQL Endpoint Name": v.get("displayName"),
-            "Description": v.get("description"),
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    for r in responses:
+        for v in r.get("value", []):
+
+            new_data = {
+                "SQL Endpoint ID": v.get("id"),
+                "SQL Endpoint Name": v.get("displayName"),
+                "Description": v.get("description"),
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
 
@@ -679,18 +691,21 @@ def list_mirroredwarehouses(workspace: Optional[str] = None) -> pd.DataFrame:
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/mirroredWarehouses/")
+    response = client.get(f"/v1/workspaces/{workspace_id}/mirroredWarehouses")
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    for v in response.json()["value"]:
+    responses = pagination(client, response)
 
-        new_data = {
-            "Mirrored Warehouse": v.get("displayName"),
-            "Mirrored Warehouse ID": v.get("id"),
-            "Description": v.get("description"),
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    for r in responses:
+        for v in r.get("value", []):
+
+            new_data = {
+                "Mirrored Warehouse": v.get("displayName"),
+                "Mirrored Warehouse ID": v.get("id"),
+                "Description": v.get("description"),
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
 
@@ -727,23 +742,26 @@ def list_kqldatabases(workspace: Optional[str] = None) -> pd.DataFrame:
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/kqlDatabases/")
+    response = client.get(f"/v1/workspaces/{workspace_id}/kqlDatabases")
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    for v in response.json()["value"]:
-        prop = v.get("properties", {})
+    responses = pagination(client, response)
 
-        new_data = {
-            "KQL Database Name": v.get("displayName"),
-            "KQL Database ID": v.get("id"),
-            "Description": v.get("description"),
-            "Parent Eventhouse Item ID": prop.get("parentEventhouseItemId"),
-            "Query Service URI": prop.get("queryServiceUri"),
-            "Ingestion Service URI": prop.get("ingestionServiceUri"),
-            "Kusto Database Type": prop.get("kustoDatabaseType"),
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    for r in responses:
+        for v in r.get("value", []):
+            prop = v.get("properties", {})
+
+            new_data = {
+                "KQL Database Name": v.get("displayName"),
+                "KQL Database ID": v.get("id"),
+                "Description": v.get("description"),
+                "Parent Eventhouse Item ID": prop.get("parentEventhouseItemId"),
+                "Query Service URI": prop.get("queryServiceUri"),
+                "Ingestion Service URI": prop.get("ingestionServiceUri"),
+                "Kusto Database Type": prop.get("kustoDatabaseType"),
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
 
@@ -770,18 +788,21 @@ def list_kqlquerysets(workspace: Optional[str] = None) -> pd.DataFrame:
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/kqlQuerysets/")
+    response = client.get(f"/v1/workspaces/{workspace_id}/kqlQuerysets")
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    for v in response.json()["value"]:
+    responses = pagination(client, response)
 
-        new_data = {
-            "KQL Queryset Name": v.get("displayName"),
-            "KQL Queryset ID": v.get("id"),
-            "Description": v.get("description"),
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    for r in responses:
+        for v in r.get("value", []):
+
+            new_data = {
+                "KQL Queryset Name": v.get("displayName"),
+                "KQL Queryset ID": v.get("id"),
+                "Description": v.get("description"),
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
 
@@ -808,21 +829,24 @@ def list_mlmodels(workspace: Optional[str] = None) -> pd.DataFrame:
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/mlModels/")
+    response = client.get(f"/v1/workspaces/{workspace_id}/mlModels")
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    for v in response.json()["value"]:
-        model_id = v.get("id")
-        modelName = v.get("displayName")
-        desc = v.get("description")
+    responses = pagination(client, response)
 
-        new_data = {
-            "ML Model Name": modelName,
-            "ML Model ID": model_id,
-            "Description": desc,
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    for r in responses:
+        for v in r.get("value", []):
+            model_id = v.get("id")
+            modelName = v.get("displayName")
+            desc = v.get("description")
+
+            new_data = {
+                "ML Model Name": modelName,
+                "ML Model ID": model_id,
+                "Description": desc,
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
 
@@ -849,21 +873,24 @@ def list_eventstreams(workspace: Optional[str] = None) -> pd.DataFrame:
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/eventstreams/")
+    response = client.get(f"/v1/workspaces/{workspace_id}/eventstreams")
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    for v in response.json()["value"]:
-        model_id = v.get("id")
-        modelName = v.get("displayName")
-        desc = v.get("description")
+    responses = pagination(client, response)
 
-        new_data = {
-            "Eventstream Name": modelName,
-            "Eventstream ID": model_id,
-            "Description": desc,
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    for r in responses:
+        for v in r.get("value", []):
+            model_id = v.get("id")
+            modelName = v.get("displayName")
+            desc = v.get("description")
+
+            new_data = {
+                "Eventstream Name": modelName,
+                "Eventstream ID": model_id,
+                "Description": desc,
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
 
@@ -890,21 +917,20 @@ def list_datapipelines(workspace: Optional[str] = None) -> pd.DataFrame:
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/dataPipelines/")
+    response = client.get(f"/v1/workspaces/{workspace_id}/dataPipelines")
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    for v in response.json()["value"]:
-        model_id = v.get("id")
-        modelName = v.get("displayName")
-        desc = v.get("description")
+    responses = pagination(client, response)
 
-        new_data = {
-            "Data Pipeline Name": modelName,
-            "Data Pipeline ID": model_id,
-            "Description": desc,
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    for r in responses:
+        for v in r.get("value", []):
+            new_data = {
+                "Data Pipeline Name": v.get("displayName"),
+                "Data Pipeline ID": v.get("id"),
+                "Description": v.get("description"),
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
 
@@ -931,18 +957,20 @@ def list_mlexperiments(workspace: Optional[str] = None) -> pd.DataFrame:
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/mlExperiments/")
+    response = client.get(f"/v1/workspaces/{workspace_id}/mlExperiments")
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    for v in response.json()["value"]:
+    responses = pagination(client, response)
 
-        new_data = {
-            "ML Experiment Name": v.get("displayName"),
-            "ML Experiment ID": v.get("id"),
-            "Description": v.get("description"),
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    for r in responses:
+        for v in r.get("value", []):
+            new_data = {
+                "ML Experiment Name": v.get("displayName"),
+                "ML Experiment ID": v.get("id"),
+                "Description": v.get("description"),
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
 
@@ -969,18 +997,20 @@ def list_datamarts(workspace: Optional[str] = None) -> pd.DataFrame:
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/datamarts/")
+    response = client.get(f"/v1/workspaces/{workspace_id}/datamarts")
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    for v in response.json()["value"]:
+    responses = pagination(client, response)
 
-        new_data = {
-            "Datamart Name": v.get("displayName"),
-            "Datamart ID": v.get("id"),
-            "Description": v.get("description"),
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    for r in responses:
+        for v in response.get("value", []):
+            new_data = {
+                "Datamart Name": v.get("displayName"),
+                "Datamart ID": v.get("id"),
+                "Description": v.get("description"),
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
 
@@ -1212,8 +1242,7 @@ def list_dataflow_storage_accounts() -> pd.DataFrame:
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    for v in response.json()["value"]:
-
+    for v in response.json().get("value", []):
         new_data = {
             "Dataflow Storage Account ID": v.get("id"),
             "Dataflow Storage Account Name": v.get("name"),
@@ -1316,21 +1345,18 @@ def list_workspace_role_assignments(workspace: Optional[str] = None) -> pd.DataF
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    for i in response.json()["value"]:
-        user_name = i.get("principal", {}).get("displayName")
-        role_name = i.get("role")
-        user_email = (
-            i.get("principal", {}).get("userDetails", {}).get("userPrincipalName")
-        )
-        user_type = i.get("principal", {}).get("type")
+    responses = pagination(client, response)
 
-        new_data = {
-            "User Name": user_name,
-            "Role Name": role_name,
-            "Type": user_type,
-            "User Email": user_email,
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    for r in responses:
+        for i in r.get("value", []):
+            principal = i.get("principal", {})
+            new_data = {
+                "User Name": principal.get("displayName"),
+                "Role Name": i.get("role"),
+                "Type": principal.get("type"),
+                "User Email": principal.get("userDetails", {}).get("userPrincipalName"),
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
 
@@ -1550,43 +1576,48 @@ def list_shortcuts(
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    for s in response.json()["value"]:
-        shortcutName = s.get("name")
-        shortcutPath = s.get("path")
-        source = list(s["target"].keys())[0]
-        (
-            sourceLakehouseName,
-            sourceWorkspaceName,
-            sourcePath,
-            connectionId,
-            location,
-            subpath,
-        ) = (None, None, None, None, None, None)
-        if source == "oneLake":
-            sourceLakehouseId = s.get("target", {}).get(source, {}).get("itemId")
-            sourcePath = s.get("target", {}).get(source, {}).get("path")
-            sourceWorkspaceId = s.get("target", {}).get(source, {}).get("workspaceId")
-            sourceWorkspaceName = fabric.resolve_workspace_name(sourceWorkspaceId)
-            sourceLakehouseName = resolve_lakehouse_name(
-                sourceLakehouseId, sourceWorkspaceName
-            )
-        else:
-            connectionId = s.get("target", {}).get(source, {}).get("connectionId")
-            location = s.get("target", {}).get(source, {}).get("location")
-            subpath = s.get("target", {}).get(source, {}).get("subpath")
+    responses = pagination(client, response)
 
-        new_data = {
-            "Shortcut Name": shortcutName,
-            "Shortcut Path": shortcutPath,
-            "Source": source,
-            "Source Lakehouse Name": sourceLakehouseName,
-            "Source Workspace Name": sourceWorkspaceName,
-            "Source Path": sourcePath,
-            "Source Connection ID": connectionId,
-            "Source Location": location,
-            "Source SubPath": subpath,
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    for r in responses:
+        for s in r.get("value", []):
+            shortcutName = s.get("name")
+            shortcutPath = s.get("path")
+            source = list(s["target"].keys())[0]
+            (
+                sourceLakehouseName,
+                sourceWorkspaceName,
+                sourcePath,
+                connectionId,
+                location,
+                subpath,
+            ) = (None, None, None, None, None, None)
+            if source == "oneLake":
+                sourceLakehouseId = s.get("target", {}).get(source, {}).get("itemId")
+                sourcePath = s.get("target", {}).get(source, {}).get("path")
+                sourceWorkspaceId = (
+                    s.get("target", {}).get(source, {}).get("workspaceId")
+                )
+                sourceWorkspaceName = fabric.resolve_workspace_name(sourceWorkspaceId)
+                sourceLakehouseName = resolve_lakehouse_name(
+                    sourceLakehouseId, sourceWorkspaceName
+                )
+            else:
+                connectionId = s.get("target", {}).get(source, {}).get("connectionId")
+                location = s.get("target", {}).get(source, {}).get("location")
+                subpath = s.get("target", {}).get(source, {}).get("subpath")
+
+            new_data = {
+                "Shortcut Name": shortcutName,
+                "Shortcut Path": shortcutPath,
+                "Source": source,
+                "Source Lakehouse Name": sourceLakehouseName,
+                "Source Workspace Name": sourceWorkspaceName,
+                "Source Path": sourcePath,
+                "Source Connection ID": connectionId,
+                "Source Location": location,
+                "Source SubPath": subpath,
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
 
@@ -2271,17 +2302,19 @@ def list_workspace_users(workspace: Optional[str] = None) -> pd.DataFrame:
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    for v in response.json()["value"]:
-        p = v.get("principal", {})
+    responses = pagination(client, response)
 
-        new_data = {
-            "User Name": p.get("displayName"),
-            "User ID": p.get("id"),
-            "Type": p.get("type"),
-            "Role": v.get("role"),
-            "Email Address": p.get("userDetails", {}).get("userPrincipalName"),
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    for r in responses:
+        for v in r.get("value", []):
+            p = v.get("principal", {})
+            new_data = {
+                "User Name": p.get("displayName"),
+                "User ID": p.get("id"),
+                "Type": p.get("type"),
+                "Role": v.get("role"),
+                "Email Address": p.get("userDetails", {}).get("userPrincipalName"),
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
 
@@ -2348,7 +2381,7 @@ def list_capacities() -> pd.DataFrame:
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    for i in response.json()["value"]:
+    for i in response.json().get("value", []):
         new_data = {
             "Id": i.get("id").lower(),
             "Display Name": i.get("displayName"),
@@ -2401,21 +2434,8 @@ def get_notebook_definition(
     response = client.post(
         f"v1/workspaces/{workspace_id}/notebooks/{notebook_id}/getDefinition",
     )
-    if response.status_code not in [200, 202]:
-        raise FabricHTTPException(response)
-    if response.status_code == 200:
-        result = response.json()
-    if response.status_code == 202:
-        operationId = response.headers["x-ms-operation-id"]
-        response = client.get(f"/v1/operations/{operationId}")
-        response_body = json.loads(response.content)
-        while response_body["status"] != "Succeeded":
-            time.sleep(1)
-            response = client.get(f"/v1/operations/{operationId}")
-            response_body = json.loads(response.content)
-        response = client.get(f"/v1/operations/{operationId}/result")
-        result = response.json()
 
+    result = lro(client, response).json()
     df_items = pd.json_normalize(result["definition"]["parts"])
     df_items_filt = df_items[df_items["path"] == "notebook-content.py"]
     payload = df_items_filt["payload"].iloc[0]
@@ -2495,18 +2515,9 @@ def import_notebook_from_web(
         request_body["description"] = description
 
     response = client.post(f"v1/workspaces/{workspace_id}/notebooks", json=request_body)
-    if response.status_code not in [201, 202]:
-        raise FabricHTTPException(response)
-    if response.status_code == 202:
-        operationId = response.headers["x-ms-operation-id"]
-        response = client.get(f"/v1/operations/{operationId}")
-        response_body = json.loads(response.content)
-        while response_body["status"] not in ["Succeeded", "Failed"]:
-            time.sleep(1)
-            response = client.get(f"/v1/operations/{operationId}")
-            response_body = json.loads(response.content)
-        if response_body["status"] != "Succeeded":
-            raise FabricHTTPException(response)
+
+    lro(client, response, status_codes=[201, 202])
+
     print(
         f"{icons.green_dot} The '{notebook_name}' notebook was created within the '{workspace}' workspace."
     )
