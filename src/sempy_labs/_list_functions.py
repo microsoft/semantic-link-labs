@@ -5,6 +5,8 @@ from sempy_labs._helper_functions import (
     create_relationship_name,
     resolve_lakehouse_id,
     resolve_dataset_id,
+    lro,
+    pagination,
 )
 import pandas as pd
 import base64
@@ -2755,7 +2757,9 @@ def get_git_status(workspace: Optional[str] = None) -> pd.DataFrame:
     if response not in [200, 202]:
         raise FabricHTTPException(response)
 
-    for v in response.json().get("value", []):
+    result = lro(client, response).json()
+
+    for v in result.get("value", []):
         changes = v.get("changes", [])
         item_metadata = changes.get("itemMetadata", {})
         item_identifier = item_metadata.get("itemIdentifier", {})
@@ -2828,12 +2832,12 @@ def initialize_git_connection(workspace: Optional[str] = None):
     workspace, workspace_id = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/git/initializeConnection", lro_wait=True
-    )
+    response = client.post(f"/v1/workspaces/{workspace_id}/git/initializeConnection")
 
     if response not in [200, 202]:
         raise FabricHTTPException(response)
+
+    lro(client, response)
 
     print(f"The '{workspace}' workspace git connection has been initialized.")
 
@@ -2885,11 +2889,12 @@ def commit_to_git(
     response = client.post(
         f"/v1/workspaces/{workspace_id}/git/commitToGit",
         json=request_body,
-        lro_wait=True,
     )
 
     if response.status_code not in [200, 202]:
         raise FabricHTTPException(response)
+
+    lro(client, response)
 
     if commit_mode == "All":
         print(
@@ -2938,12 +2943,190 @@ def update_from_git(
     response = client.post(
         f"/v1/workspaces/{workspace_id}/git/updateFromGit",
         json=request_body,
-        lro_wait=True,
     )
 
-    if response not in [200, 202]:
+    if response.status_code not in [200, 202]:
         raise FabricHTTPException(response)
 
+    lro(client, response)
+
     print(
-        f"The '{workspace}' workspace has been updated with commits pushed to the connected branch."
+        f"{icons.green_dot} The '{workspace}' workspace has been updated with commits pushed to the connected branch."
     )
+
+
+def provision_workspace_identity(workspace: Optional[str] = None):
+
+    # https://learn.microsoft.com/en-us/rest/api/fabric/core/workspaces/provision-identity?tabs=HTTP
+
+    workspace, workspace_id = resolve_workspace_name_and_id(workspace)
+
+    client = fabric.FabricRestClient()
+    response = client.post(f"/v1/workspaces/{workspace_id}/provisionIdentity")
+
+    if response.status_code not in [200, 202]:
+        raise FabricHTTPException(response)
+
+    lro(client, response)
+
+    print(
+        f"{icons.green_dot} A workspace identity has been provisioned for the '{workspace}' workspace."
+    )
+
+
+def deprovision_workspace_identity(workspace: Optional[str] = None):
+
+    # https://learn.microsoft.com/en-us/rest/api/fabric/core/workspaces/deprovision-identity?tabs=HTTP
+
+    workspace, workspace_id = resolve_workspace_name_and_id(workspace)
+
+    client = fabric.FabricRestClient()
+    response = client.post(f"/v1/workspaces/{workspace_id}/deprovisionIdentity")
+
+    if response.status_code not in [200, 202]:
+        raise FabricHTTPException(response)
+
+    lro(client, response)
+
+    print(
+        f"{icons.green_dot} The workspace identity has been deprovisioned from the '{workspace}' workspace."
+    )
+
+
+def list_deployment_pipelines() -> pd.DataFrame:
+
+    df = pd.DataFrame(
+        columns=["Deployment Pipeline ID", "Deployment Pipeline Name", "Description"]
+    )
+
+    client = fabric.FabricRestClient()
+    response = client.get("/v1/deploymentPipelines")
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    responses = pagination(client, response)
+
+    for r in responses:
+        for v in r.get("value", []):
+            new_data = {
+                "Deployment Pipeline ID": v.get("id"),
+                "Deployment Pipeline Name": v.get("displayName"),
+                "Description": v.get("description"),
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    return df
+
+
+def list_deployment_pipeline_stages(deployment_pipeline: str) -> pd.DataFrame:
+
+    from sempy_labs._helper_functions import resolve_deployment_pipeline_id
+
+    df = pd.DataFrame(
+        columns=[
+            "Deployment Pipeline Stage ID",
+            "Deployment Pipeline Stage Name",
+            "Order",
+            "Description",
+            "Workspace ID",
+            "Workspace Name",
+            "Public",
+        ]
+    )
+
+    deployment_pipeline_id = resolve_deployment_pipeline_id(
+        deployment_pipeline=deployment_pipeline
+    )
+    client = fabric.FabricRestClient()
+    response = client.get(f"/v1/deploymentPipelines/{deployment_pipeline_id}/stages")
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    responses = pagination(client, response)
+
+    for r in responses:
+        for v in r.get("value", []):
+            new_data = {
+                "Deployment Pipeline Stage ID": v["id"],
+                "Deployment Pipeline Stage Name": v["displayName"],
+                "Description": v["description"],
+                "Order": v["order"],
+                "Workspace ID": v["workspaceId"],
+                "Workspace Name": v["workspaceName"],
+                "Public": v["isPublic"],
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    df["Order"] = df["Order"].astype(int)
+    df["Public"] = df["Public"].astype(bool)
+
+    return df
+
+
+def list_deployment_pipeline_stage_items(
+    deployment_pipeline: str, stage_name: str
+) -> pd.DataFrame:
+
+    from sempy_labs._helper_functions import resolve_deployment_pipeline_id
+
+    df = pd.DataFrame(
+        columns=[
+            "Deployment Pipeline Stage Item ID",
+            "Deployment Pipeline Stage Item Name",
+            "Item Type",
+            "Source Item ID",
+            "Target Item ID",
+            "Last Deployment Time",
+        ]
+    )
+
+    deployment_pipeline_id = resolve_deployment_pipeline_id(
+        deployment_pipeline=deployment_pipeline
+    )
+    dfPS = list_deployment_pipeline_stages(deployment_pipeline=deployment_pipeline)
+    dfPS_filt = dfPS[dfPS["Deployment Pipeline Stage Name"] == stage_name]
+
+    if len(dfPS_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} The '{stage_name}' stage does not exist within the '{deployment_pipeline}' deployment pipeline."
+        )
+    stage_id = dfPS_filt["Deployment Pipeline Stage ID"].iloc[0]
+
+    client = fabric.FabricRestClient()
+    response = client.get(
+        f"/v1/deploymentPipelines/{deployment_pipeline_id}/stages/{stage_id}/items"
+    )
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    responses = pagination(client, response)
+
+    for r in responses:
+        for v in r.get("value", []):
+            new_data = {
+                "Deployment Pipeline Stage Item ID": v.get("itemId"),
+                "Deployment Pipeline Stage Item Name": v.get("itemDisplayName"),
+                "Item Type": v.get("itemType"),
+                "Source Item ID": v.get("sourceItemId"),
+                "Target Item ID": v.get("targetItemId"),
+                "Last Deployment Time": v.get("lastDeploymentTime"),
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    df["Last Deployment Time"] = pd.to_datetime(df["Last Deployment Time"])
+
+    return df
+
+
+def refresh_user_permissions():
+
+    client = fabric.PowerBIRestClient()
+    response = client.post("/v1.0/myorg/RefreshUserPermissions")
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    print(f"{icons.green_dot} User permissions have been refreshed.")
