@@ -1,6 +1,7 @@
 import sempy.fabric as fabric
 import pandas as pd
 from typing import Optional
+import sempy_labs._icons as icons
 
 
 def get_direct_lake_guardrails() -> pd.DataFrame:
@@ -34,7 +35,7 @@ def get_sku_size(workspace: Optional[str] = None) -> str:
     Parameters
     ----------
     workspace : str, default=None
-        The Fabric workspace.
+        The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -46,18 +47,19 @@ def get_sku_size(workspace: Optional[str] = None) -> str:
 
     workspace = fabric.resolve_workspace_name(workspace)
 
-    dfC = fabric.list_capacities()
-    dfW = fabric.list_workspaces().sort_values(by="Name", ascending=True)
-    dfC.rename(columns={"Id": "Capacity Id"}, inplace=True)
-    dfCW = pd.merge(
-        dfW,
-        dfC[["Capacity Id", "Sku", "Region", "State"]],
-        on="Capacity Id",
-        how="inner",
-    )
-    sku_value = dfCW.loc[dfCW["Name"] == workspace, "Sku"].iloc[0]
+    dfW = fabric.list_workspaces(filter=f"name eq '{workspace}'")
 
-    return sku_value
+    if len(dfW) == 0:
+        raise ValueError(f"{icons.red_dot} The '{workspace}' is not a valid workspace.")
+
+    capacity_id = dfW['Capacity Id'].iloc[0]
+    dfC = fabric.list_capacities()
+    dfC_filt = dfC[dfC['Id'] == capacity_id]
+
+    if len(dfC_filt) == 0:
+        raise ValueError(f"{icons.red_dot} The '{capacity_id}' Id is not a valid capacity Id.")
+
+    return dfC_filt['Sku'].iloc[0]
 
 
 def get_directlake_guardrails_for_sku(sku_size: str) -> pd.DataFrame:
