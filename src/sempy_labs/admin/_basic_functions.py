@@ -308,6 +308,8 @@ def list_capacities_delegated_tenant_settings(return_dataframe: Optional[bool] =
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
+    # TODO: pagination
+
     response_json = response.json()
 
     if return_dataframe:
