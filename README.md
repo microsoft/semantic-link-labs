@@ -60,8 +60,7 @@ Check out [Nikola Ilic](https://twitter.com/DataMozart)'s terrific [blog post](h
 
 Check out my [blog post](https://www.elegantbi.com/post/direct-lake-migration) on this topic!
 
-
-[![Direct Lake Migration Video](https://img.youtube.com/vi/gGIxMrTVyyI/0.jpg)](https://www.youtube.com/watch?v=gGIxMrTVyyI)
+[![Direct Lake Migration Video](https://img.youtube.com/vi/gGIxMrTVyyI/0.jpg)](https://www.youtube.com/watch?v=gGIxMrTVyyI?t=495)
 
 ### Prerequisites
 
