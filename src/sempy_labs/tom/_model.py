@@ -1587,7 +1587,9 @@ class TOMWrapper:
                 except Exception:
                     pass
 
-        if objType == TOM.ObjectType.Column:
+        if objType == TOM.ObjectType.Table:
+            object.Parent.Tables.Remove(object.Name)
+        elif objType == TOM.ObjectType.Column:
             object.Parent.Columns.Remove(object.Name)
         elif objType == TOM.ObjectType.Measure:
             object.Parent.Measures.Remove(object.Name)
