@@ -1,6 +1,7 @@
 import sempy.fabric as fabric
 from typing import Optional, List
 import sempy_labs._icons as icons
+from sempy_labs._helper_functions import lro
 from sempy.fabric.exceptions import FabricHTTPException
 import pandas as pd
 from uuid import UUID
@@ -273,11 +274,9 @@ def assign_domain_workspaces_by_capacities(
     response = client.post(
         f"/v1/admin/domains/{domain_id}/assignWorkspacesByCapacities",
         json=payload,
-        lro_wait=True,  # TODO remove lro_wait
     )
 
-    if response.status_code not in [200, 202]:
-        raise FabricHTTPException(response)
+    lro(client, response)
 
     print(
         f"{icons.green_dot} The workspaces in the {capacity_names} capacities have been assigned to the '{domain_name}' domain."
@@ -328,11 +327,10 @@ def assign_domain_workspaces(domain_name: str, workspace_names: str | List[str])
     response = client.post(
         f"/v1/admin/domains/{domain_id}/assignWorkspaces",
         json=payload,
-        lro_wait=True,  # TODO remove lro_wait
     )
 
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    lro(client, response)
+
     print(
         f"{icons.green_dot} The {workspace_names} workspaces have been assigned to the '{domain_name}' domain."
     )

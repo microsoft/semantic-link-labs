@@ -3,10 +3,11 @@ from typing import Optional, List
 from uuid import UUID
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
-from sempy_labs._helper_functions import resolve_workspace_name_and_id
+from sempy_labs._helper_functions import resolve_workspace_name_and_id, pagination
 import datetime
 import numpy as np
 import pandas as pd
+import time
 
 
 def assign_workspaces_to_capacity(
@@ -294,9 +295,7 @@ def list_capacities_delegated_tenant_settings(return_dataframe: Optional[bool] =
             "Can Specify Security Groups",
             "Enabled Security Groups",
             "Tenant Setting Group",
-            "Tenant Setting Property",
-            "Tenant Settging Property Value",
-            "Tenant Setting Property Type",
+            "Tenant Setting Properties",
             "Delegate to Workspace",
             "Delegated From",
         ]
@@ -308,42 +307,93 @@ def list_capacities_delegated_tenant_settings(return_dataframe: Optional[bool] =
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    # TODO: pagination
-
-    response_json = response.json()
+    responses = pagination(client, response)
 
     if return_dataframe:
-        for i in response_json.get("Overrides", []):
-            tenant_settings = i.get("tenantSettings", [])
-            prop = tenant_settings.get("properties", [])
-            new_data = {
-                "Capacity Id": i.get("id"),
-                "Setting Name": tenant_settings.get("settingName"),
-                "Setting Title": tenant_settings.get("title"),
-                "Setting Enabled": tenant_settings.get("enabled"),
-                "Can Specify Security Groups": tenant_settings.get(
-                    "canSpecifySecurityGroups"
-                ),
-                "Enabled Security Groups": [
-                    tenant_settings.get("enabledSecurityGroups", [])
-                ],
-                "Tenant Setting Group": tenant_settings.get("tenantSettingGroup"),
-                "Tenant Setting Property": prop.get("name"),
-                "Tenant Setting Property Value": prop.get("value"),
-                "Tenant Setting Property Type": prop.get("type"),
-                "Delegate to Workspace": tenant_settings.get("delegateToWorkspace"),
-                "Delegated From": tenant_settings.get("delegatedFrom"),
-            }
+        for r in responses:
+            for i in r.get("Overrides", []):
+                tenant_settings = i.get("tenantSettings", [])
+                for setting in tenant_settings:
+                    new_data = {
+                        "Capacity Id": i.get("id"),
+                        "Setting Name": setting.get("settingName"),
+                        "Setting Title": setting.get("title"),
+                        "Setting Enabled": setting.get("enabled"),
+                        "Can Specify Security Groups": setting.get(
+                            "canSpecifySecurityGroups"
+                        ),
+                        "Enabled Security Groups": [
+                            setting.get("enabledSecurityGroups", [])
+                        ],
+                        "Tenant Setting Group": setting.get("tenantSettingGroup"),
+                        "Tenant Setting Properties": [setting.get("properties", [])],
+                        "Delegate to Workspace": setting.get("delegateToWorkspace"),
+                        "Delegated From": setting.get("delegatedFrom"),
+                    }
 
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+                    df = pd.concat(
+                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
 
-        bool_cols = [
-            "Enabled Security Groups",
-            "Can Specify Security Groups",
-            "Delegate to Workspace",
-        ]
-        df[bool_cols] = df[bool_cols].astype(bool)
+            bool_cols = [
+                "Enabled Security Groups",
+                "Can Specify Security Groups",
+                "Delegate to Workspace",
+            ]
+            df[bool_cols] = df[bool_cols].astype(bool)
 
-        return df
+            return df
     else:
-        return response_json
+        combined_response = {
+            "overrides": [],
+            "continuationUri": "",
+            "continuationToken": "",
+        }
+        for r in responses:
+            combined_response["overrides"].extend(r["overrides"])
+            combined_response["continuationUri"] = r["continuationUri"]
+            combined_response["continuationToken"] = r["continuationToken"]
+
+        return combined_response
+
+
+def scan_workspaces(
+    data_source_details: Optional[bool] = False,
+    dataset_schema: Optional[bool] = False,
+    dataset_expressions: Optional[bool] = False,
+    lineage: Optional[bool] = False,
+    artifact_users: Optional[bool] = False,
+    workspace: Optional[str | List[str]] = None,
+) -> dict:
+
+    workspace = fabric.resolve_workspace_name(workspace)
+
+    if isinstance(workspace, str):
+        workspace = [workspace]
+
+    workspace_list = []
+
+    for w in workspace:
+        workspace_list.append(fabric.resolve_workspace_id(w))
+
+    client = fabric.PowerBIRestClient()
+    request_body = {"workspaces": workspace_list}
+
+    response_clause = f"/v1.0/myorg/admin/workspaces/getInfo?lineage={lineage}&datasourceDetails={data_source_details}&datasetSchema={dataset_schema}&datasetExpressions={dataset_expressions}&getArtifactUsers={artifact_users}"
+    response = client.post(response_clause, json=request_body)
+
+    if response.status_code != 202:
+        raise FabricHTTPException(response)
+    scan_id = response.json()["id"]
+    scan_status = response.json().get("status")
+    while scan_status not in ["Succeeded", "Failed"]:
+        time.sleep(1)
+        response = client.get(f"/v1.0/myorg/admin/workspaces/scanStatus/{scan_id}")
+        scan_status = response.json().get("status")
+    if scan_status == "Failed":
+        raise FabricHTTPException(response)
+    response = client.get(f"/v1.0/myorg/admin/workspaces/scanResult/{scan_id}")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    return response.json()
