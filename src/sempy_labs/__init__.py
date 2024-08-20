@@ -76,6 +76,7 @@ from sempy_labs._helper_functions import (
     get_capacity_id,
     get_capacity_name,
     resolve_capacity_name,
+    resolve_capacity_id,
     #  language_validate
 )
 
@@ -207,4 +208,5 @@ __all__ = [
     "resolve_capacity_name",
     "run_model_bpa_bulk",
     "create_model_bpa_semantic_model",
+    "resolve_capacity_id",
 ]

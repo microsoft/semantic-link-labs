@@ -7,6 +7,8 @@ from sempy_labs._helper_functions import (
     resolve_dataset_id,
     lro,
     pagination,
+    resolve_capacity_id,
+    resolve_deployment_pipeline_id,
 )
 import pandas as pd
 import base64
@@ -3069,8 +3071,6 @@ def list_deployment_pipeline_stage_items(
     deployment_pipeline: str, stage_name: str
 ) -> pd.DataFrame:
 
-    from sempy_labs._helper_functions import resolve_deployment_pipeline_id
-
     df = pd.DataFrame(
         columns=[
             "Deployment Pipeline Stage Item ID",
@@ -3130,3 +3130,76 @@ def refresh_user_permissions():
         raise FabricHTTPException(response)
 
     print(f"{icons.green_dot} User permissions have been refreshed.")
+
+
+def list_workloads(capacity_name: str) -> pd.DataFrame:
+
+    # https://learn.microsoft.com/en-us/rest/api/power-bi/capacities/get-workloads
+
+    df = pd.DataFrame(
+        columns=["Workload Name", "State", "Max Memory Percentage Set By User"]
+    )
+
+    capacity_id = resolve_capacity_id(capacity_name=capacity_name)
+
+    client = fabric.PowerBIRestClient()
+    response = client.get(f"/v1.0/myorg/capacities/{capacity_id}/Workloads")
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    for v in response.json().get("value", []):
+        new_data = {
+            "Workload Name": v.get("name"),
+            "State": v.get("state"),
+            "Max Memory Percentage Set By User": v.get("maxMemoryPercentageSetByUser"),
+        }
+        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    int_cols = ["Max Memory Percentage Set By User"]
+    df[int_cols] = df[int_cols].astype(int)
+
+    return df
+
+
+def patch_workload(
+    capacity_name: str,
+    workload_name: str,
+    state: Optional[bool] = None,
+    max_memory_percentage: Optional[int] = None,
+):
+
+    # https://learn.microsoft.com/en-us/rest/api/power-bi/capacities/patch-workload
+
+    capacity_id = resolve_capacity_id(capacity_name=capacity_name)
+
+    states = ["Disabled", "Enabled", "Unsupported"]
+    state = state.capitalize()
+    if state is not None and state not in states:
+        raise ValueError(
+            f"{icons.red_dot} Invalid 'state' parameter. Please choose from these options: {states}."
+        )
+    if max_memory_percentage is not None and (
+        max_memory_percentage < 0 or max_memory_percentage > 100
+    ):
+        raise ValueError(
+            f"{icons.red_dot} Invalid max memory percentage. Must be a value between 0-100."
+        )
+
+    payload = {}
+    if state is not None:
+        payload["state"] = state
+    if max_memory_percentage is not None:
+        payload["maxMemoryPercentageSetByUser"] = max_memory_percentage
+
+    client = fabric.PowerBIRestClient()
+    response = client.patch(
+        f"/v1.0/myorg/capacities/{capacity_id}/Workloads/{workload_name}", json=payload
+    )
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    print(
+        f"'The '{workload_name}' workload within the '{capacity_name}' capacity has been updated."
+    )
