@@ -827,3 +827,26 @@ def lro(
             result = response
 
     return result
+
+
+def pagination(client, response):
+
+    responses = []
+    response_json = response.json()
+    responses.append(response_json)
+
+    # Check for pagination
+    continuation_token = response_json.get("continuationToken")
+    continuation_uri = response_json.get("continuationUri")
+
+    # Loop to handle pagination
+    while continuation_token is not None:
+        response = client.get(continuation_uri)
+        response_json = response.json()
+        responses.append(response_json)
+
+        # Update the continuation token and URI for the next iteration
+        continuation_token = response_json.get("continuationToken")
+        continuation_uri = response_json.get("continuationUri")
+
+    return responses

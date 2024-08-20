@@ -98,7 +98,7 @@ def qso_sync_status(
         raise FabricHTTPException(response)
 
     o = response.json()
-    sos = o["scaleOutStatus"]
+    sos = o.get("scaleOutStatus")
 
     if sos == "Enabled":
         new_data = {
@@ -342,7 +342,8 @@ def list_qso_settings(
     )
     client = fabric.PowerBIRestClient()
     response = client.get(f"/v1.0/myorg/groups/{workspace_id}/datasets")
-    for v in response.json()["value"]:
+
+    for v in response.json().get("value", []):
         tsm = v.get("targetStorageMode")
         if tsm == "Abf":
             sm = "Small"

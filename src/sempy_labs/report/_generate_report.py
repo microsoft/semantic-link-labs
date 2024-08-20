@@ -113,18 +113,8 @@ def create_report_from_reportjson(
 
     response = client.post(f"/v1/workspaces/{workspace_id}/reports", json=request_body)
 
-    if response.status_code not in [201, 202]:
-        raise FabricHTTPException(response)
-    if response.status_code == 202:
-        operationId = response.headers["x-ms-operation-id"]
-        response = client.get(f"/v1/operations/{operationId}")
-        response_body = json.loads(response.content)
-        while response_body["status"] not in ["Succeeded", "Failed"]:
-            time.sleep(1)
-            response = client.get(f"/v1/operations/{operationId}")
-            response_body = json.loads(response.content)
-        if response_body["status"] != "Succeeded":
-            raise FabricHTTPException(response)
+    lro(client, response, status_codes=[201, 202])
+
     print(
         f"{icons.green_dot} Succesfully created the '{report}' report within the '{workspace}' workspace."
     )
