@@ -96,105 +96,81 @@ def get_lakehouse_tables(
 
     responses = pagination(client, response)
 
+    dfs = []
     for r in responses:
         for i in r.get("data", []):
-            tName = i.get("name")
-            tType = i.get("type")
-            tFormat = i.get("format")
-            tLocation = i.get("location")
-            if not extended:
-                new_data = {
-                    "Workspace Name": workspace,
-                    "Lakehouse Name": lakehouse,
-                    "Table Name": tName,
-                    "Format": tFormat,
-                    "Type": tType,
-                    "Location": tLocation,
-                }
-                df = pd.concat(
-                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+            new_data = {
+                "Workspace Name": workspace,
+                "Lakehouse Name": lakehouse,
+                "Table Name": i.get("name"),
+                "Format": i.get("format"),
+                "Type": i.get("type"),
+                "Location": i.get("location"),
+            }
+            dfs.append(pd.DataFrame(new_data, index=[0]))
+    df = pd.concat(dfs, ignore_index=True)
+
+    if extended:
+        sku_value = get_sku_size(workspace)
+        guardrail = get_directlake_guardrails_for_sku(sku_value)
+        spark = SparkSession.builder.getOrCreate()
+        df['Files'] = None
+        df['Row Groups'] = None
+        df['Table Size'] = None
+        if count_rows:
+            df['Row Count'] = None
+        for i, r in df.iterrows():
+            tName = r['Table Name']
+            if r['Type'] == 'Managed' and r['Format'] == 'delta':
+                detail_df = spark.sql(f"DESCRIBE DETAIL `{tName}`").collect()[0]
+                num_files = detail_df.numFiles
+                size_in_bytes = detail_df.sizeInBytes
+
+                delta_table_path = f"Tables/{tName}"
+                latest_files = (
+                    spark.read.format("delta").load(delta_table_path).inputFiles()
                 )
-            else:
-                sku_value = get_sku_size(workspace)
-                guardrail = get_directlake_guardrails_for_sku(sku_value)
+                file_paths = [f.split("/")[-1] for f in latest_files]
 
-                spark = SparkSession.builder.getOrCreate()
+                # Handle FileNotFoundError
+                num_rowgroups = 0
+                for filename in file_paths:
+                    try:
+                        num_rowgroups += pq.ParquetFile(
+                            f"/lakehouse/default/{delta_table_path}/{filename}"
+                        ).num_row_groups
+                    except FileNotFoundError:
+                        continue
+                df.at[i, 'Files'] = num_files
+                df.at[i, 'Row Groups'] = num_rowgroups
+                df.at[i, 'Table Size'] = size_in_bytes
+            if count_rows:
+                num_rows = spark.table(tName).count()
+                df.at[i, 'Row Count'] = num_rows
 
-                intColumns = ["Files", "Row Groups", "Table Size"]
-                if tType == "Managed" and tFormat == "delta":
-                    detail_df = spark.sql(f"DESCRIBE DETAIL `{tName}`").collect()[0]
-                    num_files = detail_df.numFiles
-                    size_in_bytes = detail_df.sizeInBytes
+    if extended:
+        intColumns = ["Files", "Row Groups", "Table Size"]
+        df[intColumns] = df[intColumns].astype(int)
+        df["SKU"] = guardrail["Fabric SKUs"].iloc[0]
+        df["Parquet File Guardrail"] = guardrail[
+            "Parquet files per table"
+        ].iloc[0]
+        df["Row Group Guardrail"] = guardrail["Row groups per table"].iloc[0]
+        df["Row Count Guardrail"] = (
+            guardrail["Rows per table (millions)"].iloc[0] * 1000000
+        )
 
-                    delta_table_path = f"Tables/{tName}"
-                    latest_files = (
-                        spark.read.format("delta").load(delta_table_path).inputFiles()
-                    )
-                    file_paths = [f.split("/")[-1] for f in latest_files]
-
-                    # Handle FileNotFoundError
-                    num_rowgroups = 0
-                    for filename in file_paths:
-                        try:
-                            num_rowgroups += pq.ParquetFile(
-                                f"/lakehouse/default/{delta_table_path}/{filename}"
-                            ).num_row_groups
-                        except FileNotFoundError:
-                            continue
-
-                    if count_rows:
-                        num_rows = spark.table(tName).count()
-                        intColumns.append("Row Count")
-                        new_data = {
-                            "Workspace Name": workspace,
-                            "Lakehouse Name": lakehouse,
-                            "Table Name": tName,
-                            "Format": tFormat,
-                            "Type": tType,
-                            "Location": tLocation,
-                            "Files": num_files,
-                            "Row Groups": num_rowgroups,
-                            "Row Count": num_rows,
-                            "Table Size": size_in_bytes,
-                        }
-                    else:
-                        new_data = {
-                            "Workspace Name": workspace,
-                            "Lakehouse Name": lakehouse,
-                            "Table Name": tName,
-                            "Format": tFormat,
-                            "Type": tType,
-                            "Location": tLocation,
-                            "Files": num_files,
-                            "Row Groups": num_rowgroups,
-                            "Table Size": size_in_bytes,
-                        }
-
-                    df = pd.concat(
-                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                    )
-                    df[intColumns] = df[intColumns].astype(int)
-
-                df["SKU"] = guardrail["Fabric SKUs"].iloc[0]
-                df["Parquet File Guardrail"] = guardrail[
-                    "Parquet files per table"
-                ].iloc[0]
-                df["Row Group Guardrail"] = guardrail["Row groups per table"].iloc[0]
-                df["Row Count Guardrail"] = (
-                    guardrail["Rows per table (millions)"].iloc[0] * 1000000
-                )
-
-                df["Parquet File Guardrail Hit"] = (
-                    df["Files"] > df["Parquet File Guardrail"]
-                )
-                df["Row Group Guardrail Hit"] = (
-                    df["Row Groups"] > df["Row Group Guardrail"]
-                )
-
-                if count_rows:
-                    df["Row Count Guardrail Hit"] = (
-                        df["Row Count"] > df["Row Count Guardrail"]
-                    )
+        df["Parquet File Guardrail Hit"] = (
+            df["Files"] > df["Parquet File Guardrail"]
+        )
+        df["Row Group Guardrail Hit"] = (
+            df["Row Groups"] > df["Row Group Guardrail"]
+        )
+    if count_rows:
+        df['Row Count'] = df['Row Count'].astype(int)
+        df["Row Count Guardrail Hit"] = (
+            df["Row Count"] > df["Row Count Guardrail"]
+        )
 
     if export:
         lakeAttach = lakehouse_attached()
