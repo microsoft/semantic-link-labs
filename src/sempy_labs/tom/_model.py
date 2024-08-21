@@ -4073,9 +4073,21 @@ class TOMWrapper:
                 isCalcTable = True
         return isCalcTable
 
-    def delete_table_synonym(
-        self, culture_name: str, table_name: str, synonym_name: str
+    def delete_synonym(
+        self,
+        culture_name: str,
+        object: Union["TOM.Table", "TOM.Column", "TOM.Measure", "TOM.Hierarchy"],
+        synonym_name: str,
     ):
+
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        if not any(c.Name == culture_name for c in self.model.Cultures):
+            raise ValueError(
+                f"{icons.red_dot} The '{culture_name}' culture does not exist within the semantic model."
+            )
+
+        deleted = False
 
         for c in self.model.Cultures:
             if c.Name == culture_name:
@@ -4086,170 +4098,115 @@ class TOMWrapper:
                     t_name = binding.get("ConceptualEntity")
                     object_name = binding.get("ConceptualProperty")
 
-                    if object_name is None and table_name == t_name:
+                    if object.ObjectType == TOM.ObjectType.Table:
+                        object_name = None
+                        table_name = object.Name
+                        obj = table_name
+                    elif object.ObjectType in [
+                        TOM.ObjectType.Column,
+                        TOM.ObjectType.Hierarchy,
+                    ]:
+                        object_name = object.Name
+                        table_name = object.Parent.Name
+                        obj = format_dax_object_name(table_name, object_name)
+                    elif object.ObjectType == TOM.ObjectType.Measure:
+                        object_name = object.Name
+                        table_name = object.Parent.Name
+                        obj = object.Name
+                    else:
+                        raise ValueError(
+                            f"{icons.red_dot} This function only supports adding synonyms for tables, columns, measures or hierarchies."
+                        )
+
+                    if table_name == t_name and object_name == t_name:
                         for term in v["Terms"]:
                             if synonym_name in term:
                                 term[synonym_name]["State"] = "Deleted"
-                c.LinguisticMetadata.Content = json.dumps(lm, indent=4)
-
-    def delete_column_synonym(
-        self, culture_name: str, table_name: str, column_name: str, synonym_name: str
-    ):
-
-        for c in self.model.Cultures:
-            if c.Name == culture_name:
-                lm = json.loads(c.LinguisticMetadata.Content)
-                for k, v in lm.get("Entities", []).items():
-                    binding = v.get("Definition", {}).get("Binding", {})
-
-                    t_name = binding.get("ConceptualEntity")
-                    object_name = binding.get("ConceptualProperty")
-
-                    if table_name == t_name and column_name == object_name:
-                        for term in v["Terms"]:
-                            if synonym_name in term:
-                                term[synonym_name]["State"] = "Deleted"
-                c.LinguisticMetadata.Content = json.dumps(lm, indent=4)
-
-    def delete_measure_synonym(
-        self, culture_name: str, measure_name: str, synonym_name: str
-    ):
-
-        for c in self.model.Cultures:
-            if c.Name == culture_name:
-                lm = json.loads(c.LinguisticMetadata.Content)
-                for k, v in lm.get("Entities", []).items():
-                    binding = v.get("Definition", {}).get("Binding", {})
-
-                    t_name = binding.get("ConceptualEntity")
-                    object_name = binding.get("ConceptualProperty")
-
-                    table_name = next(
-                        m.Parent.Name
-                        for m in self.all_measures()
-                        if m.Name == measure_name
+                                deleted is True
+                if deleted:
+                    c.LinguisticMetadata.Content = json.dumps(lm, indent=4)
+                    print(
+                        f"{icons.green_dot} The '{synonym_name}' synonym was marked as status 'Deleted' for the {obj} {str(object.ObjectType).lower()}."
                     )
 
-                    if table_name == t_name and measure_name == object_name:
-                        for term in v["Terms"]:
-                            if synonym_name in term:
-                                term[synonym_name]["State"] = "Deleted"
+    def add_synonym(
+        self,
+        culture_name: str,
+        object: Union["TOM.Table", "TOM.Column", "TOM.Measure", "TOM.Hierarchy"],
+        synonym_name: str,
+        weight: Optional[Decimal] = None,
+    ):
+
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        if not any(c.Name == culture_name for c in self.model.Cultures):
+            raise ValueError(
+                f"{icons.red_dot} The '{culture_name}' culture does not exist within the semantic model."
+            )
+
+        validate_weight(weight)
+
+        added = False
+
+        now = datetime.utcnow().isoformat(timespec="milliseconds") + "Z"
+        for c in self.model.Cultures:
+            if c.Name == culture_name:
+                lm = json.loads(c.LinguisticMetadata.Content)
+                for k, v in lm.get("Entities", []).items():
+                    binding = v.get("Definition", {}).get("Binding", {})
+
+                    t_name = binding.get("ConceptualEntity")
+                    o_name = binding.get("ConceptualProperty")
+
+                    if object.ObjectType == TOM.ObjectType.Table:
+                        object_name = None
+                        table_name = object.Name
+                        obj = table_name
+                    elif object.ObjectType in [
+                        TOM.ObjectType.Column,
+                        TOM.ObjectType.Hierarchy,
+                    ]:
+                        object_name = object.Name
+                        table_name = object.Parent.Name
+                        obj = format_dax_object_name(table_name, object_name)
+                    elif object.ObjectType == TOM.ObjectType.Measure:
+                        object_name = object.Name
+                        table_name = object.Parent.Name
+                        obj = object.Name
+                    else:
+                        raise ValueError(
+                            f"{icons.red_dot} This function only supports adding synonyms for tables, columns, measures or hierarchies."
+                        )
+
+                    if table_name == t_name and object_name == o_name:
+                        if not any(synonym_name in term for term in v["Terms"]):
+                            new_term = {}
+                            new_term[synonym_name] = {
+                                "Type": "Noun",
+                                "LastModified": now,
+                            }
+                            if weight is not None:
+                                new_term[synonym_name]["Weight"] = weight
+
+                            v["Terms"].append(new_term)
+                            added is True
+
+            if added:
                 c.LinguisticMetadata.Content = json.dumps(lm, indent=4)
-
-    def add_table_synonym(
-        self,
-        culture_name: str,
-        table_name: str,
-        synonym_name: str,
-        weight: Optional[Decimal] = None,
-    ):
-
-        validate_weight(weight)
-
-        now = datetime.utcnow().isoformat(timespec="milliseconds") + "Z"
-        for c in self.model.Cultures:
-            if c.Name == culture_name:
-                lm = json.loads(c.LinguisticMetadata.Content)
-                for k, v in lm.get("Entities", []).items():
-                    binding = v.get("Definition", {}).get("Binding", {})
-
-                    t_name = binding.get("ConceptualEntity")
-                    object_name = binding.get("ConceptualProperty")
-
-                    if object_name is None and table_name == t_name:
-                        if not any(synonym_name in term for term in v["Terms"]):
-                            new_term = {}
-                            new_term[synonym_name] = {
-                                "Type": "Noun",
-                                "LastModified": now,
-                            }
-                            if weight is not None:
-                                new_term[synonym_name]["Weight"] = weight
-
-                            v["Terms"].append(new_term)
-            c.LinguisticMetadata.Content = json.dumps(lm, indent=4)
-
-    def add_column_synonym(
-        self,
-        culture_name: str,
-        table_name: str,
-        column_name: str,
-        synonym_name: str,
-        weight: Optional[Decimal] = None,
-    ):
-
-        validate_weight(weight)
-
-        now = datetime.utcnow().isoformat(timespec="milliseconds") + "Z"
-        for c in self.model.Cultures:
-            if c.Name == culture_name:
-                lm = json.loads(c.LinguisticMetadata.Content)
-                for k, v in lm.get("Entities", []).items():
-                    binding = v.get("Definition", {}).get("Binding", {})
-
-                    t_name = binding.get("ConceptualEntity")
-                    object_name = binding.get("ConceptualProperty")
-
-                    if table_name == t_name and column_name == object_name:
-                        if not any(synonym_name in term for term in v["Terms"]):
-                            new_term = {}
-                            new_term[synonym_name] = {
-                                "Type": "Noun",
-                                "LastModified": now,
-                            }
-                            if weight is not None:
-                                new_term[synonym_name]["Weight"] = weight
-
-                            v["Terms"].append(new_term)
-            c.LinguisticMetadata.Content = json.dumps(lm, indent=4)
-
-    def add_measure_synonym(
-        self,
-        culture_name: str,
-        measure_name: str,
-        synonym_name: str,
-        weight: Optional[Decimal] = None,
-    ):
-
-        validate_weight(weight)
-
-        now = datetime.utcnow().isoformat(timespec="milliseconds") + "Z"
-        for c in self.model.Cultures:
-            if c.Name == culture_name:
-                lm = json.loads(c.LinguisticMetadata.Content)
-                for k, v in lm.get("Entities", []).items():
-                    binding = v.get("Definition", {}).get("Binding", {})
-
-                    t_name = binding.get("ConceptualEntity")
-                    object_name = binding.get("ConceptualProperty")
-
-                    table_name = next(
-                        m.Parent.Name
-                        for m in self.all_measures()
-                        if m.Name == measure_name
-                    )
-
-                    if table_name == t_name and measure_name == object_name:
-                        if not any(synonym_name in term for term in v["Terms"]):
-                            new_term = {}
-                            new_term[synonym_name] = {
-                                "Type": "Noun",
-                                "LastModified": now,
-                            }
-                            if weight is not None:
-                                new_term[synonym_name]["Weight"] = weight
-
-                            v["Terms"].append(new_term)
-            c.LinguisticMetadata.Content = json.dumps(lm, indent=4)
+                print(
+                    f"{icons.green_dot} The '{synonym_name}' synonym was added for the {obj} {str(object.ObjectType).lower()}."
+                )
 
     def export_linguistic_schema(self, culture_name: str, file_path: str):
 
         if not lakehouse_attached():
-            raise ValueError(f"{icons.red_dot}")
+            raise ValueError(
+                f"{icons.red_dot} A lakehouse must be attached to the notebook in order to export a linguistic schema."
+            )
 
         if not any(c.Name == culture_name for c in self.model.Cultures):
             raise ValueError(
-                f"{icons.red_dot} The '{culture_name}' culture does not exist."
+                f"{icons.red_dot} The '{culture_name}' culture does not exist within the semantic model."
             )
 
         folderPath = "/lakehouse/default/Files"
