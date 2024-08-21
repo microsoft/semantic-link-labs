@@ -850,3 +850,16 @@ def pagination(client, response):
         continuation_uri = response_json.get("continuationUri")
 
     return responses
+
+
+def validate_weight(weight):
+
+    if weight is not None:
+        if weight <= 0:
+            raise ValueError(
+                f"{icons.red_dot} Invalid weight parameter. Weight must be > 0."
+            )
+        elif weight >= 1:
+            raise ValueError(
+                f"{icons.red_dot} Invalid weight parameter. Weight must be < 1."
+            )

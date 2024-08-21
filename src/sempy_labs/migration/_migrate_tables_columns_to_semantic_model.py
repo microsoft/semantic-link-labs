@@ -1,7 +1,5 @@
 import sempy.fabric as fabric
 import pandas as pd
-import datetime
-import time
 from sempy_labs._list_functions import list_tables
 from sempy_labs.directlake._get_shared_expression import get_shared_expression
 from sempy_labs._helper_functions import resolve_lakehouse_name, retry

@@ -13,6 +13,7 @@ from sempy_labs._generate_semantic_model import (
     get_semantic_model_bim,
 )
 from sempy_labs._list_functions import (
+    list_synonyms,
     list_reports_using_semantic_model,
     delete_custom_pool,
     list_semantic_model_objects,
@@ -205,4 +206,5 @@ __all__ = [
     "resolve_capacity_name",
     "run_model_bpa_bulk",
     "create_model_bpa_semantic_model",
+    "list_synonyms",
 ]

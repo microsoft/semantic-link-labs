@@ -2,15 +2,19 @@ import sempy
 import sempy.fabric as fabric
 import pandas as pd
 import re
+import json
+import os
 from datetime import datetime
-from sempy_labs._helper_functions import format_dax_object_name
+from sempy_labs._helper_functions import format_dax_object_name, validate_weight
 from sempy_labs._list_functions import list_relationships
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
 from sempy_labs.directlake._dl_helper import check_fallback_reason
+from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from contextlib import contextmanager
 from typing import List, Iterator, Optional, Union, TYPE_CHECKING
 from sempy._utils._log import log
 import sempy_labs._icons as icons
+from decimal import Decimal
 
 if TYPE_CHECKING:
     import Microsoft.AnalysisServices.Tabular
@@ -4068,6 +4072,228 @@ class TOMWrapper:
             ):
                 isCalcTable = True
         return isCalcTable
+
+    def delete_table_synonym(
+        self, culture_name: str, table_name: str, synonym_name: str
+    ):
+
+        for c in self.model.Cultures:
+            if c.Name == culture_name:
+                lm = json.loads(c.LinguisticMetadata.Content)
+                for k, v in lm.get("Entities", []).items():
+                    binding = v.get("Definition", {}).get("Binding", {})
+
+                    t_name = binding.get("ConceptualEntity")
+                    object_name = binding.get("ConceptualProperty")
+
+                    if object_name is None and table_name == t_name:
+                        for term in v["Terms"]:
+                            if synonym_name in term:
+                                term[synonym_name]["State"] = "Deleted"
+                c.LinguisticMetadata.Content = json.dumps(lm, indent=4)
+
+    def delete_column_synonym(
+        self, culture_name: str, table_name: str, column_name: str, synonym_name: str
+    ):
+
+        for c in self.model.Cultures:
+            if c.Name == culture_name:
+                lm = json.loads(c.LinguisticMetadata.Content)
+                for k, v in lm.get("Entities", []).items():
+                    binding = v.get("Definition", {}).get("Binding", {})
+
+                    t_name = binding.get("ConceptualEntity")
+                    object_name = binding.get("ConceptualProperty")
+
+                    if table_name == t_name and column_name == object_name:
+                        for term in v["Terms"]:
+                            if synonym_name in term:
+                                term[synonym_name]["State"] = "Deleted"
+                c.LinguisticMetadata.Content = json.dumps(lm, indent=4)
+
+    def delete_measure_synonym(
+        self, culture_name: str, measure_name: str, synonym_name: str
+    ):
+
+        for c in self.model.Cultures:
+            if c.Name == culture_name:
+                lm = json.loads(c.LinguisticMetadata.Content)
+                for k, v in lm.get("Entities", []).items():
+                    binding = v.get("Definition", {}).get("Binding", {})
+
+                    t_name = binding.get("ConceptualEntity")
+                    object_name = binding.get("ConceptualProperty")
+
+                    table_name = next(
+                        m.Parent.Name
+                        for m in self.all_measures()
+                        if m.Name == measure_name
+                    )
+
+                    if table_name == t_name and measure_name == object_name:
+                        for term in v["Terms"]:
+                            if synonym_name in term:
+                                term[synonym_name]["State"] = "Deleted"
+                c.LinguisticMetadata.Content = json.dumps(lm, indent=4)
+
+    def add_table_synonym(
+        self,
+        culture_name: str,
+        table_name: str,
+        synonym_name: str,
+        weight: Optional[Decimal] = None,
+    ):
+
+        validate_weight(weight)
+
+        now = datetime.utcnow().isoformat(timespec="milliseconds") + "Z"
+        for c in self.model.Cultures:
+            if c.Name == culture_name:
+                lm = json.loads(c.LinguisticMetadata.Content)
+                for k, v in lm.get("Entities", []).items():
+                    binding = v.get("Definition", {}).get("Binding", {})
+
+                    t_name = binding.get("ConceptualEntity")
+                    object_name = binding.get("ConceptualProperty")
+
+                    if object_name is None and table_name == t_name:
+                        if not any(synonym_name in term for term in v["Terms"]):
+                            new_term = {}
+                            new_term[synonym_name] = {
+                                "Type": "Noun",
+                                "LastModified": now,
+                            }
+                            if weight is not None:
+                                new_term[synonym_name]["Weight"] = weight
+
+                            v["Terms"].append(new_term)
+            c.LinguisticMetadata.Content = json.dumps(lm, indent=4)
+
+    def add_column_synonym(
+        self,
+        culture_name: str,
+        table_name: str,
+        column_name: str,
+        synonym_name: str,
+        weight: Optional[Decimal] = None,
+    ):
+
+        validate_weight(weight)
+
+        now = datetime.utcnow().isoformat(timespec="milliseconds") + "Z"
+        for c in self.model.Cultures:
+            if c.Name == culture_name:
+                lm = json.loads(c.LinguisticMetadata.Content)
+                for k, v in lm.get("Entities", []).items():
+                    binding = v.get("Definition", {}).get("Binding", {})
+
+                    t_name = binding.get("ConceptualEntity")
+                    object_name = binding.get("ConceptualProperty")
+
+                    if table_name == t_name and column_name == object_name:
+                        if not any(synonym_name in term for term in v["Terms"]):
+                            new_term = {}
+                            new_term[synonym_name] = {
+                                "Type": "Noun",
+                                "LastModified": now,
+                            }
+                            if weight is not None:
+                                new_term[synonym_name]["Weight"] = weight
+
+                            v["Terms"].append(new_term)
+            c.LinguisticMetadata.Content = json.dumps(lm, indent=4)
+
+    def add_measure_synonym(
+        self,
+        culture_name: str,
+        measure_name: str,
+        synonym_name: str,
+        weight: Optional[Decimal] = None,
+    ):
+
+        validate_weight(weight)
+
+        now = datetime.utcnow().isoformat(timespec="milliseconds") + "Z"
+        for c in self.model.Cultures:
+            if c.Name == culture_name:
+                lm = json.loads(c.LinguisticMetadata.Content)
+                for k, v in lm.get("Entities", []).items():
+                    binding = v.get("Definition", {}).get("Binding", {})
+
+                    t_name = binding.get("ConceptualEntity")
+                    object_name = binding.get("ConceptualProperty")
+
+                    table_name = next(
+                        m.Parent.Name
+                        for m in self.all_measures()
+                        if m.Name == measure_name
+                    )
+
+                    if table_name == t_name and measure_name == object_name:
+                        if not any(synonym_name in term for term in v["Terms"]):
+                            new_term = {}
+                            new_term[synonym_name] = {
+                                "Type": "Noun",
+                                "LastModified": now,
+                            }
+                            if weight is not None:
+                                new_term[synonym_name]["Weight"] = weight
+
+                            v["Terms"].append(new_term)
+            c.LinguisticMetadata.Content = json.dumps(lm, indent=4)
+
+    def export_linguistic_schema(self, culture_name: str, file_path: str):
+
+        if not lakehouse_attached():
+            raise ValueError(f"{icons.red_dot}")
+
+        if not any(c.Name == culture_name for c in self.model.Cultures):
+            raise ValueError(
+                f"{icons.red_dot} The '{culture_name}' culture does not exist."
+            )
+
+        folderPath = "/lakehouse/default/Files"
+        fileExt = ".json"
+        if not file_path.endswith(fileExt):
+            file_path = f"{file_path}{fileExt}"
+
+        for c in self.model.Cultures:
+            if c.Name == culture_name:
+                lm = json.loads(c.LinguisticMetadata.Content)
+                filePath = os.path.join(folderPath, file_path)
+                with open(filePath, "w") as json_file:
+                    json.dump(lm, json_file, indent=4)
+
+                print(
+                    f"{icons.green_dot} The linguistic schema for the '{culture_name}' culture was saved as the '{file_path}' file within the lakehouse attached to this notebook."
+                )
+
+    def import_linguistic_schema(self, file_path: str):
+
+        if not file_path.endswith(".json"):
+            raise ValueError(f"{icons.red_dot} The 'file_path' must be a .json file.")
+
+        with open(file_path, "r") as json_file:
+            schema_file = json.load(json_file)
+
+            # Validate structure
+            required_keys = ["Version", "Language", "Entities", "Relationships"]
+            if not all(key in schema_file for key in required_keys):
+                raise ValueError(
+                    f"{icons.red_dot} The 'schema_file' is not in the proper format."
+                )
+
+            culture_name = schema_file["Language"]
+
+            # Validate culture
+            if not any(c.Name == culture_name for c in self.model.Cultures):
+                raise ValueError(
+                    f"{icons.red_dot} The culture of the schema_file is not a valid culture within the semantic model."
+                )
+
+            for c in self.model.Cultures:
+                if c.Name == culture_name:
+                    c.LinguisticMetadata.Content = json.dumps(schema_file, indent=4)
 
     def close(self):
         if not self._readonly and self.model is not None:
