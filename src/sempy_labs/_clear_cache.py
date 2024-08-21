@@ -1,5 +1,5 @@
 import sempy.fabric as fabric
-from ._helper_functions import resolve_dataset_id, is_default_semantic_model
+from sempy_labs._helper_functions import resolve_dataset_id, is_default_semantic_model
 from typing import Optional
 import sempy_labs._icons as icons
 
@@ -40,3 +40,66 @@ def clear_cache(dataset: str, workspace: Optional[str] = None):
     outputtext = f"{icons.green_dot} Cache cleared for the '{dataset}' semantic model within the '{workspace}' workspace."
 
     return outputtext
+
+
+def backup_semantic_model(
+    dataset: str,
+    file_path: str,
+    allow_overwrite: Optional[bool] = True,
+    apply_compression: Optional[bool] = True,
+    workspace: Optional[str] = None,
+):
+    # https://learn.microsoft.com/en-us/power-bi/enterprise/service-premium-backup-restore-dataset
+
+    if not file_path.endswith(".abf"):
+        raise ValueError(
+            f"{icons.red_dot} The backup file for restoring must be in the .abf format."
+        )
+
+    workspace = fabric.resolve_workspace_name(workspace)
+
+    tmsl = {
+        "backup": {
+            "database": dataset,
+            "file": file_path,
+            "allowOverwrite": allow_overwrite,
+            "applyCompression": apply_compression,
+        }
+    }
+
+    fabric.execute_tmsl(script=tmsl, workspace=workspace)
+    print(
+        f"{icons.green_dot} The '{dataset}' semantic model within the '{workspace}' workspace has been backed up to the '{file_path}' location."
+    )
+
+
+def restore_semantic_model(
+    dataset: str,
+    file_path: str,
+    allow_overwrite: Optional[bool] = True,
+    ignore_incompatibilities: Optional[bool] = True,
+    workspace: Optional[str] = None,
+):
+    # https://learn.microsoft.com/en-us/power-bi/enterprise/service-premium-backup-restore-dataset
+
+    if not file_path.endswith(".abf"):
+        raise ValueError(
+            f"{icons.red_dot} The backup file for restoring must be in the .abf format."
+        )
+
+    workspace = fabric.resolve_workspace_name(workspace)
+
+    tmsl = {
+        "restore": {
+            "database": dataset,
+            "file": file_path,
+            "allowOverwrite": allow_overwrite,
+            "security": "copyAll",
+            "ignoreIncompatibilities": ignore_incompatibilities,
+        }
+    }
+
+    fabric.execute_tmsl(script=tmsl, workspace=workspace)
+    print(
+        f"{icons.green_dot} The '{dataset}' semantic model has been restored to the '{workspace}' workspace based on teh '{file_path}' backup file."
+    )

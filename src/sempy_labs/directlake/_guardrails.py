@@ -52,14 +52,16 @@ def get_sku_size(workspace: Optional[str] = None) -> str:
     if len(dfW) == 0:
         raise ValueError(f"{icons.red_dot} The '{workspace}' is not a valid workspace.")
 
-    capacity_id = dfW['Capacity Id'].iloc[0]
+    capacity_id = dfW["Capacity Id"].iloc[0]
     dfC = fabric.list_capacities()
-    dfC_filt = dfC[dfC['Id'] == capacity_id]
+    dfC_filt = dfC[dfC["Id"] == capacity_id]
 
     if len(dfC_filt) == 0:
-        raise ValueError(f"{icons.red_dot} The '{capacity_id}' Id is not a valid capacity Id.")
+        raise ValueError(
+            f"{icons.red_dot} The '{capacity_id}' Id is not a valid capacity Id."
+        )
 
-    return dfC_filt['Sku'].iloc[0]
+    return dfC_filt["Sku"].iloc[0]
 
 
 def get_directlake_guardrails_for_sku(sku_size: str) -> pd.DataFrame:
