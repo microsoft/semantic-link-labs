@@ -58,6 +58,7 @@ from sempy_labs._list_functions import (
 )
 
 from sempy_labs._helper_functions import (
+    generate_synonyms,
     resolve_workspace_capacity,
     create_abfss_path,
     format_dax_object_name,
@@ -207,4 +208,5 @@ __all__ = [
     "run_model_bpa_bulk",
     "create_model_bpa_semantic_model",
     "list_synonyms",
+    "generate_synonyms",
 ]
