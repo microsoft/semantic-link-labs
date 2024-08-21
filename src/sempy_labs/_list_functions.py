@@ -2585,7 +2585,7 @@ def list_reports_using_semantic_model(
 @log
 def list_synonyms(dataset: str, workspace: Optional[str] = None):
 
-    from sempy_labs.tom import connect_semantic_model
+    from sempy_labs.tom import connect_semantic_model 
 
     workspace = fabric.resolve_workspace_name(workspace)
 
