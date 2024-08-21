@@ -4073,6 +4073,119 @@ class TOMWrapper:
                 isCalcTable = True
         return isCalcTable
 
+    def __add_linguistic_schema(self):
+
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        # TODO: if LinguisticMetadata is None
+        # TODO: check if lower() is good enough
+
+        for c in self.model.Cultures:
+            if c.LinguisticMetadata is not None:
+                lm = json.loads(c.LinguisticMetadata.Content)
+                if "Entities" not in lm:
+                    lm["Entities"] = {}
+                    for t in self.model.Tables:
+                        t_lower = t.Name.lower()
+                        lm["Entities"][t_lower] = {
+                            "Definition": {"Binding": {"ConceptualEntity": t.Name}},
+                            "State": "Generated",
+                            "Terms": [],
+                        }
+                        for c in t.Columns:
+                            if c.Type != TOM.ColumnType.RowNumber:
+                                c_lower = f"{t_lower}.{c.Name.lower()}"
+                                lm["Entities"][c_lower] = {
+                                    "Definition": {
+                                        "Binding": {
+                                            "ConceptualEntity": t.Name,
+                                            "ConceptualProperty": c.Name,
+                                        }
+                                    },
+                                    "State": "Generated",
+                                    "Terms": [],
+                                }
+                        for m in t.Measures:
+                            m_lower = f"{t_lower}.{m.Name.lower()}"
+                            lm["Entities"][m_lower] = {
+                                "Definition": {
+                                    "Binding": {
+                                        "ConceptualEntity": t.Name,
+                                        "ConceptualProperty": m.Name,
+                                    }
+                                },
+                                "State": "Generated",
+                                "Terms": [],
+                            }
+                        for h in t.Hierarchies:
+                            h_lower = f"{t_lower}.{h.Name.lower()}"
+                            lm["Entities"][h_lower] = {
+                                "Definition": {
+                                    "Binding": {
+                                        "ConceptualEntity": t.Name,
+                                        "ConceptualProperty": h.Name,
+                                    }
+                                },
+                                "State": "Generated",
+                                "Terms": [],
+                            }
+                if "Relationships" not in lm:
+                    lm["Relationships"] = {}
+                    for c in self.all_columns():
+                        table_name = c.Parent.Name
+                        t_name = table_name.lower()
+                        column_name = c.Name
+                        c_name = column_name.lower()
+                        rel_key = f"{t_name}_has_{c_name}"
+                        lm["Relationships"][rel_key] = {
+                            "Binding": {"ConceptualEntity": table_name},
+                            "State": "Generated",
+                            "Roles": {
+                                t_name: {"Target": {"Entity": t_name}},
+                                f"{t_name}.{c_name}": {
+                                    "Target": {"Entity": f"{t_name}.{c_name}"}
+                                },
+                            },
+                            "Phrasings": [
+                                {
+                                    "Attribute": {
+                                        "Subject": {"Role": t_name},
+                                        "Object": {"Role": f"{t_name}.{c_name}"},
+                                    },
+                                    "State": "Generated",
+                                    "Weight": 0.99,
+                                    "ID": f"{t_name}_have_{c_name}",
+                                }
+                            ],
+                        }
+                    for m in self.all_measures():
+                        table_name = c.Parent.Name
+                        t_name = table_name.lower()
+                        column_name = c.Name
+                        c_name = column_name.lower()
+                        rel_key = f"{t_name}_has_{c_name}"
+                        lm["Relationships"][rel_key] = {
+                            "Binding": {"ConceptualEntity": table_name},
+                            "State": "Generated",
+                            "Roles": {
+                                t_name: {"Target": {"Entity": t_name}},
+                                f"{t_name}.{c_name}": {
+                                    "Target": {"Entity": f"{t_name}.{c_name}"}
+                                },
+                            },
+                            "Phrasings": [
+                                {
+                                    "Attribute": {
+                                        "Subject": {"Role": t_name},
+                                        "Object": {"Role": f"{t_name}.{c_name}"},
+                                    },
+                                    "State": "Generated",
+                                    "Weight": 0.99,
+                                    "ID": f"{t_name}_have_{c_name}",
+                                }
+                            ],
+                        }
+
     def delete_synonym(
         self,
         culture_name: str,
@@ -4147,6 +4260,8 @@ class TOMWrapper:
         validate_weight(weight)
 
         added = False
+
+        # self.__add_linguistic_schema()
 
         now = datetime.utcnow().isoformat(timespec="milliseconds") + "Z"
         for c in self.model.Cultures:

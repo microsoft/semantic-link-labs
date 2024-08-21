@@ -2607,53 +2607,54 @@ def list_synonyms(dataset: str, workspace: Optional[str] = None):
         dataset=dataset, workspace=workspace, readonly=True
     ) as tom:
         for c in tom.model.Cultures:
-            lm = json.loads(c.LinguisticMetadata.Content)
-            for k, v in lm.get("Entities", []).items():
-                binding = v.get("Definition", {}).get("Binding", {})
+            if c.LinguisticMetadata is not None:
+                lm = json.loads(c.LinguisticMetadata.Content)
+                for k, v in lm.get("Entities", []).items():
+                    binding = v.get("Definition", {}).get("Binding", {})
 
-                t_name = binding.get("ConceptualEntity")
-                object_name = binding.get("ConceptualProperty")
+                    t_name = binding.get("ConceptualEntity")
+                    object_name = binding.get("ConceptualProperty")
 
-                if object_name is None:
-                    object_type = "Table"
-                    object_name = t_name
-                elif any(
-                    m.Name == object_name and m.Parent.Name == t_name
-                    for m in tom.all_measures()
-                ):
-                    object_type = "Measure"
-                elif any(
-                    m.Name == object_name and m.Parent.Name == t_name
-                    for m in tom.all_columns()
-                ):
-                    object_type = "Column"
-                elif any(
-                    m.Name == object_name and m.Parent.Name == t_name
-                    for m in tom.all_hierarchies()
-                ):
-                    object_type = "Hierarchy"
+                    if object_name is None:
+                        object_type = "Table"
+                        object_name = t_name
+                    elif any(
+                        m.Name == object_name and m.Parent.Name == t_name
+                        for m in tom.all_measures()
+                    ):
+                        object_type = "Measure"
+                    elif any(
+                        m.Name == object_name and m.Parent.Name == t_name
+                        for m in tom.all_columns()
+                    ):
+                        object_type = "Column"
+                    elif any(
+                        m.Name == object_name and m.Parent.Name == t_name
+                        for m in tom.all_hierarchies()
+                    ):
+                        object_type = "Hierarchy"
 
-                merged_terms = defaultdict(dict)
-                for t in v.get("Terms", []):
-                    for term, properties in t.items():
-                        normalized_term = term.lower()
-                        merged_terms[normalized_term].update(properties)
+                    merged_terms = defaultdict(dict)
+                    for t in v.get("Terms", []):
+                        for term, properties in t.items():
+                            normalized_term = term.lower()
+                            merged_terms[normalized_term].update(properties)
 
-                for term, props in merged_terms.items():
-                    new_data = {
-                        "Culture Name": lm.get("Language"),
-                        "Table Name": t_name,
-                        "Object Name": object_name,
-                        "Object Type": object_type,
-                        "Synonym": term,
-                        "Type": props.get("Type"),
-                        "State": props.get("State"),
-                        "Weight": props.get("Weight"),
-                        "Last Modified": props.get("LastModified"),
-                    }
-                    df = pd.concat(
-                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                    )
+                    for term, props in merged_terms.items():
+                        new_data = {
+                            "Culture Name": lm.get("Language"),
+                            "Table Name": t_name,
+                            "Object Name": object_name,
+                            "Object Type": object_type,
+                            "Synonym": term,
+                            "Type": props.get("Type"),
+                            "State": props.get("State"),
+                            "Weight": props.get("Weight"),
+                            "Last Modified": props.get("LastModified"),
+                        }
+                        df = pd.concat(
+                            [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                        )
 
     df["Weight"] = df["Weight"].fillna(0).apply(Decimal)
     df["Weight"] = df["Weight"].apply(
