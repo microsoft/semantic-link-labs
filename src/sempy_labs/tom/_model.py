@@ -4070,7 +4070,9 @@ class TOMWrapper:
                 isCalcTable = True
         return isCalcTable
 
-    def generate_measure_descriptions(self, measure_name: Optional[str | List[str]] = None):
+    def generate_measure_descriptions(
+        self, measure_name: Optional[str | List[str]] = None
+    ):
 
         if isinstance(measure_name, str):
             measure_name = [measure_name]
@@ -4082,7 +4084,7 @@ class TOMWrapper:
         for m in self.all_measures():
             table_name = m.Parent.Name
             m_name = m.Name
-            m_name_fixed = '1'
+            m_name_fixed = "1"
             expr = m.Expression
             if measure_name is None or m_name in measure_name:
                 payload = {
@@ -4099,9 +4101,7 @@ class TOMWrapper:
                         }
                     },
                     "workspaceId": workspace_id,
-                    "artifactInfo": {
-                        "artifactType": "SemanticModel"
-                    }
+                    "artifactInfo": {"artifactType": "SemanticModel"},
                 }
 
                 response = client.post(
@@ -4110,7 +4110,7 @@ class TOMWrapper:
                 if response.status_code != 200:
                     raise FabricHTTPException(response)
 
-                desc = response.json()['modelItems'][0]['description']
+                desc = response.json()["modelItems"][0]["description"]
                 m.Description = desc
 
     def close(self):

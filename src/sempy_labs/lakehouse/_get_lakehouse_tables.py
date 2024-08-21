@@ -114,14 +114,14 @@ def get_lakehouse_tables(
         sku_value = get_sku_size(workspace)
         guardrail = get_directlake_guardrails_for_sku(sku_value)
         spark = SparkSession.builder.getOrCreate()
-        df['Files'] = None
-        df['Row Groups'] = None
-        df['Table Size'] = None
+        df["Files"] = None
+        df["Row Groups"] = None
+        df["Table Size"] = None
         if count_rows:
-            df['Row Count'] = None
+            df["Row Count"] = None
         for i, r in df.iterrows():
-            tName = r['Table Name']
-            if r['Type'] == 'Managed' and r['Format'] == 'delta':
+            tName = r["Table Name"]
+            if r["Type"] == "Managed" and r["Format"] == "delta":
                 detail_df = spark.sql(f"DESCRIBE DETAIL `{tName}`").collect()[0]
                 num_files = detail_df.numFiles
                 size_in_bytes = detail_df.sizeInBytes
@@ -141,36 +141,28 @@ def get_lakehouse_tables(
                         ).num_row_groups
                     except FileNotFoundError:
                         continue
-                df.at[i, 'Files'] = num_files
-                df.at[i, 'Row Groups'] = num_rowgroups
-                df.at[i, 'Table Size'] = size_in_bytes
+                df.at[i, "Files"] = num_files
+                df.at[i, "Row Groups"] = num_rowgroups
+                df.at[i, "Table Size"] = size_in_bytes
             if count_rows:
                 num_rows = spark.table(tName).count()
-                df.at[i, 'Row Count'] = num_rows
+                df.at[i, "Row Count"] = num_rows
 
     if extended:
         intColumns = ["Files", "Row Groups", "Table Size"]
         df[intColumns] = df[intColumns].astype(int)
         df["SKU"] = guardrail["Fabric SKUs"].iloc[0]
-        df["Parquet File Guardrail"] = guardrail[
-            "Parquet files per table"
-        ].iloc[0]
+        df["Parquet File Guardrail"] = guardrail["Parquet files per table"].iloc[0]
         df["Row Group Guardrail"] = guardrail["Row groups per table"].iloc[0]
         df["Row Count Guardrail"] = (
             guardrail["Rows per table (millions)"].iloc[0] * 1000000
         )
 
-        df["Parquet File Guardrail Hit"] = (
-            df["Files"] > df["Parquet File Guardrail"]
-        )
-        df["Row Group Guardrail Hit"] = (
-            df["Row Groups"] > df["Row Group Guardrail"]
-        )
+        df["Parquet File Guardrail Hit"] = df["Files"] > df["Parquet File Guardrail"]
+        df["Row Group Guardrail Hit"] = df["Row Groups"] > df["Row Group Guardrail"]
     if count_rows:
-        df['Row Count'] = df['Row Count'].astype(int)
-        df["Row Count Guardrail Hit"] = (
-            df["Row Count"] > df["Row Count Guardrail"]
-        )
+        df["Row Count"] = df["Row Count"].astype(int)
+        df["Row Count Guardrail Hit"] = df["Row Count"] > df["Row Count Guardrail"]
 
     if export:
         lakeAttach = lakehouse_attached()
