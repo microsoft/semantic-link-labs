@@ -11,6 +11,7 @@ from contextlib import contextmanager
 from typing import List, Iterator, Optional, Union, TYPE_CHECKING
 from sempy._utils._log import log
 import sempy_labs._icons as icons
+from sempy.fabric.exceptions import FabricHTTPException
 
 if TYPE_CHECKING:
     import Microsoft.AnalysisServices.Tabular
@@ -4068,6 +4069,49 @@ class TOMWrapper:
             ):
                 isCalcTable = True
         return isCalcTable
+
+    def generate_measure_descriptions(self, measure_name: Optional[str | List[str]] = None):
+
+        if isinstance(measure_name, str):
+            measure_name = [measure_name]
+
+        workspace_id = fabric.resolve_workspace_id(self._workspace)
+
+        client = fabric.FabricRestClient()
+
+        for m in self.all_measures():
+            table_name = m.Parent.Name
+            m_name = m.Name
+            m_name_fixed = '1'
+            expr = m.Expression
+            if measure_name is None or m_name in measure_name:
+                payload = {
+                    "scenarioDefinition": {
+                        "generateModelItemDescriptions": {
+                            "modelItems": [
+                                {
+                                    "urn": f"modelobject://Table/{table_name}/Measure/{m_name_fixed}",
+                                    "type": 1,
+                                    "name": m_name,
+                                    "expression": expr,
+                                }
+                            ]
+                        }
+                    },
+                    "workspaceId": workspace_id,
+                    "artifactInfo": {
+                        "artifactType": "SemanticModel"
+                    }
+                }
+
+                response = client.post(
+                    "/explore/v202304/nl2nl/completions", json=payload
+                )
+                if response.status_code != 200:
+                    raise FabricHTTPException(response)
+
+                desc = response.json()['modelItems'][0]['description']
+                m.Description = desc
 
     def close(self):
         if not self._readonly and self.model is not None:
