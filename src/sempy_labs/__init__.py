@@ -1,10 +1,11 @@
 from sempy_labs._clear_cache import clear_cache
 
-# from sempy_labs._connections import (
-# create_connection_cloud,
-# create_connection_vnet,
-# create_connection_on_prem
-# )
+from sempy_labs._connections import (
+    list_connections,
+    # create_connection_cloud,
+    # create_connection_vnet,
+    # create_connection_on_prem
+)
 from sempy_labs._dax import evaluate_dax_impersonation
 from sempy_labs._generate_semantic_model import (
     create_blank_semantic_model,
@@ -209,4 +210,5 @@ __all__ = [
     "run_model_bpa_bulk",
     "create_model_bpa_semantic_model",
     "resolve_capacity_id",
+    "list_connections",
 ]
