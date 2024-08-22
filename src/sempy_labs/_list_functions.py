@@ -19,6 +19,7 @@ from pyspark.sql import SparkSession
 from typing import Optional, List
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
+from uuid import UUID
 
 
 def get_object_level_security(
@@ -3203,3 +3204,136 @@ def patch_workload(
     print(
         f"'The '{workload_name}' workload within the '{capacity_name}' capacity has been updated."
     )
+
+
+def create_external_data_share(
+    item_id: UUID,
+    paths: str | List[str],
+    recipient: str,
+    workspace: Optional[str] = None,
+):
+
+    # https://learn.microsoft.com/en-us/rest/api/fabric/core/external-data-shares/create-external-data-share?tabs=HTTP
+
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    dfI = fabric.list_items(workspace=workspace)
+    dfI_filt = dfI[dfI["Id"] == item_id]
+    if len(dfI_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} The '{item_id}' item Id does not exist within the '{workspace}' workspace."
+        )
+    item_name = dfI_filt["Display Name"].iloc[0]
+    item_type = dfI_filt["Type"].iloc[0]
+
+    if isinstance(paths, str):
+        paths = [paths]
+
+    payload = {"paths": [paths], "recipient": {"userPrincipalName": recipient}}
+
+    client = fabric.FabricRestClient()
+    response = client.post(
+        f"/v1/workspaces/{workspace_id}/items/{item_id}/externalDataShares",
+        data=payload,
+    )
+
+    if response.status_code != 201:
+        raise FabricHTTPException(response)
+
+    print(
+        f"{icons.green_dot} An external data share was created for the '{item_name}' {item_type} within the '{workspace}' workspace for the {paths} paths."
+    )
+
+
+def revoke_external_data_share(
+    external_data_share_id: UUID, item_id: UUID, workspace: Optional[str] = None
+):
+
+    # https://learn.microsoft.com/en-us/rest/api/fabric/core/external-data-shares/revoke-external-data-share?tabs=HTTP
+
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    dfI = fabric.list_items(workspace=workspace)
+    dfI_filt = dfI[dfI["Id"] == item_id]
+    if len(dfI_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} The '{item_id}' item Id does not exist within the '{workspace}' workspace."
+        )
+    item_name = dfI_filt["Display Name"].iloc[0]
+    item_type = dfI_filt["Type"].iloc[0]
+
+    client = fabric.FabricRestClient()
+    response = client.post(
+        f"/v1/workspaces/{workspace_id}/items/{item_id}/externalDataShares/{external_data_share_id}/revoke"
+    )
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    print(
+        f"{icons.green_dot} The '{external_data_share_id}' external data share for the '{item_name}' {item_type} within the '{workspace}' workspace has been revoked."
+    )
+
+
+def list_external_data_shares_in_item(item_id: UUID, workspace: Optional[str] = None):
+
+    # https://learn.microsoft.com/en-us/rest/api/fabric/core/external-data-shares/list-external-data-shares-in-item?tabs=HTTP
+
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    dfI = fabric.list_items(workspace=workspace)
+    client = fabric.FabricRestClient()
+    response = client.get(
+        f"/v1/workspaces/{workspace_id}/items/{item_id}/externalDataShares"
+    )
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    df = pd.DataFrame(
+        columns=[
+            "External Data Share Id",
+            "Paths",
+            "Creator Principal Id",
+            "Creater Principal Type",
+            "Recipient UPN",
+            "Status",
+            "Expiration Time UTC",
+            "Workspace Id",
+            "Item Id",
+            "Item Name",
+            "Item Type",
+            "Invitation URL",
+        ]
+    )
+
+    responses = pagination(client, response)
+    dfs = []
+
+    for r in responses:
+        for i in r.get("value", []):
+            item_id = i.get("itemId")
+            dfI_filt = dfI[dfI["Id"] == item_id]
+            item_name, item_type = None, None
+            if len(dfI_filt) > 0:
+                item_name = dfI_filt["Display Name"].iloc[0]
+                item_type = dfI_filt["Type"].iloc[0]
+
+            new_data = {
+                "External Data Share Id": i.get("id"),
+                "Paths": [i.get("paths")],
+                "Creator Principal Id": i.get("creatorPrincipal", {}).get("id"),
+                "Creator Principal Type": i.get("creatorPrincipal", {}).get("type"),
+                "Recipient UPN": i.get("recipient", {}).get("userPrincipalName"),
+                "Status": i.get("status"),
+                "Expiration Time UTC": i.get("expriationTimeUtc"),
+                "Workspace Id": i.get("workspaceId"),
+                "Item Id": item_id,
+                "Item Name": item_name,
+                "Item Type": item_type,
+                "Invitation URL": i.get("invitationUrl"),
+            }
+            dfs.append(pd.DataFrame(new_data, index=[0]))
+    df = pd.concat(dfs, ignore_index=True)
+
+    return df
