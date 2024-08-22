@@ -4,7 +4,6 @@ from sempy.fabric.exceptions import FabricHTTPException
 
 
 def list_connections() -> pd.DataFrame:
-
     """
     Lists all available connections.
 

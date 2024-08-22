@@ -3234,7 +3234,7 @@ def create_external_data_share(
     client = fabric.FabricRestClient()
     response = client.post(
         f"/v1/workspaces/{workspace_id}/items/{item_id}/externalDataShares",
-        data=payload,
+        json=payload,
     )
 
     if response.status_code != 201:
@@ -3275,7 +3275,9 @@ def revoke_external_data_share(
     )
 
 
-def list_external_data_shares_in_item(item_id: UUID, workspace: Optional[str] = None):
+def list_external_data_shares_in_item(
+    item_id: UUID, workspace: Optional[str] = None
+) -> pd.DataFrame:
 
     # https://learn.microsoft.com/en-us/rest/api/fabric/core/external-data-shares/list-external-data-shares-in-item?tabs=HTTP
 
@@ -3337,3 +3339,132 @@ def list_external_data_shares_in_item(item_id: UUID, workspace: Optional[str] = 
     df = pd.concat(dfs, ignore_index=True)
 
     return df
+
+
+def list_item_schedules(
+    item_id: UUID, job_type: str, workspace: Optional[str]
+) -> pd.DataFrame:
+
+    # https://learn.microsoft.com/en-us/rest/api/fabric/core/job-scheduler/list-item-schedules?tabs=HTTP
+
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    client = fabric.FabricRestClient()
+    response = client.get(
+        f"/v1/workspaces/{workspace_id}/items/{item_id}/jobs/{job_type}/schedules"
+    )
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    df = pd.DataFrame(
+        columns=[
+            "Job Schedule Id",
+            "Enabled",
+            "Created Date Time",
+            "Start Date Time",
+            "End Date Time",
+            "Local Time Zone Id",
+            "Type",
+            "Weekdays",
+            "Times",
+            "Interval",
+            "Owner Id",
+            "Owner Type",
+        ]
+    )
+
+    for i in response.json().get("value", []):
+        config = i.get("configuration", {})
+        own = i.get("owner", {})
+        new_data = {
+            "Job Schedule Id": i.get("id"),
+            "Enabled": i.get("enabled"),
+            "Created Date Time": i.get("creatdDateTime"),
+            "Start Date Time": config.get("startDateTime"),
+            "End Date Time": config.get("endDateTime"),
+            "Local Time Zone Id": config.get("localTimeZoneId"),
+            "Type": config.get("type"),
+            "Weekdays": [config.get("weekdays", [])],
+            "Times": [config.get("times", [])],
+            "Interval": config.get("interval"),
+            "Owner Id": own.get("id"),
+            "Owner Type": own.get("type"),
+        }
+
+        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    bool_cols = ["Enabled"]
+    int_cols = ["Interval"]
+    df[bool_cols] = df[bool_cols].astype(bool)
+    df[int_cols] = df[int_cols].astype(int)
+
+    return df
+
+
+def create_item_schedule(
+    item_id: UUID,
+    job_type: str,
+    type: str,
+    enabled: bool,
+    start_date_time,
+    end_date_time,
+    local_time_zone: str,
+    interval: Optional[int] = None,
+    times: str | List[str] = None,
+    weekdays: str | List[str] = None,
+    workspace: Optional[str] = None,
+):
+
+    # https://learn.microsoft.com/en-us/rest/api/fabric/core/job-scheduler/create-item-schedule?tabs=HTTP#weeklyscheduleconfig
+
+    # times format: "2024-04-30T23:59:00"
+
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    if isinstance(times, str):
+        times = [times]
+    if isinstance(weekdays, str):
+        weekdays = [weekdays]
+
+    type_list = ["Cron", "Daily", "Weekly"]
+    type = type.capitalize()
+
+    if type not in type_list:
+        raise ValueError(
+            f"{icons.red_dot} Invalid 'type' parameter. Valid options: {type_list}."
+        )
+
+    payload = {
+        "enabled": enabled,
+        "configuration": {
+            "startDateTime": start_date_time,
+            "endDateTime": end_date_time,
+            "localTimeZoneId": local_time_zone,
+            "type": type,
+        },
+    }
+
+    if type == "Cron":
+        if interval is None:
+            raise ValueError(
+                f"{icons.red_dot} Cron job schedules must have an interval."
+            )
+        payload["configuration"]["interval"] = interval
+    if type == "Weekly":
+        if weekdays is None:
+            raise ValueError(f"{icons.red_dot}")
+        payload["configuration"]["weekdays"] = weekdays
+    if type in ["Weekly", "Daily"]:
+        if times is None:
+            raise ValueError(f"{icons.red_dot}")
+        payload["configuration"]["times"] = times
+
+    client = fabric.FabricRestClient()
+    response = client.post(
+        f"/v1/workspaces/{workspace_id}/items/{item_id}/jobs/{job_type}/schedules",
+        json=payload,
+    )
+
+    if response.status_code != 201:
+        raise FabricHTTPException(response)
