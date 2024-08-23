@@ -94,6 +94,8 @@ def create_pqt_file(
         sb = "section Section1;"
         for t in tom.model.Tables:
             table_name = t.Name
+            for char in icons.special_characters:
+                table_name = table_name.replace(char, "")
             if any(str(p.SourceType) == "M" for p in t.Partitions) or t.RefreshPolicy:
                 sb = f'{sb}\nshared #"{table_name}" = '
                 i = 0
@@ -130,6 +132,8 @@ def create_pqt_file(
 
         for t in tom.model.Tables:
             table_name = t.Name
+            for char in icons.special_characters:
+                table_name = table_name.replace(char, "")
             if t.RefreshPolicy or any(
                 p.SourceType == TOM.PartitionSourceType.M for p in t.Partitions
             ):

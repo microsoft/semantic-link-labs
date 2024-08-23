@@ -123,8 +123,8 @@ def migrate_model_objects_to_semantic_model(
                         ]
                         cName = dfC_filt["Column Name"].iloc[0]
                         c.Name = cName
-                        if tType == "Table":
-                            c.SourceColumn = cName.replace(" ", "_")
+                        # if tType == "Table":
+                        #    c.SourceColumn = cName.replace(" ", "_")
                         c.IsHidden = bool(dfC_filt["Hidden"].iloc[0])
                         c.DataType = System.Enum.Parse(
                             TOM.DataType, dfC_filt["Data Type"].iloc[0]
