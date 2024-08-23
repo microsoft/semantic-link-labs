@@ -1,4 +1,7 @@
-from sempy_labs.report._reportwrapper import ReportWrapper
+from sempy_labs.report._reportwrapper import (
+    ReportWrapper,
+    list_semantic_model_report_objects,
+)
 
 from sempy_labs.report._generate_report import (
     create_report_from_reportjson,
@@ -11,9 +14,6 @@ from sempy_labs.report._report_functions import (
     export_report,
     clone_report,
     launch_report,
-    # list_report_pages,
-    # list_report_visuals,
-    # list_report_bookmarks,
     # translate_report_titles
 )
 from sempy_labs.report._report_rebind import (
@@ -24,6 +24,7 @@ from sempy_labs.report._report_bpa_rules import report_bpa_rules
 from sempy_labs.report._report_bpa import run_report_bpa
 
 __all__ = [
+    "list_semantic_model_report_objects",
     "create_report_from_reportjson",
     # "update_report_from_reportjson",
     "get_report_json",
@@ -31,9 +32,6 @@ __all__ = [
     "export_report",
     "clone_report",
     "launch_report",
-    # list_report_pages,
-    # list_report_visuals,
-    # list_report_bookmarks,
     # translate_report_titles,
     "report_rebind",
     "report_rebind_all",

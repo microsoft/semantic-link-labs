@@ -18,6 +18,8 @@ from sempy._utils._log import log
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 from sempy_labs._list_functions import list_reports_using_semantic_model
+from sempy_labs._model_dependencies import get_measure_dependencies
+from sempy_labs.tom import connect_semantic_model
 
 _vis_type_mapping = {
     "barChart": "Bar chart",
@@ -69,9 +71,9 @@ _vis_type_mapping = {
 }
 
 
-def _report_status(dataset: str, workspace: Optional[str] = None):
-
-    from sempy_labs.tom import connect_semantic_model
+def list_semantic_model_report_objects(
+    dataset: str, workspace: Optional[str] = None, extended: Optional[bool] = False
+) -> pd.DataFrame:
 
     dfRO = pd.DataFrame(
         columns=[
@@ -107,27 +109,28 @@ def _report_status(dataset: str, workspace: Optional[str] = None):
             dfRO = pd.concat([dfRO, dfRSO], ignore_index=True)
 
     # Collect all semantic model objects
-    with connect_semantic_model(
-        dataset=dataset, readonly=True, workspace=workspace
-    ) as tom:
-        for index, row in dfRO.iterrows():
-            object_type = row["Object Type"]
-            if object_type == "Measure":
-                dfRO.at[index, "Valid Object"] = any(
-                    o.Name == row["Object Name"] for o in tom.all_measures()
-                )
-            elif object_type == "Column":
-                dfRO.at[index, "Valid Object"] = any(
-                    format_dax_object_name(c.Parent.Name, c.Name)
-                    == format_dax_object_name(row["Table Name"], row["Object Name"])
-                    for c in tom.all_columns()
-                )
-            elif object_type == "Hierarchy":
-                dfRO.at[index, "Valid Object"] = any(
-                    format_dax_object_name(h.Parent.Name, h.Name)
-                    == format_dax_object_name(row["Table Name"], row["Object Name"])
-                    for h in tom.all_hierarchies()
-                )
+    if extended:
+        with connect_semantic_model(
+            dataset=dataset, readonly=True, workspace=workspace
+        ) as tom:
+            for index, row in dfRO.iterrows():
+                object_type = row["Object Type"]
+                if object_type == "Measure":
+                    dfRO.at[index, "Valid Object"] = any(
+                        o.Name == row["Object Name"] for o in tom.all_measures()
+                    )
+                elif object_type == "Column":
+                    dfRO.at[index, "Valid Object"] = any(
+                        format_dax_object_name(c.Parent.Name, c.Name)
+                        == format_dax_object_name(row["Table Name"], row["Object Name"])
+                        for c in tom.all_columns()
+                    )
+                elif object_type == "Hierarchy":
+                    dfRO.at[index, "Valid Object"] = any(
+                        format_dax_object_name(h.Parent.Name, h.Name)
+                        == format_dax_object_name(row["Table Name"], row["Object Name"])
+                        for h in tom.all_hierarchies()
+                    )
 
     return dfRO
 
@@ -320,6 +323,43 @@ class ReportWrapper:
 
         return page_mapping, visual_mapping
 
+    def get_theme(self, theme_type: Optional[str] = "baseTheme"):
+
+        theme_types = ["baseTheme", "customTheme"]
+        theme_type = theme_type.lower()
+
+        if "custom" in theme_type:
+            theme_type = "customTheme"
+        elif "base" in theme_type:
+            theme_type = "baseTheme"
+        if theme_type not in theme_types:
+            raise ValueError(
+                f"{icons.red_dot} Invalid theme type. Valid options: {theme_types}."
+            )
+
+        rptdef = self.rdef[self.rdef["path"] == "definition/report.json"]
+        rptJson = _extract_json(rptdef)
+        theme_collection = rptJson.get("themeCollection", {})
+        if theme_type not in theme_collection:
+            raise ValueError(
+                f"{icons.red_dot} The {self._report} report within the '{self._workspace} workspace has no custom theme."
+            )
+        ct = theme_collection.get(theme_type)
+        theme_name = ct["name"]
+        theme_location = ct["type"]
+        theme_file_path = f"StaticResources/{theme_location}/{theme_name}"
+        if theme_type == "baseTheme":
+            theme_file_path = (
+                f"StaticResources/{theme_location}/BaseThemes/{theme_name}"
+            )
+        if not theme_file_path.endswith(".json"):
+            theme_file_path = f"{theme_file_path}.json"
+
+        theme_df = self.rdef[self.rdef["path"] == theme_file_path]
+        theme_json = _extract_json(theme_df)
+
+        return theme_json
+
     # List functions
     def list_custom_visuals(self, extended: Optional[bool] = False) -> pd.DataFrame:
         """
@@ -368,8 +408,6 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe containing a list of all the report filters used in the report.
         """
-
-        from sempy_labs.tom import connect_semantic_model
 
         rd = self.rdef
         rd_filt = rd[rd["path"] == "definition/report.json"]
@@ -503,8 +541,6 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe containing a list of all the page filters used in the report.
         """
-
-        from sempy_labs.tom import connect_semantic_model
 
         rd = self.rdef
         df = pd.DataFrame(
@@ -653,8 +689,6 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe containing a list of all the visual filters used in the report.
         """
-
-        from sempy_labs.tom import connect_semantic_model
 
         rd = self.rdef
         df = pd.DataFrame(
@@ -1245,8 +1279,6 @@ class ReportWrapper:
             A pandas dataframe containing a list of all semantic model objects used in each visual in the report.
         """
 
-        from sempy_labs.tom import connect_semantic_model
-
         rd = self.rdef
         page_mapping, visual_mapping = self.__visual_page_mapping()
         df = pd.DataFrame(columns=["Page Name", "Page Display Name", "Visual Name"])
@@ -1386,8 +1418,6 @@ class ReportWrapper:
             A pandas dataframe showing the semantic model objects used in the report.
         """
 
-        from sempy_labs.tom import connect_semantic_model
-
         df = pd.DataFrame(
             columns=[
                 "Table Name",
@@ -1479,6 +1509,43 @@ class ReportWrapper:
                 df["Valid"] = df.apply(lambda row: check_validity(tom, row), axis=1)
 
         return df
+
+    def list_all_semantic_model_objects(self):
+
+        # Includes dependencies
+
+        df = (
+            self.list_semantic_model_objects()[
+                ["Table Name", "Object Name", "Object Type"]
+            ]
+            .drop_duplicates()
+            .reset_index(drop=True)
+        )
+        dataset_id, dataset_name, dataset_workspace_id, dataset_workspace = (
+            resolve_dataset_from_report(report=self._report, workspace=self._workspace)
+        )
+        dep = get_measure_dependencies(
+            dataset=dataset_name, workspace=dataset_workspace
+        )
+        rpt_measures = df[df["Object Type"] == "Measure"]["Object Name"].values
+        new_rows = dep[dep["Object Name"].isin(rpt_measures)][
+            ["Referenced Table", "Referenced Object", "Referenced Object Type"]
+        ]
+        new_rows.columns = ["Table Name", "Object Name", "Object Type"]
+        result_df = (
+            pd.concat([df, new_rows], ignore_index=True)
+            .drop_duplicates()
+            .reset_index(drop=True)
+        )
+
+        result_df["Dataset Name"] = dataset_name
+        result_df["Dataset Workspace Name"] = dataset_workspace
+        colName = "Dataset Name"
+        result_df.insert(0, colName, result_df.pop(colName))
+        colName = "Dataset Workspace Name"
+        result_df.insert(1, colName, result_df.pop(colName))
+
+        return result_df
 
     def list_bookmarks(self) -> pd.DataFrame:
         """
@@ -1765,8 +1832,6 @@ class ReportWrapper:
         Returns
         -------
         """
-
-        from sempy_labs.tom import connect_semantic_model
 
         rlm = self.list_report_level_measures()
         if len(rlm) == 0:
