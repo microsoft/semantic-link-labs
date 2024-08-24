@@ -1062,6 +1062,7 @@ class ReportWrapper:
                 "Data Visual",
                 "Has Sparkline",
                 "Visual Filter Count",
+                "Data Limit",
             ]
         )
 
@@ -1100,6 +1101,17 @@ class ReportWrapper:
                 visual_filter_count = len(
                     visual_json.get("filterConfig", {}).get("filters", [])
                 )
+
+                data_limit = 0
+                for f in visual_json.get("filterConfig", {}).get("filters", []):
+                    if f.get("type") == "VisualTopN":
+                        where_conditions = f.get("filter", {}).get("Where", [])
+                        for condition in where_conditions:
+                            visual_topn = condition.get("Condition", {}).get(
+                                "VisualTopN", {}
+                            )
+                            data_limit = visual_topn.get("ItemCount")
+                            break
 
                 title = (
                     visual_json.get("visual", {})
@@ -1224,6 +1236,7 @@ class ReportWrapper:
                     "Data Visual": is_data_visual,
                     "Has Sparkline": has_sparkline,
                     "Visual Filter Count": visual_filter_count,
+                    "Data Limit": data_limit,
                 }
 
                 df = pd.concat(
