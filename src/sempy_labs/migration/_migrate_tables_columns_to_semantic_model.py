@@ -137,7 +137,7 @@ def migrate_tables_columns_to_semantic_model(
             for char in icons.special_characters:
                 scName = scName.replace(char, "")
 
-            if scName.endswith('_'):
+            if scName.endswith("_"):
                 scName = scName[:-1]
 
             if not any(

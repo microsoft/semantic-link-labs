@@ -29,4 +29,4 @@ column_icon = "\u229F"
 model_bpa_name = "ModelBPA"
 report_bpa_name = "ReportBPA"
 severity_mapping = {warning: "Warning", error: "Error", info: "Info"}
-special_characters = ['"', "/", '"', ":", "|", "<", ">", "*", "?", "'", '!']
+special_characters = ['"', "/", '"', ":", "|", "<", ">", "*", "?", "'", "!"]

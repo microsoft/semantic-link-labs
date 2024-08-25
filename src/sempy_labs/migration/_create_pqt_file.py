@@ -20,6 +20,9 @@ def create_pqt_file(
     Dynamically generates a `Power Query Template <https://learn.microsoft.com/power-query/power-query-template>`_ file based on the semantic model. The .pqt file is
      saved within the Files section of your lakehouse.
 
+    Dataflows Gen2 has a `limit of 50 tables <https://learn.microsoft.com/power-query/power-query-online-limits>`_. If there are more than 50 tables, this will save multiple Power Query Template
+    files (with each file having a max of 50 tables).
+
     Parameters
     ----------
     dataset : str
@@ -36,9 +39,7 @@ def create_pqt_file(
     import Microsoft.AnalysisServices.Tabular as TOM
     from sempy_labs.tom import connect_semantic_model
 
-    lakeAttach = lakehouse_attached()
-
-    if lakeAttach is False:
+    if not lakehouse_attached():
         raise ValueError(
             f"{icons.red_dot} In order to run the 'create_pqt_file' function, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
         )
@@ -60,54 +61,74 @@ def create_pqt_file(
             )
             return
 
-        class QueryMetadata:
-            def __init__(
-                self,
-                QueryName,
-                QueryGroupId=None,
-                LastKnownIsParameter=None,
-                LastKnownResultTypeName=None,
-                LoadEnabled=True,
-                IsHidden=False,
-            ):
-                self.QueryName = QueryName
-                self.QueryGroupId = QueryGroupId
-                self.LastKnownIsParameter = LastKnownIsParameter
-                self.LastKnownResultTypeName = LastKnownResultTypeName
-                self.LoadEnabled = LoadEnabled
-                self.IsHidden = IsHidden
+        table_map = {}
+        expr_map = {}
 
-        class RootObject:
-            def __init__(
-                self, DocumentLocale, EngineVersion, QueriesMetadata, QueryGroups=None
-            ):
-                if QueryGroups is None:
-                    QueryGroups = []
-                self.DocumentLocale = DocumentLocale
-                self.EngineVersion = EngineVersion
-                self.QueriesMetadata = QueriesMetadata
-                self.QueryGroups = QueryGroups
-
-        # STEP 1: Create MashupDocument.pq
-        mdfileName = "MashupDocument.pq"
-        mdFilePath = os.path.join(subFolderPath, mdfileName)
-        sb = "section Section1;"
         for t in tom.model.Tables:
             table_name = t.Name
             for char in icons.special_characters:
                 table_name = table_name.replace(char, "")
-            if any(str(p.SourceType) == "M" for p in t.Partitions) or t.RefreshPolicy:
-                sb = f'{sb}\nshared #"{table_name}" = '
-                i = 0
-                for p in t.Partitions:
-                    if i == 0:
-                        if str(p.SourceType) == "M":
-                            query = p.Source.Expression
-                        elif t.RefreshPolicy:
-                            query = t.RefreshPolicy.SourceExpression
+            if t.RefreshPolicy:
+                table_map[table_name] = t.RefreshPolicy.SourceExpression
+            elif any(p.SourceType == TOM.PartitionSourceType.M for p in t.Partitions):
+                part_name = next(
+                    p.Name
+                    for p in t.Partitions
+                    if p.SourceType == TOM.PartitionSourceType.M
+                )
+                expr = t.Partitions[part_name].Source.Expression
+                table_map[table_name] = expr
 
-                    i += 1
+        for e in tom.model.Expressions:
+            expr_map[e.Name] = [str(e.Kind), e.Expression]
 
+        # Dataflows Gen2 max table limit is 50.
+        max_length = 50
+        table_chunks = [
+            dict(list(table_map.items())[i : i + max_length])
+            for i in range(0, len(table_map), max_length)
+        ]
+
+        def create_pqt(table_map: dict, expr_map: dict, file_name: str):
+
+            class QueryMetadata:
+                def __init__(
+                    self,
+                    QueryName,
+                    QueryGroupId=None,
+                    LastKnownIsParameter=None,
+                    LastKnownResultTypeName=None,
+                    LoadEnabled=True,
+                    IsHidden=False,
+                ):
+                    self.QueryName = QueryName
+                    self.QueryGroupId = QueryGroupId
+                    self.LastKnownIsParameter = LastKnownIsParameter
+                    self.LastKnownResultTypeName = LastKnownResultTypeName
+                    self.LoadEnabled = LoadEnabled
+                    self.IsHidden = IsHidden
+
+            class RootObject:
+                def __init__(
+                    self,
+                    DocumentLocale,
+                    EngineVersion,
+                    QueriesMetadata,
+                    QueryGroups=None,
+                ):
+                    if QueryGroups is None:
+                        QueryGroups = []
+                    self.DocumentLocale = DocumentLocale
+                    self.EngineVersion = EngineVersion
+                    self.QueriesMetadata = QueriesMetadata
+                    self.QueryGroups = QueryGroups
+
+            # STEP 1: Create MashupDocument.pq
+            mdfileName = "MashupDocument.pq"
+            mdFilePath = os.path.join(subFolderPath, mdfileName)
+            sb = "section Section1;"
+            for t_name, query in table_map.items():
+                sb = f'{sb}\nshared #"{t_name}" = '
                 if query is not None:
                     pQueryNoSpaces = (
                         query.replace(" ", "")
@@ -119,89 +140,90 @@ def create_pqt_file(
                         query = 'let\n\tSource = ""\nin\n\tSource'
                 sb = f"{sb}{query};"
 
-        for e in tom.model.Expressions:
-            sb = f'{sb}\nshared #"{e.Name}" = {e.Expression};'
+            for e_name, v in expr_map.items():
+                expr = v[1]
+                sb = f'{sb}\nshared #"{e_name}" = {expr};'
 
-        with open(mdFilePath, "w") as file:
-            file.write(sb)
+            with open(mdFilePath, "w") as file:
+                file.write(sb)
 
-        # STEP 2: Create the MashupMetadata.json file
-        mmfileName = "MashupMetadata.json"
-        mmFilePath = os.path.join(subFolderPath, mmfileName)
-        queryMetadata = []
+            # STEP 2: Create the MashupMetadata.json file
+            mmfileName = "MashupMetadata.json"
+            mmFilePath = os.path.join(subFolderPath, mmfileName)
+            queryMetadata = []
 
-        for t in tom.model.Tables:
-            table_name = t.Name
-            for char in icons.special_characters:
-                table_name = table_name.replace(char, "")
-            if t.RefreshPolicy or any(
-                p.SourceType == TOM.PartitionSourceType.M for p in t.Partitions
-            ):
+            for t_name, query in table_map.items():
                 queryMetadata.append(
-                    QueryMetadata(table_name, None, None, None, True, False)
+                    QueryMetadata(t_name, None, None, None, True, False)
                 )
+            for e_name, v in expr_map.items():
+                e_kind = v[0]
+                if e_kind == "M":
+                    queryMetadata.append(
+                        QueryMetadata(e_name, None, None, None, True, False)
+                    )
+                else:
+                    queryMetadata.append(
+                        QueryMetadata(e_name, None, None, None, False, False)
+                    )
 
-        for e in tom.model.Expressions:
-            e_name = e.Name
-            if str(e.Kind) == "M":
-                queryMetadata.append(
-                    QueryMetadata(e_name, None, None, None, True, False)
-                )
-            else:
-                queryMetadata.append(
-                    QueryMetadata(e_name, None, None, None, False, False)
-                )
+            rootObject = RootObject(
+                "en-US", "2.132.328.0", queryMetadata
+            )  # "2.126.453.0"
 
-        rootObject = RootObject("en-US", "2.126.453.0", queryMetadata)
+            def obj_to_dict(obj):
+                if isinstance(obj, list):
+                    return [obj_to_dict(e) for e in obj]
+                elif hasattr(obj, "__dict__"):
+                    return {k: obj_to_dict(v) for k, v in obj.__dict__.items()}
+                else:
+                    return obj
 
-        def obj_to_dict(obj):
-            if isinstance(obj, list):
-                return [obj_to_dict(e) for e in obj]
-            elif hasattr(obj, "__dict__"):
-                return {k: obj_to_dict(v) for k, v in obj.__dict__.items()}
-            else:
-                return obj
+            jsonContent = json.dumps(obj_to_dict(rootObject), indent=4)
 
-        jsonContent = json.dumps(obj_to_dict(rootObject), indent=4)
+            with open(mmFilePath, "w") as json_file:
+                json_file.write(jsonContent)
 
-        with open(mmFilePath, "w") as json_file:
-            json_file.write(jsonContent)
+            # STEP 3: Create Metadata.json file
+            mFileName = "Metadata.json"
+            mFilePath = os.path.join(subFolderPath, mFileName)
+            metaData = {"Name": f"{file_name}", "Description": "", "Version": "1.0.0.0"}
+            jsonContent = json.dumps(metaData, indent=4)
 
-        # STEP 3: Create Metadata.json file
-        mFileName = "Metadata.json"
-        mFilePath = os.path.join(subFolderPath, mFileName)
-        metaData = {"Name": "fileName", "Description": "", "Version": "1.0.0.0"}
-        jsonContent = json.dumps(metaData, indent=4)
+            with open(mFilePath, "w") as json_file:
+                json_file.write(jsonContent)
 
-        with open(mFilePath, "w") as json_file:
-            json_file.write(jsonContent)
+            # STEP 4: Create [Content_Types].xml file:
+            xml_content = """<?xml version="1.0" encoding="utf-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="json" ContentType="application/json" /><Default Extension="pq" ContentType="application/x-ms-m" /></Types>"""
+            xmlFileName = "[Content_Types].xml"
+            xmlFilePath = os.path.join(subFolderPath, xmlFileName)
+            with open(xmlFilePath, "w", encoding="utf-8") as file:
+                file.write(xml_content)
 
-        # STEP 4: Create [Content_Types].xml file:
-        ns = "http://schemas.openxmlformats.org/package/2006/content-types"
-        ET.register_namespace("", ns)
-        types = ET.Element("{%s}Types" % ns)
-        xmlDocument = ET.ElementTree(types)
-        xmlFileName = "[Content_Types].xml"
-        xmlFilePath = os.path.join(subFolderPath, xmlFileName)
-        xmlDocument.write(
-            xmlFilePath, xml_declaration=True, encoding="utf-8", method="xml"
-        )
+            # STEP 5: Zip up the 4 files
+            zipFileName = f"{file_name}.zip"
+            zipFilePath = os.path.join(folderPath, zipFileName)
+            shutil.make_archive(zipFilePath[:-4], "zip", subFolderPath)
 
-        # STEP 5: Zip up the 4 files
-        zipFileName = f"{file_name}.zip"
-        zipFilePath = os.path.join(folderPath, zipFileName)
-        shutil.make_archive(zipFilePath[:-4], "zip", subFolderPath)
+            # STEP 6: Convert the zip file back into a .pqt file
+            newExt = ".pqt"
+            directory = os.path.dirname(zipFilePath)
+            fileNameWithoutExtension = os.path.splitext(os.path.basename(zipFilePath))[
+                0
+            ]
+            newFilePath = os.path.join(directory, fileNameWithoutExtension + newExt)
+            shutil.move(zipFilePath, newFilePath)
 
-        # STEP 6: Convert the zip file back into a .pqt file
-        newExt = ".pqt"
-        directory = os.path.dirname(zipFilePath)
-        fileNameWithoutExtension = os.path.splitext(os.path.basename(zipFilePath))[0]
-        newFilePath = os.path.join(directory, fileNameWithoutExtension + newExt)
-        shutil.move(zipFilePath, newFilePath)
+            # STEP 7: Delete subFolder directory which is no longer needed
+            shutil.rmtree(subFolderPath, ignore_errors=True)
 
-        # STEP 7: Delete subFolder directory which is no longer needed
-        shutil.rmtree(subFolderPath, ignore_errors=True)
+            print(
+                f"{icons.green_dot} '{file_name}.pqt' has been created based on the '{dataset}' semantic model in the '{workspace}' workspace within the Files section of your lakehouse."
+            )
 
-        print(
-            f"{icons.green_dot} '{file_name}.pqt' has been created based on the '{dataset}' semantic model in the '{workspace}' workspace within the Files section of your lakehouse."
-        )
+        a = 0
+        for t_map in table_chunks:
+            if a > 0:
+                file_name = f"{file_name}_1"
+            a += 1
+            create_pqt(t_map, expr_map, file_name=file_name)
