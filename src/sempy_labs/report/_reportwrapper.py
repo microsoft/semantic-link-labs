@@ -1294,7 +1294,20 @@ class ReportWrapper:
 
         rd = self.rdef
         page_mapping, visual_mapping = self.__visual_page_mapping()
-        df = pd.DataFrame(columns=["Page Name", "Page Display Name", "Visual Name"])
+        df = pd.DataFrame(
+            columns=[
+                "Page Name",
+                "Page Display Name",
+                "Visual Name",
+                "Table Name",
+                "Object Name",
+                "Object Type",
+                "Implicit Measure",
+                "Sparkline",
+                "Visual Calc",
+                "Format",
+            ]
+        )
 
         def contains_key(data, keys_to_check):
             if isinstance(data, dict):
@@ -1360,18 +1373,40 @@ class ReportWrapper:
                 page_display = visual_mapping.get(file_path)[1]
 
                 entity_property_pairs = find_entity_property_pairs(visual_json)
+                query_state = (
+                    visual_json.get("visual", {})
+                    .get("query", {})
+                    .get("queryState", {})
+                    .get("Values", {})
+                )
+                format_mapping = {}
+                for p in query_state.get("projections", []):
+                    query_ref = p.get("queryRef")
+                    fmt = p.get("format")
+                    if fmt is not None:
+                        format_mapping[query_ref] = fmt
 
                 for object_name, properties in entity_property_pairs.items():
+                    table_name = properties[0]
+                    obj_full = f"{table_name}.{object_name}"
+                    is_agg = properties[2]
+                    format_value = format_mapping.get(obj_full)
+
+                    if is_agg:
+                        for k, v in format_mapping.items():
+                            if obj_full in k:
+                                format_value = v
                     new_data = {
                         "Page Name": page_id,
                         "Page Display Name": page_display,
                         "Visual Name": visual_json.get("name"),
-                        "Table Name": properties[0],
+                        "Table Name": table_name,
                         "Object Name": object_name,
                         "Object Type": properties[1],
-                        "Implicit Measure": properties[2],
+                        "Implicit Measure": is_agg,
                         "Sparkline": properties[4],
                         "Visual Calc": properties[3],
+                        "Format": format_value,
                     }
 
                     df = pd.concat(
