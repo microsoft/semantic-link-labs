@@ -13,6 +13,7 @@ import pandas as pd
 import re
 import json
 import base64
+from uuid import UUID
 import time
 from sempy._utils._log import log
 import sempy_labs._icons as icons
@@ -71,9 +72,117 @@ _vis_type_mapping = {
 }
 
 
-def list_semantic_model_report_objects(
+def list_unused_objects_in_reports(
+    dataset: str, workspace: Optional[str] = None
+) -> pd.DataFrame:
+    """
+    Shows a list of all columns in the semantic model which are not used in any related Power BI reports (including dependencies).
+
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of all columns in the semantic model which are not used in any related Power BI reports (including dependencies).
+    """
+
+    # TODO: what about relationships/RLS?
+
+    dfR = _list_all_report_semantic_model_objects(dataset=dataset, workspace=workspace)
+    dfR_filt = (
+        dfR[dfR["Object Type"] == "Column"][["Table Name", "Object Name"]]
+        .drop_duplicates()
+        .reset_index(drop=True)
+    )
+    dfR_filt["Column Object"] = format_dax_object_name(
+        dfR_filt["Table Name"], dfR_filt["Object Name"]
+    )
+
+    dfC = fabric.list_columns(dataset=dataset, workspace=workspace)
+    dfC["Column Object"] = format_dax_object_name(dfC["Table Name"], dfC["Column Name"])
+
+    df = dfC[~(dfC["Column Object"].isin(dfR_filt["Column Object"].values))]
+    df = df.drop("Column Object", axis=1)
+
+    return df
+
+
+def _list_all_report_semantic_model_objects(
+    dataset: str, workspace: Optional[str] = None
+) -> pd.DataFrame:
+    """
+    Shows a unique list of all semantic model objects (columns, measures, hierarchies) which are used in all reports which leverage the semantic model.
+
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe.
+    """
+
+    dfR = list_reports_using_semantic_model(dataset=dataset, workspace=workspace)
+    dfs = []
+
+    for i, r in dfR.iterrows():
+        report_name = r["Report Name"]
+        report_workspace = r["Report Workspace Name"]
+
+        rpt = ReportWrapper(
+            report=report_name, workspace=report_workspace, readonly=True
+        )
+
+        new_data = rpt.list_all_semantic_model_objects()
+        new_data["Report Name"] = report_name
+        new_data["Report Workspace"] = report_workspace
+        dfs.append(new_data)
+
+    df = pd.concat(dfs, ignore_index=True)
+
+    colName = "Report Name"
+    df.insert(2, colName, df.pop(colName))
+    colName = "Report Workspace"
+    df.insert(3, colName, df.pop(colName))
+
+    return df
+
+
+def list_semantic_model_objects_all_reports(
     dataset: str, workspace: Optional[str] = None, extended: Optional[bool] = False
 ) -> pd.DataFrame:
+    """
+    Extends the ReportWrapper list_semantic_model_objects function across all reports connected to the semantic model.
+
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    extended: bool, default=False
+        If True, adds extra columns to the resulting dataframe.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe.
+    """
 
     dfRO = pd.DataFrame(
         columns=[
@@ -213,7 +322,19 @@ class ReportWrapper:
             if response_body["status"] != "Succeeded":
                 raise FabricHTTPException(response)
 
-    def resolve_page_name(self, page_name: str) -> Tuple[str, str, str]:
+    def resolve_page_name(self, page_display_name: str) -> UUID:
+
+        x, y, z = self.__resolve_page_name(page_name=page_display_name)
+
+        return x
+
+    def resolve_page_display_name(self, page_name: UUID) -> str:
+
+        x, y, z = self.__resolve_page_name(page_name=page_name)
+
+        return y
+
+    def __resolve_page_name(self, page_name: str) -> Tuple[str, str, str]:
         """
         Obtains the page name, page display name, and the file path for a given page in a report.
 
@@ -1631,7 +1752,7 @@ class ReportWrapper:
                 bookmark_name = obj_json.get("name")
                 bookmark_display = obj_json.get("displayName")
                 rpt_page_id = obj_json.get("explorationState", {}).get("activeSection")
-                page_id, page_display, file_path = self.resolve_page_name(
+                page_id, page_display, file_path = self.__resolve_page_name(
                     page_name=rpt_page_id
                 )
 
@@ -1741,7 +1862,7 @@ class ReportWrapper:
         request_body = {"definition": {"parts": []}}
 
         rd = self.rdef
-        page_id, page_display, file_path = self.resolve_page_name(page_name=page_name)
+        page_id, page_display, file_path = self.__resolve_page_name(page_name=page_name)
         for i, r in rd.iterrows():
             path = r["path"]
             file_payload = r["payload"]
@@ -1793,7 +1914,7 @@ class ReportWrapper:
             )
 
         rd = self.rdef
-        page_id, page_display, file_path = self.resolve_page_name(page_name=page_name)
+        page_id, page_display, file_path = self.__resolve_page_name(page_name=page_name)
         rd_filt = rd[rd["path"] == file_path]
         payload = rd_filt["payload"].iloc[0]
         pageFile = base64.b64decode(payload).decode("utf-8")
@@ -2078,7 +2199,7 @@ class ReportWrapper:
         """
 
         rd = self.rdef
-        page_id, page_display, file_path = self.resolve_page_name(page_name=page_name)
+        page_id, page_display, file_path = self.__resolve_page_name(page_name=page_name)
         visibility = "visible" if hidden is False else "hidden"
 
         request_body = {"definition": {"parts": []}}
@@ -2162,7 +2283,7 @@ class ReportWrapper:
                 # pattern_visual = r"/visuals/(.*?)/visual.json"
                 # page_name = re.search(pattern_page, file_path).group(1)
                 # visual_name = re.search(pattern_visual, file_path).group(1)
-                # page_id, page_display = resolve_page_name(report=report, page_name=page_name, workspace=workspace)
+                # page_id, page_display = __resolve_page_name(report=report, page_name=page_name, workspace=workspace)
                 objFile = base64.b64decode(payload).decode("utf-8")
                 objJson = json.loads(objFile)
                 delete_key_in_json(objJson, "showAll")
@@ -2192,7 +2313,7 @@ class ReportWrapper:
             rd_filt = rd[rd["path"] == "definition/report.json"]
             obj_json = _extract_json(rd_filt)
         elif object_type == "Page":
-            page_id, page_display, page_file = self.resolve_page_name(
+            page_id, page_display, page_file = self.__resolve_page_name(
                 page_name=object_name
             )
             rd_filt = rd[rd["path"] == page_file]
@@ -2264,7 +2385,7 @@ class ReportWrapper:
 
         # Validate page and visual names
         if object_type == "Page":
-            page_id, page_display, file_path = self.resolve_page_name(
+            page_id, page_display, file_path = self.__resolve_page_name(
                 page_name=object_name
             )
         elif object_type == "Visual":
@@ -2272,7 +2393,7 @@ class ReportWrapper:
             matches = re.findall(pattern, object_name)
             page_name = matches[0][0]
             visual_id = matches[1][1]
-            page_id, page_display, file_path = self.resolve_page_name(
+            page_id, page_display, file_path = self.__resolve_page_name(
                 page_name=page_name
             )
 
