@@ -4074,14 +4074,15 @@ class TOMWrapper:
         self, measure_name: Optional[str | List[str]] = None
     ):
 
+        import concurrent.futures
+
         if isinstance(measure_name, str):
             measure_name = [measure_name]
 
         workspace_id = fabric.resolve_workspace_id(self._workspace)
-
         client = fabric.FabricRestClient()
 
-        for m in self.all_measures():
+        def process_measure(m):
             table_name = m.Parent.Name
             m_name = m.Name
             m_name_fixed = "1"
@@ -4112,6 +4113,9 @@ class TOMWrapper:
 
                 desc = response.json()["modelItems"][0]["description"]
                 m.Description = desc
+
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            executor.map(process_measure, self.all_measures())
 
     def close(self):
         if not self._readonly and self.model is not None:
