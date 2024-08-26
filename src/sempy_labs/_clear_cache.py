@@ -146,6 +146,7 @@ def restore_semantic_model(
         tmsl["restore"]["forceRestore"] = force_restore
 
     fabric.execute_tmsl(script=tmsl, workspace=workspace)
+
     print(
         f"{icons.green_dot} The '{dataset}' semantic model has been restored to the '{workspace}' workspace based on teh '{file_path}' backup file."
     )
