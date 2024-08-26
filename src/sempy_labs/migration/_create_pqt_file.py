@@ -139,8 +139,8 @@ def create_pqt_file(
                         query = 'let\n\tSource = ""\nin\n\tSource'
                 sb = f"{sb}{query};"
 
-            for e_name, v in expr_map.items():
-                expr = v[1]
+            for e_name, kind_expr in expr_map.items():
+                expr = kind_expr[1]
                 sb = f'{sb}\nshared #"{e_name}" = {expr};'
 
             with open(mdFilePath, "w") as file:
@@ -155,8 +155,8 @@ def create_pqt_file(
                 queryMetadata.append(
                     QueryMetadata(t_name, None, None, None, True, False)
                 )
-            for e_name, v in expr_map.items():
-                e_kind = v[0]
+            for e_name, kind_expr in expr_map.items():
+                e_kind = kind_expr[0]
                 if e_kind == "M":
                     queryMetadata.append(
                         QueryMetadata(e_name, None, None, None, True, False)
