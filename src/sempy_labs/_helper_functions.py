@@ -850,3 +850,38 @@ def pagination(client, response):
         continuation_uri = response_json.get("continuationUri")
 
     return responses
+
+
+def validate_weight(weight):
+
+    if weight is not None:
+        if weight <= 0:
+            raise ValueError(
+                f"{icons.red_dot} Invalid weight parameter. Weight must be > 0."
+            )
+        elif weight >= 1:
+            raise ValueError(
+                f"{icons.red_dot} Invalid weight parameter. Weight must be < 1."
+            )
+
+
+def generate_synonyms(word: str) -> List[str]:
+
+    import nltk
+    from nltk.corpus import wordnet
+    from nltk.data import find
+
+    try:
+        find("corpora/wordnet.zip")
+    except Exception:
+        nltk.download("wordnet")
+
+    synonyms = wordnet.synsets(word)
+    synonym_list = []
+    for syn in synonyms:
+        for lemma in syn.lemmas():
+            syn_word = lemma.name()
+            if syn_word != word and "_" not in syn_word:
+                synonym_list.append(syn_word)
+
+    return synonym_list
