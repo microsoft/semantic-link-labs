@@ -70,8 +70,7 @@ def get_report_json(
     report_json = json.loads(report_file)
 
     if save_to_file_name is not None:
-        lakeAttach = lakehouse_attached()
-        if lakeAttach is False:
+        if not lakehouse_attached():
             raise ValueError(
                 f"{icons.red_dot} In order to save the report.json file, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
             )
@@ -186,9 +185,7 @@ def export_report(
 
     # https://learn.microsoft.com/rest/api/power-bi/reports/export-to-file-in-group
 
-    lakeAttach = lakehouse_attached()
-
-    if lakeAttach is False:
+    if not lakehouse_attached():
         raise ValueError(
             f"{icons.red_dot} In order to run the 'export_report' function, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
         )

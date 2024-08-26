@@ -3,7 +3,6 @@ import sempy.fabric as fabric
 import json
 import os
 import shutil
-import xml.etree.ElementTree as ET
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from sempy._utils._log import log
 from typing import Optional

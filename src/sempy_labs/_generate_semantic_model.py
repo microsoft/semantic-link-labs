@@ -237,8 +237,7 @@ def get_semantic_model_bim(
     bimJson = json.loads(bimFile)
 
     if save_to_file_name is not None:
-        lakeAttach = lakehouse_attached()
-        if lakeAttach is False:
+        if not lakehouse_attached():
             raise ValueError(
                 f"{icons.red_dot} In order to save the model.bim file, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
             )

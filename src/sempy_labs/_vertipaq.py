@@ -434,8 +434,7 @@ def vertipaq_analyzer(
 
     # Export vertipaq to delta tables in lakehouse
     if export in ["table", "zip"]:
-        lakeAttach = lakehouse_attached()
-        if lakeAttach is False:
+        if not lakehouse_attached():
             raise ValueError(
                 f"{icons.red_dot} In order to save the Vertipaq Analyzer results, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
             )

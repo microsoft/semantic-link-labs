@@ -165,8 +165,7 @@ def get_lakehouse_tables(
         df["Row Count Guardrail Hit"] = df["Row Count"] > df["Row Count Guardrail"]
 
     if export:
-        lakeAttach = lakehouse_attached()
-        if lakeAttach is False:
+        if not lakehouse_attached():
             raise ValueError(
                 f"{icons.red_dot} In order to save the report.json file, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
             )
