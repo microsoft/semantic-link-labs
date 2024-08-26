@@ -224,6 +224,6 @@ def create_pqt_file(
         a = 0
         for t_map in table_chunks:
             if a > 0:
-                file_name = f"{file_name}_1"
+                file_name = f"{file_name}_{a}"
             a += 1
             create_pqt(t_map, expr_map, file_name=file_name)
