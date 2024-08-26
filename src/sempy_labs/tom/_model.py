@@ -4073,6 +4073,15 @@ class TOMWrapper:
     def generate_measure_descriptions(
         self, measure_name: Optional[str | List[str]] = None
     ):
+        """
+        Auto-generates descriptions for measures using an LLM.
+
+        Parameters
+        ----------
+        measure_name : str | List[str], default=None
+            The measure name (or a list of measure names).
+            Defaults to None which generates descriptions for all measures in the semantic model.
+        """
 
         import concurrent.futures
 
