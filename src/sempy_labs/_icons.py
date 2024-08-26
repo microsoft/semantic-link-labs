@@ -22,6 +22,7 @@ data_type_mapping = {
     "decimal(38,18)": "Decimal",
     "decimal(19,4)": "Decimal",
     "double": "Double",
+    "float": "Double",
 }
 measure_icon = "\u2211"
 table_icon = "\u229E"
