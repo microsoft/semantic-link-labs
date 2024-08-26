@@ -36,10 +36,9 @@ def clear_cache(dataset: str, workspace: Optional[str] = None):
             </ClearCache>
             """
     fabric.execute_xmla(dataset=dataset, xmla_command=xmla, workspace=workspace)
-
-    outputtext = f"{icons.green_dot} Cache cleared for the '{dataset}' semantic model within the '{workspace}' workspace."
-
-    return outputtext
+    print(
+        f"{icons.green_dot} Cache cleared for the '{dataset}' semantic model within the '{workspace}' workspace."
+    )
 
 
 def backup_semantic_model(
@@ -50,14 +49,17 @@ def backup_semantic_model(
     workspace: Optional[str] = None,
 ):
     """
-    `Backs up <https://learn.microsoft.com/azure/analysis-services/analysis-services-backup>`_ a semantic model.
+    `Backs up <https://learn.microsoft.com/azure/analysis-services/analysis-services-backup>`_ a semantic model to the ADLS Gen2 storage account connected to the workspace.
 
     Parameters
     ----------
     dataset : str
         Name of the semantic model.
     file_path : str
-        The location in which to backup the semantic model. Must end in '.abf'.
+        The ADLS Gen2 storage account location in which to backup the semantic model. Always saves within the 'power-bi-backup/<workspace name>' folder.
+        Must end in '.abf'.
+        Example 1: file_path = 'MyModel.abf'
+        Example 2: file_path = 'MyFolder/MyModel.abf'
     allow_overwrite : bool, default=True
         If True, overwrites backup files of the same name. If False, the file you are saving cannot have the same name as a file that already exists in the same location.
     apply_compression : bool, default=True
@@ -99,7 +101,8 @@ def restore_semantic_model(
     workspace: Optional[str] = None,
 ):
     """
-    `Restores <https://learn.microsoft.com/power-bi/enterprise/service-premium-backup-restore-dataset>`_ a semantic model.
+    `Restores <https://learn.microsoft.com/power-bi/enterprise/service-premium-backup-restore-dataset>`_ a semantic model based on a backup (.abf) file
+    within the ADLS Gen2 storage account connected to the workspace.
 
     Parameters
     ----------
@@ -107,6 +110,8 @@ def restore_semantic_model(
         Name of the semantic model.
     file_path : str
         The location in which to backup the semantic model. Must end in '.abf'.
+        Example 1: file_path = 'MyModel.abf'
+        Example 2: file_path = 'MyFolder/MyModel.abf'
     allow_overwrite : bool, default=True
         If True, overwrites backup files of the same name. If False, the file you are saving cannot have the same name as a file that already exists in the same location.
     ignore_incompatibilities : bool, default=True
