@@ -590,13 +590,13 @@ def model_bpa_rules(
                         re.search(
                             r"USERELATIONSHIP\s*\(\s*\'*"
                             + obj.FromTable.Name
-                            + "'*\["
+                            + r"'*\["
                             + obj.FromColumn.Name
-                            + "\]\s*,\s*'*"
+                            + r"\]\s*,\s*'*"
                             + obj.ToTable.Name
-                            + "'*\["
+                            + r"'*\["
                             + obj.ToColumn.Name
-                            + "\]",
+                            + r"\]",
                             m.Expression,
                             flags=re.IGNORECASE,
                         )
