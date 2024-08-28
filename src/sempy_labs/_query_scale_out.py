@@ -21,10 +21,6 @@ def qso_sync(dataset: str, workspace: Optional[str] = None):
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-
     """
 
     # https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/trigger-query-scale-out-sync-in-group
@@ -63,7 +59,6 @@ def qso_sync_status(
     -------
     Tuple[pandas.DataFrame, pandas.DataFrame]
         2 pandas dataframes showing the query scale-out sync status.
-
     """
 
     # https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/get-query-scale-out-sync-status-in-group
@@ -161,7 +156,6 @@ def disable_qso(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
     -------
     pandas.DataFrame
         A pandas dataframe showing the current query scale out settings.
-
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -177,6 +171,7 @@ def disable_qso(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
         raise FabricHTTPException(response)
 
     df = list_qso_settings(dataset=dataset, workspace=workspace)
+
     print(
         f"{icons.green_dot} Query scale out has been disabled for the '{dataset}' semantic model within the '{workspace}' workspace."
     )
@@ -210,7 +205,6 @@ def set_qso(
     -------
     pandas.DataFrame
         A pandas dataframe showing the current query scale-out settings.
-
     """
 
     # https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/update-dataset-in-group
@@ -225,31 +219,27 @@ def set_qso(
     request_body = {
         "queryScaleOutSettings": {
             "autoSyncReadOnlyReplicas": auto_sync,
-            "maxReadOnlyReplicas": str(max_read_only_replicas),
+            "maxReadOnlyReplicas": max_read_only_replicas,
         }
     }
 
-    ssm = set_semantic_model_storage_format(
+    set_semantic_model_storage_format(
         dataset=dataset, storage_format="Large", workspace=workspace
     )
-    if ssm == 200:
-        client = fabric.PowerBIRestClient()
-        response = client.patch(
-            f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}",
-            json=request_body,
-        )
-        if response.status_code != 200:
-            raise FabricHTTPException(response)
+    client = fabric.PowerBIRestClient()
+    response = client.patch(
+        f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}",
+        json=request_body,
+    )
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
 
-        df = list_qso_settings(dataset=dataset, workspace=workspace)
-        print(
-            f"{icons.green_dot} Query scale out has been set on the '{dataset}' semantic model within the '{workspace}' workspace."
-        )
-        return df
-    else:
-        raise ValueError(
-            f"{icons.red_dot} Failed to set the '{dataset}' semantic model within the '{workspace}' workspace to large semantic model storage format. This is a prerequisite for enabling Query Scale Out.\n\"https://learn.microsoft.com/power-bi/enterprise/service-premium-scale-out#prerequisites\""
-        )
+    df = list_qso_settings(dataset=dataset, workspace=workspace)
+    print(
+        f"{icons.green_dot} Query scale out has been set on the '{dataset}' semantic model within the '{workspace}' workspace."
+    )
+
+    return df
 
 
 def set_semantic_model_storage_format(
@@ -268,10 +258,6 @@ def set_semantic_model_storage_format(
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
