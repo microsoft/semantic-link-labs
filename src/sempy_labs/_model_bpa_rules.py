@@ -137,6 +137,17 @@ def model_bpa_rules(
                 ),
                 (
                     "Performance",
+                    "Model",
+                    "Warning",
+                    "Dual mode is only relevant for dimension tables if DirectQuery is used for the corresponding fact table",
+                    lambda obj: not any(
+                        p.Mode == TOM.ModeType.DirectQuery for p in tom.all_partitions()
+                    )
+                    and any(p.Mode == TOM.ModeType.Dual for p in tom.all_partitions()),
+                    "Only use Dual mode for dimension tables/partitions where a corresponding fact table is in DirectQuery. Using Dual mode in other circumstances (i.e. rest of the model is in Import mode) may lead to performance issues especially if the number of measures in the model is high.",
+                ),
+                (
+                    "Performance",
                     "Table",
                     "Warning",
                     "Set dimensions tables to dual mode instead of import when using DirectQuery on fact tables",
