@@ -21,6 +21,7 @@ def run_model_bpa_bulk(
     extended: Optional[bool] = False,
     language: Optional[str] = None,
     workspace: Optional[str | List[str]] = None,
+    skip_models: Optional[str | List[str]] = ["ModelBPA", "Fabric Capacity Metrics"],
 ):
     """
     Runs the semantic model Best Practice Analyzer across all semantic models in a workspace (or all accessible workspaces).
@@ -41,17 +42,21 @@ def run_model_bpa_bulk(
     workspace : str | List[str], default=None
         The workspace or list of workspaces to scan.
         Defaults to None which scans all accessible workspaces.
-
-    Returns
-    -------
+    skip_models : str | List[str], default=['ModelBPA', 'Fabric Capacity Metrics']
+        The semantic models to always skip when running this analysis.
     """
 
     import pyspark.sql.functions as F
 
     if not lakehouse_attached():
         raise ValueError(
-            "No lakehouse is attached to this notebook. Must attach a lakehouse to the notebook."
+            f"{icons.red_dot} No lakehouse is attached to this notebook. Must attach a lakehouse to the notebook."
         )
+
+    if isinstance(skip_models, str):
+        skip_models = [skip_models]
+
+    skip_models.extend(["ModelBPA", "Fabric Capacity Metrics"])
 
     cols = [
         "Capacity Name",
@@ -113,8 +118,7 @@ def run_model_bpa_bulk(
                 or set(["Lakehouse", "SemanticModel"]).issubset(set(x["Type"]))
             )
             default_semantic_models = filtered_df["Display Name"].unique().tolist()
-            # Skip ModelBPA :)
-            skip_models = default_semantic_models + [icons.model_bpa_name]
+            skip_models.extend(default_semantic_models)
             dfD_filt = dfD[~dfD["Dataset Name"].isin(skip_models)]
 
             if len(dfD_filt) > 0:
