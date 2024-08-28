@@ -8,7 +8,7 @@ from sempy_labs._helper_functions import (
     _decode_b64,
     pagination,
     lro,
-    resolve_item_type
+    resolve_item_type,
 )
 import pandas as pd
 import base64
@@ -1544,7 +1544,7 @@ def list_shortcuts(
     -------
     pandas.DataFrame
         A pandas dataframe showing all the shortcuts which exist in the specified lakehouse.
-    """    
+    """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
@@ -1557,22 +1557,22 @@ def list_shortcuts(
     client = fabric.FabricRestClient()
 
     df = pd.DataFrame(
-            columns=[
-                "Shortcut Name",
-                "Shortcut Path",
-                "Source Type",
-                "Source Workspace Id",
-                "Source Workspace Name",
-                "Source Item Id",
-                "Source Item Name",
-                "Source Item Type",
-                "OneLake Path",
-                "Connection Id",
-                "Location",
-                "Bucket",
-                "SubPath",         
-            ]
-        )
+        columns=[
+            "Shortcut Name",
+            "Shortcut Path",
+            "Source Type",
+            "Source Workspace Id",
+            "Source Workspace Name",
+            "Source Item Id",
+            "Source Item Name",
+            "Source Item Type",
+            "OneLake Path",
+            "Connection Id",
+            "Location",
+            "Bucket",
+            "SubPath",
+        ]
+    )
 
     response = client.get(
         f"/v1/workspaces/{workspace_id}/items/{lakehouse_id}/shortcuts"
@@ -1584,32 +1584,41 @@ def list_shortcuts(
     responses = pagination(client, response)
 
     for r in responses:
-        for i in r.get('value', []):
-            tgt = i.get('target', {})
-            s3_compat = tgt.get('s3Compatible', {})
-            gcs = tgt.get('googleCloudStorage', {})
-            eds = tgt.get('externalDataShare', {})
-            connection_id = s3_compat.get('connectionId') or gcs.get('connectionId') or eds.get('connectionId') or None
-            location = s3_compat.get('location') or gcs.get('location') or None
-            sub_path = s3_compat.get('subpath') or gcs.get('subpath') or None
-            source_workspace_id = tgt.get('oneLake', {}).get('workspaceId')
+        for i in r.get("value", []):
+            tgt = i.get("target", {})
+            s3_compat = tgt.get("s3Compatible", {})
+            gcs = tgt.get("googleCloudStorage", {})
+            eds = tgt.get("externalDataShare", {})
+            connection_id = (
+                s3_compat.get("connectionId")
+                or gcs.get("connectionId")
+                or eds.get("connectionId")
+                or None
+            )
+            location = s3_compat.get("location") or gcs.get("location") or None
+            sub_path = s3_compat.get("subpath") or gcs.get("subpath") or None
+            source_workspace_id = tgt.get("oneLake", {}).get("workspaceId")
             source_workspace_name = fabric.resolve_workspace_name(source_workspace_id)
-            source_item_id = tgt.get('oneLake', {}).get('itemId')
+            source_item_id = tgt.get("oneLake", {}).get("itemId")
 
             new_data = {
-                "Shortcut Name": i.get('name'),
-                "Shortcut Path": i.get('path'),
-                "Source Type": tgt.get('type'),
+                "Shortcut Name": i.get("name"),
+                "Shortcut Path": i.get("path"),
+                "Source Type": tgt.get("type"),
                 "Source Workspace Id": source_workspace_id,
-                'Source Workspace Name': source_workspace_name,
+                "Source Workspace Name": source_workspace_name,
                 "Source Item Id": source_item_id,
-                "Source Item Name": fabric.resolve_item_name(source_item_id, workspace=source_workspace_name),
-                "Source Item Type": resolve_item_type(source_item_id, workspace=source_workspace_name),
-                "OneLake Path": tgt.get('oneLake', {}).get('path'),
-                'Connection Id': connection_id,
-                'Location': location,
-                'Bucket': s3_compat.get('bucket'),
-                'SubPath': sub_path,
+                "Source Item Name": fabric.resolve_item_name(
+                    source_item_id, workspace=source_workspace_name
+                ),
+                "Source Item Type": resolve_item_type(
+                    source_item_id, workspace=source_workspace_name
+                ),
+                "OneLake Path": tgt.get("oneLake", {}).get("path"),
+                "Connection Id": connection_id,
+                "Location": location,
+                "Bucket": s3_compat.get("bucket"),
+                "SubPath": sub_path,
             }
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
