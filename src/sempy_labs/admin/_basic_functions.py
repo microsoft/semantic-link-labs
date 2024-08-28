@@ -10,6 +10,48 @@ import pandas as pd
 import time
 
 
+def list_workspaces():
+
+    df = pd.DataFrame(
+        columns=[
+            "Id",
+            "Is Read Only",
+            "Is On Dedicated Capacity",
+            "Type",
+            "Name",
+            "Description",
+        ]
+    )
+
+    client = fabric.PowerBIRestClient()
+    response = client.get(
+        "/v1.0/myorg/admin/groups",
+    )
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    responses = pagination(client, response)
+
+    for r in responses:
+        for v in r.get("value", []):
+            new_data = {
+                "Id": v.get("id"),
+                "Is Read Only": v.get("isReadOnly"),
+                "Is On Dedicated Capacity": v.get("isOnDedicatedCapacity"),
+                "Type": v.get("type"),
+                "Name": v.get("name"),
+                "State": v.get("state"),
+                "Description": v.get("description"),
+            }
+        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    bool_cols = ['Is Read Only', 'Is On Dedicated Capacity']
+    df[bool_cols] = df[bool_cols].astype(bool)
+
+    return df
+
+
 def assign_workspaces_to_capacity(
     source_capacity: str,
     target_capacity: str,
@@ -101,16 +143,19 @@ def list_capacities() -> pd.DataFrame:
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    for i in response.json().get("value", []):
-        new_data = {
-            "Capacity Id": i.get("id").lower(),
-            "Capacity Name": i.get("displayName"),
-            "Sku": i.get("sku"),
-            "Region": i.get("region"),
-            "State": i.get("state"),
-            "Admins": [i.get("admins", [])],
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    responses = pagination(client, response)
+
+    for r in responses:
+        for i in r.get("value", []):
+            new_data = {
+                "Capacity Id": i.get("id").lower(),
+                "Capacity Name": i.get("displayName"),
+                "Sku": i.get("sku"),
+                "Region": i.get("region"),
+                "State": i.get("state"),
+                "Admins": [i.get("admins", [])],
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
 
