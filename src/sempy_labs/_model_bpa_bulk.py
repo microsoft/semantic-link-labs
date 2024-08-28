@@ -21,7 +21,7 @@ def run_model_bpa_bulk(
     extended: Optional[bool] = False,
     language: Optional[str] = None,
     workspace: Optional[str | List[str]] = None,
-    skip_models: Optional[str | List[str]] = ['ModelBPA', 'Fabric Capacity Metrics'],
+    skip_models: Optional[str | List[str]] = ["ModelBPA", "Fabric Capacity Metrics"],
 ):
     """
     Runs the semantic model Best Practice Analyzer across all semantic models in a workspace (or all accessible workspaces).
@@ -44,9 +44,6 @@ def run_model_bpa_bulk(
         Defaults to None which scans all accessible workspaces.
     skip_models : str | List[str], default=['ModelBPA', 'Fabric Capacity Metrics']
         The semantic models to always skip when running this analysis.
-
-    Returns
-    -------
     """
 
     import pyspark.sql.functions as F
@@ -59,7 +56,7 @@ def run_model_bpa_bulk(
     if isinstance(skip_models, str):
         skip_models = [skip_models]
 
-    skip_models.extend(['ModelBPA', 'Fabric Capacity Metrics'])
+    skip_models.extend(["ModelBPA", "Fabric Capacity Metrics"])
 
     cols = [
         "Capacity Name",
