@@ -46,7 +46,7 @@ def list_workspaces():
             }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    bool_cols = ['Is Read Only', 'Is On Dedicated Capacity']
+    bool_cols = ["Is Read Only", "Is On Dedicated Capacity"]
     df[bool_cols] = df[bool_cols].astype(bool)
 
     return df
