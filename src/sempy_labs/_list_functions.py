@@ -1550,7 +1550,6 @@ def list_shortcuts(
 
     if lakehouse is None:
         lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse = resolve_lakehouse_name(lakehouse_id, workspace)
     else:
         lakehouse_id = resolve_lakehouse_id(lakehouse, workspace)
 
@@ -1598,8 +1597,12 @@ def list_shortcuts(
             location = s3_compat.get("location") or gcs.get("location") or None
             sub_path = s3_compat.get("subpath") or gcs.get("subpath") or None
             source_workspace_id = tgt.get("oneLake", {}).get("workspaceId")
-            source_workspace_name = fabric.resolve_workspace_name(source_workspace_id)
             source_item_id = tgt.get("oneLake", {}).get("itemId")
+            source_workspace_name = (
+                fabric.resolve_workspace_name(source_workspace_id)
+                if source_workspace_id is not None
+                else None
+            )
 
             new_data = {
                 "Shortcut Name": i.get("name"),
@@ -1608,11 +1611,17 @@ def list_shortcuts(
                 "Source Workspace Id": source_workspace_id,
                 "Source Workspace Name": source_workspace_name,
                 "Source Item Id": source_item_id,
-                "Source Item Name": fabric.resolve_item_name(
-                    source_item_id, workspace=source_workspace_name
+                "Source Item Name": (
+                    fabric.resolve_item_name(
+                        source_item_id, workspace=source_workspace_name
+                    )
+                    if source_item_id is not None
+                    else None
                 ),
-                "Source Item Type": resolve_item_type(
-                    source_item_id, workspace=source_workspace_name
+                "Source Item Type": (
+                    resolve_item_type(source_item_id, workspace=source_workspace_name)
+                    if source_item_id is not None
+                    else None
                 ),
                 "OneLake Path": tgt.get("oneLake", {}).get("path"),
                 "Connection Id": connection_id,
