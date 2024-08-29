@@ -150,3 +150,50 @@ def restore_semantic_model(
     print(
         f"{icons.green_dot} The '{dataset}' semantic model has been restored to the '{workspace}' workspace based on teh '{file_path}' backup file."
     )
+
+
+def copy_semantic_model_backup_file(
+    source_workspace: str,
+    target_workspace: str,
+    source_file_name: str,
+    target_file_name: str,
+    storage_account_url: str,
+    account_key: str,
+    source_file_system: Optional[str] = "power-bi-backup",
+    target_file_system: Optional[str] = "power-bi-backup",
+):
+
+    from azure.storage.filedatalake import DataLakeServiceClient
+
+    if not source_file_name.endswith(".abf"):
+        source_file_name = f"{source_file_name}.abf"
+    if not target_file_name.endswith(".abf"):
+        target_file_name = f"{target_file_name}.abf"
+
+    source_path = f"/{source_workspace}/{source_file_name}"
+    target_path = f"/{target_workspace}/{target_file_name}"
+    service_client = DataLakeServiceClient(
+        account_url=storage_account_url, credential=account_key
+    )
+
+    source_file_system_client = service_client.get_file_system_client(
+        file_system=source_file_system
+    )
+    destination_file_system_client = service_client.get_file_system_client(
+        file_system=target_file_system
+    )
+
+    source_file_client = source_file_system_client.get_file_client(source_path)
+    destination_file_client = destination_file_system_client.get_file_client(
+        target_path
+    )
+
+    download = source_file_client.download_file()
+    file_content = download.readall()
+
+    # Upload the content to the destination file
+    destination_file_client.create_file()  # Create the destination file
+    destination_file_client.append_data(
+        data=file_content, offset=0, length=len(file_content)
+    )
+    destination_file_client.flush_data(len(file_content))
