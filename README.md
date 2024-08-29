@@ -6,7 +6,7 @@
 [![Downloads](https://static.pepy.tech/badge/semantic-link-labs)](https://pepy.tech/project/semantic-link-labs)
 
 ---
-[Read the documentation on ReadTheDocs!](https://semantic-link-labs.readthedocs.io/en/latest/)
+[Read the documentation on ReadTheDocs!](https://semantic-link-labs.readthedocs.io/en/stable/)
 ---
 
 This is a python library intended to be used in [Microsoft Fabric notebooks](https://learn.microsoft.com/fabric/data-engineering/how-to-use-notebook). This library was originally intended to solely contain functions used for [migrating semantic models to Direct Lake mode](https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#direct-lake-migration). However, it quickly became apparent that functions within such a library could support many other useful activities in the realm of semantic models, reports, lakehouses and really anything Fabric-related. As such, this library contains a variety of functions ranging from running [Vertipaq Analyzer](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.import_vertipaq_analyzer) or the [Best Practice Analyzer](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.run_model_bpa) against a semantic model to seeing if any [lakehouse tables hit Direct Lake guardrails](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.lakehouse.html#sempy_labs.lakehouse.get_lakehouse_tables) or accessing the [Tabular Object Model](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.tom.html) and more!

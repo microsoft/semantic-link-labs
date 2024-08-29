@@ -69,28 +69,22 @@ def optimize_lakehouse_tables(
     else:
         tables_filt = lakeTablesDelta.copy()
 
-    tableCount = len(tables_filt)
-
     spark = SparkSession.builder.getOrCreate()
 
-    i = 1
     for _, r in (bar := tqdm(tables_filt.iterrows())):
         tableName = r["Table Name"]
         tablePath = r["Location"]
         bar.set_description(f"Optimizing the '{tableName}' table...")
         deltaTable = DeltaTable.forPath(spark, tablePath)
         deltaTable.optimize().executeCompaction()
-        print(
-            f"{icons.green_dot} The '{tableName}' table has been optimized. ({str(i)}/{str(tableCount)})"
-        )
-        i += 1
+
 
 @log
 def vacuum_lakehouse_tables(
     tables: Optional[Union[str, List[str]]] = None,
     lakehouse: Optional[str] = None,
     workspace: Optional[str] = None,
-    retain_n_hours: Optional[int] = None
+    retain_n_hours: Optional[int] = None,
 ):
     """
     Runs the `VACUUM <https://docs.delta.io/latest/delta-utility.html#remove-files-no-longer-referenced-by-a-delta-table>`_ function over the specified lakehouse tables.
@@ -133,24 +127,16 @@ def vacuum_lakehouse_tables(
     else:
         tables_filt = lakeTablesDelta.copy()
 
-    tableCount = len(tables_filt)
-
     spark = SparkSession.builder.getOrCreate()
     spark.conf.set("spark.databricks.delta.vacuum.parallelDelete.enabled", "true")
 
-    i = 1
     for _, r in (bar := tqdm(tables_filt.iterrows())):
         tableName = r["Table Name"]
         tablePath = r["Location"]
         bar.set_description(f"Vacuuming the '{tableName}' table...")
         deltaTable = DeltaTable.forPath(spark, tablePath)
-        
+
         if retain_n_hours is None:
             deltaTable.vacuum()
         else:
             deltaTable.vacuum(retain_n_hours)
-
-        print(
-            f"{icons.green_dot} The '{tableName}' table has been vacuumed. ({str(i)}/{str(tableCount)})"
-        )
-        i += 1
