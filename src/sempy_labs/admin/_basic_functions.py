@@ -10,7 +10,7 @@ import pandas as pd
 import time
 
 
-def list_workspaces():
+def list_workspaces(top: Optional[int] = 5000, skip: Optional[int] = None):
 
     df = pd.DataFrame(
         columns=[
@@ -23,10 +23,12 @@ def list_workspaces():
         ]
     )
 
+    url = f"/v1.0/myorg/admin/groups?$top={top}"
+    if skip is not None:
+        url = f"{url}&$skip={skip}"
+
     client = fabric.PowerBIRestClient()
-    response = client.get(
-        "/v1.0/myorg/admin/groups",
-    )
+    response = client.get(url)
 
     if response.status_code != 200:
         raise FabricHTTPException(response)
