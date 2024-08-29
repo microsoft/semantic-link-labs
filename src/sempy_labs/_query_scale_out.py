@@ -207,10 +207,17 @@ def set_qso(
         A pandas dataframe showing the current query scale-out settings.
     """
 
+    from sempy_labs._helper_functions import is_default_semantic_model
+
     # https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/update-dataset-in-group
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
     dataset_id = resolve_dataset_id(dataset, workspace)
+
+    if is_default_semantic_model(dataset=dataset, workspace=workspace):
+        raise ValueError(
+            f"{icons.red_dot} The 'set_qso' function does not run against default semantic models."
+        )
 
     if max_read_only_replicas == 0:
         disable_qso(dataset=dataset, workspace=workspace)
@@ -223,9 +230,14 @@ def set_qso(
         }
     }
 
-    set_semantic_model_storage_format(
-        dataset=dataset, storage_format="Large", workspace=workspace
-    )
+    dfL = list_qso_settings(dataset=dataset, workspace=workspace)
+    storage_mode = dfL["Storage Mode"].iloc[0]
+
+    if storage_mode == "Small":
+        set_semantic_model_storage_format(
+            dataset=dataset, storage_format="Large", workspace=workspace
+        )
+
     client = fabric.PowerBIRestClient()
     response = client.patch(
         f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}",
