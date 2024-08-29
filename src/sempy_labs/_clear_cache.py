@@ -158,12 +158,18 @@ def copy_semantic_model_backup_file(
     source_file_name: str,
     target_file_name: str,
     storage_account_url: str,
-    account_key: str,
+    key_vault_uri: str,
+    key_vault_account_key: str,
     source_file_system: Optional[str] = "power-bi-backup",
     target_file_system: Optional[str] = "power-bi-backup",
 ):
 
+    from notebookutils import mssparkutils
     from azure.storage.filedatalake import DataLakeServiceClient
+
+    account_key = mssparkutils.credentials.getSecret(
+        key_vault_uri, key_vault_account_key
+    )
 
     if not source_file_name.endswith(".abf"):
         source_file_name = f"{source_file_name}.abf"
@@ -197,3 +203,7 @@ def copy_semantic_model_backup_file(
         data=file_content, offset=0, length=len(file_content)
     )
     destination_file_client.flush_data(len(file_content))
+
+    print(
+        f"{icons.green_dot} The backup file of the '{source_file_name}' semantic model from the '{source_workspace}' workspace has been copied as the '{target_file_name}' semantic model backup file within the '{target_workspace}'."
+    )

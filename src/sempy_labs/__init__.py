@@ -2,6 +2,7 @@ from sempy_labs._clear_cache import (
     clear_cache,
     backup_semantic_model,
     restore_semantic_model,
+    copy_semantic_model_backup_file,
 )
 
 # from sempy_labs._connections import (
@@ -118,6 +119,7 @@ from sempy_labs._vertipaq import (
 )
 
 __all__ = [
+    "copy_semantic_model_backup_file",
     "backup_semantic_model",
     "restore_semantic_model",
     "delete_custom_pool",
