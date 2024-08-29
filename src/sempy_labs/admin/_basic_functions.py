@@ -19,7 +19,10 @@ def list_workspaces(top: Optional[int] = 5000, skip: Optional[int] = None):
             "Is On Dedicated Capacity",
             "Type",
             "Name",
-            "Description",
+            "Capacity Id",
+            "Default Dataset Storage Format",
+            "Pipeline Id",
+            "Has Workspace Level Settings",
         ]
     )
 
@@ -33,22 +36,26 @@ def list_workspaces(top: Optional[int] = 5000, skip: Optional[int] = None):
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    responses = pagination(client, response)
-
-    for r in responses:
-        for v in r.get("value", []):
-            new_data = {
-                "Id": v.get("id"),
-                "Is Read Only": v.get("isReadOnly"),
-                "Is On Dedicated Capacity": v.get("isOnDedicatedCapacity"),
-                "Type": v.get("type"),
-                "Name": v.get("name"),
-                "State": v.get("state"),
-                "Description": v.get("description"),
-            }
+    for v in response.json().get("value", []):
+        new_data = {
+            "Id": v.get("id"),
+            "Is Read Only": v.get("isReadOnly"),
+            "Is On Dedicated Capacity": v.get("isOnDedicatedCapacity"),
+            "Capacity Id": v.get("capacityId"),
+            "Default Dataset Storage Format": v.get("defaultDatasetStorageFormat"),
+            "Type": v.get("type"),
+            "Name": v.get("name"),
+            "State": v.get("state"),
+            "Pipeline Id": v.get("pipelineId"),
+            "Has Workspace Level Settings": v.get("hasWorkspaceLevelSettings"),
+        }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    bool_cols = ["Is Read Only", "Is On Dedicated Capacity"]
+    bool_cols = [
+        "Is Read Only",
+        "Is On Dedicated Capacity",
+        "Has Workspace Level Settings",
+    ]
     df[bool_cols] = df[bool_cols].astype(bool)
 
     return df

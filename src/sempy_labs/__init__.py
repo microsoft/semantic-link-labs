@@ -1,4 +1,9 @@
-from sempy_labs._clear_cache import clear_cache
+from sempy_labs._clear_cache import (
+    clear_cache,
+    backup_semantic_model,
+    restore_semantic_model,
+    copy_semantic_model_backup_file,
+)
 
 from sempy_labs._capacities import (
     migrate_workspaces,
@@ -125,6 +130,9 @@ from sempy_labs._vertipaq import (
 )
 
 __all__ = [
+    "backup_semantic_model",
+    "restore_semantic_model",
+    "copy_semantic_model_backup_file",
     "delete_custom_pool",
     "clear_cache",
     # create_connection_cloud,
