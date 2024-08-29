@@ -2173,7 +2173,10 @@ def update_spark_settings(
 
 
 def add_user_to_workspace(
-    email_address: str, role_name: str, workspace: Optional[str] = None
+    email_address: str,
+    role_name: str,
+    principal_type: Optional[str] = "User",
+    workspace: Optional[str] = None,
 ):
     """
     Adds a user to a workspace.
@@ -2184,13 +2187,12 @@ def add_user_to_workspace(
         The email address of the user.
     role_name : str
         The `role <https://learn.microsoft.com/rest/api/power-bi/groups/add-group-user#groupuseraccessright>`_ of the user within the workspace.
+    principal_type : str, default='User'
+        The principal type
     workspace : str, default=None
         The name of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -2202,10 +2204,21 @@ def add_user_to_workspace(
             f"{icons.red_dot} Invalid role. The 'role_name' parameter must be one of the following: {role_names}."
         )
     plural = "n" if role_name == "Admin" else ""
+    principal_types = ["App", "Group", "None", "User"]
+    principal_type = principal_type.capitalize()
+    if principal_type not in principal_types:
+        raise ValueError(
+            f"{icons.red_dot} Invalid princpal type. Valid options: {principal_types}."
+        )
 
     client = fabric.PowerBIRestClient()
 
-    request_body = {"emailAddress": email_address, "groupUserAccessRight": role_name}
+    request_body = {
+        "emailAddress": email_address,
+        "groupUserAccessRight": role_name,
+        "principalType": principal_type,
+        "identifier": email_address,
+    }
 
     response = client.post(
         f"/v1.0/myorg/groups/{workspace_id}/users", json=request_body
@@ -2248,7 +2261,10 @@ def delete_user_from_workspace(email_address: str, workspace: Optional[str] = No
 
 
 def update_workspace_user(
-    email_address: str, role_name: str, workspace: Optional[str] = None
+    email_address: str,
+    role_name: str,
+    principal_type: Optional[str] = "User",
+    workspace: Optional[str] = None,
 ):
     """
     Updates a user's role within a workspace.
@@ -2259,13 +2275,12 @@ def update_workspace_user(
         The email address of the user.
     role_name : str
         The `role <https://learn.microsoft.com/rest/api/power-bi/groups/add-group-user#groupuseraccessright>`_ of the user within the workspace.
+    principal_type : str, default='User'
+        The principal type
     workspace : str, default=None
         The name of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -2276,8 +2291,19 @@ def update_workspace_user(
         raise ValueError(
             f"{icons.red_dot} Invalid role. The 'role_name' parameter must be one of the following: {role_names}."
         )
+    principal_types = ["App", "Group", "None", "User"]
+    principal_type = principal_type.capitalize()
+    if principal_type not in principal_types:
+        raise ValueError(
+            f"{icons.red_dot} Invalid princpal type. Valid options: {principal_types}."
+        )
 
-    request_body = {"emailAddress": email_address, "groupUserAccessRight": role_name}
+    request_body = {
+        "emailAddress": email_address,
+        "groupUserAccessRight": role_name,
+        "principalType": principal_type,
+        "identifier": email_address,
+    }
 
     client = fabric.PowerBIRestClient()
     response = client.put(f"/v1.0/myorg/groups/{workspace_id}/users", json=request_body)
