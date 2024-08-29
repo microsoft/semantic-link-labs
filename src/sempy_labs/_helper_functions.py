@@ -11,6 +11,7 @@ from typing import Optional, Tuple, List
 from uuid import UUID
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
+import urllib.parse
 
 
 def create_abfss_path(
@@ -681,7 +682,8 @@ def resolve_workspace_capacity(workspace: Optional[str] = None) -> Tuple[UUID, s
     """
 
     workspace = fabric.resolve_workspace_name(workspace)
-    dfW = fabric.list_workspaces(filter=f"name eq '{workspace}'")
+    filter_condition = urllib.parse.quote(workspace)
+    dfW = fabric.list_workspaces(filter=f"name eq '{filter_condition}'")
     capacity_id = dfW["Capacity Id"].iloc[0]
     dfC = fabric.list_capacities()
     dfC_filt = dfC[dfC["Id"] == capacity_id]
@@ -711,7 +713,8 @@ def get_capacity_id(workspace: Optional[str] = None) -> UUID:
     """
 
     workspace = fabric.resolve_workspace_name(workspace)
-    dfW = fabric.list_workspaces(filter=f"name eq '{workspace}'")
+    filter_condition = urllib.parse.quote(workspace)
+    dfW = fabric.list_workspaces(filter=f"name eq '{filter_condition}'")
     if len(dfW) == 0:
         raise ValueError(f"{icons.red_dot} The '{workspace}' does not exist'.")
 
