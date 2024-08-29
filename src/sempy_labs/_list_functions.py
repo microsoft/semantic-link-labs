@@ -18,7 +18,6 @@ from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
-from decimal import Decimal, ROUND_HALF_UP
 from collections import defaultdict
 
 
@@ -2658,10 +2657,7 @@ def list_synonyms(dataset: str, workspace: Optional[str] = None):
                                 ignore_index=True,
                             )
 
-    df["Weight"] = df["Weight"].fillna(0).apply(Decimal)
-    df["Weight"] = df["Weight"].apply(
-        lambda x: x.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    )
+    df["Weight"] = df["Weight"].fillna(0).astype(float)
     df["Last Modified"] = pd.to_datetime(df["Last Modified"])
 
     return df
