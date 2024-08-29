@@ -2188,7 +2188,7 @@ def add_user_to_workspace(
     role_name : str
         The `role <https://learn.microsoft.com/rest/api/power-bi/groups/add-group-user#groupuseraccessright>`_ of the user within the workspace.
     principal_type : str, default='User'
-        The principal type
+        The `principal type <https://learn.microsoft.com/rest/api/power-bi/groups/add-group-user#principaltype>`_.
     workspace : str, default=None
         The name of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -2276,7 +2276,7 @@ def update_workspace_user(
     role_name : str
         The `role <https://learn.microsoft.com/rest/api/power-bi/groups/add-group-user#groupuseraccessright>`_ of the user within the workspace.
     principal_type : str, default='User'
-        The principal type
+        The `principal type <https://learn.microsoft.com/rest/api/power-bi/groups/add-group-user#principaltype>`_.
     workspace : str, default=None
         The name of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
