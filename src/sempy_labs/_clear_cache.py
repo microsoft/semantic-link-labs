@@ -208,3 +208,46 @@ def copy_semantic_model_backup_file(
     print(
         f"{icons.green_dot} The backup file of the '{source_file_name}' semantic model from the '{source_workspace}' workspace has been copied as the '{target_file_name}' semantic model backup file within the '{target_workspace}'."
     )
+
+
+def create_azure_storage_account(
+    azure_subscription_id: str,
+    resource_group: str,
+    key_vault_uri: str,
+    key_vault_tenant_id: str,
+    key_vault_client_id: str,
+    key_vault_client_secret: str,
+    storage_account: str,
+    region: str,
+    sku: Optional[str] = "Standard_GRS",
+):
+    "https://learn.microsoft.com/en-us/rest/api/storagerp/storage-sample-create-account"
+    "https://learn.microsoft.com/en-us/rest/api/storageservices/datalakestoragegen2/filesystem/create?view=rest-storageservices-datalakestoragegen2-2019-12-12"
+
+    import requests
+    from sempy.fabric.exceptions import FabricHTTPException
+    from sempy_labs._capacities import get_azure_token_credentials
+
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Storage/storageAccounts/{storage_account}?api-version=2018-02-01"
+
+    payload = {
+        "sku": {"name": sku},
+        "kind": "StorageV2",
+        "location": region,
+    }
+
+    azure_token, credential, headers = get_azure_token_credentials(
+        key_vault_uri=key_vault_uri,
+        key_vault_tenant_id=key_vault_tenant_id,
+        key_vault_client_id=key_vault_client_id,
+        key_vault_client_secret=key_vault_client_secret,
+    )
+
+    response = requests.put(url, headers=headers, json=payload)
+
+    if response.status_code not in [200, 202]:
+        raise FabricHTTPException(response)
+
+    print(
+        f"{icons.green_dot} The '{storage_account}' storage account has been created."
+    )

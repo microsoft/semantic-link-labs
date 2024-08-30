@@ -3,6 +3,7 @@ from sempy_labs._clear_cache import (
     backup_semantic_model,
     restore_semantic_model,
     copy_semantic_model_backup_file,
+    create_azure_storage_account,
 )
 
 from sempy_labs._capacities import (
@@ -130,6 +131,7 @@ from sempy_labs._vertipaq import (
 )
 
 __all__ = [
+    "create_azure_storage_account",
     "backup_semantic_model",
     "restore_semantic_model",
     "copy_semantic_model_backup_file",
