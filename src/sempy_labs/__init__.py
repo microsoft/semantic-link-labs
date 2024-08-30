@@ -1,3 +1,8 @@
+from sempy_labs._dataflows import (
+    list_dataflow_storage_accounts,
+    assign_workspace_to_dataflow_storage,
+    list_dataflows,
+)
 from sempy_labs._clear_cache import clear_cache
 
 # from sempy_labs._connections import (
@@ -22,7 +27,6 @@ from sempy_labs._list_functions import (
     # list_annotations,
     # list_columns,
     list_dashboards,
-    list_dataflow_storage_accounts,
     # list_datamarts,
     # list_datapipelines,
     # list_eventstreams,
@@ -51,7 +55,6 @@ from sempy_labs._list_functions import (
     delete_user_from_workspace,
     update_workspace_user,
     list_workspace_users,
-    assign_workspace_to_dataflow_storage,
     get_notebook_definition,
     import_notebook_from_web,
 )
@@ -114,6 +117,7 @@ from sempy_labs._vertipaq import (
 )
 
 __all__ = [
+    "list_dataflows",
     "delete_custom_pool",
     "clear_cache",
     # create_connection_cloud,
