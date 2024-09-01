@@ -45,8 +45,10 @@ def migrate_tables_columns_to_semantic_model(
         The Fabric workspace used by the lakehouse.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
     """
+
+    if dataset == new_dataset:
+        raise ValueError(f"{icons.red_dot} The 'dataset' and 'new_dataset' parameters must be different values.")
 
     workspace = fabric.resolve_workspace_name(workspace)
 
