@@ -163,6 +163,35 @@ def copy_semantic_model_backup_file(
     source_file_system: Optional[str] = "power-bi-backup",
     target_file_system: Optional[str] = "power-bi-backup",
 ):
+    """
+    Copies a semantic model backup file (.abf) from an Azure storage account to another location within the Azure storage account.
+
+    Requirements:
+        1. Must have an Azure storage account and connect it to both the source and target workspace.
+        2. Must have an Azure Key Vault.
+        3. Must save the Account Key from the Azure storage account as a secret within Azure Key Vault.
+
+    Parameters
+    ----------
+    source_workspace : str
+        The workspace name of the source semantic model backup file.
+    target_workspace : str
+        The workspace name of the target semantic model backup file destination.
+    source_file_name : str
+        The name of the source backup file (i.e. MyModel.abf).
+    target_file_name : str
+        The name of the target backup file (i.e. MyModel.abf).
+    storage_account_url : str
+        The URL of the storage account. To find this, navigate to the storage account within the Azure Portal. Within 'Endpoints', see the value for the 'Primary Endpoint'.
+    key_vault_uri : str
+        The URI of the Azure Key Vault account.
+    key_vault_account_key : str
+        The key vault secret name which contains the account key of the Azure storage account.
+    source_file_system : str, default="power-bi-backup"
+        The container in which the source backup file is located.
+    target_file_system : str, default="power-bi-backup"
+        The container in which the target backup file will be saved.
+    """
 
     from notebookutils import mssparkutils
     from azure.storage.filedatalake import DataLakeServiceClient
@@ -171,10 +200,12 @@ def copy_semantic_model_backup_file(
         key_vault_uri, key_vault_account_key
     )
 
-    if not source_file_name.endswith(".abf"):
-        source_file_name = f"{source_file_name}.abf"
-    if not target_file_name.endswith(".abf"):
-        target_file_name = f"{target_file_name}.abf"
+    suffix = '.abf'
+
+    if not source_file_name.endswith(suffix):
+        source_file_name = f"{source_file_name}{suffix}"
+    if not target_file_name.endswith(suffix):
+        target_file_name = f"{target_file_name}{suffix}"
 
     source_path = f"/{source_workspace}/{source_file_name}"
     target_path = f"/{target_workspace}/{target_file_name}"
