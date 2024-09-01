@@ -875,17 +875,3 @@ def pagination(client, response):
 
     return responses
 
-
-def resolve_deployment_pipeline_id(deployment_pipeline: str) -> UUID:
-
-    from sempy_labs._list_functions import list_deployment_pipelines
-
-    dfP = list_deployment_pipelines()
-    dfP_filt = dfP[dfP["Deployment Pipeline Name"] == deployment_pipeline]
-    if len(dfP_filt) == 0:
-        raise ValueError(
-            f"{icons.red_dot} The '{deployment_pipeline}' deployment pipeline is not valid."
-        )
-    deployment_pipeline_id = dfP_filt["Deployment Pipeline ID"].iloc[0]
-
-    return deployment_pipeline_id
