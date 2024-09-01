@@ -1,3 +1,7 @@
+from sempy_labs._workspace_identity import (
+    provision_workspace_identity,
+    deprovision_workspace_identity,
+)
 from sempy_labs._clear_cache import clear_cache
 
 # from sempy_labs._connections import (
@@ -114,6 +118,8 @@ from sempy_labs._vertipaq import (
 )
 
 __all__ = [
+    "provision_workspace_identity",
+    "deprovision_workspace_identity",
     "delete_custom_pool",
     "clear_cache",
     # create_connection_cloud,
