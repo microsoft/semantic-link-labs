@@ -2737,57 +2737,69 @@ class TOMWrapper:
 
         for t in self.model.Tables:
             dfT_filt = dfTable[dfTable["Name"] == t.Name]
-            rowCount = str(dfT_filt["Row Count"].iloc[0])
-            totalSize = str(dfT_filt["Total Size"].iloc[0])
-            self.set_annotation(object=t, name="Vertipaq_RowCount", value=rowCount)
-            self.set_annotation(object=t, name="Vertipaq_TableSize", value=totalSize)
+            if len(dfT_filt) > 0:
+                rowCount = str(dfT_filt["Row Count"].iloc[0])
+                totalSize = str(dfT_filt["Total Size"].iloc[0])
+                self.set_annotation(object=t, name="Vertipaq_RowCount", value=rowCount)
+                self.set_annotation(
+                    object=t, name="Vertipaq_TableSize", value=totalSize
+                )
             for c in t.Columns:
                 dfC_filt = dfC[
                     (dfC["Table Name"] == t.Name) & (dfC["Column Name"] == c.Name)
                 ]
-                totalSize = str(dfC_filt["Total Size"].iloc[0])
-                dataSize = str(dfC_filt["Data Size"].iloc[0])
-                dictSize = str(dfC_filt["Dictionary Size"].iloc[0])
-                hierSize = str(dfC_filt["Hierarchy Size"].iloc[0])
-                card = str(dfC_filt["Column Cardinality"].iloc[0])
-                self.set_annotation(
-                    object=c, name="Vertipaq_TotalSize", value=totalSize
-                )
-                self.set_annotation(object=c, name="Vertipaq_DataSize", value=dataSize)
-                self.set_annotation(
-                    object=c, name="Vertipaq_DictionarySize", value=dictSize
-                )
-                self.set_annotation(
-                    object=c, name="Vertipaq_HierarchySize", value=hierSize
-                )
-                self.set_annotation(object=c, name="Vertipaq_Cardinality", value=card)
+                if len(dfC_filt) > 0:
+                    totalSize = str(dfC_filt["Total Size"].iloc[0])
+                    dataSize = str(dfC_filt["Data Size"].iloc[0])
+                    dictSize = str(dfC_filt["Dictionary Size"].iloc[0])
+                    hierSize = str(dfC_filt["Hierarchy Size"].iloc[0])
+                    card = str(dfC_filt["Column Cardinality"].iloc[0])
+                    self.set_annotation(
+                        object=c, name="Vertipaq_TotalSize", value=totalSize
+                    )
+                    self.set_annotation(
+                        object=c, name="Vertipaq_DataSize", value=dataSize
+                    )
+                    self.set_annotation(
+                        object=c, name="Vertipaq_DictionarySize", value=dictSize
+                    )
+                    self.set_annotation(
+                        object=c, name="Vertipaq_HierarchySize", value=hierSize
+                    )
+                    self.set_annotation(
+                        object=c, name="Vertipaq_Cardinality", value=card
+                    )
             for p in t.Partitions:
                 dfP_filt = dfP[
                     (dfP["Table Name"] == t.Name) & (dfP["Partition Name"] == p.Name)
                 ]
-                recordCount = str(dfP_filt["Record Count"].iloc[0])
-                segmentCount = str(dfP_filt["Segment Count"].iloc[0])
-                rpS = str(dfP_filt["Records per Segment"].iloc[0])
-                self.set_annotation(
-                    object=p, name="Vertipaq_RecordCount", value=recordCount
-                )
-                self.set_annotation(
-                    object=p, name="Vertipaq_SegmentCount", value=segmentCount
-                )
-                self.set_annotation(
-                    object=p, name="Vertipaq_RecordsPerSegment", value=rpS
-                )
+                if len(dfP_filt) > 0:
+                    recordCount = str(dfP_filt["Record Count"].iloc[0])
+                    segmentCount = str(dfP_filt["Segment Count"].iloc[0])
+                    rpS = str(dfP_filt["Records per Segment"].iloc[0])
+                    self.set_annotation(
+                        object=p, name="Vertipaq_RecordCount", value=recordCount
+                    )
+                    self.set_annotation(
+                        object=p, name="Vertipaq_SegmentCount", value=segmentCount
+                    )
+                    self.set_annotation(
+                        object=p, name="Vertipaq_RecordsPerSegment", value=rpS
+                    )
             for h in t.Hierarchies:
                 dfH_filt = dfH[
                     (dfH["Table Name"] == t.Name) & (dfH["Hierarchy Name"] == h.Name)
                 ]
-                usedSize = str(dfH_filt["Used Size"].iloc[0])
-                self.set_annotation(object=h, name="Vertipaq_UsedSize", value=usedSize)
+                if len(dfH_filt) > 0:
+                    usedSize = str(dfH_filt["Used Size"].iloc[0])
+                    self.set_annotation(
+                        object=h, name="Vertipaq_UsedSize", value=usedSize
+                    )
         for r in self.model.Relationships:
             dfR_filt = dfR[dfR["Relationship Name"] == r.Name]
-            relSize = str(dfR_filt["Used Size"].iloc[0])
-            self.set_annotation(object=r, name="Vertipaq_UsedSize", value=relSize)
-
+            if len(dfR_filt) > 0:
+                relSize = str(dfR_filt["Used Size"].iloc[0])
+                self.set_annotation(object=r, name="Vertipaq_UsedSize", value=relSize)
         try:
             runId = self.get_annotation_value(object=self.model, name="Vertipaq_Run")
             runId = str(int(runId) + 1)
