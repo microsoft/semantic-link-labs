@@ -200,7 +200,7 @@ def copy_semantic_model_backup_file(
         key_vault_uri, key_vault_account_key
     )
 
-    suffix = '.abf'
+    suffix = ".abf"
 
     if not source_file_name.endswith(suffix):
         source_file_name = f"{source_file_name}{suffix}"

@@ -257,3 +257,35 @@ def get_semantic_model_bim(
         )
 
     return bimJson
+
+
+def get_semantic_model_size(dataset: str, workspace: Optional[str] = None):
+
+    workspace = fabric.resolve_workspace_name(workspace)
+
+    dict = fabric.evaluate_dax(
+        dataset=dataset,
+        workspace=workspace,
+        dax_string="""
+        EVALUATE SELECTCOLUMNS(FILTER(INFO.STORAGETABLECOLUMNS(), [COLUMN_TYPE] = "BASIC_DATA"),[DICTIONARY_SIZE])
+        """,
+    )
+
+    used_size = fabric.evaluate_dax(
+        dataset=dataset,
+        workspace=workspace,
+        dax_string="""
+        EVALUATE SELECTCOLUMNS(INFO.STORAGETABLECOLUMNSEGMENTS(),[USED_SIZE])
+        """,
+    )
+    dict_size = dict["[DICTIONARY_SIZE]"].sum()
+    used_size = used_size["[USED_SIZE]"].sum()
+    model_size = dict_size + used_size
+    if model_size >= 10**9:
+        result = model_size / (1024**3) * 10**9
+    elif model_size >= 10**6:
+        result = model_size / (1024**2) * 10**6
+    elif model_size >= 10**3:
+        result = model_size / (1024) * 10**3
+
+    return result
