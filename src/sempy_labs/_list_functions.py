@@ -1,7 +1,6 @@
 import sempy.fabric as fabric
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
-    resolve_lakehouse_name,
     create_relationship_name,
     resolve_lakehouse_id,
     resolve_dataset_id,

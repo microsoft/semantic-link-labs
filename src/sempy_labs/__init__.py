@@ -7,6 +7,15 @@ from sempy_labs._deployment_pipelines import (
     list_deployment_pipeline_stages,
     list_deployment_pipelines,
 )
+from sempy_labs._git import (
+    get_git_connection,
+    get_git_status,
+    commit_to_git,
+    initialize_git_connection,
+    update_from_git,
+    connect_workspace_to_git,
+    disconnect_workspace_from_git,
+)
 from sempy_labs._clear_cache import clear_cache
 
 # from sempy_labs._connections import (
@@ -219,4 +228,11 @@ __all__ = [
     "list_deployment_pipeline_stage_items",
     "list_deployment_pipeline_stages",
     "list_deployment_pipelines",
+    "get_git_connection",
+    "get_git_status",
+    "commit_to_git",
+    "initialize_git_connection",
+    "update_from_git",
+    "connect_workspace_to_git",
+    "disconnect_workspace_from_git",
 ]
