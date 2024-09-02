@@ -33,7 +33,7 @@ def connect_workspace_to_git(
         The branch name.
     directory_name : str
         The directory name.
-    git_provider_type : str, defualt="AzureDevOps"
+    git_provider_type : str, default="AzureDevOps"
         A `Git provider type <https://learn.microsoft.com/rest/api/fabric/core/git/connect?tabs=HTTP#gitprovidertype>`_.
     workspace : str, default=None
         The Fabric workspace name.
