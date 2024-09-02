@@ -1215,44 +1215,6 @@ def list_relationships(
     return dfR
 
 
-def list_dataflow_storage_accounts() -> pd.DataFrame:
-    """
-    Shows the accessible dataflow storage accounts.
-
-    Parameters
-    ----------
-
-    Returns
-    -------
-    pandas.DataFrame
-        A pandas dataframe showing the accessible dataflow storage accounts.
-    """
-
-    df = pd.DataFrame(
-        columns=[
-            "Dataflow Storage Account ID",
-            "Dataflow Storage Account Name",
-            "Enabled",
-        ]
-    )
-    client = fabric.PowerBIRestClient()
-    response = client.get("/v1.0/myorg/dataflowStorageAccounts")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    for v in response.json().get("value", []):
-        new_data = {
-            "Dataflow Storage Account ID": v.get("id"),
-            "Dataflow Storage Account Name": v.get("name"),
-            "Enabled": v.get("isEnabled"),
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    df["Enabled"] = df["Enabled"].astype(bool)
-
-    return df
-
-
 def list_kpis(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows a semantic model's KPIs and their properties.
@@ -2354,46 +2316,6 @@ def list_workspace_users(workspace: Optional[str] = None) -> pd.DataFrame:
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
-
-
-def assign_workspace_to_dataflow_storage(
-    dataflow_storage_account: str, workspace: Optional[str] = None
-):
-    """
-    Assigns a dataflow storage account to a workspace.
-
-    Parameters
-    ----------
-    dataflow_storage_account : str
-        The name of the dataflow storage account.
-    workspace : str, default=None
-        The name of the workspace.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-    """
-
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    df = list_dataflow_storage_accounts()
-    df_filt = df[df["Dataflow Storage Account Name"] == dataflow_storage_account]
-    dataflow_storage_id = df_filt["Dataflow Storage Account ID"].iloc[0]
-
-    client = fabric.PowerBIRestClient()
-
-    request_body = {"dataflowStorageId": dataflow_storage_id}
-
-    response = client.post(
-        f"/v1.0/myorg/groups/{workspace_id}/AssignToDataflowStorage", json=request_body
-    )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-    print(
-        f"{icons.green_dot} The '{dataflow_storage_account}' dataflow storage account has been assigned to the '{workspace}' workspacce."
-    )
 
 
 def list_capacities() -> pd.DataFrame:
