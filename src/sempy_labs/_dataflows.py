@@ -99,9 +99,6 @@ def list_dataflow_storage_accounts() -> pd.DataFrame:
     """
     Shows the accessible dataflow storage accounts.
 
-    Parameters
-    ----------
-
     Returns
     -------
     pandas.DataFrame
