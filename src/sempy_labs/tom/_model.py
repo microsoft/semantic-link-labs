@@ -2738,8 +2738,9 @@ class TOMWrapper:
         for t in self.model.Tables:
             dfT_filt = dfTable[dfTable["Name"] == t.Name]
             if len(dfT_filt) > 0:
-                rowCount = str(dfT_filt["Row Count"].iloc[0])
-                totalSize = str(dfT_filt["Total Size"].iloc[0])
+                row = dfT_filt.iloc[0]
+                rowCount = str(row["Row Count"])
+                totalSize = str(row["Total Size"])
                 self.set_annotation(object=t, name="Vertipaq_RowCount", value=rowCount)
                 self.set_annotation(
                     object=t, name="Vertipaq_TableSize", value=totalSize
@@ -2749,11 +2750,12 @@ class TOMWrapper:
                     (dfC["Table Name"] == t.Name) & (dfC["Column Name"] == c.Name)
                 ]
                 if len(dfC_filt) > 0:
-                    totalSize = str(dfC_filt["Total Size"].iloc[0])
-                    dataSize = str(dfC_filt["Data Size"].iloc[0])
-                    dictSize = str(dfC_filt["Dictionary Size"].iloc[0])
-                    hierSize = str(dfC_filt["Hierarchy Size"].iloc[0])
-                    card = str(dfC_filt["Column Cardinality"].iloc[0])
+                    row = dfC_filt.iloc[0]
+                    totalSize = str(row["Total Size"])
+                    dataSize = str(row["Data Size"])
+                    dictSize = str(row["Dictionary Size"])
+                    hierSize = str(row["Hierarchy Size"])
+                    card = str(row["Column Cardinality"])
                     self.set_annotation(
                         object=c, name="Vertipaq_TotalSize", value=totalSize
                     )
@@ -2774,9 +2776,10 @@ class TOMWrapper:
                     (dfP["Table Name"] == t.Name) & (dfP["Partition Name"] == p.Name)
                 ]
                 if len(dfP_filt) > 0:
-                    recordCount = str(dfP_filt["Record Count"].iloc[0])
-                    segmentCount = str(dfP_filt["Segment Count"].iloc[0])
-                    rpS = str(dfP_filt["Records per Segment"].iloc[0])
+                    row = dfP_filt.iloc[0]
+                    recordCount = str(row["Record Count"])
+                    segmentCount = str(row["Segment Count"])
+                    rpS = str(row["Records per Segment"])
                     self.set_annotation(
                         object=p, name="Vertipaq_RecordCount", value=recordCount
                     )
