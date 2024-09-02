@@ -43,6 +43,9 @@ def migrate_model_objects_to_semantic_model(
     import Microsoft.AnalysisServices.Tabular as TOM
     import System
 
+    if dataset == new_dataset:
+        raise ValueError(f"{icons.red_dot} The 'dataset' and 'new_dataset' parameters are both set to '{dataset}'. These parameters must be set to different values.")
+
     workspace = fabric.resolve_workspace_name(workspace)
 
     if new_dataset_workspace is None:

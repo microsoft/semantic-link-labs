@@ -3,6 +3,7 @@ import pandas as pd
 from typing import Optional
 from sempy_labs._list_functions import list_semantic_model_objects
 from sempy._utils._log import log
+import sempy_labs._icons as icons
 
 
 @log
@@ -35,6 +36,9 @@ def migration_validation(
     pandas.DataFrame
        A pandas dataframe showing a list of objects and whether they were successfully migrated. Also shows the % of objects which were migrated successfully.
     """
+
+    if dataset == new_dataset:
+        raise ValueError(f"{icons.red_dot} The 'dataset' and 'new_dataset' parameters are both set to '{dataset}'. These parameters must be set to different values.")
 
     workspace = fabric.resolve_workspace_name(workspace)
     if new_dataset_workspace is None:

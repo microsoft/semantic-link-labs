@@ -48,6 +48,9 @@ def migrate_calc_tables_to_semantic_model(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
+    if dataset == new_dataset:
+        raise ValueError(f"{icons.red_dot} The 'dataset' and 'new_dataset' parameters are both set to '{dataset}'. These parameters must be set to different values.")
+
     workspace = fabric.resolve_workspace_name(workspace)
 
     if new_dataset_workspace is None:

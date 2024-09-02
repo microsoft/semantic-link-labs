@@ -101,6 +101,9 @@ def report_rebind_all(
 
     from sempy_labs._list_functions import list_reports_using_semantic_model
 
+    if dataset == new_dataset:
+        raise ValueError(f"{icons.red_dot} The 'dataset' and 'new_dataset' parameters are both set to '{dataset}'. These parameters must be set to different values.")
+
     dataset_workspace = fabric.resolve_workspace_name(dataset_workspace)
 
     if new_dataset_workpace is None:
