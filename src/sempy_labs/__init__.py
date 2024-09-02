@@ -2,6 +2,11 @@ from sempy_labs._workspace_identity import (
     provision_workspace_identity,
     deprovision_workspace_identity,
 )
+from sempy_labs._deployment_pipelines import (
+    list_deployment_pipeline_stage_items,
+    list_deployment_pipeline_stages,
+    list_deployment_pipelines,
+)
 from sempy_labs._clear_cache import clear_cache
 
 # from sempy_labs._connections import (
@@ -211,4 +216,7 @@ __all__ = [
     "resolve_capacity_name",
     "run_model_bpa_bulk",
     "create_model_bpa_semantic_model",
+    "list_deployment_pipeline_stage_items",
+    "list_deployment_pipeline_stages",
+    "list_deployment_pipelines",
 ]
