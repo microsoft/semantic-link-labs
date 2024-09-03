@@ -1,6 +1,5 @@
 import sempy.fabric as fabric
 import pandas as pd
-from sempy_labs._list_functions import list_tables
 from sempy_labs._helper_functions import format_dax_object_name
 from typing import Optional, Tuple
 from sempy._utils._log import log
@@ -33,7 +32,7 @@ def show_unsupported_direct_lake_objects(
 
     workspace = fabric.resolve_workspace_name(workspace)
 
-    dfT = list_tables(dataset, workspace)
+    dfT = fabric.list_tables(dataset=dataset, workspace=workspace)
     dfC = fabric.list_columns(dataset=dataset, workspace=workspace)
     dfR = fabric.list_relationships(dataset=dataset, workspace=workspace)
 

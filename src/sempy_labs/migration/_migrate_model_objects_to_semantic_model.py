@@ -1,7 +1,6 @@
 import sempy
 import sempy.fabric as fabric
 import re
-from sempy_labs._list_functions import list_tables
 from sempy_labs._helper_functions import (
     create_relationship_name,
     retry,
@@ -53,7 +52,7 @@ def migrate_model_objects_to_semantic_model(
     if new_dataset_workspace is None:
         new_dataset_workspace = workspace
 
-    dfT = list_tables(dataset, workspace)
+    dfT = fabric.list_tables(dataset=dataset, workspace=workspace)
     dfC = fabric.list_columns(dataset=dataset, workspace=workspace)
     dfM = fabric.list_measures(dataset=dataset, workspace=workspace)
     dfRole = fabric.get_roles(dataset=dataset, workspace=workspace)
