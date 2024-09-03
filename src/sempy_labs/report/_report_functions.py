@@ -3,24 +3,22 @@ import pandas as pd
 import json
 import os
 import time
-import base64
 import copy
 from anytree import Node, RenderTree
 from powerbiclient import Report
-from synapse.ml.services import Translate
 from pyspark.sql.functions import col, flatten
 from pyspark.sql import SparkSession
 from sempy_labs.report._generate_report import update_report_from_reportjson
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from sempy_labs._helper_functions import (
     generate_embedded_filter,
-    resolve_dataset_name,
     resolve_report_id,
     resolve_lakehouse_name,
     language_validate,
     resolve_workspace_name_and_id,
     lro,
     _decode_b64,
+    resolve_dataset_id,
 )
 from typing import List, Optional, Union
 from sempy._utils._log import log
@@ -432,8 +430,6 @@ def clone_report(
         Defaults to None which resolves to the semantic model used by the initial report.
     """
 
-    from sempy_labs._helper_functions import resolve_dataset_id
-
     # https://learn.microsoft.com/rest/api/power-bi/reports/clone-report-in-group
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -460,15 +456,17 @@ def clone_report(
         target_dataset_id = resolve_dataset_id(target_dataset, target_dataset_workspace)
 
     if report == cloned_report and workspace == target_workspace:
-        raise ValueError(f"{icons.warning} The 'report' and 'cloned_report' parameters have the same value of '{report}. The 'workspace' and 'target_workspace' have the same value of '{workspace}'. Either the 'cloned_report' or the 'target_workspace' must be different from the original report.")
+        raise ValueError(
+            f"{icons.warning} The 'report' and 'cloned_report' parameters have the same value of '{report}. The 'workspace' and 'target_workspace' have the same value of '{workspace}'. Either the 'cloned_report' or the 'target_workspace' must be different from the original report."
+        )
 
     client = fabric.PowerBIRestClient()
 
     request_body = {"name": cloned_report}
     if target_dataset is not None:
-        request_body['targetModelId'] = target_dataset_id
+        request_body["targetModelId"] = target_dataset_id
     if target_workspace != workspace:
-        request_body['targetWorkspaceId'] = target_workspace_id
+        request_body["targetWorkspaceId"] = target_workspace_id
 
     response = client.post(
         f"/v1.0/myorg/groups/{workspace_id}/reports/{reportId}/Clone", json=request_body
@@ -736,6 +734,7 @@ def translate_report_titles(
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
+    from synapse.ml.services import Translate
 
     if isinstance(languages, str):
         languages = [languages]
