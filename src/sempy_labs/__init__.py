@@ -26,6 +26,7 @@ from sempy_labs._clear_cache import (
     backup_semantic_model,
     restore_semantic_model,
     copy_semantic_model_backup_file,
+    list_backups,
 )
 
 # from sempy_labs._connections import (
@@ -144,6 +145,7 @@ __all__ = [
     "deprovision_workspace_identity",
     "list_dataflows",
     "copy_semantic_model_backup_file",
+    "list_backups",
     "backup_semantic_model",
     "restore_semantic_model",
     "delete_custom_pool",

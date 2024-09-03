@@ -2,6 +2,9 @@ import sempy.fabric as fabric
 from sempy_labs._helper_functions import resolve_dataset_id, is_default_semantic_model
 from typing import Optional
 import sempy_labs._icons as icons
+from sempy._utils._log import log
+import pandas as pd
+from sempy.fabric.exceptions import FabricHTTPException
 
 
 def clear_cache(dataset: str, workspace: Optional[str] = None):
@@ -41,6 +44,7 @@ def clear_cache(dataset: str, workspace: Optional[str] = None):
     )
 
 
+@log
 def backup_semantic_model(
     dataset: str,
     file_path: str,
@@ -92,6 +96,7 @@ def backup_semantic_model(
     )
 
 
+@log
 def restore_semantic_model(
     dataset: str,
     file_path: str,
@@ -152,14 +157,13 @@ def restore_semantic_model(
     )
 
 
+@log
 def copy_semantic_model_backup_file(
     source_workspace: str,
     target_workspace: str,
     source_file_name: str,
     target_file_name: str,
-    storage_account_url: str,
-    key_vault_uri: str,
-    key_vault_account_key: str,
+    storage_account: str,
     source_file_system: Optional[str] = "power-bi-backup",
     target_file_system: Optional[str] = "power-bi-backup",
 ):
@@ -168,8 +172,14 @@ def copy_semantic_model_backup_file(
 
     Requirements:
         1. Must have an Azure storage account and connect it to both the source and target workspace.
-        2. Must have an Azure Key Vault.
-        3. Must save the Account Key from the Azure storage account as a secret within Azure Key Vault.
+        2. Must be a 'Storage Blob Data Contributor' for the storage account.
+            Steps:
+                1. Navigate to the storage account within the Azure Portal
+                2. Navigate to 'Access Control (IAM)'
+                3. Click '+ Add' -> Add Role Assignment
+                4. Search for 'Storage Blob Data Contributor', select it and click 'Next'
+                5. Add yourself as a member, click 'Next'
+                6. Click 'Review + assign'
 
     Parameters
     ----------
@@ -181,26 +191,17 @@ def copy_semantic_model_backup_file(
         The name of the source backup file (i.e. MyModel.abf).
     target_file_name : str
         The name of the target backup file (i.e. MyModel.abf).
-    storage_account_url : str
-        The URL of the storage account. To find this, navigate to the storage account within the Azure Portal. Within 'Endpoints', see the value for the 'Primary Endpoint'.
-    key_vault_uri : str
-        The URI of the Azure Key Vault account.
-    key_vault_account_key : str
-        The key vault secret name which contains the account key of the Azure storage account.
+    storage_account : str
+        The name of the storage account.
     source_file_system : str, default="power-bi-backup"
         The container in which the source backup file is located.
     target_file_system : str, default="power-bi-backup"
         The container in which the target backup file will be saved.
     """
 
-    from notebookutils import mssparkutils
-    from azure.storage.filedatalake import DataLakeServiceClient
+    from sempy_labs._helper_functions import get_adls_client
 
-    account_key = mssparkutils.credentials.getSecret(
-        key_vault_uri, key_vault_account_key
-    )
-
-    suffix = '.abf'
+    suffix = ".abf"
 
     if not source_file_name.endswith(suffix):
         source_file_name = f"{source_file_name}{suffix}"
@@ -209,14 +210,13 @@ def copy_semantic_model_backup_file(
 
     source_path = f"/{source_workspace}/{source_file_name}"
     target_path = f"/{target_workspace}/{target_file_name}"
-    service_client = DataLakeServiceClient(
-        account_url=storage_account_url, credential=account_key
-    )
 
-    source_file_system_client = service_client.get_file_system_client(
+    client = get_adls_client(account_name=storage_account)
+
+    source_file_system_client = client.get_file_system_client(
         file_system=source_file_system
     )
-    destination_file_system_client = service_client.get_file_system_client(
+    destination_file_system_client = client.get_file_system_client(
         file_system=target_file_system
     )
 
@@ -238,3 +238,74 @@ def copy_semantic_model_backup_file(
     print(
         f"{icons.green_dot} The backup file of the '{source_file_name}' semantic model from the '{source_workspace}' workspace has been copied as the '{target_file_name}' semantic model backup file within the '{target_workspace}'."
     )
+
+
+@log
+def list_backups(workspace: Optional[str] = None) -> pd.DataFrame:
+
+    """
+    Shows a list of backup files contained within a workspace's ADLS Gen2 storage account.
+    Requirement: An ADLS Gen2 storage account must be `connected to the workspace <https://learn.microsoft.com/power-bi/transform-model/dataflows/dataflows-azure-data-lake-storage-integration#connect-to-an-azure-data-lake-gen-2-at-a-workspace-level>`_.
+
+    Parameters
+    ----------
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of backup files contained within a workspace's ADLS Gen2 storage account.
+    """
+
+    from sempy_labs._helper_functions import get_adls_client
+
+    client = fabric.PowerBIRestClient()
+    workspace = fabric.resolve_workspace_name(workspace)
+    workspace_id = fabric.resolve_workspace_id(workspace)
+    response = client.get(
+        f"/v1.0/myorg/resources?resourceType=StorageAccount&folderObjectId={workspace_id}"
+    )
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    v = response.json().get("value", [])
+    if not v:
+        raise ValueError(f"{icons.red_dot} A storage account is not associated with the '{workspace}' workspace.")
+    storage_account = v[0]["resourceName"]
+
+    df = pd.DataFrame(
+        columns=[
+            "Storage Account Name",
+            "File Path",
+            "File Size",
+            "Creation Time",
+            "Last Modified",
+            "Expiry Time",
+            "Encryption Scope",
+        ]
+    )
+
+    onelake = get_adls_client(storage_account)
+    fs = onelake.get_file_system_client("power-bi-backup")
+
+    for x in list(fs.get_paths()):
+        if not x.is_directory:
+            new_data = {
+                "Storage Account Name": storage_account,
+                "File Path": x.name,
+                "File Size": x.content_length,
+                "Creation Time": x.creation_time,
+                "Last Modified": x.last_modified,
+                "Expiry Time": x.expiry_time,
+                "Encryption Scope": x.encryption_scope,
+            }
+
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    df["File Size"] = df["File Size"].astype(int)
+
+    return df
