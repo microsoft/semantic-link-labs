@@ -242,7 +242,6 @@ def copy_semantic_model_backup_file(
 
 @log
 def list_backups(workspace: Optional[str] = None) -> pd.DataFrame:
-
     """
     Shows a list of backup files contained within a workspace's ADLS Gen2 storage account.
     Requirement: An ADLS Gen2 storage account must be `connected to the workspace <https://learn.microsoft.com/power-bi/transform-model/dataflows/dataflows-azure-data-lake-storage-integration#connect-to-an-azure-data-lake-gen-2-at-a-workspace-level>`_.
@@ -274,7 +273,9 @@ def list_backups(workspace: Optional[str] = None) -> pd.DataFrame:
 
     v = response.json().get("value", [])
     if not v:
-        raise ValueError(f"{icons.red_dot} A storage account is not associated with the '{workspace}' workspace.")
+        raise ValueError(
+            f"{icons.red_dot} A storage account is not associated with the '{workspace}' workspace."
+        )
     storage_account = v[0]["resourceName"]
 
     df = pd.DataFrame(
@@ -296,6 +297,60 @@ def list_backups(workspace: Optional[str] = None) -> pd.DataFrame:
         if not x.is_directory:
             new_data = {
                 "Storage Account Name": storage_account,
+                "File Path": x.name,
+                "File Size": x.content_length,
+                "Creation Time": x.creation_time,
+                "Last Modified": x.last_modified,
+                "Expiry Time": x.expiry_time,
+                "Encryption Scope": x.encryption_scope,
+            }
+
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    df["File Size"] = df["File Size"].astype(int)
+
+    return df
+
+
+@log
+def list_storage_account_files(
+    storage_account: str, container: Optional[str] = "power-bi-backup"
+) -> pd.DataFrame:
+    """
+    Shows a list of files within an ADLS Gen2 storage account.
+
+    Parameters
+    ----------
+    storage_account: str
+        The name of the ADLS Gen2 storage account.
+    container : str, default='power-bi-backup'
+        The name of the container.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of files contained within an ADLS Gen2 storage account.
+    """
+
+    from sempy_labs._helper_functions import get_adls_client
+
+    df = pd.DataFrame(
+        columns=[
+            "File Path",
+            "File Size",
+            "Creation Time",
+            "Last Modified",
+            "Expiry Time",
+            "Encryption Scope",
+        ]
+    )
+
+    onelake = get_adls_client(storage_account)
+    fs = onelake.get_file_system_client(container)
+
+    for x in list(fs.get_paths()):
+        if not x.is_directory:
+            new_data = {
                 "File Path": x.name,
                 "File Size": x.content_length,
                 "Creation Time": x.creation_time,
