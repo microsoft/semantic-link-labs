@@ -4144,7 +4144,6 @@ class TOMWrapper:
                     m.Parent.Name for m in self.all_measures() if m.Name == ms_name
                 )
                 self.model.Tables[table_name].Measures[ms_name].Description = desc
-                print(ms_name)
 
         # def process_measure(m):
         #     table_name = m.Parent.Name
