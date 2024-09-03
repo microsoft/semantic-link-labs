@@ -13,6 +13,7 @@ from sempy_labs._generate_semantic_model import (
     get_semantic_model_bim,
 )
 from sempy_labs._list_functions import (
+    list_report_semantic_model_objects,
     list_reports_using_semantic_model,
     delete_custom_pool,
     list_semantic_model_objects,
@@ -108,6 +109,7 @@ from sempy_labs._vertipaq import (
 )
 
 __all__ = [
+    "list_report_semantic_model_objects",
     "delete_custom_pool",
     "clear_cache",
     # create_connection_cloud,

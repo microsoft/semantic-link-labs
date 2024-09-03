@@ -161,89 +161,6 @@ def _list_all_report_semantic_model_objects(
     return df
 
 
-def list_semantic_model_objects_all_reports(
-    dataset: str, workspace: Optional[str] = None, extended: Optional[bool] = False
-) -> pd.DataFrame:
-    """
-    Extends the ReportWrapper list_semantic_model_objects function across all reports connected to the semantic model.
-
-    Parameters
-    ----------
-    dataset : str
-        Name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
-    extended: bool, default=False
-        If True, adds extra columns to the resulting dataframe.
-
-    Returns
-    -------
-    pandas.DataFrame
-        A pandas dataframe.
-    """
-
-    dfRO = pd.DataFrame(
-        columns=[
-            "Report Name",
-            "Report Workspace Name",
-            "Table Name",
-            "Object Name",
-            "Object Type",
-            "Report Source",
-            "Report Source Object",
-        ]
-    )
-
-    # Collect all reports which use the semantic model
-    dfR = list_reports_using_semantic_model(dataset=dataset, workspace=workspace)
-    if len(dfR) > 0:
-        for i, r in dfR.iterrows():
-            report_name = r["Report Name"]
-            report_workspace = r["Report Workspace Name"]
-
-            rpt = ReportWrapper(
-                report=report_name, workspace=report_workspace, readonly=True
-            )
-            # Collect all semantic model objects used in the report
-            dfRSO = rpt.list_semantic_model_objects()
-            dfRSO["Report Name"] = report_name
-            dfRSO["Report Workspace Name"] = report_workspace
-            colName = "Report Name"
-            dfRSO.insert(0, colName, dfRSO.pop(colName))
-            colName = "Report Workspace Name"
-            dfRSO.insert(1, colName, dfRSO.pop(colName))
-
-            dfRO = pd.concat([dfRO, dfRSO], ignore_index=True)
-
-    # Collect all semantic model objects
-    if extended:
-        with connect_semantic_model(
-            dataset=dataset, readonly=True, workspace=workspace
-        ) as tom:
-            for index, row in dfRO.iterrows():
-                object_type = row["Object Type"]
-                if object_type == "Measure":
-                    dfRO.at[index, "Valid Object"] = any(
-                        o.Name == row["Object Name"] for o in tom.all_measures()
-                    )
-                elif object_type == "Column":
-                    dfRO.at[index, "Valid Object"] = any(
-                        format_dax_object_name(c.Parent.Name, c.Name)
-                        == format_dax_object_name(row["Table Name"], row["Object Name"])
-                        for c in tom.all_columns()
-                    )
-                elif object_type == "Hierarchy":
-                    dfRO.at[index, "Valid Object"] = any(
-                        format_dax_object_name(h.Parent.Name, h.Name)
-                        == format_dax_object_name(row["Table Name"], row["Object Name"])
-                        for h in tom.all_hierarchies()
-                    )
-
-    return dfRO
-
-
 class ReportWrapper:
 
     _report: str
@@ -522,7 +439,8 @@ class ReportWrapper:
         Parameters
         ----------
         extended : bool, default=False
-            If set to True, adds a column 'Valid' identifying whether the object is a valid object within the semantic model used by the report.
+            If True, adds an extra column called 'Valid Semantic Model Object' which identifies whether the semantic model object used
+            in the report exists in the semantic model which feeds data to the report.
 
         Returns
         -------
@@ -626,11 +544,11 @@ class ReportWrapper:
                 for index, row in df.iterrows():
                     obj_type = row["Object Type"]
                     if obj_type == "Measure":
-                        df.at[index, "Valid Object"] = any(
+                        df.at[index, "Valid Semantic Model Object"] = any(
                             o.Name == row["Object Name"] for o in tom.all_measures()
                         )
                     elif obj_type == "Column":
-                        df.at[index, "Valid Object"] = any(
+                        df.at[index, "Valid Semantic Model Object"] = any(
                             format_dax_object_name(c.Parent.Name, c.Name)
                             == format_dax_object_name(
                                 row["Table Name"], row["Object Name"]
@@ -638,7 +556,7 @@ class ReportWrapper:
                             for c in tom.all_columns()
                         )
                     elif obj_type == "Hierarchy":
-                        df.at[index, "Valid Object"] = any(
+                        df.at[index, "Valid Semantic Model Object"] = any(
                             format_dax_object_name(h.Parent.Name, h.Name)
                             == format_dax_object_name(
                                 row["Table Name"], row["Object Name"]
@@ -655,7 +573,8 @@ class ReportWrapper:
         Parameters
         ----------
         extended : bool, default=False
-            If set to True, adds more columns showing additional properties.
+            If True, adds an extra column called 'Valid Semantic Model Object' which identifies whether the semantic model object used
+            in the report exists in the semantic model which feeds data to the report.
 
         Returns
         -------
@@ -771,11 +690,11 @@ class ReportWrapper:
                 for index, row in df.iterrows():
                     obj_type = row["Object Type"]
                     if obj_type == "Measure":
-                        df.at[index, "Valid Object"] = any(
+                        df.at[index, "Valid Semantic Model Object"] = any(
                             o.Name == row["Object Name"] for o in tom.all_measures()
                         )
                     elif obj_type == "Column":
-                        df.at[index, "Valid Object"] = any(
+                        df.at[index, "Valid Semantic Model Object"] = any(
                             format_dax_object_name(c.Parent.Name, c.Name)
                             == format_dax_object_name(
                                 row["Table Name"], row["Object Name"]
@@ -783,7 +702,7 @@ class ReportWrapper:
                             for c in tom.all_columns()
                         )
                     elif obj_type == "Hierarchy":
-                        df.at[index, "Valid Object"] = any(
+                        df.at[index, "Valid Semantic Model Object"] = any(
                             format_dax_object_name(h.Parent.Name, h.Name)
                             == format_dax_object_name(
                                 row["Table Name"], row["Object Name"]
@@ -803,7 +722,8 @@ class ReportWrapper:
         Parameters
         ----------
         extended : bool, default=False
-            If set to True, adds a column 'Valid' identifying whether the object is a valid object within the semantic model used by the report.
+            If True, adds an extra column called 'Valid Semantic Model Object' which identifies whether the semantic model object used
+            in the report exists in the semantic model which feeds data to the report.
 
         Returns
         -------
@@ -923,11 +843,11 @@ class ReportWrapper:
                 for index, row in df.iterrows():
                     obj_type = row["Object Type"]
                     if obj_type == "Measure":
-                        df.at[index, "Valid Object"] = any(
+                        df.at[index, "Valid Semantic Model Object"] = any(
                             o.Name == row["Object Name"] for o in tom.all_measures()
                         )
                     elif obj_type == "Column":
-                        df.at[index, "Valid Object"] = any(
+                        df.at[index, "Valid Semantic Model Object"] = any(
                             format_dax_object_name(c.Parent.Name, c.Name)
                             == format_dax_object_name(
                                 row["Table Name"], row["Object Name"]
@@ -935,7 +855,7 @@ class ReportWrapper:
                             for c in tom.all_columns()
                         )
                     elif obj_type == "Hierarchy":
-                        df.at[index, "Valid Object"] = any(
+                        df.at[index, "Valid Semantic Model Object"] = any(
                             format_dax_object_name(h.Parent.Name, h.Name)
                             == format_dax_object_name(
                                 row["Table Name"], row["Object Name"]
@@ -1405,7 +1325,8 @@ class ReportWrapper:
         Parameters
         ----------
         extended : bool, default=False
-            If set to True, adds a column 'Valid' identifying whether the object is a valid object within the semantic model used by the report.
+            If True, adds an extra column called 'Valid Semantic Model Object' which identifies whether the semantic model object used
+            in the report exists in the semantic model which feeds data to the report.
 
         Returns
         -------
@@ -1547,11 +1468,11 @@ class ReportWrapper:
                 for index, row in df.iterrows():
                     obj_type = row["Object Type"]
                     if obj_type == "Measure":
-                        df.at[index, "Valid Object"] = any(
+                        df.at[index, "Valid Semantic Model Object"] = any(
                             o.Name == row["Object Name"] for o in tom.all_measures()
                         )
                     elif obj_type == "Column":
-                        df.at[index, "Valid Object"] = any(
+                        df.at[index, "Valid Semantic Model Object"] = any(
                             format_dax_object_name(c.Parent.Name, c.Name)
                             == format_dax_object_name(
                                 row["Table Name"], row["Object Name"]
@@ -1559,7 +1480,7 @@ class ReportWrapper:
                             for c in tom.all_columns()
                         )
                     elif obj_type == "Hierarchy":
-                        df.at[index, "Valid Object"] = any(
+                        df.at[index, "Valid Semantic Model Object"] = any(
                             format_dax_object_name(h.Parent.Name, h.Name)
                             == format_dax_object_name(
                                 row["Table Name"], row["Object Name"]
@@ -1579,7 +1500,8 @@ class ReportWrapper:
         Parameters
         ----------
         extended : bool, default=False
-            If set to True, adds a column 'Valid' identifying whether the object is a valid object within the semantic model used by the report.
+            If True, adds an extra column called 'Valid Semantic Model Object' which identifies whether the semantic model object used
+            in the report exists in the semantic model which feeds data to the report.
 
         Returns
         -------

@@ -1,6 +1,5 @@
 from sempy_labs.report._reportwrapper import (
     ReportWrapper,
-    list_semantic_model_objects_all_reports,
     list_unused_objects_in_reports,
 )
 
@@ -26,7 +25,6 @@ from sempy_labs.report._report_bpa import run_report_bpa
 
 __all__ = [
     "list_unused_objects_in_reports",
-    "list_semantic_model_objects_all_reports",
     "create_report_from_reportjson",
     # "update_report_from_reportjson",
     "get_report_json",

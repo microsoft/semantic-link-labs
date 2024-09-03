@@ -306,7 +306,7 @@ def run_report_bpa(
                 content_html += f'<td class="tooltip" onmouseover="adjustTooltipPosition(event)"><a href="{row["URL"]}">{row["Rule Name"]}</a><span class="tooltiptext">{row["Description"]}</span></td>'
             elif pd.notnull(row["Description"]):
                 content_html += f'<td class="tooltip" onmouseover="adjustTooltipPosition(event)">{row["Rule Name"]}<span class="tooltiptext">{row["Description"]}</span></td>'
-            #elif pd.notnull(row["Page Url"]):
+            # elif pd.notnull(row["Page Url"]):
             #    content_html += f'<td class="tooltip" onmouseover="adjustTooltipPosition(event)"><a href="{row["Page Url"]}">{row["Object Name"]}</a></td>'
             else:
                 content_html += f'<td>{row["Rule Name"]}</td>'
