@@ -7,7 +7,6 @@ import copy
 from anytree import Node, RenderTree
 from powerbiclient import Report
 from pyspark.sql.functions import col, flatten
-from pyspark.sql import SparkSession
 from sempy_labs.report._generate_report import update_report_from_reportjson
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from sempy_labs._helper_functions import (
@@ -735,6 +734,7 @@ def translate_report_titles(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
     from synapse.ml.services import Translate
+    from pyspark.sql import SparkSession
 
     if isinstance(languages, str):
         languages = [languages]
