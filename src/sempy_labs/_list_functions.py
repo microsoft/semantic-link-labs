@@ -879,14 +879,10 @@ def list_eventstreams(workspace: Optional[str] = None) -> pd.DataFrame:
 
     for r in responses:
         for v in r.get("value", []):
-            model_id = v.get("id")
-            modelName = v.get("displayName")
-            desc = v.get("description")
-
             new_data = {
-                "Eventstream Name": modelName,
-                "Eventstream ID": model_id,
-                "Description": desc,
+                "Eventstream Name": v.get("displayName"),
+                "Eventstream ID": v.get("id"),
+                "Description": v.get("description"),
             }
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 

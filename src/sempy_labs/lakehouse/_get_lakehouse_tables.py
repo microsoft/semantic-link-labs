@@ -108,7 +108,9 @@ def get_lakehouse_tables(
                 "Location": i.get("location"),
             }
             dfs.append(pd.DataFrame(new_data, index=[0]))
-    df = pd.concat(dfs, ignore_index=True)
+
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
 
     if extended:
         sku_value = get_sku_size(workspace)
