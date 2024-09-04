@@ -142,9 +142,7 @@ def _list_all_report_semantic_model_objects(
         report_name = r["Report Name"]
         report_workspace = r["Report Workspace Name"]
 
-        rpt = ReportWrapper(
-            report=report_name, workspace=report_workspace, readonly=True
-        )
+        rpt = ReportWrapper(report=report_name, workspace=report_workspace)
 
         new_data = rpt.list_all_semantic_model_objects()
         new_data["Report Name"] = report_name
@@ -165,14 +163,12 @@ class ReportWrapper:
 
     _report: str
     _workspace: str
-    _readonly: bool
 
     @log
     def __init__(
         self,
         report: str,
         workspace: Optional[str] = None,
-        readonly: Optional[bool] = True,
     ):
 
         from sempy_labs.report import get_report_definition
@@ -181,7 +177,6 @@ class ReportWrapper:
         self._workspace = workspace
         self._workspace_id = fabric.resolve_workspace_id(workspace)
         self._report_id = resolve_report_id(report, workspace)
-        self._readonly = readonly
         self.rdef = get_report_definition(
             report=self._report, workspace=self._workspace
         )
@@ -399,14 +394,9 @@ class ReportWrapper:
         return theme_json
 
     # List functions
-    def list_custom_visuals(self, extended: Optional[bool] = False) -> pd.DataFrame:
+    def list_custom_visuals(self) -> pd.DataFrame:
         """
         Shows a list of all custom visuals used in the report.
-
-        Parameters
-        ----------
-        extended : bool, default=False
-            If True, adds extra columns to the resulting dataframe.
 
         Returns
         -------
@@ -425,10 +415,9 @@ class ReportWrapper:
             lambda x: _vis_type_mapping.get(x, x)
         )
 
-        if extended:
-            df["Used in Report"] = df["Custom Visual Name"].isin(
-                self.list_visuals()["Type"]
-            )
+        df["Used in Report"] = df["Custom Visual Name"].isin(
+            self.list_visuals()["Type"]
+        )
 
         return df
 
@@ -916,14 +905,9 @@ class ReportWrapper:
 
         return df
 
-    def list_pages(self, extended: Optional[bool] = False) -> pd.DataFrame:
+    def list_pages(self) -> pd.DataFrame:
         """
         Shows a list of all pages in the report.
-
-        Parameters
-        ----------
-        extended : bool, default=False
-            Adds columns showing additional properties.
 
         Returns
         -------
@@ -1052,22 +1036,15 @@ class ReportWrapper:
         bool_cols = ["Hidden", "Active", "Drillthrough Target Page"]
         df[bool_cols] = df[bool_cols].astype(bool)
 
-        if extended:
-            web_url = self._get_web_url()
+        web_url = self._get_web_url()
 
-            df["Web Url"] = web_url + "/" + df["Page Name"]
+        df["Web Url"] = web_url + "/" + df["Page Name"]
 
         return df
 
-    def list_visuals(self, extended: Optional[bool] = False) -> pd.DataFrame:
+    def list_visuals(self) -> pd.DataFrame:
         """
         Shows a list of all visuals in the report.
-
-        Parameters
-        ----------
-        extended : bool, default=False
-            If True, adds a column showing the Visual Object Count (number of measures/columns/hierarchies used in the visual).
-            Defaults to False.
 
         Returns
         -------
@@ -1299,22 +1276,21 @@ class ReportWrapper:
         df[int_cols] = df[int_cols].astype(int)
         df[float_cols] = df[float_cols].astype(float)
 
-        if extended:
-            grouped_df = (
-                self.list_visual_objects()
-                .groupby(["Page Name", "Visual Name"])
-                .size()
-                .reset_index(name="Visual Object Count")
-            )
+        grouped_df = (
+            self.list_visual_objects()
+            .groupby(["Page Name", "Visual Name"])
+            .size()
+            .reset_index(name="Visual Object Count")
+        )
 
-            df = pd.merge(
-                df,
-                grouped_df,
-                left_on=["Page Name", "Visual Name"],
-                right_on=["Page Name", "Visual Name"],
-                how="left",
-            )
-            df["Visual Object Count"] = df["Visual Object Count"].fillna(0).astype(int)
+        df = pd.merge(
+            df,
+            grouped_df,
+            left_on=["Page Name", "Visual Name"],
+            right_on=["Page Name", "Visual Name"],
+            how="left",
+        )
+        df["Visual Object Count"] = df["Visual Object Count"].fillna(0).astype(int)
 
         return df
 
@@ -1800,11 +1776,10 @@ class ReportWrapper:
 
         _add_part(request_body, pages_file, file_payload)
 
-        if not self._readonly:
-            self.update_report(request_body=request_body)
-            print(
-                f"{icons.green_dot} The '{page_name}' page has been set as the active page in the '{self._report}' report within the '{self._workspace}' workspace."
-            )
+        self.update_report(request_body=request_body)
+        print(
+            f"{icons.green_dot} The '{page_name}' page has been set as the active page in the '{self._report}' report within the '{self._workspace}' workspace."
+        )
 
     def set_page_type(self, page_name: str, page_type: str):
 
@@ -1851,11 +1826,10 @@ class ReportWrapper:
             if r["path"] != file_path:
                 _add_part(request_body, r["path"], r["payload"])
 
-        if not self._readonly:
-            self.update_report(request_body=request_body)
-            print(
-                f"The '{page_display}' page has been updated to the '{page_type}' page type."
-            )
+        self.update_report(request_body=request_body)
+        print(
+            f"The '{page_display}' page has been updated to the '{page_type}' page type."
+        )
 
     def remove_unnecessary_custom_visuals(self):
         """
@@ -1904,11 +1878,10 @@ class ReportWrapper:
 
             _add_part(request_body, file_path, payload)
 
-        if not self._readonly:
-            self.update_report(request_body=request_body)
-            print(
-                f"{icons.green_dot} The {cv_remove_display} custom visuals have been removed from the '{self._report}' report within the '{self._workspace}' workspace."
-            )
+        self.update_report(request_body=request_body)
+        print(
+            f"{icons.green_dot} The {cv_remove_display} custom visuals have been removed from the '{self._report}' report within the '{self._workspace}' workspace."
+        )
 
     def migrate_report_level_measures(self, measures: Optional[str | List[str]] = None):
         """
@@ -1992,11 +1965,10 @@ class ReportWrapper:
             if path != rpt_file:
                 _add_part(request_body, path, payload)
 
-        if not self._readonly:
-            self.update_report(request_body=request_body)
-            print(
-                f"{icons.green_dot} The report-level measures have been migrated to the '{dataset_name}' semantic model within the '{dataset_workspace}' workspace."
-            )
+        self.update_report(request_body=request_body)
+        print(
+            f"{icons.green_dot} The report-level measures have been migrated to the '{dataset_name}' semantic model within the '{dataset_workspace}' workspace."
+        )
 
     def set_theme(self, theme_file_path: str):
         """
@@ -2009,9 +1981,6 @@ class ReportWrapper:
             Examples:
                 file_path = '/lakehouse/default/Files/CY23SU09.json'
                 file_path = 'https://raw.githubusercontent.com/PowerBiDevCamp/FabricUserApiDemo/main/FabricUserApiDemo/DefinitionTemplates/Shared/Reports/StaticResources/SharedResources/BaseThemes/CY23SU08.json'
-
-        Returns
-        -------
         """
 
         import requests
@@ -2022,7 +1991,7 @@ class ReportWrapper:
 
         if not theme_file_path.endswith(".json"):
             raise ValueError(
-                f"{icons.red_dot} The theme file path must be a .json file."
+                f"{icons.red_dot} The '{theme_file_path}' theme file path must be a .json file."
             )
         elif theme_file_path.startswith("https://"):
             response = requests.get(theme_file_path)
@@ -2031,7 +2000,9 @@ class ReportWrapper:
             with open(theme_file_path, "r", encoding="utf-8-sig") as file:
                 json_file = json.load(file)
         else:
-            ValueError(f"{icons.red_dot} Incorrect theme file path value.")
+            ValueError(
+                f"{icons.red_dot} Incorrect theme file path value '{theme_file_path}'."
+            )
 
         theme_name = json_file["name"]
         theme_name_full = f"{theme_name}.json"
@@ -2089,20 +2060,20 @@ class ReportWrapper:
                     }
                     rptJson["resourcePackages"].append(new_registered_resources)
                 else:
-                    names = []
-                    for rp in rptJson["resourcePackages"][1]["items"]:
-                        names.append(rp["name"])
+                    names = [
+                        rp["name"] for rp in rptJson["resourcePackages"][1]["items"]
+                    ]
+
                     if theme_name_full not in names:
                         rptJson["resourcePackages"][1]["items"].append(new_theme)
 
                 file_payload = _conv_b64(rptJson)
                 _add_part(request_body, path, file_payload)
 
-        if not self._readonly:
-            self.update_report(request_body=request_body)
-            print(
-                f"{icons.green_dot} The '{theme_name}' theme has been set as the theme for the '{self._report}' report within the '{self._workspace}' workspace."
-            )
+        self.update_report(request_body=request_body)
+        print(
+            f"{icons.green_dot} The '{theme_name}' theme has been set as the theme for the '{self._report}' report within the '{self._workspace}' workspace."
+        )
 
     def set_page_visibility(self, page_name: str, hidden: bool):
         """
@@ -2141,21 +2112,12 @@ class ReportWrapper:
             else:
                 _add_part(request_body, path, payload)
 
-        if not self._readonly:
-            self.update_report(request_body=request_body)
-            print(
-                f"{icons.green_dot} The '{page_name}' page has been set to {visibility}."
-            )
+        self.update_report(request_body=request_body)
+        print(f"{icons.green_dot} The '{page_name}' page has been set to {visibility}.")
 
     def hide_tooltip_drillthrough_pages(self):
         """
         Hides all tooltip pages and drillthrough pages in a report.
-
-        Parameters
-        ----------
-
-        Returns
-        -------
         """
 
         dfP = self.list_pages()
@@ -2176,12 +2138,6 @@ class ReportWrapper:
     def disable_show_items_with_no_data(self):
         """
         Disables the `show items with no data <https://learn.microsoft.com/power-bi/create-reports/desktop-show-items-no-data>`_ property in all visuals within the report.
-
-        Parameters
-        ----------
-
-        Returns
-        -------
         """
 
         request_body = {"definition": {"parts": []}}
@@ -2214,11 +2170,10 @@ class ReportWrapper:
             else:
                 _add_part(request_body, file_path, payload)
 
-        if not self._readonly:
-            self.update_report(request_body=request_body)
-            print(
-                f"{icons.green_dot} Show items with data has been disabled for all visuals in the '{self._report}' report within the '{self._workspace}' workspace."
-            )
+        self.update_report(request_body=request_body)
+        print(
+            f"{icons.green_dot} Show items with data has been disabled for all visuals in the '{self._report}' report within the '{self._workspace}' workspace."
+        )
 
     def __get_annotation_value(self, object_name: str, object_type: str, name: str):
 
@@ -2342,20 +2297,19 @@ class ReportWrapper:
             else:
                 _add_part(request_body, path, payload)
 
-        if not self._readonly:
-            self.update_report(request_body=request_body)
-            if object_type == "Report":
-                print(
-                    f"{icons.green_dot} The '{name}' annotation has been set on the report with the '{value}' value."
-                )
-            elif object_type == "Page":
-                print(
-                    f"{icons.green_dot} The '{name}' annotation has been set on the '{object_name}' page with the '{value}' value."
-                )
-            elif object_type == "Visual":
-                print(
-                    f"{icons.green_dot} The '{name}' annotation has been set on the '{visual_id}' visual on the '{page_display}' page with the '{value}' value."
-                )
+        self.update_report(request_body=request_body)
+        if object_type == "Report":
+            print(
+                f"{icons.green_dot} The '{name}' annotation has been set on the report with the '{value}' value."
+            )
+        elif object_type == "Page":
+            print(
+                f"{icons.green_dot} The '{name}' annotation has been set on the '{object_name}' page with the '{value}' value."
+            )
+        elif object_type == "Visual":
+            print(
+                f"{icons.green_dot} The '{name}' annotation has been set on the '{visual_id}' visual on the '{page_display}' page with the '{value}' value."
+            )
 
     def __adjust_settings(
         self, setting_type: str, setting_name: str, setting_value: bool
@@ -2414,12 +2368,11 @@ class ReportWrapper:
             else:
                 _add_part(request_body, path, payload)
 
-        if not self._readonly:
-            upd = self.update_report(request_body=request_body)
-            if upd == 200:
-                print(f"{icons.green_dot}")
-            else:
-                print(f"{icons.red_dot}")
+        upd = self.update_report(request_body=request_body)
+        if upd == 200:
+            print(f"{icons.green_dot}")
+        else:
+            print(f"{icons.red_dot}")
 
     def __persist_filters(self, value: Optional[bool] = False):
         """
@@ -2542,8 +2495,8 @@ class ReportWrapper:
             setting_value=value,
         )
 
-    def close(self):
-        if not self._readonly and self._report is not None:
-            print("saving...")
+    # def close(self):
+    # if not self._readonly and self._report is not None:
+    #    print("saving...")
 
-            self._report = None
+    #    self._report = None

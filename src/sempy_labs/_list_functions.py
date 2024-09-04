@@ -2585,24 +2585,27 @@ def list_report_semantic_model_objects(
 
     # Collect all reports which use the semantic model
     dfR = list_reports_using_semantic_model(dataset=dataset, workspace=workspace)
-    if len(dfR) > 0:
-        for i, r in dfR.iterrows():
-            report_name = r["Report Name"]
-            report_workspace = r["Report Workspace Name"]
 
-            rpt = ReportWrapper(
-                report=report_name, workspace=report_workspace, readonly=True
-            )
-            # Collect all semantic model objects used in the report
-            dfRSO = rpt.list_semantic_model_objects()
-            dfRSO["Report Name"] = report_name
-            dfRSO["Report Workspace Name"] = report_workspace
-            colName = "Report Name"
-            dfRSO.insert(0, colName, dfRSO.pop(colName))
-            colName = "Report Workspace Name"
-            dfRSO.insert(1, colName, dfRSO.pop(colName))
+    if len(dfR) == 0:
+        return dfRO
 
-            dfRO = pd.concat([dfRO, dfRSO], ignore_index=True)
+    for _, r in dfR.iterrows():
+        report_name = r["Report Name"]
+        report_workspace = r["Report Workspace Name"]
+
+        rpt = ReportWrapper(
+            report=report_name, workspace=report_workspace, readonly=True
+        )
+        # Collect all semantic model objects used in the report
+        dfRSO = rpt.list_semantic_model_objects()
+        dfRSO["Report Name"] = report_name
+        dfRSO["Report Workspace Name"] = report_workspace
+        colName = "Report Name"
+        dfRSO.insert(0, colName, dfRSO.pop(colName))
+        colName = "Report Workspace Name"
+        dfRSO.insert(1, colName, dfRSO.pop(colName))
+
+        dfRO = pd.concat([dfRO, dfRSO], ignore_index=True)
 
     # Collect all semantic model objects
     if extended:
