@@ -85,6 +85,7 @@ for d, d_alias in dirs.items():
         attr = getattr(d, attr_name)
         if inspect.isfunction(attr):
             if attr_name not in skip_functions:
+                sig = inspect.signature(attr)
                 category = 'General'
                 if d_alias == 'migration':
                     category = 'Direct Lake Migration'
@@ -120,11 +121,11 @@ category_to_funcs = defaultdict(list)
 tom_cat = 'Tabular Object Model (TOM)'
 category_to_funcs[tom_cat] = defaultdict(list)
 for func, category in functions.items():
-    if 'TOM' not in category:        
+    if 'TOM' not in category:
         category_to_funcs[category].append(func)
     else:
         if 'vertipaq' in func or func in ['row_count', 'used_size', 'data_size', 'dictionary_size', 'total_size', 'cardinality', 'records_per_segment']:
-            category_to_funcs[tom_cat]["Vertipaq Stats"].append(func) 
+            category_to_funcs[tom_cat]["Vertipaq Stats"].append(func)
         elif 'policy' in func or 'incremental' in func:
             category_to_funcs[tom_cat]["Incremental Refresh"].append(func)
         elif 'annotation' in func:
@@ -160,6 +161,8 @@ for category in sorted(category_to_funcs.keys()):
     else:
         sorted_category_to_funcs[category] = sorted(category_to_funcs[category])
 
+prefix = "https://github.com/microsoft/semantic-link-labs/blob/main/function_examples.md#"
+
 markdown_content += '## Function Categories\n'
 for category, funcs in sorted_category_to_funcs.items():
     if 'TOM' in category:
@@ -167,13 +170,13 @@ for category, funcs in sorted_category_to_funcs.items():
         for sub_category, tom_list in funcs.items():
             markdown_content += f"\n#### {sub_category}"
             for tom_func in tom_list:
-                markdown_content += f"\n* [{tom_func}](https://github.com/microsoft/semantic-link-labs)"
+                markdown_content += f"\n* [{tom_func}]({prefix}{tom_func})"
             markdown_content += '\n'
         markdown_content += '\n'
     else:
         markdown_content += f"\n### {category}"
         for func in funcs:
-            markdown_content += f"\n* [{func}](https://github.com/microsoft/semantic-link-labs)"
+            markdown_content += f"\n* [{func}]({prefix}{func})"
         markdown_content += '\n'
 
 markdown_content += """
