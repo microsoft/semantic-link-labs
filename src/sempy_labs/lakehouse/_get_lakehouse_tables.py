@@ -7,6 +7,7 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_id,
     resolve_lakehouse_name,
     resolve_workspace_name_and_id,
+    pagination,
 )
 from sempy_labs.directlake._guardrails import (
     get_sku_size,
@@ -52,8 +53,6 @@ def get_lakehouse_tables(
         Shows the tables/columns within a lakehouse and their properties.
     """
 
-    from sempy_labs._helper_functions import pagination
-
     df = pd.DataFrame(
         columns=[
             "Workspace Name",
@@ -95,6 +94,9 @@ def get_lakehouse_tables(
         raise FabricHTTPException(response)
 
     responses = pagination(client, response)
+
+    if not responses[0].get("data"):
+        return df
 
     dfs = []
     for r in responses:
