@@ -21,7 +21,6 @@ from sempy._utils._log import log
 import sempy_labs._icons as icons
 from pyspark.sql.functions import col, flatten
 from pyspark.sql.types import StructType, StructField, StringType
-import polib
 import os
 
 
@@ -66,6 +65,7 @@ def run_model_bpa(
     """
 
     from synapse.ml.services import Translate
+    import polib
 
     if "extend" in kwargs:
         print(
