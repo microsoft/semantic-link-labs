@@ -21,7 +21,6 @@ from sempy._utils._log import log
 import sempy_labs._icons as icons
 from pyspark.sql.functions import col, flatten
 from pyspark.sql.types import StructType, StructField, StringType
-import polib
 import os
 
 
@@ -66,6 +65,7 @@ def run_model_bpa(
     """
 
     from synapse.ml.services import Translate
+    import polib
 
     if "extend" in kwargs:
         print(
@@ -302,26 +302,28 @@ def run_model_bpa(
 
                 if scope == "Model":
                     x = []
-                    if expr(func):
+                    if expr(func, tom):
                         x = ["Model"]
                 elif scope == "Measure":
-                    x = [nm(obj) for obj in tom.all_measures() if expr(obj)]
+                    x = [nm(obj) for obj in tom.all_measures() if expr(obj, tom)]
                 elif scope == "Column":
-                    x = [nm(obj) for obj in tom.all_columns() if expr(obj)]
+                    x = [nm(obj) for obj in tom.all_columns() if expr(obj, tom)]
                 elif scope == "Partition":
-                    x = [nm(obj) for obj in tom.all_partitions() if expr(obj)]
+                    x = [nm(obj) for obj in tom.all_partitions() if expr(obj, tom)]
                 elif scope == "Hierarchy":
-                    x = [nm(obj) for obj in tom.all_hierarchies() if expr(obj)]
+                    x = [nm(obj) for obj in tom.all_hierarchies() if expr(obj, tom)]
                 elif scope == "Table":
-                    x = [nm(obj) for obj in tom.model.Tables if expr(obj)]
+                    x = [nm(obj) for obj in tom.model.Tables if expr(obj, tom)]
                 elif scope == "Relationship":
-                    x = [nm(obj) for obj in tom.model.Relationships if expr(obj)]
+                    x = [nm(obj) for obj in tom.model.Relationships if expr(obj, tom)]
                 elif scope == "Role":
-                    x = [nm(obj) for obj in tom.model.Roles if expr(obj)]
+                    x = [nm(obj) for obj in tom.model.Roles if expr(obj, tom)]
                 elif scope == "Row Level Security":
-                    x = [nm(obj) for obj in tom.all_rls() if expr(obj)]
+                    x = [nm(obj) for obj in tom.all_rls() if expr(obj, tom)]
                 elif scope == "Calculation Item":
-                    x = [nm(obj) for obj in tom.all_calculation_items() if expr(obj)]
+                    x = [
+                        nm(obj) for obj in tom.all_calculation_items() if expr(obj, tom)
+                    ]
 
                 if len(x) > 0:
                     new_data = {"Object Name": x, "Scope": scope, "Rule Name": ruleName}
