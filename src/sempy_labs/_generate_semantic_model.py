@@ -281,6 +281,7 @@ def get_semantic_model_size(dataset: str, workspace: Optional[str] = None):
     dict_size = dict["[DICTIONARY_SIZE]"].sum()
     used_size = used_size["[USED_SIZE]"].sum()
     model_size = dict_size + used_size
+    # Calculate proper bytes size by dividing by 1024 and multiplying by 1000 - per 1000
     if model_size >= 10**9:
         result = model_size / (1024**3) * 10**9
     elif model_size >= 10**6:
