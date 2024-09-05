@@ -208,37 +208,25 @@ def list_tables(
 
                 new_data.update(
                     {
-                        "Row Count": (
+                        "Row Count": (int(
                             rc[rc["DIMENSION_NAME"] == t_name][
                                 "DIMENSION_CARDINALITY"
                             ].iloc[0]
                             if not rc.empty
-                            else 0
+                            else 0)
                         ),
-                        "Total Size": total_size,
-                        "Dictionary Size": dict_size,
-                        "Data Size": data_size,
-                        "Hierarchy Size": h_size,
-                        "Relationship Size": r_size,
-                        "User Hierarchy Size": u_size,
+                        "Total Size": int(total_size),
+                        "Dictionary Size": int(dict_size),
+                        "Data Size": int(data_size),
+                        "Hierarchy Size": int(h_size),
+                        "Relationship Size": int(r_size),
+                        "User Hierarchy Size": int(u_size),
                     }
                 )
 
             rows.append(new_data)
 
         df = pd.DataFrame(rows)
-
-        if extended:
-            int_cols = [
-                "Total Size",
-                "Data Size",
-                "Dictionary Size",
-                "Hierarchy Size",
-                "User Hierarchy Size",
-                "Relationship Size",
-                "Row Count",
-            ]
-            df[int_cols] = df[int_cols].astype(int)
 
     return df
 
