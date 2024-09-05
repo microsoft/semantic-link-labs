@@ -17,7 +17,7 @@ import sempy_labs._icons as icons
 
 def create_blank_semantic_model(
     dataset: str,
-    compatibility_level: int = 1605,
+    compatibility_level: Optional[int] = 1605,
     workspace: Optional[str] = None,
 ):
     """

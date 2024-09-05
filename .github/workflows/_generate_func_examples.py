@@ -46,20 +46,51 @@ for d, d_alias in dirs.items():
                     markdown_example += f"\n{tab}{func_print}"
                 else:
                     markdown_example += f"\n{func_print}"
+                params = [param for param_name, param in sig.parameters.items() if param_name not in ['kwargs', 'self']]
+                param_count = len(params)
                 for param_name, param in sig.parameters.items():
+                    is_optional = False
                     if param_name not in ['kwargs', 'self']:
-                        param_value = "''"
-                        param_type = param.annotation if param.annotation != inspect._empty else "Unknown"
-                        if typing.get_origin(param_type) is typing.Union:
-                            args = typing.get_args(param_type)
-                            if type(None) in args:
-                                param_value = 'None'
+                        param_value = ''
+                        if param.default != inspect.Parameter.empty:
+                            param_value = param.default
+                            is_optional = True
+                        elif param_name == 'dataset':
+                            param_value = "AdvWorks"
+                        elif param_name in ['email_address', 'user_name']:
+                            param_value = 'hello@goodbye.com'
+                        elif param_name == 'languages':
+                            param_value = ['it-IT', 'zh-CN']
+                        elif param_name == 'dax_query':
+                            param_value = 'EVALUATE SUMMARIZECOLUMNS("MyMeasure", 1)'
+                        elif param_name == 'column':
+                            param_value = 'tom.model.Tables["Geography"].Columns["GeographyKey"]'
+                        elif param_name in ['object']:
+                            if attr_name in ['row_count', 'total_size', 'used_in_relationships', 'used_in_rls', 'set_translation']:
+                                param_value = 'tom.model.Tables["Sales"]'
+                            elif attr_name in ['records_per_segment']:
+                                param_value = 'tom.model.Tables["Sales"].Partitions["Sales"]'
+                            elif attr_name in ['used_size']:
+                                param_value = 'tom.model.Tables["Geography"].Hierarchies["Geo Hierarchy"]'
+                            elif attr_name in ['fully_qualified_measures']:
+                                param_value = 'tom.model.Tables["Sales"].Measures["Sales Amount"]'
+                        elif param_name == 'dependencies':
+                            param_value = 'labs.get_model_calc_dependencies(dataset=tom._dataset, workspace=tom._workspace)'
+
+                        if param_value not in [None, True, False] and not isinstance(param_value, list) and param_name not in ['object', 'column', 'dependencies']:
+                            param_value = f"'{param_value}'"
                         p = f"{tab}{param_name}={param_value},"
+                        if is_optional:
+                            p += " # This parameter is optional"
                         if d_alias == 'tom':
                             markdown_example += f"\n{tab}{p}"
                         else:
                             markdown_example += f"\n{p}"
-                markdown_example += '\n)\n```\n'
+                closing = ")\n```\n"
+                if param_count == 0:
+                    markdown_example += closing
+                else:
+                    markdown_example += f"\n{closing}"
 
 output_path = os.path.join('/root/semantic-link-labs', 'function_examples.md')
 with open(output_path, 'w') as f:
