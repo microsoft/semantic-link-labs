@@ -1,6 +1,7 @@
 import inspect
 import os
-import typing
+import re
+from docstring_parser import parse
 import sempy_labs
 import sempy_labs.migration
 import sempy_labs.report
@@ -20,6 +21,7 @@ dirs = {
 link_prefix = "https://semantic-link-labs.readthedocs.io/en/stable/"
 tab = '    '
 skip_functions = ['connect_semantic_model', '__init__', 'close']
+pattern = r'`([A-Za-z ]+) <(https?://[^\s]+)>`_'
 
 markdown_example = '## Function Examples\n'
 # Function Examples
@@ -29,11 +31,16 @@ for d, d_alias in dirs.items():
         attr = getattr(d, attr_name)
         if inspect.isfunction(attr):
             if attr_name not in skip_functions:
+                docstring = parse(attr.__doc__)
                 link = f"{link_prefix}{d_name}.html#{d_name}.{attr_name}"
                 if d_alias == 'tom':
                     link = f"{link_prefix}sempy_labs.{d_alias}.html#sempy_labs.{d_alias}.{d_name}.{attr_name}"
                 sig = inspect.signature(attr)
-                markdown_example += f"\n### [{attr_name}]({link})\n```python"
+                markdown_example += f"\n### [{attr_name}]({link})"
+                attr_description = docstring.description
+                attr_description = re.sub(pattern, r'[\1](\2)', str(attr_description))
+                markdown_example += f"\n#### {attr_description}"
+                markdown_example += "\n```python"
                 markdown_example += "\nimport sempy_labs as labs"
                 if d_alias == 'tom':
                     markdown_example += "\nfrom sempy_labs.tom import connect_semantic_model"
@@ -91,6 +98,24 @@ for d, d_alias in dirs.items():
                     markdown_example += closing
                 else:
                     markdown_example += f"\n{closing}"
+
+                if docstring.params:
+                    markdown_example += "\n### Parameters"
+                    for p in docstring.params:
+                        p_description = re.sub(pattern, r'[\1](\2)', str(p.description))
+                        for param_name, param in sig.parameters.items():
+                            if param_name == p.arg_name:
+                                if param.default != inspect.Parameter.empty:
+                                    req = 'Optional'
+                                else:
+                                    req = 'Required'
+                            param_value = param.default
+
+                        markdown_example += f"\n> **{p.arg_name}** ({p.type_name})\n>\n>> {req}; {p_description}\n>"
+                if docstring.returns:
+                    ret = docstring.returns
+                    markdown_example += '\n### Returns'
+                    markdown_example += f"\n> {ret.type_name}; {ret.description}"
 
 output_path = os.path.join('/root/semantic-link-labs', 'function_examples.md')
 with open(output_path, 'w') as f:
