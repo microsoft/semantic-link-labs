@@ -259,8 +259,6 @@ def list_backups(workspace: Optional[str] = None) -> pd.DataFrame:
         A pandas dataframe showing a list of backup files contained within a workspace's ADLS Gen2 storage account.
     """
 
-    from sempy_labs._helper_functions import get_adls_client
-
     client = fabric.PowerBIRestClient()
     workspace = fabric.resolve_workspace_name(workspace)
     workspace_id = fabric.resolve_workspace_id(workspace)
@@ -278,36 +276,9 @@ def list_backups(workspace: Optional[str] = None) -> pd.DataFrame:
         )
     storage_account = v[0]["resourceName"]
 
-    df = pd.DataFrame(
-        columns=[
-            "Storage Account Name",
-            "File Path",
-            "File Size",
-            "Creation Time",
-            "Last Modified",
-            "Expiry Time",
-            "Encryption Scope",
-        ]
-    )
-
-    onelake = get_adls_client(storage_account)
-    fs = onelake.get_file_system_client("power-bi-backup")
-
-    for x in list(fs.get_paths()):
-        if not x.is_directory:
-            new_data = {
-                "Storage Account Name": storage_account,
-                "File Path": x.name,
-                "File Size": x.content_length,
-                "Creation Time": x.creation_time,
-                "Last Modified": x.last_modified,
-                "Expiry Time": x.expiry_time,
-                "Encryption Scope": x.encryption_scope,
-            }
-
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    df["File Size"] = df["File Size"].astype(int)
+    df = list_storage_account_files(storage_account=storage_account)
+    colName = "Storage Account Name"
+    df.insert(0, colName, df.pop(colName))
 
     return df
 
