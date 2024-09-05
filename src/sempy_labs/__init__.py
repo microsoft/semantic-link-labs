@@ -39,6 +39,7 @@ from sempy_labs._generate_semantic_model import (
     create_semantic_model_from_bim,
     deploy_semantic_model,
     get_semantic_model_bim,
+    get_semantic_model_size,
 )
 from sempy_labs._list_functions import (
     list_reports_using_semantic_model,
@@ -140,6 +141,7 @@ from sempy_labs._vertipaq import (
 )
 
 __all__ = [
+    "get_semantic_model_size",
     "provision_workspace_identity",
     "deprovision_workspace_identity",
     "list_dataflows",

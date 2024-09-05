@@ -1,8 +1,5 @@
 import sempy.fabric as fabric
 import pandas as pd
-import datetime
-import time
-from sempy_labs._list_functions import list_tables
 from sempy_labs.directlake._get_shared_expression import get_shared_expression
 from sempy_labs._helper_functions import resolve_lakehouse_name, retry
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
@@ -75,7 +72,7 @@ def migrate_tables_columns_to_semantic_model(
     shEx = get_shared_expression(lakehouse, lakehouse_workspace)
 
     dfC = fabric.list_columns(dataset=dataset, workspace=workspace)
-    dfT = list_tables(dataset, workspace)
+    dfT = fabric.list_tables(dataset=dataset, workspace=workspace)
     dfT.rename(columns={"Type": "Table Type"}, inplace=True)
     dfC = pd.merge(
         dfC,

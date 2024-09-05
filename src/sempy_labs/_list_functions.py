@@ -85,7 +85,9 @@ def get_object_level_security(
         return df
 
 
-def list_tables(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
+def list_tables(
+    dataset: str, workspace: Optional[str] = None, extended: Optional[bool] = False
+) -> pd.DataFrame:
     """
     Shows a semantic model's tables and their properties.
 
@@ -97,6 +99,8 @@ def list_tables(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    extended : bool, default=False
+        Adds additional columns including Vertipaq statistics.
 
     Returns
     -------
@@ -104,18 +108,128 @@ def list_tables(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
         A pandas dataframe showing the semantic model's tables and their properties.
     """
 
+    from sempy_labs.tom import connect_semantic_model
+
     workspace = fabric.resolve_workspace_name(workspace)
 
-    df = fabric.list_tables(
-        dataset=dataset,
-        workspace=workspace,
-        additional_xmla_properties=["RefreshPolicy", "RefreshPolicy.SourceExpression"],
+    df = pd.DataFrame(
+        columns=[
+            "Name",
+            "Description",
+            "Hidden",
+            "Data Category",
+            "Type",
+            "Refresh Policy",
+            "Source Expression",
+        ]
     )
 
-    df["Refresh Policy"] = df["Refresh Policy"].notna()
-    df.rename(
-        columns={"Refresh Policy Source Expression": "Source Expression"}, inplace=True
-    )
+    with connect_semantic_model(
+        dataset=dataset, workspace=workspace, readonly=True
+    ) as tom:
+        if extended:
+            dict_df = fabric.evaluate_dax(
+                dataset=dataset,
+                workspace=workspace,
+                dax_string="""
+                EVALUATE SELECTCOLUMNS(FILTER(INFO.STORAGETABLECOLUMNS(), [COLUMN_TYPE] = "BASIC_DATA"),[DIMENSION_NAME],[DICTIONARY_SIZE])
+                """,
+            )
+            dict_sum = dict_df.groupby("[DIMENSION_NAME]")["[DICTIONARY_SIZE]"].sum()
+            data = fabric.evaluate_dax(
+                dataset=dataset,
+                workspace=workspace,
+                dax_string="""EVALUATE SELECTCOLUMNS(INFO.STORAGETABLECOLUMNSEGMENTS(),[TABLE_ID],[DIMENSION_NAME],[USED_SIZE])""",
+            )
+            data_sum = (
+                data[
+                    ~data["[TABLE_ID]"].str.startswith("R$")
+                    & ~data["[TABLE_ID]"].str.startswith("U$")
+                    & ~data["[TABLE_ID]"].str.startswith("H$")
+                ]
+                .groupby("[DIMENSION_NAME]")["[USED_SIZE]"]
+                .sum()
+            )
+            hier_sum = (
+                data[data["[TABLE_ID]"].str.startswith("H$")]
+                .groupby("[DIMENSION_NAME]")["[USED_SIZE]"]
+                .sum()
+            )
+            rel_sum = (
+                data[data["[TABLE_ID]"].str.startswith("R$")]
+                .groupby("[DIMENSION_NAME]")["[USED_SIZE]"]
+                .sum()
+            )
+            uh_sum = (
+                data[data["[TABLE_ID]"].str.startswith("U$")]
+                .groupby("[DIMENSION_NAME]")["[USED_SIZE]"]
+                .sum()
+            )
+            rc = fabric.evaluate_dax(
+                dataset=dataset,
+                workspace=workspace,
+                dax_string="""
+                SELECT [DIMENSION_NAME],[DIMENSION_CARDINALITY] FROM $SYSTEM.MDSCHEMA_DIMENSIONS
+            """,
+            )
+
+        rows = []
+        for t in tom.model.Tables:
+            t_name = t.Name
+            t_type = (
+                "Calculation Group"
+                if t.CalculationGroup
+                else (
+                    "Calculated Table"
+                    if tom.is_calculated_table(table_name=t.Name)
+                    else "Table"
+                )
+            )
+            ref = bool(t.RefreshPolicy)
+            ref_se = t.RefreshPolicy.SourceExpression if ref else None
+
+            new_data = {
+                "Name": t_name,
+                "Description": t.Description,
+                "Hidden": t.IsHidden,
+                "Data Category": t.DataCategory,
+                "Type": t_type,
+                "Refresh Policy": ref,
+                "Source Expression": ref_se,
+            }
+
+            if extended:
+                dict_size = dict_sum.get(t_name, 0)
+                data_size = data_sum.get(t_name, 0)
+                h_size = hier_sum.get(t_name, 0)
+                r_size = rel_sum.get(t_name, 0)
+                u_size = uh_sum.get(t_name, 0)
+                total_size = data_size + dict_size + h_size + r_size + u_size
+
+                new_data.update(
+                    {
+                        "Row Count": (
+                            rc[rc["DIMENSION_NAME"] == t_name][
+                                "DIMENSION_CARDINALITY"
+                            ].iloc[0]
+                            if not rc.empty
+                            else 0
+                        ),
+                        "Total Size": total_size,
+                        "Dictionary Size": dict_size,
+                        "Data Size": data_size,
+                        "Hierarchy Size": h_size,
+                        "Relationship Size": r_size,
+                        "User Hierarchy Size": u_size,
+                    }
+                )
+
+            rows.append(new_data)
+
+        int_cols = ['Row Count', 'Total Size', 'Dictionary Size', 'Data Size', 'Hierarchy Size', 'Relationship Size', 'User Hierarchy Size']
+        df[int_cols] = df[int_cols].astype(int)
+
+        df = pd.DataFrame(rows)
 
     return df
 

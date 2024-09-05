@@ -2707,26 +2707,16 @@ class TOMWrapper:
         Saves Vertipaq Analyzer statistics as annotations on objects in the semantic model.
         """
 
-        dfT = fabric.list_tables(
+        from sempy_labs._list_functions import list_tables
+
+        dfT = list_tables(
             dataset=self._dataset, workspace=self._workspace, extended=True
         )
         dfC = fabric.list_columns(
             dataset=self._dataset, workspace=self._workspace, extended=True
         )
-        # intList = ['Total Size']#, 'Data Size', 'Dictionary Size', 'Hierarchy Size']
-        dfCSum = dfC.groupby(["Table Name"])["Total Size"].sum().reset_index()
-        dfTable = pd.merge(
-            dfT[["Name", "Type", "Row Count"]],
-            dfCSum[["Table Name", "Total Size"]],
-            left_on="Name",
-            right_on="Table Name",
-            how="inner",
-        )
         dfP = fabric.list_partitions(
             dataset=self._dataset, workspace=self._workspace, extended=True
-        )
-        dfP["Records per Segment"] = round(
-            dfP["Record Count"] / dfP["Segment Count"], 2
         )
         dfH = fabric.list_hierarchies(
             dataset=self._dataset, workspace=self._workspace, extended=True
@@ -2736,7 +2726,7 @@ class TOMWrapper:
         )
 
         for t in self.model.Tables:
-            dfT_filt = dfTable[dfTable["Name"] == t.Name]
+            dfT_filt = dfT[dfT["Name"] == t.Name]
             if len(dfT_filt) > 0:
                 row = dfT_filt.iloc[0]
                 rowCount = str(row["Row Count"])

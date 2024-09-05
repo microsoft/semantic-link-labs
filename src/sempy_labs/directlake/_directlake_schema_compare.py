@@ -6,7 +6,6 @@ from sempy_labs._helper_functions import (
 from IPython.display import display
 from sempy_labs.lakehouse import get_lakehouse_columns
 from sempy_labs.directlake._dl_helper import get_direct_lake_source
-from sempy_labs._list_functions import list_tables
 from typing import Optional
 import sempy_labs._icons as icons
 from sempy._utils._log import log
@@ -61,7 +60,7 @@ def direct_lake_schema_compare(
             f"{icons.red_dot} The '{dataset}' semantic model is not in Direct Lake mode."
         )
 
-    dfT = list_tables(dataset, workspace)
+    dfT = fabric.list_tables(dataset=dataset, workspace=workspace)
     dfC = fabric.list_columns(dataset=dataset, workspace=workspace)
     lc = get_lakehouse_columns(lakehouse_name, lakehouse_workspace)
 
