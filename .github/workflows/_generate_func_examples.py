@@ -1,5 +1,4 @@
 import inspect
-import os
 import re
 from docstring_parser import parse
 import sempy_labs
@@ -18,105 +17,118 @@ dirs = {
     TOMWrapper: 'tom',
 }
 
+# Data type mapping
+data_type_link_prefix = ""
+data_type_map = {
+    "str": "https://docs.python.org/3/library/stdtypes.html#str",
+    "list": "https://docs.python.org/3/library/stdtypes.html#list",
+    "bool": "https://docs.python.org/3/library/stdtypes.html#bool",
+    "dict": "https://docs.python.org/3/library/typing.html#typing.Dict",
+    "pandas.DataFrame": "http://pandas.pydata.org/pandas-docs/dev/reference/api/pandas.DataFrame.html#pandas.DataFrame",
+}
+
+data_types = list(data_type_map.keys())
+pattern_type = r'(' + '|'.join(re.escape(dt) for dt in data_types) + r')'
+
+
+def replace_data_type(match):
+    data_type = match.group(1)  # Extract the matched data type
+    if data_type in data_type_map:
+        # Build the full link
+        return f'[{data_type}]({data_type_map[data_type]})'
+    return match.group(0)  # If no match, return the original string
+
+
 link_prefix = "https://semantic-link-labs.readthedocs.io/en/stable/"
 tab = '    '
 skip_functions = ['connect_semantic_model', '__init__', 'close']
-pattern = r'`([A-Za-z ]+) <(https?://[^\s]+)>`_'
+pattern_desc = r'`([A-Za-z ]+) <(https?://[^\s]+)>`_'
+default_values = {
+    'dataset': "AdvWorks",
+    'email_address': 'hello@goodbye.com',
+    'user_name': 'hello@goodbye.com',
+    'languages': ['it-IT', 'zh-CN'],
+    'dax_query': 'EVALUATE SUMMARIZECOLUMNS("MyMeasure", 1)',
+    'column': 'tom.model.Tables["Geography"].Columns["GeographyKey"]',
+    'dependencies': 'labs.get_model_calc_dependencies(dataset=tom._dataset, workspace=tom._workspace)',
+}
+
+
+def format_link(d_alias, d_name, attr_name):
+    return f"{link_prefix}sempy_labs.{d_alias}.html#sempy_labs.{d_alias}.{d_name}.{attr_name}" if d_alias == 'tom' else f"{link_prefix}{d_name}.html#{d_name}.{attr_name}"
+
+
+def create_signature(attr_name, sig, d_alias):
+    func_print = f"{d_alias}.{attr_name}("
+    params = [
+        f"{param_name}={default_values.get(param_name, param.default) if param.default != inspect.Parameter.empty else ''}"
+        for param_name, param in sig.parameters.items() if param_name not in ['kwargs', 'self']
+    ]
+    return func_print + ', '.join(params) + ")"
+
+
+def format_docstring_description(description):
+    return re.sub(pattern_desc, r'[\1](\2)', str(description))
+
 
 markdown_example = '## Function Examples\n'
-# Function Examples
+
+# Gather necessary ingredients into a dictionary
+func_dict = {}
 for d, d_alias in dirs.items():
-    d_name = d.__name__   
+    d_name = d.__name__
     for attr_name in dir(d):
         attr = getattr(d, attr_name)
-        if inspect.isfunction(attr):
-            if attr_name not in skip_functions:
-                docstring = parse(attr.__doc__)
-                link = f"{link_prefix}{d_name}.html#{d_name}.{attr_name}"
-                if d_alias == 'tom':
-                    link = f"{link_prefix}sempy_labs.{d_alias}.html#sempy_labs.{d_alias}.{d_name}.{attr_name}"
-                sig = inspect.signature(attr)
-                markdown_example += f"\n### [{attr_name}]({link})"
-                attr_description = docstring.description
-                attr_description = re.sub(pattern, r'[\1](\2)', str(attr_description))
-                markdown_example += f"\n#### {attr_description}"
-                markdown_example += "\n```python"
-                markdown_example += "\nimport sempy_labs as labs"
-                if d_alias == 'tom':
-                    markdown_example += "\nfrom sempy_labs.tom import connect_semantic_model"
-                    tf = 'True'
-                    markdown_example += f"\nwith connect_semantic_model(dataset='', workspace='', readonly={tf}) as tom:"
-                elif d_alias != 'labs':
-                    markdown_example += f"\nimport {d_name} as {d_alias}"
-                func_print = f"{d_alias}.{attr_name}("
-                if d_alias == 'tom':
-                    markdown_example += f"\n{tab}{func_print}"
-                else:
-                    markdown_example += f"\n{func_print}"
-                params = [param for param_name, param in sig.parameters.items() if param_name not in ['kwargs', 'self']]
-                param_count = len(params)
-                for param_name, param in sig.parameters.items():
-                    is_optional = False
-                    if param_name not in ['kwargs', 'self']:
-                        param_value = ''
-                        if param.default != inspect.Parameter.empty:
-                            param_value = param.default
-                            is_optional = True
-                        elif param_name == 'dataset':
-                            param_value = "AdvWorks"
-                        elif param_name in ['email_address', 'user_name']:
-                            param_value = 'hello@goodbye.com'
-                        elif param_name == 'languages':
-                            param_value = ['it-IT', 'zh-CN']
-                        elif param_name == 'dax_query':
-                            param_value = 'EVALUATE SUMMARIZECOLUMNS("MyMeasure", 1)'
-                        elif param_name == 'column':
-                            param_value = 'tom.model.Tables["Geography"].Columns["GeographyKey"]'
-                        elif param_name in ['object']:
-                            if attr_name in ['row_count', 'total_size', 'used_in_relationships', 'used_in_rls', 'set_translation']:
-                                param_value = 'tom.model.Tables["Sales"]'
-                            elif attr_name in ['records_per_segment']:
-                                param_value = 'tom.model.Tables["Sales"].Partitions["Sales"]'
-                            elif attr_name in ['used_size']:
-                                param_value = 'tom.model.Tables["Geography"].Hierarchies["Geo Hierarchy"]'
-                            elif attr_name in ['fully_qualified_measures']:
-                                param_value = 'tom.model.Tables["Sales"].Measures["Sales Amount"]'
-                        elif param_name == 'dependencies':
-                            param_value = 'labs.get_model_calc_dependencies(dataset=tom._dataset, workspace=tom._workspace)'
+        if inspect.isfunction(attr) and attr_name not in skip_functions:
+            func_dict[attr_name] = {
+                'attr': attr,
+                'directory': d_name,
+                'directory_alias': d_alias,
+            }
 
-                        if param_value not in [None, True, False] and not isinstance(param_value, list) and param_name not in ['object', 'column', 'dependencies']:
-                            param_value = f"'{param_value}'"
-                        p = f"{tab}{param_name}={param_value},"
-                        if is_optional:
-                            p += " # This parameter is optional"
-                        if d_alias == 'tom':
-                            markdown_example += f"\n{tab}{p}"
-                        else:
-                            markdown_example += f"\n{p}"
-                closing = ")\n```\n"
-                if param_count == 0:
-                    markdown_example += closing
-                else:
-                    markdown_example += f"\n{closing}"
+for attr_name, attr_info in func_dict.items():
+    attr = attr_info['attr']
+    d_name = attr_info['directory']
+    d_alias = attr_info['directory_alias']
 
-                if docstring.params:
-                    markdown_example += "\n### Parameters"
-                    for p in docstring.params:
-                        p_description = re.sub(pattern, r'[\1](\2)', str(p.description))
-                        for param_name, param in sig.parameters.items():
-                            if param_name == p.arg_name:
-                                if param.default != inspect.Parameter.empty:
-                                    req = 'Optional'
-                                else:
-                                    req = 'Required'
-                            param_value = param.default
+    docstring = parse(attr.__doc__)
+    sig = inspect.signature(attr)
+    link = format_link(d_alias, d_name, attr_name)
+    description = format_docstring_description(docstring.description)
 
-                        markdown_example += f"\n> **{p.arg_name}** ({p.type_name})\n>\n>> {req}; {p_description}\n>"
-                if docstring.returns:
-                    ret = docstring.returns
-                    markdown_example += '\n### Returns'
-                    markdown_example += f"\n> {ret.type_name}; {ret.description}"
+    # Add Function name with link and description
+    markdown_example += f"\n### [{attr_name}]({link})\n#### {description}"
+    # Add Example Section
+    markdown_example += "\n```python\nimport sempy_labs as labs"
 
-output_path = os.path.join('/root/semantic-link-labs', 'function_examples.md')
+    if d_alias == 'tom':
+        markdown_example += "\nfrom sempy_labs.tom import connect_semantic_model\nwith connect_semantic_model(dataset='', workspace='', readonly=True) as tom:"
+
+    markdown_example += f"\n{create_signature(attr_name, sig, d_alias)}\n```\n"
+
+    # Add Parameters Section
+    if docstring.params:
+        markdown_example += "\n### Parameters"
+        for param_name, p in sig.parameters.items():
+            ind = str(p).find(':')+1
+            p_type = str(p)[ind:].lstrip()
+            param_type = re.sub(pattern_type, replace_data_type, p_type)
+
+            req = 'Optional' if p.default != inspect.Parameter.empty else 'Required'
+            p_description = next((param.description for param in docstring.params if param.arg_name == param_name), None)
+            p_description = format_docstring_description(p_description)
+
+            markdown_example += f"\n> **{param_name}** ({param_type})\n>\n>> {req}; {p_description}\n>"
+
+    # Add Returns Section
+    if docstring.returns:
+        ret = docstring.returns
+        ret_type = ret.type_name
+        return_type = re.sub(pattern_type, replace_data_type, ret_type)
+
+        markdown_example += f"\n### Returns\n> {return_type}; {ret.description}"
+
+# Write to file
+output_path = '/root/semantic-link-labs/function_examples.md'
 with open(output_path, 'w') as f:
     f.write(markdown_example)
