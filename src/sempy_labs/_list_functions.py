@@ -226,7 +226,15 @@ def list_tables(
 
             rows.append(new_data)
 
-        int_cols = ['Row Count', 'Total Size', 'Dictionary Size', 'Data Size', 'Hierarchy Size', 'Relationship Size', 'User Hierarchy Size']
+        int_cols = [
+            "Row Count",
+            "Total Size",
+            "Dictionary Size",
+            "Data Size",
+            "Hierarchy Size",
+            "Relationship Size",
+            "User Hierarchy Size",
+        ]
         df[int_cols] = df[int_cols].astype(int)
 
         df = pd.DataFrame(rows)

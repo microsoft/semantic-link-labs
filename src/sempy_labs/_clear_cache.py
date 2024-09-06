@@ -1,5 +1,9 @@
 import sempy.fabric as fabric
-from sempy_labs._helper_functions import resolve_dataset_id, is_default_semantic_model, get_adls_client
+from sempy_labs._helper_functions import (
+    resolve_dataset_id,
+    is_default_semantic_model,
+    get_adls_client,
+)
 from typing import Optional
 import sempy_labs._icons as icons
 from sempy._utils._log import log
@@ -197,7 +201,7 @@ def copy_semantic_model_backup_file(
         The container in which the source backup file is located.
     target_file_system : str, default="power-bi-backup"
         The container in which the target backup file will be saved.
-    """    
+    """
 
     suffix = ".abf"
 
