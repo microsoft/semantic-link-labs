@@ -852,17 +852,12 @@ def pagination(client, response):
     return responses
 
 
-def validate_weight(weight):
+def validate_weight(weight: float):
 
-    if weight is not None:
-        if weight <= 0:
-            raise ValueError(
-                f"{icons.red_dot} Invalid weight parameter. Weight must be > 0."
-            )
-        elif weight >= 1:
-            raise ValueError(
-                f"{icons.red_dot} Invalid weight parameter. Weight must be < 1."
-            )
+    if weight is not None and (weight <= 0 or weight >= 1):
+        raise ValueError(
+            f"{icons.red_dot} Invalid weight parameter. Weight must be a value between 0 and 1."
+        )
 
 
 def generate_synonyms(word: str) -> List[str]:

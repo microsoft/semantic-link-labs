@@ -4202,45 +4202,48 @@ class TOMWrapper:
 
         deleted = False
 
-        for c in self.model.Cultures:
-            if c.Name == culture_name:
-                lm = json.loads(c.LinguisticMetadata.Content)
-                for k, v in lm.get("Entities", []).items():
-                    binding = v.get("Definition", {}).get("Binding", {})
+        c = self.model.Cultures[culture_name]
+        lm_content = c.LinguisticMetadata.Content
+        if c is None:
+            raise ValueError(f"{icons.red_dot} No linguistic schema exists for the '{culture_name}' culture.")
+        lm = json.loads(lm_content)
+        if "Entities" in lm:
+            for k, v in lm.get("Entities", []).items():
+                binding = v.get("Definition", {}).get("Binding", {})
 
-                    t_name = binding.get("ConceptualEntity")
-                    object_name = binding.get("ConceptualProperty")
+                t_name = binding.get("ConceptualEntity")
+                object_name = binding.get("ConceptualProperty")
 
-                    if object.ObjectType == TOM.ObjectType.Table:
-                        object_name = None
-                        table_name = object.Name
-                        obj = table_name
-                    elif object.ObjectType in [
-                        TOM.ObjectType.Column,
-                        TOM.ObjectType.Hierarchy,
-                    ]:
-                        object_name = object.Name
-                        table_name = object.Parent.Name
-                        obj = format_dax_object_name(table_name, object_name)
-                    elif object.ObjectType == TOM.ObjectType.Measure:
-                        object_name = object.Name
-                        table_name = object.Parent.Name
-                        obj = object.Name
-                    else:
-                        raise ValueError(
-                            f"{icons.red_dot} This function only supports adding synonyms for tables, columns, measures or hierarchies."
-                        )
-
-                    if table_name == t_name and object_name == t_name:
-                        for term in v["Terms"]:
-                            if synonym_name in term:
-                                term[synonym_name]["State"] = "Deleted"
-                                deleted is True
-                if deleted:
-                    c.LinguisticMetadata.Content = json.dumps(lm, indent=4)
-                    print(
-                        f"{icons.green_dot} The '{synonym_name}' synonym was marked as status 'Deleted' for the {obj} {str(object.ObjectType).lower()}."
+                if object.ObjectType == TOM.ObjectType.Table:
+                    object_name = None
+                    table_name = object.Name
+                    obj = table_name
+                elif object.ObjectType in [
+                    TOM.ObjectType.Column,
+                    TOM.ObjectType.Hierarchy,
+                ]:
+                    object_name = object.Name
+                    table_name = object.Parent.Name
+                    obj = format_dax_object_name(table_name, object_name)
+                elif object.ObjectType == TOM.ObjectType.Measure:
+                    object_name = object.Name
+                    table_name = object.Parent.Name
+                    obj = object.Name
+                else:
+                    raise ValueError(
+                        f"{icons.red_dot} This function only supports adding synonyms for tables, columns, measures or hierarchies."
                     )
+
+                if table_name == t_name and object_name == t_name:
+                    for term in v["Terms"]:
+                        if synonym_name in term:
+                            term[synonym_name]["State"] = "Deleted"
+                            deleted is True
+            if deleted:
+                c.LinguisticMetadata.Content = json.dumps(lm, indent=4)
+                print(
+                    f"{icons.green_dot} The '{synonym_name}' synonym was marked as status 'Deleted' for the {obj} {str(object.ObjectType).lower()}."
+                )
 
     def add_synonym(
         self,
@@ -4264,47 +4267,51 @@ class TOMWrapper:
         # self.__add_linguistic_schema()
 
         now = datetime.utcnow().isoformat(timespec="milliseconds") + "Z"
-        for c in self.model.Cultures:
-            if c.Name == culture_name:
-                lm = json.loads(c.LinguisticMetadata.Content)
-                for k, v in lm.get("Entities", []).items():
-                    binding = v.get("Definition", {}).get("Binding", {})
+        c = self.model.Cultures[culture_name]
+        lm_content = c.LinguisticMetadata.Content
+        if c is None:
+            raise ValueError(f"{icons.red_dot} No linguistic schema exists for the '{culture_name}' culture.")
+        lm = json.loads(lm_content)
+        if "Entities" in lm:
+            for k, v in lm.get("Entities", []).items():
+                binding = v.get("Definition", {}).get("Binding", {})
 
-                    t_name = binding.get("ConceptualEntity")
-                    o_name = binding.get("ConceptualProperty")
+                t_name = binding.get("ConceptualEntity")
+                o_name = binding.get("ConceptualProperty")
 
-                    if object.ObjectType == TOM.ObjectType.Table:
-                        object_name = None
-                        table_name = object.Name
-                        obj = table_name
-                    elif object.ObjectType in [
-                        TOM.ObjectType.Column,
-                        TOM.ObjectType.Hierarchy,
-                    ]:
-                        object_name = object.Name
-                        table_name = object.Parent.Name
-                        obj = format_dax_object_name(table_name, object_name)
-                    elif object.ObjectType == TOM.ObjectType.Measure:
-                        object_name = object.Name
-                        table_name = object.Parent.Name
-                        obj = object.Name
-                    else:
-                        raise ValueError(
-                            f"{icons.red_dot} This function only supports adding synonyms for tables, columns, measures or hierarchies."
-                        )
+                if object.ObjectType == TOM.ObjectType.Table:
+                    object_name = None
+                    table_name = object.Name
+                    obj = table_name
+                elif object.ObjectType in [
+                    TOM.ObjectType.Column,
+                    TOM.ObjectType.Hierarchy,
+                ]:
+                    object_name = object.Name
+                    table_name = object.Parent.Name
+                    obj = format_dax_object_name(table_name, object_name)
+                elif object.ObjectType == TOM.ObjectType.Measure:
+                    object_name = object.Name
+                    table_name = object.Parent.Name
+                    obj = object.Name
+                else:
+                    raise ValueError(
+                        f"{icons.red_dot} This function only supports adding synonyms for tables, columns, measures or hierarchies."
+                    )
 
-                    if table_name == t_name and object_name == o_name:
-                        if not any(synonym_name in term for term in v["Terms"]):
-                            new_term = {}
-                            new_term[synonym_name] = {
-                                "Type": "Noun",
-                                "LastModified": now,
-                            }
-                            if weight is not None:
-                                new_term[synonym_name]["Weight"] = weight
+                if table_name == t_name and object_name == o_name:
+                    if not any(synonym_name in term for term in v["Terms"]):
+                        new_term = {}
+                        new_term[synonym_name] = {
+                            "Type": "Noun",
+                            #"State": "Authored", 
+                            "LastModified": now,
+                        }
+                        if weight is not None:
+                            new_term[synonym_name]["Weight"] = weight
 
-                            v["Terms"].append(new_term)
-                            added is True
+                        v["Terms"].append(new_term)
+                        added is True
 
             if added:
                 c.LinguisticMetadata.Content = json.dumps(lm, indent=4)
