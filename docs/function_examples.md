@@ -1,4 +1,5 @@
-## Function Examples
+# Welcome to the Semantic Link Labs Function Examples!
+
 
 ### [add_user_to_workspace](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.add_user_to_workspace)
 #### Adds a user to a workspace.

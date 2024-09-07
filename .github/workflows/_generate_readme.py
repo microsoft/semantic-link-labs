@@ -161,7 +161,7 @@ for category in sorted(category_to_funcs.keys()):
     else:
         sorted_category_to_funcs[category] = sorted(category_to_funcs[category])
 
-prefix = "https://github.com/microsoft/semantic-link-labs/blob/main/function_examples.md#"
+prefix = "https://github.com/microsoft/semantic-link-labs/tree/main/docs/function_examples.md#"
 
 markdown_content += '## Function Categories\n'
 for category, funcs in sorted_category_to_funcs.items():

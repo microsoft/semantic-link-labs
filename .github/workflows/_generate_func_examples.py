@@ -71,7 +71,8 @@ def format_docstring_description(description):
     return re.sub(pattern_desc, r'[\1](\2)', str(description))
 
 
-markdown_example = '## Function Examples\n'
+markdown_example = '# Welcome to the Semantic Link Labs Function Examples!\n\n'
+#markdown_example = '## Function Examples\n'
 
 # Gather necessary ingredients into a dictionary
 func_dict = {}
@@ -129,6 +130,6 @@ for attr_name, attr_info in func_dict.items():
         markdown_example += f"\n### Returns\n> {return_type}; {ret.description}"
 
 # Write to file
-output_path = '/root/semantic-link-labs/function_examples.md'
+output_path = '/root/semantic-link-labs/docs/function_examples.md'
 with open(output_path, 'w') as f:
     f.write(markdown_example)
