@@ -221,8 +221,8 @@ def create_azure_storage_account(
     region: str,
     sku: Optional[str] = "Standard_GRS",
 ):
-    #"https://learn.microsoft.com/en-us/rest/api/storagerp/storage-sample-create-account"
-    #"https://learn.microsoft.com/en-us/rest/api/storageservices/datalakestoragegen2/filesystem/create?view=rest-storageservices-datalakestoragegen2-2019-12-12"
+    # "https://learn.microsoft.com/en-us/rest/api/storagerp/storage-sample-create-account"
+    # "https://learn.microsoft.com/en-us/rest/api/storageservices/datalakestoragegen2/filesystem/create?view=rest-storageservices-datalakestoragegen2-2019-12-12"
 
     import requests
     from sempy.fabric.exceptions import FabricHTTPException

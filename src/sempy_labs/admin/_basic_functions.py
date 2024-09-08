@@ -451,3 +451,83 @@ def scan_workspaces(
         raise FabricHTTPException(response)
 
     return response.json()
+
+
+def list_datasets():
+
+    df = pd.DataFrame(
+        columns=[
+            "Dataset Id",
+            "Dataset Name",
+            "Web URL",
+            "Add Rows API Enabled",
+            "Configured By",
+            "Is Refreshable",
+            "Is Effective Identity Required",
+            "Is Effective Identity Roles Required",
+            "Target Storage Mode",
+            "Created Date",
+            "Content Provider Type",
+            "Create Report Embed URL",
+            "QnA Embed URL",
+            "Upstream Datasets",
+            "Users",
+            "Is In Place Sharing Enabled",
+            "Workspace Id",
+            "Auto Sync Read Only Replicas",
+            "Max Read Only Replicas",
+        ]
+    )
+
+    client = fabric.FabricRestClient()
+
+    response = client.get("/v1.0/myorg/admin/datasets")
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    for v in response.json().get("value", []):
+        workspace_id = v.get("workspaceId")
+        new_data = {
+            "Dataset Id": v.get("id"),
+            "Dataset Name": v.get("name"),
+            "Web URL": v.get("webUrl"),
+            "Add Rows API Enabled": v.get("addRowsAPIEnabled"),
+            "Configured By": v.get("configuredBy"),
+            "Is Refreshable": v.get("isRefreshable"),
+            "Is Effective Identity Required": v.get("isEffectiveIdentityRequired"),
+            "Is Effective Identity Roles Required": v.get(
+                "isEffectiveIdentityRolesRequired"
+            ),
+            "Target Storage Mode": v.get("targetStorageMode"),
+            "Created Date": pd.to_datetime(v.get("createdDate")),
+            "Content Provider Type": v.get("contentProviderType"),
+            "Create Report Embed URL": v.get("createReportEmbedURL"),
+            "QnA Embed URL": v.get("qnaEmbedURL"),
+            "Upstream Datasets": v.get("upstreamDatasets", []),
+            "Users": v.get("users", []),
+            "Is In Place Sharing Enabled": v.get("isInPlaceSharingEnabled"),
+            "Workspace Id": workspace_id,
+            "Auto Sync Read Only Replicas": v.get("queryScaleOutSettings", {}).get(
+                "autoSyncReadOnlyReplicas"
+            ),
+            "Max Read Only Replicas": v.get("queryScaleOutSettings", {}).get(
+                "maxReadOnlyReplicas"
+            ),
+        }
+        df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
+
+    bool_cols = [
+        "Add Rows API Enabled",
+        "Is Refreshable",
+        "Is Effective Identity Required",
+        "Is Effective Identity Roles Required",
+        "Is In Place Sharing Enabled",
+        "Auto Sync Read Only Replicas",
+    ]
+    df[bool_cols] = df[bool_cols].astype(bool)
+
+    df["Created Date"] = pd.to_datetime(df["Created Date"])
+    df["Max Read Only Replicas"] = df["Max Read Only Replicas"].astype(int)
+
+    return df

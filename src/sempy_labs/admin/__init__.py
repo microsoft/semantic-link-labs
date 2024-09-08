@@ -7,6 +7,7 @@ from sempy_labs.admin._basic_functions import (
     list_external_data_shares,
     revoke_external_data_share,
     list_workspaces,
+    list_datasets,
 )
 from sempy_labs.admin._domains import (
     list_domains,
@@ -22,6 +23,7 @@ from sempy_labs.admin._domains import (
 )
 
 __all__ = [
+    "list_datasets",
     "list_workspaces",
     "assign_workspaces_to_capacity",
     "list_capacities",
