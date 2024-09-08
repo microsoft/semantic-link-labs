@@ -1,3 +1,4 @@
+from sempy_labs.directlake._generate_shared_expression import generate_shared_expression
 from sempy_labs.directlake._directlake_schema_compare import direct_lake_schema_compare
 from sempy_labs.directlake._directlake_schema_sync import direct_lake_schema_sync
 from sempy_labs.directlake._dl_helper import (
@@ -31,6 +32,7 @@ from sempy_labs.directlake._warm_cache import (
 )
 
 __all__ = [
+    "generate_shared_expression",
     "direct_lake_schema_compare",
     "direct_lake_schema_sync",
     "check_fallback_reason",
