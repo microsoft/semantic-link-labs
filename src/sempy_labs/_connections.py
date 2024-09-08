@@ -73,6 +73,7 @@ def list_connections() -> pd.DataFrame:
 
     return df
 
+
 def create_connection_cloud(
     name: str,
     server_name: str,
