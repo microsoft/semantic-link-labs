@@ -30,11 +30,12 @@ from sempy_labs._clear_cache import (
     list_storage_account_files,
 )
 
-# from sempy_labs._connections import (
+from sempy_labs._connections import (
+    list_connections,
 # create_connection_cloud,
 # create_connection_vnet,
 # create_connection_on_prem
-# )
+)
 from sempy_labs._dax import evaluate_dax_impersonation
 from sempy_labs._generate_semantic_model import (
     create_blank_semantic_model,
@@ -143,6 +144,7 @@ from sempy_labs._vertipaq import (
 )
 
 __all__ = [
+    "list_connections",
     "get_semantic_model_size",
     "provision_workspace_identity",
     "deprovision_workspace_identity",

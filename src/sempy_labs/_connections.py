@@ -3,6 +3,76 @@ import pandas as pd
 from sempy.fabric.exceptions import FabricHTTPException
 
 
+def list_connections() -> pd.DataFrame:
+    """
+    Lists all available connections.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing all available connections.
+    """
+
+    client = fabric.FabricRestClient()
+    response = client.get("/v1/connections")
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    df = pd.DataFrame(
+        columns=[
+            "Connection Id",
+            "Connection Name",
+            "Gateway Id",
+            "Connectivity Type",
+            "Connection Path",
+            "Connection Type",
+            "Privacy Level",
+            "Credential Type",
+            "Single Sign on Type",
+            "Connection Encyrption",
+            "Skip Test Connection",
+        ]
+    )
+
+    for i in response.json().get("value", []):
+        connection_details = i.get("connectionDetails", {})
+        credential_details = i.get("credentialDetails", {})
+
+        new_data = {
+            "Connection Id": i.get("id"),
+            "Connection Name": i.get("displayName"),
+            "Gateway Id": i.get("gatewayId"),
+            "Connectivity Type": i.get("connectivityType"),
+            "Connection Path": connection_details.get("path"),
+            "Connection Type": connection_details.get("type"),
+            "Privacy Level": i.get("privacyLevel"),
+            "Credential Type": (
+                credential_details.get("credentialType") if credential_details else None
+            ),
+            "Single Sign On Type": (
+                credential_details.get("singleSignOnType")
+                if credential_details
+                else None
+            ),
+            "Connection Encryption": (
+                credential_details.get("connectionEncryption")
+                if credential_details
+                else None
+            ),
+            "Skip Test Connection": (
+                credential_details.get("skipTestConnection")
+                if credential_details
+                else None
+            ),
+        }
+
+        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    bool_cols = ["Skip Test Connection"]
+    df[bool_cols] = df[bool_cols].astype(bool)
+
+    return df
+
 def create_connection_cloud(
     name: str,
     server_name: str,
