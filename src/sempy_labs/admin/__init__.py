@@ -8,6 +8,8 @@ from sempy_labs.admin._basic_functions import (
     revoke_external_data_share,
     list_workspaces,
     list_datasets,
+    list_item_access_details,
+    list_access_entities,
 )
 from sempy_labs.admin._domains import (
     list_domains,
@@ -23,6 +25,8 @@ from sempy_labs.admin._domains import (
 )
 
 __all__ = [
+    "list_access_entities",
+    "list_item_access_details",
     "list_datasets",
     "list_workspaces",
     "assign_workspaces_to_capacity",

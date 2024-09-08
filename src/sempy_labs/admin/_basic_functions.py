@@ -487,7 +487,6 @@ def list_datasets():
         raise FabricHTTPException(response)
 
     for v in response.json().get("value", []):
-        workspace_id = v.get("workspaceId")
         new_data = {
             "Dataset Id": v.get("id"),
             "Dataset Name": v.get("name"),
@@ -507,7 +506,7 @@ def list_datasets():
             "Upstream Datasets": v.get("upstreamDatasets", []),
             "Users": v.get("users", []),
             "Is In Place Sharing Enabled": v.get("isInPlaceSharingEnabled"),
-            "Workspace Id": workspace_id,
+            "Workspace Id": v.get("workspaceId"),
             "Auto Sync Read Only Replicas": v.get("queryScaleOutSettings", {}).get(
                 "autoSyncReadOnlyReplicas"
             ),
@@ -529,5 +528,96 @@ def list_datasets():
 
     df["Created Date"] = pd.to_datetime(df["Created Date"])
     df["Max Read Only Replicas"] = df["Max Read Only Replicas"].astype(int)
+
+    return df
+
+
+def list_item_access_details(
+    item_name: str, type: str, workspace: Optional[str] = None
+):
+
+    # https://learn.microsoft.com/en-us/rest/api/fabric/admin/items/list-item-access-details?tabs=HTTP
+
+    workspace = fabric.resolve_workspace_name(workspace)
+    workspace_id = fabric.resolve_workspace_id(workspace)
+    item_id = fabric.resolve_item_id(
+        item_name=item_name, type=type, workspace=workspace
+    )
+
+    df = pd.DataFrame(
+        columns=[
+            "User Id",
+            "User Name",
+            "User Type",
+            "User Principal Name",
+            "Item Name",
+            "Item Type",
+            "Item Id",
+            "Permissions",
+            "Additional Permissions",
+        ]
+    )
+    client = fabric.FabricRestClient()
+    response = client.get(f"/v1/admin/workspaces/{workspace_id}/items/{item_id}/users")
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    for v in response.json().get("accessDetails", []):
+        new_data = {
+            "User Id": v.get("principal", {}).get("id"),
+            "User Name": v.get("principal", {}).get("displayName"),
+            "User Type": v.get("principal", {}).get("type"),
+            "User Principal Name": v.get("principal", {})
+            .get("userDetails", {})
+            .get("userPrincipalName"),
+            "Item Type": v.get("itemAccessDetails", {}).get("type"),
+            "Permissions": v.get("itemAccessDetails", {}).get("permissions"),
+            "Additional Permissions": v.get("itemAccessDetails", {}).get(
+                "additionalPermissions"
+            ),
+            "Item Name": item_name,
+            "Item Id": item_id,
+        }
+        df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
+
+    return df
+
+
+def list_access_entities(
+    user_email_address: str,
+):
+
+    # https://learn.microsoft.com/en-us/rest/api/fabric/admin/users/list-access-entities?tabs=HTTP
+
+    df = pd.DataFrame(
+        columns=[
+            "Item Id",
+            "Item Name",
+            "Item Type",
+            "Permissions",
+            "Additional Permissions",
+        ]
+    )
+    client = fabric.FabricRestClient()
+    response = client.get(f"/v1/admin/users/{user_email_address}/access")
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    responses = pagination(client, response)
+
+    for r in responses:
+        for v in r.get("accessEntities", []):
+            new_data = {
+                "Item Id": v.get("id"),
+                "Item Name": v.get("displayName"),
+                "Item Type": v.get("itemAccessDetails", {}).get("type"),
+                "Permissions": v.get("itemAccessDetails", {}).get("permissions"),
+                "Additional Permissions": v.get("itemAccessDetails", {}).get(
+                    "additionalPermissions"
+                ),
+            }
+            df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
 
     return df
