@@ -1,5 +1,9 @@
 import sempy.fabric as fabric
-from sempy_labs._helper_functions import resolve_lakehouse_name, resolve_lakehouse_id, resolve_warehouse_id
+from sempy_labs._helper_functions import (
+    resolve_lakehouse_name,
+    resolve_lakehouse_id,
+    resolve_warehouse_id,
+)
 from typing import Optional
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
