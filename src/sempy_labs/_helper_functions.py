@@ -12,7 +12,6 @@ from uuid import UUID
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 import urllib.parse
-from notebookutils import mssparkutils
 from azure.core.credentials import TokenCredential, AccessToken
 from azure.storage.filedatalake import DataLakeServiceClient
 
@@ -883,6 +882,8 @@ class FabricTokenCredential(TokenCredential):
         enable_cae: Optional[bool] = False,
         **kwargs: any,
     ) -> AccessToken:
+
+        from notebookutils import mssparkutils
         token = mssparkutils.credentials.getToken(scopes)
         access_token = AccessToken(token, 0)
 
