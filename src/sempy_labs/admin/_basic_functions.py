@@ -1,5 +1,5 @@
 import sempy.fabric as fabric
-from typing import Optional, List
+from typing import Optional, List, Union
 from uuid import UUID
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
@@ -10,7 +10,9 @@ import pandas as pd
 import time
 
 
-def list_workspaces(top: Optional[int] = 5000, skip: Optional[int] = None):
+def list_workspaces(
+    top: Optional[int] = 5000, skip: Optional[int] = None
+) -> pd.DataFrame:
 
     df = pd.DataFrame(
         columns=[
@@ -453,7 +455,7 @@ def scan_workspaces(
     return response.json()
 
 
-def list_datasets():
+def list_datasets() -> pd.DataFrame:
 
     df = pd.DataFrame(
         columns=[
@@ -534,7 +536,7 @@ def list_datasets():
 
 def list_item_access_details(
     item_name: str, type: str, workspace: Optional[str] = None
-):
+) -> pd.DataFrame:
 
     # https://learn.microsoft.com/en-us/rest/api/fabric/admin/items/list-item-access-details?tabs=HTTP
 
@@ -586,7 +588,7 @@ def list_item_access_details(
 
 def list_access_entities(
     user_email_address: str,
-):
+) -> pd.DataFrame:
 
     # https://learn.microsoft.com/en-us/rest/api/fabric/admin/users/list-access-entities?tabs=HTTP
 
@@ -619,5 +621,123 @@ def list_access_entities(
                 ),
             }
             df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
+
+    return df
+
+
+def list_workspace_access_details(
+    workspace: Optional[Union[str, UUID]] = None
+) -> pd.DataFrame:
+
+    # https://learn.microsoft.com/en-us/rest/api/fabric/admin/items/list-items?tabs=HTTP
+
+    workspace_name = fabric.resolve_workspace_name(workspace)
+    workspace_id = fabric.resolve_workspace_id(workspace_name)
+
+    df = pd.DataFrame(
+        columns=[
+            "User Id",
+            "User Name",
+            "User Type",
+            "Workspace Name",
+            "Workspace Id",
+            "Workspace Role",
+        ]
+    )
+    client = fabric.FabricRestClient()
+    response = client.get(f"/v1/admin/workspaces/{workspace_id}/users")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    for v in response.json().get("accessDetails", []):
+        new_data = {
+            "User Id": v.get("principal", {}).get("id"),
+            "User Name": v.get("principal", {}).get("displayName"),
+            "User Type": v.get("principal", {}).get("type"),
+            "Workspace Name": workspace_name,
+            "Workspace Id": workspace_id,
+            "Workspace Role": v.get("workspaceAccessDetails", {}).get("workspaceRole"),
+        }
+        df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
+
+    return df
+
+
+def list_items(
+    capacity_name: Optional[str] = None,
+    workspace: Optional[str] = None,
+    state: Optional[str] = None,
+    type: Optional[str] = None,
+) -> pd.DataFrame:
+
+    url = "/v1/admin/items?"
+
+    df = pd.DataFrame(
+        columns=[
+            "Item Id",
+            "Item Name",
+            "Type",
+            "Description",
+            "State",
+            "Last Updated Date",
+            "Creator Principal Id",
+            "Creator Principal Display Name",
+            "Creator Principal Type",
+            "Creator User Principal Name",
+            "Workspace Id",
+            "Capacity Id",
+        ]
+    )
+
+    if workspace is not None:
+        workspace = fabric.resolve_workspace_name(workspace)
+        workspace_id = fabric.resolve_workspace_id(workspace)
+        url += f"workspaceId={workspace_id}&"
+    if capacity_name is not None:
+        dfC = list_capacities()
+        dfC_filt = dfC[dfC["Capacity Name"] == capacity_name]
+        if len(dfC_filt) == 0:
+            raise ValueError()
+        capacity_id = dfC_filt["Capacity Id"].iloc[0]
+        url += f"capacityId={capacity_id}&"
+    if state is not None:
+        url += f"state={state}&"
+    if type is not None:
+        url += f"type={type}&"
+
+    if url.endswith("?"):
+        url = url[:-1]
+    if url.endswith("&"):
+        url = url[:-1]
+
+    client = fabric.FabricRestClient()
+    response = client.get(url)
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    responses = pagination(client, response)
+
+    for r in responses:
+        for v in r.get("itemEntities", []):
+            new_data = {
+                "Item Id": v.get("id"),
+                "Type": v.get("type"),
+                "Item Name": v.get("name"),
+                "Description": v.get("description"),
+                "State": v.get("state"),
+                "Last Updated Date": v.get("lastUpdatedDate"),
+                "Creator Principal Id": v.get("creatorPrincipal", {}).get("id"),
+                "Creator Principal Display Name": v.get("creatorPrincipal", {}).get(
+                    "displayName"
+                ),
+                "Creator Principal Type": v.get("creatorPrincipal", {}).get("type"),
+                "Creator User Principal Name": v.get("creatorPrincipal", {})
+                .get("userDetails", {})
+                .get("userPrincipalName"),
+                "Workspace Id": v.get("workspaceId"),
+                "Capacity Id": v.get("capacityId"),
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
