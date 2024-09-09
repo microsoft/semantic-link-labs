@@ -4075,7 +4075,26 @@ class TOMWrapper:
         return isCalcTable
 
     def close(self):
+
+        import ast
+
         if not self._readonly and self.model is not None:
+            ann_name = 'PBI_ProTooling'
+            sll_value = 'SLL'
+            o = self.model
+
+            ann_value = self.get_annotation_value(object=o, name=ann_name)
+
+            if ann_value is None:
+                self.set_annotation(object=o, name=ann_name, value=f'["{sll_value}"]')
+            else:
+                try:
+                    ann_value = ast.literal_eval(ann_value)
+                    ann_value.append(sll_value)
+                    self.set_annotation(object=o, name=ann_name, value=str(ann_value).replace("'", '"'))
+                except Exception:
+                    pass
+
             self.model.SaveChanges()
 
             if len(self._tables_added) > 0:
