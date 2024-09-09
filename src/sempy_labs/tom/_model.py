@@ -2409,7 +2409,7 @@ class TOMWrapper:
         self.model.Tables[table_name].Columns[column_name].IsAvailableInMDX = value
 
     def set_summarize_by(
-        self, table_name: str, column_name: str, value: Optional[str] = None
+        self, table_name: str, column_name: str, value: Optional[str] = 'Default'
     ):
         """
         Sets the `SummarizeBy <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.column.summarizeby?view=analysisservices-dotnet#microsoft-analysisservices-tabular-column-summarizeby>`_ property on a column.
@@ -2440,8 +2440,6 @@ class TOMWrapper:
         ]
         # https://learn.microsoft.com/en-us/dotnet/api/microsoft.analysisservices.tabular.column.summarizeby?view=analysisservices-dotnet#microsoft-analysisservices-tabular-column-summarizeby
 
-        if value is None:
-            value = "Default"
         value = (
             value.capitalize()
             .replace("Distinctcount", "DistinctCount")
