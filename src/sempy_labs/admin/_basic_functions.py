@@ -39,11 +39,14 @@ def list_workspaces(
         raise FabricHTTPException(response)
 
     for v in response.json().get("value", []):
+        capacity_id = v.get("capacityId")
+        if capacity_id:
+            capacity_id = capacity_id.lower()
         new_data = {
             "Id": v.get("id"),
             "Is Read Only": v.get("isReadOnly"),
             "Is On Dedicated Capacity": v.get("isOnDedicatedCapacity"),
-            "Capacity Id": v.get("capacityId").lower(),
+            "Capacity Id": capacity_id,
             "Default Dataset Storage Format": v.get("defaultDatasetStorageFormat"),
             "Type": v.get("type"),
             "Name": v.get("name"),
