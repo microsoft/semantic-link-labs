@@ -13,7 +13,6 @@ import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 import urllib.parse
 from azure.core.credentials import TokenCredential, AccessToken
-from azure.storage.filedatalake import DataLakeServiceClient
 
 
 def create_abfss_path(
@@ -890,7 +889,10 @@ class FabricTokenCredential(TokenCredential):
         return access_token
 
 
-def get_adls_client(account_name) -> DataLakeServiceClient:
+def get_adls_client(account_name):
+
+    from azure.storage.filedatalake import DataLakeServiceClient
+
     account_url = f"https://{account_name}.dfs.core.windows.net"
 
     service_client = DataLakeServiceClient(
