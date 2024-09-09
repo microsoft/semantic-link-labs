@@ -43,7 +43,7 @@ def list_workspaces(
             "Id": v.get("id"),
             "Is Read Only": v.get("isReadOnly"),
             "Is On Dedicated Capacity": v.get("isOnDedicatedCapacity"),
-            "Capacity Id": v.get("capacityId"),
+            "Capacity Id": v.get("capacityId").lower(),
             "Default Dataset Storage Format": v.get("defaultDatasetStorageFormat"),
             "Type": v.get("type"),
             "Name": v.get("name"),
