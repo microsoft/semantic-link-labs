@@ -63,8 +63,7 @@ def run_model_bpa(
     pandas.DataFrame
         A pandas dataframe in HTML format showing semantic model objects which violated the best practice analyzer rules.
     """
-
-    from synapse.ml.services import Translate
+    
     import polib
 
     if "extend" in kwargs:
@@ -162,72 +161,6 @@ def run_model_bpa(
                             entry.msgstr
                         )
 
-        def translate_using_spark(rule_file):
-            rules_temp = rule_file.copy()
-            rules_temp = rules_temp.drop(["Expression", "URL", "Severity"], axis=1)
-
-            schema = StructType(
-                [
-                    StructField("Category", StringType(), True),
-                    StructField("Scope", StringType(), True),
-                    StructField("Rule Name", StringType(), True),
-                    StructField("Description", StringType(), True),
-                ]
-            )
-
-            spark = SparkSession.builder.getOrCreate()
-            dfRules = spark.createDataFrame(rules_temp, schema)
-
-            columns = ["Category", "Rule Name", "Description"]
-            for clm in columns:
-                translate = (
-                    Translate()
-                    .setTextCol(clm)
-                    .setToLanguage(language)
-                    .setOutputCol("translation")
-                    .setConcurrency(5)
-                )
-
-                if clm == "Rule Name":
-                    transDF = (
-                        translate.transform(dfRules)
-                        .withColumn(
-                            "translation", flatten(col("translation.translations"))
-                        )
-                        .withColumn("translation", col("translation.text"))
-                        .select(clm, "translation")
-                    )
-                else:
-                    transDF = (
-                        translate.transform(dfRules)
-                        .withColumn(
-                            "translation", flatten(col("translation.translations"))
-                        )
-                        .withColumn("translation", col("translation.text"))
-                        .select("Rule Name", clm, "translation")
-                    )
-
-                df_panda = transDF.toPandas()
-                rule_file = pd.merge(
-                    rule_file,
-                    df_panda[["Rule Name", "translation"]],
-                    on="Rule Name",
-                    how="left",
-                )
-
-                rule_file = rule_file.rename(
-                    columns={"translation": f"{clm}Translated"}
-                )
-                rule_file[f"{clm}Translated"] = rule_file[f"{clm}Translated"].apply(
-                    lambda x: x[0] if x is not None else None
-                )
-
-            for clm in columns:
-                rule_file = rule_file.drop([clm], axis=1)
-                rule_file = rule_file.rename(columns={f"{clm}Translated": clm})
-
-            return rule_file
-
         translated = False
 
         # Translations
@@ -242,6 +175,76 @@ def run_model_bpa(
                 dataset=dataset, workspace=workspace, dependencies=dep
             )
         if language is not None and not translated:
+
+            def translate_using_spark(rule_file):
+
+                from synapse.ml.services import Translate
+
+                rules_temp = rule_file.copy()
+                rules_temp = rules_temp.drop(["Expression", "URL", "Severity"], axis=1)
+
+                schema = StructType(
+                    [
+                        StructField("Category", StringType(), True),
+                        StructField("Scope", StringType(), True),
+                        StructField("Rule Name", StringType(), True),
+                        StructField("Description", StringType(), True),
+                    ]
+                )
+
+                spark = SparkSession.builder.getOrCreate()
+                dfRules = spark.createDataFrame(rules_temp, schema)
+
+                columns = ["Category", "Rule Name", "Description"]
+                for clm in columns:
+                    translate = (
+                        Translate()
+                        .setTextCol(clm)
+                        .setToLanguage(language)
+                        .setOutputCol("translation")
+                        .setConcurrency(5)
+                    )
+
+                    if clm == "Rule Name":
+                        transDF = (
+                            translate.transform(dfRules)
+                            .withColumn(
+                                "translation", flatten(col("translation.translations"))
+                            )
+                            .withColumn("translation", col("translation.text"))
+                            .select(clm, "translation")
+                        )
+                    else:
+                        transDF = (
+                            translate.transform(dfRules)
+                            .withColumn(
+                                "translation", flatten(col("translation.translations"))
+                            )
+                            .withColumn("translation", col("translation.text"))
+                            .select("Rule Name", clm, "translation")
+                        )
+
+                    df_panda = transDF.toPandas()
+                    rule_file = pd.merge(
+                        rule_file,
+                        df_panda[["Rule Name", "translation"]],
+                        on="Rule Name",
+                        how="left",
+                    )
+
+                    rule_file = rule_file.rename(
+                        columns={"translation": f"{clm}Translated"}
+                    )
+                    rule_file[f"{clm}Translated"] = rule_file[f"{clm}Translated"].apply(
+                        lambda x: x[0] if x is not None else None
+                    )
+
+                for clm in columns:
+                    rule_file = rule_file.drop([clm], axis=1)
+                    rule_file = rule_file.rename(columns={f"{clm}Translated": clm})
+
+                return rule_file
+
             rules = translate_using_spark(rules)
 
         rules["Severity"].replace("Warning", icons.warning, inplace=True)
