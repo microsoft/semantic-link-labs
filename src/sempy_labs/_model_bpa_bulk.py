@@ -229,7 +229,9 @@ def create_model_bpa_semantic_model(
     expr = get_shared_expression(lakehouse=lakehouse, workspace=lakehouse_workspace)
 
     # Create blank model
-    create_blank_semantic_model(dataset=dataset, workspace=lakehouse_workspace)
+    create_blank_semantic_model(
+        dataset=dataset, workspace=lakehouse_workspace, overwrite=True
+    )
 
     @retry(
         sleep_time=1,

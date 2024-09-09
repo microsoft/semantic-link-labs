@@ -13,12 +13,14 @@ from sempy_labs._helper_functions import (
 )
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 import sempy_labs._icons as icons
+from sempy_labs._refresh_semantic_model import refresh_semantic_model
 
 
 def create_blank_semantic_model(
     dataset: str,
     compatibility_level: int = 1605,
     workspace: Optional[str] = None,
+    overwrite: Optional[bool] = True,
 ):
     """
     Creates a new blank semantic model (no tables/columns etc.).
@@ -33,34 +35,42 @@ def create_blank_semantic_model(
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    overwrite : bool, default=False
+        If set to True, overwrites the existing semantic model in the workspace if it exists.
     """
 
     workspace = fabric.resolve_workspace_name(workspace)
+    dfD = fabric.list_datasets(workspace=workspace, mode="rest")
+    dfD_filt = dfD[dfD["Dataset Name"] == dataset]
+
+    if len(dfD_filt) > 0 and not overwrite:
+        raise ValueError(
+            f"{icons.warning} The '{dataset}' semantic model already exists within the '{workspace}' workspace. The 'overwrite' parameter is set to False so the blank new semantic model was not created."
+        )
 
     min_compat = 1500
-
     if compatibility_level < min_compat:
         raise ValueError(
             f"{icons.red_dot} Compatiblity level must be at least {min_compat}."
         )
 
     tmsl = f"""
-  {{
-    "createOrReplace": {{
-      "object": {{
-        "database": '{dataset}'
-      }},
-      "database": {{
-        "name": '{dataset}',
-        "compatibilityLevel": {compatibility_level},
-        "model": {{
-          "culture": "en-US",
-          "defaultPowerBIDataSourceVersion": "powerBI_V3"
+    {{
+        "createOrReplace": {{
+        "object": {{
+            "database": '{dataset}'
+        }},
+        "database": {{
+            "name": '{dataset}',
+            "compatibilityLevel": {compatibility_level},
+            "model": {{
+            "culture": "en-US",
+            "defaultPowerBIDataSourceVersion": "powerBI_V3"
+            }}
         }}
-      }}
+        }}
     }}
-  }}
-  """
+    """
 
     fabric.execute_tmsl(script=tmsl, workspace=workspace)
 
@@ -89,12 +99,12 @@ def create_semantic_model_from_bim(
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    dfI = fabric.list_items(workspace=workspace, type="SemanticModel")
-    dfI_filt = dfI[(dfI["Display Name"] == dataset)]
+    dfI = fabric.list_datasets(workspace=workspace, mode="rest")
+    dfI_filt = dfI[(dfI["Dataset Name"] == dataset)]
 
     if len(dfI_filt) > 0:
         raise ValueError(
-            f"{icons.red_dot} '{dataset}' already exists as a semantic model in the '{workspace}' workspace."
+            f"{icons.red_dot} The '{dataset}' semantic model already exists as a semantic model in the '{workspace}' workspace."
         )
 
     client = fabric.FabricRestClient()
@@ -133,12 +143,77 @@ def create_semantic_model_from_bim(
     )
 
 
+def update_semantic_model_from_bim(
+    dataset: str, bim_file: dict, workspace: Optional[str] = None
+):
+    """
+    Updates a semantic model definition based on a Model.bim file.
+
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    bim_file : dict
+        The model.bim file.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    dfD = fabric.list_datasets(workspace=workspace, mode="rest")
+    dfD_filt = dfD[dfD["Dataset Name"] == dataset]
+    if len(dfD_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} The '{dataset}' semantic model within the '{workspace}' workspace does not exist."
+        )
+    dataset_id = dfD_filt["Dataset Id"].iloc[0]
+
+    client = fabric.FabricRestClient()
+    defPBIDataset = {"version": "1.0", "settings": {}}
+
+    payloadPBIDefinition = _conv_b64(defPBIDataset)
+    payloadBim = _conv_b64(bim_file)
+
+    request_body = {
+        "displayName": dataset,
+        "definition": {
+            "parts": [
+                {
+                    "path": "model.bim",
+                    "payload": payloadBim,
+                    "payloadType": "InlineBase64",
+                },
+                {
+                    "path": "definition.pbidataset",
+                    "payload": payloadPBIDefinition,
+                    "payloadType": "InlineBase64",
+                },
+            ]
+        },
+    }
+
+    response = client.post(
+        f"/v1/workspaces/{workspace_id}/semanticModels/{dataset_id}/updateDefinition",
+        json=request_body,
+    )
+
+    lro(client, response, status_codes=[200, 202])
+
+    print(
+        f"{icons.green_dot} The '{dataset}' semantic model has been updated within the '{workspace}' workspace."
+    )
+
+
 def deploy_semantic_model(
     source_dataset: str,
     source_workspace: Optional[str] = None,
     target_dataset: Optional[str] = None,
     target_workspace: Optional[str] = None,
     refresh_target_dataset: Optional[bool] = True,
+    overwrite: Optional[bool] = False,
 ):
     """
     Deploys a semantic model based on an existing semantic model.
@@ -159,13 +234,9 @@ def deploy_semantic_model(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     refresh_target_dataset : bool, default=True
         If set to True, this will initiate a full refresh of the target semantic model in the target workspace.
-
-    Returns
-    -------
-
+    overwrite : bool, default=False
+        If set to True, overwrites the existing semantic model in the workspace if it exists.
     """
-
-    from sempy_labs import refresh_semantic_model
 
     source_workspace = fabric.resolve_workspace_name(source_workspace)
 
@@ -181,11 +252,28 @@ def deploy_semantic_model(
             f"parameters have the same value. At least one of these must be different. Please update the parameters."
         )
 
+    dfD = fabric.list_datasets(workspace=target_workspace, mode="rest")
+    dfD_filt = dfD[dfD["Dataset Name"] == target_dataset]
+    if len(dfD_filt) > 0 and not overwrite:
+        raise ValueError(
+            f"{icons.warning} The '{target_dataset}' semantic model already exists within the '{target_workspace}' workspace. The 'overwrite' parameter is set to False so the source semantic model was not deployed to the target destination."
+        )
+
     bim = get_semantic_model_bim(dataset=source_dataset, workspace=source_workspace)
 
-    create_semantic_model_from_bim(
-        dataset=target_dataset, bim_file=bim, workspace=target_workspace
-    )
+    # Create the semantic model if the model does not exist
+    if len(dfD_filt) == 0:
+        create_semantic_model_from_bim(
+            dataset=target_dataset,
+            bim_file=bim,
+            workspace=target_workspace,
+            overwrite=overwrite,
+        )
+    # Update the semantic model if the model exists
+    else:
+        update_semantic_model_from_bim(
+            dataset=target_dataset, bim_file=bim, workspace=target_workspace
+        )
 
     if refresh_target_dataset:
         refresh_semantic_model(dataset=target_dataset, workspace=target_workspace)

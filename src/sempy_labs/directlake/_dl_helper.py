@@ -126,18 +126,15 @@ def generate_direct_lake_semantic_model(
     expr = get_shared_expression(lakehouse=lakehouse, workspace=lakehouse_workspace)
     dfD = fabric.list_datasets(workspace=workspace)
     dfD_filt = dfD[dfD["Dataset Name"] == dataset]
-    dfD_filt_len = len(dfD_filt)
 
-    if dfD_filt_len > 0 and overwrite is False:
+    if len(dfD_filt) > 0 and not overwrite:
         raise ValueError(
             f"{icons.red_dot} The '{dataset}' semantic model within the '{workspace}' workspace already exists. Overwrite is set to False so the new semantic model has not been created."
         )
-    if dfD_filt_len > 0 and overwrite:
-        print(
-            f"{icons.warning} Overwriting the existing '{dataset}' semantic model within the '{workspace}' workspace."
-        )
 
-    create_blank_semantic_model(dataset=dataset, workspace=workspace)
+    create_blank_semantic_model(
+        dataset=dataset, workspace=workspace, overwrite=overwrite
+    )
 
     @retry(
         sleep_time=1,
