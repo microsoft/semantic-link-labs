@@ -1828,9 +1828,6 @@ def create_custom_pool(
         The name of the Fabric workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
     """
 
     # https://learn.microsoft.com/en-us/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool
@@ -1911,9 +1908,6 @@ def update_custom_pool(
         The name of the Fabric workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
     """
 
     # https://learn.microsoft.com/en-us/rest/api/fabric/spark/custom-pools/update-workspace-custom-pool?tabs=HTTP
@@ -1986,9 +1980,6 @@ def delete_custom_pool(pool_name: str, workspace: Optional[str] = None):
         The name of the Fabric workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -2024,15 +2015,16 @@ def assign_workspace_to_capacity(capacity_name: str, workspace: Optional[str] = 
         The name of the Fabric workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     dfC = fabric.list_capacities()
     dfC_filt = dfC[dfC["Display Name"] == capacity_name]
+
+    if len(dfC_filt) == 0:
+        raise ValueError(f"{icons.red_dot} The '{capacity_name}' capacity does not exist.")
+
     capacity_id = dfC_filt["Id"].iloc[0]
 
     request_body = {"capacityId": capacity_id}
@@ -2041,7 +2033,6 @@ def assign_workspace_to_capacity(capacity_name: str, workspace: Optional[str] = 
     response = client.post(
         f"/v1/workspaces/{workspace_id}/assignToCapacity",
         json=request_body,
-        lro_wait=True,
     )
 
     if response.status_code not in [200, 202]:
@@ -2061,9 +2052,6 @@ def unassign_workspace_from_capacity(workspace: Optional[str] = None):
         The name of the Fabric workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
     """
 
     # https://learn.microsoft.com/en-us/rest/api/fabric/core/workspaces/unassign-from-capacity?tabs=HTTP
