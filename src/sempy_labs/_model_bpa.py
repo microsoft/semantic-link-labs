@@ -107,6 +107,7 @@ def run_model_bpa(
         "zu-ZA",
         "am-ET",
         "ar-AE",
+        "sv-SE",
     ]
 
     # Map languages to the closest language (first 2 letters matching)
@@ -165,15 +166,11 @@ def run_model_bpa(
 
         # Translations
         if language is not None and rules is None and language in language_list:
-            rules = model_bpa_rules(
-                dataset=dataset, workspace=workspace, dependencies=dep
-            )
+            rules = model_bpa_rules(dependencies=dep)
             translate_using_po(rules)
             translated = True
         if rules is None:
-            rules = model_bpa_rules(
-                dataset=dataset, workspace=workspace, dependencies=dep
-            )
+            rules = model_bpa_rules(dependencies=dep)
         if language is not None and not translated:
 
             def translate_using_spark(rule_file):
