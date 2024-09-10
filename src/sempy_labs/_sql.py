@@ -6,6 +6,7 @@ import struct
 import uuid
 from itertools import chain, repeat
 from sempy.fabric.exceptions import FabricHTTPException
+from sempy_labs._helper_functions import resolve_warehouse_id
 
 
 def bytes2mswin_bstr(value: bytes) -> bytes:
@@ -39,9 +40,7 @@ class ConnectWarehouse:
 
         workspace = fabric.resolve_workspace_name(workspace)
         workspace_id = fabric.resolve_workspace_id(workspace)
-        warehouse_id = fabric.resolve_item_id(
-            item_name=warehouse, type="Warehouse", workspace=workspace
-        )
+        warehouse_id = resolve_warehouse_id(warehouse=warehouse, workspace=workspace)
 
         # get the TDS endpoint
         client = fabric.FabricRestClient()
