@@ -1147,10 +1147,6 @@ def create_warehouse(
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -1162,11 +1158,11 @@ def create_warehouse(
 
     client = fabric.FabricRestClient()
     response = client.post(
-        f"/v1/workspaces/{workspace_id}/warehouses/", json=request_body, lro_wait=True
+        f"/v1/workspaces/{workspace_id}/warehouses/", json=request_body
     )
 
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    lro(client, response, status_codes=[201, 202])
+
     print(
         f"{icons.green_dot} The '{warehouse}' warehouse has been created within the '{workspace}' workspace."
     )
@@ -1851,10 +1847,10 @@ def create_custom_pool(
 
     client = fabric.FabricRestClient()
     response = client.post(
-        f"/v1/workspaces/{workspace_id}/spark/pools", json=request_body, lro_wait=True
+        f"/v1/workspaces/{workspace_id}/spark/pools", json=request_body
     )
 
-    if response.status_code != 200:
+    if response.status_code != 201:
         raise FabricHTTPException(response)
     print(
         f"{icons.green_dot} The '{pool_name}' spark pool has been created within the '{workspace}' workspace."
@@ -2059,7 +2055,7 @@ def unassign_workspace_from_capacity(workspace: Optional[str] = None):
 
     client = fabric.FabricRestClient()
     response = client.post(
-        f"/v1/workspaces/{workspace_id}/unassignFromCapacity", lro_wait=True
+        f"/v1/workspaces/{workspace_id}/unassignFromCapacity"
     )
 
     if response.status_code not in [200, 202]:

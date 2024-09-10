@@ -32,7 +32,6 @@ def translate_semantic_model(
     -------
     pandas.DataFrame
         Shows a pandas dataframe which displays all of the translations in the semantic model.
-
     """
 
     from synapse.ml.services import Translate
