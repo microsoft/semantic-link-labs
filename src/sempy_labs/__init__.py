@@ -1,3 +1,7 @@
+from sempy_labs._sql import(
+    ConnectWarehouse,
+)
+
 from sempy_labs._workspace_identity import (
     provision_workspace_identity,
     deprovision_workspace_identity,
@@ -87,6 +91,7 @@ from sempy_labs._list_functions import (
 )
 
 from sempy_labs._helper_functions import (
+    resolve_warehouse_id,
     resolve_workspace_capacity,
     create_abfss_path,
     format_dax_object_name,
@@ -144,6 +149,8 @@ from sempy_labs._vertipaq import (
 )
 
 __all__ = [
+    "resolve_warehouse_id",
+    "ConnectWarehouse",
     "update_semantic_model_from_bim",
     "get_semantic_model_size",
     "provision_workspace_identity",
