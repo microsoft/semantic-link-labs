@@ -900,3 +900,13 @@ def get_adls_client(account_name):
     )
 
     return service_client
+
+
+def resolve_warehouse_id(warehouse: str, workspace: Optional[str]):
+
+    workspace = fabric.resolve_workspace_name(workspace)
+    warehouse_id = fabric.resolve_item_id(
+        item_name=warehouse, type="Warehouse", workspace=workspace
+    )
+
+    return warehouse_id
