@@ -5,6 +5,14 @@ def report_bpa_rules() -> pd.DataFrame:
     rules = pd.DataFrame(
         [
             (
+                "Error Prevention",
+                "Semantic Model",
+                "Error",
+                "Fix report objects which reference invalid semantic model objects",
+                lambda df: df["Valid Semantic Model Object"] == False,
+                "This rule highlights visuals, report filters, page filters or visual filters which reference an invalid semantic model object (i.e Measure/Column/Hierarchy).",
+            ),
+            (
                 "Performance",
                 "Custom Visual",
                 "Warning",
@@ -27,14 +35,6 @@ def report_bpa_rules() -> pd.DataFrame:
                 "Reduce the number of objects within visuals",
                 lambda df: df["Visual Object Count"] > 5,
                 "Reducing the number of objects (i.e. measures, columns) which are used in a visual will lead to faster report performance.",
-            ),
-            (
-                "Performance",
-                ["Report Filter", "Page Filter", "Visual Filter"],
-                "Warning",
-                "Reduce usage of TopN filtering within visuals",
-                lambda df: df["Type"] == "TopN",
-                "TopN filtering may cause performance degradation, especially against a high cardinality column.",
             ),
             (
                 "Performance",
@@ -64,7 +64,7 @@ def report_bpa_rules() -> pd.DataFrame:
             (
                 "Performance",
                 "Custom Visual",
-                "Warning",
+                "Info",
                 "Reduce usage of custom visuals",
                 lambda df: df["Custom Visual Name"] == df["Custom Visual Name"],
                 "Using custom visuals may lead to performance degradation.",
@@ -72,10 +72,18 @@ def report_bpa_rules() -> pd.DataFrame:
             (
                 "Maintenance",
                 "Report Level Measure",
-                "Warning",
+                "Info",
                 "Move report-level measures into the semantic model.",
                 lambda df: df["Measure Name"] == df["Measure Name"],
                 "It is a best practice to keep measures defined in the semantic model and not in the report.",
+            ),
+            (
+                "Performance",
+                ["Report Filter", "Page Filter", "Visual Filter"],
+                "Info",
+                "Reduce usage of TopN filtering within visuals",
+                lambda df: df["Type"] == "TopN",
+                "TopN filtering may cause performance degradation, especially against a high cardinality column.",
             ),
             # ('Performance', 'Custom Visual', 'Warning', "Set 'Edit Interactions' for non-data visuals to 'none'",
             # lambda df: df['Custom Visual Name'] == df['Custom Visual Name'],

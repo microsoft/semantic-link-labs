@@ -2593,9 +2593,7 @@ def list_report_semantic_model_objects(
         report_name = r["Report Name"]
         report_workspace = r["Report Workspace Name"]
 
-        rpt = ReportWrapper(
-            report=report_name, workspace=report_workspace
-        )
+        rpt = ReportWrapper(report=report_name, workspace=report_workspace)
         # Collect all semantic model objects used in the report
         dfRSO = rpt.list_semantic_model_objects()
         dfRSO["Report Name"] = report_name

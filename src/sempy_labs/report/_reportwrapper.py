@@ -1573,7 +1573,9 @@ class ReportWrapper:
             with connect_semantic_model(
                 dataset=dataset_name, readonly=True, workspace=dataset_workspace
             ) as tom:
-                df["Valid Semantic Model Object"] = df.apply(lambda row: check_validity(tom, row), axis=1)
+                df["Valid Semantic Model Object"] = df.apply(
+                    lambda row: check_validity(tom, row), axis=1
+                )
 
         return df
 

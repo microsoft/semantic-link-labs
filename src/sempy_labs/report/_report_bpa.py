@@ -1,7 +1,6 @@
 import sempy.fabric as fabric
 from typing import Optional
 import pandas as pd
-from pyspark.sql import SparkSession
 import datetime
 from sempy._utils._log import log
 from sempy_labs.report import ReportWrapper, report_bpa_rules
@@ -26,14 +25,14 @@ def run_report_bpa(
     export: Optional[bool] = False,
 ):
 
-    rpt = ReportWrapper(report=report, workspace=workspace, readonly=True)
-    dfCV = rpt.list_custom_visuals(extended=True)
-    dfP = rpt.list_pages(extended=True)
+    rpt = ReportWrapper(report=report, workspace=workspace)
+    dfCV = rpt.list_custom_visuals()
+    dfP = rpt.list_pages()
     dfRF = rpt.list_report_filters()
     dfRF["Filter Object"] = format_dax_object_name(
         dfRF["Table Name"], dfRF["Object Name"]
     )
-    dfPF = rpt.list_page_filters(extended=True)
+    dfPF = rpt.list_page_filters()
     dfPF["Filter Object"] = (
         dfPF["Page Display Name"]
         + " : "
@@ -46,10 +45,11 @@ def run_report_bpa(
         + format_dax_object_name(dfVF["Table Name"], dfVF["Object Name"])
     )
     dfRLM = rpt.list_report_level_measures()
-    dfV = rpt.list_visuals(extended=True)
+    dfV = rpt.list_visuals()
     dfV["Visual Full Name"] = format_dax_object_name(
         dfV["Page Display Name"], dfV["Visual Name"]
     )
+    dfSMO = rpt.list_semantic_model_objects(extended=True)
 
     # Translations
     if rules is None:
@@ -63,6 +63,7 @@ def run_report_bpa(
         "Page Filter": (dfPF, ["Filter Object"]),
         "Visual Filter": (dfVF, ["Filter Object"]),
         "Report Level Measure": (dfRLM, ["Measure Name"]),
+        "Semantic Model": (dfSMO, ["Report Source Object"])
     }
 
     def execute_rule(row):
@@ -94,7 +95,18 @@ def run_report_bpa(
             df_output.columns = ["Object Name"]
             df_output["Rule Name"] = row["Rule Name"]
             df_output["Category"] = row["Category"]
-            df_output["Object Type"] = scope
+
+            # Handle 'Object Type' based on scope
+            if scope == "Semantic Model":
+                # Ensure 'Report Source Object' is unique in dfSMO
+                dfSMO_unique = dfSMO.drop_duplicates(subset="Report Source Object")
+                # Map 'Object Name' to the 'Report Source' column in dfSMO
+                df_output["Object Type"] = df_output["Object Name"].map(
+                    dfSMO_unique.set_index("Report Source Object")["Report Source"]
+                )
+            else:
+                df_output["Object Type"] = scope
+
             df_output["Severity"] = row["Severity"]
             df_output["Description"] = row["Description"]
             df_output["URL"] = row["URL"]
@@ -150,6 +162,8 @@ def run_report_bpa(
         return finalDF
 
     if export:
+        from pyspark.sql import SparkSession
+
         if not lakehouse_attached():
             raise ValueError(
                 f"{icons.red_dot} In order to export the BPA results, a lakehouse must be attached to the notebook."
