@@ -35,6 +35,8 @@ class TOMWrapper:
         self._workspace = workspace
         self._readonly = readonly
         self._tables_added = []
+        self._sll_prefix = 'SLL_'
+        self._sll_tag = f"{self._sll_prefix}TOM"
 
         self._tom_server = fabric.create_tom_server(
             readonly=readonly, workspace=workspace
@@ -1562,6 +1564,7 @@ class TOMWrapper:
             print(
                 f"{icons.green_dot} The {property} property for the '{object.Parent.Name}'[{object.Name}] {str(object.ObjectType).lower()} has been translated into '{language}' as '{value}'."
             )
+        self._sll_tag = f"{self._sll_prefix}TranslateSemanticModel"
 
     def remove_translation(
         self,
@@ -2833,6 +2836,8 @@ class TOMWrapper:
         except Exception:
             runId = "1"
         self.set_annotation(object=self.model, name="Vertipaq_Run", value=runId)
+
+        self._sll_tag = f"{self._sll_prefix}SetVertipaqAnnotations"
 
     def row_count(self, object: Union["TOM.Partition", "TOM.Table"]):
         """
@@ -4109,7 +4114,26 @@ class TOMWrapper:
         return isCalcTable
 
     def close(self):
+
+        import ast
+
         if not self._readonly and self.model is not None:
+            ann_name = 'PBI_ProTooling'
+            sll_value = self._sll_tag
+            o = self.model
+
+            ann_value = self.get_annotation_value(object=o, name=ann_name)
+
+            if ann_value is None:
+                self.set_annotation(object=o, name=ann_name, value=f'["{sll_value}"]')
+            else:
+                try:
+                    ann_value = ast.literal_eval(ann_value)
+                    ann_value.append(sll_value)
+                    self.set_annotation(object=o, name=ann_name, value=str(ann_value).replace("'", '"'))
+                except Exception:
+                    pass
+
             self.model.SaveChanges()
 
             if len(self._tables_added) > 0:
