@@ -6,7 +6,6 @@ import pandas as pd
 from functools import wraps
 import datetime
 import time
-from pyspark.sql import SparkSession
 from typing import Optional, Tuple, List
 from uuid import UUID
 import sempy_labs._icons as icons
@@ -392,6 +391,7 @@ def save_as_delta_table(
     delta_table_name: str,
     write_mode: str,
     merge_schema: Optional[bool] = False,
+    schema: Optional[dict] = None,
     lakehouse: Optional[str] = None,
     workspace: Optional[str] = None,
 ):
@@ -408,6 +408,8 @@ def save_as_delta_table(
         The write mode for the save operation. Options: 'append', 'overwrite'.
     merge_schema : bool, default=False
         Merges the schemas of the dataframe to the delta table.
+    schema : dict, default=None
+        A dictionary showing the schema of the columns and their data types.
     lakehouse : str, default=None
         The Fabric lakehouse used by the Direct Lake semantic model.
         Defaults to None which resolves to the lakehouse attached to the notebook.
@@ -415,12 +417,21 @@ def save_as_delta_table(
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-    UUID
-        The ID of the Power BI report.
     """
+
+    from pyspark.sql import SparkSession
+    from pyspark.sql.types import (
+        StringType,
+        IntegerType,
+        FloatType,
+        DateType,
+        StructType,
+        StructField,
+        BooleanType,
+        LongType,
+        DoubleType,
+        TimestampType,
+    )
 
     if workspace is None:
         workspace_id = fabric.get_workspace_id()
@@ -450,9 +461,32 @@ def save_as_delta_table(
         )
 
     dataframe.columns = dataframe.columns.str.replace(" ", "_")
-
     spark = SparkSession.builder.getOrCreate()
-    spark_df = spark.createDataFrame(dataframe)
+
+    type_mapping = {
+        "string": StringType(),
+        "str": StringType(),
+        "integer": IntegerType(),
+        "int": IntegerType(),
+        "float": FloatType(),
+        "date": DateType(),
+        "bool": BooleanType(),
+        "boolean": BooleanType(),
+        "long": LongType(),
+        "double": DoubleType(),
+        "timestamp": TimestampType(),
+    }
+
+    if schema is None:
+        spark_df = spark.createDataFrame(dataframe)
+    else:
+        schema_map = StructType(
+            [
+                StructField(column_name, type_mapping[data_type], True)
+                for column_name, data_type in schema.items()
+            ]
+        )
+        spark_df = spark.createDataFrame(dataframe, schema_map)
 
     filePath = create_abfss_path(
         lakehouse_id=lakehouse_id,

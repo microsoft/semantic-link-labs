@@ -14,7 +14,7 @@ from sempy_labs._helper_functions import (
     save_as_delta_table,
     resolve_workspace_capacity,
 )
-from sempy_labs._list_functions import list_relationships
+from sempy_labs._list_functions import list_relationships, list_tables
 from sempy_labs.lakehouse import lakehouse_attached, get_lakehouse_tables
 from sempy_labs.directlake import get_direct_lake_source
 from typing import Optional
@@ -54,7 +54,6 @@ def vertipaq_analyzer(
     """
 
     from sempy_labs.tom import connect_semantic_model
-    from sempy_labs._list_functions import list_tables
 
     if "lakehouse_workspace" in kwargs:
         print(
@@ -72,70 +71,70 @@ def vertipaq_analyzer(
     vertipaq_map = {
         "Model": {
             "Dataset Name": "string",
-            "Total Size": "int",
-            "Table Count": "int",
-            "Column Count": "int",
-            "Compatiblity Level": "int",
-            "Default Mode": "string"
+            "Total Size": "long",
+            "Table Count": "long",
+            "Column Count": "long",
+            "Compatibility Level": "long",
+            "Default Mode": "string",
         },
         "Tables": {
             "Table Name": "string",
             "Type": "string",
-            "Row Count": "int",
-            "Total Size": "int",
-            "Dictionary Size": "int",
-            "Data Size": "int",
-            "Hierarchy Size": "int",
-            "Relationship Size": "int",
-            "User Hierarchy Size": "int",
-            "Partitions": "int",
-            "Columns": "int",
-            "% DB": "float",
+            "Row Count": "long",
+            "Total Size": "long",
+            "Dictionary Size": "long",
+            "Data Size": "long",
+            "Hierarchy Size": "long",
+            "Relationship Size": "long",
+            "User Hierarchy Size": "long",
+            "Partitions": "long",
+            "Columns": "long",
+            "% DB": "double",
         },
         "Partitions": {
             "Table Name": "string",
             "Partition Name": "string",
             "Mode": "string",
-            "Record Count": "int",
-            "Segment Count": "int",
-            "Records per Segment": "float",
+            "Record Count": "long",
+            "Segment Count": "long",
+            "Records per Segment": "double",
         },
         "Columns": {
             "Table Name": "string",
             "Column Name": "string",
             "Type": "string",
-            "Cardinality": "int",
-            "Total Size": "int",
-            "Data Size": "int",
-            "Dictionary Size": "int",
-            "Hierarchy Size": "int",
-            "% Table": "float",
-            "% DB": "float",
+            "Cardinality": "long",
+            "Total Size": "long",
+            "Data Size": "long",
+            "Dictionary Size": "long",
+            "Hierarchy Size": "long",
+            "% Table": "double",
+            "% DB": "double",
             "Data Type": "string",
             "Encoding": "string",
             "Is Resident": "bool",
-            "Temperature": "float",
-            "Last Accessed": "date",
+            "Temperature": "double",
+            "Last Accessed": "timestamp",
         },
         "Hierarchies": {
             "Table Name": "string",
             "Hierarchy Name": "string",
-            "Used Size": "int",
+            "Used Size": "long",
         },
         "Relationships": {
             "From Object": "string",
             "To Object": "string",
             "Multiplicity": "string",
-            "Used Size": "int",
-            "Max From Cardinality": "int",
-            "Max To Cardinality": "int",
-            "Missing Rows": "int",
+            "Used Size": "long",
+            "Max From Cardinality": "long",
+            "Max To Cardinality": "long",
+            "Missing Rows": "long",
         },
     }
 
     dfT = list_tables(dataset=dataset, extended=True, workspace=workspace)
     dfT.rename(columns={"Name": "Table Name"}, inplace=True)
-    columns_to_keep = list(vertipaq_map['Tables'].keys())
+    columns_to_keep = list(vertipaq_map["Tables"].keys())
     dfT = dfT[dfT.columns.intersection(columns_to_keep)]
 
     dfC = fabric.list_columns(dataset=dataset, extended=True, workspace=workspace)
@@ -143,8 +142,6 @@ def vertipaq_analyzer(
     dfC.rename(columns={"Column Cardinality": "Cardinality"}, inplace=True)
     dfH = fabric.list_hierarchies(dataset=dataset, extended=True, workspace=workspace)
     dfR = list_relationships(dataset=dataset, extended=True, workspace=workspace)
-    dfR["From Object"] = format_dax_object_name(dfR["From Table"], dfR["From Column"])
-    dfR["To Object"] = format_dax_object_name(dfR["To Table"], dfR["To Column"])
     dfP = fabric.list_partitions(dataset=dataset, extended=True, workspace=workspace)
     artifact_type, lakehouse_name, lakehouse_id, lakehouse_workspace_id = (
         get_direct_lake_source(dataset=dataset, workspace=workspace)
@@ -298,7 +295,7 @@ def vertipaq_analyzer(
 
                 query = f"evaluate\nsummarizecolumns(\n\"1\",calculate(countrows('{fromTable}'),isblank({toObject}))\n)"
 
-                if isActive is False:  # add userelationship
+                if not isActive:
                     query = f"evaluate\nsummarizecolumns(\n\"1\",calculate(countrows('{fromTable}'),userelationship({fromObject},{toObject}),isblank({toObject}))\n)"
 
                 result = fabric.evaluate_dax(
@@ -313,21 +310,14 @@ def vertipaq_analyzer(
                 dfR.at[i, "Missing Rows"] = missingRows
             dfR["Missing Rows"] = dfR["Missing Rows"].astype(int)
 
-    total_size = dfC["Total Size"].sum()
-    table_sizes = dfC.groupby("Table Name")["Total Size"].sum().reset_index()
-    table_sizes.rename(columns={"Total Size": "Table Size"}, inplace=True)
+    table_totals = dfC.groupby("Table Name")["Total Size"].transform("sum")
+    db_total_size = dfC["Total Size"].sum()
+    dfC["% Table"] = round((dfC["Total Size"] / table_totals) * 100, 2)
+    dfC["% DB"] = round((dfC["Total Size"] / db_total_size) * 100, 2)
+    columnList = list(vertipaq_map["Columns"].keys())
 
-    # Columns
-    dfC_filt = dfC[~dfC["Column Name"].str.startswith("RowNumber-")]
-    dfC_filt["% DB"] = round((dfC_filt["Total Size"] / total_size) * 100, 2)
-    dfC_filt = pd.merge(dfC_filt, table_sizes, on="Table Name", how="left")
-    dfC_filt["% Table"] = round(
-        (dfC_filt["Total Size"] / dfC_filt["Table Size"]) * 100, 2
-    )
-    columnList = list(vertipaq_map['Columns'].keys())
-
-    colSize = dfC_filt[columnList].sort_values(by="Total Size", ascending=False)
-    temp = dfC_filt[columnList].sort_values(by="Temperature", ascending=False)
+    colSize = dfC[columnList].sort_values(by="Total Size", ascending=False)
+    temp = dfC[columnList].sort_values(by="Temperature", ascending=False)
     colSize.reset_index(drop=True, inplace=True)
     temp.reset_index(drop=True, inplace=True)
 
@@ -335,10 +325,10 @@ def vertipaq_analyzer(
 
     int_cols = []
     pct_cols = []
-    for k, v in vertipaq_map['Columns'].items():
-        if v == 'int':
+    for k, v in vertipaq_map["Columns"].items():
+        if v in ["int", "long"]:
             int_cols.append(k)
-        elif v == 'float' and k != 'Temperature':
+        elif v in ["float", "double"] and k != "Temperature":
             pct_cols.append(k)
     colSize[int_cols] = colSize[int_cols].applymap("{:,}".format)
     temp[int_cols] = temp[int_cols].applymap("{:,}".format)
@@ -348,10 +338,10 @@ def vertipaq_analyzer(
     # Tables
     int_cols = []
     pct_cols = []
-    for k, v in vertipaq_map['Tables'].items():
-        if v == 'int':
+    for k, v in vertipaq_map["Tables"].items():
+        if v in ["int", "long"]:
             int_cols.append(k)
-        elif v == 'float':
+        elif v in ["float", "double"]:
             pct_cols.append(k)
     export_Table = dfT.copy()
 
@@ -359,7 +349,6 @@ def vertipaq_analyzer(
     dfT[pct_cols] = dfT[pct_cols].applymap("{:.2f}%".format)
 
     #  Relationships
-    # dfR.drop(columns=['Max From Cardinality', 'Max To Cardinality'], inplace=True)
     dfR = pd.merge(
         dfR,
         dfC[["Column Object", "Cardinality"]],
@@ -389,15 +378,14 @@ def vertipaq_analyzer(
     ].sort_values(by="Used Size", ascending=False)
     dfR.reset_index(drop=True, inplace=True)
     export_Rel = dfR.copy()
-    intList = [
-        "Used Size",
-        "Max From Cardinality",
-        "Max To Cardinality",
-        "Missing Rows",
-    ]
-    if read_stats_from_data is False:
-        intList.remove("Missing Rows")
-    dfR[intList] = dfR[intList].applymap("{:,}".format)
+
+    int_cols = []
+    for k, v in vertipaq_map["Relationships"].items():
+        if v in ["int", "long"]:
+            int_cols.append(k)
+    if not read_stats_from_data:
+        int_cols.remove("Missing Rows")
+    dfR[int_cols] = dfR[int_cols].applymap("{:,}".format)
 
     # Partitions
     dfP = dfP[
@@ -415,6 +403,10 @@ def vertipaq_analyzer(
     )  # Remove after records per segment is fixed
     dfP.reset_index(drop=True, inplace=True)
     export_Part = dfP.copy()
+    int_cols = []
+    for k, v in vertipaq_map["Partitions"].items():
+        if v in ["int", "long", "double", "float"]:
+            int_cols.append(k)
     intList = ["Record Count", "Segment Count", "Records per Segment"]
     dfP[intList] = dfP[intList].applymap("{:,}".format)
 
@@ -431,12 +423,12 @@ def vertipaq_analyzer(
     dfH_filt[intList] = dfH_filt[intList].applymap("{:,}".format)
 
     # Model
-    if total_size >= 1000000000:
-        y = total_size / (1024**3) * 1000000000
-    elif total_size >= 1000000:
-        y = total_size / (1024**2) * 1000000
-    elif total_size >= 1000:
-        y = total_size / (1024) * 1000
+    if db_total_size >= 1000000000:
+        y = db_total_size / (1024**3) * 1000000000
+    elif db_total_size >= 1000000:
+        y = db_total_size / (1024**2) * 1000000
+    elif db_total_size >= 1000:
+        y = db_total_size / (1024) * 1000
     y = round(y)
 
     dfModel = pd.DataFrame(
@@ -454,8 +446,8 @@ def vertipaq_analyzer(
     dfModel["Default Mode"] = dfModel["Default Mode"].astype(str)
     export_Model = dfModel.copy()
     int_cols = []
-    for k, v in vertipaq_map['Model'].items():
-        if v == 'int':
+    for k, v in vertipaq_map["Model"].items():
+        if v in ["long", "int"] and k != "Compatibility Level":
             int_cols.append(k)
     dfModel[int_cols] = dfModel[int_cols].applymap("{:,}".format)
 
@@ -473,7 +465,8 @@ def vertipaq_analyzer(
     for fileName, df in dataFrames.items():
         dfs[fileName] = df
 
-    visualize_vertipaq(dfs)
+    if export is None:
+        visualize_vertipaq(dfs)
 
     # Export vertipaq to delta tables in lakehouse
     if export in ["table", "zip"]:
@@ -505,12 +498,12 @@ def vertipaq_analyzer(
             runId = maxRunId + 1
 
         dfMap = {
-            "export_Col": ["Columns", export_Col],
-            "export_Table": ["Tables", export_Table],
-            "export_Part": ["Partitions", export_Part],
-            "export_Rel": ["Relationships", export_Rel],
-            "export_Hier": ["Hierarchies", export_Hier],
-            "export_Model": ["Model", export_Model],
+            "Columns": ["Columns", export_Col],
+            "Tables": ["Tables", export_Table],
+            "Partitions": ["Partitions", export_Part],
+            "Relationships": ["Relationships", export_Rel],
+            "Hierarchies": ["Hierarchies", export_Hier],
+            "Model": ["Model", export_Model],
         }
 
         print(
@@ -522,7 +515,7 @@ def vertipaq_analyzer(
         configured_by = dfD_filt["Configured By"].iloc[0]
         capacity_id, capacity_name = resolve_workspace_capacity(workspace=workspace)
 
-        for key, (obj, df) in dfMap.items():
+        for key_name, (obj, df) in dfMap.items():
             df["Capacity Name"] = capacity_name
             df["Capacity Id"] = capacity_id
             df["Configured By"] = configured_by
@@ -550,11 +543,29 @@ def vertipaq_analyzer(
 
             df.columns = df.columns.str.replace(" ", "_")
 
+            schema = {
+                "Capacity_Name": "string",
+                "Capacity_Id": "string",
+                "Workspace_Name": "string",
+                "Workspace_Id": "string",
+                "Dataset_Name": "string",
+                "Dataset_Id": "string",
+                "Configured_By": "string",
+            }
+
+            schema.update(
+                {
+                    key.replace(" ", "_"): value
+                    for key, value in vertipaq_map[key_name].items()
+                }
+            )
+
             delta_table_name = f"VertipaqAnalyzer_{obj}".lower()
             save_as_delta_table(
                 dataframe=df,
                 delta_table_name=delta_table_name,
                 write_mode="append",
+                schema=schema,
                 merge_schema=True,
             )
 

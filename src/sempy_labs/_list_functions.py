@@ -8,6 +8,7 @@ from sempy_labs._helper_functions import (
     pagination,
     lro,
     resolve_item_type,
+    format_dax_object_name,
 )
 import pandas as pd
 import base64
@@ -174,7 +175,13 @@ def list_tables(
             """,
             )
 
-            model_size = dict_sum.sum() + data_sum.sum() + hier_sum.sum() + rel_sum.sum() + uh_sum.sum()
+            model_size = (
+                dict_sum.sum()
+                + data_sum.sum()
+                + hier_sum.sum()
+                + rel_sum.sum()
+                + uh_sum.sum()
+            )
 
         rows = []
         for t in tom.model.Tables:
@@ -212,9 +219,7 @@ def list_tables(
                 new_data.update(
                     {
                         "Row Count": (
-                            rc[rc["DIMENSION_NAME"] == t_name][
-                                "ROWS_COUNT"
-                            ].iloc[0]
+                            rc[rc["DIMENSION_NAME"] == t_name]["ROWS_COUNT"].iloc[0]
                             if not rc.empty
                             else 0
                         ),
@@ -225,8 +230,10 @@ def list_tables(
                         "Relationship Size": r_size,
                         "User Hierarchy Size": u_size,
                         "Partitions": int(len(t.Partitions)),
-                        "Columns": sum(1 for c in t.Columns if str(c.Type) != 'RowNumber'),
-                        "% DB": float(total_size / model_size),
+                        "Columns": sum(
+                            1 for c in t.Columns if str(c.Type) != "RowNumber"
+                        ),
+                        "% DB": round((total_size / model_size) * 100, 2),
                     }
                 )
 
@@ -1284,6 +1291,8 @@ def list_relationships(
     workspace = fabric.resolve_workspace_name(workspace)
 
     dfR = fabric.list_relationships(dataset=dataset, workspace=workspace)
+    dfR["From Object"] = format_dax_object_name(dfR["From Table"], dfR["From Column"])
+    dfR["To Object"] = format_dax_object_name(dfR["To Table"], dfR["To Column"])
 
     if extended:
         # Used to map the Relationship IDs
