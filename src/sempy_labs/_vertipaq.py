@@ -54,6 +54,7 @@ def vertipaq_analyzer(
     """
 
     from sempy_labs.tom import connect_semantic_model
+    from sempy_labs._list_functions import list_tables
 
     if "lakehouse_workspace" in kwargs:
         print(
@@ -68,8 +69,75 @@ def vertipaq_analyzer(
 
     workspace = fabric.resolve_workspace_name(workspace)
 
-    dfT = fabric.list_tables(dataset=dataset, extended=True, workspace=workspace)
+    vertipaq_map = {
+        "Model": {
+            "Dataset Name": "string",
+            "Total Size": "int",
+            "Table Count": "int",
+            "Column Count": "int",
+            "Compatiblity Level": "int",
+            "Default Mode": "string"
+        },
+        "Tables": {
+            "Table Name": "string",
+            "Type": "string",
+            "Row Count": "int",
+            "Total Size": "int",
+            "Dictionary Size": "int",
+            "Data Size": "int",
+            "Hierarchy Size": "int",
+            "Relationship Size": "int",
+            "User Hierarchy Size": "int",
+            "Partitions": "int",
+            "Columns": "int",
+            "% DB": "float",
+        },
+        "Partitions": {
+            "Table Name": "string",
+            "Partition Name": "string",
+            "Mode": "string",
+            "Record Count": "int",
+            "Segment Count": "int",
+            "Records per Segment": "float",
+        },
+        "Columns": {
+            "Table Name": "string",
+            "Column Name": "string",
+            "Type": "string",
+            "Cardinality": "int",
+            "Total Size": "int",
+            "Data Size": "int",
+            "Dictionary Size": "int",
+            "Hierarchy Size": "int",
+            "% Table": "float",
+            "% DB": "float",
+            "Data Type": "string",
+            "Encoding": "string",
+            "Is Resident": "bool",
+            "Temperature": "float",
+            "Last Accessed": "date",
+        },
+        "Hierarchies": {
+            "Table Name": "string",
+            "Hierarchy Name": "string",
+            "Used Size": "int",
+        },
+        "Relationships": {
+            "From Object": "string",
+            "To Object": "string",
+            "Multiplicity": "string",
+            "Used Size": "int",
+            "Max From Cardinality": "int",
+            "Max To Cardinality": "int",
+            "Missing Rows": "int",
+        },
+    }
+
+    dfT = list_tables(dataset=dataset, extended=True, workspace=workspace)
     dfT.rename(columns={"Name": "Table Name"}, inplace=True)
+    columns_to_keep = list(vertipaq_map['Tables'].keys())
+    dfT = dfT[dfT.columns.intersection(columns_to_keep)]
+
     dfC = fabric.list_columns(dataset=dataset, extended=True, workspace=workspace)
     dfC["Column Object"] = format_dax_object_name(dfC["Table Name"], dfC["Column Name"])
     dfC.rename(columns={"Column Cardinality": "Cardinality"}, inplace=True)
@@ -83,7 +151,7 @@ def vertipaq_analyzer(
     )
 
     with connect_semantic_model(
-        dataset=dataset, readonly=True, workspace=workspace
+        dataset=dataset, workspace=workspace, readonly=True
     ) as tom:
         compat_level = tom.model.Model.Database.CompatibilityLevel
         is_direct_lake = tom.is_direct_lake()
@@ -245,11 +313,6 @@ def vertipaq_analyzer(
                 dfR.at[i, "Missing Rows"] = missingRows
             dfR["Missing Rows"] = dfR["Missing Rows"].astype(int)
 
-    dfTP = dfP.groupby("Table Name")["Partition Name"].count().reset_index()
-    dfTP.rename(columns={"Partition Name": "Partitions"}, inplace=True)
-    dfTC = dfC.groupby("Table Name")["Column Name"].count().reset_index()
-    dfTC.rename(columns={"Column Name": "Columns"}, inplace=True)
-
     total_size = dfC["Total Size"].sum()
     table_sizes = dfC.groupby("Table Name")["Total Size"].sum().reset_index()
     table_sizes.rename(columns={"Total Size": "Table Size"}, inplace=True)
@@ -261,23 +324,7 @@ def vertipaq_analyzer(
     dfC_filt["% Table"] = round(
         (dfC_filt["Total Size"] / dfC_filt["Table Size"]) * 100, 2
     )
-    columnList = [
-        "Table Name",
-        "Column Name",
-        "Type",
-        "Cardinality",
-        "Total Size",
-        "Data Size",
-        "Dictionary Size",
-        "Hierarchy Size",
-        "% Table",
-        "% DB",
-        "Data Type",
-        "Encoding",
-        "Is Resident",
-        "Temperature",
-        "Last Accessed",
-    ]
+    columnList = list(vertipaq_map['Columns'].keys())
 
     colSize = dfC_filt[columnList].sort_values(by="Total Size", ascending=False)
     temp = dfC_filt[columnList].sort_values(by="Temperature", ascending=False)
@@ -286,37 +333,30 @@ def vertipaq_analyzer(
 
     export_Col = colSize.copy()
 
-    intList = [
-        "Cardinality",
-        "Total Size",
-        "Data Size",
-        "Dictionary Size",
-        "Hierarchy Size",
-    ]
-    pctList = ["% Table", "% DB"]
-    colSize[intList] = colSize[intList].applymap("{:,}".format)
-    temp[intList] = temp[intList].applymap("{:,}".format)
-    colSize[pctList] = colSize[pctList].applymap("{:.2f}%".format)
-    temp[pctList] = temp[pctList].applymap("{:.2f}%".format)
+    int_cols = []
+    pct_cols = []
+    for k, v in vertipaq_map['Columns'].items():
+        if v == 'int':
+            int_cols.append(k)
+        elif v == 'float' and k != 'Temperature':
+            pct_cols.append(k)
+    colSize[int_cols] = colSize[int_cols].applymap("{:,}".format)
+    temp[int_cols] = temp[int_cols].applymap("{:,}".format)
+    colSize[pct_cols] = colSize[pct_cols].applymap("{:.2f}%".format)
+    temp[pct_cols] = temp[pct_cols].applymap("{:.2f}%".format)
 
     # Tables
-    intList = ["Total Size", "Data Size", "Dictionary Size", "Hierarchy Size"]
-    dfCSum = dfC.groupby(["Table Name"])[intList].sum().reset_index()
-    dfCSum["% DB"] = round((dfCSum["Total Size"] / total_size) * 100, 2)
+    int_cols = []
+    pct_cols = []
+    for k, v in vertipaq_map['Tables'].items():
+        if v == 'int':
+            int_cols.append(k)
+        elif v == 'float':
+            pct_cols.append(k)
+    export_Table = dfT.copy()
 
-    dfTable = pd.merge(
-        dfT[["Table Name", "Type", "Row Count"]], dfCSum, on="Table Name", how="inner"
-    )
-    dfTable = pd.merge(dfTable, dfTP, on="Table Name", how="left")
-    dfTable = pd.merge(dfTable, dfTC, on="Table Name", how="left")
-    dfTable = dfTable.sort_values(by="Total Size", ascending=False)
-    dfTable.reset_index(drop=True, inplace=True)
-    export_Table = dfTable.copy()
-
-    intList.extend(["Row Count", "Partitions", "Columns"])
-    dfTable[intList] = dfTable[intList].applymap("{:,}".format)
-    pctList = ["% DB"]
-    dfTable[pctList] = dfTable[pctList].applymap("{:.2f}%".format)
+    dfT[int_cols] = dfT[int_cols].applymap("{:,}".format)
+    dfT[pct_cols] = dfT[pct_cols].applymap("{:.2f}%".format)
 
     #  Relationships
     # dfR.drop(columns=['Max From Cardinality', 'Max To Cardinality'], inplace=True)
@@ -413,12 +453,15 @@ def vertipaq_analyzer(
     dfModel.reset_index(drop=True, inplace=True)
     dfModel["Default Mode"] = dfModel["Default Mode"].astype(str)
     export_Model = dfModel.copy()
-    intList = ["Total Size", "Table Count", "Column Count"]
-    dfModel[intList] = dfModel[intList].applymap("{:,}".format)
+    int_cols = []
+    for k, v in vertipaq_map['Model'].items():
+        if v == 'int':
+            int_cols.append(k)
+    dfModel[int_cols] = dfModel[int_cols].applymap("{:,}".format)
 
     dataFrames = {
         "dfModel": dfModel,
-        "dfTable": dfTable,
+        "dfT": dfT,
         "dfP": dfP,
         "colSize": colSize,
         "temp": temp,
@@ -519,7 +562,7 @@ def vertipaq_analyzer(
     if export == "zip":
         dataFrames = {
             "dfModel": dfModel,
-            "dfTable": dfTable,
+            "dfT": dfT,
             "dfP": dfP,
             "colSize": colSize,
             "temp": temp,
@@ -797,7 +840,7 @@ def visualize_vertipaq(dataframes):
     # define the dictionary with {"Tab name":df}
     df_dict = {
         "Model Summary": dataframes["dfModel"],
-        "Tables": dataframes["dfTable"],
+        "Tables": dataframes["dfT"],
         "Partitions": dataframes["dfP"],
         "Columns (Total Size)": dataframes["colSize"],
         "Columns (Temperature)": dataframes["temp"],

@@ -63,7 +63,7 @@ def run_model_bpa(
     pandas.DataFrame
         A pandas dataframe in HTML format showing semantic model objects which violated the best practice analyzer rules.
     """
-    
+
     import polib
 
     if "extend" in kwargs:
