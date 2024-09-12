@@ -64,9 +64,7 @@ def list_environments(workspace: Optional[str] = None) -> pd.DataFrame:
         A pandas dataframe showing the environments within a workspace.
     """
 
-    df = pd.DataFrame(
-        columns=["Environment Name", "Environment Id", "Description"]
-    )
+    df = pd.DataFrame(columns=["Environment Name", "Environment Id", "Description"])
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
@@ -89,9 +87,7 @@ def list_environments(workspace: Optional[str] = None) -> pd.DataFrame:
     return df
 
 
-def delete_environment(
-    environment: str, workspace: Optional[str] = None
-):
+def delete_environment(environment: str, workspace: Optional[str] = None):
     """
     Deletes a Fabric environment.
 
@@ -108,10 +104,12 @@ def delete_environment(
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     dfE = list_environments(workspace=workspace)
-    dfE_filt = dfE[dfE['Environment Name'] == environment]
+    dfE_filt = dfE[dfE["Environment Name"] == environment]
     if len(dfE_filt) == 0:
-        raise ValueError(f"{icons.red_dot} The '{environment}' environment does not exist within the '{workspace}' workspace.")
-    environment_id = dfE_filt['Environment Id'].iloc[0]
+        raise ValueError(
+            f"{icons.red_dot} The '{environment}' environment does not exist within the '{workspace}' workspace."
+        )
+    environment_id = dfE_filt["Environment Id"].iloc[0]
 
     client = fabric.FabricRestClient()
     response = client.delete(
