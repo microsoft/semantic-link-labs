@@ -1,4 +1,9 @@
-from sempy_labs._sql import(
+from sempy_labs._environments import (
+    create_environment,
+    delete_environment,
+)
+
+from sempy_labs._sql import (
     ConnectWarehouse,
 )
 
@@ -262,4 +267,6 @@ __all__ = [
     "update_from_git",
     "connect_workspace_to_git",
     "disconnect_workspace_from_git",
+    "create_environment",
+    "delete_environment",
 ]
