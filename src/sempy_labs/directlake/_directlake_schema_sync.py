@@ -32,7 +32,6 @@ def direct_lake_schema_sync(
 
     sempy.fabric._client._utils._init_analysis_services()
     import Microsoft.AnalysisServices.Tabular as TOM
-    import System
 
     if "lakehouse" in kwargs:
         print(
@@ -99,7 +98,7 @@ def direct_lake_schema_sync(
                             table_name=table_name,
                             column_name=lakeCName,
                             source_column=lakeCName,
-                            data_type=System.Enum.Parse(TOM.DataType, dt),
+                            data_type=dt,
                         )
                         print(
                             f"{icons.green_dot} The '{lakeCName}' column in the '{lakeTName}' lakehouse table was added to the '{dataset}' semantic model within the '{workspace}' workspace."
