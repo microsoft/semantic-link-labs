@@ -110,6 +110,20 @@ def run_report_bpa(
             df_output["Severity"] = row["Severity"]
             df_output["Description"] = row["Description"]
             df_output["URL"] = row["URL"]
+            df_output["Report URL"] = rpt._get_web_url()
+
+            page_mapping_dict = dfP.set_index('Page Display Name')['Web Url'].to_dict()
+
+            if scope == 'Page':
+                df_output["Report URL"] = df_output["Object Name"].map(page_mapping_dict)
+            elif scope == 'Page Filter':
+                df_output["Page Name"] = df_output["Object Name"].str.extract(r"(.*?) : '")
+                df_output["Report URL"] = df_output["Page Name"].map(page_mapping_dict)
+                df_output.drop(columns=["Page Name"], inplace=True)
+            elif scope in ['Visual', 'Visual Filter']:
+                df_output["Page Name"] = df_output["Object Name"].str.extract(r"'(.*?)'\[.*?\]")
+                df_output["Report URL"] = df_output["Page Name"].map(page_mapping_dict)
+                df_output.drop(columns=["Page Name"], inplace=True)
 
             df_outputs.append(df_output)
 
@@ -127,36 +141,12 @@ def run_report_bpa(
             "Rule Name",
             "Object Type",
             "Object Name",
-            # "Page Name",
             "Severity",
             "Description",
             "URL",
+            "Report URL",
         ]
     ]
-
-    # pd.merge(finalDF, dfP[['Page Display Name', 'Web Url']], left_on='Object Name', right_on='Page Display Name', how='left')
-
-    # finalDF.rename(
-    #    columns={"Web Url": "Page Url"}, inplace=True
-    # )
-
-    # for i, r in finalDF.iterrows():
-    #    object_type = r["Object Type"]
-    #    object_name = r["Object Name"]
-    #    if object_type in ["Page", "Page Filter"]:
-    #        page_id, page_display, page_file = rpt.resolve_page_name(
-    #            page_name=object_name
-    #        )
-    #        r["Page Name"] = page_id
-    #    elif object_type in ["Visual", "Visual Filter"]:
-    #        pattern = r"'(.*?)'|\[(.*?)\]"
-    #        matches = re.findall(pattern, object_name)
-    #        page_name = matches[0][0]
-    #        visual_id = matches[1][1]
-    #        page_id, page_display, visual_name, visual_path = rpt.resolve_visual_name(
-    #            page_name=page_name, visual_name=visual_id
-    #        )
-    #        r["Page Name"] = page_id
 
     if return_dataframe:
         return finalDF
@@ -218,10 +208,10 @@ def run_report_bpa(
                 "Rule Name",
                 "Object Type",
                 "Object Name",
-                # "Page Name",
                 "Severity",
                 "Description",
                 "URL",
+                "Report URL",
             ]
         ]
         save_as_delta_table(
@@ -248,6 +238,7 @@ def run_report_bpa(
                 "Severity",
                 "Description",
                 "URL",
+                "Report URL",
             ]
         ]
         .sort_values(["Category", "Rule Name", "Object Type", "Object Name"])
@@ -320,12 +311,14 @@ def run_report_bpa(
                 content_html += f'<td class="tooltip" onmouseover="adjustTooltipPosition(event)"><a href="{row["URL"]}">{row["Rule Name"]}</a><span class="tooltiptext">{row["Description"]}</span></td>'
             elif pd.notnull(row["Description"]):
                 content_html += f'<td class="tooltip" onmouseover="adjustTooltipPosition(event)">{row["Rule Name"]}<span class="tooltiptext">{row["Description"]}</span></td>'
-            # elif pd.notnull(row["Page Url"]):
-            #    content_html += f'<td class="tooltip" onmouseover="adjustTooltipPosition(event)"><a href="{row["Page Url"]}">{row["Object Name"]}</a></td>'
             else:
                 content_html += f'<td>{row["Rule Name"]}</td>'
             content_html += f'<td>{row["Object Type"]}</td>'
-            content_html += f'<td>{row["Object Name"]}</td>'
+            if pd.notnull(row["Report URL"]):
+                content_html += f'<td><a href="{row["Report URL"]}">{row["Object Name"]}</a></td>'
+            else:
+                content_html += f'<td>{row["Object Name"]}</td>'
+            # content_html += f'<td>{row["Object Name"]}</td>'
             content_html += f'<td>{row["Severity"]}</td>'
             content_html += "</tr>"
         content_html += "</table>"
