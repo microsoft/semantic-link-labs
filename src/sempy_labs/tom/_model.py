@@ -871,7 +871,11 @@ class TOMWrapper:
         self.model.Tables.Add(tbl)
 
     def add_expression(
-        self, name: str, expression: str, description: Optional[str] = None, source_lineage_tag: Optional[str] = None,
+        self,
+        name: str,
+        expression: str,
+        description: Optional[str] = None,
+        source_lineage_tag: Optional[str] = None,
     ):
         """
         Adds an `expression <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.namedexpression?view=analysisservices-dotnet>`_ to a semantic model.

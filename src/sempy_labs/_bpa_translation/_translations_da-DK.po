@@ -49,6 +49,14 @@ msgstr ""
 
 # rule_name
 msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Dobbelttilstand er kun relevant for dimensionstabeller, hvis DirectQuery "
+"bruges til den tilsvarende faktatabel"
+
+# rule_name
+msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
@@ -299,6 +307,12 @@ msgstr "Præstation"
 msgid ""
 "Set 'Data Coverage Definition' property on the DirectQuery partition of a "
 "hybrid table"
+msgstr "Præstation"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
 msgstr "Præstation"
 
 # category
@@ -571,6 +585,16 @@ msgstr ""
 "ydeevne, fordi programmet ved, hvornår det kun kan forespørge på importdelen"
 " af tabellen, og hvornår det skal forespørge på DirectQuery-delen af "
 "tabellen."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Brug kun dobbelttilstand til dimensionstabeller/partitioner, hvor en "
+"tilsvarende faktatabel er i DirectQuery. Brug af dobbelttilstand under andre"
+" omstændigheder (dvs. resten af modellen er i importtilstand) kan føre til "
+"problemer med ydeevnen, især hvis antallet af målinger i modellen er højt."
 
 # description
 msgid ""

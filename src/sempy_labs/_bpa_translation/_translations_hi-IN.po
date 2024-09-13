@@ -47,6 +47,14 @@ msgstr ""
 
 # rule_name
 msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"डुअल मोड केवल आयाम तालिकाओं के लिए प्रासंगिक है यदि DirectQuery का उपयोग "
+"संबंधित तथ्य तालिका के लिए किया जाता है"
+
+# rule_name
+msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
@@ -295,6 +303,12 @@ msgstr "प्रदर्शन"
 msgid ""
 "Set 'Data Coverage Definition' property on the DirectQuery partition of a "
 "hybrid table"
+msgstr "प्रदर्शन"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
 msgstr "प्रदर्शन"
 
 # category
@@ -567,6 +581,16 @@ msgstr ""
 "'डेटा कवरेज परिभाषा' गुण सेट करने से बेहतर प्रदर्शन हो सकता है क्योंकि इंजन "
 "जानता है कि वह केवल तालिका के आयात-भाग को क्वेरी कर सकता है और कब उसे तालिका"
 " के DirectQuery भाग को क्वेरी करने की आवश्यकता होती है।"
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"आयाम तालिकाओं/विभाजनों के लिए केवल दोहरे मोड का उपयोग करें जहां एक संबंधित "
+"तथ्य तालिका DirectQuery में है। अन्य परिस्थितियों में दोहरे मोड का उपयोग "
+"करना (यानी शेष मॉडल आयात मोड में है) प्रदर्शन के मुद्दों को जन्म दे सकता है,"
+" खासकर यदि मॉडल में उपायों की संख्या अधिक है।"
 
 # description
 msgid ""

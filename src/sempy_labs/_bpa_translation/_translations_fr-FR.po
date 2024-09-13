@@ -31,7 +31,7 @@ msgid ""
 "security"
 msgstr ""
 "Évitez d’utiliser des relations plusieurs-à-plusieurs sur les tables "
-"utilisées pour la sécurité dynamique au niveau des lignes"
+"utilisées pour la sécurité au niveau des lignes dynamiques"
 
 # rule_name
 msgid "Many-to-many relationships should be single-direction"
@@ -51,11 +51,19 @@ msgstr ""
 
 # rule_name
 msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Le mode dual n’est pertinent pour les tables de dimension que si DirectQuery"
+" est utilisé pour la table de faits correspondante"
+
+# rule_name
+msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
-"Définir les tables de dimensions en mode double au lieu de l’importation "
-"lors de l’utilisation de DirectQuery sur des tables de faits"
+"Définir les tables de dimensions en mode double au lieu de les importer lors"
+" de l’utilisation de DirectQuery sur des tables de faits"
 
 # rule_name
 msgid "Minimize Power Query transformations"
@@ -64,8 +72,7 @@ msgstr "Réduire les transformations Power Query"
 # rule_name
 msgid "Consider a star-schema instead of a snowflake architecture"
 msgstr ""
-"Considérez un schéma en étoile au lieu d’une architecture en forme de flocon"
-" de neige"
+"Considérez un schéma en étoile au lieu d’une architecture en flocon de neige"
 
 # rule_name
 msgid "Avoid using views when using Direct Lake mode"
@@ -126,7 +133,7 @@ msgstr "Les colonnes de données doivent avoir une colonne source"
 
 # rule_name
 msgid "Set IsAvailableInMdx to true on necessary columns"
-msgstr "Définissez IsAvailableInMdx à true sur les colonnes nécessaires"
+msgstr "Définissez IsAvailableInMdx sur true sur les colonnes nécessaires"
 
 # rule_name
 msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
@@ -219,7 +226,7 @@ msgstr "Fournir une chaîne de format pour les colonnes 'Date'"
 
 # rule_name
 msgid "Do not summarize numeric columns"
-msgstr "Ne pas résumer les colonnes numériques"
+msgstr "Ne pas synthétiser les colonnes numériques"
 
 # rule_name
 msgid "Provide format string for measures"
@@ -266,7 +273,8 @@ msgstr "Fournir une chaîne de format pour les colonnes « Mois »"
 # rule_name
 msgid "Format flag columns as Yes/No value strings"
 msgstr ""
-"Formater les colonnes d’indicateur en tant que chaînes de valeur Oui/Non"
+"Mettre en forme les colonnes d’indicateur sous forme de chaînes de valeurs "
+"Oui/Non"
 
 # rule_name
 msgid "Objects should not start or end with a space"
@@ -314,6 +322,12 @@ msgstr "Performance"
 msgid ""
 "Set 'Data Coverage Definition' property on the DirectQuery partition of a "
 "hybrid table"
+msgstr "Performance"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
 msgstr "Performance"
 
 # category
@@ -539,10 +553,10 @@ msgstr ""
 msgid "Avoid using calculated columns"
 msgstr ""
 "Les colonnes calculées ne sont pas compressées aussi bien que les colonnes "
-"de données, elles occupent donc plus de mémoire. Ils ralentissent également "
-"les temps de traitement de la table et du recalcul du processus. Déchargez "
-"la logique de colonnes calculées dans votre entrepôt de données et "
-"transformez ces colonnes calculées en colonnes de données."
+"de données, de sorte qu’elles occupent plus de mémoire. Ils ralentissent "
+"également les temps de traitement de la table et du recalcul du processus. "
+"Déchargez la logique de colonnes calculées dans votre entrepôt de données et"
+" transformez ces colonnes calculées en colonnes de données."
 
 # description
 msgid "Check if bi-directional and many-to-many relationships are valid"
@@ -564,12 +578,12 @@ msgid ""
 msgstr ""
 "L’utilisation de relations plusieurs-à-plusieurs sur des tables qui "
 "utilisent la sécurité dynamique au niveau des lignes peut entraîner une "
-"grave dégradation des performances des requêtes. Les problèmes de "
+"dégradation importante des performances des requêtes. Les problèmes de "
 "performances de ce modèle s’aggravent lors de l’écaillage de plusieurs "
-"relations plusieurs-à-plusieurs par rapport à une table qui contient une "
-"sécurité au niveau des lignes. Au lieu de cela, utilisez l’un des modèles "
-"présentés dans l’article ci-dessous où une table à dimension unique est liée"
-" de plusieurs à un à une table de sécurité."
+"relations plusieurs-à-plusieurs sur une table qui contient une sécurité au "
+"niveau des lignes. Au lieu de cela, utilisez l’un des modèles présentés dans"
+" l’article ci-dessous où une table à dimension unique est liée de plusieurs "
+"à un à une table de sécurité."
 
 # description
 msgid "Set IsAvailableInMdx to false on non-attribute columns"
@@ -577,11 +591,11 @@ msgstr ""
 "Pour accélérer le temps de traitement et conserver la mémoire après le "
 "traitement, les hiérarchies d’attributs ne doivent pas être créées pour des "
 "colonnes qui ne sont jamais utilisées pour le découpage par les clients MDX."
-" En d’autres termes, la propriété IsAvailableInMdx de toutes les colonnes "
-"masquées qui ne sont pas utilisées en tant que colonne de tri ou référencées"
-" dans les hiérarchies d’utilisateurs doit avoir la valeur false. La "
-"propriété IsAvailableInMdx n’est pas pertinente pour les modèles Direct "
-"Lake."
+" En d’autres termes, toutes les colonnes masquées qui ne sont pas utilisées "
+"en tant que colonne de tri ou référencées dans les hiérarchies "
+"d’utilisateurs doivent avoir leur propriété IsAvailableInMdx définie sur "
+"false. La propriété IsAvailableInMdx n’est pas pertinente pour les modèles "
+"Direct Lake."
 
 # description
 msgid ""
@@ -595,6 +609,18 @@ msgstr ""
 
 # description
 msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Utilisez uniquement le mode double pour les tables/partitions de dimension "
+"où une table de faits correspondante se trouve dans DirectQuery. "
+"L’utilisation du mode double dans d’autres circonstances (c’est-à-dire que "
+"le reste du modèle est en mode d’importation) peut entraîner des problèmes "
+"de performances, en particulier si le nombre de mesures dans le modèle est "
+"élevé."
+
+# description
+msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
@@ -604,11 +630,11 @@ msgstr ""
 # description
 msgid "Minimize Power Query transformations"
 msgstr ""
-"Réduisez les transformations Power Query afin d’améliorer les performances "
+"Minimisez les transformations Power Query afin d’améliorer les performances "
 "de traitement du modèle. Il est recommandé de décharger ces transformations "
-"sur l’entrepôt de données si possible. Vérifiez également si le pliage de "
+"dans l’entrepôt de données si possible. Vérifiez également si le pliage de "
 "requête se produit dans votre modèle. Veuillez consulter l’article ci-"
-"dessous pour plus d’informations sur le pliage des requêtes."
+"dessous pour plus d’informations sur le pliage de requête."
 
 # description
 msgid "Consider a star-schema instead of a snowflake architecture"
@@ -628,7 +654,7 @@ msgstr ""
 # description
 msgid "Avoid adding 0 to a measure"
 msgstr ""
-"L’ajout de 0 à une mesure afin qu’elle n’affiche pas une valeur vide peut "
+"L’ajout de 0 à une mesure afin qu’elle n’affiche pas de valeur vide peut "
 "avoir un impact négatif sur les performances."
 
 # description
@@ -681,14 +707,14 @@ msgid "Limit row level security (RLS) logic"
 msgstr ""
 "Essayez de simplifier le DAX utilisé pour la sécurité au niveau des lignes. "
 "L’utilisation des fonctions de cette règle peut probablement être déchargée "
-"sur les systèmes en amont (entrepôt de données)."
+"vers les systèmes en amont (entrepôt de données)."
 
 # description
 msgid "Model should have a date table"
 msgstr ""
 "D’une manière générale, les modèles devraient généralement avoir une table "
-"de dates. Les modèles qui n’ont pas de table de dates ne tirent généralement"
-" pas parti de fonctionnalités telles que l’intelligence temporelle ou n’ont "
+"de dates. Les modèles qui n’ont pas de table de date ne tirent généralement "
+"pas parti de fonctionnalités telles que l’intelligence temporelle ou n’ont "
 "pas une architecture correctement structurée."
 
 # description
@@ -703,8 +729,8 @@ msgstr ""
 "Les colonnes utilisées dans une relation doivent être du même type de "
 "données. Idéalement, elles seront de type entier (voir la règle associée "
 "'[Formatage] Les colonnes de relation doivent être de type entier'). Le fait"
-" d’avoir des colonnes au sein d’une relation qui sont de différents types de"
-" données peut entraîner divers problèmes."
+" d’avoir des colonnes au sein d’une relation qui sont de types de données "
+"différents peut entraîner divers problèmes."
 
 # description
 msgid "Data columns must have a source column"
@@ -726,10 +752,10 @@ msgstr ""
 msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
 msgstr ""
 "La fonction USERELATIONSHIP ne peut pas être utilisée sur une table qui "
-"exploite également la sécurité au niveau des lignes (RLS). Cela génère une "
-"erreur lors de l’utilisation de la mesure particulière dans un visuel. Cette"
-" règle mettra en évidence la table utilisée dans la fonction USERELATIONSHIP"
-" d’une mesure, ainsi que la RLS."
+"exploite également la sécurité au niveau des lignes (RLS). Cela générera une"
+" erreur lors de l’utilisation de la mesure particulière dans un visuel. "
+"Cette règle mettra en évidence la table qui est utilisée dans la fonction "
+"USERELATIONSHIP d’une mesure, ainsi que la RLS."
 
 # description
 msgid "Avoid using the IFERROR function"
@@ -737,8 +763,8 @@ msgstr ""
 "Évitez d’utiliser la fonction IFERROR car elle peut entraîner une "
 "dégradation des performances. Si vous êtes préoccupé par une erreur de "
 "division par zéro, utilisez la fonction DIVIDE car elle résout naturellement"
-" ces erreurs comme vide (ou vous pouvez personnaliser ce qui doit être "
-"affiché en cas d’une telle erreur)."
+" ces erreurs comme étant vides (ou vous pouvez personnaliser ce qui doit "
+"être affiché en cas d’une telle erreur)."
 
 # description
 msgid ""
@@ -758,10 +784,10 @@ msgstr ""
 # description
 msgid "Measures should not be direct references of other measures"
 msgstr ""
-"Cette règle identifie les mesures qui ne sont qu’une référence à une autre "
-"mesure. À titre d’exemple, considérons un modèle avec deux mesures : "
-"[MesureA] et [MesureB]. Cette règle serait déclenchée pour la mesure B si le"
-" DAX de la mesure B était MesureB :=[MesureA]. Ces mesures redondantes "
+"Cette règle identifie les mesures qui ne sont qu’un renvoi à une autre "
+"mesure. À titre d’exemple, considérons un modèle avec deux mesures : [Mesure"
+" A] et [Mesure B]. Cette règle serait déclenchée pour la mesure B si le DAX "
+"de la mesure B était MesureB :=[MesureA]. Ces mesures faisant double emploi "
 "devraient être supprimées."
 
 # description
@@ -774,11 +800,11 @@ msgstr ""
 msgid "Avoid using '1-(x/y)' syntax"
 msgstr ""
 "Au lieu d’utiliser la syntaxe « 1-(x/y) » ou « 1+(x/y) » pour effectuer un "
-"calcul de pourcentage, utilisez les fonctions DAX de base (comme indiqué ci-"
+"calcul en pourcentage, utilisez les fonctions DAX de base (comme indiqué ci-"
 "dessous). L’utilisation de la syntaxe améliorée améliorera généralement les "
-"performances. Le « 1+/-... » La syntaxe renvoie toujours une valeur alors "
-"que la solution sans le '1+/-...' ne le fait pas (car la valeur peut être « "
-"vide »). Par conséquent, le '1+/-...' La syntaxe peut renvoyer plus de "
+"performances. Le « 1+/-... » renvoie toujours une valeur alors que la "
+"solution sans le '1+/-...' ne le fait pas (car la valeur peut être « vide "
+"»). Par conséquent, le '1+/-...' La syntaxe peut renvoyer plus de "
 "lignes/colonnes, ce qui peut entraîner une vitesse de requête plus lente."
 "    Clarifions avec un exemple : Évitez ceci : 1 - SUM ( 'Sales'[CostAmount]"
 " ) / SUM( 'Sales'[SalesAmount] ) Mieux : DIVIDE ( SUM ( 'Sales'[SalesAmount]"
@@ -810,11 +836,11 @@ msgstr ""
 # description
 msgid "Column references should be fully qualified"
 msgstr ""
-"L’utilisation de références de colonne complètes facilite la distinction "
-"entre les références de colonne et les références de mesure, et permet "
-"également d’éviter certaines erreurs. Lorsque vous référencez une colonne "
-"dans DAX, spécifiez d’abord le nom de la table, puis le nom de la colonne "
-"entre crochets."
+"L’utilisation de références de colonne complètes permet de distinguer plus "
+"facilement les références de colonne et de mesure, et permet également "
+"d’éviter certaines erreurs. Lorsque vous référencez une colonne dans DAX, "
+"spécifiez d’abord le nom de la table, puis le nom de la colonne entre "
+"crochets."
 
 # description
 msgid "Measure references should be unqualified"
@@ -845,7 +871,7 @@ msgstr ""
 msgid "Remove unnecessary measures"
 msgstr ""
 "Les mesures masquées qui ne sont référencées par aucune expression DAX "
-"doivent être supprimées pour des raisons de maintenance."
+"doivent être supprimées pour des raisons de maintenabilité."
 
 # description
 msgid "Ensure tables have relationships"
@@ -856,8 +882,8 @@ msgstr ""
 # description
 msgid "Visible objects with no description"
 msgstr ""
-"Les groupes de calcul n’ont pas de fonction à moins qu’ils n’aient des "
-"éléments de calcul."
+"Les groupes de calcul n’ont pas de fonction, sauf s’ils ont des éléments de "
+"calcul."
 
 # description
 msgid "Provide format string for 'Date' columns"
@@ -869,8 +895,8 @@ msgstr ""
 msgid "Do not summarize numeric columns"
 msgstr ""
 "La propriété SummarizeBy des colonnes numériques (entière, décimale, double)"
-" doit avoir la valeur « None » pour éviter une sommation accidentelle dans "
-"Power BI (créez des mesures à la place)."
+" doit être définie sur « Aucun » pour éviter une sommation accidentelle dans"
+" Power BI (créez des mesures à la place)."
 
 # description
 msgid "Provide format string for measures"
@@ -888,8 +914,8 @@ msgstr "Les clés étrangères doivent toujours être cachées."
 # description
 msgid "Mark primary keys"
 msgstr ""
-"Définissez la propriété « Key » sur « True » pour les colonnes de clé "
-"primaire dans les propriétés de colonne."
+"Définissez la propriété 'Key' sur 'True' pour les colonnes de clé primaire "
+"dans les propriétés de colonne."
 
 # description
 msgid "Month (as a string) must be sorted"

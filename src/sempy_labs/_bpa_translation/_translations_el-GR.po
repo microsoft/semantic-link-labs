@@ -53,6 +53,14 @@ msgstr ""
 
 # rule_name
 msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Η διπλή λειτουργία είναι σχετική μόνο για πίνακες διαστάσεων εάν το "
+"DirectQuery χρησιμοποιείται για τον αντίστοιχο πίνακα δεδομένων"
+
+# rule_name
+msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
@@ -313,6 +321,12 @@ msgstr "Εκτέλεση"
 msgid ""
 "Set 'Data Coverage Definition' property on the DirectQuery partition of a "
 "hybrid table"
+msgstr "Εκτέλεση"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
 msgstr "Εκτέλεση"
 
 # category
@@ -590,6 +604,17 @@ msgstr ""
 "καλύτερες επιδόσεις, επειδή ο μηχανισμός γνωρίζει πότε μπορεί να υποβάλει "
 "ερώτημα μόνο στο τμήμα εισαγωγής του πίνακα και πότε χρειάζεται να υποβάλει "
 "ερώτημα στο τμήμα DirectQuery του πίνακα."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Χρησιμοποιήστε τη διπλή λειτουργία μόνο για πίνακες/διαμερίσματα διαστάσεων "
+"όπου ένας αντίστοιχος πίνακας δεδομένων βρίσκεται στο DirectQuery. Η χρήση "
+"διπλής λειτουργίας σε άλλες περιπτώσεις (π.χ. το υπόλοιπο μοντέλο βρίσκεται "
+"σε κατάσταση εισαγωγής) μπορεί να οδηγήσει σε προβλήματα επιδόσεων, ειδικά "
+"εάν ο αριθμός των μετρήσεων στο μοντέλο είναι υψηλός."
 
 # description
 msgid ""

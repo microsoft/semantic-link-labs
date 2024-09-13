@@ -49,6 +49,14 @@ msgstr ""
 
 # rule_name
 msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"La modalità doppia è rilevante per le tabelle delle dimensioni solo se "
+"DirectQuery viene utilizzato per la tabella dei fatti corrispondente"
+
+# rule_name
+msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
@@ -310,6 +318,12 @@ msgstr "Prestazione"
 msgid ""
 "Set 'Data Coverage Definition' property on the DirectQuery partition of a "
 "hybrid table"
+msgstr "Prestazione"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
 msgstr "Prestazione"
 
 # category
@@ -587,6 +601,17 @@ msgstr ""
 "prestazioni migliori perché il motore sa quando può eseguire query solo "
 "sulla parte di importazione della tabella e quando è necessario eseguire "
 "query sulla parte DirectQuery della tabella."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Usare la modalità doppia solo per le tabelle/partizioni delle dimensioni in "
+"cui una tabella dei fatti corrispondente si trova in DirectQuery. L'utilizzo"
+" della modalità Dual in altre circostanze (ad esempio, il resto del modello "
+"è in modalità di importazione) può causare problemi di prestazioni, "
+"soprattutto se il numero di misure nel modello è elevato."
 
 # description
 msgid ""

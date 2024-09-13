@@ -52,6 +52,14 @@ msgstr ""
 
 # rule_name
 msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Двойной режим применим только для таблиц измерений, если для соответствующей"
+" таблицы фактов используется DirectQuery"
+
+# rule_name
+msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
@@ -308,6 +316,12 @@ msgstr "Производительность"
 msgid ""
 "Set 'Data Coverage Definition' property on the DirectQuery partition of a "
 "hybrid table"
+msgstr "Производительность"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
 msgstr "Производительность"
 
 # category
@@ -583,6 +597,17 @@ msgstr ""
 "производительности, так как подсистема знает, когда она может запрашивать "
 "только импортируемую часть таблицы, а когда ей нужно запросить часть таблицы"
 " DirectQuery."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Используйте двойной режим только для таблиц измерений или секций, в которых "
+"соответствующая таблица фактов находится в DirectQuery. Использование "
+"двойного режима в других обстоятельствах (т. е. остальная часть модели "
+"находится в режиме импорта) может привести к проблемам с "
+"производительностью, особенно если в модели много мер."
 
 # description
 msgid ""

@@ -48,6 +48,14 @@ msgstr "تعيين خاصية \"تعريف تغطية البيانات\" على 
 
 # rule_name
 msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"يكون الوضع المزدوج مناسبا فقط لجداول الأبعاد إذا تم استخدام DirectQuery "
+"لجدول الحقائق المقابل"
+
+# rule_name
+msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
@@ -292,6 +300,12 @@ msgstr "اداء"
 msgid ""
 "Set 'Data Coverage Definition' property on the DirectQuery partition of a "
 "hybrid table"
+msgstr "اداء"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
 msgstr "اداء"
 
 # category
@@ -560,6 +574,16 @@ msgstr ""
 "قد يؤدي تعيين الخاصية \"تعريف تغطية البيانات\" إلى أداء أفضل لأن المحرك يعرف"
 " متى يمكنه فقط الاستعلام عن جزء الاستيراد من الجدول ومتى يحتاج إلى الاستعلام"
 " عن جزء DirectQuery من الجدول."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"استخدم الوضع المزدوج فقط لجداول/أقسام الأبعاد حيث يوجد جدول حقائق مطابق في "
+"DirectQuery. قد يؤدي استخدام الوضع المزدوج في ظروف أخرى (أي أن بقية النموذج "
+"في وضع الاستيراد) إلى حدوث مشكلات في الأداء خاصة إذا كان عدد المقاييس في "
+"النموذج مرتفعا."
 
 # description
 msgid ""

@@ -48,6 +48,14 @@ msgstr ""
 
 # rule_name
 msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"حالت دوگانه فقط در صورتی برای جداول ابعاد مرتبط است که از DirectQuery برای "
+"جدول واقعیت مربوطه استفاده شود"
+
+# rule_name
+msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
@@ -293,6 +301,12 @@ msgstr "عملکرد"
 msgid ""
 "Set 'Data Coverage Definition' property on the DirectQuery partition of a "
 "hybrid table"
+msgstr "عملکرد"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
 msgstr "عملکرد"
 
 # category
@@ -563,6 +577,16 @@ msgstr ""
 "تنظیم ویژگی \"Data Coverage Definition\" ممکن است منجر به عملکرد بهتر شود "
 "زیرا موتور می داند چه زمانی فقط می تواند بخش واردات جدول را پرس و جو کند و "
 "چه زمانی باید بخش DirectQuery جدول را پرس و جو کند."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"از حالت دوگانه فقط برای جداول/پارتیشن های ابعاد استفاده کنید که جدول واقعیت "
+"مربوطه در DirectQuery است. استفاده از حالت دوگانه در شرایط دیگر (یعنی بقیه "
+"مدل در حالت Import است) ممکن است منجر به مشکلات عملکردی شود، به خصوص اگر "
+"تعداد اندازه ها در مدل زیاد باشد."
 
 # description
 msgid ""

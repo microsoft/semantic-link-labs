@@ -44,6 +44,13 @@ msgstr "የውሂብ ጠረጴዛ በDirectQuery ክፍፍሉ ላይ 'የዳታ 
 
 # rule_name
 msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"ድርብ ዘዴ ለስፋት ሠንጠረዦች ብቻ ጠቃሚ ነው DirectQuery ለተመጣጣኝ እውነታ ሠንጠረዥ ጥቅም ላይ የዋለ ከሆነ"
+
+# rule_name
+msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
@@ -287,6 +294,12 @@ msgstr "አፈጻጸም"
 msgid ""
 "Set 'Data Coverage Definition' property on the DirectQuery partition of a "
 "hybrid table"
+msgstr "አፈጻጸም"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
 msgstr "አፈጻጸም"
 
 # category
@@ -552,6 +565,15 @@ msgstr ""
 "ሞተሩ የጠረጴዛውን አስገባ-ክፍል ብቻ መቼ ሊጠይቅ እንደሚችል ስለሚያውቅ እና የጠረጴዛውን የDirectQuery ክፍል መቼ"
 " መጠየቂያ እንደሚያስፈልገው ስለሚያውቅ 'የData Coverage Definition' የሚለውን ንብረት ማመቻቸት የተሻለ "
 "አፈጻጸም ሊያስከትል ይችላል።"
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"ተመሳሳዩ እውነታ ሠንጠረዥ በDirectQuery ውስጥ የሚገኝበትን ስፋት tables/partitions ለማግኘት ብቻ "
+"Dual mode ይጠቀሙ. በሌሎች ሁኔታዎች ሁለት ዓይነት ዘዴን መጠቀም (ማለትም የቀረው ሞዴል በኢምፖርት ሞድ ውስጥ "
+"ነው) በተለይ በሞዴሉ ውስጥ ያለው የመለኪያ ቁጥር ከፍተኛ ከሆነ ወደ አፈጻጸም ችግር ሊያመራ ይችላል."
 
 # description
 msgid ""

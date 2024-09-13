@@ -12,6 +12,7 @@ from sempy_labs._helper_functions import (
     save_as_delta_table,
     resolve_workspace_capacity,
     resolve_dataset_id,
+    get_language_codes,
 )
 from sempy_labs.lakehouse import get_lakehouse_tables, lakehouse_attached
 from sempy_labs.tom import connect_semantic_model
@@ -63,7 +64,7 @@ def run_model_bpa(
     pandas.DataFrame
         A pandas dataframe in HTML format showing semantic model objects which violated the best practice analyzer rules.
     """
-    
+
     import polib
 
     if "extend" in kwargs:
@@ -80,35 +81,9 @@ def run_model_bpa(
         "ignore", category=UserWarning, message=".*Arrow optimization.*"
     )
 
-    language_list = [
-        "it-IT",
-        "es-ES",
-        "he-IL",
-        "pt-PT",
-        "zh-CN",
-        "fr-FR",
-        "da-DK",
-        "cs-CZ",
-        "de-DE",
-        "el-GR",
-        "fa-IR",
-        "ga-IE",
-        "hi-IN",
-        "hu-HU",
-        "is-IS",
-        "ja-JP",
-        "nl-NL",
-        "pl-PL",
-        "pt-BR",
-        "ru-RU",
-        "te-IN",
-        "ta-IN",
-        "th-TH",
-        "zu-ZA",
-        "am-ET",
-        "ar-AE",
-        "sv-SE",
-    ]
+    language_list = list(icons.language_map.keys())
+    if language is not None:
+        language = get_language_codes(languages=language)[0]
 
     # Map languages to the closest language (first 2 letters matching)
     def map_language(language, language_list):

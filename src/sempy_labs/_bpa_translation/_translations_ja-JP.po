@@ -45,6 +45,12 @@ msgstr ""
 
 # rule_name
 msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr "デュアル モードは、対応するファクト テーブルに DirectQuery が使用されている場合にのみ、ディメンション テーブルに関連します"
+
+# rule_name
+msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
@@ -289,6 +295,12 @@ msgstr "パフォーマンス"
 msgid ""
 "Set 'Data Coverage Definition' property on the DirectQuery partition of a "
 "hybrid table"
+msgstr "パフォーマンス"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
 msgstr "パフォーマンス"
 
 # category
@@ -551,6 +563,15 @@ msgstr ""
 "'Data Coverage Definition' "
 "プロパティを設定すると、エンジンはテーブルのインポート部分のみをクエリできるタイミングと、テーブルの DirectQuery "
 "部分をクエリする必要があるタイミングを認識しているため、パフォーマンスが向上する可能性があります。"
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"デュアル モードは、対応するファクト テーブルが DirectQuery にあるディメンション テーブル/パーティションにのみ使用します。他の状況 "
+"(つまり、モデルの残りの部分がインポート モード) で Dual "
+"モードを使用すると、特にモデル内のメジャーの数が多い場合に、パフォーマンスの問題が発生する可能性があります。"
 
 # description
 msgid ""
