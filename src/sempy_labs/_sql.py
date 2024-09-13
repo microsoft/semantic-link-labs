@@ -1,6 +1,6 @@
 import sempy.fabric as fabric
 import pandas as pd
-from typing import Optional, Union
+from typing import Optional, Union, List
 from sempy._utils._log import log
 import struct
 import uuid
@@ -82,6 +82,26 @@ class ConnectWarehouse:
             return pd.DataFrame.from_records(
                 cursor.fetchall(), columns=[col[0] for col in cursor.description]
             )
+        finally:
+            if cursor:
+                cursor.close()
+
+    @log
+    def execute(self, sql: str | List[str]) -> pd.DataFrame:
+        """
+        Runs a T-SQL query (or queries) against a Fabric Warehouse.
+
+        Parameters
+        ----------
+        sql : str | List[str]
+            The T-SQL query (or queries).
+        """
+        cursor = None
+
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute(sql)
+
         finally:
             if cursor:
                 cursor.close()
