@@ -42,7 +42,7 @@ def run_model_bpa(
     Parameters
     ----------
     dataset : str
-        Name of the semantic model.
+        Name of the semantic model. 
     rules : pandas.DataFrame, default=None
         A pandas dataframe containing rules to be evaluated.
     workspace : str, default=None
