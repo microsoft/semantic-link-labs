@@ -127,7 +127,7 @@ def run_model_bpa(
         def translate_using_po(rule_file):
             current_dir = os.path.dirname(os.path.abspath(__file__))
             translation_file = (
-                f"{current_dir}/_bpa_translation/_translations_{language}.po"
+                f"{current_dir}/_bpa_translation/_model/_translations_{language}.po"
             )
             for c in ["Category", "Description", "Rule Name"]:
                 po = polib.pofile(translation_file)
