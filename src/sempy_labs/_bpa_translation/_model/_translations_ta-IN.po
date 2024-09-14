@@ -49,6 +49,14 @@ msgstr ""
 
 # rule_name
 msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"தொடர்புடைய உண்மை அட்டவணைக்கு DirectQuery பயன்படுத்தப்பட்டால் பரிமாண "
+"அட்டவணைகளுக்கு மட்டுமே இரட்டை பயன்முறை பொருந்தும்"
+
+# rule_name
+msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
@@ -308,6 +316,12 @@ msgstr "செயல்திறன்"
 msgid ""
 "Set 'Data Coverage Definition' property on the DirectQuery partition of a "
 "hybrid table"
+msgstr "செயல்திறன்"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
 msgstr "செயல்திறன்"
 
 # category
@@ -585,6 +599,18 @@ msgstr ""
 "ஏனெனில் அட்டவணையின் இறக்குமதி-பகுதியை மட்டுமே எப்போது வினவ முடியும் மற்றும் "
 "அட்டவணையின் டைரக்ட்க்வெரி பகுதியை எப்போது வினவ வேண்டும் என்பது "
 "இயந்திரத்திற்குத் தெரியும்."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"DirectQuery இல் தொடர்புடைய உண்மை அட்டவணை இருக்கும் பரிமாண அட்டவணைகள் / "
+"பகிர்வுகளுக்கு மட்டுமே இரட்டை பயன்முறையைப் பயன்படுத்தவும். மற்ற "
+"சூழ்நிலைகளில் இரட்டை பயன்முறையைப் பயன்படுத்துவது (அதாவது மாதிரியின் "
+"மீதமுள்ளவை இறக்குமதி பயன்முறையில் உள்ளன) செயல்திறன் சிக்கல்களுக்கு "
+"வழிவகுக்கும், குறிப்பாக மாதிரியில் நடவடிக்கைகளின் எண்ணிக்கை அதிகமாக "
+"இருந்தால்."
 
 # description
 msgid ""

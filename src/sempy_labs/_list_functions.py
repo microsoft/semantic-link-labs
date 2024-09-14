@@ -2019,7 +2019,9 @@ def assign_workspace_to_capacity(capacity_name: str, workspace: Optional[str] = 
     dfC_filt = dfC[dfC["Display Name"] == capacity_name]
 
     if len(dfC_filt) == 0:
-        raise ValueError(f"{icons.red_dot} The '{capacity_name}' capacity does not exist.")
+        raise ValueError(
+            f"{icons.red_dot} The '{capacity_name}' capacity does not exist."
+        )
 
     capacity_id = dfC_filt["Id"].iloc[0]
 
@@ -2054,9 +2056,7 @@ def unassign_workspace_from_capacity(workspace: Optional[str] = None):
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/unassignFromCapacity"
-    )
+    response = client.post(f"/v1/workspaces/{workspace_id}/unassignFromCapacity")
 
     if response.status_code not in [200, 202]:
         raise FabricHTTPException(response)

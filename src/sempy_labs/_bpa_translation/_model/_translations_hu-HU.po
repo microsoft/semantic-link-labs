@@ -51,6 +51,14 @@ msgstr ""
 
 # rule_name
 msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"A kettős mód csak akkor releváns dimenziótáblák esetén, ha a megfelelő "
+"ténytáblához DirectQueryt használ"
+
+# rule_name
+msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
@@ -303,6 +311,12 @@ msgstr "Teljesítmény"
 msgid ""
 "Set 'Data Coverage Definition' property on the DirectQuery partition of a "
 "hybrid table"
+msgstr "Teljesítmény"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
 msgstr "Teljesítmény"
 
 # category
@@ -578,6 +592,17 @@ msgstr ""
 "Az \"Adatlefedettség-definíció\" tulajdonság beállítása jobb teljesítményt "
 "eredményezhet, mivel a motor tudja, mikor tudja csak lekérdezni a tábla "
 "importálási részét, és mikor kell lekérdeznie a tábla DirectQuery részét."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Csak olyan dimenziótáblákhoz/partíciókhoz használja a Kettős módot, "
+"amelyeknél a megfelelő ténytábla a DirectQueryben található. A kettős mód "
+"használata más körülmények között (azaz a modell többi része Importálás "
+"módban van) teljesítményproblémákhoz vezethet, különösen akkor, ha a "
+"modellben nagy a mértékek száma."
 
 # description
 msgid ""

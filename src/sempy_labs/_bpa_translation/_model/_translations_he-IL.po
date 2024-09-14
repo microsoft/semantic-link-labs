@@ -47,6 +47,14 @@ msgstr ""
 
 # rule_name
 msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"מצב כפול רלוונטי רק עבור טבלאות ממד אם נעשה שימוש ב- DirectQuery עבור טבלת "
+"העובדות המתאימה"
+
+# rule_name
+msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
@@ -292,6 +300,12 @@ msgstr "ביצועים"
 msgid ""
 "Set 'Data Coverage Definition' property on the DirectQuery partition of a "
 "hybrid table"
+msgstr "ביצועים"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
 msgstr "ביצועים"
 
 # category
@@ -559,6 +573,15 @@ msgstr ""
 "הגדרת המאפיין 'הגדרת כיסוי נתונים' עשויה להוביל לביצועים טובים יותר מכיוון "
 "שהמנוע יודע מתי הוא יכול לבצע שאילתה רק על חלק הייבוא של הטבלה ומתי עליו "
 "לבצע שאילתה על החלק DirectQuery של הטבלה."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"השתמש במצב כפול רק עבור טבלאות/מחיצות ממד שבהן טבלת עובדות תואמת נמצאת ב- "
+"DirectQuery. שימוש במצב כפול בנסיבות אחרות (כלומר, שאר הדגם נמצא במצב ייבוא)"
+" עלול להוביל לבעיות ביצועים, במיוחד אם מספר המדידות במודל גבוה."
 
 # description
 msgid ""

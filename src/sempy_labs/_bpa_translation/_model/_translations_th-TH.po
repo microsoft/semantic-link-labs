@@ -48,6 +48,14 @@ msgstr ""
 
 # rule_name
 msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"โหมดคู่จะเกี่ยวข้องกับตารางมิติเท่านั้นถ้าใช้ DirectQuery "
+"สําหรับตารางข้อเท็จจริงที่สอดคล้องกัน"
+
+# rule_name
+msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
@@ -292,6 +300,12 @@ msgstr "การแสดง"
 msgid ""
 "Set 'Data Coverage Definition' property on the DirectQuery partition of a "
 "hybrid table"
+msgstr "การแสดง"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
 msgstr "การแสดง"
 
 # category
@@ -565,6 +579,16 @@ msgstr ""
 "การตั้งค่าคุณสมบัติ 'คําจํากัดความความครอบคลุมของข้อมูล' "
 "อาจนําไปสู่ประสิทธิภาพที่ดีขึ้นเนื่องจากกลไกจัดการรู้ว่าเมื่อใดที่สามารถคิวรีเฉพาะส่วนการนําเข้าของตาราง"
 " และเมื่อใดที่จําเป็นต้องคิวรีส่วน DirectQuery ของตาราง"
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"ใช้โหมดคู่สําหรับตารางมิติ/พาร์ติชันที่มีตารางข้อเท็จจริงที่สอดคล้องกันอยู่ใน"
+" DirectQuery เท่านั้น การใช้โหมดคู่ในสถานการณ์อื่นๆ (เช่น "
+"ส่วนที่เหลือของโมเดลอยู่ในโหมดนําเข้า) "
+"อาจนําไปสู่ปัญหาด้านประสิทธิภาพโดยเฉพาะอย่างยิ่งหากจํานวนการวัดในโมเดลมีสูง"
 
 # description
 msgid ""

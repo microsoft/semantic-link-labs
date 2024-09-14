@@ -50,6 +50,14 @@ msgstr ""
 
 # rule_name
 msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"సంబంధిత ఫ్యాక్ట్ టేబుల్ కొరకు డైరెక్ట్ క్వెరీని ఉపయోగించినట్లయితే డైమెన్షన్ "
+"టేబుల్ లకు మాత్రమే డ్యూయల్ మోడ్ సముచితంగా ఉంటుంది."
+
+# rule_name
+msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
@@ -299,6 +307,12 @@ msgstr "పనితీరు"
 msgid ""
 "Set 'Data Coverage Definition' property on the DirectQuery partition of a "
 "hybrid table"
+msgstr "పనితీరు"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
 msgstr "పనితీరు"
 
 # category
@@ -571,6 +585,16 @@ msgstr ""
 "దారితీయవచ్చు ఎందుకంటే టేబుల్ యొక్క దిగుమతి-భాగాన్ని మాత్రమే ఎప్పుడు "
 "ప్రశ్నించగలదో మరియు టేబుల్ యొక్క డైరెక్ట్ క్వెరీ భాగాన్ని ఎప్పుడు "
 "ప్రశ్నించాల్సి ఉంటుందో ఇంజిన్ కు తెలుసు."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"డైమెన్షన్ టేబుల్ లు/పార్టిషన్ ల కొరకు డ్యూయల్ మోడ్ ని మాత్రమే ఉపయోగించండి, "
+"ఇక్కడ సంబంధిత ఫ్యాక్ట్ టేబుల్ డైరెక్ట్ క్వెరీలో ఉంది. ఇతర పరిస్థితులలో "
+"డ్యూయల్ మోడ్ ఉపయోగించడం (అనగా మిగిలిన మోడల్ ఇంపోర్ట్ మోడ్ లో ఉంది) పనితీరు "
+"సమస్యలకు దారితీయవచ్చు, ప్రత్యేకించి మోడల్ లో కొలతల సంఖ్య ఎక్కువగా ఉంటే."
 
 # description
 msgid ""

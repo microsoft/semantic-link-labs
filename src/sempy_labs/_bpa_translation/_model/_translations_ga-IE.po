@@ -50,6 +50,14 @@ msgstr ""
 
 # rule_name
 msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Níl démhodh ábhartha ach amháin le haghaidh táblaí toise má úsáidtear "
+"DirectQuery don tábla fíricí comhfhreagrach"
+
+# rule_name
+msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
@@ -301,6 +309,12 @@ msgstr "Feidhmíocht"
 msgid ""
 "Set 'Data Coverage Definition' property on the DirectQuery partition of a "
 "hybrid table"
+msgstr "Feidhmíocht"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
 msgstr "Feidhmíocht"
 
 # category
@@ -576,6 +590,17 @@ msgstr ""
 "'Sainmhíniú Clúdaigh Sonraí' a shocrú toisc go bhfuil a fhios ag an inneall "
 "cathain nach féidir leis ach an chuid allmhairithe den tábla a fhiosrú agus "
 "nuair is gá dó an chuid DirectQuery den tábla a fhiosrú."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Ná húsáid ach modh Dual le haghaidh táblaí toise / deighiltí ina bhfuil "
+"tábla fíricí comhfhreagrach i DirectQuery. Ag baint úsáide as modh Dual i "
+"gcúinsí eile (i.e. tá an chuid eile den tsamhail i mód Iompórtáil) "
+"d'fhéadfadh saincheisteanna feidhmíochta a bheith mar thoradh air go "
+"háirithe má tá líon na mbeart sa tsamhail ard."
 
 # description
 msgid ""

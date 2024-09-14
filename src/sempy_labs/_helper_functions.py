@@ -883,6 +883,7 @@ class FabricTokenCredential(TokenCredential):
     ) -> AccessToken:
 
         from notebookutils import mssparkutils
+
         token = mssparkutils.credentials.getToken(scopes)
         access_token = AccessToken(token, 0)
 
@@ -910,3 +911,17 @@ def resolve_warehouse_id(warehouse: str, workspace: Optional[str]):
     )
 
     return warehouse_id
+
+
+def get_language_codes(languages: str | List[str]):
+
+    if isinstance(languages, str):
+        languages = [languages]
+
+    for i, lang in enumerate(languages):
+        for k, v in icons.language_map.items():
+            if v == lang.capitalize():
+                languages[i] = k
+                break
+
+    return languages

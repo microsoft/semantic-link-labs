@@ -51,6 +51,14 @@ msgstr ""
 
 # rule_name
 msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Imodi emibili ihambelana kuphela namatafula obukhulu uma i-DirectQuery "
+"isetshenziselwa itafula leqiniso elihambisanayo"
+
+# rule_name
+msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
@@ -306,6 +314,12 @@ msgstr "Ukusebenza"
 msgid ""
 "Set 'Data Coverage Definition' property on the DirectQuery partition of a "
 "hybrid table"
+msgstr "Ukusebenza"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
 msgstr "Ukusebenza"
 
 # category
@@ -582,6 +596,17 @@ msgstr ""
 "okungcono ngoba injini iyazi ukuthi ingakwazi nini ukubuza kuphela ingxenye "
 "yokungenisa itafula nokuthi idinga nini ukubuza ingxenye ye-DirectQuery "
 "yetafula."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Sebenzisa kuphela imodi ye-Dual yamatafula wobukhulu / ukwahlukanisa lapho "
+"itafula lamaqiniso elihambisanayo ku-DirectQuery. Ukusebenzisa imodi Dual "
+"kwezinye izimo (okungukuthi ukuphumula imodeli kwimodi Import) kungaholela "
+"ezindabeni ukusebenza ikakhulukazi uma inani izinyathelo imodeli "
+"okusezingeni eliphezulu."
 
 # description
 msgid ""

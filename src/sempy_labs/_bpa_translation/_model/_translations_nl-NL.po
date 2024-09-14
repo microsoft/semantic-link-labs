@@ -20,7 +20,7 @@ msgstr "Controleer of bidirectionele en veel-op-veel-relaties geldig zijn"
 
 # rule_name
 msgid "Check if dynamic row level security (RLS) is necessary"
-msgstr "Controleer of beveiliging op rijniveau (RLS) nodig is"
+msgstr "Controleer of dynamische beveiliging op rijniveau (RLS) nodig is"
 
 # rule_name
 msgid ""
@@ -48,6 +48,14 @@ msgstr ""
 
 # rule_name
 msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Dubbele modus is alleen relevant voor dimensietabellen als DirectQuery wordt"
+" gebruikt voor de bijbehorende feitentabel"
+
+# rule_name
+msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
@@ -69,7 +77,7 @@ msgstr ""
 
 # rule_name
 msgid "Avoid adding 0 to a measure"
-msgstr "Vermijd het toevoegen van 0 aan een meting"
+msgstr "Vermijd het toevoegen van 0 aan een maat"
 
 # rule_name
 msgid "Reduce usage of calculated tables"
@@ -119,15 +127,15 @@ msgstr "Gegevenskolommen moeten een bronkolom hebben"
 
 # rule_name
 msgid "Set IsAvailableInMdx to true on necessary columns"
-msgstr "Stel IsAvailableInMdx in op true op de benodigde kolommen"
+msgstr "Stel IsAvailableInMdx in op waar op noodzakelijke kolommen"
 
 # rule_name
 msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
-msgstr "Vermijd de functie USERELATIONSHIP en RLS voor dezelfde tabel"
+msgstr "Vermijd de USERELATIONSHIP-functie en RLS tegen dezelfde tabel"
 
 # rule_name
 msgid "Avoid using the IFERROR function"
-msgstr "Vermijd het gebruik van de ALS.FOUT-functie"
+msgstr "Vermijd het gebruik van de IFERROR-functie"
 
 # rule_name
 msgid ""
@@ -179,7 +187,7 @@ msgstr "Kolomverwijzingen moeten volledig gekwalificeerd zijn"
 
 # rule_name
 msgid "Measure references should be unqualified"
-msgstr "Verwijzingen naar maatregelen moeten ongekwalificeerd zijn"
+msgstr "Verwijzingen naar maatregelen moeten zonder voorbehoud zijn"
 
 # rule_name
 msgid "Inactive relationships that are never activated"
@@ -207,7 +215,7 @@ msgstr "Zichtbare objecten zonder beschrijving"
 
 # rule_name
 msgid "Provide format string for 'Date' columns"
-msgstr "Opmaak string voor 'Datum'-kolommen"
+msgstr "Opmaak opgeven voor 'Datum'-kolommen"
 
 # rule_name
 msgid "Do not summarize numeric columns"
@@ -253,11 +261,11 @@ msgstr "Relatiekolommen moeten van het gegevenstype geheel getal zijn"
 
 # rule_name
 msgid "Provide format string for \"Month\" columns"
-msgstr "Geef een notatietekenreeks op voor kolommen met een maand"
+msgstr "Geef een notatiereeks op voor kolommen met een maand"
 
 # rule_name
 msgid "Format flag columns as Yes/No value strings"
-msgstr "Vlagkolommen opmaken als Ja/Nee-waardetekenreeksen"
+msgstr "Vlagkolommen opmaken als Ja/Nee-waardereeksen"
 
 # rule_name
 msgid "Objects should not start or end with a space"
@@ -306,6 +314,12 @@ msgstr "Voorstelling"
 msgid ""
 "Set 'Data Coverage Definition' property on the DirectQuery partition of a "
 "hybrid table"
+msgstr "Voorstelling"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
 msgstr "Voorstelling"
 
 # category
@@ -532,9 +546,9 @@ msgid "Avoid using calculated columns"
 msgstr ""
 "Berekende kolommen worden niet zo goed gecomprimeerd als gegevenskolommen, "
 "zodat ze meer geheugen in beslag nemen. Ze vertragen ook de "
-"verwerkingstijden voor zowel de tabel als de procesrecalc. Implementeer de "
-"logica van berekende kolommen naar uw datawarehouse en zet deze berekende "
-"kolommen om in gegevenskolommen."
+"verwerkingstijden voor zowel de tabel als de procesrecalc. Offload de logica"
+" van berekende kolommen naar uw datawarehouse en zet deze berekende kolommen"
+" om in gegevenskolommen."
 
 # description
 msgid "Check if bi-directional and many-to-many relationships are valid"
@@ -546,7 +560,7 @@ msgstr ""
 msgid "Check if dynamic row level security (RLS) is necessary"
 msgstr ""
 "Het gebruik van dynamische beveiliging op rijniveau (RLS) kan geheugen- en "
-"prestatieoverhead toevoegen. Onderzoek de voor- en nadelen van het gebruik "
+"prestatie-overhead toevoegen. Onderzoek de voor- en nadelen van het gebruik "
 "ervan."
 
 # description
@@ -566,9 +580,9 @@ msgstr ""
 msgid "Set IsAvailableInMdx to false on non-attribute columns"
 msgstr ""
 "Om de verwerkingstijd te versnellen en geheugen te besparen na verwerking, "
-"mogen kenmerkhiërarchieën niet worden gemaakt voor kolommen die nooit worden"
+"mogen kenmerkhiërarchieën niet worden gebouwd voor kolommen die nooit worden"
 " gebruikt voor slicing door MDX-clients. Met andere woorden, voor alle "
-"verborgen kolommen die niet worden gebruikt als een kolom Sorteren op of "
+"verborgen kolommen die niet worden gebruikt als een Sorteren op kolom of "
 "waarnaar wordt verwezen in gebruikershiërarchieën, moet de eigenschap "
 "IsAvailableInMdx zijn ingesteld op false. De eigenschap IsAvailableInMdx is "
 "niet relevant voor Direct Lake-modellen."
@@ -582,6 +596,17 @@ msgstr ""
 "betere prestaties, omdat de engine weet wanneer hij alleen het "
 "importgedeelte van de tabel kan opvragen en wanneer hij het DirectQuery-"
 "gedeelte van de tabel moet opvragen."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Gebruik de dubbele modus alleen voor dimensietabellen/partities waarbij een "
+"overeenkomstige feitentabel zich in DirectQuery bevindt. Het gebruik van de "
+"dubbele modus in andere omstandigheden (d.w.z. de rest van het model staat "
+"in de importmodus) kan leiden tot prestatieproblemen, vooral als het aantal "
+"metingen in het model hoog is."
 
 # description
 msgid ""
@@ -618,15 +643,15 @@ msgstr ""
 # description
 msgid "Avoid adding 0 to a measure"
 msgstr ""
-"Het toevoegen van 0 aan een meting om te voorkomen dat er een lege waarde "
-"wordt weergegeven, kan een negatieve invloed hebben op de prestaties."
+"Het toevoegen van 0 aan een meting om ervoor te zorgen dat er geen lege "
+"waarde wordt weergegeven, kan een negatieve invloed hebben op de prestaties."
 
 # description
 msgid "Reduce usage of calculated tables"
 msgstr ""
 "Migreer berekende tabellogica naar uw datawarehouse. Vertrouwen op berekende"
-" tabellen zal leiden tot technische schuld en mogelijke verkeerde "
-"uitlijningen als u meerdere modellen op uw platform heeft."
+" tabellen leidt tot technische schuld en mogelijke verkeerde uitlijningen "
+"als u meerdere modellen op uw platform heeft."
 
 # description
 msgid "Reduce usage of calculated columns that use the RELATED function"
@@ -639,16 +664,15 @@ msgstr ""
 # description
 msgid "Avoid excessive bi-directional or many-to-many relationships"
 msgstr ""
-"Beperk het gebruik van b-di en veel-op-veel-relaties. Met deze regel wordt "
-"het model gemarkeerd als meer dan 30% van de relaties bi-di of veel-op-veel "
-"is."
+"Beperk het gebruik van b-di en veel-op-veel-relaties. Deze regel markeert "
+"het model als meer dan 30% van de relaties bi-di of veel-op-veel zijn."
 
 # description
 msgid "Remove auto-date table"
 msgstr ""
-"Vermijd het gebruik van tabellen met automatische datum. Zorg ervoor dat de "
-"tabel voor automatische datums is uitgeschakeld in de instellingen in Power "
-"BI Desktop. Dit bespaart geheugenbronnen."
+"Vermijd het gebruik van tabellen met automatische datums. Zorg ervoor dat u "
+"de tabel voor automatische datums uitschakelt in de instellingen in Power BI"
+" Desktop. Dit bespaart geheugenbronnen."
 
 # description
 msgid "Date/calendar tables should be marked as a date table"
@@ -662,7 +686,7 @@ msgid "Large tables should be partitioned"
 msgstr ""
 "Grote tabellen moeten worden gepartitioneerd om de verwerking te "
 "optimaliseren. Dit is niet relevant voor semantische modellen in de Direct "
-"Lake-modus, omdat deze slechts één partitie per tabel kunnen hebben."
+"Lake-modus, omdat ze slechts één partitie per tabel kunnen hebben."
 
 # description
 msgid "Limit row level security (RLS) logic"
@@ -707,9 +731,9 @@ msgid "Set IsAvailableInMdx to true on necessary columns"
 msgstr ""
 "Om fouten te voorkomen, moet u ervoor zorgen dat kenmerkhiërarchieën zijn "
 "ingeschakeld als een kolom wordt gebruikt voor het sorteren van een andere "
-"kolom, wordt gebruikt in een hiërarchie, wordt gebruikt in variaties of "
-"wordt gesorteerd op een andere kolom. De eigenschap IsAvailableInMdx is niet"
-" relevant voor Direct Lake-modellen."
+"kolom, in een hiërarchie, in variaties of als op een andere kolom wordt "
+"gesorteerd. De eigenschap IsAvailableInMdx is niet relevant voor Direct "
+"Lake-modellen."
 
 # description
 msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
@@ -726,8 +750,8 @@ msgstr ""
 "Vermijd het gebruik van de IFERROR-functie, omdat dit kan leiden tot "
 "prestatievermindering. Als u zich zorgen maakt over een fout tussen delen "
 "door nul, gebruik dan de functie DELEN, omdat deze dergelijke fouten op "
-"natuurlijke wijze als leeg oplost (of u kunt aanpassen wat er moet worden "
-"weergegeven in het geval van een dergelijke fout)."
+"natuurlijke wijze oplost als leeg (of u kunt aanpassen wat er moet worden "
+"weergegeven in geval van een dergelijke fout)."
 
 # description
 msgid ""
@@ -767,39 +791,39 @@ msgstr ""
 "een waarde, terwijl de oplossing zonder de '1+/-...' doet dit niet (omdat de"
 " waarde 'leeg' kan zijn). Daarom is de '1+/-...' De syntaxis kan meer "
 "rijen/kolommen retourneren, wat kan resulteren in een lagere querysnelheid."
-"    Laten we het verduidelijken met een voorbeeld: Vermijd dit: 1 - SOM ( "
-"'Verkoop'[KostenBedrag] ) / SUM( 'Verkoop'[Verkoopbedrag] ) ) Beter: DELEN ("
-" SOM ( 'Verkoop'[Verkoopbedrag] ) ) - SOM ( 'Verkoop'[KostenBedrag] ), SOM ("
-" 'Verkoop'[Verkoopbedrag] ) ) ) Beste: VAR x = SOM ( "
-"'Verkoop'[Verkoopbedrag] ) RETOUR DELEN ( x - SOM ( 'Verkoop'[KostenBedrag] "
-"), x )"
+"    Laten we het verduidelijken aan de hand van een voorbeeld: Vermijd dit: "
+"1 - SOM ( 'Verkoop'[KostenBedrag] ) ) / SUM( 'Verkoop'[Verkoopbedrag] ) ) "
+"Beter: DELEN ( SOM ( 'Verkoop'[Verkoopbedrag] ) ) - SOM ( "
+"'Verkoop'[KostenBedrag] ), SOM ( 'Verkoop'[Verkoopbedrag] ) ) ) Beste: VAR x"
+" = SOM ( 'Verkoop'[Verkoopbedrag] ) ) RETOUR DELEN ( x - SOM ( "
+"'Verkoop'[KostenBedrag] ), x )"
 
 # description
 msgid "Filter measure values by columns, not tables"
 msgstr ""
-"In plaats van dit patroon FILTER('Tabel',[Meting]>Waarde) te gebruiken voor de filterparameters van een CALCULATE of CALCULATETABLE-functie, gebruikt u een van de onderstaande opties (indien mogelijk). Door op een specifieke kolom te filteren, ontstaat er een kleinere tabel die de engine moet verwerken, waardoor snellere prestaties mogelijk zijn. Het gebruik van de functie VALUES of de functie ALL is afhankelijk van het gewenste meetresultaat.\n"
-"Optie 1: FILTER(WAARDEN('Tabel'[Kolom]),[Maatregel] > Waarde)\n"
-"Optie 2: FILTER(ALL('Tabel'[Kolom]),[Meting] > Waarde)"
+"In plaats van dit patroon FILTER('Tabel',[Meting]>Waarde) te gebruiken voor de filterparameters van een CALCULATE of CALCULATETABLE-functie, gebruikt u een van de onderstaande opties (indien mogelijk). Filteren op een specifieke kolom levert een kleinere tabel op die de engine moet verwerken, waardoor snellere prestaties mogelijk zijn. Het gebruik van de functie VALUES of de functie ALL is afhankelijk van het gewenste meetresultaat.\n"
+"Optie 1: FILTER(WAARDEN('Tabel'[Kolom]),[Meting] > Waarde)\n"
+"Optie 2: FILTER(ALL('Tabel'[Kolom]),[Maatregel] > Waarde)"
 
 # description
 msgid "Filter column values with proper syntax"
 msgstr ""
-"In plaats van dit patroon FILTER('Tabel','Tabel'[Column]=\"Waarde\") te gebruiken voor de filterparameters van een CALCULATE of CALCULATETABLE-functie, gebruikt u een van de onderstaande opties. Voor het al dan niet gebruiken van de KEEPFILTERS-functie, zie de tweede referentielink hieronder.\n"
-"Optie 1: KEEPFILTERS(\"'Tabel'[Column]=\"Waarde\")\n"
+"In plaats van dit patroon FILTER('Tabel','Tabel'[Column]=\"Waarde\") te gebruiken voor de filterparameters van een CALCULATE of CALCULATETABLE-functie, gebruikt u een van de onderstaande opties. Voor zover u de functie KEEPFILTERS wilt gebruiken, zie de tweede referentielink hieronder.\n"
+"Optie 1: KEEPFILTERS('Tabel'[Column]=\"Waarde\")\n"
 "Optie 2: 'Tabel'[Column]=\"Waarde\""
 
 # description
 msgid "Use the DIVIDE function for division"
 msgstr ""
 "Gebruik de functie DIVIDE in plaats van \"/\". Met de functie DELEN kunt u "
-"gevallen oplossen in gevallen van delen door nul. Als zodanig wordt "
-"aanbevolen om te gebruiken om fouten te voorkomen."
+"gevallen oplossen die delen door nul zijn. Als zodanig wordt aanbevolen om "
+"te gebruiken om fouten te voorkomen."
 
 # description
 msgid "Column references should be fully qualified"
 msgstr ""
 "Het gebruik van volledig gekwalificeerde kolomverwijzingen maakt het "
-"gemakkelijker om onderscheid te maken tussen kolom- en meetreferenties en "
+"gemakkelijker om onderscheid te maken tussen kolom- en meetverwijzingen en "
 "helpt ook bepaalde fouten te voorkomen. Wanneer u naar een kolom in DAX "
 "verwijst, geeft u eerst de tabelnaam op en geeft u vervolgens de kolomnaam "
 "tussen vierkante haken op."
@@ -807,11 +831,11 @@ msgstr ""
 # description
 msgid "Measure references should be unqualified"
 msgstr ""
-"Het gebruik van niet-gekwalificeerde metingsverwijzingen maakt het "
+"Het gebruik van ongekwalificeerde metingsverwijzingen maakt het "
 "gemakkelijker om onderscheid te maken tussen kolom- en meetverwijzingen en "
 "helpt ook bepaalde fouten te voorkomen. Wanneer u naar een meting verwijst "
-"met behulp van DAX, geeft u de tabelnaam niet op. Gebruik alleen de naam van"
-" de meting tussen vierkante haken."
+"met behulp van DAX, moet u de tabelnaam niet opgeven. Gebruik alleen de naam"
+" van de meting tussen vierkante haken."
 
 # description
 msgid "Inactive relationships that are never activated"
@@ -826,8 +850,8 @@ msgstr ""
 msgid "Remove unnecessary columns"
 msgstr ""
 "Verborgen kolommen waarnaar niet wordt verwezen door DAX-expressies, "
-"relaties, hiërarchische niveaus of eigenschappen van Sorteren op, moeten "
-"worden verwijderd."
+"relaties, hiërarchieniveaus of eigenschappen van Sorteren op, moeten worden "
+"verwijderd."
 
 # description
 msgid "Remove unnecessary measures"
@@ -838,8 +862,8 @@ msgstr ""
 # description
 msgid "Ensure tables have relationships"
 msgstr ""
-"Met deze regel worden tabellen gemarkeerd die niet zijn verbonden met een "
-"andere tabel in het model met een relatie."
+"Met deze regel worden tabellen gemarkeerd die niet met een relatie zijn "
+"verbonden met een andere tabel in het model."
 
 # description
 msgid "Visible objects with no description"
@@ -849,8 +873,8 @@ msgstr ""
 # description
 msgid "Provide format string for 'Date' columns"
 msgstr ""
-"Kolommen van het type \"Datum/tijd\" met \"Maand\" in hun naam moeten worden"
-" opgemaakt als \"mm/dd/jjjj\"."
+"Kolommen van het type 'Datum/tijd' met 'Maand' in hun naam moeten worden "
+"opgemaakt als 'mm/dd/jjjj'."
 
 # description
 msgid "Do not summarize numeric columns"
@@ -862,7 +886,7 @@ msgstr ""
 # description
 msgid "Provide format string for measures"
 msgstr ""
-"Aan zichtbare metingen moet de eigenschap van de notatietekenreeks worden "
+"Aan zichtbare metingen moet de eigenschap van de notatietekenreeks zijn "
 "toegewezen."
 
 # description
@@ -905,7 +929,7 @@ msgstr ""
 msgid "Format flag columns as Yes/No value strings"
 msgstr ""
 "Vlaggen moeten correct worden opgemaakt als Ja/Nee, omdat dit gemakkelijker "
-"te lezen is dan het gebruik van gehele getallen van 0/1."
+"te lezen is dan het gebruik van 0/1 gehele getallen."
 
 # description
 msgid "Objects should not start or end with a space"

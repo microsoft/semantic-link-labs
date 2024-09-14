@@ -3,6 +3,7 @@ import pandas as pd
 from typing import List, Optional, Union
 from sempy._utils._log import log
 import sempy_labs._icons as icons
+from sempy_labs._helper_functions import get_language_codes
 
 
 @log
@@ -47,6 +48,8 @@ def translate_semantic_model(
 
     if isinstance(languages, str):
         languages = [languages]
+
+    languages = get_language_codes(languages)
 
     df_prep = pd.DataFrame(
         columns=["Object Type", "Name", "Description", "Display Folder"]

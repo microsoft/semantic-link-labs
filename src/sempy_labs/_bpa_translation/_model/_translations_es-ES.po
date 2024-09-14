@@ -51,6 +51,14 @@ msgstr ""
 
 # rule_name
 msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"El modo dual solo es relevante para las tablas de dimensiones si se usa "
+"DirectQuery para la tabla de hechos correspondiente"
+
+# rule_name
+msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
@@ -73,7 +81,7 @@ msgstr "Evite el uso de vistas cuando se utilice el modo Direct Lake"
 
 # rule_name
 msgid "Avoid adding 0 to a measure"
-msgstr "Evite agregar 0 a una medida"
+msgstr "Evite agregar 0 a un compás"
 
 # rule_name
 msgid "Reduce usage of calculated tables"
@@ -130,7 +138,7 @@ msgstr "Evite la función USERELATIONSHIP y RLS en la misma tabla"
 
 # rule_name
 msgid "Avoid using the IFERROR function"
-msgstr "Evite usar la función IFERROR"
+msgstr "Evite el uso de la función IFERROR"
 
 # rule_name
 msgid ""
@@ -156,7 +164,7 @@ msgstr "No hay dos medidas que tengan la misma definición"
 msgid ""
 "Avoid addition or subtraction of constant values to results of divisions"
 msgstr ""
-"Evite la suma o resta de valores constantes a los resultados de las "
+"Evite la suma o sustracción de valores constantes a los resultados de las "
 "divisiones"
 
 # rule_name
@@ -193,7 +201,7 @@ msgstr "Eliminación de columnas innecesarias"
 
 # rule_name
 msgid "Remove unnecessary measures"
-msgstr "Elimine las medidas innecesarias"
+msgstr "Eliminar medidas innecesarias"
 
 # rule_name
 msgid "Ensure tables have relationships"
@@ -227,13 +235,13 @@ msgstr "Agregar categoría de datos para columnas"
 msgid ""
 "Percentages should be formatted with thousands separators and 1 decimal"
 msgstr ""
-"Los porcentajes deben tener un formato con separadores de miles y 1 decimal"
+"Los porcentajes deben tener un formato de miles, separadores y 1 decimal"
 
 # rule_name
 msgid ""
 "Whole numbers should be formatted with thousands separators and no decimals"
 msgstr ""
-"Los números enteros deben tener formato con separadores de miles y sin "
+"Los números enteros deben tener el formato de miles, separadores y sin "
 "decimales"
 
 # rule_name
@@ -242,7 +250,7 @@ msgstr "Ocultar claves foráneas"
 
 # rule_name
 msgid "Mark primary keys"
-msgstr "Marcar claves principales"
+msgstr "Marcar claves primarias"
 
 # rule_name
 msgid "Month (as a string) must be sorted"
@@ -250,7 +258,7 @@ msgstr "El mes (como una cadena) debe ordenarse"
 
 # rule_name
 msgid "Relationship columns should be of integer data type"
-msgstr "Las columnas de relación deben ser del tipo de datos entero"
+msgstr "Las columnas de relación deben ser de tipo de datos entero"
 
 # rule_name
 msgid "Provide format string for \"Month\" columns"
@@ -306,6 +314,12 @@ msgstr "Rendimiento"
 msgid ""
 "Set 'Data Coverage Definition' property on the DirectQuery partition of a "
 "hybrid table"
+msgstr "Rendimiento"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
 msgstr "Rendimiento"
 
 # category
@@ -523,16 +537,16 @@ msgid "Do not use floating point data types"
 msgstr ""
 "Se debe evitar el tipo de datos de punto flotante \"Doble\", ya que puede "
 "dar lugar a errores de redondeo impredecibles y a una disminución del "
-"rendimiento en determinados escenarios. Use \"Int64\" o \"Decimal\" cuando "
-"corresponda (pero tenga en cuenta que \"Decimal\" está limitado a 4 dígitos "
-"después del signo decimal)."
+"rendimiento en determinados escenarios. Utilice \"Int64\" o \"Decimal\" "
+"cuando corresponda (pero tenga en cuenta que \"Decimal\" está limitado a 4 "
+"dígitos después del signo decimal)."
 
 # description
 msgid "Avoid using calculated columns"
 msgstr ""
 "Las columnas calculadas no se comprimen tan bien como las columnas de datos,"
 " por lo que ocupan más memoria. También ralentizan los tiempos de "
-"procesamiento tanto de la tabla como del proceso de recálculo. Descargue la "
+"procesamiento tanto de la mesa como del proceso de recálculo. Descargue la "
 "lógica de columna calculada en el almacenamiento de datos y convierta estas "
 "columnas calculadas en columnas de datos."
 
@@ -546,7 +560,7 @@ msgstr ""
 msgid "Check if dynamic row level security (RLS) is necessary"
 msgstr ""
 "El uso de la seguridad dinámica de nivel de fila (RLS) puede agregar memoria"
-" y sobrecarga de rendimiento. Investigue los pros / contras de usarlo."
+" y sobrecarga de rendimiento. Investigue los pros y los contras de usarlo."
 
 # description
 msgid ""
@@ -558,8 +572,8 @@ msgstr ""
 "rendimiento de las consultas. Los problemas de rendimiento de este patrón se"
 " agravan cuando se acumulan varias relaciones de varios a varios en una "
 "tabla que contiene seguridad de nivel de fila. En su lugar, use uno de los "
-"patrones que se muestran en el artículo siguiente, donde una sola tabla de "
-"dimensiones se relaciona de varios a uno con una tabla de seguridad."
+"patrones que se muestran en el artículo siguiente, donde una tabla de una "
+"sola dimensión se relaciona de varios a uno con una tabla de seguridad."
 
 # description
 msgid "Set IsAvailableInMdx to false on non-attribute columns"
@@ -579,8 +593,19 @@ msgid ""
 msgstr ""
 "Establecer la propiedad \"Definición de cobertura de datos\" puede conducir "
 "a un mejor rendimiento, ya que el motor sabe cuándo solo puede consultar la "
-"parte de importación de la tabla y cuándo necesita consultar la parte "
+"parte de importación de la tabla y cuándo necesita consultar la parte de "
 "DirectQuery de la tabla."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Use solo el modo dual para tablas de dimensiones o particiones en las que "
+"una tabla de hechos correspondiente esté en DirectQuery. El uso del modo "
+"dual en otras circunstancias (es decir, el resto del modelo está en modo de "
+"importación) puede provocar problemas de rendimiento, especialmente si el "
+"número de medidas en el modelo es alto."
 
 # description
 msgid ""
@@ -595,9 +620,9 @@ msgid "Minimize Power Query transformations"
 msgstr ""
 "Minimice las transformaciones de Power Query para mejorar el rendimiento del"
 " procesamiento de modelos. Se recomienda descargar estas transformaciones en"
-" el almacenamiento de datos si es posible. Además, compruebe si se está "
+" el almacenamiento de datos, si es posible. Además, compruebe si se está "
 "produciendo un plegado de consultas dentro de su modelo. Consulte el "
-"artículo a continuación para obtener más información sobre el plegado de "
+"artículo siguiente para obtener más información sobre el plegado de "
 "consultas."
 
 # description
@@ -611,9 +636,9 @@ msgstr ""
 # description
 msgid "Avoid using views when using Direct Lake mode"
 msgstr ""
-"En el modo Direct Lake, las vistas siempre se revertirán en DirectQuery. Por"
-" lo tanto, para obtener el mejor rendimiento, utilice mesas lakehouse en "
-"lugar de vistas."
+"En el modo Direct Lake, las vistas siempre volverán a DirectQuery. Por lo "
+"tanto, para obtener el mejor rendimiento, utilice mesas lakehouse en lugar "
+"de vistas."
 
 # description
 msgid "Avoid adding 0 to a measure"
@@ -624,9 +649,9 @@ msgstr ""
 # description
 msgid "Reduce usage of calculated tables"
 msgstr ""
-"Migre la lógica de la tabla calculada a su almacén de datos. La dependencia "
-"de las tablas calculadas dará lugar a una deuda técnica y a posibles "
-"desajustes si tiene varios modelos en su plataforma."
+"Migre la lógica de la tabla calculada a su almacenamiento de datos. La "
+"dependencia de las tablas calculadas dará lugar a una deuda técnica y a "
+"posibles desajustes si tiene varios modelos en su plataforma."
 
 # description
 msgid "Reduce usage of calculated columns that use the RELATED function"
@@ -653,8 +678,8 @@ msgstr ""
 msgid "Date/calendar tables should be marked as a date table"
 msgstr ""
 "Esta regla busca tablas que contengan las palabras \"fecha\" o "
-"\"calendario\", ya que probablemente deberían marcarse como una tabla de "
-"fechas."
+"\"calendario\", ya que probablemente deberían estar marcadas como una tabla "
+"de fechas."
 
 # description
 msgid "Large tables should be partitioned"
@@ -667,14 +692,14 @@ msgstr ""
 msgid "Limit row level security (RLS) logic"
 msgstr ""
 "Intente simplificar el DAX que se usa para la seguridad de nivel de fila. Es"
-" probable que el uso de las funciones dentro de esta regla se pueda "
-"descargar a los sistemas ascendentes (almacén de datos)."
+" probable que el uso de las funciones de esta regla se pueda descargar a los"
+" sistemas ascendentes (almacén de datos)."
 
 # description
 msgid "Model should have a date table"
 msgstr ""
-"En términos generales, los modelos deben tener una tabla de fechas. Por lo "
-"general, los modelos que no tienen una tabla de fechas no aprovechan "
+"En términos generales, los modelos deben tener una tabla de fechas. Los "
+"modelos que no tienen una tabla de fechas generalmente no aprovechan "
 "características como la inteligencia de tiempo o pueden no tener una "
 "arquitectura estructurada correctamente."
 
@@ -689,7 +714,7 @@ msgid "Relationship columns should be of the same data type"
 msgstr ""
 "Las columnas utilizadas en una relación deben ser del mismo tipo de datos. "
 "Idealmente, serán de tipo de datos enteros (consulte la regla relacionada "
-"'[Formato] Las columnas de relación deben ser del tipo de datos enteros'). "
+"'[Formato] Las columnas de relación deben ser del tipo de datos entero'). "
 "Tener columnas dentro de una relación que son de diferentes tipos de datos "
 "puede dar lugar a varios problemas."
 
@@ -704,9 +729,8 @@ msgid "Set IsAvailableInMdx to true on necessary columns"
 msgstr ""
 "Para evitar errores, asegúrese de que las jerarquías de atributos estén "
 "habilitadas si una columna se utiliza para ordenar otra columna, se utiliza "
-"en una jerarquía, se utiliza en variantes de cambio o se ordena por otra "
-"columna. La propiedad IsAvailableInMdx no es relevante para los modelos de "
-"Direct Lake."
+"en una jerarquía, se utiliza en variantes o se ordena por otra columna. La "
+"propiedad IsAvailableInMdx no es relevante para los modelos de Direct Lake."
 
 # description
 msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
@@ -720,7 +744,7 @@ msgstr ""
 msgid "Avoid using the IFERROR function"
 msgstr ""
 "Evite utilizar la función IFERROR, ya que puede provocar una degradación del"
-" rendimiento. Si le preocupa un error de división por cero, utilice la "
+" rendimiento. Si le preocupa un error de dividir por cero, utilice la "
 "función DIVIDIR, ya que resuelve naturalmente dichos errores como en blanco "
 "(o puede personalizar lo que debe mostrarse en caso de tal error)."
 
@@ -741,7 +765,7 @@ msgstr ""
 msgid "Measures should not be direct references of other measures"
 msgstr ""
 "Esta regla identifica las medidas que son simplemente una referencia a otra "
-"medida. Como ejemplo, considere un modelo con dos medidas: [MedidaA] y "
+"medida. A modo de ejemplo, considere un modelo con dos medidas: [MedidaA] y "
 "[MedidaB]. Esta regla se desencadenaría para MeasureB si el DAX de MeasureB "
 "fuera MeasureB:=[MeasureA]. Deben eliminarse esas medidas duplicadas."
 
@@ -758,14 +782,14 @@ msgstr ""
 "porcentual, use las funciones básicas de DAX (como se muestra a "
 "continuación). El uso de la sintaxis mejorada generalmente mejorará el "
 "rendimiento. El '1+/-...' La sintaxis siempre devuelve un valor, mientras "
-"que la solución sin el '1+/-...' no (ya que el valor puede estar 'en "
-"blanco'). Por lo tanto, el '1+/-...' La sintaxis puede devolver más filas o "
-"columnas, lo que puede dar lugar a una velocidad de consulta más lenta.    "
+"que la solución sin el '1+/-...' no lo hace (ya que el valor puede estar 'en"
+" blanco'). Por lo tanto, el '1+/-...' La sintaxis puede devolver más filas o"
+" columnas, lo que puede dar lugar a una velocidad de consulta más lenta.    "
 "Aclaremos con un ejemplo: Evite esto: 1 - SUMA ( 'Ventas'[CostImporte] ) / "
 "SUMA( 'Ventas'[CantidadVentas] ) Mejor: DIVIDIR ( SUMA ( "
 "'Ventas'[CantidadVentas] ) - SUMA ( 'Ventas'[CantidadCosto] ), SUMA ( "
 "'Ventas'[CantidadVentas] ) ) Mejor: VAR x = SUMA ( 'Ventas'[CantidadVentas] "
-") RETURN DIVIDIR ( x - SUMA ( 'Ventas'[CantidadCosto] ), x )"
+") DIVISIÓN DE DEVOLUCIONES ( x - SUMA ( 'Ventas'[CantidadCosto] ), x )"
 
 # description
 msgid "Filter measure values by columns, not tables"
@@ -779,7 +803,7 @@ msgid "Filter column values with proper syntax"
 msgstr ""
 "En lugar de usar este patrón FILTER('Table','Table'[Column]=\"Value\") para los parámetros de filtro de una función CALCULATE o CALCULATETABLE, use una de las siguientes opciones. En cuanto a si se debe utilizar la función KEEPFILTERS, consulte el segundo enlace de referencia a continuación.\n"
 "Opción 1: KEEPFILTERS('table'[column]=\"value\")\n"
-"Opción 2: 'Tabla'[columna]=\"Valor\""
+"Opción 2: 'Tabla'[Columna]=\"Valor\""
 
 # description
 msgid "Use the DIVIDE function for division"
@@ -880,7 +904,7 @@ msgstr ""
 # description
 msgid "Relationship columns should be of integer data type"
 msgstr ""
-"Se recomienda que las columnas de relación sean de tipo de datos enteros. "
+"Se recomienda que las columnas de relación sean del tipo de datos entero. "
 "Esto se aplica no solo al almacenamiento de datos, sino también al modelado "
 "de datos."
 
@@ -912,4 +936,4 @@ msgstr ""
 msgid "Object names must not contain special characters"
 msgstr ""
 "Los nombres de los objetos no deben incluir tabulaciones, saltos de línea, "
-"etcétera."
+"etc."

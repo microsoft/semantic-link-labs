@@ -48,6 +48,14 @@ msgstr ""
 
 # rule_name
 msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Tvöföld stilling á aðeins við fyrir víddartöflur ef DirectQuery er notað "
+"fyrir samsvarandi staðreyndatöflu"
+
+# rule_name
+msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
@@ -295,6 +303,12 @@ msgstr "Framkvæmd"
 msgid ""
 "Set 'Data Coverage Definition' property on the DirectQuery partition of a "
 "hybrid table"
+msgstr "Framkvæmd"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
 msgstr "Framkvæmd"
 
 # category
@@ -566,6 +580,17 @@ msgstr ""
 "frammistöðu vegna þess að vélin veit hvenær hún getur aðeins spurt um "
 "innflutningshluta töflunnar og hvenær hún þarf að spyrjast fyrir um "
 "DirectQuery hluta töflunnar."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Notaðu aðeins tvöfalda stillingu fyrir víddartöflur/skiptingar þar sem "
+"samsvarandi staðreyndatafla er í DirectQuery. Notkun tvískiptrar stillingar "
+"við aðrar kringumstæður (þ.e. restin af líkaninu er í innflutningsstillingu)"
+" getur leitt til afkastavandamála, sérstaklega ef fjöldi mælikvarða í "
+"líkaninu er mikill."
 
 # description
 msgid ""
