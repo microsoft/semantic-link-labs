@@ -1,6 +1,9 @@
 import sempy.fabric as fabric
 import pandas as pd
 from sempy.fabric.exceptions import FabricHTTPException
+from typing import Optional
+import sempy_labs._icons as icons
+from sempy_labs._helper_functions import pagination
 
 
 def list_connections() -> pd.DataFrame:
@@ -70,6 +73,76 @@ def list_connections() -> pd.DataFrame:
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
     bool_cols = ["Skip Test Connection"]
     df[bool_cols] = df[bool_cols].astype(bool)
+
+    return df
+
+
+def list_item_connections(item_name: str, item_type: str, workspace: Optional[str] = None) -> pd.DataFrame:
+
+    """
+    Shows the list of connections that the specified item is connected to.
+
+    Parameters
+    ----------
+    item_name : str
+        The item name.
+    item_type : str
+        The `item type <https://learn.microsoft.com/rest/api/fabric/core/items/update-item?tabs=HTTP#itemtype>`_.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the list of connections that the specified item is connected to.
+    """
+
+    # https://learn.microsoft.com/en-us/rest/api/fabric/core/items/list-item-connections?tabs=HTTP
+
+    workspace = fabric.resolve_workspace_name(workspace)
+    workspace_id = fabric.resolve_workspace_id(workspace)
+
+    dfI = fabric.list_items(workspace=workspace, type=item_type)
+
+    dfI_filt = dfI[dfI['Display Name'] == item_name]
+    if len(dfI_filt) == 0:
+        raise ValueError(f"{icons.red_dot} The '{item_name}' {item_type} does not exist within the '{workspace}' workspace.")
+
+    item_id = dfI_filt['Id'].iloc[0]
+
+    client = fabric.FabricRestClient()
+    response = client.post(f"/v1/workspaces/{workspace_id}/items/{item_id}/connections")
+
+    df = pd.DataFrame(
+        columns=[
+            "Connection Name",
+            "Connection Id",
+            "Connectivity Type",
+            "Connection Type",
+            "Connection Path",
+            "Gateway Id",
+        ]
+    )
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    respnoses = pagination(client, response)
+
+    for r in respnoses:
+        for v in r.get('value', []):
+            new_data = {
+                "Connection Name": v.get('displayName'),
+                "Connection Id": v.get('id'),
+                "Connectivity Type": v.get('connectivityType'),
+                "Connection Type": v.get('connectionDetails', {}).get('type'),
+                "Connection Path": v.get('connectionDetails', {}).get('path'),
+                "Gateway Id": v.get('gatewayId'),
+            }
+
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
 

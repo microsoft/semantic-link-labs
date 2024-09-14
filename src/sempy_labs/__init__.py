@@ -36,6 +36,7 @@ from sempy_labs._clear_cache import (
 
 from sempy_labs._connections import (
     list_connections,
+    list_item_connections,
 # create_connection_cloud,
 # create_connection_vnet,
 # create_connection_on_prem
@@ -264,4 +265,5 @@ __all__ = [
     "update_from_git",
     "connect_workspace_to_git",
     "disconnect_workspace_from_git",
+    "list_item_connections",
 ]
