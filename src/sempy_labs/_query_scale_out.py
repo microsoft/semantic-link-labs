@@ -293,13 +293,24 @@ def set_semantic_model_storage_format(
             f"{icons.red_dot} Invalid storage format value. Valid options: {storageFormats}."
         )
 
+    dfL = list_qso_settings(dataset=dataset, workspace=workspace)
+    current_storage_format = dfL["Storage Mode"].iloc[0]
+
+    if current_storage_format == storage_format:
+        print(
+            f"{icons.info} The '{dataset}' semantic model within the '{workspace}' workspace is already set to '{storage_format.lower()}' storage format."
+        )
+        return
+
     client = fabric.PowerBIRestClient()
     response = client.patch(
         f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}", json=request_body
     )
     if response.status_code != 200:
         raise FabricHTTPException(response)
-    print(f"{icons.green_dot} Semantic model storage format set to '{storage_format}'.")
+    print(
+        f"{icons.green_dot} The semantic model storage format for the '{dataset}' semantic model within the '{workspace}' workspace has been set to '{storage_format}'."
+    )
 
 
 def list_qso_settings(
