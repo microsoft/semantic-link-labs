@@ -68,67 +68,73 @@ def vertipaq_analyzer(
 
     workspace = fabric.resolve_workspace_name(workspace)
 
+    data_type_string = "string"
+    data_type_long = "long"
+    data_type_timestamp = "timestamp"
+    data_type_double = "double"
+    data_type_bool = "bool"
+
     vertipaq_map = {
         "Model": {
-            "Dataset Name": "string",
-            "Total Size": "long",
-            "Table Count": "long",
-            "Column Count": "long",
-            "Compatibility Level": "long",
-            "Default Mode": "string",
+            "Dataset Name": data_type_string,
+            "Total Size": data_type_long,
+            "Table Count": data_type_long,
+            "Column Count": data_type_long,
+            "Compatibility Level": data_type_long,
+            "Default Mode": data_type_string,
         },
         "Tables": {
-            "Table Name": "string",
-            "Type": "string",
-            "Row Count": "long",
-            "Total Size": "long",
-            "Dictionary Size": "long",
-            "Data Size": "long",
-            "Hierarchy Size": "long",
-            "Relationship Size": "long",
-            "User Hierarchy Size": "long",
-            "Partitions": "long",
-            "Columns": "long",
-            "% DB": "double",
+            "Table Name": data_type_string,
+            "Type": data_type_string,
+            "Row Count": data_type_long,
+            "Total Size": data_type_long,
+            "Dictionary Size": data_type_long,
+            "Data Size": data_type_long,
+            "Hierarchy Size": data_type_long,
+            "Relationship Size": data_type_long,
+            "User Hierarchy Size": data_type_long,
+            "Partitions": data_type_long,
+            "Columns": data_type_long,
+            "% DB": data_type_double,
         },
         "Partitions": {
-            "Table Name": "string",
-            "Partition Name": "string",
-            "Mode": "string",
-            "Record Count": "long",
-            "Segment Count": "long",
-            "Records per Segment": "double",
+            "Table Name": data_type_string,
+            "Partition Name": data_type_string,
+            "Mode": data_type_string,
+            "Record Count": data_type_long,
+            "Segment Count": data_type_long,
+            "Records per Segment": data_type_double,
         },
         "Columns": {
-            "Table Name": "string",
-            "Column Name": "string",
-            "Type": "string",
-            "Cardinality": "long",
-            "Total Size": "long",
-            "Data Size": "long",
-            "Dictionary Size": "long",
-            "Hierarchy Size": "long",
-            "% Table": "double",
-            "% DB": "double",
-            "Data Type": "string",
-            "Encoding": "string",
-            "Is Resident": "bool",
-            "Temperature": "double",
-            "Last Accessed": "timestamp",
+            "Table Name": data_type_string,
+            "Column Name": data_type_string,
+            "Type": data_type_string,
+            "Cardinality": data_type_long,
+            "Total Size": data_type_long,
+            "Data Size": data_type_long,
+            "Dictionary Size": data_type_long,
+            "Hierarchy Size": data_type_long,
+            "% Table": data_type_double,
+            "% DB": data_type_double,
+            "Data Type": data_type_string,
+            "Encoding": data_type_string,
+            "Is Resident": data_type_bool,
+            "Temperature": data_type_double,
+            "Last Accessed": data_type_timestamp,
         },
         "Hierarchies": {
-            "Table Name": "string",
-            "Hierarchy Name": "string",
-            "Used Size": "long",
+            "Table Name": data_type_string,
+            "Hierarchy Name": data_type_string,
+            "Used Size": data_type_long,
         },
         "Relationships": {
-            "From Object": "string",
-            "To Object": "string",
-            "Multiplicity": "string",
-            "Used Size": "long",
-            "Max From Cardinality": "long",
-            "Max To Cardinality": "long",
-            "Missing Rows": "long",
+            "From Object": data_type_string,
+            "To Object": data_type_string,
+            "Multiplicity": data_type_string,
+            "Used Size": data_type_long,
+            "Max From Cardinality": data_type_long,
+            "Max To Cardinality": data_type_long,
+            "Missing Rows": data_type_long,
         },
     }
 
@@ -423,6 +429,7 @@ def vertipaq_analyzer(
     dfH_filt[intList] = dfH_filt[intList].applymap("{:,}".format)
 
     # Model
+    # Converting to KB/MB/GB necessitates division by 1024 * 1000.
     if db_total_size >= 1000000000:
         y = db_total_size / (1024**3) * 1000000000
     elif db_total_size >= 1000000:
