@@ -113,6 +113,8 @@ from sempy_labs._helper_functions import (
     #  language_validate
 )
 
+from sempy_labs._environments import list_environments, publish_environment
+
 #  from sempy_labs._model_auto_build import model_auto_build
 from sempy_labs._model_bpa_bulk import (
     run_model_bpa_bulk,
@@ -262,4 +264,6 @@ __all__ = [
     "update_from_git",
     "connect_workspace_to_git",
     "disconnect_workspace_from_git",
+    "list_environments",
+    "publish_environment"
 ]
