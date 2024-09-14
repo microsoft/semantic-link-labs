@@ -74,6 +74,9 @@ def import_notebook_from_web(
     """
     Creates a new notebook within a workspace based on a Jupyter notebook hosted in the web.
 
+    Note: When specifying a notebook from GitHub, please use the raw file path. Note that if the non-raw file path is specified, the url will be
+    converted to the raw URL as the raw URL is needed to obtain the notebook content.
+
     Parameters
     ----------
     notebook_name : str

@@ -103,6 +103,7 @@ from sempy_labs._list_functions import (
 )
 
 from sempy_labs._helper_functions import (
+    resolve_capacity_id,
     resolve_warehouse_id,
     resolve_workspace_capacity,
     create_abfss_path,
@@ -276,4 +277,5 @@ __all__ = [
     "disconnect_workspace_from_git",
     "create_environment",
     "delete_environment",
+    "resolve_capacity_id",
 ]

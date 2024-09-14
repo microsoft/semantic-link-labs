@@ -31,3 +31,5 @@ model_bpa_name = "ModelBPA"
 report_bpa_name = "ReportBPA"
 severity_mapping = {warning: "Warning", error: "Error", info: "Info"}
 special_characters = ['"', "/", '"', ":", "|", "<", ">", "*", "?", "'", "!"]
+workspace_roles = ["Admin", "Member", "Viewer", "Contributor"]
+principal_types = ["App", "Group", "None", "User"]

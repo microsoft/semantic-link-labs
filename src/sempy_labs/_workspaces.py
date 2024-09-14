@@ -5,6 +5,7 @@ from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     pagination,
+    resolve_capacity_id
 )
 from sempy.fabric.exceptions import FabricHTTPException
 
@@ -63,13 +64,13 @@ def update_workspace_user(
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    role_names = ["Admin", "Member", "Viewer", "Contributor"]
+    role_names = icons.workspace_roles
     role_name = role_name.capitalize()
     if role_name not in role_names:
         raise ValueError(
             f"{icons.red_dot} Invalid role. The 'role_name' parameter must be one of the following: {role_names}."
         )
-    principal_types = ["App", "Group", "None", "User"]
+    principal_types = icons.principal_types
     principal_type = principal_type.capitalize()
     if principal_type not in principal_types:
         raise ValueError(
@@ -160,14 +161,14 @@ def add_user_to_workspace(
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    role_names = ["Admin", "Member", "Viewer", "Contributor"]
+    role_names = icons.workspace_roles
     role_name = role_name.capitalize()
     if role_name not in role_names:
         raise ValueError(
             f"{icons.red_dot} Invalid role. The 'role_name' parameter must be one of the following: {role_names}."
         )
     plural = "n" if role_name == "Admin" else ""
-    principal_types = ["App", "Group", "None", "User"]
+    principal_types = icons.principal_types
     principal_type = principal_type.capitalize()
     if principal_type not in principal_types:
         raise ValueError(
@@ -209,16 +210,7 @@ def assign_workspace_to_capacity(capacity_name: str, workspace: Optional[str] = 
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    dfC = fabric.list_capacities()
-    dfC_filt = dfC[dfC["Display Name"] == capacity_name]
-
-    if len(dfC_filt) == 0:
-        raise ValueError(
-            f"{icons.red_dot} The '{capacity_name}' capacity does not exist."
-        )
-
-    capacity_id = dfC_filt["Id"].iloc[0]
+    capacity_id = resolve_capacity_id(capacity_name=capacity_name)
 
     request_body = {"capacityId": capacity_id}
 
