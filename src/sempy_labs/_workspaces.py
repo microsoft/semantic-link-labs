@@ -5,7 +5,7 @@ from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     pagination,
-    resolve_capacity_id
+    resolve_capacity_id,
 )
 from sempy.fabric.exceptions import FabricHTTPException
 

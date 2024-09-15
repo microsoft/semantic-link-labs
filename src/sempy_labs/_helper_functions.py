@@ -942,3 +942,31 @@ def resolve_warehouse_id(warehouse: str, workspace: Optional[str]):
     )
 
     return warehouse_id
+
+
+def resolve_environment_id(environment: str, workspace: Optional[str] = None) -> UUID:
+    """
+    Obtains the environment Id for a given environment.
+
+    Parameters
+    ----------
+    environment: str
+        Name of the environment.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    from sempy_labs._environments import list_environments
+
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    dfE = list_environments(workspace=workspace)
+    dfE_filt = dfE[dfE["Environment Name"] == environment]
+    if len(dfE_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} The '{environment}' environment does not exist within the '{workspace}' workspace."
+        )
+
+    return dfE_filt["Environment Id"].iloc[0]

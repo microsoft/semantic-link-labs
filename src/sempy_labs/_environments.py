@@ -101,15 +101,12 @@ def delete_environment(environment: str, workspace: Optional[str] = None):
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    from sempy_labs._helper_functions import resolve_environment_id
 
-    dfE = list_environments(workspace=workspace)
-    dfE_filt = dfE[dfE["Environment Name"] == environment]
-    if len(dfE_filt) == 0:
-        raise ValueError(
-            f"{icons.red_dot} The '{environment}' environment does not exist within the '{workspace}' workspace."
-        )
-    environment_id = dfE_filt["Environment Id"].iloc[0]
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    environment_id = resolve_environment_id(
+        environment=environment, workspace=workspace
+    )
 
     client = fabric.FabricRestClient()
     response = client.delete(
@@ -121,4 +118,39 @@ def delete_environment(environment: str, workspace: Optional[str] = None):
 
     print(
         f"{icons.green_dot} The '{environment}' environment within the '{workspace}' workspace has been deleted."
+    )
+
+
+def publish_environment(environment: str, workspace: Optional[str] = None):
+    """
+    Publishes a Fabric environment.
+
+    Parameters
+    ----------
+    environment: str
+        Name of the environment.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    # https://learn.microsoft.com/en-us/rest/api/fabric/environment/spark-libraries/publish-environment?tabs=HTTP
+
+    from sempy_labs._helper_functions import resolve_environment_id
+
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    environment_id = resolve_environment_id(
+        environment=environment, workspace=workspace
+    )
+
+    client = fabric.FabricRestClient()
+    response = client.post(
+        f"/v1/workspaces/{workspace_id}/environments/{environment_id}/staging/publish"
+    )
+
+    lro(client, response)
+
+    print(
+        f"{icons.green_dot} The '{environment}' environment within the '{workspace}' workspace has been published."
     )

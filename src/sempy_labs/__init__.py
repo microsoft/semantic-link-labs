@@ -1,6 +1,7 @@
 from sempy_labs._environments import (
     create_environment,
     delete_environment,
+    publish_environment,
 )
 
 from sempy_labs._spark import (
@@ -103,6 +104,7 @@ from sempy_labs._list_functions import (
 )
 
 from sempy_labs._helper_functions import (
+    resolve_environment_id,
     resolve_capacity_id,
     resolve_warehouse_id,
     resolve_workspace_capacity,
@@ -277,5 +279,7 @@ __all__ = [
     "disconnect_workspace_from_git",
     "create_environment",
     "delete_environment",
+    "publish_environment",
     "resolve_capacity_id",
+    "resolve_environment_id",
 ]
