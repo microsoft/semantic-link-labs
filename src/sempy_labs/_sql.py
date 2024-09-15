@@ -59,48 +59,50 @@ class ConnectWarehouse:
         self.connection = pyodbc.connect(conn_str, attrs_before={1256: tokenstruct})
 
     @log
-    def query(self, sql: str) -> pd.DataFrame:
+    def query(self, sql: Union[str, List[str]]) -> Optional[pd.DataFrame]:
         """
-        Runs a SQL query against a Fabric Warehouse.
+        Runs a SQL or T-SQL query (or multiple queries) against a Fabric Warehouse.
 
         Parameters
         ----------
-        sql : str
-            The SQL query.
+        sql : str or List[str]
+            A single SQL or T-SQL query, or a list of queries to be executed.
 
         Returns
         -------
-        pandas.DataFrame
-            A pandas dataframe with the result of the SQL query.
+        Optional[pandas.DataFrame]
+            A pandas DataFrame with the result of the first SQL query, or None if no result is returned.
         """
         cursor = None
+        results = []  # To store results from multiple queries if needed
+
+        # If the input is a single string, convert it to a list for consistency
+        if isinstance(sql, str):
+            sql = [sql]
 
         try:
             cursor = self.connection.cursor()
-            cursor.execute(sql)
 
-            return pd.DataFrame.from_records(
-                cursor.fetchall(), columns=[col[0] for col in cursor.description]
-            )
-        finally:
-            if cursor:
-                cursor.close()
+            for sql_query in sql:
+                cursor.execute(sql_query)
 
-    @log
-    def execute(self, sql: str | List[str]) -> pd.DataFrame:
-        """
-        Runs a T-SQL query (or queries) against a Fabric Warehouse.
+                # Commit for non-select queries (like CREATE, INSERT, etc.)
+                if not cursor.description:
+                    self.connection.commit()
+                else:
+                    # Fetch and append results for queries that return a result set
+                    result = pd.DataFrame.from_records(
+                        cursor.fetchall(),
+                        columns=[col[0] for col in cursor.description],
+                    )
+                    results.append(result)
 
-        Parameters
-        ----------
-        sql : str | List[str]
-            The T-SQL query (or queries).
-        """
-        cursor = None
-
-        try:
-            cursor = self.connection.cursor()
-            cursor.execute(sql)
+            # Return results if any queries returned a result set
+            if results:
+                # Return the result of the last query, or concatenate if needed
+                return results[-1] if len(results) == 1 else pd.concat(results)
+            else:
+                return None
 
         finally:
             if cursor:

@@ -1,4 +1,4 @@
-from sempy_labs._sql import(
+from sempy_labs._sql import (
     ConnectWarehouse,
 )
 
