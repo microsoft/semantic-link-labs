@@ -1,0 +1,541 @@
+import sempy.fabric as fabric
+from typing import Optional, List
+from sempy._utils._log import log
+import sempy_labs._icons as icons
+from sempy.fabric.exceptions import FabricHTTPException
+import requests
+from sempy_labs._helper_functions import get_azure_token_credentials
+
+
+def _add_sll_tag(payload, tags):
+
+    if tags is None:
+        payload["tags"] = {"SLL": 1}
+    else:
+        if "tags" not in payload:
+            payload["tags"] = tags
+        payload["tags"]["SLL"] = 1
+
+    return payload
+
+
+@log
+def create_fabric_capacity(
+    capacity_name: str,
+    azure_subscription_id: str,
+    key_vault_uri: str,
+    key_vault_tenant_id: str,
+    key_vault_client_id: str,
+    key_vault_client_secret: str,
+    resource_group: str,
+    region: str,
+    sku: str,
+    admin_members: str | List[str],
+    tags: Optional[dict] = None,
+):
+    """
+    This function creates a new Fabric capacity within an Azure subscription.
+
+    Parameters
+    ----------
+    capacity_name : str
+        Name of the Fabric capacity.
+    azure_subscription_id : str
+        The Azure subscription ID.
+    key_vault_uri : str
+        The name of the `Azure key vault <https://azure.microsoft.com/products/key-vault>`_ URI. Example: "https://<Key Vault Name>.vault.azure.net/"
+    key_vault_tenant_id : str
+        The name of the Azure key vault secret storing the Tenant ID.
+    key_vault_client_id : str
+        The name of the Azure key vault secret storing the Client ID.
+    key_vault_client_secret : str
+        The name of the Azure key vault secret storing the Client Secret.
+    resource_group : str
+        The name of the Azure resource group.
+    region : str
+        The name of the region in which the capacity will be created.
+    sku : str
+        The `sku size <https://azure.microsoft.com/pricing/details/microsoft-fabric/>`_ of the Fabric capacity.
+    admin_members : str | List[str]
+        The email address(es) of the admin(s) of the Fabric capacity.
+    tags: dict, default=None
+        Tag(s) to add to the capacity. Example: {'tagName': 'tagValue'}.
+    """
+
+    from azure.mgmt.resource import ResourceManagementClient
+
+    capacity_suffix = "fsku"
+
+    if isinstance(admin_members, str):
+        admin_members = [admin_members]
+
+    # list source: https://learn.microsoft.com/fabric/admin/region-availability
+    region_list = [
+        "Brazil South",
+        "North Europe",
+        "UAE North",
+        "South Africa North",
+        "Australia East",
+        "Canada Central",
+        "West Europe",
+        "Australia Southeast",
+        "Canada East",
+        "France Central",
+        "Central India",
+        "East US",
+        "Germany West Central",
+        "East Asia",
+        "East US 2",
+        "Norway East",
+        "Japan East",
+        "North Central US",
+        "Sweden Central",
+        "Korea Central",
+        "South Central US",
+        "Switzerland North",
+        "Southeast Asia",
+        "West US",
+        "Switzerland West",
+        "South India",
+        "West US 2",
+        "UK South",
+        "West US 3",
+        "UK West",
+        "brazilsouth",
+        "northeurope",
+        "uaenorth",
+        "southafricanorth",
+        "australiaeast",
+        "canadacentral",
+        "westeurope",
+        "australiasoutheast",
+        "canadaeast",
+        "francecentral",
+        "centralindia",
+        "eastus",
+        "germanywestcentral",
+        "eastasia",
+        "eastus2",
+        "norwayeast",
+        "japaneast",
+        "northcentralus",
+        "swedencentral",
+        "koreacentral",
+        "southcentralus",
+        "switzerlandnorth",
+        "southeastasia",
+        "westus",
+        "switzerlandwest",
+        "southindia",
+        "westus2",
+        "uksouth",
+        "westus3",
+        "ukwest",
+    ]
+
+    valid_regions = [
+        region for region in region_list if any(char.isupper() for char in region)
+    ]
+
+    if region not in region_list:
+        raise ValueError(
+            f"{icons.red_dot} Invalid region. Valid options: {valid_regions}."
+        )
+
+    azure_token, credential, headers = get_azure_token_credentials(
+        key_vault_uri=key_vault_uri,
+        key_vault_tenant_id=key_vault_tenant_id,
+        key_vault_client_id=key_vault_client_id,
+        key_vault_client_secret=key_vault_client_secret,
+    )
+
+    resource_client = ResourceManagementClient(credential, azure_subscription_id)
+
+    if resource_group is None:
+        for i in resource_client.resources.list(
+            "resourceType eq 'Microsoft.PowerBIDedicated/capacities'"
+        ):
+            if i.name == capacity_name.removesuffix(capacity_suffix):
+                resource_group = i.id.split("/")[4]
+                print(
+                    f"{icons.yellow_dot} Override resource group flag detected for A SKUs - using the existing resource group '{resource_group}' for capacity '{capacity_name}'"
+                )
+    else:
+        # Attempt to get the resource group
+        try:
+            rg = resource_client.resource_groups.get(resource_group)
+            if rg.location != region:
+                print(
+                    f"{icons.yellow_dot} The '{resource_group}' resource group exists, but in a different region."
+                )
+        except Exception:
+            # If the resource group does not exist, create it
+            print(
+                f"{icons.yellow_dot} The '{resource_group}' resource group does not exist."
+            )
+            print(
+                f"{icons.in_progress} Creating the '{resource_group}' resource group in the '{region}' region"
+            )
+            rg_result = resource_client.resource_groups.create_or_update(
+                resource_group, {"location": region}
+            )
+            print(
+                f"{icons.green_dot} Provisioned resource group with ID: {rg_result.id}"
+            )
+
+    payload = {
+        "properties": {"administration": {"members": admin_members}},
+        "sku": {"name": sku, "tier": "Fabric"},
+        "location": region,
+    }
+
+    payload = _add_sll_tag(payload, tags)
+
+    print(
+        f"{icons.in_progress} Creating the '{capacity_name}' capacity as an '{sku}' SKU within the '{region}' region..."
+    )
+
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}?api-version={icons.azure_api_version}"
+
+    response = requests.put(url, headers=headers, json=payload)
+
+    if response.status_code not in [200, 201]:
+        raise FabricHTTPException(response)
+
+    print(
+        f"{icons.green_dot} Successfully created the '{capacity_name}' capacity within the '{region}' region."
+    )
+
+
+def suspend_fabric_capacity(
+    capacity_name: str,
+    azure_subscription_id: str,
+    resource_group: str,
+    key_vault_uri: str,
+    key_vault_tenant_id: str,
+    key_vault_client_id: str,
+    key_vault_client_secret: str,
+):
+    """
+    This function suspends a Fabric capacity.
+
+    Parameters
+    ----------
+    capacity_name : str
+        Name of the Fabric capacity.
+    azure_subscription_id : str
+        The Azure subscription ID.
+    resource_group : str
+        The name of the Azure resource group.
+    key_vault_uri : str
+        The name of the `Azure key vault <https://azure.microsoft.com/products/key-vault>`_ URI. Example: "https://<Key Vault Name>.vault.azure.net/"
+    key_vault_tenant_id : str
+        The name of the Azure key vault secret storing the Tenant ID.
+    key_vault_client_id : str
+        The name of the Azure key vault secret storing the Client ID.
+    key_vault_client_secret : str
+        The name of the Azure key vault secret storing the Client Secret.
+    """
+    # https://learn.microsoft.com/en-us/rest/api/microsoftfabric/fabric-capacities/suspend?view=rest-microsoftfabric-2023-11-01&tabs=HTTP
+
+    azure_token, credential, headers = get_azure_token_credentials(
+        key_vault_uri=key_vault_uri,
+        key_vault_tenant_id=key_vault_tenant_id,
+        key_vault_client_id=key_vault_client_id,
+        key_vault_client_secret=key_vault_client_secret,
+    )
+
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}/suspend?api-version={icons.azure_api_version}"
+
+    response = requests.post(url, headers=headers)
+
+    if response.status_code != 202:
+        raise FabricHTTPException(response)
+
+    print(f"{icons.green_dot} The '{capacity_name} capacity has been suspended.")
+
+
+def resume_fabric_capacity(
+    capacity_name: str,
+    azure_subscription_id: str,
+    resource_group: str,
+    key_vault_uri: str,
+    key_vault_tenant_id: str,
+    key_vault_client_id: str,
+    key_vault_client_secret: str,
+):
+    """
+    This function resumes a Fabric capacity.
+
+    Parameters
+    ----------
+    capacity_name : str
+        Name of the Fabric capacity.
+    azure_subscription_id : str
+        The Azure subscription ID.
+    resource_group : str
+        The name of the Azure resource group.
+    key_vault_uri : str
+        The name of the `Azure key vault <https://azure.microsoft.com/products/key-vault>`_ URI. Example: "https://<Key Vault Name>.vault.azure.net/"
+    key_vault_tenant_id : str
+        The name of the Azure key vault secret storing the Tenant ID.
+    key_vault_client_id : str
+        The name of the Azure key vault secret storing the Client ID.
+    key_vault_client_secret : str
+        The name of the Azure key vault secret storing the Client Secret.
+    """
+
+    # https://learn.microsoft.com/en-us/rest/api/microsoftfabric/fabric-capacities/resume?view=rest-microsoftfabric-2023-11-01&tabs=HTTP
+
+    azure_token, credential, headers = get_azure_token_credentials(
+        key_vault_uri=key_vault_uri,
+        key_vault_tenant_id=key_vault_tenant_id,
+        key_vault_client_id=key_vault_client_id,
+        key_vault_client_secret=key_vault_client_secret,
+    )
+
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}/resume?api-version={icons.azure_api_version}"
+
+    response = requests.post(url, headers=headers)
+
+    if response.status_code != 202:
+        raise FabricHTTPException(response)
+
+    print(f"{icons.green_dot} The '{capacity_name} capacity has been resumed.")
+
+
+def delete_embedded_capacity(
+    capacity_name: str,
+    azure_subscription_id: str,
+    resource_group: str,
+    key_vault_uri: str,
+    key_vault_tenant_id: str,
+    key_vault_client_id: str,
+    key_vault_client_secret: str,
+):
+    """
+    This function deletes a Power BI Embedded capacity.
+
+    Parameters
+    ----------
+    capacity_name : str
+        Name of the Fabric capacity.
+    azure_subscription_id : str
+        The Azure subscription ID.
+    resource_group : str
+        The name of the Azure resource group.
+    key_vault_uri : str
+        The name of the `Azure key vault <https://azure.microsoft.com/products/key-vault>`_ URI. Example: "https://<Key Vault Name>.vault.azure.net/"
+    key_vault_tenant_id : str
+        The name of the Azure key vault secret storing the Tenant ID.
+    key_vault_client_id : str
+        The name of the Azure key vault secret storing the Client ID.
+    key_vault_client_secret : str
+        The name of the Azure key vault secret storing the Client Secret.
+    """
+
+    # https://learn.microsoft.com/en-us/rest/api/power-bi-embedded/capacities/delete?view=rest-power-bi-embedded-2021-01-01&tabs=HTTP
+
+    azure_token, credential, headers = get_azure_token_credentials(
+        key_vault_uri=key_vault_uri,
+        key_vault_tenant_id=key_vault_tenant_id,
+        key_vault_client_id=key_vault_client_id,
+        key_vault_client_secret=key_vault_client_secret,
+    )
+
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.PowerBIDedicated/capacities/{capacity_name}?api-version={icons.azure_api_version}"
+
+    response = requests.delete(url, headers=headers)
+
+    if response.status_code not in [200, 202]:
+        raise FabricHTTPException(response)
+
+    print(f"{icons.green_dot} The '{capacity_name} capacity has been deleted.")
+
+
+def delete_premium_capacity(capacity_name: str):
+    """
+    This function deletes a Power BI Premium capacity.
+
+    Parameters
+    ----------
+    capacity_name : str
+        Name of the Fabric capacity.
+    """
+
+    dfC = fabric.list_capacities()
+
+    dfC_filt = dfC[dfC["Display Name"] == capacity_name]
+    if len(dfC_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} The '{capacity_name}' capacity does not exist."
+        )
+    capacity_id = dfC_filt["Id"].iloc[0].upper()
+
+    client = fabric.FabricRestClient()
+    response = client.delete(f"capacities/{capacity_id}")
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    print(f"{icons.green_dot} The '{capacity_name}' capacity has been deleted.")
+
+
+def delete_fabric_capacity(
+    capacity_name: str,
+    azure_subscription_id: str,
+    resource_group: str,
+    key_vault_uri: str,
+    key_vault_tenant_id: str,
+    key_vault_client_id: str,
+    key_vault_client_secret: str,
+):
+    """
+    This function deletes a Fabric capacity.
+
+    Parameters
+    ----------
+    capacity_name : str
+        Name of the Fabric capacity.
+    azure_subscription_id : str
+        The Azure subscription ID.
+    resource_group : str
+        The name of the Azure resource group.
+    key_vault_uri : str
+        The name of the `Azure key vault <https://azure.microsoft.com/products/key-vault>`_ URI. Example: "https://<Key Vault Name>.vault.azure.net/"
+    key_vault_tenant_id : str
+        The name of the Azure key vault secret storing the Tenant ID.
+    key_vault_client_id : str
+        The name of the Azure key vault secret storing the Client ID.
+    key_vault_client_secret : str
+        The name of the Azure key vault secret storing the Client Secret.
+    """
+
+    # https://learn.microsoft.com/en-us/rest/api/microsoftfabric/fabric-capacities/delete?view=rest-microsoftfabric-2023-11-01&tabs=HTTP
+
+    azure_token, credential, headers = get_azure_token_credentials(
+        key_vault_uri=key_vault_uri,
+        key_vault_tenant_id=key_vault_tenant_id,
+        key_vault_client_id=key_vault_client_id,
+        key_vault_client_secret=key_vault_client_secret,
+    )
+
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}?api-version={icons.azure_api_version}"
+
+    response = requests.delete(url, headers=headers)
+
+    if response.status_code != 202:
+        raise FabricHTTPException(response)
+
+    print(f"{icons.green_dot} The '{capacity_name} capacity has been deleted.")
+
+
+def update_fabric_capacity(
+    capacity_name: str,
+    azure_subscription_id: str,
+    resource_group: str,
+    key_vault_uri: str,
+    key_vault_tenant_id: str,
+    key_vault_client_id: str,
+    key_vault_client_secret: str,
+    sku: Optional[str] = None,
+    admin_members: Optional[str | List[str]] = None,
+    tags: Optional[dict] = None,
+):
+    """
+    This function updates a Fabric capacity's properties.
+
+    Parameters
+    ----------
+    capacity_name : str
+        Name of the Fabric capacity.
+    azure_subscription_id : str
+        The Azure subscription ID.
+    resource_group : str
+        The name of the Azure resource group.
+    key_vault_uri : str
+        The name of the `Azure key vault <https://azure.microsoft.com/products/key-vault>`_ URI. Example: "https://<Key Vault Name>.vault.azure.net/"
+    key_vault_tenant_id : str
+        The name of the Azure key vault secret storing the Tenant ID.
+    key_vault_client_id : str
+        The name of the Azure key vault secret storing the Client ID.
+    key_vault_client_secret : str
+        The name of the Azure key vault secret storing the Client Secret.
+    sku : str, default=None
+         The `sku size <https://azure.microsoft.com/pricing/details/microsoft-fabric/>`_ of the Fabric capacity.
+    admin_members : str | List[str], default=None
+        The email address(es) of the admin(s) of the Fabric capacity.
+    tags : dict, default=None
+        Tag(s) to add to the capacity. Example: {'tagName': 'tagValue'}.
+
+    """
+
+    # https://learn.microsoft.com/en-us/rest/api/microsoftfabric/fabric-capacities/update?view=rest-microsoftfabric-2023-11-01&tabs=HTTP
+
+    if isinstance(admin_members, str):
+        admin_members = [admin_members]
+    if tags is not None and not isinstance(tags, dict):
+        raise ValueError(
+            f"{icons.red_dot} If specified, the 'tags' parameter must be a dictionary."
+        )
+
+    azure_token, credential, headers = get_azure_token_credentials(
+        key_vault_uri=key_vault_uri,
+        key_vault_tenant_id=key_vault_tenant_id,
+        key_vault_client_id=key_vault_client_id,
+        key_vault_client_secret=key_vault_client_secret,
+    )
+
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}?api-version={icons.azure_api_version}"
+
+    payload = {}
+    if sku is not None:
+        payload["sku"] = {"name": sku, "tier": "Fabric"}
+    if admin_members is not None:
+        payload["properties"] = {"administration": {"members": [admin_members]}}
+
+    payload = _add_sll_tag(payload, tags)
+
+    if payload == {}:
+        raise ValueError(
+            f"{icons.warning} No parameters have been set to update the '{capacity_name}' capacity."
+        )
+
+    response = requests.patch(url, headers=headers, data=payload)
+
+    if response.status_code != 202:
+        raise FabricHTTPException(response)
+
+    print(
+        f"{icons.green_dot} The '{capacity_name} capacity has been updated accordingly."
+    )
+
+
+def check_fabric_capacity_name_availablility(
+    capacity_name: str,
+    azure_subscription_id: str,
+    region: str,
+    key_vault_uri: str,
+    key_vault_tenant_id: str,
+    key_vault_client_id: str,
+    key_vault_client_secret: str,
+) -> bool:
+    # https://learn.microsoft.com/en-us/rest/api/microsoftfabric/fabric-capacities/check-name-availability?view=rest-microsoftfabric-2023-11-01&tabs=HTTP
+
+    azure_token, credential, headers = get_azure_token_credentials(
+        key_vault_uri=key_vault_uri,
+        key_vault_tenant_id=key_vault_tenant_id,
+        key_vault_client_id=key_vault_client_id,
+        key_vault_client_secret=key_vault_client_secret,
+    )
+
+    payload = {"name": capacity_name, "type": "Microsoft.Fabric/capacities"}
+
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/providers/Microsoft.Fabric/locations/{region}/checkNameAvailability?api-version={icons.azure_api_version}"
+
+    response = requests.post(url, headers=headers, data=payload)
+
+    if response.status_code != 202:
+        raise FabricHTTPException(response)
+
+    return bool(response.json().get("nameAvailable"))

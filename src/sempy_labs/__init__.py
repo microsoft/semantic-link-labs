@@ -1,7 +1,16 @@
 from sempy_labs._sql import (
     ConnectWarehouse,
 )
-
+from sempy_labs._capacities import (
+    check_fabric_capacity_name_availablility,
+    delete_fabric_capacity,
+    resume_fabric_capacity,
+    update_fabric_capacity,
+    create_fabric_capacity,
+    delete_premium_capacity,
+    suspend_fabric_capacity,
+    delete_embedded_capacity,
+)
 from sempy_labs._workspace_identity import (
     provision_workspace_identity,
     deprovision_workspace_identity,
@@ -36,9 +45,9 @@ from sempy_labs._clear_cache import (
 
 from sempy_labs._connections import (
     list_connections,
-# create_connection_cloud,
-# create_connection_vnet,
-# create_connection_on_prem
+    # create_connection_cloud,
+    # create_connection_vnet,
+    # create_connection_on_prem
 )
 from sempy_labs._dax import evaluate_dax_impersonation
 from sempy_labs._generate_semantic_model import (
@@ -264,4 +273,12 @@ __all__ = [
     "update_from_git",
     "connect_workspace_to_git",
     "disconnect_workspace_from_git",
+    "check_fabric_capacity_name_availablility",
+    "delete_fabric_capacity",
+    "resume_fabric_capacity",
+    "update_fabric_capacity",
+    "create_fabric_capacity",
+    "delete_premium_capacity",
+    "suspend_fabric_capacity",
+    "delete_embedded_capacity",
 ]

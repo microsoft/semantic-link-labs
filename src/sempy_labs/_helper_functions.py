@@ -925,3 +925,33 @@ def get_language_codes(languages: str | List[str]):
                 break
 
     return languages
+
+
+def get_azure_token_credentials(
+    key_vault_uri: str,
+    key_vault_tenant_id: str,
+    key_vault_client_id: str,
+    key_vault_client_secret: str,
+) -> Tuple[str, str, dict]:
+
+    from notebookutils import mssparkutils
+    from azure.identity import ClientSecretCredential
+
+    tenant_id = mssparkutils.credentials.getSecret(key_vault_uri, key_vault_tenant_id)
+    client_id = mssparkutils.credentials.getSecret(key_vault_uri, key_vault_client_id)
+    client_secret = mssparkutils.credentials.getSecret(
+        key_vault_uri, key_vault_client_secret
+    )
+
+    credential = ClientSecretCredential(
+        tenant_id=tenant_id, client_id=client_id, client_secret=client_secret
+    )
+
+    token = credential.get_token("https://management.azure.com/.default").token
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+
+    return token, credential, headers
