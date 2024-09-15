@@ -2,6 +2,15 @@ import pandas as pd
 
 
 def report_bpa_rules() -> pd.DataFrame:
+    """
+    Shows the default rules for the report BPA used by the run_report_bpa function.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe containing the default rules for the run_report_bpa function.
+    """
+
     rules = pd.DataFrame(
         [
             (

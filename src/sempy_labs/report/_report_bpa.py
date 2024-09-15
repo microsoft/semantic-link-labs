@@ -9,6 +9,7 @@ from sempy_labs._helper_functions import (
     save_as_delta_table,
     resolve_report_id,
     resolve_lakehouse_name,
+    resolve_workspace_capacity,
 )
 from sempy_labs.lakehouse import get_lakehouse_tables, lakehouse_attached
 import sempy_labs._icons as icons
@@ -20,10 +21,33 @@ def run_report_bpa(
     report: str,
     rules: Optional[pd.DataFrame] = None,
     workspace: Optional[str] = None,
-    language: Optional[str] = None,
-    return_dataframe: Optional[bool] = False,
+    # language: Optional[str] = None,
     export: Optional[bool] = False,
+    return_dataframe: Optional[bool] = False,
 ):
+    """
+    Displays an HTML visualization of the results of the Best Practice Analyzer scan for a report.
+
+    Parameters
+    ----------
+    report : str
+        Name of the report.
+    rules : pandas.DataFrame, default=None
+        A pandas dataframe containing rules to be evaluated.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    export : bool, default=False
+        If True, exports the resulting dataframe to a delta table in the lakehouse attached to the notebook.
+    return_dataframe : bool, default=False
+        If True, returns a pandas dataframe instead of the visualization.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe in HTML format showing report objects which violated the best practice analyzer rules.
+    """
 
     rpt = ReportWrapper(report=report, workspace=workspace)
     dfCV = rpt.list_custom_visuals()
@@ -63,7 +87,7 @@ def run_report_bpa(
         "Page Filter": (dfPF, ["Filter Object"]),
         "Visual Filter": (dfVF, ["Filter Object"]),
         "Report Level Measure": (dfRLM, ["Measure Name"]),
-        "Semantic Model": (dfSMO, ["Report Source Object"])
+        "Semantic Model": (dfSMO, ["Report Source Object"]),
     }
 
     def execute_rule(row):
@@ -112,16 +136,22 @@ def run_report_bpa(
             df_output["URL"] = row["URL"]
             df_output["Report URL"] = rpt._get_web_url()
 
-            page_mapping_dict = dfP.set_index('Page Display Name')['Web Url'].to_dict()
+            page_mapping_dict = dfP.set_index("Page Display Name")["Web Url"].to_dict()
 
-            if scope == 'Page':
-                df_output["Report URL"] = df_output["Object Name"].map(page_mapping_dict)
-            elif scope == 'Page Filter':
-                df_output["Page Name"] = df_output["Object Name"].str.extract(r"(.*?) : '")
+            if scope == "Page":
+                df_output["Report URL"] = df_output["Object Name"].map(
+                    page_mapping_dict
+                )
+            elif scope == "Page Filter":
+                df_output["Page Name"] = df_output["Object Name"].str.extract(
+                    r"(.*?) : '"
+                )
                 df_output["Report URL"] = df_output["Page Name"].map(page_mapping_dict)
                 df_output.drop(columns=["Page Name"], inplace=True)
-            elif scope in ['Visual', 'Visual Filter']:
-                df_output["Page Name"] = df_output["Object Name"].str.extract(r"'(.*?)'\[.*?\]")
+            elif scope in ["Visual", "Visual Filter"]:
+                df_output["Page Name"] = df_output["Object Name"].str.extract(
+                    r"'(.*?)'\[.*?\]"
+                )
                 df_output["Report URL"] = df_output["Page Name"].map(page_mapping_dict)
                 df_output.drop(columns=["Page Name"], inplace=True)
 
@@ -181,11 +211,7 @@ def run_report_bpa(
             runId = maxRunId + 1
 
         export_df = finalDF.copy()
-        dfW = fabric.list_workspaces(filter=f"name eq '{workspace}'")
-        capacity_id = dfW["Capacity Id"].iloc[0]
-        dfC = fabric.list_capacities()
-        dfC_filt = dfC[dfC["Id"] == capacity_id]
-        capacity_name = dfC_filt["Display Name"].iloc[0]
+        capacity_id, capacity_name = resolve_workspace_capacity(workspace=workspace)
         export_df["Capacity Name"] = capacity_name
         export_df["Capacity Id"] = capacity_id
         export_df["Workspace Name"] = workspace
@@ -211,7 +237,6 @@ def run_report_bpa(
                 "Severity",
                 "Description",
                 "URL",
-                "Report URL",
             ]
         ]
         save_as_delta_table(
@@ -220,6 +245,8 @@ def run_report_bpa(
             write_mode="append",
             merge_schema=True,
         )
+
+        return
 
     finalDF.replace(
         {"Warning": icons.warning, "Error": icons.error, "Info": icons.info},
@@ -315,7 +342,9 @@ def run_report_bpa(
                 content_html += f'<td>{row["Rule Name"]}</td>'
             content_html += f'<td>{row["Object Type"]}</td>'
             if pd.notnull(row["Report URL"]):
-                content_html += f'<td><a href="{row["Report URL"]}">{row["Object Name"]}</a></td>'
+                content_html += (
+                    f'<td><a href="{row["Report URL"]}">{row["Object Name"]}</a></td>'
+                )
             else:
                 content_html += f'<td>{row["Object Name"]}</td>'
             # content_html += f'<td>{row["Object Name"]}</td>'
