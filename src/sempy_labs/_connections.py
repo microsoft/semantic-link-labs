@@ -103,14 +103,8 @@ def list_item_connections(item_name: str, item_type: str, workspace: Optional[st
 
     workspace = fabric.resolve_workspace_name(workspace)
     workspace_id = fabric.resolve_workspace_id(workspace)
-
-    dfI = fabric.list_items(workspace=workspace, type=item_type)
-
-    dfI_filt = dfI[dfI['Display Name'] == item_name]
-    if len(dfI_filt) == 0:
-        raise ValueError(f"{icons.red_dot} The '{item_name}' {item_type} does not exist within the '{workspace}' workspace.")
-
-    item_id = dfI_filt['Id'].iloc[0]
+    item_type = item_type[0].upper() + item_type[1:]
+    item_id = fabric.resolve_item_id(item_name=item_name, type=item_type, workspace=workspace)
 
     client = fabric.FabricRestClient()
     response = client.post(f"/v1/workspaces/{workspace_id}/items/{item_id}/connections")
