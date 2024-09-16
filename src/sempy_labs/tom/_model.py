@@ -992,6 +992,7 @@ class TOMWrapper:
         entity_name: str,
         expression: Optional[str] = None,
         description: Optional[str] = None,
+        schema_name: Optional[str] = None,
     ):
         """
         Adds an entity partition to a table within a semantic model.
@@ -1007,6 +1008,8 @@ class TOMWrapper:
             Defaults to None which resolves to the 'DatabaseQuery' expression.
         description : str, default=None
             A description for the partition.
+        schema_name : str, default=None
+            The schema name.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
@@ -1017,6 +1020,8 @@ class TOMWrapper:
             ep.ExpressionSource = self.model.Expressions["DatabaseQuery"]
         else:
             ep.ExpressionSource = self.model.Expressions[expression]
+        if schema_name is not None:
+            ep.SchemaName = schema_name
         p = TOM.Partition()
         p.Name = table_name
         p.Source = ep
