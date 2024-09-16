@@ -52,6 +52,15 @@ An even better way to ensure the semantic-link-labs library is available in your
 1. Navigate to your Notebook
 2. Select your newly created environment within the 'Environment' drop down in the navigation bar at the top of the notebook
 
+## Version History
+* [0.7.3](https://github.com/microsoft/semantic-link-labs/releases/tag/0.7.3) (September 11, 2024)
+* [0.7.2](https://github.com/microsoft/semantic-link-labs/releases/tag/0.7.2) (August 30, 2024)
+* [0.7.1](https://github.com/microsoft/semantic-link-labs/releases/tag/0.7.1) (August 29, 2024)
+* [0.7.0](https://github.com/microsoft/semantic-link-labs/releases/tag/0.7.0) (August 26, 2024)
+* [0.6.0](https://github.com/microsoft/semantic-link-labs/releases/tag/0.6.0) (July 22, 2024)
+* [0.5.0](https://github.com/microsoft/semantic-link-labs/releases/tag/0.5.0) (July 2, 2024)
+* [0.4.2](https://github.com/microsoft/semantic-link-labs/releases/tag/0.4.2) (June 18, 2024)
+
 ---
 ## Direct Lake migration
 
