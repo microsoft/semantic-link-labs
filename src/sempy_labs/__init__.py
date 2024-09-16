@@ -64,6 +64,7 @@ from sempy_labs._clear_cache import (
 
 from sempy_labs._connections import (
     list_connections,
+    list_item_connections,
 # create_connection_cloud,
 # create_connection_vnet,
 # create_connection_on_prem
@@ -284,4 +285,5 @@ __all__ = [
     "publish_environment",
     "resolve_capacity_id",
     "resolve_environment_id",
+    "list_item_connections",
 ]
