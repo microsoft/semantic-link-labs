@@ -1,6 +1,6 @@
 import sempy.fabric as fabric
 import pandas as pd
-from typing import Optional, Union
+from typing import Optional, Union, List
 from sempy._utils._log import log
 import struct
 import uuid
@@ -59,29 +59,53 @@ class ConnectWarehouse:
         self.connection = pyodbc.connect(conn_str, attrs_before={1256: tokenstruct})
 
     @log
-    def query(self, sql: str) -> pd.DataFrame:
+    def query(
+        self, sql: Union[str, List[str]]
+    ) -> Union[List[pd.DataFrame], pd.DataFrame, None]:
         """
-        Runs a SQL query against a Fabric Warehouse.
+        Runs a SQL or T-SQL query (or multiple queries) against a Fabric Warehouse.
 
         Parameters
         ----------
-        sql : str
-            The SQL query.
+        sql : str or List[str]
+            A single SQL or T-SQL query, or a list of queries to be executed.
 
         Returns
         -------
-        pandas.DataFrame
-            A pandas dataframe with the result of the SQL query.
+        Union[List[pandas.DataFrame], pandas.DataFrame, None]
+            A list of pandas DataFrames if multiple SQL queries return results,
+            a single DataFrame if one query is executed and returns results, or None.
         """
         cursor = None
+        results = []  # To store results from multiple queries if needed
+
+        # If the input is a single string, convert it to a list for consistency
+        if isinstance(sql, str):
+            sql = [sql]
 
         try:
             cursor = self.connection.cursor()
-            cursor.execute(sql)
 
-            return pd.DataFrame.from_records(
-                cursor.fetchall(), columns=[col[0] for col in cursor.description]
-            )
+            for sql_query in sql:
+                cursor.execute(sql_query)
+
+                # Commit for non-select queries (like CREATE, INSERT, etc.)
+                if not cursor.description:
+                    self.connection.commit()
+                else:
+                    # Fetch and append results for queries that return a result set
+                    result = pd.DataFrame.from_records(
+                        cursor.fetchall(),
+                        columns=[col[0] for col in cursor.description],
+                    )
+                    results.append(result)
+
+            # Return results if any queries returned a result set
+            if results:
+                return results if len(results) > 1 else results[0]
+            else:
+                return None
+
         finally:
             if cursor:
                 cursor.close()
