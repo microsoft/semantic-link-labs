@@ -10,3 +10,4 @@ azure-storage-blob>=12.9.0
 anytree
 IPython
 polib
+azure.mgmt.resource

@@ -29,7 +29,16 @@ from sempy_labs._notebooks import (
 from sempy_labs._sql import (
     ConnectWarehouse,
 )
-
+from sempy_labs._capacities import (
+    check_fabric_capacity_name_availablility,
+    delete_fabric_capacity,
+    resume_fabric_capacity,
+    update_fabric_capacity,
+    create_fabric_capacity,
+    delete_premium_capacity,
+    suspend_fabric_capacity,
+    delete_embedded_capacity,
+)
 from sempy_labs._workspace_identity import (
     provision_workspace_identity,
     deprovision_workspace_identity,
@@ -61,13 +70,12 @@ from sempy_labs._clear_cache import (
     list_backups,
     list_storage_account_files,
 )
-
 from sempy_labs._connections import (
     list_connections,
     list_item_connections,
-# create_connection_cloud,
-# create_connection_vnet,
-# create_connection_on_prem
+    # create_connection_cloud,
+    # create_connection_vnet,
+    # create_connection_on_prem
 )
 from sempy_labs._dax import evaluate_dax_impersonation
 from sempy_labs._generate_semantic_model import (
@@ -104,7 +112,6 @@ from sempy_labs._list_functions import (
     create_warehouse,
     update_item,
 )
-
 from sempy_labs._helper_functions import (
     resolve_environment_id,
     resolve_capacity_id,
@@ -286,4 +293,12 @@ __all__ = [
     "resolve_capacity_id",
     "resolve_environment_id",
     "list_item_connections",
+    "check_fabric_capacity_name_availablility",
+    "delete_fabric_capacity",
+    "resume_fabric_capacity",
+    "update_fabric_capacity",
+    "create_fabric_capacity",
+    "delete_premium_capacity",
+    "suspend_fabric_capacity",
+    "delete_embedded_capacity",
 ]

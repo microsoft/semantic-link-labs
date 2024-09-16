@@ -27,6 +27,7 @@ dependencies = [
     "anytree",
     "powerbiclient",
     "polib",
+    "azure.mgmt.resource",
 ]
 
 [tool.setuptools.packages.find]
@@ -44,7 +45,7 @@ test = [
 Repository = "https://github.com/microsoft/semantic-link-labs.git"
 
 [[tool.mypy.overrides]]
-module = "sempy.*,Microsoft.*,System.*,anytree.*,powerbiclient.*,synapse.ml.services.*,polib.*"
+module = "sempy.*,Microsoft.*,System.*,anytree.*,powerbiclient.*,synapse.ml.services.*,polib.*,azure.mgmt.resource.*"
 ignore_missing_imports = true
 
 [tool.flake8]
