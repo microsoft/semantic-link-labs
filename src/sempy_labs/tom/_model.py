@@ -1002,7 +1002,7 @@ class TOMWrapper:
         table_name : str
             Name of the table.
         entity_name : str
-            Name of the lakehouse table.
+            Name of the lakehouse/warehouse table.
         expression : TOM Object, default=None
             The expression used by the table.
             Defaults to None which resolves to the 'DatabaseQuery' expression.
