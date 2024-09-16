@@ -59,7 +59,9 @@ class ConnectWarehouse:
         self.connection = pyodbc.connect(conn_str, attrs_before={1256: tokenstruct})
 
     @log
-    def query(self, sql: Union[str, List[str]]) -> Optional[pd.DataFrame]:
+    def query(
+        self, sql: Union[str, List[str]]
+    ) -> Union[List[pd.DataFrame], pd.DataFrame, None]:
         """
         Runs a SQL or T-SQL query (or multiple queries) against a Fabric Warehouse.
 
@@ -70,8 +72,9 @@ class ConnectWarehouse:
 
         Returns
         -------
-        Optional[pandas.DataFrame]
-            A pandas DataFrame with the result of the first SQL query, or None if no result is returned.
+        Union[List[pandas.DataFrame], pandas.DataFrame, None]
+            A list of pandas DataFrames if multiple SQL queries return results,
+            a single DataFrame if one query is executed and returns results, or None.
         """
         cursor = None
         results = []  # To store results from multiple queries if needed
@@ -99,8 +102,7 @@ class ConnectWarehouse:
 
             # Return results if any queries returned a result set
             if results:
-                # Return the result of the last query, or concatenate if needed
-                return results[-1] if len(results) == 1 else pd.concat(results)
+                return results if len(results) > 1 else results[0]
             else:
                 return None
 
