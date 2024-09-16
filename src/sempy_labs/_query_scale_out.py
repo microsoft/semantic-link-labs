@@ -394,10 +394,6 @@ def set_workspace_default_storage_format(
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-
     """
 
     # https://learn.microsoft.com/en-us/rest/api/power-bi/groups/update-group#defaultdatasetstorageformat
@@ -407,19 +403,33 @@ def set_workspace_default_storage_format(
     storage_format = storage_format.capitalize()
 
     if storage_format not in storageFormats:
-        print(
+        raise ValueError(
             f"{icons.red_dot} Invalid storage format. Please choose from these options: {storageFormats}."
         )
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    request_body = {"name": workspace, "defaultDatasetStorageFormat": storage_format}
+    # Check current storage format
+    dfW = fabric.list_workspaces(filter=f"name eq '{workspace}'")
+    if len(dfW) == 0:
+        raise ValueError()
+    current_storage_format = dfW['Default Dataset Storage Format'].iloc[0]
+
+    if current_storage_format == storage_format:
+        print(f"{icons.info} The '{workspace}' is already set to a default storage format of '{current_storage_format}'.")
+        return
+
+    request_body = {
+        "name": workspace,
+        "defaultDatasetStorageFormat": storage_format,
+    }
 
     client = fabric.PowerBIRestClient()
     response = client.patch(f"/v1.0/myorg/groups/{workspace_id}", json=request_body)
 
     if response.status_code != 200:
         raise FabricHTTPException(response)
+
     print(
         f"{icons.green_dot} The default storage format for the '{workspace}' workspace has been updated to '{storage_format}."
     )
