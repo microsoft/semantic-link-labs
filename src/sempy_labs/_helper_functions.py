@@ -815,6 +815,37 @@ def resolve_capacity_name(capacity_id: Optional[UUID] = None) -> str:
     return dfC_filt["Display Name"].iloc[0]
 
 
+def resolve_capacity_id(capacity_name: Optional[str] = None) -> UUID:
+    """
+    Obtains the capacity Id for a given capacity name.
+
+    Parameters
+    ----------
+    capacity_name : str, default=None
+        The capacity name.
+        Defaults to None which resolves to the capacity id of the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the capacity name of the workspace of the notebook.
+
+    Returns
+    -------
+    UUID
+        The capacity Id.
+    """
+
+    if capacity_name is None:
+        return get_capacity_id()
+
+    dfC = fabric.list_capacities()
+    dfC_filt = dfC[dfC["Display Name"] == capacity_name]
+
+    if len(dfC_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} The '{capacity_name}' capacity does not exist."
+        )
+
+    return dfC_filt["Id"].iloc[0]
+
+
 def retry(sleep_time: int, timeout_error_message: str):
     def decorator(func):
         @wraps(func)
@@ -959,3 +990,31 @@ def get_language_codes(languages: str | List[str]):
                 break
 
     return languages
+
+
+def resolve_environment_id(environment: str, workspace: Optional[str] = None) -> UUID:
+    """
+    Obtains the environment Id for a given environment.
+
+    Parameters
+    ----------
+    environment: str
+        Name of the environment.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    from sempy_labs._environments import list_environments
+
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    dfE = list_environments(workspace=workspace)
+    dfE_filt = dfE[dfE["Environment Name"] == environment]
+    if len(dfE_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} The '{environment}' environment does not exist within the '{workspace}' workspace."
+        )
+
+    return dfE_filt["Environment Id"].iloc[0]

@@ -1,3 +1,31 @@
+from sempy_labs._environments import (
+    create_environment,
+    delete_environment,
+    publish_environment,
+)
+
+from sempy_labs._spark import (
+    get_spark_settings,
+    update_spark_settings,
+    list_custom_pools,
+    create_custom_pool,
+    delete_custom_pool,
+    update_custom_pool,
+)
+
+from sempy_labs._workspaces import (
+    list_workspace_users,
+    update_workspace_user,
+    add_user_to_workspace,
+    delete_user_from_workspace,
+    assign_workspace_to_capacity,
+    unassign_workspace_from_capacity,
+    list_workspace_role_assignments,
+)
+from sempy_labs._notebooks import (
+    get_notebook_definition,
+    import_notebook_from_web,
+)
 from sempy_labs._sql import (
     ConnectWarehouse,
 )
@@ -51,7 +79,6 @@ from sempy_labs._generate_semantic_model import (
 )
 from sempy_labs._list_functions import (
     list_reports_using_semantic_model,
-    delete_custom_pool,
     list_semantic_model_objects,
     list_shortcuts,
     get_object_level_security,
@@ -73,25 +100,13 @@ from sempy_labs._list_functions import (
     # list_sqlendpoints,
     # list_tables,
     list_warehouses,
-    list_workspace_role_assignments,
     create_warehouse,
     update_item,
-    list_custom_pools,
-    create_custom_pool,
-    update_custom_pool,
-    assign_workspace_to_capacity,
-    unassign_workspace_from_capacity,
-    get_spark_settings,
-    update_spark_settings,
-    add_user_to_workspace,
-    delete_user_from_workspace,
-    update_workspace_user,
-    list_workspace_users,
-    get_notebook_definition,
-    import_notebook_from_web,
 )
 
 from sempy_labs._helper_functions import (
+    resolve_environment_id,
+    resolve_capacity_id,
     resolve_warehouse_id,
     resolve_workspace_capacity,
     create_abfss_path,
@@ -264,4 +279,9 @@ __all__ = [
     "update_from_git",
     "connect_workspace_to_git",
     "disconnect_workspace_from_git",
+    "create_environment",
+    "delete_environment",
+    "publish_environment",
+    "resolve_capacity_id",
+    "resolve_environment_id",
 ]

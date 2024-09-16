@@ -72,3 +72,5 @@ language_map = {
     "ca-ES": "Catalan",
     "fi-FI": "Finnish",
 }
+workspace_roles = ["Admin", "Member", "Viewer", "Contributor"]
+principal_types = ["App", "Group", "None", "User"]
