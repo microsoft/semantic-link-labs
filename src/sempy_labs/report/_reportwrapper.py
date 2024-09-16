@@ -419,6 +419,9 @@ class ReportWrapper:
             self.list_visuals()["Type"]
         )
 
+        bool_cols = ["Used in Report"]
+        df[bool_cols] = df[bool_cols].astype(bool)
+
         return df
 
     def list_report_filters(self, extended: Optional[bool] = False) -> pd.DataFrame:
@@ -700,7 +703,7 @@ class ReportWrapper:
                         )
 
             web_url = self._get_web_url()
-            df["Web Url"] = web_url + "/" + df["Page Name"]
+            df["Web URL"] = web_url + "/" + df["Page Name"]
 
         return df
 
@@ -1038,7 +1041,7 @@ class ReportWrapper:
 
         web_url = self._get_web_url()
 
-        df["Web Url"] = web_url + "/" + df["Page Name"]
+        df["Web URL"] = web_url + "/" + df["Page Name"]
 
         return df
 
@@ -1161,15 +1164,24 @@ class ReportWrapper:
                     .get("Literal", {})
                     .get("Value", "")[1:-1]
                 )
-                show_all_data = (
-                    visual_json.get("visual", {})
-                    .get("query", {})
-                    .get("queryState", {})
-                    .get("Values", {})
-                    .get("showAll", False)
-                )
-                if show_all_data is not False:
-                    show_all_data = True
+
+                def find_show_all(obj):
+                    if isinstance(obj, dict):
+                        # Check if the dictionary has the key 'showAll' with the value True
+                        if "showAll" in obj and obj["showAll"] is True:
+                            return True
+                        # Recursively check each value in the dictionary
+                        for value in obj.values():
+                            if find_show_all(value):
+                                return True
+                    elif isinstance(obj, list):
+                        # Recursively check each item in the list
+                        for item in obj:
+                            if find_show_all(item):
+                                return True
+                    return False
+
+                show_all_data = find_show_all(visual_json)
 
                 divider = (
                     visual_json.get("visual", {})
@@ -1270,11 +1282,6 @@ class ReportWrapper:
             "Row SubTotals",
             "Column SubTotals",
         ]
-        float_cols = ["X", "Y", "Width", "Height"]
-        int_cols = ["Z", "Visual Filter Count"]
-        df[bool_cols] = df[bool_cols].astype(bool)
-        df[int_cols] = df[int_cols].astype(int)
-        df[float_cols] = df[float_cols].astype(float)
 
         grouped_df = (
             self.list_visual_objects()
@@ -1291,6 +1298,12 @@ class ReportWrapper:
             how="left",
         )
         df["Visual Object Count"] = df["Visual Object Count"].fillna(0).astype(int)
+
+        float_cols = ["X", "Y", "Width", "Height"]
+        int_cols = ["Z", "Visual Filter Count", "Data Limit", "Visual Object Count"]
+        df[bool_cols] = df[bool_cols].astype(bool)
+        df[int_cols] = df[int_cols].astype(int)
+        df[float_cols] = df[float_cols].astype(float)
 
         return df
 
@@ -1463,6 +1476,9 @@ class ReportWrapper:
                             )
                             for h in tom.all_hierarchies()
                         )
+
+        bool_cols = ["Implicit Measure", "Sparkline", "Visual Calc"]
+        df[bool_cols] = df[bool_cols].astype(bool)
 
         return df
 
@@ -1690,6 +1706,9 @@ class ReportWrapper:
                         df = pd.concat(
                             [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
                         )
+
+        bool_cols = ["Visual Hidden"]
+        df[bool_cols] = df[bool_cols].astype(bool)
 
         return df
 
