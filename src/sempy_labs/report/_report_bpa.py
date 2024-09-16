@@ -348,7 +348,7 @@ def run_report_bpa(
             else:
                 content_html += f'<td>{row["Object Name"]}</td>'
             # content_html += f'<td>{row["Object Name"]}</td>'
-            content_html += f'<td>{row["Severity"]}</td>'
+            content_html += f'<td style="text-align: center;">{row["Severity"]}</td>'
             content_html += "</tr>"
         content_html += "</table>"
 
