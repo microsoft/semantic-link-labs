@@ -98,15 +98,18 @@ class ConnectBase:
             for sql_query in sql:
                 cursor.execute(sql_query)
 
+                # Commit for non-select queries (like CREATE, INSERT, etc.)
                 if not cursor.description:
                     self.connection.commit()
                 else:
+                    # Fetch and append results for queries that return a result set
                     result = pd.DataFrame.from_records(
                         cursor.fetchall(),
                         columns=[col[0] for col in cursor.description],
                     )
                     results.append(result)
 
+            # Return results if any queries returned a result set
             return results if len(results) > 1 else (results[0] if results else None)
 
         finally:
