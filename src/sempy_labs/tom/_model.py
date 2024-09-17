@@ -230,7 +230,10 @@ class TOMWrapper:
         description: Optional[str] = None,
         display_folder: Optional[str] = None,
         format_string_expression: Optional[str] = None,
+        data_category: Optional[str] = None,
+        lineage_tag: Optional[str] = None,
         source_lineage_tag: Optional[str] = None,
+        detail_rows_expression: Optional[str] = None,
     ):
         """
         Adds a measure to the semantic model.
@@ -253,8 +256,14 @@ class TOMWrapper:
             The display folder in which the measure will reside.
         format_string_expression : str, default=None
             The format string expression.
+        data_category : str, default=None
+            Specifies the type of data contained in the measure so that you can add custom behaviors based on measure type.
+        lineage_tag : str, default=None
+            A tag that represents the lineage of the object.
         source_lineage_tag : str, default=None
             A tag that represents the lineage of the source for the object.
+        detail_rows_expression : str, default=None
+            The detail rows expression.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
@@ -272,8 +281,16 @@ class TOMWrapper:
             fsd = TOM.FormatStringDefinition()
             fsd.Expression = format_string_expression
             obj.FormatStringDefinition = fsd
+        if lineage_tag is not None:
+            obj.LineageTag = lineage_tag
         if source_lineage_tag is not None:
             obj.SourceLineageTag = source_lineage_tag
+        if detail_rows_expression is not None:
+            drd = TOM.DetailRowsDefinition()
+            drd.Expression = detail_rows_expression
+            obj.DetailRowsDefinition = drd
+        if data_category is not None:
+            obj.DataCategory = data_category
 
         self.model.Tables[table_name].Measures.Add(obj)
 
@@ -290,6 +307,7 @@ class TOMWrapper:
         data_category: Optional[str] = None,
         key: Optional[bool] = False,
         summarize_by: Optional[str] = None,
+        lineage_tag: Optional[str] = None,
         source_lineage_tag: Optional[str] = None,
     ):
         """
@@ -320,6 +338,8 @@ class TOMWrapper:
         summarize_by : str, default=None
             Sets the value for the Summarize By property of the column.
             Defaults to None resolves to 'Default'.
+        lineage_tag : str, default=None
+            A tag that represents the lineage of the object.
         source_lineage_tag : str, default=None
             A tag that represents the lineage of the source for the object.
         """
@@ -354,6 +374,8 @@ class TOMWrapper:
             obj.DisplayFolder = display_folder
         if data_category is not None:
             obj.DataCategory = data_category
+        if lineage_tag is not None:
+            obj.LineageTag = lineage_tag
         if source_lineage_tag is not None:
             obj.SourceLineageTag = source_lineage_tag
         self.model.Tables[table_name].Columns.Add(obj)
@@ -371,6 +393,7 @@ class TOMWrapper:
         data_category: Optional[str] = None,
         key: Optional[bool] = False,
         summarize_by: Optional[str] = None,
+        lineage_tag: Optional[str] = None,
         source_lineage_tag: Optional[str] = None,
     ):
         """
@@ -401,6 +424,8 @@ class TOMWrapper:
         summarize_by : str, default=None
             Sets the value for the Summarize By property of the column.
             Defaults to None resolves to 'Default'.
+        lineage_tag : str, default=None
+            A tag that represents the lineage of the object.
         source_lineage_tag : str, default=None
             A tag that represents the lineage of the source for the object.
         """
@@ -435,6 +460,8 @@ class TOMWrapper:
             obj.DisplayFolder = display_folder
         if data_category is not None:
             obj.DataCategory = data_category
+        if lineage_tag is not None:
+            obj.LineageTag = lineage_tag
         if source_lineage_tag is not None:
             obj.SourceLineageTag = source_lineage_tag
         self.model.Tables[table_name].Columns.Add(obj)
@@ -452,6 +479,7 @@ class TOMWrapper:
         data_category: Optional[str] = None,
         key: Optional[bool] = False,
         summarize_by: Optional[str] = None,
+        lineage_tag: Optional[str] = None,
         source_lineage_tag: Optional[str] = None,
     ):
         """
@@ -482,6 +510,8 @@ class TOMWrapper:
         summarize_by : str, default=None
             Sets the value for the Summarize By property of the column.
             Defaults to None which resolves to 'Default'.
+        lineage_tag : str, default=None
+            A tag that represents the lineage of the object.
         source_lineage_tag : str, default=None
             A tag that represents the lineage of the source for the object.
         """
@@ -516,6 +546,8 @@ class TOMWrapper:
             obj.DisplayFolder = display_folder
         if data_category is not None:
             obj.DataCategory = data_category
+        if lineage_tag is not None:
+            obj.LineageTag = lineage_tag
         if source_lineage_tag is not None:
             obj.SourceLineageTag = source_lineage_tag
         self.model.Tables[table_name].Columns.Add(obj)
@@ -677,6 +709,7 @@ class TOMWrapper:
         levels: Optional[List[str]] = None,
         hierarchy_description: Optional[str] = None,
         hierarchy_hidden: Optional[bool] = False,
+        lineage_tag: Optional[str] = None,
         source_lineage_tag: Optional[str] = None,
     ):
         """
@@ -696,6 +729,8 @@ class TOMWrapper:
             A description of the hierarchy.
         hierarchy_hidden : bool, default=False
             Whether the hierarchy is visible or hidden.
+        lineage_tag : str, default=None
+            A tag that represents the lineage of the object.
         source_lineage_tag : str, default=None
             A tag that represents the lineage of the source for the object.
         """
@@ -724,6 +759,8 @@ class TOMWrapper:
         obj.IsHidden = hierarchy_hidden
         if hierarchy_description is not None:
             obj.Description = hierarchy_description
+        if lineage_tag is not None:
+            obj.LineageTag = lineage_tag
         if source_lineage_tag is not None:
             obj.SourceLineageTag = source_lineage_tag
         self.model.Tables[table_name].Hierarchies.Add(obj)
@@ -875,6 +912,7 @@ class TOMWrapper:
         name: str,
         expression: str,
         description: Optional[str] = None,
+        lineage_tag: Optional[str] = None,
         source_lineage_tag: Optional[str] = None,
     ):
         """
@@ -888,6 +926,8 @@ class TOMWrapper:
             The M expression of the expression.
         description : str, default=None
             A description of the expression.
+        lineage_tag : str, default=None
+            A tag that represents the lineage of the object.
         source_lineage_tag : str, default=None
             A tag that represents the lineage of the source for the object.
         """
@@ -897,6 +937,8 @@ class TOMWrapper:
         exp.Name = name
         if description is not None:
             exp.Description = description
+        if lineage_tag is not None:
+            exp.LineageTag = lineage_tag
         if source_lineage_tag is not None:
             exp.SourceLineageTag = source_lineage_tag
         exp.Kind = TOM.ExpressionKind.M
@@ -2528,6 +2570,7 @@ class TOMWrapper:
         description: Optional[str] = None,
         data_category: Optional[str] = None,
         hidden: Optional[bool] = False,
+        lineage_tag: Optional[str] = None,
         source_lineage_tag: Optional[str] = None,
     ):
         """
@@ -2543,6 +2586,8 @@ class TOMWrapper:
             The data category for the table.
         hidden : bool, default=False
             Whether the table is hidden or visible.
+        lineage_tag : str, default=None
+            A tag that represents the lineage of the object.
         source_lineage_tag : str, default=None
             A tag that represents the lineage of the source for the object.
         """
@@ -2554,6 +2599,8 @@ class TOMWrapper:
             t.Description = description
         if data_category is not None:
             t.DataCategory = data_category
+        if lineage_tag is not None:
+            t.LineageTag = lineage_tag
         if source_lineage_tag is not None:
             t.SourceLineageTag = source_lineage_tag
         t.Hidden = hidden
@@ -2566,6 +2613,8 @@ class TOMWrapper:
         description: Optional[str] = None,
         data_category: Optional[str] = None,
         hidden: Optional[bool] = False,
+        lineage_tag: Optional[bool] = None,
+        source_lineage_tag: Optional[bool] = None,
     ):
         """
         Adds a calculated table to the semantic model.
@@ -2582,6 +2631,10 @@ class TOMWrapper:
             The data category for the table.
         hidden : bool, default=False
             Whether the table is hidden or visible.
+        lineage_tag : str, default=None
+            A tag that represents the lineage of the object.
+        source_lineage_tag : str, default=None
+            A tag that represents the lineage of the source for the object.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
@@ -2598,6 +2651,10 @@ class TOMWrapper:
             t.Description = description
         if data_category is not None:
             t.DataCategory = data_category
+        if lineage_tag is not None:
+            t.LineageTag = lineage_tag
+        if source_lineage_tag is not None:
+            t.SourceLineageTag = source_lineage_tag
         t.Hidden = hidden
         t.Partitions.Add(par)
         self.model.Tables.Add(t)
