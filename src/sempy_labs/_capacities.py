@@ -1139,19 +1139,28 @@ def migrate_spark_settings(source_capacity: str, target_capacity: str):
 
     source_capacity_id = resolve_capacity_id(capacity_name=source_capacity)
     target_capacity_id = resolve_capacity_id(capacity_name=target_capacity)
-
-    # Get capacity server dns
     client = fabric.PowerBIRestClient()
+
+    # Get source capacity server dns
     response = client.get(f"metadata/capacityInformation/{source_capacity_id}")
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    server_dns = response.json().get("capacityDns")
+    source_server_dns = response.json().get("capacityDns")
+    source_url = f"{source_server_dns}/webapi/capacities"
 
-    base_url = f"{server_dns}/webapi/capacities"
+    # Get target capacity server dns
+    response = client.get(f"metadata/capacityInformation/{target_capacity_id}")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    target_server_dns = response.json().get("capacityDns")
+    target_url = f"{target_server_dns}/webapi/capacities"
+
+    # Construct get and put URLs
     end_url = "workloads/SparkCore/SparkCoreService/automatic/v1/sparksettings"
-    get_url = f"{base_url}/{source_capacity_id}/{end_url}"
-    put_url = f"{base_url}/{target_capacity_id}/{end_url}/content"
+    get_url = f"{source_url}/{source_capacity_id}/{end_url}"
+    put_url = f"{target_url}/{target_capacity_id}/{end_url}/content"
 
     # Get source capacity spark settings
     response = client.get(get_url)
