@@ -551,13 +551,13 @@ def vertipaq_analyzer(
             df.columns = df.columns.str.replace(" ", "_")
 
             schema = {
-                "Capacity_Name": "string",
-                "Capacity_Id": "string",
-                "Workspace_Name": "string",
-                "Workspace_Id": "string",
-                "Dataset_Name": "string",
-                "Dataset_Id": "string",
-                "Configured_By": "string",
+                "Capacity_Name": data_type_string,
+                "Capacity_Id": data_type_string,
+                "Workspace_Name": data_type_string,
+                "Workspace_Id": data_type_string,
+                "Dataset_Name": data_type_string,
+                "Dataset_Id": data_type_string,
+                "Configured_By": data_type_string,
             }
 
             schema.update(
@@ -566,6 +566,8 @@ def vertipaq_analyzer(
                     for key, value in vertipaq_map[key_name].items()
                 }
             )
+            schema['RunId'] = data_type_long
+            schema['Timestamp'] = data_type_timestamp
 
             delta_table_name = f"VertipaqAnalyzer_{obj}".lower()
             save_as_delta_table(
