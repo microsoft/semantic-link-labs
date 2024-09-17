@@ -2746,4 +2746,6 @@ def list_semantic_model_object_report_usage(
         by=usage_column_name, ascending=False
     )
 
+    final_df.reset_index(drop=True, inplace=True)
+
     return final_df
