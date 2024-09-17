@@ -77,8 +77,9 @@ def list_connections() -> pd.DataFrame:
     return df
 
 
-def list_item_connections(item_name: str, item_type: str, workspace: Optional[str] = None) -> pd.DataFrame:
-
+def list_item_connections(
+    item_name: str, item_type: str, workspace: Optional[str] = None
+) -> pd.DataFrame:
     """
     Shows the list of connections that the specified item is connected to.
 
@@ -104,7 +105,9 @@ def list_item_connections(item_name: str, item_type: str, workspace: Optional[st
     workspace = fabric.resolve_workspace_name(workspace)
     workspace_id = fabric.resolve_workspace_id(workspace)
     item_type = item_type[0].upper() + item_type[1:]
-    item_id = fabric.resolve_item_id(item_name=item_name, type=item_type, workspace=workspace)
+    item_id = fabric.resolve_item_id(
+        item_name=item_name, type=item_type, workspace=workspace
+    )
 
     client = fabric.FabricRestClient()
     response = client.post(f"/v1/workspaces/{workspace_id}/items/{item_id}/connections")
@@ -126,14 +129,14 @@ def list_item_connections(item_name: str, item_type: str, workspace: Optional[st
     respnoses = pagination(client, response)
 
     for r in respnoses:
-        for v in r.get('value', []):
+        for v in r.get("value", []):
             new_data = {
-                "Connection Name": v.get('displayName'),
-                "Connection Id": v.get('id'),
-                "Connectivity Type": v.get('connectivityType'),
-                "Connection Type": v.get('connectionDetails', {}).get('type'),
-                "Connection Path": v.get('connectionDetails', {}).get('path'),
-                "Gateway Id": v.get('gatewayId'),
+                "Connection Name": v.get("displayName"),
+                "Connection Id": v.get("id"),
+                "Connectivity Type": v.get("connectivityType"),
+                "Connection Type": v.get("connectionDetails", {}).get("type"),
+                "Connection Path": v.get("connectionDetails", {}).get("path"),
+                "Gateway Id": v.get("gatewayId"),
             }
 
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)

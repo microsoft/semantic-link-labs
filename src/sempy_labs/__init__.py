@@ -28,6 +28,7 @@ from sempy_labs._notebooks import (
 )
 from sempy_labs._sql import (
     ConnectWarehouse,
+    ConnectLakehouse,
 )
 from sempy_labs._capacities import (
     check_fabric_capacity_name_availablility,
@@ -175,6 +176,7 @@ from sempy_labs._vertipaq import (
 __all__ = [
     "resolve_warehouse_id",
     "ConnectWarehouse",
+    "ConnectLakehouse",
     "update_semantic_model_from_bim",
     "list_connections",
     "get_semantic_model_size",

@@ -413,10 +413,12 @@ def set_workspace_default_storage_format(
     dfW = fabric.list_workspaces(filter=f"name eq '{workspace}'")
     if len(dfW) == 0:
         raise ValueError()
-    current_storage_format = dfW['Default Dataset Storage Format'].iloc[0]
+    current_storage_format = dfW["Default Dataset Storage Format"].iloc[0]
 
     if current_storage_format == storage_format:
-        print(f"{icons.info} The '{workspace}' is already set to a default storage format of '{current_storage_format}'.")
+        print(
+            f"{icons.info} The '{workspace}' is already set to a default storage format of '{current_storage_format}'."
+        )
         return
 
     request_body = {

@@ -506,7 +506,7 @@ def run_model_bpa(
             content_html += f'<td>{row["Object Type"]}</td>'
             content_html += f'<td>{row["Object Name"]}</td>'
             content_html += f'<td style="text-align: center;">{row["Severity"]}</td>'
-            #content_html += f'<td>{row["Severity"]}</td>'
+            # content_html += f'<td>{row["Severity"]}</td>'
             content_html += "</tr>"
         content_html += "</table>"
 
