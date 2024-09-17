@@ -1129,6 +1129,8 @@ def migrate_spark_settings(source_capacity: str, target_capacity: str):
     """
     This function migrates a capacity's spark settings to another capacity.
 
+    Requirement: The target capacity must be able to accomodate the spark pools being migrated from the source capacity.
+
     Parameters
     ----------
     source_capacity : str
