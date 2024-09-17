@@ -7,6 +7,7 @@ from sempy_labs._clear_cache import (
 )
 
 from sempy_labs._capacities import (
+    migrate_spark_settings,
     migrate_workspaces,
     migrate_capacities,
     create_fabric_capacity,
@@ -131,6 +132,7 @@ from sempy_labs._vertipaq import (
 )
 
 __all__ = [
+    "migrate_spark_settings",
     "create_azure_storage_account",
     "backup_semantic_model",
     "restore_semantic_model",

@@ -12,6 +12,7 @@ from sempy_labs.admin._basic_functions import (
 import pandas as pd
 import datetime
 import requests
+from sempy_labs._helper_functions import resolve_capacity_id
 
 
 def _add_sll_tag(payload, tags):
@@ -1113,3 +1114,48 @@ def check_fabric_capacity_name_availablility(
         raise FabricHTTPException(response)
 
     return bool(response.json().get("nameAvailable"))
+
+
+def migrate_spark_settings(source_capacity: str, target_capacity: str):
+    """
+    This function migrates a capacity's spark settings to another capacity.
+
+    Parameters
+    ----------
+    source_capacity : str
+        Name of the source capacity.
+    target_capacity : str
+        Name of the target capacity.
+    """
+
+    source_capacity_id = resolve_capacity_id(capacity_name=source_capacity)
+    target_capacity_id = resolve_capacity_id(capacity_name=target_capacity)
+
+    # Get capacity server dns
+    client = fabric.PowerBIRestClient()
+    response = client.get(f"metadata/capacityInformation/{source_capacity_id}")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    server_dns = response.json().get("capacityDns")
+
+    base_url = f"{server_dns}/webapi/capacities"
+    end_url = "workloads/SparkCore/SparkCoreService/automatic/v1/sparksettings"
+    get_url = f"{base_url}/{source_capacity_id}/{end_url}"
+    put_url = f"{base_url}/{target_capacity_id}/{end_url}/content"
+
+    # Get source capacity spark settings
+    response = client.get(get_url)
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    sparksetttings = response.json().get("content")
+
+    # Update target capacity spark settings
+    response_put = client.put(put_url, json=sparksetttings)
+
+    if response_put.status_code != 200:
+        raise FabricHTTPException(response_put)
+    print(
+        f"{icons.green_dot} The spark settings have been migrated from the '{source_capacity}' capacity to the '{target_capacity}' capacity."
+    )

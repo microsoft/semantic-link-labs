@@ -9,6 +9,7 @@ from uuid import UUID
 import sempy_labs._icons as icons
 import time
 from sempy.fabric.exceptions import FabricHTTPException
+import urllib.parse
 
 
 def create_abfss_path(
@@ -645,3 +646,60 @@ def pagination(client, response):
         continuation_uri = response_json.get("continuationUri")
 
     return responses
+
+
+def get_capacity_id(workspace: Optional[str] = None) -> UUID:
+    """
+    Obtains the Capacity Id for a given workspace.
+
+    Parameters
+    ----------
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    UUID
+        The capacity Id.
+    """
+
+    workspace = fabric.resolve_workspace_name(workspace)
+    filter_condition = urllib.parse.quote(workspace)
+    dfW = fabric.list_workspaces(filter=f"name eq '{filter_condition}'")
+    if len(dfW) == 0:
+        raise ValueError(f"{icons.red_dot} The '{workspace}' does not exist'.")
+
+    return dfW["Capacity Id"].iloc[0]
+
+
+def resolve_capacity_id(capacity_name: Optional[str] = None) -> UUID:
+    """
+    Obtains the capacity Id for a given capacity name.
+
+    Parameters
+    ----------
+    capacity_name : str, default=None
+        The capacity name.
+        Defaults to None which resolves to the capacity id of the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the capacity name of the workspace of the notebook.
+
+    Returns
+    -------
+    UUID
+        The capacity Id.
+    """
+
+    if capacity_name is None:
+        return get_capacity_id()
+
+    dfC = fabric.list_capacities()
+    dfC_filt = dfC[dfC["Display Name"] == capacity_name]
+
+    if len(dfC_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} The '{capacity_name}' capacity does not exist."
+        )
+
+    return dfC_filt["Id"].iloc[0]
