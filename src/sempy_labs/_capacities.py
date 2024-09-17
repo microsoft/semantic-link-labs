@@ -1149,10 +1149,10 @@ def migrate_spark_settings(source_capacity: str, target_capacity: str):
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    sparksetttings = response.json().get("content")
+    payload = response.json().get("content")
 
     # Update target capacity spark settings
-    response_put = client.put(put_url, json=sparksetttings)
+    response_put = client.put(put_url, json=payload)
 
     if response_put.status_code != 200:
         raise FabricHTTPException(response_put)
