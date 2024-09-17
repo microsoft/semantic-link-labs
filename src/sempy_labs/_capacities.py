@@ -1,4 +1,7 @@
 import sempy.fabric as fabric
+import pandas as pd
+import datetime
+import requests
 from typing import Optional, List, Tuple
 from sempy._utils._log import log
 import sempy_labs._icons as icons
@@ -9,9 +12,6 @@ from sempy_labs.admin._basic_functions import (
     assign_workspaces_to_capacity,
     _list_capacities_meta,
 )
-import pandas as pd
-import datetime
-import requests
 from sempy_labs._helper_functions import resolve_capacity_id
 
 
@@ -448,7 +448,7 @@ def migrate_capacities(
         print(f"{icons.info} There are no valid capacities to migrate.")
         return
 
-    for i, r in dfC_filt.iterrows():
+    for _, r in dfC_filt.iterrows():
         cap_name = r["Display Name"]
         region = r["Region"]
         sku_size = r["Sku"]
@@ -536,6 +536,15 @@ def migrate_capacities(
 
             start_time = datetime.datetime.now()
             migrate_disaster_recovery_settings(
+                source_capacity=cap_name, target_capacity=tgt_capacity
+            )
+            end_time = datetime.datetime.now()
+            print(
+                f"Total time for migrating disaster recovery settings is {str((end_time - start_time).total_seconds())}"
+            )
+
+            start_time = datetime.datetime.now()
+            migrate_spark_settings(
                 source_capacity=cap_name, target_capacity=tgt_capacity
             )
             end_time = datetime.datetime.now()
