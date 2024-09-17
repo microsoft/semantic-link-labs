@@ -6,6 +6,7 @@ from sempy_labs._helper_functions import (
     _conv_b64,
     _extract_json,
     _add_part,
+    lro,
 )
 import requests
 from typing import Optional, List, Tuple
@@ -20,7 +21,8 @@ import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 from sempy_labs._list_functions import list_reports_using_semantic_model
 from sempy_labs._model_dependencies import get_measure_dependencies
-from sempy_labs.tom import connect_semantic_model
+from jsonpath_ng.ext import parse
+
 
 _vis_type_mapping = {
     "barChart": "Bar chart",
@@ -138,7 +140,7 @@ def _list_all_report_semantic_model_objects(
     dfR = list_reports_using_semantic_model(dataset=dataset, workspace=workspace)
     dfs = []
 
-    for i, r in dfR.iterrows():
+    for _, r in dfR.iterrows():
         report_name = r["Report Name"]
         report_workspace = r["Report Workspace Name"]
 
@@ -188,6 +190,37 @@ class ReportWrapper:
             )
 
     # Helper functions
+    def _add_extended(self, dataframe):
+
+        from sempy_labs.tom import connect_semantic_model
+
+        dataset_id, dataset_name, dataset_workspace_id, dataset_workspace = (
+            resolve_dataset_from_report(report=self._report, workspace=self._workspace)
+        )
+
+        with connect_semantic_model(
+            dataset=dataset_name, readonly=True, workspace=dataset_workspace
+        ) as tom:
+            for index, row in dataframe.iterrows():
+                obj_type = row["Object Type"]
+                if obj_type == "Measure":
+                    dataframe.at[index, "Valid Semantic Model Object"] = any(
+                        o.Name == row["Object Name"] for o in tom.all_measures()
+                    )
+                elif obj_type == "Column":
+                    dataframe.at[index, "Valid Semantic Model Object"] = any(
+                        format_dax_object_name(c.Parent.Name, c.Name)
+                        == format_dax_object_name(row["Table Name"], row["Object Name"])
+                        for c in tom.all_columns()
+                    )
+                elif obj_type == "Hierarchy":
+                    dataframe.at[index, "Valid Semantic Model Object"] = any(
+                        format_dax_object_name(h.Parent.Name, h.Name)
+                        == format_dax_object_name(row["Table Name"], row["Object Name"])
+                        for h in tom.all_hierarchies()
+                    )
+        return dataframe
+
     def __populate_custom_visual_display_names(self):
 
         url1 = "https://catalogapi.azure.com/offers?api-version=2018-08-01-beta&storefront=appsource&$filter=offerType+eq+%27PowerBIVisuals%27"
@@ -221,18 +254,7 @@ class ReportWrapper:
             json=request_body,
         )
 
-        if response.status_code not in [200, 202]:
-            raise FabricHTTPException(response)
-        if response.status_code == 202:
-            operationId = response.headers["x-ms-operation-id"]
-            response = client.get(f"/v1/operations/{operationId}")
-            response_body = json.loads(response.content)
-            while response_body["status"] not in ["Succeeded", "Failed"]:
-                time.sleep(1)
-                response = client.get(f"/v1/operations/{operationId}")
-                response_body = json.loads(response.content)
-            if response_body["status"] != "Succeeded":
-                raise FabricHTTPException(response)
+        lro(client, response)
 
     def resolve_page_name(self, page_display_name: str) -> UUID:
 
@@ -262,24 +284,24 @@ class ReportWrapper:
         """
 
         dfP = self.list_pages()
-        if any(r["Page Name"] == page_name for i, r in dfP.iterrows()):
+        if any(r["Page Name"] == page_name for _, r in dfP.iterrows()):
             valid_page_name = page_name
             dfP_filt = dfP[dfP["Page Name"] == page_name]
             valid_display_name = dfP_filt["Page Display Name"].iloc[0]
             file_path = dfP_filt["File Path"].iloc[0]
-        elif any(r["Page Display Name"] == page_name for i, r in dfP.iterrows()):
+        elif any(r["Page Display Name"] == page_name for _, r in dfP.iterrows()):
             valid_display_name = page_name
             dfP_filt = dfP[dfP["Page Display Name"] == page_name]
             valid_page_name = dfP_filt["Page Name"].iloc[0]
             file_path = dfP_filt["File Path"].iloc[0]
         else:
             raise ValueError(
-                f"Invalid page name. The '{page_name}' page does not exist in the '{self._report}' report within the '{self._workspace}' workspace."
+                f"{icons.red_dot} Invalid page name. The '{page_name}' page does not exist in the '{self._report}' report within the '{self._workspace}' workspace."
             )
 
         return valid_page_name, valid_display_name, file_path
 
-    def resolve_visual_name(
+    def _resolve_visual_name(
         self, page_name: str, visual_name: str
     ) -> Tuple[str, str, str, str]:
         """
@@ -301,7 +323,7 @@ class ReportWrapper:
         dfV = self.list_visuals()
         if any(
             (r["Page Name"] == page_name) & (r["Visual Name"] == visual_name)
-            for i, r in dfV.iterrows()
+            for _, r in dfV.iterrows()
         ):
             valid_page_name = page_name
             dfV_filt = dfV[
@@ -311,7 +333,7 @@ class ReportWrapper:
             valid_display_name = dfV_filt["Page Display Name"].iloc[0]
         elif any(
             (r["Page Display Name"] == page_name) & (r["Visual Name"] == visual_name)
-            for i, r in dfV.iterrows()
+            for _, r in dfV.iterrows()
         ):
             valid_display_name = page_name
             dfV_filt = dfV[
@@ -332,7 +354,7 @@ class ReportWrapper:
         page_mapping = {}
         visual_mapping = {}
         rd = self.rdef
-        for i, r in rd.iterrows():
+        for _, r in rd.iterrows():
             file_path = r["path"]
             payload = r["payload"]
             if file_path.endswith("/page.json"):
@@ -343,7 +365,7 @@ class ReportWrapper:
                 page_id = obj_json.get("name")
                 page_display = obj_json.get("displayName")
                 page_mapping[page_name] = (page_id, page_display)
-        for i, r in rd.iterrows():
+        for _, r in rd.iterrows():
             file_path = r["path"]
             payload = r["payload"]
             if file_path.endswith("/visual.json"):
@@ -524,37 +546,7 @@ class ReportWrapper:
         df[bool_cols] = df[bool_cols].astype(bool)
 
         if extended:
-            dataset_id, dataset_name, dataset_workspace_id, dataset_workspace = (
-                resolve_dataset_from_report(
-                    report=self._report, workspace=self._workspace
-                )
-            )
-
-            with connect_semantic_model(
-                dataset=dataset_name, readonly=True, workspace=dataset_workspace
-            ) as tom:
-                for index, row in df.iterrows():
-                    obj_type = row["Object Type"]
-                    if obj_type == "Measure":
-                        df.at[index, "Valid Semantic Model Object"] = any(
-                            o.Name == row["Object Name"] for o in tom.all_measures()
-                        )
-                    elif obj_type == "Column":
-                        df.at[index, "Valid Semantic Model Object"] = any(
-                            format_dax_object_name(c.Parent.Name, c.Name)
-                            == format_dax_object_name(
-                                row["Table Name"], row["Object Name"]
-                            )
-                            for c in tom.all_columns()
-                        )
-                    elif obj_type == "Hierarchy":
-                        df.at[index, "Valid Semantic Model Object"] = any(
-                            format_dax_object_name(h.Parent.Name, h.Name)
-                            == format_dax_object_name(
-                                row["Table Name"], row["Object Name"]
-                            )
-                            for h in tom.all_hierarchies()
-                        )
+            df = self._add_extended(dataframe=df)
 
         return df
 
@@ -624,7 +616,7 @@ class ReportWrapper:
 
             return result
 
-        for i, r in rd.iterrows():
+        for _, r in rd.iterrows():
             path = r["path"]
             payload = r["payload"]
             if path.endswith("/page.json"):
@@ -670,37 +662,7 @@ class ReportWrapper:
         df[bool_cols] = df[bool_cols].astype(bool)
 
         if extended:
-            dataset_id, dataset_name, dataset_workspace_id, dataset_workspace = (
-                resolve_dataset_from_report(
-                    report=self._report, workspace=self._workspace
-                )
-            )
-
-            with connect_semantic_model(
-                dataset=dataset_name, readonly=True, workspace=dataset_workspace
-            ) as tom:
-                for index, row in df.iterrows():
-                    obj_type = row["Object Type"]
-                    if obj_type == "Measure":
-                        df.at[index, "Valid Semantic Model Object"] = any(
-                            o.Name == row["Object Name"] for o in tom.all_measures()
-                        )
-                    elif obj_type == "Column":
-                        df.at[index, "Valid Semantic Model Object"] = any(
-                            format_dax_object_name(c.Parent.Name, c.Name)
-                            == format_dax_object_name(
-                                row["Table Name"], row["Object Name"]
-                            )
-                            for c in tom.all_columns()
-                        )
-                    elif obj_type == "Hierarchy":
-                        df.at[index, "Valid Semantic Model Object"] = any(
-                            format_dax_object_name(h.Parent.Name, h.Name)
-                            == format_dax_object_name(
-                                row["Table Name"], row["Object Name"]
-                            )
-                            for h in tom.all_hierarchies()
-                        )
+            df = self._add_extended(dataframe=df)
 
             web_url = self._get_web_url()
             df["Web URL"] = web_url + "/" + df["Page Name"]
@@ -775,7 +737,7 @@ class ReportWrapper:
 
             return result
 
-        for i, r in rd.iterrows():
+        for _, r in rd.iterrows():
             path = r["path"]
             payload = r["payload"]
             if path.endswith("/visual.json"):
@@ -823,37 +785,7 @@ class ReportWrapper:
         df[bool_cols] = df[bool_cols].astype(bool)
 
         if extended:
-            dataset_id, dataset_name, dataset_workspace_id, dataset_workspace = (
-                resolve_dataset_from_report(
-                    report=self._report, workspace=self._workspace
-                )
-            )
-
-            with connect_semantic_model(
-                dataset=dataset_name, readonly=True, workspace=dataset_workspace
-            ) as tom:
-                for index, row in df.iterrows():
-                    obj_type = row["Object Type"]
-                    if obj_type == "Measure":
-                        df.at[index, "Valid Semantic Model Object"] = any(
-                            o.Name == row["Object Name"] for o in tom.all_measures()
-                        )
-                    elif obj_type == "Column":
-                        df.at[index, "Valid Semantic Model Object"] = any(
-                            format_dax_object_name(c.Parent.Name, c.Name)
-                            == format_dax_object_name(
-                                row["Table Name"], row["Object Name"]
-                            )
-                            for c in tom.all_columns()
-                        )
-                    elif obj_type == "Hierarchy":
-                        df.at[index, "Valid Semantic Model Object"] = any(
-                            format_dax_object_name(h.Parent.Name, h.Name)
-                            == format_dax_object_name(
-                                row["Table Name"], row["Object Name"]
-                            )
-                            for h in tom.all_hierarchies()
-                        )
+            df = self._add_extended(dataframe=df)
 
         return df
 
@@ -881,7 +813,7 @@ class ReportWrapper:
             ]
         )
 
-        for i, r in rd.iterrows():
+        for _, r in rd.iterrows():
             file_path = r["path"]
             payload = r["payload"]
             if file_path.endswith("/page.json"):
@@ -947,7 +879,7 @@ class ReportWrapper:
 
         dfV = self.list_visuals()
 
-        for i, r in rd.iterrows():
+        for _, r in rd.iterrows():
             file_path = r["path"]
             payload = r["payload"]
             if file_path.endswith("/page.json"):
@@ -957,28 +889,22 @@ class ReportWrapper:
                 page_name = pageJson.get("name")
                 height = pageJson.get("height")
                 width = pageJson.get("width")
-                alignment = pageJson.get("objects", {}).get("displayArea", [])
-                if alignment:
-                    alignment_properties = (
-                        alignment[0]
-                        .get("properties", {})
-                        .get("verticalAlignment", {})
-                        .get("expr", {})
-                        .get("Literal", {})
-                        .get("Value", None)
-                    )
-                    if alignment_properties:
-                        alignment_value = alignment_properties[1:-1]
-                    else:
-                        alignment_value = "Top"
-                else:
-                    alignment_value = "Top"
-                drill_through = False
-                filterConfig = pageJson.get("filterConfig")
-                if filterConfig:
-                    for filt in filterConfig.get("filters", []):
-                        if filt.get("howCreated", {}) == "Drillthrough":
-                            drill_through = True
+
+                # Alignment
+                matches = parse(
+                    "$.objects.displayArea[0].properties.verticalAlignment.expr.Literal.Value"
+                ).find(pageJson)
+                alignment_value = (
+                    matches[0].value[1:-1] if matches and matches[0].value else "Top"
+                )
+
+                # Drillthrough
+                matches = parse("$.filterConfig.filters[*]").find(pageJson)
+                drill_through = any(
+                    filt.get("howCreated") == "Drillthrough"
+                    for filt in (match.value for match in matches)
+                )
+
                 visual_count = len(
                     rd[
                         rd["path"].str.endswith("/visual.json")
@@ -991,9 +917,16 @@ class ReportWrapper:
                 visible_visual_count = len(
                     dfV[(dfV["Page Name"] == page_name) & (dfV["Hidden"] == False)]
                 )
-                page_filter_count = len(
-                    pageJson.get("filterConfig", {}).get("filters", [])
+
+                # Page Filter Count
+                matches = parse("$.filterConfig.filters").find(pageJson)
+                page_filter_count = (
+                    len(matches[0].value) if matches and matches[0].value else 0
                 )
+
+                # Hidden
+                matches = parse("$.visibility").find(pageJson)
+                is_hidden = any(match.value == "HiddenInViewMode" for match in matches)
 
                 new_data = {
                     "File Path": file_path,
@@ -1002,11 +935,7 @@ class ReportWrapper:
                     "Display Option": pageJson.get("displayOption"),
                     "Height": height,
                     "Width": width,
-                    "Hidden": (
-                        True
-                        if pageJson.get("visibility") == "HiddenInViewMode"
-                        else False
-                    ),
+                    "Hidden": is_hidden,
                     "Active": False,
                     "Type": page_type_mapping.get((width, height), "Custom"),
                     "Alignment": alignment_value,
@@ -1041,7 +970,7 @@ class ReportWrapper:
 
         web_url = self._get_web_url()
 
-        df["Web URL"] = web_url + "/" + df["Page Name"]
+        df["Page URL"] = web_url + "/" + df["Page Name"]
 
         return df
 
@@ -1095,19 +1024,20 @@ class ReportWrapper:
         self.__populate_custom_visual_display_names()
 
         def contains_key(data, keys_to_check):
-            if isinstance(data, dict):
-                for key, value in data.items():
-                    if key in keys_to_check:
-                        return True
-                    if contains_key(value, keys_to_check):
-                        return True
-            elif isinstance(data, list):
-                for item in data:
-                    if contains_key(item, keys_to_check):
-                        return True
-            return False
+            matches = parse("$..*").find(data)
 
-        for i, r in rd.iterrows():
+            all_keys = set()
+            for match in matches:
+                if isinstance(match.value, dict):
+                    all_keys.update(match.value.keys())
+                elif isinstance(match.value, list):
+                    for item in match.value:
+                        if isinstance(item, dict):
+                            all_keys.update(item.keys())
+
+            return any(key in all_keys for key in keys_to_check)
+
+        for _, r in rd.iterrows():
             file_path = r["path"]
             payload = r["payload"]
             if file_path.endswith("/visual.json"):
@@ -1116,118 +1046,78 @@ class ReportWrapper:
                 page_id = visual_mapping.get(file_path)[0]
                 page_display = visual_mapping.get(file_path)[1]
                 pos = visual_json.get("position")
-                visual_type = visual_json.get("visual", {}).get("visualType", "Group")
+
+                # Visual Type
+                matches = parse("$.visual.visualType").find(visual_json)
+                visual_type = matches[0].value if matches else "Group"
+
                 visual_type_display = _vis_type_mapping.get(visual_type, visual_type)
                 cst_value, rst_value, slicer_type = False, False, "N/A"
-                visual_filter_count = len(
-                    visual_json.get("filterConfig", {}).get("filters", [])
-                )
 
-                data_limit = 0
-                for f in visual_json.get("filterConfig", {}).get("filters", []):
-                    if f.get("type") == "VisualTopN":
-                        where_conditions = f.get("filter", {}).get("Where", [])
-                        for condition in where_conditions:
-                            visual_topn = condition.get("Condition", {}).get(
-                                "VisualTopN", {}
-                            )
-                            data_limit = visual_topn.get("ItemCount")
-                            break
+                # Visual Filter Count
+                matches = parse("$.filterConfig.filters[*]").find(visual_json)
+                visual_filter_count = len(matches)
 
-                title = (
-                    visual_json.get("visual", {})
-                    .get("visualContainerObjects", {})
-                    .get("title", [{}])[0]
-                    .get("properties", {})
-                    .get("text", {})
-                    .get("expr", {})
-                    .get("Literal", {})
-                    .get("Value", "")[1:-1]
-                )
-                sub_title = (
-                    visual_json.get("visual", {})
-                    .get("visualContainerObjects", {})
-                    .get("subTitle", [{}])[0]
-                    .get("properties", {})
-                    .get("text", {})
-                    .get("expr", {})
-                    .get("Literal", {})
-                    .get("Value", "")[1:-1]
-                )
-                alt_text = (
-                    visual_json.get("visual", {})
-                    .get("visualContainerObjects", {})
-                    .get("general", [{}])[0]
-                    .get("properties", {})
-                    .get("altText", {})
-                    .get("expr", {})
-                    .get("Literal", {})
-                    .get("Value", "")[1:-1]
-                )
+                # Data Limit
+                matches = parse(
+                    '$.filterConfig.filters[?(@.type == "VisualTopN")].filter.Where[*].Condition.VisualTopN.ItemCount'
+                ).find(visual_json)
+                data_limit = matches[0].value if matches else 0
 
-                def find_show_all(obj):
-                    if isinstance(obj, dict):
-                        # Check if the dictionary has the key 'showAll' with the value True
-                        if "showAll" in obj and obj["showAll"] is True:
-                            return True
-                        # Recursively check each value in the dictionary
-                        for value in obj.values():
-                            if find_show_all(value):
-                                return True
-                    elif isinstance(obj, list):
-                        # Recursively check each item in the list
-                        for item in obj:
-                            if find_show_all(item):
-                                return True
-                    return False
+                # Title
+                matches = parse(
+                    "$.visual.visualContainerObjects.title[0].properties.text.expr.Literal.Value"
+                ).find(visual_json)
+                title = matches[0].value[1:-1] if matches else ""
 
-                show_all_data = find_show_all(visual_json)
+                # SubTitle
+                matches = parse(
+                    "$.visual.visualContainerObjects.subTitle[0].properties.text.expr.Literal.Value"
+                ).find(visual_json)
+                sub_title = matches[0].value[1:-1] if matches else ""
 
-                divider = (
-                    visual_json.get("visual", {})
-                    .get("visualContainerObjects", {})
-                    .get("divider", [{}])[0]
-                    .get("properties", {})
-                    .get("show", {})
-                    .get("expr", {})
-                    .get("Literal", {})
-                    .get("Value", "")
-                )
+                # Alt Text
+                matches = parse(
+                    "$.visual.visualContainerObjects.general[0].properties.altText.expr.Literal.Value"
+                ).find(visual_json)
+                alt_text = matches[0].value[1:-1] if matches else ""
 
+                # Show items with no data
+                def find_show_all_with_jsonpath(obj):
+                    matches = parse("$..showAll").find(obj)
+                    return any(match.value is True for match in matches)
+
+                show_all_data = find_show_all_with_jsonpath(visual_json)
+
+                # Divider
+                matches = parse(
+                    "$.visual.visualContainerObjects.divider[0].properties.show.expr.Literal.Value"
+                ).find(visual_json)
+                divider = matches[0] if matches else ""
+
+                # Row/Column Subtotals
                 if visual_type == "pivotTable":
-                    subt = (
-                        visual_json.get("visual", {})
-                        .get("objects", {})
-                        .get("subTotals", [{}])[0]
-                        .get("properties", {})
-                    )
-                    cst = (
-                        subt.get("columnSubtotals", {})
-                        .get("expr", {})
-                        .get("Literal", {})
-                        .get("Value")
-                    )
-                    rst = (
-                        subt.get("rowSubtotals", {})
-                        .get("expr", {})
-                        .get("Literal", {})
-                        .get("Value")
-                    )
-                    cst_value = False if cst == "false" else True
-                    rst_value = False if rst == "false" else True
+                    cst_matches = parse(
+                        "$.visual.objects.subTotals[0].properties.columnSubtotals.expr.Literal.Value"
+                    ).find(visual_json)
+                    rst_matches = parse(
+                        "$.visual.objects.subTotals[0].properties.rowSubtotals.expr.Literal.Value"
+                    ).find(visual_json)
 
-                elif visual_type == "slicer":
-                    slicer_type = (
-                        visual_json.get("visual", {})
-                        .get("objects", {})
-                        .get("data", {})[0]
-                        .get("properties", {})
-                        .get("mode", {})
-                        .get("expr", {})
-                        .get("Literal", {})
-                        .get("Value", "")[1:-1]
-                    )
+                    if cst_matches:
+                        cst_value = False if cst_matches[0].value == "false" else True
 
+                    if rst_matches:
+                        rst_value = False if rst_matches[0].value == "false" else True
+
+                # Slicer Type
+                if visual_type == "slicer":
+                    matches = parse(
+                        "$.visual.objects.data[0].properties.mode.expr.Literal.Value"
+                    ).find(visual_json)
+                    slicer_type = matches[0].value[1:-1] if matches else "N/A"
+
+                # Data Visual
                 is_data_visual = contains_key(
                     visual_json,
                     [
@@ -1238,6 +1128,8 @@ class ReportWrapper:
                         "NativeVisualCalculation",
                     ],
                 )
+
+                # Sparkline
                 has_sparkline = contains_key(visual_json, ["SparklineData"])
 
                 new_data = {
@@ -1394,7 +1286,7 @@ class ReportWrapper:
 
             return result
 
-        for i, r in rd.iterrows():
+        for _, r in rd.iterrows():
             file_path = r["path"]
             payload = r["payload"]
             if file_path.endswith("/visual.json"):
@@ -1445,37 +1337,7 @@ class ReportWrapper:
                     )
 
         if extended:
-            dataset_id, dataset_name, dataset_workspace_id, dataset_workspace = (
-                resolve_dataset_from_report(
-                    report=self._report, workspace=self._workspace
-                )
-            )
-
-            with connect_semantic_model(
-                dataset=dataset_name, readonly=True, workspace=dataset_workspace
-            ) as tom:
-                for index, row in df.iterrows():
-                    obj_type = row["Object Type"]
-                    if obj_type == "Measure":
-                        df.at[index, "Valid Semantic Model Object"] = any(
-                            o.Name == row["Object Name"] for o in tom.all_measures()
-                        )
-                    elif obj_type == "Column":
-                        df.at[index, "Valid Semantic Model Object"] = any(
-                            format_dax_object_name(c.Parent.Name, c.Name)
-                            == format_dax_object_name(
-                                row["Table Name"], row["Object Name"]
-                            )
-                            for c in tom.all_columns()
-                        )
-                    elif obj_type == "Hierarchy":
-                        df.at[index, "Valid Semantic Model Object"] = any(
-                            format_dax_object_name(h.Parent.Name, h.Name)
-                            == format_dax_object_name(
-                                row["Table Name"], row["Object Name"]
-                            )
-                            for h in tom.all_hierarchies()
-                        )
+            df = self._add_extended(dataframe=df)
 
         bool_cols = ["Implicit Measure", "Sparkline", "Visual Calc"]
         df[bool_cols] = df[bool_cols].astype(bool)
@@ -1500,6 +1362,8 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe showing the semantic model objects used in the report.
         """
+
+        from sempy_labs.tom import connect_semantic_model
 
         df = pd.DataFrame(
             columns=[
@@ -1658,7 +1522,7 @@ class ReportWrapper:
             ]
         )
 
-        for i, r in rd.iterrows():
+        for _, r in rd.iterrows():
             path = r["path"]
             payload = r["payload"]
             if path.endswith(".bookmark.json"):
@@ -1782,7 +1646,7 @@ class ReportWrapper:
 
         rd = self.rdef
         page_id, page_display, file_path = self.__resolve_page_name(page_name=page_name)
-        for i, r in rd.iterrows():
+        for _, r in rd.iterrows():
             path = r["path"]
             file_payload = r["payload"]
             if path != pages_file:
@@ -1843,7 +1707,7 @@ class ReportWrapper:
         file_payload = _conv_b64(pageJson)
         _add_part(request_body, file_path, file_payload)
 
-        for i, r in rd.iterrows():
+        for _, r in rd.iterrows():
             if r["path"] != file_path:
                 _add_part(request_body, r["path"], r["payload"])
 
@@ -1870,7 +1734,7 @@ class ReportWrapper:
         cv_remove_display = []
         request_body = {"definition": {"parts": []}}
 
-        for i, r in dfCV.iterrows():
+        for _, r in dfCV.iterrows():
             cv = r["Custom Visual Name"]
             cv_display = r["Custom Visual Display Name"]
             dfV_filt = dfV[dfV["Type"] == cv]
@@ -1883,7 +1747,7 @@ class ReportWrapper:
             )
             return
 
-        for i, r in rd.iterrows():
+        for _, r in rd.iterrows():
             file_path = r["path"]
             payload = r["payload"]
             if file_path == "definition/report.json":
@@ -1913,10 +1777,9 @@ class ReportWrapper:
         measures : str | List[str], default=None
             A measure or list of measures to move to the semantic model.
             Defaults to None which resolves to moving all report-level measures to the semantic model.
-
-        Returns
-        -------
         """
+
+        from sempy_labs.tom import connect_semantic_model
 
         rlm = self.list_report_level_measures()
         if len(rlm) == 0:
@@ -1945,7 +1808,7 @@ class ReportWrapper:
         with connect_semantic_model(
             dataset=dataset_name, readonly=False, workspace=dataset_workspace
         ) as tom:
-            for i, r in rlm.iterrows():
+            for _, r in rlm.iterrows():
                 tableName = r["Table Name"]
                 mName = r["Measure Name"]
                 mExpr = r["Expression"]
@@ -1980,7 +1843,7 @@ class ReportWrapper:
                 _add_part(request_body, rpt_file, file_payload)
 
         # Add unchanged payloads
-        for i, r in rd.iterrows():
+        for _, r in rd.iterrows():
             path = r["path"]
             payload = r["payload"]
             if path != rpt_file:
@@ -2041,7 +1904,7 @@ class ReportWrapper:
         }
 
         rd = self.rdef
-        for i, r in rd.iterrows():
+        for _, r in rd.iterrows():
             path = r["path"]
             payload = r["payload"]
             if path != report_path:
@@ -2118,7 +1981,7 @@ class ReportWrapper:
 
         request_body = {"definition": {"parts": []}}
 
-        for i, r in rd.iterrows():
+        for _, r in rd.iterrows():
             path = r["path"]
             payload = r["payload"]
             if path == file_path:
@@ -2152,7 +2015,7 @@ class ReportWrapper:
             )
             return
 
-        for i, r in dfP_filt.iterrows():
+        for _, r in dfP_filt.iterrows():
             page_name = r["Page Name"]
             self.set_page_visibility(page_name=page_name, hidden=True)
 
@@ -2174,7 +2037,7 @@ class ReportWrapper:
                     delete_key_in_json(item, key_to_delete)
 
         rd = self.rdef
-        for i, r in rd.iterrows():
+        for _, r in rd.iterrows():
             file_path = r["path"]
             payload = r["payload"]
             if file_path.endswith("/visual.json"):
@@ -2229,7 +2092,7 @@ class ReportWrapper:
                     "Invalid page/visual name within the 'object_name' parameter. Valid format: 'Page 1'[f8dvo24PdJ39fp6]"
                 )
             valid_page_name, valid_display_name, visual_name, file_path = (
-                self.resolve_visual_name(page_name=p_name, visual_name=v_name)
+                self._resolve_visual_name(page_name=p_name, visual_name=v_name)
             )
             rd_filt = rd[rd["path"] == file_path]
             payload = rd_filt["payload"].iloc[0]
@@ -2296,7 +2159,7 @@ class ReportWrapper:
             )
 
         rd = self.rdef
-        for i, r in rd.iterrows():
+        for _, r in rd.iterrows():
             path = r["path"]
             payload = r["payload"]
             if object_type == "Report" and path == "definition/report.json":
@@ -2372,7 +2235,7 @@ class ReportWrapper:
         request_body = {"definition": {"parts": []}}
 
         rd = self.rdef
-        for i, r in rd.iterrows():
+        for _, r in rd.iterrows():
             path = r["path"]
             payload = r["payload"]
             if path == "definition/report.json":

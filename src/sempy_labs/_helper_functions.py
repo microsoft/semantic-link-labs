@@ -2,9 +2,11 @@ import sempy.fabric as fabric
 import re
 import json
 import base64
+import time
+from sempy.fabric.exceptions import FabricHTTPException
 import pandas as pd
 from pyspark.sql import SparkSession
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 from uuid import UUID
 import sempy_labs._icons as icons
 
@@ -670,3 +672,37 @@ def resolve_workspace_capacity(workspace: Optional[str] = None) -> Tuple[UUID, s
         capacity_name = None
 
     return capacity_id, capacity_name
+
+
+def lro(
+    client,
+    response,
+    status_codes: Optional[List[str]] = [200, 202],
+    sleep_time: Optional[int] = 1,
+    return_status_code: Optional[bool] = False,
+):
+
+    if response.status_code not in status_codes:
+        raise FabricHTTPException(response)
+    if response.status_code == status_codes[0]:
+        if return_status_code:
+            result = response.status_code
+        else:
+            result = response
+    if response.status_code == status_codes[1]:
+        operationId = response.headers["x-ms-operation-id"]
+        response = client.get(f"/v1/operations/{operationId}")
+        response_body = json.loads(response.content)
+        while response_body["status"] not in ["Succeeded", "Failed"]:
+            time.sleep(sleep_time)
+            response = client.get(f"/v1/operations/{operationId}")
+            response_body = json.loads(response.content)
+        if response_body["status"] != "Succeeded":
+            raise FabricHTTPException(response)
+        if return_status_code:
+            result = response.status_code
+        else:
+            response = client.get(f"/v1/operations/{operationId}/result")
+            result = response
+
+    return result

@@ -25,7 +25,8 @@ license= { text = "MIT License" }
 dependencies = [
     "semantic-link-sempy>=0.7.7",
     "anytree",
-    "powerbiclient"
+    "powerbiclient",
+    "jsonpath_ng",
 ]
 
 [project.optional-dependencies]
@@ -37,7 +38,7 @@ test = [
 Repository = "https://github.com/microsoft/semantic-link-labs.git"
 
 [[tool.mypy.overrides]]
-module = "sempy.*,Microsoft.*,System.*,anytree.*,powerbiclient.*,synapse.ml.services.*"
+module = "sempy.*,Microsoft.*,System.*,anytree.*,powerbiclient.*,synapse.ml.services.*,jsonpath_ng.*"
 ignore_missing_imports = true
 
 [tool.flake8]

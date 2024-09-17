@@ -136,7 +136,7 @@ def run_report_bpa(
             df_output["URL"] = row["URL"]
             df_output["Report URL"] = rpt._get_web_url()
 
-            page_mapping_dict = dfP.set_index("Page Display Name")["Web URL"].to_dict()
+            page_mapping_dict = dfP.set_index("Page Display Name")["Page URL"].to_dict()
 
             if scope == "Page":
                 df_output["Report URL"] = df_output["Object Name"].map(

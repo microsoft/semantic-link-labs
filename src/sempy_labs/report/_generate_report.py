@@ -5,6 +5,7 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _conv_b64,
     resolve_report_id,
+    lro,
 )
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
@@ -209,9 +210,6 @@ def get_report_definition(report: str, workspace: Optional[str] = None) -> pd.Da
         The collection of report definition files within a pandas dataframe.
     """
 
-    import time
-    import json
-
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     report_id = resolve_report_id(report=report, workspace=workspace)
@@ -219,20 +217,8 @@ def get_report_definition(report: str, workspace: Optional[str] = None) -> pd.Da
     response = client.post(
         f"/v1/workspaces/{workspace_id}/reports/{report_id}/getDefinition",
     )
-    if response.status_code not in [200, 202]:
-        raise FabricHTTPException(response)
-    if response.status_code == 200:
-        result = response.json()
-    if response.status_code == 202:
-        operationId = response.headers["x-ms-operation-id"]
-        response = client.get(f"/v1/operations/{operationId}")
-        response_body = json.loads(response.content)
-        while response_body["status"] != "Succeeded":
-            time.sleep(1)
-            response = client.get(f"/v1/operations/{operationId}")
-            response_body = json.loads(response.content)
-        response = client.get(f"/v1/operations/{operationId}/result")
-        result = response.json()
+
+    result = lro(client, response).json()
     rdef = pd.json_normalize(result["definition"]["parts"])
 
     return rdef
