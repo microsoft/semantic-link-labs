@@ -703,3 +703,11 @@ def resolve_capacity_id(capacity_name: Optional[str] = None) -> UUID:
         )
 
     return dfC_filt["Id"].iloc[0]
+
+
+def convert_to_alphanumeric_lowercase(input_string):
+
+    cleaned_string = re.sub(r"[^a-zA-Z0-9]", "", input_string)
+    cleaned_string = cleaned_string.lower()
+
+    return cleaned_string

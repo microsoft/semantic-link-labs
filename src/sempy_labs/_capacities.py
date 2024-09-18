@@ -6,13 +6,15 @@ from typing import Optional, List, Tuple
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
-from sempy_labs.lakehouse import lakehouse_attached
 from sempy_labs._list_functions import assign_workspace_to_capacity
 from sempy_labs.admin._basic_functions import (
     assign_workspaces_to_capacity,
     _list_capacities_meta,
 )
-from sempy_labs._helper_functions import resolve_capacity_id
+from sempy_labs._helper_functions import (
+    resolve_capacity_id,
+    convert_to_alphanumeric_lowercase,
+)
 
 
 def _add_sll_tag(payload, tags):
@@ -84,13 +86,13 @@ def migrate_workspaces(
         workspaces = [workspaces]
 
     dfC = _list_capacities_meta()
+    dfC = dfC.copy()
     dfC_filt = dfC[dfC["Display Name"] == source_capacity]
     if len(dfC_filt) == 0:
         raise ValueError(
             f"{icons.red_dot} Invalid source capacity. The '{source_capacity}' capacity does not exist."
         )
     source_capacity_region = dfC_filt["Region"].iloc[0]
-    # source_capacity_sku = dfC_filt['Sku'].iloc[0]
     source_capacity_id = dfC_filt["Id"].iloc[0]
     dfC_filt = dfC[dfC["Display Name"] == target_capacity]
     if len(dfC_filt) == 0:
@@ -98,7 +100,6 @@ def migrate_workspaces(
             f"{icons.red_dot} Invalid target capacity. The '{target_capacity}' capacity does not exist."
         )
     target_capacity_region = dfC_filt["Region"].iloc[0]
-    # target_capacity_sku = dfC_filt['Sku'].iloc[0]
     target_capacity_state = dfC_filt["State"].iloc[0]
 
     if source_capacity_region != target_capacity_region:
@@ -193,8 +194,6 @@ def create_fabric_capacity(
 
     from azure.mgmt.resource import ResourceManagementClient
 
-    capacity_suffix = "fsku"
-
     if isinstance(admin_members, str):
         admin_members = [admin_members]
 
@@ -284,10 +283,10 @@ def create_fabric_capacity(
         for i in resource_client.resources.list(
             "resourceType eq 'Microsoft.PowerBIDedicated/capacities'"
         ):
-            if i.name == capacity_name.removesuffix(capacity_suffix):
+            if i.name == capacity_name.removesuffix(icons.migrate_capacity_suffix):
                 resource_group = i.id.split("/")[4]
                 print(
-                    f"{icons.yellow_dot} Override resource group flag detected for A SKUs - using the existing resource group '{resource_group}' for capacity '{capacity_name}'"
+                    f"{icons.yellow_dot} Override resource group flag detected for A SKUs - using the existing resource group '{resource_group}' for the '{capacity_name}' capacity."
                 )
     else:
         # Attempt to get the resource group
@@ -382,8 +381,6 @@ def migrate_capacities(
 
     from sempy_labs._list_functions import list_capacities
 
-    capacity_suffix = "fsku"
-
     if isinstance(capacities, str):
         capacities = [capacities]
 
@@ -408,24 +405,6 @@ def migrate_capacities(
     p_sku_list = list(sku_mapping.keys())
 
     dfC = list_capacities()
-    # dfW = fabric.list_workspaces()
-
-    # Save existing capacity and workspace info to delta tables in the lakehouse
-    if not lakehouse_attached:
-        raise ValueError(
-            f"{icons.red_dot} Invalid lakehouse. Please attach a lakehouse to this notebook."
-        )
-
-    # save_as_delta_table(
-    #    dataframe=dfC,
-    #    delta_table_name="migration_list_capacities",
-    #    write_mode="overwrite",
-    # )
-    # save_as_delta_table(
-    #    dataframe=dfW,
-    #    delta_table_name="migration_list_workspaces",
-    #    write_mode="overwrite",
-    # )
 
     if capacities is None:
         dfC_filt = dfC.copy()
@@ -453,7 +432,7 @@ def migrate_capacities(
         region = r["Region"]
         sku_size = r["Sku"]
         admins = r["Admins"]
-        tgt_capacity = f"{cap_name}{capacity_suffix}"
+        tgt_capacity = f"{convert_to_alphanumeric_lowercase(cap_name)}{icons.migrate_capacity_suffix}"
 
         # Check if target capacity exists
         dfC_tgt = dfC[dfC["Display Name"] == tgt_capacity]
@@ -470,7 +449,7 @@ def migrate_capacities(
 
         if sku_size in p_sku_list:
             # Only create the capacity if it does not already exist
-            if len(dfC_tgt) != 0:
+            if len(dfC_tgt) > 0:
                 print(
                     f"{icons.info} Skipping creating a new capacity for '{cap_name}' as the '{tgt_capacity}' capacity already exists."
                 )
