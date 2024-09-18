@@ -15,63 +15,12 @@ import re
 import json
 import base64
 from uuid import UUID
-import time
 from sempy._utils._log import log
 import sempy_labs._icons as icons
-from sempy.fabric.exceptions import FabricHTTPException
+import sempy_labs.report._report_helper as helper
 from sempy_labs._list_functions import list_reports_using_semantic_model
 from sempy_labs._model_dependencies import get_measure_dependencies
 from jsonpath_ng.ext import parse
-
-
-_vis_type_mapping = {
-    "barChart": "Bar chart",
-    "columnChart": "Column chart",
-    "clusteredBarChart": "Clustered bar chart",
-    "clusteredColumnChart": "Clustered column chart",
-    "hundredPercentStackedBarChart": "100% Stacked bar chart",
-    "hundredPercentStackedColumnChart": "100% Stacked column chart",
-    "lineChart": "Line chart",
-    "areaChart": "Area chart",
-    "stackedAreaChart": "Stacked area chart",
-    "lineStackedColumnComboChart": "Line and stacked column chart",
-    "lineClusteredColumnComboChart": "Line and clustered column chart",
-    "ribbonChart": "Ribbon chart",
-    "waterfallChart": "Waterfall chart",
-    "funnel": "Funnel chart",
-    "scatterChart": "Scatter chart",
-    "pieChart": "Pie chart",
-    "donutChart": "Donut chart",
-    "treemap": "Treemap",
-    "map": "Map",
-    "filledMap": "Filled map",
-    "shapeMap": "Shape map",
-    "azureMap": "Azure map",
-    "gauge": "Gauge",
-    "card": "Card",
-    "multiRowCard": "Multi-row card",
-    "kpi": "KPI",
-    "slicer": "Slicer",
-    "tableEx": "Table",
-    "pivotTable": "Matrix",
-    "scriptVisual": "R script visual",
-    "pythonVisual": "Python visual",
-    "keyDriversVisual": "Key influencers",
-    "decompositionTreeVisual": "Decomposition tree",
-    "qnaVisual": "Q&A",
-    "aiNarratives": "Narrative",
-    "scorecard": "Metrics (Preview)",
-    "rdlVisual": "Paginated report",
-    "cardVisual": "Card (new)",
-    "advancedSlicerVisual": "Slicer (new)",
-    "actionButton": "Button",
-    "bookmarkNavigator": "Bookmark navigator",
-    "image": "Image",
-    "textbox": "Textbox",
-    "pageNavigator": "Page navigator",
-    "shape": "Shape",
-    "Group": "Group",
-}
 
 
 def list_unused_objects_in_reports(
@@ -223,20 +172,14 @@ class ReportWrapper:
 
     def __populate_custom_visual_display_names(self):
 
-        url1 = "https://catalogapi.azure.com/offers?api-version=2018-08-01-beta&storefront=appsource&$filter=offerType+eq+%27PowerBIVisuals%27"
-        url2 = f"{url1}&$skiptoken=W3sidG9rZW4iOiIrUklEOn4yVk53QUxkRkVIeEJhUUFBQUFCQUNBPT0jUlQ6MSNUUkM6MTk3I0lTVjoyI0lFTzo2NTU2NyNRQ0Y6OCIsInJhbmdlIjp7Im1pbiI6IjA1QzFFNzBCM0IzOTUwIiwibWF4IjoiMDVDMUU3QUIxN0U3QTYifX1d"
-        url3 = f"{url1}&$skiptoken=W3sidG9rZW4iOiIrUklEOn4yVk53QUxkRkVId1pyQVVBQUFBQURBPT0jUlQ6MiNUUkM6NDg3I0lTVjoyI0lFTzo2NTU2NyNRQ0Y6OCIsInJhbmdlIjp7Im1pbiI6IjA1QzFFNzBCM0IzOTUwIiwibWF4IjoiMDVDMUU3QUIxN0U3QTYifX1d"
-
-        my_list = [url1, url2, url3]
-
-        for url in my_list:
+        for url in helper.custom_visual_urls:
             response = requests.get(url)
             cvJson = response.json()
 
             for i in cvJson.get("items", []):
                 vizId = i.get("powerBIVisualId")
                 displayName = i.get("displayName")
-                _vis_type_mapping[vizId] = displayName
+                helper._vis_type_mapping[vizId] = displayName
 
     def _get_web_url(self):
 
@@ -434,7 +377,7 @@ class ReportWrapper:
         rptJson = _extract_json(rd_filt)
         df["Custom Visual Name"] = rptJson.get("publicCustomVisuals")
         df["Custom Visual Display Name"] = df["Custom Visual Name"].apply(
-            lambda x: _vis_type_mapping.get(x, x)
+            lambda x: helper._vis_type_mapping.get(x, x)
         )
 
         df["Used in Report"] = df["Custom Visual Name"].isin(
@@ -462,8 +405,7 @@ class ReportWrapper:
             A pandas dataframe containing a list of all the report filters used in the report.
         """
 
-        rd = self.rdef
-        rd_filt = rd[rd["path"] == "definition/report.json"]
+        rd_filt = self.rdef[self.rdef["path"] == "definition/report.json"]
 
         df = pd.DataFrame(
             columns=[
@@ -658,14 +600,14 @@ class ReportWrapper:
                                 ignore_index=True,
                             )
 
+        web_url = self._get_web_url()
+        df["Page URL"] = web_url + "/" + df["Page Name"]
+
         bool_cols = ["Hidden", "Locked", "Used"]
         df[bool_cols] = df[bool_cols].astype(bool)
 
         if extended:
             df = self._add_extended(dataframe=df)
-
-            web_url = self._get_web_url()
-            df["Web URL"] = web_url + "/" + df["Page Name"]
 
         return df
 
