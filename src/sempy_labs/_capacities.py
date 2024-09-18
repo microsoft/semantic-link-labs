@@ -86,15 +86,14 @@ def migrate_workspaces(
         workspaces = [workspaces]
 
     dfC = _list_capacities_meta()
-    dfC = dfC.copy()
-    dfC_filt = dfC[dfC["Display Name"] == source_capacity]
+    dfC_filt = dfC[dfC["Capacity Name"] == source_capacity]
     if len(dfC_filt) == 0:
         raise ValueError(
             f"{icons.red_dot} Invalid source capacity. The '{source_capacity}' capacity does not exist."
         )
     source_capacity_region = dfC_filt["Region"].iloc[0]
-    source_capacity_id = dfC_filt["Id"].iloc[0]
-    dfC_filt = dfC[dfC["Display Name"] == target_capacity]
+    source_capacity_id = dfC_filt["Capacity Id"].iloc[0]
+    dfC_filt = dfC[dfC["Capacity Name"] == target_capacity]
     if len(dfC_filt) == 0:
         raise ValueError(
             f"{icons.red_dot} Invalid target capacity. The '{target_capacity}' capacity does not exist."
@@ -384,25 +383,7 @@ def migrate_capacities(
     if isinstance(capacities, str):
         capacities = [capacities]
 
-    sku_mapping = {
-        "A1": "F8",
-        "EM1": "F8",
-        "A2": "F16",
-        "EM2": "F16",
-        "A3": "F32",
-        "EM3": "F32",
-        "A4": "F64",
-        "P1": "F64",
-        "A5": "F128",
-        "P2": "F128",
-        "A6": "F256",
-        "P3": "F256",
-        "A7": "F512",
-        "P4": "F512",
-        "P5": "F1024",
-    }
-
-    p_sku_list = list(sku_mapping.keys())
+    p_sku_list = list(icons.sku_mapping.keys())
 
     dfC = list_capacities()
 
