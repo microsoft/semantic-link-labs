@@ -5,19 +5,20 @@ from sempy_labs._clear_cache import (
     copy_semantic_model_backup_file,
     create_azure_storage_account,
 )
-
-from sempy_labs._capacities import (
+from sempy_labs._capacity_migration import (
     migrate_spark_settings,
     migrate_workspaces,
     migrate_capacities,
-    create_fabric_capacity,
-    migrate_capacity_settings,
-    get_capacity_resource_governance,
-    migrate_disaster_recovery_settings,
-    list_vcores,
     migrate_notification_settings,
     migrate_access_settings,
     migrate_delegated_tenant_settings,
+    migrate_capacity_settings,
+    migrate_disaster_recovery_settings,
+)
+from sempy_labs._capacities import (
+    create_fabric_capacity,
+    get_capacity_resource_governance,
+    list_vcores,
     resume_fabric_capacity,
     suspend_fabric_capacity,
     update_fabric_capacity,
