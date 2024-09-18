@@ -375,7 +375,7 @@ def delete_premium_capacity(capacity_name: str):
     client = fabric.FabricRestClient()
     response = client.delete(f"capacities/{capacity_id}")
 
-    if response.status_code != 200:
+    if response.status_code != 204:
         raise FabricHTTPException(response)
 
     print(f"{icons.green_dot} The '{capacity_name}' capacity has been deleted.")
