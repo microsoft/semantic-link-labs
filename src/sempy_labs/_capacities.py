@@ -445,7 +445,7 @@ def migrate_capacities(
                     key_vault_client_secret=key_vault_client_secret,
                     resource_group=rg,
                     region=region,
-                    sku=sku_mapping.get(sku_size),
+                    sku=icons.sku_mapping.get(sku_size),
                     admin_members=admins,
                 )
                 end_time = datetime.datetime.now()
