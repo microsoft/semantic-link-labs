@@ -1,6 +1,5 @@
 from sempy_labs.report._reportwrapper import (
     ReportWrapper,
-    list_unused_objects_in_reports,
 )
 
 from sempy_labs.report._generate_report import (

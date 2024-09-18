@@ -8,8 +8,7 @@ from sempy_labs._helper_functions import (
     _add_part,
     lro,
 )
-import requests
-from typing import Optional, List, Tuple
+from typing import Optional, List
 import pandas as pd
 import re
 import json
@@ -18,96 +17,8 @@ from uuid import UUID
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 import sempy_labs.report._report_helper as helper
-from sempy_labs._list_functions import list_reports_using_semantic_model
 from sempy_labs._model_dependencies import get_measure_dependencies
 from jsonpath_ng.ext import parse
-
-
-def list_unused_objects_in_reports(
-    dataset: str, workspace: Optional[str] = None
-) -> pd.DataFrame:
-    """
-    Shows a list of all columns in the semantic model which are not used in any related Power BI reports (including dependencies).
-
-    Parameters
-    ----------
-    dataset : str
-        Name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-    pandas.DataFrame
-        A pandas dataframe showing a list of all columns in the semantic model which are not used in any related Power BI reports (including dependencies).
-    """
-
-    # TODO: what about relationships/RLS?
-
-    dfR = _list_all_report_semantic_model_objects(dataset=dataset, workspace=workspace)
-    dfR_filt = (
-        dfR[dfR["Object Type"] == "Column"][["Table Name", "Object Name"]]
-        .drop_duplicates()
-        .reset_index(drop=True)
-    )
-    dfR_filt["Column Object"] = format_dax_object_name(
-        dfR_filt["Table Name"], dfR_filt["Object Name"]
-    )
-
-    dfC = fabric.list_columns(dataset=dataset, workspace=workspace)
-    dfC["Column Object"] = format_dax_object_name(dfC["Table Name"], dfC["Column Name"])
-
-    df = dfC[~(dfC["Column Object"].isin(dfR_filt["Column Object"].values))]
-    df = df.drop("Column Object", axis=1)
-
-    return df
-
-
-def _list_all_report_semantic_model_objects(
-    dataset: str, workspace: Optional[str] = None
-) -> pd.DataFrame:
-    """
-    Shows a unique list of all semantic model objects (columns, measures, hierarchies) which are used in all reports which leverage the semantic model.
-
-    Parameters
-    ----------
-    dataset : str
-        Name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-    pandas.DataFrame
-        A pandas dataframe.
-    """
-
-    dfR = list_reports_using_semantic_model(dataset=dataset, workspace=workspace)
-    dfs = []
-
-    for _, r in dfR.iterrows():
-        report_name = r["Report Name"]
-        report_workspace = r["Report Workspace Name"]
-
-        rpt = ReportWrapper(report=report_name, workspace=report_workspace)
-
-        new_data = rpt.list_all_semantic_model_objects()
-        new_data["Report Name"] = report_name
-        new_data["Report Workspace"] = report_workspace
-        dfs.append(new_data)
-
-    df = pd.concat(dfs, ignore_index=True)
-
-    colName = "Report Name"
-    df.insert(2, colName, df.pop(colName))
-    colName = "Report Workspace"
-    df.insert(3, colName, df.pop(colName))
-
-    return df
 
 
 class ReportWrapper:
@@ -170,25 +81,6 @@ class ReportWrapper:
                     )
         return dataframe
 
-    def __populate_custom_visual_display_names(self):
-
-        for url in helper.custom_visual_urls:
-            response = requests.get(url)
-            cvJson = response.json()
-
-            for i in cvJson.get("items", []):
-                vizId = i.get("powerBIVisualId")
-                displayName = i.get("displayName")
-                helper._vis_type_mapping[vizId] = displayName
-
-    def _get_web_url(self):
-
-        dfR = fabric.list_reports(workspace=self._workspace)
-        dfR_filt = dfR[dfR["Name"] == self._report]
-        web_url = dfR_filt["Web Url"].iloc[0]
-
-        return web_url
-
     def update_report(self, request_body: dict):
 
         client = fabric.FabricRestClient()
@@ -197,131 +89,64 @@ class ReportWrapper:
             json=request_body,
         )
 
-        lro(client, response)
+        lro(client, response, return_status_code=True)
 
     def resolve_page_name(self, page_display_name: str) -> UUID:
+        """
+        Obtains the page name, page display name, and the file path for a given page in a report.
 
-        x, y, z = self.__resolve_page_name(page_name=page_display_name)
+        Parameters
+        ----------
+        page_display_name : str
+            The display name of the page of the report.
+
+        Returns
+        -------
+        UUID
+            The page name.
+        """
+
+        x, y, z = helper.resolve_page_name(self, page_display_name)
 
         return x
 
     def resolve_page_display_name(self, page_name: UUID) -> str:
+        """
+        Obtains the page dispaly name.
 
-        x, y, z = self.__resolve_page_name(page_name=page_name)
+        Parameters
+        ----------
+        page_name : UUID
+            The name of the page of the report.
+
+        Returns
+        -------
+        str
+            The page display name.
+        """
+
+        x, y, z = helper.resolve_page_name(self, page_name=page_name)
 
         return y
 
-    def __resolve_page_name(self, page_name: str) -> Tuple[str, str, str]:
+    def get_theme(self, theme_type: Optional[str] = "baseTheme") -> dict:
         """
-        Obtains the page name, page display name, and the file path for a given page in a report.
+        Obtains
 
         Parameters
         ----------
-        page_name : str
-            The name of the page of the report - either the page name (GUID) or the page display name.
+        dataset : str
+            Name of the semantic model.
+        workspace : str, default=None
+            The Fabric workspace name.
+            Defaults to None which resolves to the workspace of the attached lakehouse
+            or if no lakehouse attached, resolves to the workspace of the notebook.
 
         Returns
         -------
-        Tuple[str, str, str] Page name, page display name, file path from the report definition.
-
+        pandas.DataFrame
+            A pandas dataframe showing a list of all columns in the semantic model which are not used in any related Power BI reports (including dependencies).
         """
-
-        dfP = self.list_pages()
-        if any(r["Page Name"] == page_name for _, r in dfP.iterrows()):
-            valid_page_name = page_name
-            dfP_filt = dfP[dfP["Page Name"] == page_name]
-            valid_display_name = dfP_filt["Page Display Name"].iloc[0]
-            file_path = dfP_filt["File Path"].iloc[0]
-        elif any(r["Page Display Name"] == page_name for _, r in dfP.iterrows()):
-            valid_display_name = page_name
-            dfP_filt = dfP[dfP["Page Display Name"] == page_name]
-            valid_page_name = dfP_filt["Page Name"].iloc[0]
-            file_path = dfP_filt["File Path"].iloc[0]
-        else:
-            raise ValueError(
-                f"{icons.red_dot} Invalid page name. The '{page_name}' page does not exist in the '{self._report}' report within the '{self._workspace}' workspace."
-            )
-
-        return valid_page_name, valid_display_name, file_path
-
-    def _resolve_visual_name(
-        self, page_name: str, visual_name: str
-    ) -> Tuple[str, str, str, str]:
-        """
-        Obtains the page name, page display name, and the file path for a given page in a report.
-
-        Parameters
-        ----------
-        page_name : str
-            The name of the page of the report - either the page name (GUID) or the page display name.
-        visual_name : str
-            The name of the visual of the report.
-
-        Returns
-        -------
-        Tuple[str, str, str, str] Page name, page display name, visual name, file path from the report definition.
-
-        """
-
-        dfV = self.list_visuals()
-        if any(
-            (r["Page Name"] == page_name) & (r["Visual Name"] == visual_name)
-            for _, r in dfV.iterrows()
-        ):
-            valid_page_name = page_name
-            dfV_filt = dfV[
-                (dfV["Page Name"] == page_name) & (dfV["Visual Name"] == visual_name)
-            ]
-            file_path = dfV_filt["File Path"].iloc[0]
-            valid_display_name = dfV_filt["Page Display Name"].iloc[0]
-        elif any(
-            (r["Page Display Name"] == page_name) & (r["Visual Name"] == visual_name)
-            for _, r in dfV.iterrows()
-        ):
-            valid_display_name = page_name
-            dfV_filt = dfV[
-                (dfV["Page Display Name"] == page_name)
-                & (dfV["Visual Name"] == visual_name)
-            ]
-            file_path = dfV_filt["File Path"].iloc[0]
-            valid_page_name = dfV_filt["Page Name"].iloc[0]
-        else:
-            raise ValueError(
-                f"{icons.red_dot} Invalid page/visual name. The '{visual_name}' visual on the '{page_name}' page does not exist in the '{self._report}' report within the '{self._workspace}' workspace."
-            )
-
-        return valid_page_name, valid_display_name, visual_name, file_path
-
-    def __visual_page_mapping(self) -> Tuple[dict, dict]:
-
-        page_mapping = {}
-        visual_mapping = {}
-        rd = self.rdef
-        for _, r in rd.iterrows():
-            file_path = r["path"]
-            payload = r["payload"]
-            if file_path.endswith("/page.json"):
-                pattern_page = r"/pages/(.*?)/page.json"
-                page_name = re.search(pattern_page, file_path).group(1)
-                obj_file = base64.b64decode(payload).decode("utf-8")
-                obj_json = json.loads(obj_file)
-                page_id = obj_json.get("name")
-                page_display = obj_json.get("displayName")
-                page_mapping[page_name] = (page_id, page_display)
-        for _, r in rd.iterrows():
-            file_path = r["path"]
-            payload = r["payload"]
-            if file_path.endswith("/visual.json"):
-                pattern_page = r"/pages/(.*?)/visuals/"
-                page_name = re.search(pattern_page, file_path).group(1)
-                visual_mapping[file_path] = (
-                    page_mapping.get(page_name)[0],
-                    page_mapping.get(page_name)[1],
-                )
-
-        return page_mapping, visual_mapping
-
-    def get_theme(self, theme_type: Optional[str] = "baseTheme"):
 
         theme_types = ["baseTheme", "customTheme"]
         theme_type = theme_type.lower()
@@ -369,7 +194,7 @@ class ReportWrapper:
             A pandas dataframe containing a list of all the custom visuals used in the report.
         """
 
-        self.__populate_custom_visual_display_names()
+        helper.populate_custom_visual_display_names()
 
         df = pd.DataFrame(columns=["Custom Visual Name", "Custom Visual Display Name"])
         rd = self.rdef
@@ -377,7 +202,7 @@ class ReportWrapper:
         rptJson = _extract_json(rd_filt)
         df["Custom Visual Name"] = rptJson.get("publicCustomVisuals")
         df["Custom Visual Display Name"] = df["Custom Visual Name"].apply(
-            lambda x: helper._vis_type_mapping.get(x, x)
+            lambda x: helper.vis_type_mapping.get(x, x)
         )
 
         df["Used in Report"] = df["Custom Visual Name"].isin(
@@ -421,39 +246,6 @@ class ReportWrapper:
             ]
         )
 
-        def find_entity_property_pairs(data, result=None, keys_path=None):
-
-            if result is None:
-                result = {}
-            if keys_path is None:
-                keys_path = []
-
-            if isinstance(data, dict):
-                if (
-                    "Entity" in data.get("Expression", {}).get("SourceRef", {})
-                    and "Property" in data
-                ):
-                    entity = (
-                        data.get("Expression", {})
-                        .get("SourceRef", {})
-                        .get("Entity", {})
-                    )
-                    property_value = data.get("Property")
-                    object_type = keys_path[-1].replace("HierarchyLevel", "Hierarchy")
-                    result[property_value] = (entity, object_type)
-                    keys_path.pop()
-
-                # Recursively search the rest of the dictionary
-                for key, value in data.items():
-                    keys_path.append(key)
-                    find_entity_property_pairs(value, result, keys_path)
-
-            elif isinstance(data, list):
-                for item in data:
-                    find_entity_property_pairs(item, result, keys_path)
-
-            return result
-
         if len(rd_filt) == 1:
             rpt_json = _extract_json(rd_filt)
             if "filterConfig" in rpt_json:
@@ -465,7 +257,7 @@ class ReportWrapper:
                     filter_type = flt.get("type", "Basic")
                     filter_used = True if "Where" in flt.get("filter", {}) else False
 
-                    entity_property_pairs = find_entity_property_pairs(flt)
+                    entity_property_pairs = helper.find_entity_property_pairs(flt)
 
                     for object_name, properties in entity_property_pairs.items():
                         new_data = {
@@ -525,39 +317,6 @@ class ReportWrapper:
             ]
         )
 
-        def find_entity_property_pairs(data, result=None, keys_path=None):
-
-            if result is None:
-                result = {}
-            if keys_path is None:
-                keys_path = []
-
-            if isinstance(data, dict):
-                if (
-                    "Entity" in data.get("Expression", {}).get("SourceRef", {})
-                    and "Property" in data
-                ):
-                    entity = (
-                        data.get("Expression", {})
-                        .get("SourceRef", {})
-                        .get("Entity", {})
-                    )
-                    property_value = data.get("Property")
-                    object_type = keys_path[-1].replace("HierarchyLevel", "Hierarchy")
-                    result[property_value] = (entity, object_type)
-                    keys_path.pop()
-
-                # Recursively search the rest of the dictionary
-                for key, value in data.items():
-                    keys_path.append(key)
-                    find_entity_property_pairs(value, result, keys_path)
-
-            elif isinstance(data, list):
-                for item in data:
-                    find_entity_property_pairs(item, result, keys_path)
-
-            return result
-
         for _, r in rd.iterrows():
             path = r["path"]
             payload = r["payload"]
@@ -578,7 +337,7 @@ class ReportWrapper:
                             True if "Where" in flt.get("filter", {}) else False
                         )
 
-                        entity_property_pairs = find_entity_property_pairs(flt)
+                        entity_property_pairs = helper.find_entity_property_pairs(flt)
 
                         for object_name, properties in entity_property_pairs.items():
                             new_data = {
@@ -600,8 +359,7 @@ class ReportWrapper:
                                 ignore_index=True,
                             )
 
-        web_url = self._get_web_url()
-        df["Page URL"] = web_url + "/" + df["Page Name"]
+        df["Page URL"] = f"{helper.get_web_url(self)}/{df['Page Name']}"
 
         bool_cols = ["Hidden", "Locked", "Used"]
         df[bool_cols] = df[bool_cols].astype(bool)
@@ -644,40 +402,7 @@ class ReportWrapper:
                 "Used",
             ]
         )
-        page_mapping, visual_mapping = self.__visual_page_mapping()
-
-        def find_entity_property_pairs(data, result=None, keys_path=None):
-
-            if result is None:
-                result = {}
-            if keys_path is None:
-                keys_path = []
-
-            if isinstance(data, dict):
-                if (
-                    "Entity" in data.get("Expression", {}).get("SourceRef", {})
-                    and "Property" in data
-                ):
-                    entity = (
-                        data.get("Expression", {})
-                        .get("SourceRef", {})
-                        .get("Entity", {})
-                    )
-                    property_value = data.get("Property")
-                    object_type = keys_path[-1].replace("HierarchyLevel", "Hierarchy")
-                    result[property_value] = (entity, object_type)
-                    keys_path.pop()
-
-                # Recursively search the rest of the dictionary
-                for key, value in data.items():
-                    keys_path.append(key)
-                    find_entity_property_pairs(value, result, keys_path)
-
-            elif isinstance(data, list):
-                for item in data:
-                    find_entity_property_pairs(item, result, keys_path)
-
-            return result
+        page_mapping, visual_mapping = helper.visual_page_mapping(self)
 
         for _, r in rd.iterrows():
             path = r["path"]
@@ -700,7 +425,7 @@ class ReportWrapper:
                             True if "Where" in flt.get("filter", {}) else False
                         )
 
-                        entity_property_pairs = find_entity_property_pairs(flt)
+                        entity_property_pairs = helper.find_entity_property_pairs(flt)
 
                         for object_name, properties in entity_property_pairs.items():
                             new_data = {
@@ -812,12 +537,6 @@ class ReportWrapper:
                 "Page Filter Count",
             ]
         )
-        page_type_mapping = {
-            (320, 240): "Tooltip",
-            (816, 1056): "Letter",
-            (960, 720): "4:3",
-            (1280, 720): "16:9",
-        }
 
         dfV = self.list_visuals()
 
@@ -879,7 +598,7 @@ class ReportWrapper:
                     "Width": width,
                     "Hidden": is_hidden,
                     "Active": False,
-                    "Type": page_type_mapping.get((width, height), "Custom"),
+                    "Type": helper.page_type_mapping.get((width, height), "Custom"),
                     "Alignment": alignment_value,
                     "Drillthrough Target Page": drill_through,
                     "Visual Count": visual_count,
@@ -910,9 +629,7 @@ class ReportWrapper:
         bool_cols = ["Hidden", "Active", "Drillthrough Target Page"]
         df[bool_cols] = df[bool_cols].astype(bool)
 
-        web_url = self._get_web_url()
-
-        df["Page URL"] = web_url + "/" + df["Page Name"]
+        df["Page URL"] = f"{helper.get_web_url(self)}/{df['Page Name']}"
 
         return df
 
@@ -962,8 +679,8 @@ class ReportWrapper:
         payload = rd_filt["payload"].iloc[0]
         rptJson = _extract_json(rd_filt)
         custom_visuals = rptJson.get("publicCustomVisuals", [])
-        page_mapping, visual_mapping = self.__visual_page_mapping()
-        self.__populate_custom_visual_display_names()
+        page_mapping, visual_mapping = helper.visual_page_mapping(self)
+        helper.populate_custom_visual_display_names()
 
         def contains_key(data, keys_to_check):
             matches = parse("$..*").find(data)
@@ -993,7 +710,9 @@ class ReportWrapper:
                 matches = parse("$.visual.visualType").find(visual_json)
                 visual_type = matches[0].value if matches else "Group"
 
-                visual_type_display = _vis_type_mapping.get(visual_type, visual_type)
+                visual_type_display = helper.vis_type_mapping.get(
+                    visual_type, visual_type
+                )
                 cst_value, rst_value, slicer_type = False, False, "N/A"
 
                 # Visual Filter Count
@@ -1158,7 +877,7 @@ class ReportWrapper:
         """
 
         rd = self.rdef
-        page_mapping, visual_mapping = self.__visual_page_mapping()
+        page_mapping, visual_mapping = helper.visual_page_mapping(self)
         df = pd.DataFrame(
             columns=[
                 "Page Name",
@@ -1401,7 +1120,7 @@ class ReportWrapper:
 
         return df
 
-    def list_all_semantic_model_objects(self):
+    def _list_all_semantic_model_objects(self):
 
         # Includes dependencies
 
@@ -1442,9 +1161,6 @@ class ReportWrapper:
         """
         Shows a list of all bookmarks in the report.
 
-        Parameters
-        ----------
-
         Returns
         -------
         pandas.DataFrame
@@ -1474,8 +1190,8 @@ class ReportWrapper:
                 bookmark_name = obj_json.get("name")
                 bookmark_display = obj_json.get("displayName")
                 rpt_page_id = obj_json.get("explorationState", {}).get("activeSection")
-                page_id, page_display, file_path = self.__resolve_page_name(
-                    page_name=rpt_page_id
+                page_id, page_display, file_path = helper.resolve_page_name(
+                    self, page_name=rpt_page_id
                 )
 
                 for rptPg in obj_json.get("explorationState", {}).get("sections", {}):
@@ -1570,6 +1286,111 @@ class ReportWrapper:
         return df
 
     # Automation functions
+    def set_theme(self, theme_file_path: str):
+        """
+        Sets a custom theme for a report based on a theme .json file.
+
+        Parameters
+        ----------
+        theme_file_path : str
+            The file path of the theme.json file. This can either be from a Fabric lakehouse or from the web.
+            Examples:
+                file_path = '/lakehouse/default/Files/CY23SU09.json'
+                file_path = 'https://raw.githubusercontent.com/PowerBiDevCamp/FabricUserApiDemo/main/FabricUserApiDemo/DefinitionTemplates/Shared/Reports/StaticResources/SharedResources/BaseThemes/CY23SU08.json'
+        """
+
+        import requests
+
+        report_path = "definition/report.json"
+        theme_version = "5.5.4"
+        request_body = {"definition": {"parts": []}}
+
+        if not theme_file_path.endswith(".json"):
+            raise ValueError(
+                f"{icons.red_dot} The '{theme_file_path}' theme file path must be a .json file."
+            )
+        elif theme_file_path.startswith("https://"):
+            response = requests.get(theme_file_path)
+            json_file = response.json()
+        elif theme_file_path.startswith("/lakehouse"):
+            with open(theme_file_path, "r", encoding="utf-8-sig") as file:
+                json_file = json.load(file)
+        else:
+            ValueError(
+                f"{icons.red_dot} Incorrect theme file path value '{theme_file_path}'."
+            )
+
+        theme_name = json_file["name"]
+        theme_name_full = f"{theme_name}.json"
+
+        # Add theme.json file to request_body
+        file_payload = _conv_b64(json_file)
+        filePath = f"StaticResources/RegisteredResources/{theme_name_full}"
+
+        _add_part(request_body, filePath, file_payload)
+
+        new_theme = {
+            "name": theme_name_full,
+            "path": theme_name_full,
+            "type": "CustomTheme",
+        }
+
+        rd = self.rdef
+        for _, r in rd.iterrows():
+            path = r["path"]
+            payload = r["payload"]
+            if path != report_path:
+                _add_part(request_body, path, payload)
+            # Update the report.json file
+            else:
+                rptFile = base64.b64decode(payload).decode("utf-8")
+                rptJson = json.loads(rptFile)
+                resource_type = "RegisteredResources"
+
+                # Add to theme collection
+                if "customTheme" not in rptJson["themeCollection"]:
+                    rptJson["themeCollection"]["customTheme"] = {
+                        "name": theme_name_full,
+                        "reportVersionAtImport": theme_version,
+                        "type": resource_type,
+                    }
+                else:
+                    rptJson["themeCollection"]["customTheme"]["name"] = theme_name_full
+                    rptJson["themeCollection"]["customTheme"]["type"] = resource_type
+
+                for package in rptJson["resourcePackages"]:
+                    package["items"] = [
+                        item
+                        for item in package["items"]
+                        if item["type"] != "CustomTheme"
+                    ]
+
+                if not any(
+                    package["name"] == resource_type
+                    for package in rptJson["resourcePackages"]
+                ):
+                    new_registered_resources = {
+                        "name": resource_type,
+                        "type": resource_type,
+                        "items": [new_theme],
+                    }
+                    rptJson["resourcePackages"].append(new_registered_resources)
+                else:
+                    names = [
+                        rp["name"] for rp in rptJson["resourcePackages"][1]["items"]
+                    ]
+
+                    if theme_name_full not in names:
+                        rptJson["resourcePackages"][1]["items"].append(new_theme)
+
+                file_payload = _conv_b64(rptJson)
+                _add_part(request_body, path, file_payload)
+
+        self.update_report(request_body=request_body)
+        print(
+            f"{icons.green_dot} The '{theme_name}' theme has been set as the theme for the '{self._report}' report within the '{self._workspace}' workspace."
+        )
+
     def set_active_page(self, page_name: str):
         """
         Sets the active page (first page displayed when opening a report) for a report.
@@ -1578,16 +1399,15 @@ class ReportWrapper:
         ----------
         page_name : str
             The page name or page display name of the report.
-
-        Returns
-        -------
         """
 
         pages_file = "definition/pages/pages.json"
         request_body = {"definition": {"parts": []}}
 
         rd = self.rdef
-        page_id, page_display, file_path = self.__resolve_page_name(page_name=page_name)
+        page_id, page_display, file_path = helper.resolve_page_name(
+            self, page_name=page_name
+        )
         for _, r in rd.iterrows():
             path = r["path"]
             file_payload = r["payload"]
@@ -1610,24 +1430,19 @@ class ReportWrapper:
 
     def set_page_type(self, page_name: str, page_type: str):
 
-        page_types = ["Tooltip", "Letter", "4:3", "16:9"]
-
-        if page_type not in page_types:
+        if page_type not in helper.page_types:
             raise ValueError(
-                f"{icons.red_dot} Invalid page type. Valid options: {page_types}."
+                f"{icons.red_dot} Invalid page type. Valid options: {helper.page_types}."
             )
-
-        page_type_mapping = {
-            (320, 240): "Tooltip",
-            (816, 1056): "Letter",
-            (960, 720): "4:3",
-            (1280, 720): "16:9",
-        }
 
         request_body = {"definition": {"parts": []}}
 
         letter_key = next(
-            (key for key, value in page_type_mapping.items() if value == page_type),
+            (
+                key
+                for key, value in helper.page_type_mapping.items()
+                if value == page_type
+            ),
             None,
         )
         if letter_key:
@@ -1638,7 +1453,9 @@ class ReportWrapper:
             )
 
         rd = self.rdef
-        page_id, page_display, file_path = self.__resolve_page_name(page_name=page_name)
+        page_id, page_display, file_path = helper.resolve_page_name(
+            self, page_name=page_name
+        )
         rd_filt = rd[rd["path"] == file_path]
         payload = rd_filt["payload"].iloc[0]
         pageFile = base64.b64decode(payload).decode("utf-8")
@@ -1661,12 +1478,6 @@ class ReportWrapper:
     def remove_unnecessary_custom_visuals(self):
         """
         Removes any custom visuals within the report that are not used in the report.
-
-        Parameters
-        ----------
-
-        Returns
-        -------
         """
 
         dfCV = self.list_custom_visuals()
@@ -1796,111 +1607,6 @@ class ReportWrapper:
             f"{icons.green_dot} The report-level measures have been migrated to the '{dataset_name}' semantic model within the '{dataset_workspace}' workspace."
         )
 
-    def set_theme(self, theme_file_path: str):
-        """
-        Sets a custom theme for a report based on a theme .json file.
-
-        Parameters
-        ----------
-        theme_file_path : str
-            The file path of the theme.json file. This can either be from a Fabric lakehouse or from the web.
-            Examples:
-                file_path = '/lakehouse/default/Files/CY23SU09.json'
-                file_path = 'https://raw.githubusercontent.com/PowerBiDevCamp/FabricUserApiDemo/main/FabricUserApiDemo/DefinitionTemplates/Shared/Reports/StaticResources/SharedResources/BaseThemes/CY23SU08.json'
-        """
-
-        import requests
-
-        report_path = "definition/report.json"
-        theme_version = "5.5.4"
-        request_body = {"definition": {"parts": []}}
-
-        if not theme_file_path.endswith(".json"):
-            raise ValueError(
-                f"{icons.red_dot} The '{theme_file_path}' theme file path must be a .json file."
-            )
-        elif theme_file_path.startswith("https://"):
-            response = requests.get(theme_file_path)
-            json_file = response.json()
-        elif theme_file_path.startswith("/lakehouse"):
-            with open(theme_file_path, "r", encoding="utf-8-sig") as file:
-                json_file = json.load(file)
-        else:
-            ValueError(
-                f"{icons.red_dot} Incorrect theme file path value '{theme_file_path}'."
-            )
-
-        theme_name = json_file["name"]
-        theme_name_full = f"{theme_name}.json"
-
-        # Add theme.json file to request_body
-        file_payload = _conv_b64(json_file)
-        filePath = f"StaticResources/RegisteredResources/{theme_name_full}"
-
-        _add_part(request_body, filePath, file_payload)
-
-        new_theme = {
-            "name": theme_name_full,
-            "path": theme_name_full,
-            "type": "CustomTheme",
-        }
-
-        rd = self.rdef
-        for _, r in rd.iterrows():
-            path = r["path"]
-            payload = r["payload"]
-            if path != report_path:
-                _add_part(request_body, path, payload)
-            # Update the report.json file
-            else:
-                rptFile = base64.b64decode(payload).decode("utf-8")
-                rptJson = json.loads(rptFile)
-                resource_type = "RegisteredResources"
-
-                # Add to theme collection
-                if "customTheme" not in rptJson["themeCollection"]:
-                    rptJson["themeCollection"]["customTheme"] = {
-                        "name": theme_name_full,
-                        "reportVersionAtImport": theme_version,
-                        "type": resource_type,
-                    }
-                else:
-                    rptJson["themeCollection"]["customTheme"]["name"] = theme_name_full
-                    rptJson["themeCollection"]["customTheme"]["type"] = resource_type
-
-                for package in rptJson["resourcePackages"]:
-                    package["items"] = [
-                        item
-                        for item in package["items"]
-                        if item["type"] != "CustomTheme"
-                    ]
-
-                if not any(
-                    package["name"] == resource_type
-                    for package in rptJson["resourcePackages"]
-                ):
-                    new_registered_resources = {
-                        "name": resource_type,
-                        "type": resource_type,
-                        "items": [new_theme],
-                    }
-                    rptJson["resourcePackages"].append(new_registered_resources)
-                else:
-                    names = [
-                        rp["name"] for rp in rptJson["resourcePackages"][1]["items"]
-                    ]
-
-                    if theme_name_full not in names:
-                        rptJson["resourcePackages"][1]["items"].append(new_theme)
-
-                file_payload = _conv_b64(rptJson)
-                _add_part(request_body, path, file_payload)
-
-        self.update_report(request_body=request_body)
-        print(
-            f"{icons.green_dot} The '{theme_name}' theme has been set as the theme for the '{self._report}' report within the '{self._workspace}' workspace."
-        )
-
     def set_page_visibility(self, page_name: str, hidden: bool):
         """
         Sets whether a report page is visible or hidden.
@@ -1912,13 +1618,12 @@ class ReportWrapper:
         hidden : bool
             If set to True, hides the report page.
             If set to False, makes the report page visible.
-
-        Returns
-        -------
         """
 
         rd = self.rdef
-        page_id, page_display, file_path = self.__resolve_page_name(page_name=page_name)
+        page_id, page_display, file_path = helper.resolve_page_name(
+            self, page_name=page_name
+        )
         visibility = "visible" if hidden is False else "hidden"
 
         request_body = {"definition": {"parts": []}}
@@ -1983,15 +1688,9 @@ class ReportWrapper:
             file_path = r["path"]
             payload = r["payload"]
             if file_path.endswith("/visual.json"):
-                # pattern_page = r"/pages/(.*?)/visuals/"
-                # pattern_visual = r"/visuals/(.*?)/visual.json"
-                # page_name = re.search(pattern_page, file_path).group(1)
-                # visual_name = re.search(pattern_visual, file_path).group(1)
-                # page_id, page_display = __resolve_page_name(report=report, page_name=page_name, workspace=workspace)
                 objFile = base64.b64decode(payload).decode("utf-8")
                 objJson = json.loads(objFile)
                 delete_key_in_json(objJson, "showAll")
-                # print(f"Show items with no data has been disabled for the '{visual_name}' visual on the '{page_display} page in the '{report}' report within the '{workspace}' workspace.")
                 _add_part(request_body, file_path, _conv_b64(objJson))
             else:
                 _add_part(request_body, file_path, payload)
@@ -2016,8 +1715,8 @@ class ReportWrapper:
             rd_filt = rd[rd["path"] == "definition/report.json"]
             obj_json = _extract_json(rd_filt)
         elif object_type == "Page":
-            page_id, page_display, page_file = self.__resolve_page_name(
-                page_name=object_name
+            page_id, page_display, page_file = helper.resolve_page_name(
+                self, page_name=object_name
             )
             rd_filt = rd[rd["path"] == page_file]
             payload = rd_filt["payload"].iloc[0]
@@ -2034,7 +1733,7 @@ class ReportWrapper:
                     "Invalid page/visual name within the 'object_name' parameter. Valid format: 'Page 1'[f8dvo24PdJ39fp6]"
                 )
             valid_page_name, valid_display_name, visual_name, file_path = (
-                self._resolve_visual_name(page_name=p_name, visual_name=v_name)
+                helper.resolve_visual_name(self, page_name=p_name, visual_name=v_name)
             )
             rd_filt = rd[rd["path"] == file_path]
             payload = rd_filt["payload"].iloc[0]
@@ -2088,16 +1787,16 @@ class ReportWrapper:
 
         # Validate page and visual names
         if object_type == "Page":
-            page_id, page_display, file_path = self.__resolve_page_name(
-                page_name=object_name
+            page_id, page_display, file_path = helper.resolve_page_name(
+                self, page_name=object_name
             )
         elif object_type == "Visual":
             pattern = r"'(.*?)'|\[(.*?)\]"
             matches = re.findall(pattern, object_name)
             page_name = matches[0][0]
             visual_id = matches[1][1]
-            page_id, page_display, file_path = self.__resolve_page_name(
-                page_name=page_name
+            page_id, page_display, file_path = helper.resolve_page_name(
+                self, page_name=page_name
             )
 
         rd = self.rdef
@@ -2288,7 +1987,7 @@ class ReportWrapper:
             setting_value=value,
         )
 
-    def __enable_cross_repor_drillthrough(self, value: Optional[bool] = False):
+    def __enable_cross_report_drillthrough(self, value: Optional[bool] = False):
         """
         Allow visuals in this report to use drillthrough targets from other reports.
         """
