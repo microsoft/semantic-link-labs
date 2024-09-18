@@ -6,7 +6,7 @@ import struct
 import uuid
 from itertools import chain, repeat
 from sempy.fabric.exceptions import FabricHTTPException
-from sempy_labs._helper_functions import resolve_warehouse_id
+from sempy_labs._helper_functions import resolve_warehouse_id, resolve_lakehouse_id
 
 
 def bytes2mswin_bstr(value: bytes) -> bytes:
@@ -28,30 +28,41 @@ def bytes2mswin_bstr(value: bytes) -> bytes:
     return struct.pack("<i", len(encoded_bytes)) + encoded_bytes
 
 
-class ConnectWarehouse:
+class ConnectBase:
     def __init__(
         self,
-        warehouse: str,
+        name: str,
         workspace: Optional[Union[str, uuid.UUID]] = None,
         timeout: Optional[int] = None,
+        endpoint_type: str = "warehouse",
     ):
         from sempy.fabric._token_provider import SynapseTokenProvider
         import pyodbc
 
         workspace = fabric.resolve_workspace_name(workspace)
         workspace_id = fabric.resolve_workspace_id(workspace)
-        warehouse_id = resolve_warehouse_id(warehouse=warehouse, workspace=workspace)
 
-        # get the TDS endpoint
+        # Resolve the appropriate ID (warehouse or lakehouse)
+        if endpoint_type == "warehouse":
+            resource_id = resolve_warehouse_id(warehouse=name, workspace=workspace)
+        else:
+            resource_id = resolve_lakehouse_id(lakehouse=name, workspace=workspace)
+
+        # Get the TDS endpoint
         client = fabric.FabricRestClient()
-        response = client.get(f"v1/workspaces/{workspace_id}/warehouses/{warehouse_id}")
+        response = client.get(f"v1/workspaces/{workspace_id}/{endpoint_type}s/{resource_id}")
         if response.status_code != 200:
             raise FabricHTTPException(response)
-        tds_endpoint = response.json().get("properties", {}).get("connectionString")
 
+        if endpoint_type == "warehouse":
+            tds_endpoint = response.json().get("properties", {}).get("connectionString")
+        else:
+            tds_endpoint = response.json().get("properties", {}).get('sqlEndpointProperties', {}).get("connectionString")
+
+        # Set up the connection string
         access_token = SynapseTokenProvider()()
         tokenstruct = bytes2mswin_bstr(access_token.encode())
-        conn_str = f"DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={tds_endpoint};DATABASE={warehouse};Encrypt=Yes;"
+        conn_str = f"DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={tds_endpoint};DATABASE={name};Encrypt=Yes;"
 
         if timeout is not None:
             conn_str += f"Connect Timeout={timeout};"
@@ -59,11 +70,9 @@ class ConnectWarehouse:
         self.connection = pyodbc.connect(conn_str, attrs_before={1256: tokenstruct})
 
     @log
-    def query(
-        self, sql: Union[str, List[str]]
-    ) -> Union[List[pd.DataFrame], pd.DataFrame, None]:
+    def query(self, sql: Union[str, List[str]]) -> Union[List[pd.DataFrame], pd.DataFrame, None]:
         """
-        Runs a SQL or T-SQL query (or multiple queries) against a Fabric Warehouse.
+        Runs a SQL or T-SQL query (or multiple queries) against a Fabric Warehouse/Lakehouse.
 
         Parameters
         ----------
@@ -76,10 +85,10 @@ class ConnectWarehouse:
             A list of pandas DataFrames if multiple SQL queries return results,
             a single DataFrame if one query is executed and returns results, or None.
         """
-        cursor = None
-        results = []  # To store results from multiple queries if needed
 
-        # If the input is a single string, convert it to a list for consistency
+        cursor = None
+        results = []
+
         if isinstance(sql, str):
             sql = [sql]
 
@@ -101,10 +110,7 @@ class ConnectWarehouse:
                     results.append(result)
 
             # Return results if any queries returned a result set
-            if results:
-                return results if len(results) > 1 else results[0]
-            else:
-                return None
+            return results if len(results) > 1 else (results[0] if results else None)
 
         finally:
             if cursor:
@@ -118,3 +124,13 @@ class ConnectWarehouse:
 
     def close(self):
         self.connection.close()
+
+
+class ConnectWarehouse(ConnectBase):
+    def __init__(self, warehouse: str, workspace: Optional[Union[str, uuid.UUID]] = None, timeout: Optional[int] = None):
+        super().__init__(name=warehouse, workspace=workspace, timeout=timeout, endpoint_type="warehouse")
+
+
+class ConnectLakehouse(ConnectBase):
+    def __init__(self, lakehouse: str, workspace: Optional[Union[str, uuid.UUID]] = None, timeout: Optional[int] = None):
+        super().__init__(name=lakehouse, workspace=workspace, timeout=timeout, endpoint_type="lakehouse")
