@@ -50,14 +50,21 @@ class ConnectBase:
 
         # Get the TDS endpoint
         client = fabric.FabricRestClient()
-        response = client.get(f"v1/workspaces/{workspace_id}/{endpoint_type}s/{resource_id}")
+        response = client.get(
+            f"v1/workspaces/{workspace_id}/{endpoint_type}s/{resource_id}"
+        )
         if response.status_code != 200:
             raise FabricHTTPException(response)
 
         if endpoint_type == "warehouse":
             tds_endpoint = response.json().get("properties", {}).get("connectionString")
         else:
-            tds_endpoint = response.json().get("properties", {}).get('sqlEndpointProperties', {}).get("connectionString")
+            tds_endpoint = (
+                response.json()
+                .get("properties", {})
+                .get("sqlEndpointProperties", {})
+                .get("connectionString")
+            )
 
         # Set up the connection string
         access_token = SynapseTokenProvider()()
@@ -70,7 +77,9 @@ class ConnectBase:
         self.connection = pyodbc.connect(conn_str, attrs_before={1256: tokenstruct})
 
     @log
-    def query(self, sql: Union[str, List[str]]) -> Union[List[pd.DataFrame], pd.DataFrame, None]:
+    def query(
+        self, sql: Union[str, List[str]]
+    ) -> Union[List[pd.DataFrame], pd.DataFrame, None]:
         """
         Runs a SQL or T-SQL query (or multiple queries) against a Fabric Warehouse/Lakehouse.
 
@@ -127,10 +136,30 @@ class ConnectBase:
 
 
 class ConnectWarehouse(ConnectBase):
-    def __init__(self, warehouse: str, workspace: Optional[Union[str, uuid.UUID]] = None, timeout: Optional[int] = None):
-        super().__init__(name=warehouse, workspace=workspace, timeout=timeout, endpoint_type="warehouse")
+    def __init__(
+        self,
+        warehouse: str,
+        workspace: Optional[Union[str, uuid.UUID]] = None,
+        timeout: Optional[int] = None,
+    ):
+        super().__init__(
+            name=warehouse,
+            workspace=workspace,
+            timeout=timeout,
+            endpoint_type="warehouse",
+        )
 
 
 class ConnectLakehouse(ConnectBase):
-    def __init__(self, lakehouse: str, workspace: Optional[Union[str, uuid.UUID]] = None, timeout: Optional[int] = None):
-        super().__init__(name=lakehouse, workspace=workspace, timeout=timeout, endpoint_type="lakehouse")
+    def __init__(
+        self,
+        lakehouse: str,
+        workspace: Optional[Union[str, uuid.UUID]] = None,
+        timeout: Optional[int] = None,
+    ):
+        super().__init__(
+            name=lakehouse,
+            workspace=workspace,
+            timeout=timeout,
+            endpoint_type="lakehouse",
+        )
