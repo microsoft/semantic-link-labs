@@ -30,6 +30,7 @@ from sempy_labs import lakehouse as lake
 from sempy_labs import report as rep
 from sempy_labs.tom import connect_semantic_model
 from sempy_labs import ConnectWarehouse
+from sempy_labs import ConnectLakehouse
 ```
 
 ## Load semantic-link-labs into a custom [Fabric environment](https://learn.microsoft.com/fabric/data-engineering/create-and-use-environment)
