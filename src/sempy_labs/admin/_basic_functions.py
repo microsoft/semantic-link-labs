@@ -13,6 +13,21 @@ import time
 def list_workspaces(
     top: Optional[int] = 5000, skip: Optional[int] = None
 ) -> pd.DataFrame:
+    """
+    Lists workspaces for the organization. This function is the admin version of list_workspaces.
+
+    Parameters
+    ----------
+    top : int, default=5000
+        Returns only the first n results. This parameter is mandatory and must be in the range of 1-5000.
+    skip : int, default=None
+        Skips the first n results. Use with top to fetch results beyond the first 5000.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of workspaces for the organization.
+    """
 
     df = pd.DataFrame(
         columns=[
@@ -72,7 +87,7 @@ def assign_workspaces_to_capacity(
     workspace: Optional[str | List[str]] = None,
 ):
     """
-    Assigns a workspace to a capacity.
+    Assigns a workspace to a capacity. This function is the admin version.
 
     Parameters
     ----------
@@ -137,7 +152,7 @@ def assign_workspaces_to_capacity(
 
 def list_capacities() -> pd.DataFrame:
     """
-    Shows the a list of capacities and their properties.
+    Shows the a list of capacities and their properties. This function is the admin version.
 
     Parameters
     ----------
@@ -250,6 +265,14 @@ def _list_capacities_meta() -> pd.DataFrame:
 
 
 def unassign_workspaces_from_capacity(workspaces: str | List[str]):
+    """
+    Unassigns workspace(s) from their capacity. This function is the admin version of list_workspaces.
+
+    Parameters
+    ----------
+    workspaces : str | List[str]
+        The Fabric workspace name(s).
+    """
 
     # https://learn.microsoft.com/en-us/rest/api/power-bi/admin/capacities-unassign-workspaces-from-capacity
 
@@ -271,6 +294,14 @@ def unassign_workspaces_from_capacity(workspaces: str | List[str]):
 
 
 def list_external_data_shares():
+    """
+    Lists external data shares in the tenant. This function is for admins.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of external data shares in the tenant.
+    """
 
     # https://learn.microsoft.com/en-us/rest/api/fabric/admin/external-data-shares/list-external-data-shares?tabs=HTTP
 
@@ -325,6 +356,20 @@ def list_external_data_shares():
 def revoke_external_data_share(
     external_data_share_id: UUID, item_id: UUID, workspace: str
 ):
+    """
+    Revokes the specified external data share. Note: This action cannot be undone.
+
+    Parameters
+    ----------
+    external_data_share_id : UUID
+        The external data share ID.
+    item_id : int, default=None
+        The Item ID
+    workspace : str
+        The Fabric workspace name.
+    """
+
+    # https://learn.microsoft.com/en-us/rest/api/fabric/admin/external-data-shares/revoke-external-data-share?tabs=HTTP
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
@@ -341,7 +386,20 @@ def revoke_external_data_share(
     )
 
 
-def list_capacities_delegated_tenant_settings(return_dataframe: Optional[bool] = True):
+def list_capacities_delegated_tenant_settings(return_dataframe: Optional[bool] = True) -> Optional[pd.Dataframe | dict]:
+    """
+    Returns list of tenant setting overrides that override at the capacities.
+
+    Parameters
+    ----------
+    return_dataframe : bool, default=True
+        If True, returns a dataframe. If False, returns a dictionary
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of tenant setting overrides that override at the capacities.
+    """
 
     # https://learn.microsoft.com/en-us/rest/api/fabric/admin/tenants/list-capacities-tenant-settings-overrides?tabs=HTTP
 
@@ -700,7 +758,7 @@ def list_items(
         dfC = list_capacities()
         dfC_filt = dfC[dfC["Capacity Name"] == capacity_name]
         if len(dfC_filt) == 0:
-            raise ValueError()
+            raise ValueError(f"{icons.red_dot} The '{capacity_name}' capacity does not exist.")
         capacity_id = dfC_filt["Capacity Id"].iloc[0]
         url += f"capacityId={capacity_id}&"
     if state is not None:
@@ -708,9 +766,7 @@ def list_items(
     if type is not None:
         url += f"type={type}&"
 
-    if url.endswith("?"):
-        url = url[:-1]
-    if url.endswith("&"):
+    if url.endswith("?") or url.endswith("&"):
         url = url[:-1]
 
     client = fabric.FabricRestClient()
