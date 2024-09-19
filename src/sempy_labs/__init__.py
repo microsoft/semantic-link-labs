@@ -8,6 +8,10 @@ from sempy_labs._data_pipelines import (
     create_data_pipeline,
     delete_data_pipeline,
 )
+from sempy_labs._warehouses import (
+    list_warehouses,
+    create_warehouse,
+)
 from sempy_labs._spark import (
     get_spark_settings,
     update_spark_settings,
@@ -112,8 +116,6 @@ from sempy_labs._list_functions import (
     # list_relationships,
     # list_sqlendpoints,
     # list_tables,
-    list_warehouses,
-    create_warehouse,
     update_item,
 )
 from sempy_labs._helper_functions import (

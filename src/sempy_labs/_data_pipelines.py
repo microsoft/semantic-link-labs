@@ -5,9 +5,9 @@ import sempy_labs._icons as icons
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     pagination,
-    lro,
 )
 from sempy.fabric.exceptions import FabricHTTPException
+from sempy_labs._api_base import create_item
 
 
 def list_data_pipelines(workspace: Optional[str] = None) -> pd.DataFrame:
@@ -70,19 +70,7 @@ def create_data_pipeline(data_pipeline: str, description: Optional[str] = None, 
 
     # https://learn.microsoft.com/en-us/rest/api/fabric/datapipeline/items/create-data-pipeline?tabs=HTTP
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    payload = {'displayName': data_pipeline}
-
-    if description is not None:
-        payload['description'] = description
-
-    client = fabric.FabricRestClient()
-    response = client.post(f"/v1/workspaces/{workspace_id}/dataPipelines")
-
-    lro(client, response, status_codes=[201, 202])
-
-    print(f"{icons.green_dot} The '{data_pipeline}' data pipeline has been created within the '{workspace}' workspace.")
+    create_item(item_name=data_pipeline, type='DataPipeline', description=description, workspace=workspace)
 
 
 def delete_data_pipeline(data_pipeline: str, workspace: Optional[str] = None):
@@ -101,16 +89,10 @@ def delete_data_pipeline(data_pipeline: str, workspace: Optional[str] = None):
 
     # https://learn.microsoft.com/en-us/rest/api/fabric/datapipeline/items/delete-data-pipeline?tabs=HTTP
 
-    from sempy_labs._helper_functions import resolve_data_pipeline_id
+    workspace = fabric.resolve_workspace_name(workspace)
+    item_id = fabric.resolve_item_id(item_name=data_pipeline, type='DataPipeline', workspace=workspace)
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-    data_pipeline_id = resolve_data_pipeline_id(data_pipeline_name=data_pipeline, workspace=workspace)
-
-    client = fabric.FabricRestClient()
-    response = client.delete(f"/v1/workspaces/{workspace_id}/dataPipelines/{data_pipeline_id}")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    fabric.delete_item(item_id, workspace=workspace)
 
     print(f"{icons.green_dot} The '{data_pipeline}' data pipeline within the '{workspace}' workspace has been deleted.")
 

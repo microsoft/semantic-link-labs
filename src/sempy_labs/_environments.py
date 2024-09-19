@@ -8,6 +8,7 @@ from sempy_labs._helper_functions import (
     pagination,
 )
 from sempy.fabric.exceptions import FabricHTTPException
+from sempy_labs._api_base import create_item
 
 
 def create_environment(
@@ -28,23 +29,7 @@ def create_environment(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    request_body = {"displayName": environment}
-
-    if description:
-        request_body["description"] = description
-
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/environments", json=request_body
-    )
-
-    lro(client, response, status_codes=[201, 202])
-
-    print(
-        f"{icons.green_dot} The '{environment}' environment has been created within the '{workspace}' workspace."
-    )
+    create_item(item_name=environment, type='Environment', description=description, workspace=workspace)
 
 
 def list_environments(workspace: Optional[str] = None) -> pd.DataFrame:
@@ -101,20 +86,10 @@ def delete_environment(environment: str, workspace: Optional[str] = None):
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    from sempy_labs._helper_functions import resolve_environment_id
+    workspace = fabric.resolve_workspace_name(workspace)
+    item_id = fabric.resolve_item_id(item_name=environment, type='Environment', workspace=workspace)
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-    environment_id = resolve_environment_id(
-        environment=environment, workspace=workspace
-    )
-
-    client = fabric.FabricRestClient()
-    response = client.delete(
-        f"/v1/workspaces/{workspace_id}/environments/{environment_id}"
-    )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    fabric.delete_item(item_id, workspace=workspace)
 
     print(
         f"{icons.green_dot} The '{environment}' environment within the '{workspace}' workspace has been deleted."
