@@ -566,8 +566,8 @@ def vertipaq_analyzer(
                     for key, value in vertipaq_map[key_name].items()
                 }
             )
-            schema['RunId'] = data_type_long
-            schema['Timestamp'] = data_type_timestamp
+            schema["RunId"] = data_type_long
+            schema["Timestamp"] = data_type_timestamp
 
             delta_table_name = f"VertipaqAnalyzer_{obj}".lower()
             save_as_delta_table(

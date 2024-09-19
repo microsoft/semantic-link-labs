@@ -32,10 +32,6 @@ def update_direct_lake_model_lakehouse_connection(
         The Fabric workspace used by the lakehouse.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-
     """
 
     workspace = fabric.resolve_workspace_name(workspace)
@@ -57,25 +53,19 @@ def update_direct_lake_model_lakehouse_connection(
             f"Therefore it cannot be used to support the '{dataset}' semantic model within the '{workspace}' workspace."
         )
 
-    dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
-    dfP_filt = dfP[dfP["Mode"] == "DirectLake"]
+    shEx = get_shared_expression(lakehouse, lakehouse_workspace)
 
-    if len(dfP_filt) == 0:
-        raise ValueError(
-            f"{icons.red_dot} The '{dataset}' semantic model is not in Direct Lake. This function is only applicable to Direct Lake semantic models."
-        )
-    else:
-        with connect_semantic_model(
-            dataset=dataset, readonly=False, workspace=workspace
-        ) as tom:
+    with connect_semantic_model(
+        dataset=dataset, readonly=False, workspace=workspace
+    ) as tom:
 
-            shEx = get_shared_expression(lakehouse, lakehouse_workspace)
-            try:
-                tom.model.Expressions["DatabaseQuery"].Expression = shEx
-                print(
-                    f"{icons.green_dot} The expression in the '{dataset}' semantic model has been updated to point to the '{lakehouse}' lakehouse in the '{lakehouse_workspace}' workspace."
-                )
-            except Exception as e:
-                raise ValueError(
-                    f"{icons.red_dot} The expression in the '{dataset}' semantic model was not updated."
-                ) from e
+        if not tom.is_direct_lake():
+            raise ValueError(
+                f"{icons.red_dot} The '{dataset}' semantic model is not in Direct Lake. This function is only applicable to Direct Lake semantic models."
+            )
+
+        tom.model.Expressions["DatabaseQuery"].Expression = shEx
+
+    print(
+        f"{icons.green_dot} The expression in the '{dataset}' semantic model has been updated to point to the '{lakehouse}' lakehouse in the '{lakehouse_workspace}' workspace."
+    )
