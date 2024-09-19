@@ -359,7 +359,9 @@ class ReportWrapper:
                                 ignore_index=True,
                             )
 
-        df["Page URL"] = f"{helper.get_web_url(report=self.report, workspace=self._workspace)}/{df['Page Name']}"
+        df["Page URL"] = (
+            f"{helper.get_web_url(report=self.report, workspace=self._workspace)}/{df['Page Name']}"
+        )
 
         bool_cols = ["Hidden", "Locked", "Used"]
         df[bool_cols] = df[bool_cols].astype(bool)
@@ -540,8 +542,8 @@ class ReportWrapper:
 
         dfV = self.list_visuals()
 
-        page_rows = rd[rd['path'].str.endswith("/page.json")]
-        pages_row = rd[rd['path'] == "definition/pages/pages.json"]
+        page_rows = rd[rd["path"].str.endswith("/page.json")]
+        pages_row = rd[rd["path"] == "definition/pages/pages.json"]
 
         for _, r in page_rows.iterrows():
             file_path = r["path"]
@@ -563,11 +565,14 @@ class ReportWrapper:
             )
 
             # Drillthrough
-            matches = parse("$.filterConfig.filters[*]").find(pageJson)
-            drill_through = any(
-                filt.get("howCreated") == "Drillthrough"
-                for filt in (match.value for match in matches)
-            )
+            matches = parse("$.filterConfig.filters[*].howCreated").find(pageJson)
+            how_created_values = [match.value for match in matches]
+            drill_through = any(value == "Drillthrough" for value in how_created_values)
+            # matches = parse("$.filterConfig.filters[*]").find(pageJson)
+            # drill_through = any(
+            #    filt.get("howCreated") == "Drillthrough"
+            #    for filt in (match.value for match in matches)
+            # )
 
             visual_count = len(
                 rd[
@@ -609,11 +614,9 @@ class ReportWrapper:
                 "Visible Visual Count": visible_visual_count,
                 "Page Filter Count": page_filter_count,
             }
-            df = pd.concat(
-                [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-            )
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-        page_payload = pages_row['payload'].iloc[0]
+        page_payload = pages_row["payload"].iloc[0]
         pageFile = base64.b64decode(page_payload).decode("utf-8")
         pageJson = json.loads(pageFile)
         activePage = pageJson["activePageName"]
@@ -633,7 +636,9 @@ class ReportWrapper:
         bool_cols = ["Hidden", "Active", "Drillthrough Target Page"]
         df[bool_cols] = df[bool_cols].astype(bool)
 
-        df["Page URL"] = f"{helper.get_web_url(report=self.report, workspace=self._workspace)}/{df['Page Name']}"
+        df["Page URL"] = (
+            f"{helper.get_web_url(report=self.report, workspace=self._workspace)}/{df['Page Name']}"
+        )
 
         return df
 
@@ -1184,7 +1189,7 @@ class ReportWrapper:
             ]
         )
 
-        bookmark_rows = rd[rd['path'].str.endswith(".bookmark.json")]
+        bookmark_rows = rd[rd["path"].str.endswith(".bookmark.json")]
 
         for _, r in bookmark_rows.iterrows():
             path = r["path"]

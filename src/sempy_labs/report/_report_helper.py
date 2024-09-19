@@ -74,7 +74,9 @@ def get_web_url(report: str, workspace: Optional[str] = None):
     dfR_filt = dfR[dfR["Name"] == report]
 
     if len(dfR_filt) == 0:
-        raise ValueError(f"{icons.red_dot} The '{report}' report does not exist within the '{workspace}' workspace.")
+        raise ValueError(
+            f"{icons.red_dot} The '{report}' report does not exist within the '{workspace}' workspace."
+        )
     web_url = dfR_filt["Web Url"].iloc[0]
 
     return web_url
@@ -107,7 +109,7 @@ def populate_custom_visual_display_names():
                             combined_json[key] = value
 
                 # Get the next page link if it exists
-                current_url = data.get('nextPageLink')
+                current_url = data.get("nextPageLink")
             else:
                 print(f"Error fetching page: {response.status_code}")
                 break
