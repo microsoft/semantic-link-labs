@@ -3,7 +3,11 @@ from sempy_labs._environments import (
     delete_environment,
     publish_environment,
 )
-
+from sempy_labs._data_pipelines import (
+    list_data_pipelines,
+    create_data_pipeline,
+    delete_data_pipeline,
+)
 from sempy_labs._spark import (
     get_spark_settings,
     update_spark_settings,
@@ -97,7 +101,6 @@ from sempy_labs._list_functions import (
     # list_columns,
     list_dashboards,
     # list_datamarts,
-    # list_datapipelines,
     # list_eventstreams,
     # list_kpis,
     # list_kqldatabases,
@@ -114,6 +117,7 @@ from sempy_labs._list_functions import (
     update_item,
 )
 from sempy_labs._helper_functions import (
+    resolve_data_pipeline_id,
     resolve_environment_id,
     resolve_capacity_id,
     resolve_warehouse_id,
@@ -303,4 +307,8 @@ __all__ = [
     "delete_premium_capacity",
     "suspend_fabric_capacity",
     "delete_embedded_capacity",
+    "resolve_data_pipeline_id",
+    "list_data_pipelines",
+    "create_data_pipeline",
+    "delete_data_pipeline",
 ]

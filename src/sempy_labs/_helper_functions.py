@@ -1048,3 +1048,17 @@ def get_azure_token_credentials(
     }
 
     return token, credential, headers
+
+
+def resolve_data_pipeline_id(data_pipeline_name: str, workspace: Optional[str] = None):
+
+    from sempy_labs._data_pipelines import list_data_pipelines
+
+    workspace = fabric.resolve_workspace_name(workspace)
+
+    dfP = list_data_pipelines(workspace=workspace)
+    dfP_filt = dfP[dfP['Data Pipeline Name'] == data_pipeline_name]
+    if len(dfP_filt) == 0:
+        raise ValueError(f"{icons.red_dot} The '{data_pipeline_name}' data pipeline does not exist within the '{workspace}' workspace.")
+
+    return dfP_filt['Data Pipeline Id'].iloc[0]
