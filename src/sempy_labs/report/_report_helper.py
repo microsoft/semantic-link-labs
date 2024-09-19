@@ -1,9 +1,10 @@
 import sempy.fabric as fabric
-from typing import Tuple
+from typing import Tuple, Optional
 import sempy_labs._icons as icons
 import re
 import base64
 import json
+import requests
 
 
 vis_type_mapping = {
@@ -55,16 +56,6 @@ vis_type_mapping = {
     "Group": "Group",
 }
 
-custom_visual_base_url = "https://catalogapi.azure.com/offers?api-version=2018-08-01-beta&storefront=appsource&$filter=offerType+eq+%27PowerBIVisuals%27"
-custom_visual_end_url_1 = f"{custom_visual_base_url}&$skiptoken=W3sidG9rZW4iOiIrUklEOn4yVk53QUxkRkVIeEJhUUFBQUFCQUNBPT0jUlQ6MSNUUkM6MTk3I0lTVjoyI0lFTzo2NTU2NyNRQ0Y6OCIsInJhbmdlIjp7Im1pbiI6IjA1QzFFNzBCM0IzOTUwIiwibWF4IjoiMDVDMUU3QUIxN0U3QTYifX1d"
-custom_visual_end_url_2 = f"{custom_visual_base_url}&$skiptoken=W3sidG9rZW4iOiIrUklEOn4yVk53QUxkRkVId1pyQVVBQUFBQURBPT0jUlQ6MiNUUkM6NDg3I0lTVjoyI0lFTzo2NTU2NyNRQ0Y6OCIsInJhbmdlIjp7Im1pbiI6IjA1QzFFNzBCM0IzOTUwIiwibWF4IjoiMDVDMUU3QUIxN0U3QTYifX1d"
-
-custom_visual_urls = [
-    custom_visual_base_url,
-    custom_visual_end_url_1,
-    custom_visual_end_url_2,
-]
-
 page_type_mapping = {
     (320, 240): "Tooltip",
     (816, 1056): "Letter",
@@ -75,10 +66,15 @@ page_type_mapping = {
 page_types = ["Tooltip", "Letter", "4:3", "16:9"]
 
 
-def get_web_url(self):
+def get_web_url(report: str, workspace: Optional[str] = None):
 
-    dfR = fabric.list_reports(workspace=self._workspace)
-    dfR_filt = dfR[dfR["Name"] == self._report]
+    workspace = fabric.resolve_workspace_name(workspace)
+
+    dfR = fabric.list_reports(workspace=workspace)
+    dfR_filt = dfR[dfR["Name"] == report]
+
+    if len(dfR_filt) == 0:
+        raise ValueError(f"{icons.red_dot} The '{report}' report does not exist within the '{workspace}' workspace.")
     web_url = dfR_filt["Web Url"].iloc[0]
 
     return web_url
@@ -86,16 +82,44 @@ def get_web_url(self):
 
 def populate_custom_visual_display_names():
 
-    import requests
+    url = "https://catalogapi.azure.com/offers?api-version=2018-08-01-beta&storefront=appsource&$filter=offerType+eq+%27PowerBIVisuals%27"
 
-    for url in custom_visual_urls:
-        response = requests.get(url)
-        cvJson = response.json()
+    def fetch_all_pages(start_url):
+        combined_json = {}
+        current_url = start_url
 
-        for i in cvJson.get("items", []):
-            vizId = i.get("powerBIVisualId")
-            displayName = i.get("displayName")
-            vis_type_mapping[vizId] = displayName
+        while current_url:
+            # Send GET request to the current page URL
+            response = requests.get(current_url)
+
+            if response.status_code == 200:
+                data = response.json()
+                # Merge the current page JSON into the combined JSON
+                for key, value in data.items():
+                    if key not in combined_json:
+                        combined_json[key] = value
+                    else:
+                        # If the key already exists and is a list, extend it
+                        if isinstance(value, list):
+                            combined_json[key].extend(value)
+                        # For other types (non-lists), update the value
+                        else:
+                            combined_json[key] = value
+
+                # Get the next page link if it exists
+                current_url = data.get('nextPageLink')
+            else:
+                print(f"Error fetching page: {response.status_code}")
+                break
+
+        return combined_json
+
+    cvJson = fetch_all_pages(url)
+
+    for i in cvJson.get("items", []):
+        vizId = i.get("powerBIVisualId")
+        displayName = i.get("displayName")
+        vis_type_mapping[vizId] = displayName
 
 
 def resolve_page_name(self, page_name: str) -> Tuple[str, str, str]:

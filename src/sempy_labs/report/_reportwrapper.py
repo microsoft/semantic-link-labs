@@ -359,7 +359,7 @@ class ReportWrapper:
                                 ignore_index=True,
                             )
 
-        df["Page URL"] = f"{helper.get_web_url(self)}/{df['Page Name']}"
+        df["Page URL"] = f"{helper.get_web_url(report=self.report, workspace=self._workspace)}/{df['Page Name']}"
 
         bool_cols = ["Hidden", "Locked", "Used"]
         df[bool_cols] = df[bool_cols].astype(bool)
@@ -540,79 +540,83 @@ class ReportWrapper:
 
         dfV = self.list_visuals()
 
-        for _, r in rd.iterrows():
+        page_rows = rd[rd['path'].str.endswith("/page.json")]
+        pages_row = rd[rd['path'] == "definition/pages/pages.json"]
+
+        for _, r in page_rows.iterrows():
             file_path = r["path"]
             payload = r["payload"]
-            if file_path.endswith("/page.json"):
-                pageFile = base64.b64decode(payload).decode("utf-8")
-                page_prefix = file_path[0:-9]
-                pageJson = json.loads(pageFile)
-                page_name = pageJson.get("name")
-                height = pageJson.get("height")
-                width = pageJson.get("width")
 
-                # Alignment
-                matches = parse(
-                    "$.objects.displayArea[0].properties.verticalAlignment.expr.Literal.Value"
-                ).find(pageJson)
-                alignment_value = (
-                    matches[0].value[1:-1] if matches and matches[0].value else "Top"
-                )
+            pageFile = base64.b64decode(payload).decode("utf-8")
+            page_prefix = file_path[0:-9]
+            pageJson = json.loads(pageFile)
+            page_name = pageJson.get("name")
+            height = pageJson.get("height")
+            width = pageJson.get("width")
 
-                # Drillthrough
-                matches = parse("$.filterConfig.filters[*]").find(pageJson)
-                drill_through = any(
-                    filt.get("howCreated") == "Drillthrough"
-                    for filt in (match.value for match in matches)
-                )
+            # Alignment
+            matches = parse(
+                "$.objects.displayArea[0].properties.verticalAlignment.expr.Literal.Value"
+            ).find(pageJson)
+            alignment_value = (
+                matches[0].value[1:-1] if matches and matches[0].value else "Top"
+            )
 
-                visual_count = len(
-                    rd[
-                        rd["path"].str.endswith("/visual.json")
-                        & (rd["path"].str.startswith(page_prefix))
-                    ]
-                )
-                data_visual_count = len(
-                    dfV[(dfV["Page Name"] == page_name) & (dfV["Data Visual"])]
-                )
-                visible_visual_count = len(
-                    dfV[(dfV["Page Name"] == page_name) & (dfV["Hidden"] == False)]
-                )
+            # Drillthrough
+            matches = parse("$.filterConfig.filters[*]").find(pageJson)
+            drill_through = any(
+                filt.get("howCreated") == "Drillthrough"
+                for filt in (match.value for match in matches)
+            )
 
-                # Page Filter Count
-                matches = parse("$.filterConfig.filters").find(pageJson)
-                page_filter_count = (
-                    len(matches[0].value) if matches and matches[0].value else 0
-                )
+            visual_count = len(
+                rd[
+                    rd["path"].str.endswith("/visual.json")
+                    & (rd["path"].str.startswith(page_prefix))
+                ]
+            )
+            data_visual_count = len(
+                dfV[(dfV["Page Name"] == page_name) & (dfV["Data Visual"])]
+            )
+            visible_visual_count = len(
+                dfV[(dfV["Page Name"] == page_name) & (dfV["Hidden"] == False)]
+            )
 
-                # Hidden
-                matches = parse("$.visibility").find(pageJson)
-                is_hidden = any(match.value == "HiddenInViewMode" for match in matches)
+            # Page Filter Count
+            matches = parse("$.filterConfig.filters").find(pageJson)
+            page_filter_count = (
+                len(matches[0].value) if matches and matches[0].value else 0
+            )
 
-                new_data = {
-                    "File Path": file_path,
-                    "Page Name": page_name,
-                    "Page Display Name": pageJson.get("displayName"),
-                    "Display Option": pageJson.get("displayOption"),
-                    "Height": height,
-                    "Width": width,
-                    "Hidden": is_hidden,
-                    "Active": False,
-                    "Type": helper.page_type_mapping.get((width, height), "Custom"),
-                    "Alignment": alignment_value,
-                    "Drillthrough Target Page": drill_through,
-                    "Visual Count": visual_count,
-                    "Data Visual Count": data_visual_count,
-                    "Visible Visual Count": visible_visual_count,
-                    "Page Filter Count": page_filter_count,
-                }
-                df = pd.concat(
-                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                )
-            elif file_path == "definition/pages/pages.json":
-                pageFile = base64.b64decode(payload).decode("utf-8")
-                pageJson = json.loads(pageFile)
-                activePage = pageJson["activePageName"]
+            # Hidden
+            matches = parse("$.visibility").find(pageJson)
+            is_hidden = any(match.value == "HiddenInViewMode" for match in matches)
+
+            new_data = {
+                "File Path": file_path,
+                "Page Name": page_name,
+                "Page Display Name": pageJson.get("displayName"),
+                "Display Option": pageJson.get("displayOption"),
+                "Height": height,
+                "Width": width,
+                "Hidden": is_hidden,
+                "Active": False,
+                "Type": helper.page_type_mapping.get((width, height), "Custom"),
+                "Alignment": alignment_value,
+                "Drillthrough Target Page": drill_through,
+                "Visual Count": visual_count,
+                "Data Visual Count": data_visual_count,
+                "Visible Visual Count": visible_visual_count,
+                "Page Filter Count": page_filter_count,
+            }
+            df = pd.concat(
+                [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+            )
+
+        page_payload = pages_row['payload'].iloc[0]
+        pageFile = base64.b64decode(page_payload).decode("utf-8")
+        pageJson = json.loads(pageFile)
+        activePage = pageJson["activePageName"]
 
         df.loc[df["Page Name"] == activePage, "Active"] = True
 
@@ -629,7 +633,7 @@ class ReportWrapper:
         bool_cols = ["Hidden", "Active", "Drillthrough Target Page"]
         df[bool_cols] = df[bool_cols].astype(bool)
 
-        df["Page URL"] = f"{helper.get_web_url(self)}/{df['Page Name']}"
+        df["Page URL"] = f"{helper.get_web_url(report=self.report, workspace=self._workspace)}/{df['Page Name']}"
 
         return df
 
@@ -1180,54 +1184,56 @@ class ReportWrapper:
             ]
         )
 
-        for _, r in rd.iterrows():
+        bookmark_rows = rd[rd['path'].str.endswith(".bookmark.json")]
+
+        for _, r in bookmark_rows.iterrows():
             path = r["path"]
             payload = r["payload"]
-            if path.endswith(".bookmark.json"):
-                obj_file = base64.b64decode(payload).decode("utf-8")
-                obj_json = json.loads(obj_file)
 
-                bookmark_name = obj_json.get("name")
-                bookmark_display = obj_json.get("displayName")
-                rpt_page_id = obj_json.get("explorationState", {}).get("activeSection")
-                page_id, page_display, file_path = helper.resolve_page_name(
-                    self, page_name=rpt_page_id
-                )
+            obj_file = base64.b64decode(payload).decode("utf-8")
+            obj_json = json.loads(obj_file)
 
-                for rptPg in obj_json.get("explorationState", {}).get("sections", {}):
-                    for visual_name in (
+            bookmark_name = obj_json.get("name")
+            bookmark_display = obj_json.get("displayName")
+            rpt_page_id = obj_json.get("explorationState", {}).get("activeSection")
+            page_id, page_display, file_path = helper.resolve_page_name(
+                self, page_name=rpt_page_id
+            )
+
+            for rptPg in obj_json.get("explorationState", {}).get("sections", {}):
+                for visual_name in (
+                    obj_json.get("explorationState", {})
+                    .get("sections", {})
+                    .get(rptPg, {})
+                    .get("visualContainers", {})
+                ):
+                    if (
                         obj_json.get("explorationState", {})
                         .get("sections", {})
                         .get(rptPg, {})
                         .get("visualContainers", {})
+                        .get(visual_name, {})
+                        .get("singleVisual", {})
+                        .get("display", {})
+                        .get("mode", {})
+                        == "hidden"
                     ):
-                        if (
-                            obj_json.get("explorationState", {})
-                            .get("sections", {})
-                            .get(rptPg, {})
-                            .get("visualContainers", {})
-                            .get(visual_name, {})
-                            .get("singleVisual", {})
-                            .get("display", {})
-                            .get("mode", {})
-                            == "hidden"
-                        ):
-                            visual_hidden = True
-                        else:
-                            visual_hidden = False
+                        visual_hidden = True
+                    else:
+                        visual_hidden = False
 
-                        new_data = {
-                            "File Path": path,
-                            "Bookmark Name": bookmark_name,
-                            "Bookmark Display Name": bookmark_display,
-                            "Page Name": page_id,
-                            "Page Display Name": page_display,
-                            "Visual Name": visual_name,
-                            "Visual Hidden": visual_hidden,
-                        }
-                        df = pd.concat(
-                            [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                        )
+                    new_data = {
+                        "File Path": path,
+                        "Bookmark Name": bookmark_name,
+                        "Bookmark Display Name": bookmark_display,
+                        "Page Name": page_id,
+                        "Page Display Name": page_display,
+                        "Visual Name": visual_name,
+                        "Visual Hidden": visual_hidden,
+                    }
+                    df = pd.concat(
+                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
 
         bool_cols = ["Visual Hidden"]
         df[bool_cols] = df[bool_cols].astype(bool)
