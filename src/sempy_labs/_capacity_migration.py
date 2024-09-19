@@ -141,13 +141,10 @@ def migrate_capacities(
     capacities : str | List[str], default=None
         The capacity(ies) to migrate from A/P -> F sku.
         Defaults to None which migrates all accessible A/P sku capacities to F skus.
-    p_sku_only : bool, default=True
-        If set to True, only migrates P skus. If set to False, migrates both P and A skus.
     use_existing_rg_for_A_sku : bool, default=True
         If True, the F sku inherits the resource group from the A sku (for A sku migrations)
-
-    Returns
-    -------
+    p_sku_only : bool, default=True
+        If set to True, only migrates P skus. If set to False, migrates both P and A skus.
     """
 
     from sempy_labs._list_functions import list_capacities

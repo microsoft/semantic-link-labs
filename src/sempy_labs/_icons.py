@@ -25,7 +25,6 @@ table_icon = "\u229E"
 column_icon = "\u229F"
 azure_api_version = "2023-11-01"
 migrate_capacity_suffix = "fsku"
-
 sku_mapping = {
     "A1": "F8",
     "EM1": "F8",
