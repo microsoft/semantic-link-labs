@@ -360,7 +360,7 @@ class ReportWrapper:
                             )
 
         df["Page URL"] = (
-            f"{helper.get_web_url(report=self.report, workspace=self._workspace)}/{df['Page Name']}"
+            f"{helper.get_web_url(report=self._report, workspace=self._workspace)}/{df['Page Name']}"
         )
 
         bool_cols = ["Hidden", "Locked", "Used"]
@@ -637,7 +637,7 @@ class ReportWrapper:
         df[bool_cols] = df[bool_cols].astype(bool)
 
         df["Page URL"] = (
-            f"{helper.get_web_url(report=self.report, workspace=self._workspace)}/{df['Page Name']}"
+            f"{helper.get_web_url(report=self._report, workspace=self._workspace)}/{df['Page Name']}"
         )
 
         return df
