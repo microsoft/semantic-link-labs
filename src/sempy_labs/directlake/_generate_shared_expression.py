@@ -13,6 +13,7 @@ def generate_shared_expression(
     item_name: Optional[str] = None,
     item_type: Optional[str] = "Lakehouse",
     workspace: Optional[str] = None,
+    direct_lake_over_onelake: Optional[bool] = False,
 ) -> str:
     """
     Dynamically generates the M expression used by a Direct Lake model for a given lakehouse/warehouse.
@@ -28,6 +29,8 @@ def generate_shared_expression(
         The Fabric workspace used by the item.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    direct_lake_over_onelake : bool, defualt=False
+        Generates an expression required for a Direct Lake over OneLake semantic mode. Only available for lakehouses, not warehouses.
 
     Returns
     -------
@@ -44,6 +47,9 @@ def generate_shared_expression(
             f"{icons.red_dot} Invalid item type. Valid options: {item_types}."
         )
 
+    if item_type == 'Warehouse' and direct_lake_over_onelake:
+        raise ValueError(f"{icons.red_dot} Direct Lake over OneLake is only supported for lakehouses, not warehouses.")
+
     if item_name is None:
         item_id = fabric.get_lakehouse_id()
         item_name = resolve_lakehouse_name(item_id, workspace)
@@ -58,14 +64,15 @@ def generate_shared_expression(
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
+    prop = response.json().get("properties")
+
     if item_type == "Lakehouse":
-        prop = response.json()["properties"]["sqlEndpointProperties"]
-        sqlEPCS = prop["connectionString"]
-        sqlepid = prop["id"]
-        provStatus = prop["provisioningStatus"]
+        sqlprop = prop.get("sqlEndpointProperties")
+        sqlEPCS = sqlprop.get("connectionString")
+        sqlepid = sqlprop.get("id")
+        provStatus = sqlprop.get("provisioningStatus")
     elif item_type == "Warehouse":
-        prop = response.json()["properties"]
-        sqlEPCS = prop["connectionString"]
+        sqlEPCS = prop.get("connectionString")
         sqlepid = item_id
         provStatus = None
 
@@ -74,12 +81,14 @@ def generate_shared_expression(
             f"{icons.red_dot} The SQL Endpoint for the '{item_name}' lakehouse within the '{workspace}' workspace has not yet been provisioned. Please wait until it has been provisioned."
         )
 
-    sh = (
-        'let\n\tdatabase = Sql.Database("'
-        + sqlEPCS
-        + '", "'
-        + sqlepid
-        + '")\nin\n\tdatabase'
-    )
+    start_expr = 'let\n\tdatabase = '
+    end_expr = '\nin\n\tdatabase'
+    if not direct_lake_over_onelake:
+        mid_expr = f'Sql.Database("{sqlEPCS}", "{sqlepid}")'
+    else:
+        url = prop.get('oneLakeTablesPath').rstrip('/Tables')
+        mid_expr = f'AzureStorage.DataLake(\\"{url}\\")"'
+
+    sh = f"{start_expr}{mid_expr}{end_expr}"
 
     return sh
