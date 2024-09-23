@@ -4003,7 +4003,7 @@ class TOMWrapper:
         import Microsoft.AnalysisServices.Tabular as TOM
         import System
 
-        c = self.model.Tables[table_name].Measures[column_name]
+        c = self.model.Tables[table_name].Columns[column_name]
         if c.Type == TOM.ColumnType.Data:
             if source_column is not None:
                 c.SourceColumn = source_column
