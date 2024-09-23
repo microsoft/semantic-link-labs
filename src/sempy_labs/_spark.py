@@ -363,10 +363,10 @@ def get_spark_settings(workspace: Optional[str] = None) -> pd.DataFrame:
         "High Concurrency Enabled",
         "Customize Compute Enabled",
     ]
-    int_cols = ["Max Node Count", "Max Executors"]
+    # int_cols = ["Max Node Count", "Max Executors"]
 
     df[bool_cols] = df[bool_cols].astype(bool)
-    df[int_cols] = df[int_cols].astype(int)
+    # df[int_cols] = df[int_cols].astype(int)
 
     return df
 
