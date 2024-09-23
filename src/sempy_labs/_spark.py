@@ -363,10 +363,10 @@ def get_spark_settings(workspace: Optional[str] = None) -> pd.DataFrame:
         "High Concurrency Enabled",
         "Customize Compute Enabled",
     ]
-    int_cols = ["Max Node Count", "Max Executors"]
+    # int_cols = ["Max Node Count", "Max Executors"]
 
     df[bool_cols] = df[bool_cols].astype(bool)
-    df[int_cols] = df[int_cols].astype(int)
+    # df[int_cols] = df[int_cols].astype(int)
 
     return df
 
@@ -431,9 +431,9 @@ def update_spark_settings(
     if default_pool_name is None:
         default_pool_name = dfS["Default Pool Name"].iloc[0]
     if max_node_count is None:
-        max_node_count = int(dfS["Max Node Count"].iloc[0])
+        max_node_count = dfS["Max Node Count"].iloc[0]
     if max_executors is None:
-        max_executors = int(dfS["Max Executors"].iloc[0])
+        max_executors = dfS["Max Executors"].iloc[0]
     if environment_name is None:
         environment_name = dfS["Environment Name"].iloc[0]
     if runtime_version is None:
