@@ -298,7 +298,9 @@ def delete_custom_pool(pool_name: str, workspace: Optional[str] = None):
     )
 
 
-def get_spark_settings(workspace: Optional[str] = None, return_dataframe: Optional[bool] = True) -> pd.DataFrame | dict:
+def get_spark_settings(
+    workspace: Optional[str] = None, return_dataframe: Optional[bool] = True
+) -> pd.DataFrame | dict:
     """
     Shows the spark settings for a workspace.
 
@@ -428,21 +430,23 @@ def update_spark_settings(
     request_body = get_spark_settings(workspace=workspace, return_dataframe=False)
 
     if automatic_log_enabled is not None:
-        request_body['automaticLog']['enabled'] = automatic_log_enabled
+        request_body["automaticLog"]["enabled"] = automatic_log_enabled
     if high_concurrency_enabled is not None:
-        request_body['highConcurrency']['notebookInteractiveRunEnabled'] = high_concurrency_enabled
+        request_body["highConcurrency"][
+            "notebookInteractiveRunEnabled"
+        ] = high_concurrency_enabled
     if customize_compute_enabled is not None:
-        request_body['pool']['customizeComputeEnabled'] = customize_compute_enabled
+        request_body["pool"]["customizeComputeEnabled"] = customize_compute_enabled
     if default_pool_name is not None:
-        request_body['pool']['defaultPool']['name'] = default_pool_name
+        request_body["pool"]["defaultPool"]["name"] = default_pool_name
     if max_node_count is not None:
-        request_body['pool']['starterPool']['maxNodeCount'] = max_node_count
+        request_body["pool"]["starterPool"]["maxNodeCount"] = max_node_count
     if max_executors is not None:
-        request_body['pool']['starterPool']['maxExecutors'] = max_executors
+        request_body["pool"]["starterPool"]["maxExecutors"] = max_executors
     if environment_name is not None:
-        request_body['environment']['name'] = environment_name
+        request_body["environment"]["name"] = environment_name
     if runtime_version is not None:
-        request_body['environment']['runtimeVersion'] = runtime_version
+        request_body["environment"]["runtimeVersion"] = runtime_version
 
     client = fabric.FabricRestClient()
     response = client.patch(

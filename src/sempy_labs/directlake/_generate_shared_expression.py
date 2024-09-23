@@ -75,8 +75,8 @@ def generate_shared_expression(
             f"{icons.red_dot} The SQL Endpoint for the '{item_name}' lakehouse within the '{workspace}' workspace has not yet been provisioned. Please wait until it has been provisioned."
         )
 
-    start_expr = 'let\n\tdatabase = '
-    end_expr = '\nin\n\tdatabase'
+    start_expr = "let\n\tdatabase = "
+    end_expr = "\nin\n\tdatabase"
     mid_expr = f'Sql.Database("{sqlEPCS}", "{sqlepid}")'
 
     return f"{start_expr}{mid_expr}{end_expr}"
