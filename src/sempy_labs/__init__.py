@@ -114,6 +114,7 @@ from sempy_labs._list_functions import (
     update_item,
 )
 from sempy_labs._helper_functions import (
+    convert_to_friendly_case,
     resolve_environment_id,
     resolve_capacity_id,
     resolve_warehouse_id,
@@ -303,4 +304,5 @@ __all__ = [
     "delete_premium_capacity",
     "suspend_fabric_capacity",
     "delete_embedded_capacity",
+    "convert_to_friendly_case",
 ]

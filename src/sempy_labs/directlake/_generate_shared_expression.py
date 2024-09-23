@@ -47,8 +47,10 @@ def generate_shared_expression(
             f"{icons.red_dot} Invalid item type. Valid options: {item_types}."
         )
 
-    if item_type == 'Warehouse' and direct_lake_over_onelake:
-        raise ValueError(f"{icons.red_dot} Direct Lake over OneLake is only supported for lakehouses, not warehouses.")
+    if item_type == "Warehouse" and direct_lake_over_onelake:
+        raise ValueError(
+            f"{icons.red_dot} Direct Lake over OneLake is only supported for lakehouses, not warehouses."
+        )
 
     if item_name is None:
         item_id = fabric.get_lakehouse_id()
@@ -81,12 +83,12 @@ def generate_shared_expression(
             f"{icons.red_dot} The SQL Endpoint for the '{item_name}' lakehouse within the '{workspace}' workspace has not yet been provisioned. Please wait until it has been provisioned."
         )
 
-    start_expr = 'let\n\tdatabase = '
-    end_expr = '\nin\n\tdatabase'
+    start_expr = "let\n\tdatabase = "
+    end_expr = "\nin\n\tdatabase"
     if not direct_lake_over_onelake:
         mid_expr = f'Sql.Database("{sqlEPCS}", "{sqlepid}")'
     else:
-        url = prop.get('oneLakeTablesPath').rstrip('/Tables')
+        url = prop.get("oneLakeTablesPath").rstrip("/Tables")
         mid_expr = f'AzureStorage.DataLake(\\"{url}\\")"'
 
     sh = f"{start_expr}{mid_expr}{end_expr}"
