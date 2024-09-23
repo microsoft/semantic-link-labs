@@ -132,7 +132,7 @@ def get_git_status(workspace: Optional[str] = None) -> pd.DataFrame:
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/git/status")
 
-    if response not in [200, 202]:
+    if response.status_code not in [200, 202]:
         raise FabricHTTPException(response)
 
     result = lro(client, response).json()
@@ -237,7 +237,7 @@ def initialize_git_connection(workspace: Optional[str] = None):
     client = fabric.FabricRestClient()
     response = client.post(f"/v1/workspaces/{workspace_id}/git/initializeConnection")
 
-    if response not in [200, 202]:
+    if response.status_code not in [200, 202]:
         raise FabricHTTPException(response)
 
     lro(client, response)
