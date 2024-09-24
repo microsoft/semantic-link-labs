@@ -89,6 +89,8 @@ from sempy_labs._generate_semantic_model import (
 )
 from sempy_labs._list_functions import (
     list_reports_using_semantic_model,
+    list_semantic_model_object_report_usage,
+    list_report_semantic_model_objects,
     list_semantic_model_objects,
     list_shortcuts,
     get_object_level_security,
@@ -117,6 +119,7 @@ from sempy_labs._helper_functions import (
     resolve_environment_id,
     resolve_capacity_id,
     resolve_warehouse_id,
+    resolve_dataset_from_report,
     resolve_workspace_capacity,
     create_abfss_path,
     format_dax_object_name,
@@ -188,6 +191,8 @@ __all__ = [
     "list_storage_account_files",
     "backup_semantic_model",
     "restore_semantic_model",
+    "list_semantic_model_object_report_usage",
+    "list_report_semantic_model_objects",
     "delete_custom_pool",
     "clear_cache",
     # create_connection_cloud,
@@ -303,4 +308,5 @@ __all__ = [
     "delete_premium_capacity",
     "suspend_fabric_capacity",
     "delete_embedded_capacity",
+    "resolve_dataset_from_report",
 ]

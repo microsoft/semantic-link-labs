@@ -1774,3 +1774,212 @@ def list_reports_using_semantic_model(
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
+
+
+def list_report_semantic_model_objects(
+    dataset: str, workspace: Optional[str] = None, extended: Optional[bool] = False
+) -> pd.DataFrame:
+    """
+    Shows a list of semantic model objects (i.e. columns, measures, hierarchies) used in all reports which feed data from
+    a given semantic model.
+
+    Requirement: Reports must be in the PBIR format.
+
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    extended: bool, default=False
+        If True, adds an extra column called 'Valid Semantic Model Object' which identifies whether the semantic model object used
+        in the report exists in the semantic model which feeds data to the report.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of semantic model objects (i.e. columns, measures, hierarchies) used in all reports which feed data from
+    a given semantic model.
+    """
+
+    from sempy_labs.report import ReportWrapper
+    from sempy_labs.tom import connect_semantic_model
+
+    dfRO = pd.DataFrame(
+        columns=[
+            "Report Name",
+            "Report Workspace Name",
+            "Table Name",
+            "Object Name",
+            "Object Type",
+            "Report Source",
+            "Report Source Object",
+        ]
+    )
+
+    # Collect all reports which use the semantic model
+    dfR = list_reports_using_semantic_model(dataset=dataset, workspace=workspace)
+
+    if len(dfR) == 0:
+        return dfRO
+
+    for _, r in dfR.iterrows():
+        report_name = r["Report Name"]
+        report_workspace = r["Report Workspace Name"]
+
+        rpt = ReportWrapper(report=report_name, workspace=report_workspace)
+        # Collect all semantic model objects used in the report
+        dfRSO = rpt.list_semantic_model_objects()
+        dfRSO["Report Name"] = report_name
+        dfRSO["Report Workspace Name"] = report_workspace
+        colName = "Report Name"
+        dfRSO.insert(0, colName, dfRSO.pop(colName))
+        colName = "Report Workspace Name"
+        dfRSO.insert(1, colName, dfRSO.pop(colName))
+
+        dfRO = pd.concat([dfRO, dfRSO], ignore_index=True)
+
+    # Collect all semantic model objects
+    if extended:
+        with connect_semantic_model(
+            dataset=dataset, readonly=True, workspace=workspace
+        ) as tom:
+            for index, row in dfRO.iterrows():
+                object_type = row["Object Type"]
+                if object_type == "Measure":
+                    dfRO.at[index, "Valid Semantic Model Object"] = any(
+                        o.Name == row["Object Name"] for o in tom.all_measures()
+                    )
+                elif object_type == "Column":
+                    dfRO.at[index, "Valid Semantic Model Object"] = any(
+                        format_dax_object_name(c.Parent.Name, c.Name)
+                        == format_dax_object_name(row["Table Name"], row["Object Name"])
+                        for c in tom.all_columns()
+                    )
+                elif object_type == "Hierarchy":
+                    dfRO.at[index, "Valid Semantic Model Object"] = any(
+                        format_dax_object_name(h.Parent.Name, h.Name)
+                        == format_dax_object_name(row["Table Name"], row["Object Name"])
+                        for h in tom.all_hierarchies()
+                    )
+
+    return dfRO
+
+
+def list_semantic_model_object_report_usage(
+    dataset: str,
+    workspace: Optional[str] = None,
+    include_dependencies: Optional[bool] = False,
+    extended: Optional[bool] = False,
+) -> pd.DataFrame:
+    """
+    Shows a list of semantic model objects and how many times they are referenced in all reports which rely on this semantic model.
+
+    Requirement: Reports must be in the PBIR format.
+
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    include_dependencies : bool, default=False
+        If True, includes measure dependencies.
+    extended: bool, default=False
+        If True, adds columns 'Total Size', 'Data Size', 'Dictionary Size', 'Hierarchy Size' based on Vertipaq statistics.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of semantic model objects and how many times they are referenced in all reports which rely on this semantic model. By default, the dataframe
+        is sorted descending by 'Report Usage Count'.
+    """
+
+    from sempy_labs._model_dependencies import get_measure_dependencies
+    from sempy_labs._helper_functions import format_dax_object_name
+
+    workspace = fabric.resolve_workspace_name(workspace)
+
+    dfR = list_report_semantic_model_objects(dataset=dataset, workspace=workspace)
+    usage_column_name = "Report Usage Count"
+
+    if not include_dependencies:
+        final_df = (
+            dfR.groupby(["Table Name", "Object Name", "Object Type"])
+            .size()
+            .reset_index(name=usage_column_name)
+        )
+    else:
+        df = pd.DataFrame(columns=["Table Name", "Object Name", "Object Type"])
+        dep = get_measure_dependencies(dataset=dataset, workspace=workspace)
+
+        for i, r in dfR.iterrows():
+            object_type = r["Object Type"]
+            table_name = r["Table Name"]
+            object_name = r["Object Name"]
+            new_data = {
+                "Table Name": table_name,
+                "Object Name": object_name,
+                "Object Type": object_type,
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            if object_type == "Measure":
+                df_filt = dep[dep["Object Name"] == object_name][
+                    ["Referenced Table", "Referenced Object", "Referenced Object Type"]
+                ]
+                df_filt.rename(
+                    columns={
+                        "Referenced Table": "Table Name",
+                        "Referenced Object": "Object Name",
+                        "Referenced Object Type": "Object Type",
+                    },
+                    inplace=True,
+                )
+
+                df = pd.concat([df, df_filt], ignore_index=True)
+
+        final_df = (
+            df.groupby(["Table Name", "Object Name", "Object Type"])
+            .size()
+            .reset_index(name=usage_column_name)
+        )
+
+    if extended:
+        final_df["Object"] = format_dax_object_name(
+            final_df["Table Name"], final_df["Object Name"]
+        )
+        dfC = fabric.list_columns(dataset=dataset, workspace=workspace, extended=True)
+        dfC["Object"] = format_dax_object_name(dfC["Table Name"], dfC["Column Name"])
+        final_df = pd.merge(
+            final_df,
+            dfC[
+                [
+                    "Object",
+                    "Total Size",
+                    "Data Size",
+                    "Dictionary Size",
+                    "Hierarchy Size",
+                ]
+            ],
+            on="Object",
+            how="left",
+        )
+
+        ext_int_cols = ["Total Size", "Data Size", "Dictionary Size", "Hierarchy Size"]
+        final_df[ext_int_cols] = final_df[ext_int_cols].fillna(0).astype(int)
+        final_df.drop("Object", axis=1, inplace=True)
+
+    int_cols = [usage_column_name]
+    final_df[int_cols] = final_df[int_cols].astype(int)
+
+    final_df = final_df[final_df["Object Type"] != "Table"].sort_values(
+        by=usage_column_name, ascending=False
+    )
+
+    final_df.reset_index(drop=True, inplace=True)
+
+    return final_df

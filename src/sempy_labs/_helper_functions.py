@@ -2,14 +2,14 @@ import sempy.fabric as fabric
 import re
 import json
 import base64
+import time
+from sempy.fabric.exceptions import FabricHTTPException
 import pandas as pd
 from functools import wraps
 import datetime
-import time
 from typing import Optional, Tuple, List
 from uuid import UUID
 import sempy_labs._icons as icons
-from sempy.fabric.exceptions import FabricHTTPException
 import urllib.parse
 from azure.core.credentials import TokenCredential, AccessToken
 
