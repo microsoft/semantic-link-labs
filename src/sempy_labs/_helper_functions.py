@@ -992,34 +992,6 @@ def get_language_codes(languages: str | List[str]):
     return languages
 
 
-def resolve_environment_id(environment: str, workspace: Optional[str] = None) -> UUID:
-    """
-    Obtains the environment Id for a given environment.
-
-    Parameters
-    ----------
-    environment: str
-        Name of the environment.
-    workspace : str, default=None
-        The Fabric workspace name.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
-    """
-
-    from sempy_labs._environments import list_environments
-
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    dfE = list_environments(workspace=workspace)
-    dfE_filt = dfE[dfE["Environment Name"] == environment]
-    if len(dfE_filt) == 0:
-        raise ValueError(
-            f"{icons.red_dot} The '{environment}' environment does not exist within the '{workspace}' workspace."
-        )
-
-    return dfE_filt["Environment Id"].iloc[0]
-
-
 def get_azure_token_credentials(
     key_vault_uri: str,
     key_vault_tenant_id: str,
@@ -1048,3 +1020,34 @@ def get_azure_token_credentials(
     }
 
     return token, credential, headers
+
+
+def convert_to_alphanumeric_lowercase(input_string):
+
+    cleaned_string = re.sub(r"[^a-zA-Z0-9]", "", input_string)
+    cleaned_string = cleaned_string.lower()
+
+    return cleaned_string
+
+
+def resolve_environment_id(environment: str, workspace: Optional[str] = None) -> UUID:
+    """
+    Obtains the environment Id for a given environment.
+
+    Parameters
+    ----------
+    environment: str
+        Name of the environment.
+    """
+    from sempy_labs._environments import list_environments
+
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    dfE = list_environments(workspace=workspace)
+    dfE_filt = dfE[dfE["Environment Name"] == environment]
+    if len(dfE_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} The '{environment}' environment does not exist within the '{workspace}' workspace."
+        )
+
+    return dfE_filt["Environment Id"].iloc[0]

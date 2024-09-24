@@ -8,6 +8,7 @@ from sempy_labs._helper_functions import (
     lro,
     resolve_item_type,
     format_dax_object_name,
+    pagination,
 )
 import pandas as pd
 from typing import Optional

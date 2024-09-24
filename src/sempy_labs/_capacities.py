@@ -5,6 +5,7 @@ import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 import requests
 from sempy_labs._helper_functions import get_azure_token_credentials
+import pandas as pd
 
 
 def _add_sll_tag(payload, tags):
@@ -155,10 +156,10 @@ def create_fabric_capacity(
         for i in resource_client.resources.list(
             "resourceType eq 'Microsoft.PowerBIDedicated/capacities'"
         ):
-            if i.name == capacity_name.removesuffix(capacity_suffix):
+            if i.name == capacity_name.removesuffix(icons.migrate_capacity_suffix):
                 resource_group = i.id.split("/")[4]
                 print(
-                    f"{icons.yellow_dot} Override resource group flag detected for A SKUs - using the existing resource group '{resource_group}' for capacity '{capacity_name}'"
+                    f"{icons.yellow_dot} Override resource group flag detected for A SKUs - using the existing resource group '{resource_group}' for the '{capacity_name}' capacity."
                 )
     else:
         # Attempt to get the resource group
@@ -205,6 +206,41 @@ def create_fabric_capacity(
     print(
         f"{icons.green_dot} Successfully created the '{capacity_name}' capacity within the '{region}' region."
     )
+
+
+def list_vcores() -> pd.DataFrame:
+
+    df = pd.DataFrame(columns=["Total Purchased Cores", "Available Cores"])
+
+    client = fabric.PowerBIRestClient()
+    response = client.get("capacities/vcores")
+    if response.status_code != 200:
+        FabricHTTPException(response)
+    response_json = response.json()
+    new_data = {
+        "Total Purchased Cores": response_json.get("totalPurchasedCores"),
+        "Available Cores": response_json.get("availableCores"),
+    }
+    df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    int_cols = ["Total Purchased Cores", "Available Cores"]
+    df[int_cols] = df[int_cols].astype(int)
+
+    return df
+
+
+def get_capacity_resource_governance(capacity_name: str):
+
+    dfC = fabric.list_capacities()
+    dfC_filt = dfC[dfC["Display Name"] == capacity_name]
+    capacity_id = dfC_filt["Id"].iloc[0].upper()
+    client = fabric.PowerBIRestClient()
+    response = client.get(f"capacities/{capacity_id}/resourceGovernance")
+
+    if response.status_code != 200:
+        FabricHTTPException(response)
+
+    return response.json()["workloadSettings"]
 
 
 def suspend_fabric_capacity(

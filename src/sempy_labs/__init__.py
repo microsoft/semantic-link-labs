@@ -3,6 +3,36 @@ from sempy_labs._environments import (
     delete_environment,
     publish_environment,
 )
+from sempy_labs._clear_cache import (
+    clear_cache,
+    backup_semantic_model,
+    restore_semantic_model,
+    copy_semantic_model_backup_file,
+    list_backups,
+    list_storage_account_files,
+)
+from sempy_labs._capacity_migration import (
+    migrate_spark_settings,
+    migrate_workspaces,
+    migrate_capacities,
+    migrate_notification_settings,
+    migrate_access_settings,
+    migrate_delegated_tenant_settings,
+    migrate_capacity_settings,
+    migrate_disaster_recovery_settings,
+)
+from sempy_labs._capacities import (
+    create_fabric_capacity,
+    # get_capacity_resource_governance,
+    # list_vcores,
+    resume_fabric_capacity,
+    suspend_fabric_capacity,
+    update_fabric_capacity,
+    delete_fabric_capacity,
+    check_fabric_capacity_name_availablility,
+    delete_embedded_capacity,
+    delete_premium_capacity,
+)
 
 from sempy_labs._spark import (
     get_spark_settings,
@@ -30,16 +60,6 @@ from sempy_labs._sql import (
     ConnectWarehouse,
     ConnectLakehouse,
 )
-from sempy_labs._capacities import (
-    check_fabric_capacity_name_availablility,
-    delete_fabric_capacity,
-    resume_fabric_capacity,
-    update_fabric_capacity,
-    create_fabric_capacity,
-    delete_premium_capacity,
-    suspend_fabric_capacity,
-    delete_embedded_capacity,
-)
 from sempy_labs._workspace_identity import (
     provision_workspace_identity,
     deprovision_workspace_identity,
@@ -62,14 +82,6 @@ from sempy_labs._dataflows import (
     list_dataflow_storage_accounts,
     assign_workspace_to_dataflow_storage,
     list_dataflows,
-)
-from sempy_labs._clear_cache import (
-    clear_cache,
-    backup_semantic_model,
-    restore_semantic_model,
-    copy_semantic_model_backup_file,
-    list_backups,
-    list_storage_account_files,
 )
 from sempy_labs._connections import (
     list_connections,
@@ -193,6 +205,8 @@ __all__ = [
     "restore_semantic_model",
     "list_semantic_model_object_report_usage",
     "list_report_semantic_model_objects",
+    "migrate_spark_settings",
+    "create_azure_storage_account",
     "delete_custom_pool",
     "clear_cache",
     # create_connection_cloud,
@@ -309,4 +323,21 @@ __all__ = [
     "suspend_fabric_capacity",
     "delete_embedded_capacity",
     "resolve_dataset_from_report",
+    "migrate_workspaces",
+    "migrate_capacities",
+    "create_fabric_capacity",
+    "migrate_capacity_settings",
+    # "get_capacity_resource_governance",
+    # "list_vcores",
+    "migrate_disaster_recovery_settings",
+    "migrate_notification_settings",
+    "migrate_access_settings",
+    "migrate_delegated_tenant_settings",
+    "resume_fabric_capacity",
+    "suspend_fabric_capacity",
+    "update_fabric_capacity",
+    "delete_fabric_capacity",
+    "check_fabric_capacity_name_availablility",
+    "delete_embedded_capacity",
+    "delete_premium_capacity",
 ]
