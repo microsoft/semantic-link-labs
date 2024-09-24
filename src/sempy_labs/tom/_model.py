@@ -1652,13 +1652,13 @@ class TOMWrapper:
         objType = object.ObjectType
 
         # Have to remove translations and perspectives on the object before removing it.
-        if objType in ["Table", "Column", "Measure", "Hierarchy", "Level"]:
+        if objType in [TOM.ObjectType.Table, TOM.ObjectType.Column, TOM.ObjectType.Measure, TOM.ObjectType.Hierarchy, TOM.ObjectType.Level]:
             for lang in object.Model.Cultures:
                 try:
                     self.remove_translation(object=object, language=lang.Name)
                 except Exception:
                     pass
-        if objType in ["Table", "Column", "Measure", "Hierarchy"]:
+        if objType in [TOM.ObjectType.Table, TOM.ObjectType.Column, TOM.ObjectType.Measure, TOM.ObjectType.Hierarchy, TOM.ObjectType.Level]:
             for persp in object.Model.Perspectives:
                 try:
                     self.remove_from_perspective(
