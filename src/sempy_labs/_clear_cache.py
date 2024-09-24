@@ -52,8 +52,8 @@ def clear_cache(dataset: str, workspace: Optional[str] = None):
 def backup_semantic_model(
     dataset: str,
     file_path: str,
-    allow_overwrite: Optional[bool] = True,
-    apply_compression: Optional[bool] = True,
+    allow_overwrite: bool = True,
+    apply_compression: bool = True,
     workspace: Optional[str] = None,
 ):
     """
@@ -104,9 +104,9 @@ def backup_semantic_model(
 def restore_semantic_model(
     dataset: str,
     file_path: str,
-    allow_overwrite: Optional[bool] = True,
-    ignore_incompatibilities: Optional[bool] = True,
-    force_restore: Optional[bool] = False,
+    allow_overwrite: bool = True,
+    ignore_incompatibilities: bool = True,
+    force_restore: bool = False,
     workspace: Optional[str] = None,
 ):
     """
@@ -168,8 +168,8 @@ def copy_semantic_model_backup_file(
     source_file_name: str,
     target_file_name: str,
     storage_account: str,
-    source_file_system: Optional[str] = "power-bi-backup",
-    target_file_system: Optional[str] = "power-bi-backup",
+    source_file_system: str = "power-bi-backup",
+    target_file_system: str = "power-bi-backup",
 ):
     """
     Copies a semantic model backup file (.abf) from an Azure storage account to another location within the Azure storage account.
@@ -287,7 +287,7 @@ def list_backups(workspace: Optional[str] = None) -> pd.DataFrame:
 
 @log
 def list_storage_account_files(
-    storage_account: str, container: Optional[str] = "power-bi-backup"
+    storage_account: str, container: str = "power-bi-backup"
 ) -> pd.DataFrame:
     """
     Shows a list of files within an ADLS Gen2 storage account.

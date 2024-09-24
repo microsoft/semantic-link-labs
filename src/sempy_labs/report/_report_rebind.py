@@ -30,10 +30,6 @@ def report_rebind(
         The name of the Fabric workspace in which the semantic model resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-
     """
 
     if report_workspace is None:

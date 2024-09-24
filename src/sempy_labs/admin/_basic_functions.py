@@ -386,7 +386,9 @@ def revoke_external_data_share(
     )
 
 
-def list_capacities_delegated_tenant_settings(return_dataframe: Optional[bool] = True) -> Optional[pd.Dataframe | dict]:
+def list_capacities_delegated_tenant_settings(
+    return_dataframe: Optional[bool] = True,
+) -> Optional[pd.DataFrame | dict]:
     """
     Returns list of tenant setting overrides that override at the capacities.
 
@@ -758,7 +760,9 @@ def list_items(
         dfC = list_capacities()
         dfC_filt = dfC[dfC["Capacity Name"] == capacity_name]
         if len(dfC_filt) == 0:
-            raise ValueError(f"{icons.red_dot} The '{capacity_name}' capacity does not exist.")
+            raise ValueError(
+                f"{icons.red_dot} The '{capacity_name}' capacity does not exist."
+            )
         capacity_id = dfC_filt["Capacity Id"].iloc[0]
         url += f"capacityId={capacity_id}&"
     if state is not None:

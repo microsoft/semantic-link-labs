@@ -3,7 +3,7 @@ from typing import Optional, List
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
-from sempy_labs._list_functions import assign_workspace_to_capacity
+from sempy_labs._workspaces import assign_workspace_to_capacity
 from sempy_labs.admin._basic_functions import (
     assign_workspaces_to_capacity,
     _list_capacities_meta,
@@ -115,8 +115,8 @@ def migrate_capacities(
     key_vault_client_secret: str,
     resource_group: str | dict,
     capacities: Optional[str | List[str]] = None,
-    use_existing_rg_for_A_sku: Optional[bool] = True,
-    p_sku_only: Optional[bool] = True,
+    use_existing_rg_for_A_sku: bool = True,
+    p_sku_only: bool = True,
 ):
     """
     This function creates new Fabric capacities for given A or P sku capacities and reassigns their workspaces to the newly created capacity.

@@ -2,7 +2,6 @@ import sempy.fabric as fabric
 import pandas as pd
 from sempy.fabric.exceptions import FabricHTTPException
 from typing import Optional
-import sempy_labs._icons as icons
 from sempy_labs._helper_functions import pagination
 
 
@@ -126,9 +125,9 @@ def list_item_connections(
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    respnoses = pagination(client, response)
+    responses = pagination(client, response)
 
-    for r in respnoses:
+    for r in responses:
         for v in r.get("value", []):
             new_data = {
                 "Connection Name": v.get("displayName"),

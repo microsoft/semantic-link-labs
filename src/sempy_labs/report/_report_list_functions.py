@@ -69,7 +69,7 @@ def _list_all_report_semantic_model_objects(
     -------
     pandas.DataFrame
         A pandas dataframe.
-    """    
+    """
 
     dfR = list_reports_using_semantic_model(dataset=dataset, workspace=workspace)
     dfs = []

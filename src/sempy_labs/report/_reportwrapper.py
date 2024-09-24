@@ -19,6 +19,7 @@ import sempy_labs._icons as icons
 import sempy_labs.report._report_helper as helper
 from sempy_labs._model_dependencies import get_measure_dependencies
 from jsonpath_ng.ext import parse
+import warnings
 
 
 class ReportWrapper:
@@ -34,6 +35,8 @@ class ReportWrapper:
     ):
 
         from sempy_labs.report import get_report_definition
+
+        warnings.simplefilter(action="ignore", category=FutureWarning)
 
         self._report = report
         self._workspace = workspace
@@ -129,7 +132,7 @@ class ReportWrapper:
 
         return y
 
-    def get_theme(self, theme_type: Optional[str] = "baseTheme") -> dict:
+    def get_theme(self, theme_type: str = "baseTheme") -> dict:
         """
         Obtains
 
@@ -214,7 +217,7 @@ class ReportWrapper:
 
         return df
 
-    def list_report_filters(self, extended: Optional[bool] = False) -> pd.DataFrame:
+    def list_report_filters(self, extended: bool = False) -> pd.DataFrame:
         """
         Shows a list of all report filters used in the report.
 
@@ -284,7 +287,7 @@ class ReportWrapper:
 
         return df
 
-    def list_page_filters(self, extended: Optional[bool] = False) -> pd.DataFrame:
+    def list_page_filters(self, extended: bool = False) -> pd.DataFrame:
         """
         Shows a list of all page filters used in the report.
 
@@ -371,7 +374,7 @@ class ReportWrapper:
 
         return df
 
-    def list_visual_filters(self, extended: Optional[bool] = False) -> pd.DataFrame:
+    def list_visual_filters(self, extended: bool = False) -> pd.DataFrame:
         """
         Shows a list of all visual filters used in the report.
 
@@ -869,7 +872,7 @@ class ReportWrapper:
 
         return df
 
-    def list_visual_objects(self, extended: Optional[bool] = False) -> pd.DataFrame:
+    def list_visual_objects(self, extended: bool = False) -> pd.DataFrame:
         """
         Shows a list of all semantic model objects used in each visual in the report.
 
@@ -1014,9 +1017,7 @@ class ReportWrapper:
 
         return df
 
-    def list_semantic_model_objects(
-        self, extended: Optional[bool] = False
-    ) -> pd.DataFrame:
+    def list_semantic_model_objects(self, extended: bool = False) -> pd.DataFrame:
         """
         Shows a list of all semantic model objects (measures, columns, hierarchies) that are used in the report and where the objects
         were used (i.e. visual, report filter, page filter, visual filter).
