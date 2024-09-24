@@ -298,7 +298,9 @@ def delete_custom_pool(pool_name: str, workspace: Optional[str] = None):
     )
 
 
-def get_spark_settings(workspace: Optional[str] = None) -> pd.DataFrame:
+def get_spark_settings(
+    workspace: Optional[str] = None, return_dataframe: Optional[bool] = True
+) -> pd.DataFrame | dict:
     """
     Shows the spark settings for a workspace.
 
@@ -308,10 +310,12 @@ def get_spark_settings(workspace: Optional[str] = None) -> pd.DataFrame:
         The name of the Fabric workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    return_dataframe : bool, default=True
+        If True, returns a pandas dataframe. If False, returns a json dictionary.
 
     Returns
     -------
-    pandas.DataFrame
+    pandas.DataFrame | dict
         A pandas dataframe showing the spark settings for a workspace.
     """
 
@@ -368,7 +372,10 @@ def get_spark_settings(workspace: Optional[str] = None) -> pd.DataFrame:
     df[bool_cols] = df[bool_cols].astype(bool)
     # df[int_cols] = df[int_cols].astype(int)
 
-    return df
+    if return_dataframe:
+        return df
+    else:
+        return response.json()
 
 
 def update_spark_settings(
@@ -420,38 +427,26 @@ def update_spark_settings(
     # https://learn.microsoft.com/en-us/rest/api/fabric/spark/workspace-settings/update-spark-settings?tabs=HTTP
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    dfS = get_spark_settings(workspace=workspace)
+    request_body = get_spark_settings(workspace=workspace, return_dataframe=False)
 
-    if automatic_log_enabled is None:
-        automatic_log_enabled = bool(dfS["Automatic Log Enabled"].iloc[0])
-    if high_concurrency_enabled is None:
-        high_concurrency_enabled = bool(dfS["High Concurrency Enabled"].iloc[0])
-    if customize_compute_enabled is None:
-        customize_compute_enabled = bool(dfS["Customize Compute Enabled"].iloc[0])
-    if default_pool_name is None:
-        default_pool_name = dfS["Default Pool Name"].iloc[0]
-    if max_node_count is None:
-        max_node_count = int(dfS["Max Node Count"].iloc[0])
-    if max_executors is None:
-        max_executors = int(dfS["Max Executors"].iloc[0])
-    if environment_name is None:
-        environment_name = dfS["Environment Name"].iloc[0]
-    if runtime_version is None:
-        runtime_version = dfS["Runtime Version"].iloc[0]
-
-    request_body = {
-        "automaticLog": {"enabled": automatic_log_enabled},
-        "highConcurrency": {"notebookInteractiveRunEnabled": high_concurrency_enabled},
-        "pool": {
-            "customizeComputeEnabled": customize_compute_enabled,
-            "defaultPool": {"name": default_pool_name, "type": "Workspace"},
-            "starterPool": {
-                "maxNodeCount": max_node_count,
-                "maxExecutors": max_executors,
-            },
-        },
-        "environment": {"name": environment_name, "runtimeVersion": runtime_version},
-    }
+    if automatic_log_enabled is not None:
+        request_body["automaticLog"]["enabled"] = automatic_log_enabled
+    if high_concurrency_enabled is not None:
+        request_body["highConcurrency"][
+            "notebookInteractiveRunEnabled"
+        ] = high_concurrency_enabled
+    if customize_compute_enabled is not None:
+        request_body["pool"]["customizeComputeEnabled"] = customize_compute_enabled
+    if default_pool_name is not None:
+        request_body["pool"]["defaultPool"]["name"] = default_pool_name
+    if max_node_count is not None:
+        request_body["pool"]["starterPool"]["maxNodeCount"] = max_node_count
+    if max_executors is not None:
+        request_body["pool"]["starterPool"]["maxExecutors"] = max_executors
+    if environment_name is not None:
+        request_body["environment"]["name"] = environment_name
+    if runtime_version is not None:
+        request_body["environment"]["runtimeVersion"] = runtime_version
 
     client = fabric.FabricRestClient()
     response = client.patch(

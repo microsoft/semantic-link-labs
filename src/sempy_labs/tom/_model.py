@@ -1640,7 +1640,7 @@ class TOMWrapper:
 
     def remove_object(self, object):
         """
-        Removes an object from a semantic model.
+        Removes an object from a semantic model. 
 
         Parameters
         ----------
@@ -1652,13 +1652,13 @@ class TOMWrapper:
         objType = object.ObjectType
 
         # Have to remove translations and perspectives on the object before removing it.
-        if objType in ["Table", "Column", "Measure", "Hierarchy", "Level"]:
+        if objType in [TOM.ObjectType.Table, TOM.ObjectType.Column, TOM.ObjectType.Measure, TOM.ObjectType.Hierarchy, TOM.ObjectType.Level]:
             for lang in object.Model.Cultures:
                 try:
                     self.remove_translation(object=object, language=lang.Name)
                 except Exception:
                     pass
-        if objType in ["Table", "Column", "Measure", "Hierarchy"]:
+        if objType in [TOM.ObjectType.Table, TOM.ObjectType.Column, TOM.ObjectType.Measure, TOM.ObjectType.Hierarchy, TOM.ObjectType.Level]:
             for persp in object.Model.Perspectives:
                 try:
                     self.remove_from_perspective(
@@ -4003,7 +4003,7 @@ class TOMWrapper:
         import Microsoft.AnalysisServices.Tabular as TOM
         import System
 
-        c = self.model.Tables[table_name].Measures[column_name]
+        c = self.model.Tables[table_name].Columns[column_name]
         if c.Type == TOM.ColumnType.Data:
             if source_column is not None:
                 c.SourceColumn = source_column

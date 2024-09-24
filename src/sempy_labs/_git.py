@@ -132,19 +132,18 @@ def get_git_status(workspace: Optional[str] = None) -> pd.DataFrame:
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/git/status")
 
-    if response not in [200, 202]:
+    if response.status_code not in [200, 202]:
         raise FabricHTTPException(response)
 
     result = lro(client, response).json()
 
-    for v in result.get("value", []):
-        changes = v.get("changes", [])
+    for changes in result.get("changes", []):
         item_metadata = changes.get("itemMetadata", {})
         item_identifier = item_metadata.get("itemIdentifier", {})
 
         new_data = {
-            "Workspace Head": v.get("workspaceHead"),
-            "Remote Commit Hash": v.get("remoteCommitHash"),
+            "Workspace Head": result.get("workspaceHead"),
+            "Remote Commit Hash": result.get("remoteCommitHash"),
             "Object ID": item_identifier.get("objectId"),
             "Logical ID": item_identifier.get("logicalId"),
             "Item Type": item_metadata.get("itemType"),
@@ -199,21 +198,21 @@ def get_git_connection(workspace: Optional[str] = None) -> pd.DataFrame:
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    for v in response.json().get("value", []):
-        provider_details = v.get("gitProviderDetails", {})
-        sync_details = v.get("gitSyncDetails", {})
-        new_data = {
-            "Organization Name": provider_details.get("organizationName"),
-            "Project Name": provider_details.get("projectName"),
-            "Git Provider Type": provider_details.get("gitProviderType"),
-            "Repository Name": provider_details.get("repositoryName"),
-            "Branch Name": provider_details.get("branchName"),
-            "Directory Name": provider_details.get("directoryName"),
-            "Workspace Head": sync_details.get("head"),
-            "Last Sync Time": sync_details.get("lastSyncTime"),
-            "Git Conneciton State": v.get("gitConnectionState"),
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    r = response.json()
+    provider_details = r.get("gitProviderDetails", {})
+    sync_details = r.get("gitSyncDetails", {})
+    new_data = {
+        "Organization Name": provider_details.get("organizationName"),
+        "Project Name": provider_details.get("projectName"),
+        "Git Provider Type": provider_details.get("gitProviderType"),
+        "Repository Name": provider_details.get("repositoryName"),
+        "Branch Name": provider_details.get("branchName"),
+        "Directory Name": provider_details.get("directoryName"),
+        "Workspace Head": sync_details.get("head"),
+        "Last Sync Time": sync_details.get("lastSyncTime"),
+        "Git Connection State": r.get("gitConnectionState"),
+    }
+    df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
 
@@ -237,7 +236,7 @@ def initialize_git_connection(workspace: Optional[str] = None):
     client = fabric.FabricRestClient()
     response = client.post(f"/v1/workspaces/{workspace_id}/git/initializeConnection")
 
-    if response not in [200, 202]:
+    if response.status_code not in [200, 202]:
         raise FabricHTTPException(response)
 
     lro(client, response)

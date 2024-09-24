@@ -339,7 +339,6 @@ def list_qso_settings(
     if dataset is not None:
         dataset_id = resolve_dataset_id(dataset, workspace)
 
-    workspace_id = fabric.get_workspace_id()
     df = pd.DataFrame(
         columns=[
             "Dataset Id",
