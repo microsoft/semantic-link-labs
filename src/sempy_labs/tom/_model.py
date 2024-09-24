@@ -1640,7 +1640,7 @@ class TOMWrapper:
 
     def remove_object(self, object):
         """
-        Removes an object from a semantic model.
+        Removes an object from a semantic model. 
 
         Parameters
         ----------
