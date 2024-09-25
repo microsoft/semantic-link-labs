@@ -390,7 +390,7 @@ def save_as_delta_table(
     dataframe,
     delta_table_name: str,
     write_mode: str,
-    merge_schema: Optional[bool] = False,
+    merge_schema: bool = False,
     schema: Optional[dict] = None,
     lakehouse: Optional[str] = None,
     workspace: Optional[str] = None,
@@ -869,7 +869,7 @@ def lro(
     response,
     status_codes: Optional[List[str]] = [200, 202],
     sleep_time: Optional[int] = 1,
-    return_status_code: Optional[bool] = False,
+    return_status_code: bool = False,
 ):
 
     if response.status_code not in status_codes:
@@ -943,7 +943,7 @@ class FabricTokenCredential(TokenCredential):
         scopes: str,
         claims: Optional[str] = None,
         tenant_id: Optional[str] = None,
-        enable_cae: Optional[bool] = False,
+        enable_cae: bool = False,
         **kwargs: any,
     ) -> AccessToken:
 

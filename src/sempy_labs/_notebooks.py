@@ -13,7 +13,7 @@ from sempy.fabric.exceptions import FabricHTTPException
 
 
 def get_notebook_definition(
-    notebook_name: str, workspace: Optional[str] = None, decode: Optional[bool] = True
+    notebook_name: str, workspace: Optional[str] = None, decode: bool = True
 ) -> str:
     """
     Obtains the notebook definition.

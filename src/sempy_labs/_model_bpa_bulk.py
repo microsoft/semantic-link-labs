@@ -18,7 +18,7 @@ import sempy_labs._icons as icons
 @log
 def run_model_bpa_bulk(
     rules: Optional[pd.DataFrame] = None,
-    extended: Optional[bool] = False,
+    extended: bool = False,
     language: Optional[str] = None,
     workspace: Optional[str | List[str]] = None,
     skip_models: Optional[str | List[str]] = ["ModelBPA", "Fabric Capacity Metrics"],

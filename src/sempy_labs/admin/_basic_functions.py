@@ -390,7 +390,7 @@ def revoke_external_data_share(
 
 
 def list_capacities_delegated_tenant_settings(
-    return_dataframe: Optional[bool] = True,
+    return_dataframe: bool = True,
 ) -> Optional[pd.DataFrame | dict]:
     """
     Returns list of tenant setting overrides that override at the capacities.
@@ -480,11 +480,11 @@ def list_capacities_delegated_tenant_settings(
 
 
 def scan_workspaces(
-    data_source_details: Optional[bool] = False,
-    dataset_schema: Optional[bool] = False,
-    dataset_expressions: Optional[bool] = False,
-    lineage: Optional[bool] = False,
-    artifact_users: Optional[bool] = False,
+    data_source_details: bool = False,
+    dataset_schema: bool = False,
+    dataset_expressions: bool = False,
+    lineage: bool = False,
+    artifact_users: bool = False,
     workspace: Optional[str | List[str]] = None,
 ) -> dict:
 
@@ -735,7 +735,6 @@ def list_access_entities(
 def list_workspace_access_details(
     workspace: Optional[Union[str, UUID]] = None
 ) -> pd.DataFrame:
-    
     """
     Shows a list of users (including groups and Service Principals) that have access to the specified workspace.
 
@@ -792,7 +791,6 @@ def list_items(
     state: Optional[str] = None,
     type: Optional[str] = None,
 ) -> pd.DataFrame:
-
     """
     Shows a list of active Fabric and PowerBI items.
 
@@ -816,7 +814,7 @@ def list_items(
     """
 
     # https://learn.microsoft.com/en-us/rest/api/fabric/admin/items/list-items?tabs=HTTP
-    
+
     url = "/v1/admin/items?"
 
     df = pd.DataFrame(

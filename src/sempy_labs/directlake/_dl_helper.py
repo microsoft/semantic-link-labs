@@ -73,8 +73,8 @@ def generate_direct_lake_semantic_model(
     workspace: Optional[str] = None,
     lakehouse: Optional[str] = None,
     lakehouse_workspace: Optional[str] = None,
-    overwrite: Optional[bool] = False,
-    refresh: Optional[bool] = True,
+    overwrite: bool = False,
+    refresh: bool = True,
 ):
     """
     Dynamically generates a Direct Lake semantic model based on tables in a Fabric lakehouse.

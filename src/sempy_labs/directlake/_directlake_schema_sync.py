@@ -12,7 +12,7 @@ import sempy_labs._icons as icons
 def direct_lake_schema_sync(
     dataset: str,
     workspace: Optional[str] = None,
-    add_to_model: Optional[bool] = False,
+    add_to_model: bool = False,
     **kwargs,
 ):
     """

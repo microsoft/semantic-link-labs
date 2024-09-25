@@ -314,7 +314,7 @@ def update_from_git(
     remote_commit_hash: str,
     conflict_resolution_policy: str,
     workspace_head: Optional[str] = None,
-    allow_override: Optional[bool] = False,
+    allow_override: bool = False,
     workspace: Optional[str] = None,
 ):
     """

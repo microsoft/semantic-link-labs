@@ -22,8 +22,8 @@ def run_report_bpa(
     rules: Optional[pd.DataFrame] = None,
     workspace: Optional[str] = None,
     # language: Optional[str] = None,
-    export: Optional[bool] = False,
-    return_dataframe: Optional[bool] = False,
+    export: bool = False,
+    return_dataframe: bool = False,
 ):
     """
     Displays an HTML visualization of the results of the Best Practice Analyzer scan for a report.

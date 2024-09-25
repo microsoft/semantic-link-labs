@@ -226,7 +226,7 @@ class TOMWrapper:
         measure_name: str,
         expression: str,
         format_string: Optional[str] = None,
-        hidden: Optional[bool] = False,
+        hidden: bool = False,
         description: Optional[str] = None,
         display_folder: Optional[str] = None,
         format_string_expression: Optional[str] = None,
@@ -301,11 +301,11 @@ class TOMWrapper:
         source_column: str,
         data_type: str,
         format_string: Optional[str] = None,
-        hidden: Optional[bool] = False,
+        hidden: bool = False,
         description: Optional[str] = None,
         display_folder: Optional[str] = None,
         data_category: Optional[str] = None,
-        key: Optional[bool] = False,
+        key: bool = False,
         summarize_by: Optional[str] = None,
         lineage_tag: Optional[str] = None,
         source_lineage_tag: Optional[str] = None,
@@ -387,11 +387,11 @@ class TOMWrapper:
         source_column: str,
         data_type: str,
         format_string: Optional[str] = None,
-        hidden: Optional[bool] = False,
+        hidden: bool = False,
         description: Optional[str] = None,
         display_folder: Optional[str] = None,
         data_category: Optional[str] = None,
-        key: Optional[bool] = False,
+        key: bool = False,
         summarize_by: Optional[str] = None,
         lineage_tag: Optional[str] = None,
         source_lineage_tag: Optional[str] = None,
@@ -473,11 +473,11 @@ class TOMWrapper:
         expression: str,
         data_type: str,
         format_string: Optional[str] = None,
-        hidden: Optional[bool] = False,
+        hidden: bool = False,
         description: Optional[str] = None,
         display_folder: Optional[str] = None,
         data_category: Optional[str] = None,
-        key: Optional[bool] = False,
+        key: bool = False,
         summarize_by: Optional[str] = None,
         lineage_tag: Optional[str] = None,
         source_lineage_tag: Optional[str] = None,
@@ -708,7 +708,7 @@ class TOMWrapper:
         columns: List[str],
         levels: Optional[List[str]] = None,
         hierarchy_description: Optional[str] = None,
-        hierarchy_hidden: Optional[bool] = False,
+        hierarchy_hidden: bool = False,
         lineage_tag: Optional[str] = None,
         source_lineage_tag: Optional[str] = None,
     ):
@@ -781,9 +781,9 @@ class TOMWrapper:
         from_cardinality: str,
         to_cardinality: str,
         cross_filtering_behavior: Optional[str] = None,
-        is_active: Optional[bool] = True,
+        is_active: bool = True,
         security_filtering_behavior: Optional[str] = None,
-        rely_on_referential_integrity: Optional[bool] = False,
+        rely_on_referential_integrity: bool = False,
     ):
         """
         Adds a `relationship <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.singlecolumnrelationship?view=analysisservices-dotnet>`_ to a semantic model.
@@ -855,7 +855,7 @@ class TOMWrapper:
         name: str,
         precedence: int,
         description: Optional[str] = None,
-        hidden: Optional[bool] = False,
+        hidden: bool = False,
     ):
         """
         Adds a `calculation group <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculationgroup?view=analysisservices-dotnet>`_ to a semantic model.
@@ -2483,7 +2483,7 @@ class TOMWrapper:
             )
 
     def set_is_available_in_mdx(
-        self, table_name: str, column_name: str, value: Optional[bool] = False
+        self, table_name: str, column_name: str, value: bool = False
     ):
         """
         Sets the `IsAvailableInMDX <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.column.isavailableinmdx?view=analysisservices-dotnet#microsoft-analysisservices-tabular-column-isavailableinmdx>`_ property on a column.
@@ -2586,7 +2586,7 @@ class TOMWrapper:
         name: str,
         description: Optional[str] = None,
         data_category: Optional[str] = None,
-        hidden: Optional[bool] = False,
+        hidden: bool = False,
         lineage_tag: Optional[str] = None,
         source_lineage_tag: Optional[str] = None,
     ):
@@ -2629,9 +2629,9 @@ class TOMWrapper:
         expression: str,
         description: Optional[str] = None,
         data_category: Optional[str] = None,
-        hidden: Optional[bool] = False,
-        lineage_tag: Optional[bool] = None,
-        source_lineage_tag: Optional[bool] = None,
+        hidden: bool = False,
+        lineage_tag: Optional[str] = None,
+        source_lineage_tag: Optional[str] = None,
     ):
         """
         Adds a calculated table to the semantic model.
@@ -3378,7 +3378,7 @@ class TOMWrapper:
         incremental_periods: int,
         rolling_window_granularity: str,
         rolling_window_periods: int,
-        only_refresh_complete_days: Optional[bool] = False,
+        only_refresh_complete_days: bool = False,
         detect_data_changes_column: Optional[str] = None,
     ):
         """
@@ -3483,7 +3483,7 @@ class TOMWrapper:
         incremental_periods: int,
         rolling_window_granularity: str,
         rolling_window_periods: int,
-        only_refresh_complete_days: Optional[bool] = False,
+        only_refresh_complete_days: bool = False,
         detect_data_changes_column: Optional[str] = None,
     ):
         """
@@ -3652,7 +3652,7 @@ class TOMWrapper:
         self,
         table_name: str,
         effective_date: Optional[datetime] = None,
-        refresh: Optional[bool] = True,
+        refresh: bool = True,
         max_parallelism: Optional[int] = 0,
     ):
         """
@@ -3905,7 +3905,7 @@ class TOMWrapper:
         measure_name: str,
         expression: Optional[str] = None,
         format_string: Optional[str] = None,
-        hidden: Optional[bool] = None,
+        hidden: bool = None,
         description: Optional[str] = None,
         display_folder: Optional[str] = None,
         format_string_expression: Optional[str] = None,
@@ -3964,11 +3964,11 @@ class TOMWrapper:
         data_type: Optional[str] = None,
         expression: Optional[str] = None,
         format_string: Optional[str] = None,
-        hidden: Optional[bool] = None,
+        hidden: bool = None,
         description: Optional[str] = None,
         display_folder: Optional[str] = None,
         data_category: Optional[str] = None,
-        key: Optional[bool] = None,
+        key: bool = None,
         summarize_by: Optional[str] = None,
     ):
         """

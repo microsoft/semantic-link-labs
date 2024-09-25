@@ -3,7 +3,6 @@ import pandas as pd
 import warnings
 import datetime
 from IPython.display import display, HTML
-from pyspark.sql import SparkSession
 from sempy_labs._model_dependencies import get_model_calc_dependencies
 from sempy_labs._helper_functions import (
     format_dax_object_name,
@@ -14,7 +13,10 @@ from sempy_labs._helper_functions import (
     resolve_dataset_id,
     get_language_codes,
 )
-from sempy_labs.lakehouse import get_lakehouse_tables, lakehouse_attached
+from sempy_labs.lakehouse import (
+    get_lakehouse_tables,
+    lakehouse_attached
+)
 from sempy_labs.tom import connect_semantic_model
 from sempy_labs._model_bpa_rules import model_bpa_rules
 from typing import Optional
@@ -23,6 +25,7 @@ import sempy_labs._icons as icons
 from pyspark.sql.functions import col, flatten
 from pyspark.sql.types import StructType, StructField, StringType
 import os
+import duckdb
 
 
 @log
@@ -30,9 +33,9 @@ def run_model_bpa(
     dataset: str,
     rules: Optional[pd.DataFrame] = None,
     workspace: Optional[str] = None,
-    export: Optional[bool] = False,
-    return_dataframe: Optional[bool] = False,
-    extended: Optional[bool] = False,
+    export: bool = False,
+    return_dataframe: bool = False,
+    extended: bool = False,
     language: Optional[str] = None,
     **kwargs,
 ):
@@ -151,6 +154,7 @@ def run_model_bpa(
             def translate_using_spark(rule_file):
 
                 from synapse.ml.services import Translate
+                from pyspark.sql import SparkSession
 
                 rules_temp = rule_file.copy()
                 rules_temp = rules_temp.drop(["Expression", "URL", "Severity"], axis=1)
@@ -346,15 +350,14 @@ def run_model_bpa(
 
         dfExport["Severity"].replace(icons.severity_mapping, inplace=True)
 
-        spark = SparkSession.builder.getOrCreate()
-        query = f"SELECT MAX(RunId) FROM {lakehouse}.{delta_table_name}"
-
         if len(lakeT_filt) == 0:
             runId = 1
         else:
-            dfSpark = spark.sql(query)
-            maxRunId = dfSpark.collect()[0][0]
-            runId = maxRunId + 1
+            x = duckdb.sql(
+                f"""SELECT max(RunId) as max_run_id FROM delta_scan('/lakehouse/default/Tables/{delta_table_name}/')  """
+            ).fetchall()
+            max_run_id = x[0][0]
+            runId = max_run_id + 1
 
         now = datetime.datetime.now()
         dfD = fabric.list_datasets(workspace=workspace, mode="rest")

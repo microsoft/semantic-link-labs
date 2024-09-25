@@ -24,9 +24,9 @@ from sempy.fabric.exceptions import FabricHTTPException
 def get_lakehouse_tables(
     lakehouse: Optional[str] = None,
     workspace: Optional[str] = None,
-    extended: Optional[bool] = False,
-    count_rows: Optional[bool] = False,
-    export: Optional[bool] = False,
+    extended: bool = False,
+    count_rows: bool = False,
+    export: bool = False,
 ) -> pd.DataFrame:
     """
     Shows the tables of a lakehouse and their respective properties. Option to include additional properties relevant to Direct Lake guardrails.

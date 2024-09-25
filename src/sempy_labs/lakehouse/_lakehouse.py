@@ -1,9 +1,7 @@
 import sempy.fabric as fabric
 from tqdm.auto import tqdm
-from pyspark.sql import SparkSession
 from sempy_labs._helper_functions import resolve_lakehouse_name
 from typing import List, Optional, Union
-import sempy_labs._icons as icons
 from sempy._utils._log import log
 
 
@@ -16,7 +14,7 @@ def lakehouse_attached() -> bool:
     bool
         Returns True if a lakehouse is attached to the notebook.
     """
-
+    from pyspark.sql import SparkSession
     spark = SparkSession.builder.getOrCreate()
     lakeId = spark.conf.get("trident.lakehouse.id")
 
@@ -49,6 +47,7 @@ def optimize_lakehouse_tables(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
+    from pyspark.sql import SparkSession
     from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
     from delta import DeltaTable
 
@@ -107,6 +106,7 @@ def vacuum_lakehouse_tables(
         The default retention period is 168 hours (7 days) unless manually configured via table properties.
     """
 
+    from pyspark.sql import SparkSession
     from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
     from delta import DeltaTable
 

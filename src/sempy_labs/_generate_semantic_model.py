@@ -20,7 +20,7 @@ def create_blank_semantic_model(
     dataset: str,
     compatibility_level: int = 1605,
     workspace: Optional[str] = None,
-    overwrite: Optional[bool] = True,
+    overwrite: bool = True,
 ):
     """
     Creates a new blank semantic model (no tables/columns etc.).
@@ -212,8 +212,8 @@ def deploy_semantic_model(
     source_workspace: Optional[str] = None,
     target_dataset: Optional[str] = None,
     target_workspace: Optional[str] = None,
-    refresh_target_dataset: Optional[bool] = True,
-    overwrite: Optional[bool] = False,
+    refresh_target_dataset: bool = True,
+    overwrite: bool = False,
 ):
     """
     Deploys a semantic model based on an existing semantic model.

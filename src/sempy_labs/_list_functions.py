@@ -83,7 +83,7 @@ def get_object_level_security(
 
 
 def list_tables(
-    dataset: str, workspace: Optional[str] = None, extended: Optional[bool] = False
+    dataset: str, workspace: Optional[str] = None, extended: bool = False
 ) -> pd.DataFrame:
     """
     Shows a semantic model's tables and their properties.
@@ -1263,7 +1263,7 @@ def update_item(
 
 
 def list_relationships(
-    dataset: str, workspace: Optional[str] = None, extended: Optional[bool] = False
+    dataset: str, workspace: Optional[str] = None, extended: bool = False
 ) -> pd.DataFrame:
     """
     Shows a semantic model's relationships and their properties.
@@ -1774,7 +1774,7 @@ def list_reports_using_semantic_model(
 
 
 def list_report_semantic_model_objects(
-    dataset: str, workspace: Optional[str] = None, extended: Optional[bool] = False
+    dataset: str, workspace: Optional[str] = None, extended: bool = False
 ) -> pd.DataFrame:
     """
     Shows a list of semantic model objects (i.e. columns, measures, hierarchies) used in all reports which feed data from
@@ -1868,8 +1868,8 @@ def list_report_semantic_model_objects(
 def list_semantic_model_object_report_usage(
     dataset: str,
     workspace: Optional[str] = None,
-    include_dependencies: Optional[bool] = False,
-    extended: Optional[bool] = False,
+    include_dependencies: bool = False,
+    extended: bool = False,
 ) -> pd.DataFrame:
     """
     Shows a list of semantic model objects and how many times they are referenced in all reports which rely on this semantic model.
