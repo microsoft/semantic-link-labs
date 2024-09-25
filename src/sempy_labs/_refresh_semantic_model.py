@@ -74,18 +74,9 @@ def refresh_semantic_model(
         refresh_type.lower().replace("only", "Only").replace("values", "Values")
     )
 
-    refreshTypes = [
-        "full",
-        "automatic",
-        "dataOnly",
-        "calculate",
-        "clearValues",
-        "defragment",
-    ]
-
-    if refresh_type not in refreshTypes:
+    if refresh_type not in icons.refreshTypes:
         raise ValueError(
-            f"{icons.red_dot} Invalid refresh type. Refresh type must be one of these values: {refreshTypes}."
+            f"{icons.red_dot} Invalid refresh type. Refresh type must be one of these values: {icons.refreshTypes}."
         )
 
     if len(objects) == 0:

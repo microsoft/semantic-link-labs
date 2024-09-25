@@ -8,7 +8,6 @@ from sempy_labs._helper_functions import (
     lro,
     resolve_item_type,
     format_dax_object_name,
-    pagination,
 )
 import pandas as pd
 from typing import Optional
@@ -802,7 +801,7 @@ def list_sqlendpoints(workspace: Optional[str] = None) -> pd.DataFrame:
     return df
 
 
-def list_mirroredwarehouses(workspace: Optional[str] = None) -> pd.DataFrame:
+def list_mirrored_warehouses(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the mirrored warehouses within a workspace.
 
@@ -845,7 +844,7 @@ def list_mirroredwarehouses(workspace: Optional[str] = None) -> pd.DataFrame:
     return df
 
 
-def list_kqldatabases(workspace: Optional[str] = None) -> pd.DataFrame:
+def list_kql_databases(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the KQL databases within a workspace.
 
@@ -901,7 +900,7 @@ def list_kqldatabases(workspace: Optional[str] = None) -> pd.DataFrame:
     return df
 
 
-def list_kqlquerysets(workspace: Optional[str] = None) -> pd.DataFrame:
+def list_kql_querysets(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the KQL Querysets within a workspace.
 
@@ -942,7 +941,7 @@ def list_kqlquerysets(workspace: Optional[str] = None) -> pd.DataFrame:
     return df
 
 
-def list_mlmodels(workspace: Optional[str] = None) -> pd.DataFrame:
+def list_ml_models(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the ML models within a workspace.
 
@@ -1066,7 +1065,7 @@ def list_datapipelines(workspace: Optional[str] = None) -> pd.DataFrame:
     return df
 
 
-def list_mlexperiments(workspace: Optional[str] = None) -> pd.DataFrame:
+def list_ml_experiments(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the ML experiments within a workspace.
 
@@ -1687,9 +1686,6 @@ def list_shortcuts(
 def list_capacities() -> pd.DataFrame:
     """
     Shows the capacities and their properties.
-
-    Parameters
-    ----------
 
     Returns
     -------

@@ -3,7 +3,10 @@ from typing import Optional, List, Union
 from uuid import UUID
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
-from sempy_labs._helper_functions import resolve_workspace_name_and_id, pagination
+from sempy_labs._helper_functions import (
+    resolve_workspace_name_and_id,
+    pagination,
+)
 import datetime
 import numpy as np
 import pandas as pd
@@ -519,6 +522,16 @@ def scan_workspaces(
 
 
 def list_datasets() -> pd.DataFrame:
+    """
+    Shows a list of datasets for the organization.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of datasets for the organization.
+    """
+
+    # https://learn.microsoft.com/en-us/rest/api/power-bi/admin/datasets-get-datasets-as-admin
 
     df = pd.DataFrame(
         columns=[
@@ -544,8 +557,7 @@ def list_datasets() -> pd.DataFrame:
         ]
     )
 
-    client = fabric.FabricRestClient()
-
+    client = fabric.PowerBIRestClient()
     response = client.get("/v1.0/myorg/admin/datasets")
 
     if response.status_code != 200:
@@ -600,6 +612,25 @@ def list_datasets() -> pd.DataFrame:
 def list_item_access_details(
     item_name: str, type: str, workspace: Optional[str] = None
 ) -> pd.DataFrame:
+    """
+    Returns a list of users (including groups and service principals) and lists their workspace roles.
+
+    Parameters
+    ----------
+    item_name : str
+        Name of the Fabric item.
+    type : str
+        Type of Fabric item.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of users (including groups and service principals) and lists their workspace roles.
+    """
 
     # https://learn.microsoft.com/en-us/rest/api/fabric/admin/items/list-item-access-details?tabs=HTTP
 
@@ -652,6 +683,19 @@ def list_item_access_details(
 def list_access_entities(
     user_email_address: str,
 ) -> pd.DataFrame:
+    """
+    Shows a list of permission details for Fabric and PowerBI items the specified user can access.
+
+    Parameters
+    ----------
+    user_email_address : str
+        The user's email address.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of permission details for Fabric and PowerBI items the specified user can access.
+    """
 
     # https://learn.microsoft.com/en-us/rest/api/fabric/admin/users/list-access-entities?tabs=HTTP
 
@@ -691,8 +735,24 @@ def list_access_entities(
 def list_workspace_access_details(
     workspace: Optional[Union[str, UUID]] = None
 ) -> pd.DataFrame:
+    
+    """
+    Shows a list of users (including groups and Service Principals) that have access to the specified workspace.
 
-    # https://learn.microsoft.com/en-us/rest/api/fabric/admin/items/list-items?tabs=HTTP
+    Parameters
+    ----------
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of users (including groups and Service Principals) that have access to the specified workspace.
+    """
+
+    # https://learn.microsoft.com/en-us/rest/api/fabric/admin/workspaces/list-workspace-access-details?tabs=HTTP
 
     workspace_name = fabric.resolve_workspace_name(workspace)
     workspace_id = fabric.resolve_workspace_id(workspace_name)
@@ -733,6 +793,30 @@ def list_items(
     type: Optional[str] = None,
 ) -> pd.DataFrame:
 
+    """
+    Shows a list of active Fabric and PowerBI items.
+
+    Parameters
+    ----------
+    capacity_name : str, default=None
+        The capacity name.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    state : str, default=None
+        The item state.
+    type : str, default=None
+        The item type.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of active Fabric and Power BI items.
+    """
+
+    # https://learn.microsoft.com/en-us/rest/api/fabric/admin/items/list-items?tabs=HTTP
+    
     url = "/v1/admin/items?"
 
     df = pd.DataFrame(

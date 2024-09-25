@@ -14,7 +14,7 @@ from sempy.fabric.exceptions import FabricHTTPException
 
 def get_notebook_definition(
     notebook_name: str, workspace: Optional[str] = None, decode: Optional[bool] = True
-):
+) -> str:
     """
     Obtains the notebook definition.
 
@@ -32,7 +32,7 @@ def get_notebook_definition(
 
     Returns
     -------
-    ipynb
+    str
         The notebook definition.
     """
 
@@ -90,9 +90,6 @@ def import_notebook_from_web(
         The name of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
