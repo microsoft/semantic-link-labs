@@ -1,3 +1,9 @@
+from sempy_labs._kql_databases import (
+    list_kql_databases,
+    create_kql_database,
+    delete_kql_database,
+)
+from sempy_labs._mirrored_warehouses import list_mirrored_warehouses
 from sempy_labs._environments import (
     create_environment,
     delete_environment,
@@ -114,10 +120,8 @@ from sempy_labs._list_functions import (
     # list_datapipelines,
     # list_eventstreams,
     # list_kpis,
-    # list_kqldatabases,
     # list_kqlquerysets,
     list_lakehouses,
-    # list_mirroredwarehouses,
     # list_mlexperiments,
     # list_mlmodels,
     # list_relationships,
@@ -340,4 +344,8 @@ __all__ = [
     "check_fabric_capacity_name_availablility",
     "delete_embedded_capacity",
     "delete_premium_capacity",
+    "list_mirrored_warehouses",
+    "list_kql_databases",
+    "create_kql_database",
+    "delete_kql_database",
 ]
