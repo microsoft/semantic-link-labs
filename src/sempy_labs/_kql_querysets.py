@@ -10,9 +10,9 @@ from sempy_labs._helper_functions import (
 from sempy.fabric.exceptions import FabricHTTPException
 
 
-def list_kql_databases(workspace: Optional[str] = None) -> pd.DataFrame:
+def list_kql_querysets(workspace: Optional[str] = None) -> pd.DataFrame:
     """
-    Shows the KQL databases within a workspace.
+    Shows the KQL querysets within a workspace.
 
     Parameters
     ----------
@@ -24,25 +24,21 @@ def list_kql_databases(workspace: Optional[str] = None) -> pd.DataFrame:
     Returns
     -------
     pandas.DataFrame
-        A pandas dataframe showing the KQL databases within a workspace.
+        A pandas dataframe showing the KQL querysets within a workspace.
     """
 
     df = pd.DataFrame(
         columns=[
-            "KQL Database Name",
-            "KQL Database Id",
+            "KQL Queryset Name",
+            "KQL Queryset Id",
             "Description",
-            "Parent Eventhouse Item Id",
-            "Query Service URI",
-            "Ingestion Service URI",
-            "Database Type",
         ]
     )
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/kqlDatabases")
+    response = client.get(f"/v1/workspaces/{workspace_id}/kqlQuerysets")
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
@@ -50,32 +46,26 @@ def list_kql_databases(workspace: Optional[str] = None) -> pd.DataFrame:
 
     for r in responses:
         for v in r.get("value", []):
-            prop = v.get("properties", {})
-
             new_data = {
-                "KQL Database Name": v.get("displayName"),
-                "KQL Database Id": v.get("id"),
+                "KQL Queryset Name": v.get("displayName"),
+                "KQL Queryset Id": v.get("id"),
                 "Description": v.get("description"),
-                "Parent Eventhouse Item Id": prop.get("parentEventhouseItemId"),
-                "Query Service URI": prop.get("queryServiceUri"),
-                "Ingestion Service URI": prop.get("ingestionServiceUri"),
-                "Database Type": prop.get("databaseType"),
             }
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
 
 
-def create_kql_database(
+def create_kql_queryset(
     name: str, description: Optional[str] = None, workspace: Optional[str] = None
 ):
     """
-    Creates a KQL database.
+    Creates a KQL queryset.
 
     Parameters
     ----------
     name: str
-        Name of the KQL database.
+        Name of the KQL queryset.
     description : str, default=None
         A description of the environment.
     workspace : str, default=None
@@ -93,24 +83,24 @@ def create_kql_database(
 
     client = fabric.FabricRestClient()
     response = client.post(
-        f"/v1/workspaces/{workspace_id}/kqlDatabases", json=request_body
+        f"/v1/workspaces/{workspace_id}/kqlQuerysets", json=request_body
     )
 
     lro(client, response, status_codes=[201, 202])
 
     print(
-        f"{icons.green_dot} The '{name}' KQL database has been created within the '{workspace}' workspace."
+        f"{icons.green_dot} The '{name}' KQL queryset has been created within the '{workspace}' workspace."
     )
 
 
-def delete_kql_database(name: str, workspace: Optional[str] = None):
+def delete_kql_queryset(name: str, workspace: Optional[str] = None):
     """
-    Deletes a KQL database.
+    Deletes a KQL queryset.
 
     Parameters
     ----------
     name: str
-        Name of the KQL database.
+        Name of the KQL queryset.
     workspace : str, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -119,16 +109,16 @@ def delete_kql_database(name: str, workspace: Optional[str] = None):
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
     kql_database_id = fabric.resolve_item_id(
-        item_name=name, type="KQLDatabase", workspace=workspace
+        item_name=name, type="KQLQueryset", workspace=workspace
     )
 
     client = fabric.FabricRestClient()
     response = client.delete(
-        f"/v1/workspaces/{workspace_id}/kqlDatabases/{kql_database_id}"
+        f"/v1/workspaces/{workspace_id}/kqlQuerysets/{kql_database_id}"
     )
 
     if response.status_code != 200:
         raise FabricHTTPException(response)
     print(
-        f"{icons.green_dot} The '{name}' KQL database within the '{workspace}' workspace has been deleted."
+        f"{icons.green_dot} The '{name}' KQL queryset within the '{workspace}' workspace has been deleted."
     )

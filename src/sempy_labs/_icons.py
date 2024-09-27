@@ -101,3 +101,15 @@ refreshTypes = [
     "clearValues",
     "defragment",
 ]
+
+itemTypes = {
+    "DataPipeline": "dataPipelines",
+    "Eventstream": "eventstreams",
+    "KQLDatabase": "kqlDatabases",
+    "KQLQueryset": "kqlQuerysets",
+    "Lakehouse": "lakehouses",
+    "MLExperiment": "mlExperiments",
+    "MLModel": "mlModels",
+    "Notebook": "notebooks",
+    "Warehouse": "warehouses",
+}

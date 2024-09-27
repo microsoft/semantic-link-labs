@@ -15,6 +15,7 @@ def lakehouse_attached() -> bool:
         Returns True if a lakehouse is attached to the notebook.
     """
     from pyspark.sql import SparkSession
+
     spark = SparkSession.builder.getOrCreate()
     lakeId = spark.conf.get("trident.lakehouse.id")
 

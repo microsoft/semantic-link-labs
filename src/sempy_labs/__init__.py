@@ -1,3 +1,38 @@
+from sempy_labs._ml_models import (
+    list_ml_models,
+    create_ml_model,
+    delete_ml_model,
+)
+from sempy_labs._ml_experiments import (
+    list_ml_experiments,
+    create_ml_experiment,
+    delete_ml_experiment,
+)
+from sempy_labs._warehouses import (
+    create_warehouse,
+    list_warehouses,
+    delete_warehouse,
+)
+from sempy_labs._data_pipelines import (
+    list_data_pipelines,
+    create_data_pipeline,
+    delete_data_pipeline,
+)
+from sempy_labs._eventhouses import (
+    create_eventhouse,
+    list_eventhouses,
+    delete_eventhouse,
+)
+from sempy_labs._eventstreams import (
+    list_eventstreams,
+    create_eventstream,
+    delete_eventstream,
+)
+from sempy_labs._kql_querysets import (
+    list_kql_querysets,
+    create_kql_queryset,
+    delete_kql_queryset,
+)
 from sempy_labs._kql_databases import (
     list_kql_databases,
     create_kql_database,
@@ -113,22 +148,15 @@ from sempy_labs._list_functions import (
     list_shortcuts,
     get_object_level_security,
     list_capacities,
+    # list_tables,
     # list_annotations,
     # list_columns,
-    list_dashboards,
-    # list_datamarts,
-    # list_datapipelines,
-    # list_eventstreams,
-    # list_kpis,
-    # list_kqlquerysets,
-    list_lakehouses,
-    # list_mlexperiments,
-    # list_mlmodels,
     # list_relationships,
-    # list_sqlendpoints,
-    # list_tables,
-    list_warehouses,
-    create_warehouse,
+    # list_kpis,
+    list_dashboards,
+    list_datamarts,
+    list_lakehouses,
+    list_sql_endpoints,
     update_item,
 )
 from sempy_labs._helper_functions import (
@@ -348,4 +376,27 @@ __all__ = [
     "list_kql_databases",
     "create_kql_database",
     "delete_kql_database",
+    "create_warehouse",
+    "list_warehouses",
+    "delete_warehouse",
+    "create_eventhouse",
+    "list_eventhouses",
+    "delete_eventhouse",
+    "list_data_pipelines",
+    "create_data_pipeline",
+    "delete_data_pipeline",
+    "list_eventstreams",
+    "create_eventstream",
+    "delete_eventstream",
+    "list_kql_querysets",
+    "create_kql_queryset",
+    "delete_kql_queryset",
+    "list_ml_models",
+    "create_ml_model",
+    "delete_ml_model",
+    "list_ml_experiments",
+    "create_ml_experiment",
+    "delete_ml_experiment",
+    "list_sql_endpoints",
+    "list_datamarts",
 ]

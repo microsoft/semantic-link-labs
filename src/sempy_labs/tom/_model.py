@@ -4160,6 +4160,28 @@ class TOMWrapper:
 
         self.model.Tables[table_name].Columns[column_name].SortByColumn = None
 
+    def is_calculated_column(self, table_name: str, column_name: str):
+        """
+        Identifies if a column is a calculated column.
+
+        Parameters
+        ----------
+        table_name : str
+            Name of the table in which the column resides.
+        column_name : str
+            Name of the column.
+
+        Returns
+        -------
+        bool
+            A boolean value indicating whether the column is a calculated column.
+        """
+
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        c = self.model.Tables[table_name].Columns[column_name]
+        return c.Type == TOM.ColumnType.Calculated
+
     def is_calculated_table(self, table_name: str):
         """
         Identifies if a table is a calculated table.

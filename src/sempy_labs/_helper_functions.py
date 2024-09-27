@@ -1051,3 +1051,18 @@ def resolve_environment_id(environment: str, workspace: Optional[str] = None) ->
         )
 
     return dfE_filt["Environment Id"].iloc[0]
+
+
+def resolve_notebook_id(notebook: str, workspace: Optional[str] = None) -> UUID:
+
+    workspace = fabric.resolve_workspace_name(workspace)
+
+    dfI = fabric.list_items(workspace=workspace, type="Notebook")
+    dfI_filt = dfI[dfI["Display Name"] == notebook]
+
+    if len(dfI_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} The '{notebook}' notebook does not exist within the '{workspace}' workspace."
+        )
+
+    return dfI_filt["Id"].iloc[0]

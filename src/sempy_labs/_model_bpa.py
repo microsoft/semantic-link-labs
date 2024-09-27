@@ -13,10 +13,7 @@ from sempy_labs._helper_functions import (
     resolve_dataset_id,
     get_language_codes,
 )
-from sempy_labs.lakehouse import (
-    get_lakehouse_tables,
-    lakehouse_attached
-)
+from sempy_labs.lakehouse import get_lakehouse_tables, lakehouse_attached
 from sempy_labs.tom import connect_semantic_model
 from sempy_labs._model_bpa_rules import model_bpa_rules
 from typing import Optional

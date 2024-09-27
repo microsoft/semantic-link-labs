@@ -1,8 +1,6 @@
 import sempy
 import sempy.fabric as fabric
 import pandas as pd
-from synapse.ml.services.openai import OpenAICompletion
-from pyspark.sql.functions import col
 from pyspark.sql import SparkSession
 from typing import List, Optional, Union
 from IPython.display import display
