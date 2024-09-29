@@ -11,14 +11,14 @@ from sempy.fabric.exceptions import FabricHTTPException
 
 
 def create_warehouse(
-    warehouse: str, description: Optional[str] = None, workspace: Optional[str] = None
+    name: str, description: Optional[str] = None, workspace: Optional[str] = None
 ):
     """
     Creates a Fabric warehouse.
 
     Parameters
     ----------
-    warehouse: str
+    name: str
         Name of the warehouse.
     description : str, default=None
         A description of the warehouse.
@@ -30,7 +30,7 @@ def create_warehouse(
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    request_body = {"displayName": warehouse}
+    request_body = {"displayName": name}
 
     if description:
         request_body["description"] = description
@@ -43,7 +43,7 @@ def create_warehouse(
     lro(client, response, status_codes=[201, 202])
 
     print(
-        f"{icons.green_dot} The '{warehouse}' warehouse has been created within the '{workspace}' workspace."
+        f"{icons.green_dot} The '{name}' warehouse has been created within the '{workspace}' workspace."
     )
 
 
@@ -67,7 +67,7 @@ def list_warehouses(workspace: Optional[str] = None) -> pd.DataFrame:
     df = pd.DataFrame(
         columns=[
             "Warehouse Name",
-            "Warehouse ID",
+            "Warehouse Id",
             "Description",
             "Connection Info",
             "Created Date",
@@ -90,7 +90,7 @@ def list_warehouses(workspace: Optional[str] = None) -> pd.DataFrame:
 
             new_data = {
                 "Warehouse Name": v.get("displayName"),
-                "Warehouse ID": v.get("id"),
+                "Warehouse Id": v.get("id"),
                 "Description": v.get("description"),
                 "Connection Info": prop.get("connectionInfo"),
                 "Created Date": prop.get("createdDate"),

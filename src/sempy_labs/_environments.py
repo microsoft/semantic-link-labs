@@ -11,14 +11,14 @@ from sempy.fabric.exceptions import FabricHTTPException
 
 
 def create_environment(
-    environment: str, description: Optional[str] = None, workspace: Optional[str] = None
+    name: str, description: Optional[str] = None, workspace: Optional[str] = None
 ):
     """
     Creates a Fabric environment.
 
     Parameters
     ----------
-    environment: str
+    name: str
         Name of the environment.
     description : str, default=None
         A description of the environment.
@@ -30,7 +30,7 @@ def create_environment(
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    request_body = {"displayName": environment}
+    request_body = {"displayName": name}
 
     if description:
         request_body["description"] = description
@@ -43,7 +43,7 @@ def create_environment(
     lro(client, response, status_codes=[201, 202])
 
     print(
-        f"{icons.green_dot} The '{environment}' environment has been created within the '{workspace}' workspace."
+        f"{icons.green_dot} The '{name}' environment has been created within the '{workspace}' workspace."
     )
 
 
