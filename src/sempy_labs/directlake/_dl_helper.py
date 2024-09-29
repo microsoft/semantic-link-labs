@@ -10,9 +10,6 @@ from sempy_labs._helper_functions import (
     resolve_dataset_id,
     resolve_lakehouse_name,
 )
-from sempy_labs.tom import connect_semantic_model
-from sempy_labs._generate_semantic_model import create_blank_semantic_model
-from sempy_labs._refresh_semantic_model import refresh_semantic_model
 
 
 def check_fallback_reason(
@@ -35,10 +32,13 @@ def check_fallback_reason(
     pandas.DataFrame
         The tables in the semantic model and their fallback reason.
     """
+    from sempy_labs.tom import connect_semantic_model
 
     workspace = fabric.resolve_workspace_name(workspace)
 
-    with connect_semantic_model(dataset=dataset, workspace=workspace, readonly=True) as tom:
+    with connect_semantic_model(
+        dataset=dataset, workspace=workspace, readonly=True
+    ) as tom:
         if not tom.is_direct_lake():
             raise ValueError(
                 f"{icons.red_dot} The '{dataset}' semantic model is not in Direct Lake. This function is only applicable to Direct Lake semantic models."
@@ -109,6 +109,9 @@ def generate_direct_lake_semantic_model(
 
     from sempy_labs.lakehouse import get_lakehouse_tables, get_lakehouse_columns
     from sempy_labs.directlake import get_shared_expression
+    from sempy_labs.tom import connect_semantic_model
+    from sempy_labs._generate_semantic_model import create_blank_semantic_model
+    from sempy_labs._refresh_semantic_model import refresh_semantic_model
 
     if isinstance(lakehouse_tables, str):
         lakehouse_tables = [lakehouse_tables]
