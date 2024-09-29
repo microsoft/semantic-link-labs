@@ -625,19 +625,19 @@ def migrate_spark_settings(source_capacity: str, target_capacity: str):
 
 
 def migrate_fabric_trial_capacity(
-        azure_subscription_id: str,
-        key_vault_uri: str,
-        key_vault_tenant_id: str,
-        key_vault_client_id: str,
-        key_vault_client_secret: str,
-        resource_group: str,
-        source_capacity: str,
-        target_capacity: str,
-        create_target_capacity: bool = True,
-        target_capacity_sku: str = "F64",
-        region: Optional[str] = None,
-        admin_members: Optional[str | List[str]] = None,
-        ):
+    azure_subscription_id: str,
+    key_vault_uri: str,
+    key_vault_tenant_id: str,
+    key_vault_client_id: str,
+    key_vault_client_secret: str,
+    resource_group: str,
+    source_capacity: str,
+    target_capacity: str,
+    create_target_capacity: bool = True,
+    target_capacity_sku: str = "F64",
+    region: Optional[str] = None,
+    admin_members: Optional[str | List[str]] = None,
+):
 
     from sempy_labs._capacities import check_fabric_capacity_name_availablility
     from sempy_labs._list_functions import list_capacities
@@ -652,20 +652,26 @@ def migrate_fabric_trial_capacity(
     )
 
     if not is_capacity_available and create_target_capacity:
-        raise ValueError(f"{icons.red_dot} The '{target_capacity}' capacity already exists.")
+        raise ValueError(
+            f"{icons.red_dot} The '{target_capacity}' capacity already exists."
+        )
 
     if is_capacity_available and not create_target_capacity:
-        raise ValueError(f"{icons.red_dot} The '{target_capacity}' capacity does not exist.")
+        raise ValueError(
+            f"{icons.red_dot} The '{target_capacity}' capacity does not exist."
+        )
 
     dfC = list_capacities()
-    dfC_filt = dfC[dfC['Display Name'] == source_capacity]
+    dfC_filt = dfC[dfC["Display Name"] == source_capacity]
 
     if len(dfC_filt) == 0:
-        raise ValueError(f"{icons.red_dot} The {source_capacity}' capacity does not exist.")
+        raise ValueError(
+            f"{icons.red_dot} The {source_capacity}' capacity does not exist."
+        )
 
     # Use same region as source capacity if no region is specified
     if region is None:
-        region = dfC_filt['Region'].iloc[0]
+        region = dfC_filt["Region"].iloc[0]
 
     # Use same admins as source capacity
     if admin_members is None:
