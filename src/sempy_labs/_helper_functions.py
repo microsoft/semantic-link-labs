@@ -1051,3 +1051,8 @@ def resolve_environment_id(environment: str, workspace: Optional[str] = None) ->
         )
 
     return dfE_filt["Environment Id"].iloc[0]
+
+
+def make_clickable(val):
+
+    return '<a target="_blank" href="{}">{}</a>'.format(val, val)
