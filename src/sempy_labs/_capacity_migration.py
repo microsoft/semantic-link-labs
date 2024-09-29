@@ -622,3 +622,94 @@ def migrate_spark_settings(source_capacity: str, target_capacity: str):
     print(
         f"{icons.green_dot} The spark settings have been migrated from the '{source_capacity}' capacity to the '{target_capacity}' capacity."
     )
+
+
+def migrate_fabric_trial_capacity(
+        azure_subscription_id: str,
+        key_vault_uri: str,
+        key_vault_tenant_id: str,
+        key_vault_client_id: str,
+        key_vault_client_secret: str,
+        resource_group: str,
+        source_capacity: str,
+        target_capacity: str,
+        create_target_capacity: bool = True,
+        target_capacity_sku: str = "F64",
+        region: Optional[str] = None,
+        admin_members: Optional[str | List[str]] = None,
+        ):
+
+    from sempy_labs._capacities import check_fabric_capacity_name_availablility
+    from sempy_labs._list_functions import list_capacities
+
+    is_capacity_available = check_fabric_capacity_name_availablility(
+        capacity_name=target_capacity,
+        azure_subscription_id=azure_subscription_id,
+        key_vault_uri=key_vault_uri,
+        key_vault_tenant_id=key_vault_tenant_id,
+        key_vault_client_id=key_vault_client_id,
+        key_vault_client_secret=key_vault_client_secret,
+    )
+
+    if not is_capacity_available and create_target_capacity:
+        raise ValueError(f"{icons.red_dot} The '{target_capacity}' capacity already exists.")
+
+    if is_capacity_available and not create_target_capacity:
+        raise ValueError(f"{icons.red_dot} The '{target_capacity}' capacity does not exist.")
+
+    dfC = list_capacities()
+    dfC_filt = dfC[dfC['Display Name'] == source_capacity]
+
+    if len(dfC_filt) == 0:
+        raise ValueError(f"{icons.red_dot} The {source_capacity}' capacity does not exist.")
+
+    # Use same region as source capacity if no region is specified
+    if region is None:
+        region = dfC_filt['Region'].iloc[0]
+
+    # Use same admins as source capacity
+    if admin_members is None:
+        admin_members = dfC_filt["Admins"].iloc[0]
+
+    if create_target_capacity:
+        create_fabric_capacity(
+            capacity_name=target_capacity,
+            azure_subscription_id=azure_subscription_id,
+            key_vault_uri=key_vault_uri,
+            key_vault_tenant_id=key_vault_tenant_id,
+            key_vault_client_id=key_vault_client_id,
+            key_vault_client_secret=key_vault_client_secret,
+            resource_group=resource_group,
+            region=region,
+            admin_members=admin_members,
+            sku=target_capacity_sku,
+        )
+
+    migrate_workspaces(
+        source_capacity=source_capacity,
+        target_capacity=target_capacity,
+    )
+    migrate_capacity_settings(
+        source_capacity=source_capacity,
+        target_capacity=target_capacity,
+    )
+    migrate_access_settings(
+        source_capacity=source_capacity,
+        target_capacity=target_capacity,
+    )
+    migrate_notification_settings(
+        source_capacity=source_capacity,
+        target_capacity=target_capacity,
+    )
+    migrate_spark_settings(
+        source_capacity=source_capacity,
+        target_capacity=target_capacity,
+    )
+    migrate_delegated_tenant_settings(
+        source_capacity=source_capacity,
+        target_capacity=target_capacity,
+    )
+    migrate_disaster_recovery_settings(
+        source_capacity=source_capacity,
+        target_capacity=target_capacity,
+    )
