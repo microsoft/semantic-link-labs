@@ -73,6 +73,7 @@ def generate_direct_lake_semantic_model(
     workspace: Optional[str] = None,
     lakehouse: Optional[str] = None,
     lakehouse_workspace: Optional[str] = None,
+    schema: str = "dbo",
     overwrite: bool = False,
     refresh: bool = True,
 ):
@@ -96,6 +97,8 @@ def generate_direct_lake_semantic_model(
         The Fabric workspace in which the lakehouse resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    schema : str, default="dbo"
+        The schema used for the lakehouse.
     overwrite : bool, default=False
         If set to True, overwrites the existing semantic model if it already exists.
     refresh: bool, default=True
@@ -158,7 +161,7 @@ def generate_direct_lake_semantic_model(
 
         for t in lakehouse_tables:
             tom.add_table(name=t)
-            tom.add_entity_partition(table_name=t, entity_name=t)
+            tom.add_entity_partition(table_name=t, entity_name=t, schema_name=schema)
             dfLC_filt = dfLC[dfLC["Table Name"] == t]
             for i, r in dfLC_filt.iterrows():
                 lakeCName = r["Column Name"]

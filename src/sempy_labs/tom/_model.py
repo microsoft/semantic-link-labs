@@ -3,7 +3,10 @@ import sempy.fabric as fabric
 import pandas as pd
 import re
 from datetime import datetime
-from sempy_labs._helper_functions import format_dax_object_name
+from sempy_labs._helper_functions import (
+    format_dax_object_name,
+    generate_guid,
+)
 from sempy_labs._list_functions import list_relationships
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
 from sempy_labs.directlake._dl_helper import check_fallback_reason
@@ -283,8 +286,12 @@ class TOMWrapper:
             obj.FormatStringDefinition = fsd
         if lineage_tag is not None:
             obj.LineageTag = lineage_tag
+        else:
+            obj.LineageTag = generate_guid()
         if source_lineage_tag is not None:
             obj.SourceLineageTag = source_lineage_tag
+        else:
+            obj.SourceLineageTag = generate_guid()
         if detail_rows_expression is not None:
             drd = TOM.DetailRowsDefinition()
             drd.Expression = detail_rows_expression
@@ -376,8 +383,12 @@ class TOMWrapper:
             obj.DataCategory = data_category
         if lineage_tag is not None:
             obj.LineageTag = lineage_tag
+        else:
+            obj.LineageTag = generate_guid()
         if source_lineage_tag is not None:
             obj.SourceLineageTag = source_lineage_tag
+        else:
+            obj.SourceLineageTag = generate_guid()
         self.model.Tables[table_name].Columns.Add(obj)
 
     def add_data_column(
@@ -462,8 +473,12 @@ class TOMWrapper:
             obj.DataCategory = data_category
         if lineage_tag is not None:
             obj.LineageTag = lineage_tag
+        else:
+            obj.LineageTag = generate_guid()
         if source_lineage_tag is not None:
             obj.SourceLineageTag = source_lineage_tag
+        else:
+            obj.SourceLineagetTag = generate_guid()
         self.model.Tables[table_name].Columns.Add(obj)
 
     def add_calculated_column(
@@ -548,8 +563,12 @@ class TOMWrapper:
             obj.DataCategory = data_category
         if lineage_tag is not None:
             obj.LineageTag = lineage_tag
+        else:
+            obj.LineageTag = generate_guid()
         if source_lineage_tag is not None:
             obj.SourceLineageTag = source_lineage_tag
+        else:
+            obj.SourceLineagetTag = generate_guid()
         self.model.Tables[table_name].Columns.Add(obj)
 
     def add_calculation_item(
@@ -761,8 +780,12 @@ class TOMWrapper:
             obj.Description = hierarchy_description
         if lineage_tag is not None:
             obj.LineageTag = lineage_tag
+        else:
+            obj.LineageTag = generate_guid()
         if source_lineage_tag is not None:
             obj.SourceLineageTag = source_lineage_tag
+        else:
+            obj.SourceLineagetTag = generate_guid()
         self.model.Tables[table_name].Hierarchies.Add(obj)
 
         for col in columns:
@@ -770,6 +793,8 @@ class TOMWrapper:
             lvl.Column = self.model.Tables[table_name].Columns[col]
             lvl.Name = levels[columns.index(col)]
             lvl.Ordinal = columns.index(col)
+            lvl.LineageTag = generate_guid()
+            lvl.SourceLineageTag = generate_guid()
             self.model.Tables[table_name].Hierarchies[hierarchy_name].Levels.Add(lvl)
 
     def add_relationship(
@@ -939,8 +964,12 @@ class TOMWrapper:
             exp.Description = description
         if lineage_tag is not None:
             exp.LineageTag = lineage_tag
+        else:
+            exp.LineageTag = generate_guid()
         if source_lineage_tag is not None:
             exp.SourceLineageTag = source_lineage_tag
+        else:
+            exp.SourceLineageTag = generate_guid()
         exp.Kind = TOM.ExpressionKind.M
         exp.Expression = expression
 
@@ -1034,7 +1063,7 @@ class TOMWrapper:
         entity_name: str,
         expression: Optional[str] = None,
         description: Optional[str] = None,
-        schema_name: Optional[str] = None,
+        schema_name: str = "dbo",
     ):
         """
         Adds an entity partition to a table within a semantic model.
@@ -1050,7 +1079,7 @@ class TOMWrapper:
             Defaults to None which resolves to the 'DatabaseQuery' expression.
         description : str, default=None
             A description for the partition.
-        schema_name : str, default=None
+        schema_name : str, default="dbo"
             The schema name.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
@@ -1062,8 +1091,7 @@ class TOMWrapper:
             ep.ExpressionSource = self.model.Expressions["DatabaseQuery"]
         else:
             ep.ExpressionSource = self.model.Expressions[expression]
-        if schema_name is not None:
-            ep.SchemaName = schema_name
+        ep.SchemaName = schema_name
         p = TOM.Partition()
         p.Name = table_name
         p.Source = ep
@@ -1072,6 +1100,9 @@ class TOMWrapper:
             p.Description = description
 
         self.model.Tables[table_name].Partitions.Add(p)
+        self.model.Tables[table_name].SourceLineageTag = (
+            f"[{schema_name}].[{entity_name}]"
+        )
 
     def set_alternate_of(
         self,
@@ -2618,8 +2649,12 @@ class TOMWrapper:
             t.DataCategory = data_category
         if lineage_tag is not None:
             t.LineageTag = lineage_tag
+        else:
+            t.LineageTag = generate_guid()
         if source_lineage_tag is not None:
             t.SourceLineageTag = source_lineage_tag
+        else:
+            t.SourceLineagetTag = generate_guid()
         t.Hidden = hidden
         self.model.Tables.Add(t)
 
@@ -2670,8 +2705,12 @@ class TOMWrapper:
             t.DataCategory = data_category
         if lineage_tag is not None:
             t.LineageTag = lineage_tag
+        else:
+            t.LineageTag = generate_guid()
         if source_lineage_tag is not None:
             t.SourceLineageTag = source_lineage_tag
+        else:
+            t.SourceLineagetTag = generate_guid()
         t.Hidden = hidden
         t.Partitions.Add(par)
         self.model.Tables.Add(t)

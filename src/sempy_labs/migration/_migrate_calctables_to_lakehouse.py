@@ -8,6 +8,7 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_id,
     create_abfss_path,
     retry,
+    generate_guid,
 )
 from sempy_labs.tom import connect_semantic_model
 from pyspark.sql import SparkSession
@@ -343,6 +344,8 @@ def migrate_field_parameters(
 
                 tbl = TOM.Table()
                 tbl.Name = tName
+                tbl.LineageTag = generate_guid()
+                tbl.SourceLineageTag = generate_guid()
                 tbl.Partitions.Add(par)
 
                 columns = ["Value1", "Value2", "Value3"]
@@ -352,6 +355,8 @@ def migrate_field_parameters(
                     col.Name = colName
                     col.SourceColumn = "[" + colName + "]"
                     col.DataType = TOM.DataType.String
+                    col.LineageTag = generate_guid()
+                    col.SourceLineageTag = generate_guid()
 
                     tbl.Columns.Add(col)
 

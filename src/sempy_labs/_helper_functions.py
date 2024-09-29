@@ -3,6 +3,7 @@ import re
 import json
 import base64
 import time
+import uuid
 from sempy.fabric.exceptions import FabricHTTPException
 import pandas as pd
 from functools import wraps
@@ -1066,3 +1067,8 @@ def resolve_notebook_id(notebook: str, workspace: Optional[str] = None) -> UUID:
         )
 
     return dfI_filt["Id"].iloc[0]
+
+
+def generate_guid():
+
+    return str(uuid.uuid4())

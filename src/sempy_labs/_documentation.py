@@ -44,12 +44,27 @@ def list_all_items(workspaces: Optional[str | List[str]] = None):
 def data_dictionary(dataset: str, workspace: Optional[str | None] = None):
 
     from sempy_labs.tom import connect_semantic_model
+
     sempy.fabric._client._utils._init_analysis_services()
     import Microsoft.AnalysisServices.Tabular as TOM
 
-    df = pd.DataFrame(columns=['Workspace Name', 'Model Name', 'Table Name', 'Object Type', 'Object Name', 'Hidden Flag', 'Description', 'Display Folder', 'Measure Formula'])
+    df = pd.DataFrame(
+        columns=[
+            "Workspace Name",
+            "Model Name",
+            "Table Name",
+            "Object Type",
+            "Object Name",
+            "Hidden Flag",
+            "Description",
+            "Display Folder",
+            "Measure Formula",
+        ]
+    )
 
-    with connect_semantic_model(dataset=dataset, readonly=True, workspace=workspace) as tom:
+    with connect_semantic_model(
+        dataset=dataset, readonly=True, workspace=workspace
+    ) as tom:
         for t in tom.model.Tables:
             expr = None
             if tom.is_calculated_table(table_name=t.Name):
@@ -85,7 +100,9 @@ def data_dictionary(dataset: str, workspace: Optional[str | None] = None):
                         "Display Folder": c.DisplayFolder,
                         "Measure Formula": expr,
                     }
-                    df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+                    df = pd.concat(
+                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
             for m in t.Measures:
                 new_data = {
                     "Workspace Name": workspace,
@@ -98,7 +115,9 @@ def data_dictionary(dataset: str, workspace: Optional[str | None] = None):
                     "Display Folder": m.DisplayFolder,
                     "Measure Formula": m.Expression,
                 }
-                df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+                df = pd.concat(
+                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                )
 
             if t.CalculationGroup is not None:
                 for ci in t.CalculationGroup.CalculationItems:
@@ -106,13 +125,15 @@ def data_dictionary(dataset: str, workspace: Optional[str | None] = None):
                         "Workspace Name": workspace,
                         "Model Name": dataset,
                         "Table Name": t.Name,
-                        "Object Type": 'Calculation Item',
+                        "Object Type": "Calculation Item",
                         "Object Name": ci.Name,
                         "Hidden Flag": t.IsHidden,
                         "Description": ci.Description,
                         "Display Folder": None,
                         "Measure Formula": ci.Expression,
                     }
-                    df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+                    df = pd.concat(
+                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
 
     return df
