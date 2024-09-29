@@ -100,18 +100,25 @@ def generate_direct_lake_semantic_model(
         If set to True, overwrites the existing semantic model if it already exists.
     refresh: bool, default=True
         If True, refreshes the newly created semantic model after it is created.
-
-    Returns
-    -------
     """
 
     from sempy_labs.lakehouse import get_lakehouse_tables, get_lakehouse_columns
     from sempy_labs import create_blank_semantic_model, refresh_semantic_model
     from sempy_labs.tom import connect_semantic_model
     from sempy_labs.directlake import get_shared_expression
+    from sempy_labs._helper_functions import resolve_lakehouse_name
 
     if isinstance(lakehouse_tables, str):
         lakehouse_tables = [lakehouse_tables]
+
+    workspace = fabric.resolve_workspace_name(workspace)
+    if lakehouse_workspace is None:
+        lakehouse_workspace = workspace
+    if lakehouse is None:
+        lakehouse_id = fabric.get_lakehouse_id()
+        lakehouse_workspace_id = fabric.get_workspace_id()
+        lakehouse_workspace = fabric.resolve_workspace_name(lakehouse_workspace_id)
+        lakehouse = resolve_lakehouse_name(lakehouse_id, lakehouse_workspace)
 
     dfLT = get_lakehouse_tables(lakehouse=lakehouse, workspace=lakehouse_workspace)
 
