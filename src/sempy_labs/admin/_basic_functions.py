@@ -485,7 +485,8 @@ def scan_workspaces(
     workspace: Optional[str | List[str]] = None,
 ) -> dict:
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    if workspace is None:
+        workspace = fabric.resolve_workspace_name()
 
     if isinstance(workspace, str):
         workspace = [workspace]
@@ -804,3 +805,189 @@ def list_items(
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
+
+
+class ScannerWrapper:
+
+    def __init__(
+        self,
+        data_source_details: Optional[bool] = False,
+        dataset_schema: Optional[bool] = False,
+        dataset_expressions: Optional[bool] = False,
+        lineage: Optional[bool] = False,
+        artifact_users: Optional[bool] = False,
+        workspace: Optional[str | List[str]] = None,
+    ):
+
+        self._data_source_details = data_source_details
+        self._dataset_schema = dataset_schema
+        self._dataset_expressions = dataset_expressions
+        self._lineage = lineage
+        self._artifact_users = artifact_users
+        self._workspace = workspace
+
+        self.output = scan_workspaces(
+            data_source_details=self._data_source_details,
+            dataset_schema=self._dataset_schema,
+            dataset_expressions=self._dataset_expressions,
+            lineage=self._lineage,
+            artifact_users=self._artifact_users,
+            workspace=self._workspace,
+        )
+
+    def list_lakehouses(self):
+
+        df = pd.DataFrame(columns=[])
+
+        for w in self.output["workspaces"]:
+            for lake in w.get("Lakehouse", []):
+                ep = lake.get("extendedProperties", {})
+                new_data = {
+                    "Workspace Name": w.get("name"),
+                    "Workspace Id": w.get("id"),
+                    "Lakehouse Name": lake.get("name"),
+                    "Lakehouse Id": lake.get("id"),
+                    "Description": lake.get("description"),
+                    "Last Updated Date": lake.get("lastUpdatedDate"),
+                    "Created Date": lake.get("createdDate"),
+                    "Modified Date": lake.get("modifiedDate"),
+                    "Created By": lake.get("createdBy"),
+                    "Modified By Id": lake.get("modfiedById"),
+                    "Created By Id": lake.get("createdById"),
+                    "OneLake Tables Path": ep.get("OneLakeTablesPath"),
+                    "OneLake Files Path": ep.get("OneLakeFilesPath"),
+                    "DW Properties": ep.get("DwProperties"),
+                }
+                df = pd.concat(
+                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                )
+
+        return df
+
+    def list_notebooks(self):
+
+        df = pd.DataFrame(columns=[])
+
+        for w in self.output["workspaces"]:
+            for nb in w.get("Notebook", []):
+                new_data = {
+                    "Workspace Name": w.get("name"),
+                    "Workspace Id": w.get("id"),
+                    "Notebook Name": nb.get("name"),
+                    "Notebook Id": nb.get("id"),
+                    "Description": nb.get("description"),
+                    "State": nb.get("state"),
+                    "Last Updated Date": nb.get("lastUpdatedDate"),
+                    "Created Date": nb.get("createdDate"),
+                    "Modified By": nb.get("modifiedBy"),
+                    "Created By": nb.get("createdBy"),
+                    "Modified By Id": nb.get("modifiedById"),
+                    "Created By Id": nb.get("createdById"),
+                    "Sensitivity Label Id": nb.get("sensitivityLabel", {}).get(
+                        "labelId"
+                    ),
+                }
+                df = pd.concat(
+                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                )
+
+        return df
+
+    def list_reports(self):
+
+        df = pd.DataFrame(columns=[])
+
+        for w in self.output["workspaces"]:
+            for r in w.get("reports", []):
+                new_data = {
+                    "Workspace Name": w.get("name"),
+                    "Workspace Id": w.get("id"),
+                    "Report Name": r.get("name"),
+                    "Report Id": r.get("id"),
+                    "Report Type": r.get("reportType"),
+                    "Description": r.get("id"),
+                    "Created Date": r.get("createdDateTime"),
+                    "Modified Date": r.get("modifiedDateTime"),
+                    "Modified By": r.get("modifiedBy"),
+                    "Created By": r.get("createdBy"),
+                    "Modified By Id": r.get("modifiedById"),
+                    "Created By Id": r.get("createdById"),
+                }
+                df = pd.concat(
+                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                )
+
+        return df
+
+    def list_datasets(self):
+
+        df = pd.DataFrame(columns=[])
+
+        for w in self.output["workspaces"]:
+            for d in w.get("datasets", []):
+                new_data = {
+                    "Workspace Name": w.get("name"),
+                    "Workspace Id": w.get("id"),
+                    "Dataset Name": d.get("name"),
+                    "Dataset Id": d.get("id"),
+                    "Configured By": d.get("configuredBy"),
+                    "Configured By Id": d.get("configuredById"),
+                    "Effective Identity Required": d.get("isEffectiveIdentityRequired"),
+                    "Effective Identity Roles Required": d.get(
+                        "isEffectiveIdentityRolesRequired"
+                    ),
+                    "Target Storage Mode": d.get("targetStorageMode"),
+                    "Created Date": d.get("createdDate"),
+                    "Content Provider Type": d.get("contentProviderType"),
+                }
+                df = pd.concat(
+                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                )
+
+        return df
+
+    def list_warehouses(self):
+
+        df = pd.DataFrame(columns=[])
+
+        for w in self.output["workspaces"]:
+            for ware in w.get("warehouses", []):
+                new_data = {
+                    "Workspace Name": w.get("name"),
+                    "Workspace Id": w.get("id"),
+                    "Warehouse Name": ware.get("name"),
+                    "Warehouse Id": ware.get("id"),
+                    "Configured By": ware.get("configuredBy"),
+                    "Configured By Id": ware.get("configuredById"),
+                    "Modified By": ware.get("modifiedBy"),
+                    "Modified By Id": ware.get("modifiedById"),
+                    "Modified Date": ware.get("modifiedDateTime"),
+                }
+                df = pd.concat(
+                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                )
+
+        return df
+
+    def list_sql_endpoints(self):
+
+        df = pd.DataFrame(columns=[])
+
+        for w in self.output["workspaces"]:
+            for sql in w.get("SQLAnalyticsEndpoint", []):
+                new_data = {
+                    "Workspace Name": w.get("name"),
+                    "Workspace Id": w.get("id"),
+                    "SQL Endpoint Name": sql.get("name"),
+                    "SQL Endpoint Id": sql.get("id"),
+                    "Configured By": sql.get("configuredBy"),
+                    "Configured By Id": sql.get("configuredById"),
+                    "Modified By": sql.get("modifiedBy"),
+                    "Modified By Id": sql.get("modifiedById"),
+                    "Modified Date": sql.get("modifiedDateTime"),
+                }
+                df = pd.concat(
+                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                )
+
+        return df
