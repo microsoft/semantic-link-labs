@@ -12,6 +12,7 @@ from sempy_labs._helper_functions import (
     resolve_workspace_capacity,
     resolve_dataset_id,
     get_language_codes,
+    get_max_run_id,
 )
 from sempy_labs.lakehouse import get_lakehouse_tables, lakehouse_attached
 from sempy_labs.tom import connect_semantic_model
@@ -22,7 +23,6 @@ import sempy_labs._icons as icons
 from pyspark.sql.functions import col, flatten
 from pyspark.sql.types import StructType, StructField, StringType
 import os
-import duckdb
 
 
 @log
@@ -350,10 +350,7 @@ def run_model_bpa(
         if len(lakeT_filt) == 0:
             runId = 1
         else:
-            x = duckdb.sql(
-                f"""SELECT max(RunId) as max_run_id FROM delta_scan('/lakehouse/default/Tables/{delta_table_name}/')  """
-            ).fetchall()
-            max_run_id = x[0][0]
+            max_run_id = get_max_run_id(table_name=delta_table_name)
             runId = max_run_id + 1
 
         now = datetime.datetime.now()

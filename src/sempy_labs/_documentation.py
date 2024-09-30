@@ -83,26 +83,31 @@ def data_dictionary(dataset: str, workspace: Optional[str | None] = None):
                 "Measure Formula": expr,
             }
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-            for c in t.Columns:
-                if c.Type != TOM.ColumnType.RowNumber:
-                    expr = None
-                    if tom.is_calculated_column(table_name=t.Name, column_name=c.Name):
-                        expr = c.Expression
+            cols = [c for c in t.Columns if c.Type != TOM.ColumnType.RowNumber]
+            for c in cols:
 
-                    new_data = {
-                        "Workspace Name": workspace,
-                        "Model Name": dataset,
-                        "Table Name": t.Name,
-                        "Object Type": c.ObjectType,
-                        "Object Name": c.Name,
-                        "Hidden Flag": c.IsHidden,
-                        "Description": c.Description,
-                        "Display Folder": c.DisplayFolder,
-                        "Measure Formula": expr,
-                    }
-                    df = pd.concat(
-                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                    )
+                def get_calc_column_expression(table_name, column_name):
+                    expr = None
+                    if tom.is_calculated_column(
+                        table_name=table_name, column_name=column_name
+                    ):
+                        expr = c.Expression
+                    return expr
+
+                new_data = {
+                    "Workspace Name": workspace,
+                    "Model Name": dataset,
+                    "Table Name": t.Name,
+                    "Object Type": c.ObjectType,
+                    "Object Name": c.Name,
+                    "Hidden Flag": c.IsHidden,
+                    "Description": c.Description,
+                    "Display Folder": c.DisplayFolder,
+                    "Measure Formula": get_calc_column_expression(t.Name, c.Name),
+                }
+                df = pd.concat(
+                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                )
             for m in t.Measures:
                 new_data = {
                     "Workspace Name": workspace,

@@ -13,6 +13,7 @@ from sempy_labs._helper_functions import (
     resolve_dataset_id,
     save_as_delta_table,
     resolve_workspace_capacity,
+    get_max_run_id,
 )
 from sempy_labs._list_functions import list_relationships, list_tables
 from sempy_labs.lakehouse import lakehouse_attached, get_lakehouse_tables
@@ -20,7 +21,6 @@ from sempy_labs.directlake import get_direct_lake_source
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
-import duckdb
 
 
 @log
@@ -499,10 +499,7 @@ def vertipaq_analyzer(
         if len(lakeT_filt) == 0:
             runId = 1
         else:
-            x = duckdb.sql(
-                f"""SELECT max(RunId) as max_run_id FROM delta_scan('/lakehouse/default/Tables/{lakeTName}/')  """
-            ).fetchall()
-            max_run_id = x[0][0]
+            max_run_id = get_max_run_id(table_name=lakeTName)
             runId = max_run_id + 1
 
         dfMap = {

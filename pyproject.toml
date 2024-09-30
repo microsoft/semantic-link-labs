@@ -29,7 +29,7 @@ dependencies = [
     "polib",
     "azure.mgmt.resource",
     "jsonpath_ng",
-    "duckdb",
+    "deltalake",
 ]
 
 [tool.setuptools.packages.find]
@@ -47,7 +47,7 @@ test = [
 Repository = "https://github.com/microsoft/semantic-link-labs.git"
 
 [[tool.mypy.overrides]]
-module = "sempy.*,Microsoft.*,System.*,anytree.*,powerbiclient.*,synapse.ml.services.*,polib.*,azure.mgmt.resource.*,jsonpath_ng.*,duckdb.*"
+module = "sempy.*,Microsoft.*,System.*,anytree.*,powerbiclient.*,synapse.ml.services.*,polib.*,azure.mgmt.resource.*,jsonpath_ng.*,deltalake.*"
 ignore_missing_imports = true
 
 [tool.flake8]

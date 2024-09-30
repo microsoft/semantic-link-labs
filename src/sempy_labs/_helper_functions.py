@@ -13,11 +13,12 @@ from uuid import UUID
 import sempy_labs._icons as icons
 import urllib.parse
 from azure.core.credentials import TokenCredential, AccessToken
+import deltalake
 
 
 def create_abfss_path(
     lakehouse_id: UUID, lakehouse_workspace_id: UUID, delta_table_name: str
-):
+) -> str:
     """
     Creates an abfss path for a delta table in a Fabric lakehouse.
 
@@ -39,7 +40,7 @@ def create_abfss_path(
     return f"abfss://{lakehouse_workspace_id}@onelake.dfs.fabric.microsoft.com/{lakehouse_id}/Tables/{delta_table_name}"
 
 
-def format_dax_object_name(table: str, column: str):
+def format_dax_object_name(table: str, column: str) -> str:
     """
     Formats a table/column combination to the 'Table Name'[Column Name] format.
 
@@ -61,7 +62,7 @@ def format_dax_object_name(table: str, column: str):
 
 def create_relationship_name(
     from_table: str, from_column: str, to_table: str, to_column: str
-):
+) -> str:
     """
     Formats a relationship's table/columns into a fully qualified name.
 
@@ -89,7 +90,7 @@ def create_relationship_name(
     )
 
 
-def resolve_report_id(report: str, workspace: Optional[str] = None):
+def resolve_report_id(report: str, workspace: Optional[str] = None) -> UUID:
     """
     Obtains the ID of the Power BI report.
 
@@ -117,7 +118,7 @@ def resolve_report_id(report: str, workspace: Optional[str] = None):
     return obj
 
 
-def resolve_report_name(report_id: UUID, workspace: Optional[str] = None):
+def resolve_report_name(report_id: UUID, workspace: Optional[str] = None) -> str:
     """
     Obtains the name of the Power BI report.
 
@@ -147,7 +148,7 @@ def resolve_report_name(report_id: UUID, workspace: Optional[str] = None):
     return obj
 
 
-def resolve_dataset_id(dataset: str, workspace: Optional[str] = None):
+def resolve_dataset_id(dataset: str, workspace: Optional[str] = None) -> UUID:
     """
     Obtains the ID of the semantic model.
 
@@ -177,7 +178,7 @@ def resolve_dataset_id(dataset: str, workspace: Optional[str] = None):
     return obj
 
 
-def resolve_dataset_name(dataset_id: UUID, workspace: Optional[str] = None):
+def resolve_dataset_name(dataset_id: UUID, workspace: Optional[str] = None) -> str:
     """
     Obtains the name of the semantic model.
 
@@ -209,7 +210,7 @@ def resolve_dataset_name(dataset_id: UUID, workspace: Optional[str] = None):
 
 def resolve_lakehouse_name(
     lakehouse_id: Optional[UUID] = None, workspace: Optional[str] = None
-):
+) -> str:
     """
     Obtains the name of the Fabric lakehouse.
 
@@ -243,7 +244,7 @@ def resolve_lakehouse_name(
     return obj
 
 
-def resolve_lakehouse_id(lakehouse: str, workspace: Optional[str] = None):
+def resolve_lakehouse_id(lakehouse: str, workspace: Optional[str] = None) -> UUID:
     """
     Obtains the ID of the Fabric lakehouse.
 
@@ -262,9 +263,7 @@ def resolve_lakehouse_id(lakehouse: str, workspace: Optional[str] = None):
         The ID of the Fabric lakehouse.
     """
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
+    workspace = fabric.resolve_workspace_name(workspace)
 
     obj = fabric.resolve_item_id(
         item_name=lakehouse, type="Lakehouse", workspace=workspace
@@ -322,7 +321,7 @@ def get_direct_lake_sql_endpoint(dataset: str, workspace: Optional[str] = None) 
         return sqlEndpointId
 
 
-def generate_embedded_filter(filter: str):
+def generate_embedded_filter(filter: str) -> str:
     """
     Converts the filter expression to a filter expression which can be used by a Power BI embedded URL.
 
@@ -923,6 +922,19 @@ def pagination(client, response):
 
 
 def resolve_deployment_pipeline_id(deployment_pipeline: str) -> UUID:
+    """
+    Obtains the Id for a given deployment pipeline.
+
+    Parameters
+    ----------
+    deployment_pipeline : str
+        The deployment pipeline name
+
+    Returns
+    -------
+    UUID
+        The deployment pipeline Id.
+    """
 
     from sempy_labs._deployment_pipelines import list_deployment_pipelines
 
@@ -969,14 +981,23 @@ def get_adls_client(account_name):
     return service_client
 
 
-def resolve_warehouse_id(warehouse: str, workspace: Optional[str]):
+def resolve_warehouse_id(warehouse: str, workspace: Optional[str]) -> UUID:
+    """
+    Obtains the Id for a given warehouse.
+
+    Parameters
+    ----------
+    warehouse : str
+        The warehouse name
+
+    Returns
+    -------
+    UUID
+        The warehouse Id.
+    """
 
     workspace = fabric.resolve_workspace_name(workspace)
-    warehouse_id = fabric.resolve_item_id(
-        item_name=warehouse, type="Warehouse", workspace=workspace
-    )
-
-    return warehouse_id
+    return fabric.resolve_item_id(item_name=warehouse, type='Warehouse', workspace=workspace)
 
 
 def get_language_codes(languages: str | List[str]):
@@ -1025,6 +1046,7 @@ def get_azure_token_credentials(
 
 def convert_to_alphanumeric_lowercase(input_string):
 
+    # Removes non-alphanumeric characters 
     cleaned_string = re.sub(r"[^a-zA-Z0-9]", "", input_string)
     cleaned_string = cleaned_string.lower()
 
@@ -1039,36 +1061,46 @@ def resolve_environment_id(environment: str, workspace: Optional[str] = None) ->
     ----------
     environment: str
         Name of the environment.
+
+    Returns
+    -------
+    UUID
+        The environment Id.
     """
-    from sempy_labs._environments import list_environments
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    dfE = list_environments(workspace=workspace)
-    dfE_filt = dfE[dfE["Environment Name"] == environment]
-    if len(dfE_filt) == 0:
-        raise ValueError(
-            f"{icons.red_dot} The '{environment}' environment does not exist within the '{workspace}' workspace."
-        )
-
-    return dfE_filt["Environment Id"].iloc[0]
+    workspace = fabric.resolve_workspace_name(workspace)
+    return fabric.resolve_item_id(item_name=environment, type='Environment', workspace=workspace)
 
 
 def resolve_notebook_id(notebook: str, workspace: Optional[str] = None) -> UUID:
+    """
+    Obtains the notebook Id for a given notebook.
+
+    Parameters
+    ----------
+    notebook: str
+        Name of the notebook.
+
+    Returns
+    -------
+    UUID
+        The notebook Id.
+    """
 
     workspace = fabric.resolve_workspace_name(workspace)
-
-    dfI = fabric.list_items(workspace=workspace, type="Notebook")
-    dfI_filt = dfI[dfI["Display Name"] == notebook]
-
-    if len(dfI_filt) == 0:
-        raise ValueError(
-            f"{icons.red_dot} The '{notebook}' notebook does not exist within the '{workspace}' workspace."
-        )
-
-    return dfI_filt["Id"].iloc[0]
+    return fabric.resolve_item_id(item_name=notebook, type='Notebook', workspace=workspace)
 
 
 def generate_guid():
 
     return str(uuid.uuid4())
+
+
+def get_max_run_id(table_name: str) -> int:
+
+    table_path = f"/lakehouse/default/Tables/{table_name}/"
+    delta_table = deltalake.DeltaTable(table_path)
+    data = delta_table.to_pandas()
+    max_run_id = data["RunId"].max()
+
+    return max_run_id

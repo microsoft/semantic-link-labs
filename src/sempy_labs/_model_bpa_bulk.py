@@ -1,14 +1,17 @@
 import sempy.fabric as fabric
 import pandas as pd
 import datetime
-from pyspark.sql import SparkSession
 from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
     save_as_delta_table,
     resolve_workspace_capacity,
     retry,
+    get_max_run_id,
 )
-from sempy_labs.lakehouse import get_lakehouse_tables, lakehouse_attached
+from sempy_labs.lakehouse import (
+    get_lakehouse_tables,
+    lakehouse_attached,
+)
 from sempy_labs._model_bpa import run_model_bpa
 from typing import Optional, List
 from sempy._utils._log import log
@@ -78,7 +81,6 @@ def run_model_bpa_bulk(
     ]
     now = datetime.datetime.now()
     output_table = "modelbparesults"
-    spark = SparkSession.builder.getOrCreate()
     lakehouse_workspace = fabric.resolve_workspace_name()
     lakehouse_id = fabric.get_lakehouse_id()
     lakehouse = resolve_lakehouse_name(
@@ -90,9 +92,8 @@ def run_model_bpa_bulk(
     if len(lakeT_filt) == 0:
         runId = 1
     else:
-        dfSpark = spark.table(f"`{lakehouse_id}`.{output_table}").select(F.max("RunId"))
-        maxRunId = dfSpark.collect()[0][0]
-        runId = maxRunId + 1
+        max_run_id = get_max_run_id(table_name=output_table)
+        runId = max_run_id + 1
 
     if isinstance(workspace, str):
         workspace = [workspace]

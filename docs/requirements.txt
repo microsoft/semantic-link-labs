@@ -12,4 +12,4 @@ IPython
 polib
 azure.mgmt.resource
 jsonpath_ng
-duckdb
+deltalake
