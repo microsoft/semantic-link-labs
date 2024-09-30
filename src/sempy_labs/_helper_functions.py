@@ -263,7 +263,9 @@ def resolve_lakehouse_id(lakehouse: str, workspace: Optional[str] = None) -> UUI
         The ID of the Fabric lakehouse.
     """
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    if workspace is None:
+        workspace_id = fabric.get_workspace_id()
+        workspace = fabric.resolve_workspace_name(workspace_id)
 
     obj = fabric.resolve_item_id(
         item_name=lakehouse, type="Lakehouse", workspace=workspace
