@@ -11,6 +11,7 @@ from contextlib import contextmanager
 from typing import List, Iterator, Optional, Union, TYPE_CHECKING
 from sempy._utils._log import log
 import sempy_labs._icons as icons
+from sempy.fabric.exceptions import FabricHTTPException
 
 if TYPE_CHECKING:
     import Microsoft.AnalysisServices.Tabular
@@ -4185,6 +4186,116 @@ class TOMWrapper:
             ):
                 isCalcTable = True
         return isCalcTable
+
+    def generate_measure_descriptions(
+        self,
+        measure_name: Optional[str | List[str]] = None,
+        max_batch_size: Optional[int] = 5,
+    ):
+        """
+        Auto-generates descriptions for measures using an LLM.
+
+        Parameters
+        ----------
+        measure_name : str | List[str], default=None
+            The measure name (or a list of measure names).
+            Defaults to None which generates descriptions for all measures in the semantic model.
+        max_batch_size : int, default=5
+            Sets the max batch size for each API call.
+        """
+
+        # import concurrent.futures
+
+        if isinstance(measure_name, str):
+            measure_name = [measure_name]
+
+        workspace_id = fabric.resolve_workspace_id(self._workspace)
+        client = fabric.FabricRestClient()
+
+        if len(measure_name) > max_batch_size:
+            measure_lists = [
+                measure_name[i : i + max_batch_size]
+                for i in range(0, len(measure_name), max_batch_size)
+            ]
+        else:
+            measure_lists = [measure_name]
+
+        # Each API call can have a max of 5 measures
+        for measure_list in measure_lists:
+            payload = {
+                "scenarioDefinition": {
+                    "generateModelItemDescriptions": {
+                        "modelItems": [],
+                    },
+                },
+                "workspaceId": workspace_id,
+                "artifactInfo": {"artifactType": "SemanticModel"},
+            }
+            for m_name in measure_list:
+                expr, t_name = next(
+                    (ms.Expression, ms.Parent.Name) for ms in self.all_measures() if ms.Name == m_name
+                )
+                if t_name is None:
+                    raise ValueError(f"{icons.red_dot} The '{m_name}' measure does not exist in the '{self._dataset}' semantic model within the '{self._workspace}' workspace.")
+
+                new_item = {
+                    "urn": m_name,
+                    "type": 1,
+                    "name": m_name,
+                    "expression": expr,
+                }
+                payload["scenarioDefinition"]["generateModelItemDescriptions"][
+                    "modelItems"
+                ].append(new_item)
+
+            response = client.post("/explore/v202304/nl2nl/completions", json=payload)
+            if response.status_code != 200:
+                raise FabricHTTPException(response)
+
+            for item in response.json().get("modelItems", []):
+                ms_name = item["urn"]
+                if ms_name.startswith("urn: "):
+                    ms_name = ms_name[5:]
+                desc = item.get("description")
+                table_name = next(
+                    m.Parent.Name for m in self.all_measures() if m.Name == ms_name
+                )
+                self.model.Tables[table_name].Measures[ms_name].Description = desc
+
+        # def process_measure(m):
+        #     table_name = m.Parent.Name
+        #     m_name = m.Name
+        #     m_name_fixed = "1"
+        #     expr = m.Expression
+        #     if measure_name is None or m_name in measure_name:
+        #         payload = {
+        #             "scenarioDefinition": {
+        #                 "generateModelItemDescriptions": {
+        #                     "modelItems": [
+        #                         {
+        #                             "urn": f"modelobject://Table/{table_name}/Measure/{m_name_fixed}",
+        #                             "type": 1,
+        #                             "name": m_name,
+        #                             "expression": expr,
+        #                         }
+        #                     ]
+        #                 }
+        #             },
+        #             "workspaceId": workspace_id,
+        #             "artifactInfo": {"artifactType": "SemanticModel"},
+        #         }
+
+        #         response = client.post(
+        #             "/explore/v202304/nl2nl/completions", json=payload
+        #         )
+        #         if response.status_code != 200:
+        #             raise FabricHTTPException(response)
+
+        #         desc = response.json()["modelItems"][0]["description"]
+        #         m.Description = desc
+
+        # with concurrent.futures.ThreadPoolExecutor() as executor:
+        #     executor.map(process_measure, self.all_measures())
 
     def close(self):
         if not self._readonly and self.model is not None:
