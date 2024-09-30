@@ -644,14 +644,12 @@ def migrate_fabric_trial_capacity(
     resource_group: str,
     source_capacity: str,
     target_capacity: str,
-    create_target_capacity: bool = True,
     target_capacity_sku: str = "F64",
     target_capacity_region: Optional[str] = None,
     target_capacity_admin_members: Optional[str | List[str]] = None,
 ):
     """
-    This function migrates a Fabric trial capacity to a Fabric capacity. The default behavior is to create a new Fabric capacity (F64 sku) within the same region
-    as the trial capacity and with the same admins and capacity settings. If you already have the Fabric SKU created, specify 'create_target_capacity' as False.
+    This function migrates a Fabric trial capacity to a Fabric capacity. If the 'target_capacity' does not exist, it is created with the relevant target capacity parameters (sku, region, admin members).
 
     Parameters
     ----------
@@ -670,40 +668,18 @@ def migrate_fabric_trial_capacity(
     source_capacity : str
         The name of the Fabric trial capacity.
     target_capacity : str
-        The name of the new Fabric capacity (F SKU)
-    create_target_capacity : bool, default=True
-        If True, creates a new Fabric capacity
+        The name of the new Fabric capacity (F SKU). If this capacity does not exist, it will be created.
     target_capacity_sku : str, default="F64"
-        If create_target_capacity is True, this sets the SKU size of the new Fabric capacity.
+        If the target capacity does not exist, this property sets the SKU size for the target capacity.
     target_capacity_region : str, default=None
-        If create_target_capacity is True, this sets the region in which the Fabric capacity is created.
+        If the target capacity does not exist, this property sets the region for the target capacity.
         Defaults to None which resolves to the region in which the Trial SKU exists.
     target_capacity_admin_members : str, default=None
-        If create_target_capacity is True, this sets the admin members for the Fabric capacity.
+        If the target capacity does not exist, this property sets the admin members for the target capacity.
         Defaults to None which resolves to the admin members on the Trial SKU.
     """
 
-    from sempy_labs._capacities import check_fabric_capacity_name_availablility
     from sempy_labs._list_functions import list_capacities
-
-    is_capacity_available = check_fabric_capacity_name_availablility(
-        capacity_name=target_capacity,
-        azure_subscription_id=azure_subscription_id,
-        key_vault_uri=key_vault_uri,
-        key_vault_tenant_id=key_vault_tenant_id,
-        key_vault_client_id=key_vault_client_id,
-        key_vault_client_secret=key_vault_client_secret,
-    )
-
-    if not is_capacity_available and create_target_capacity:
-        raise ValueError(
-            f"{icons.red_dot} The '{target_capacity}' capacity already exists."
-        )
-
-    if is_capacity_available and not create_target_capacity:
-        raise ValueError(
-            f"{icons.red_dot} The '{target_capacity}' capacity does not exist."
-        )
 
     dfC = list_capacities()
     dfC_filt = dfC[dfC["Display Name"] == source_capacity]
@@ -724,7 +700,8 @@ def migrate_fabric_trial_capacity(
     if target_capacity_admin_members is None:
         target_capacity_admin_members = dfC_filt["Admins"].iloc[0]
 
-    if create_target_capacity:
+    dfC_filt = dfC[dfC["Display Name"] == target_capacity]
+    if len(dfC_filt) == 0:
         create_fabric_capacity(
             capacity_name=target_capacity,
             azure_subscription_id=azure_subscription_id,
@@ -738,9 +715,10 @@ def migrate_fabric_trial_capacity(
             sku=target_capacity_sku,
         )
 
-    migrate_workspaces(
+    assign_workspaces_to_capacity(
         source_capacity=source_capacity,
         target_capacity=target_capacity,
+        workspace=None,
     )
 
     # This migrates all the capacity settings

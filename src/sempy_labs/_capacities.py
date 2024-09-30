@@ -503,7 +503,6 @@ def update_fabric_capacity(
         The email address(es) of the admin(s) of the Fabric capacity.
     tags : dict, default=None
         Tag(s) to add to the capacity. Example: {'tagName': 'tagValue'}.
-
     """
 
     # https://learn.microsoft.com/en-us/rest/api/microsoftfabric/fabric-capacities/update?view=rest-microsoftfabric-2023-11-01&tabs=HTTP
@@ -556,6 +555,31 @@ def check_fabric_capacity_name_availablility(
     key_vault_client_id: str,
     key_vault_client_secret: str,
 ) -> bool:
+    """
+    This function updates a Fabric capacity's properties.
+
+    Parameters
+    ----------
+    capacity_name : str
+        Name of the Fabric capacity.
+    azure_subscription_id : str
+        The Azure subscription ID.
+    region : str
+        The region name.
+    key_vault_uri : str
+        The name of the `Azure key vault <https://azure.microsoft.com/products/key-vault>`_ URI. Example: "https://<Key Vault Name>.vault.azure.net/"
+    key_vault_tenant_id : str
+        The name of the Azure key vault secret storing the Tenant ID.
+    key_vault_client_id : str
+        The name of the Azure key vault secret storing the Client ID.
+    key_vault_client_secret : str
+        The name of the Azure key vault secret storing the Client Secret.
+
+    Returns
+    -------
+    bool
+        An indication as to whether the Fabric capacity name is available or not.
+    """
     # https://learn.microsoft.com/en-us/rest/api/microsoftfabric/fabric-capacities/check-name-availability?view=rest-microsoftfabric-2023-11-01&tabs=HTTP
 
     azure_token, credential, headers = get_azure_token_credentials(
