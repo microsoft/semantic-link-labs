@@ -1065,7 +1065,7 @@ def resolve_environment_id(environment: str, workspace: Optional[str] = None) ->
     Returns
     -------
     UUID
-        The environment Id. 
+        The environment Id.
     """
 
     workspace = fabric.resolve_workspace_name(workspace)
