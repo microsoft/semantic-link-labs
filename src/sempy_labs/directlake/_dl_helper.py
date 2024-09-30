@@ -5,7 +5,11 @@ from typing import Optional, List, Union, Tuple
 from uuid import UUID
 import sempy_labs._icons as icons
 from sempy._utils._log import log
-from sempy_labs._helper_functions import retry, resolve_dataset_id
+from sempy_labs._helper_functions import (
+    retry,
+    resolve_dataset_id,
+    resolve_lakehouse_name,
+)
 
 
 def check_fallback_reason(
@@ -28,16 +32,17 @@ def check_fallback_reason(
     pandas.DataFrame
         The tables in the semantic model and their fallback reason.
     """
+    from sempy_labs.tom import connect_semantic_model
 
     workspace = fabric.resolve_workspace_name(workspace)
 
-    dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
-    dfP_filt = dfP[dfP["Mode"] == "DirectLake"]
-
-    if len(dfP_filt) == 0:
-        raise ValueError(
-            f"{icons.red_dot} The '{dataset}' semantic model is not in Direct Lake. This function is only applicable to Direct Lake semantic models."
-        )
+    with connect_semantic_model(
+        dataset=dataset, workspace=workspace, readonly=True
+    ) as tom:
+        if not tom.is_direct_lake():
+            raise ValueError(
+                f"{icons.red_dot} The '{dataset}' semantic model is not in Direct Lake. This function is only applicable to Direct Lake semantic models."
+            )
 
     df = fabric.evaluate_dax(
         dataset=dataset,
@@ -100,18 +105,25 @@ def generate_direct_lake_semantic_model(
         If set to True, overwrites the existing semantic model if it already exists.
     refresh: bool, default=True
         If True, refreshes the newly created semantic model after it is created.
-
-    Returns
-    -------
     """
 
     from sempy_labs.lakehouse import get_lakehouse_tables, get_lakehouse_columns
-    from sempy_labs import create_blank_semantic_model, refresh_semantic_model
-    from sempy_labs.tom import connect_semantic_model
     from sempy_labs.directlake import get_shared_expression
+    from sempy_labs.tom import connect_semantic_model
+    from sempy_labs._generate_semantic_model import create_blank_semantic_model
+    from sempy_labs._refresh_semantic_model import refresh_semantic_model
 
     if isinstance(lakehouse_tables, str):
         lakehouse_tables = [lakehouse_tables]
+
+    workspace = fabric.resolve_workspace_name(workspace)
+    if lakehouse_workspace is None:
+        lakehouse_workspace = workspace
+    if lakehouse is None:
+        lakehouse_id = fabric.get_lakehouse_id()
+        lakehouse_workspace_id = fabric.get_workspace_id()
+        lakehouse_workspace = fabric.resolve_workspace_name(lakehouse_workspace_id)
+        lakehouse = resolve_lakehouse_name(lakehouse_id, lakehouse_workspace)
 
     dfLT = get_lakehouse_tables(lakehouse=lakehouse, workspace=lakehouse_workspace)
 
@@ -212,6 +224,7 @@ def get_direct_lake_source(
     response = client.post(
         "metadata/relations/upstream?apiVersion=3", json=request_body
     )
+
     artifacts = response.json().get("artifacts", [])
     sql_id, sql_object_name, sql_workspace_id, artifact_type = None, None, None, None
 
