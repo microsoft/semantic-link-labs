@@ -31,6 +31,7 @@ from sempy_labs._capacities import (
     check_fabric_capacity_name_availablility,
     delete_embedded_capacity,
     delete_premium_capacity,
+    create_resource_group,
 )
 
 from sempy_labs._spark import (
@@ -303,4 +304,5 @@ __all__ = [
     "delete_embedded_capacity",
     "delete_premium_capacity",
     "migrate_fabric_trial_capacity",
+    "create_resource_group",
 ]
