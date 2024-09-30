@@ -1055,4 +1055,4 @@ def resolve_environment_id(environment: str, workspace: Optional[str] = None) ->
 
 def make_clickable(val):
 
-    return '<a target="_blank" href="{}">{}</a>'.format(val, val)
+    return f'<a target="_blank" href="{val}">{val}</a>'
