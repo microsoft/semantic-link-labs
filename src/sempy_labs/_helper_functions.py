@@ -1069,4 +1069,4 @@ def convert_to_friendly_case(text: str) -> str:
     # Insert space before each capital letter, avoiding double spaces
     text = re.sub(r"(?<!\s)(?=[A-Z])", " ", text)
     # Strip leading/trailing whitespace and capitalize the first letter of each word
-    return text.strip().title() 
+    return text.strip().title()
