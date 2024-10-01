@@ -74,7 +74,7 @@ def get_measure_dependencies(
 
                 for index, dependency in dep_filt.iterrows():
                     d = True
-                    if dependency[5] == "Measure":
+                    if dependency.iloc[5] == "Measure":
                         d = False
                         df = pd.concat(
                             [
@@ -85,12 +85,12 @@ def get_measure_dependencies(
                                             "Table Name": r["Table Name"],
                                             "Object Name": r["Object Name"],
                                             "Object Type": r["Object Type"],
-                                            "Referenced Object": dependency[4],
-                                            "Referenced Table": dependency[3],
-                                            "Referenced Object Type": dependency[5],
+                                            "Referenced Object": dependency.iloc[4],
+                                            "Referenced Table": dependency.iloc[3],
+                                            "Referenced Object Type": dependency.iloc[5],
                                             "Done": d,
                                             "Full Object Name": r["Full Object Name"],
-                                            "Referenced Full Object Name": dependency[
+                                            "Referenced Full Object Name": dependency.iloc[
                                                 7
                                             ],
                                             "Parent Node": rObj,
@@ -110,12 +110,12 @@ def get_measure_dependencies(
                                             "Table Name": r["Table Name"],
                                             "Object Name": r["Object Name"],
                                             "Object Type": r["Object Type"],
-                                            "Referenced Object": dependency[4],
-                                            "Referenced Table": dependency[3],
-                                            "Referenced Object Type": dependency[5],
+                                            "Referenced Object": dependency.iloc[4],
+                                            "Referenced Table": dependency.iloc[3],
+                                            "Referenced Object Type": dependency.iloc[5],
                                             "Done": d,
                                             "Full Object Name": r["Full Object Name"],
-                                            "Referenced Full Object Name": dependency[
+                                            "Referenced Full Object Name": dependency.iloc[
                                                 7
                                             ],
                                             "Parent Node": rObj,
@@ -203,7 +203,7 @@ def get_model_calc_dependencies(
 
                 for index, dependency in dep_filt.iterrows():
                     d = True
-                    if dependency[5] in objs:
+                    if dependency.iloc[5] in objs:
                         d = False
                         df = pd.concat(
                             [
@@ -214,12 +214,12 @@ def get_model_calc_dependencies(
                                             "Table Name": r["Table Name"],
                                             "Object Name": r["Object Name"],
                                             "Object Type": r["Object Type"],
-                                            "Referenced Object": dependency[4],
-                                            "Referenced Table": dependency[3],
-                                            "Referenced Object Type": dependency[5],
+                                            "Referenced Object": dependency.iloc[4],
+                                            "Referenced Table": dependency.iloc[3],
+                                            "Referenced Object Type": dependency.iloc[5],
                                             "Done": d,
                                             "Full Object Name": r["Full Object Name"],
-                                            "Referenced Full Object Name": dependency[
+                                            "Referenced Full Object Name": dependency.iloc[
                                                 7
                                             ],
                                             "Parent Node": rObj,
@@ -239,12 +239,12 @@ def get_model_calc_dependencies(
                                             "Table Name": r["Table Name"],
                                             "Object Name": r["Object Name"],
                                             "Object Type": r["Object Type"],
-                                            "Referenced Object": dependency[5],
-                                            "Referenced Table": dependency[4],
-                                            "Referenced Object Type": dependency[6],
+                                            "Referenced Object": dependency.iloc[5],
+                                            "Referenced Table": dependency.iloc[4],
+                                            "Referenced Object Type": dependency.iloc[6],
                                             "Done": d,
                                             "Full Object Name": r["Full Object Name"],
-                                            "Referenced Full Object Name": dependency[
+                                            "Referenced Full Object Name": dependency.iloc[
                                                 7
                                             ],
                                             "Parent Node": rObj,

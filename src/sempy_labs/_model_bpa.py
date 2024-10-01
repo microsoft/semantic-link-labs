@@ -511,4 +511,5 @@ def run_model_bpa(
     tab_html += "</div>"
 
     # Display the tabs, tab contents, and run the script
-    return display(HTML(styles + tab_html + content_html + script))
+    if not export:
+        return display(HTML(styles + tab_html + content_html + script))
