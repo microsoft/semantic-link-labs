@@ -4010,6 +4010,8 @@ class TOMWrapper:
         data_category: Optional[str] = None,
         key: bool = None,
         summarize_by: Optional[str] = None,
+        is_nullable: Optional[bool] = None,
+        is_available_in_mdx: Optional[bool] = None,
     ):
         """
         Updates a column within a semantic model.
@@ -4050,6 +4052,10 @@ class TOMWrapper:
         summarize_by : str, default=None
             Sets the value for the Summarize By property of the column.
             Defaults to None which keeps the existing setting.
+        is_nullable : bool, default=None
+            If False, the column cannot contain nulls. Even if True, it may still not allow nulls if it's a key column.
+        is_available_in_mdx : bool, default=None
+            A boolean value that indicates whether the column can be excluded from usage in MDX query tools. False if the column can be excluded from usage in MDX query tools; otherwise true.
         """
 
         import Microsoft.AnalysisServices.Tabular as TOM
@@ -4078,6 +4084,10 @@ class TOMWrapper:
             c.DataCategory = data_category
         if summarize_by is not None:
             c.SummarizeBy = System.Enum.Parse(TOM.AggregateFunction, summarize_by)
+        if is_nullable is not None:
+            c.IsNullable = is_nullable
+        if is_available_in_mdx is not None:
+            c.IsAvailableInMDX = is_available_in_mdx
 
     def update_role(
         self,
