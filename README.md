@@ -16,7 +16,7 @@ Semantic Link Labs is a Python library designed for use in [Microsoft Fabric not
     * [Migrating an import/DirectQuery semantic model to Direct Lake](https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#direct-lake-migration)
     * [Model Best Practice Analyzer (BPA)](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.run_model_bpa)
     * [Vertipaq Analyzer](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.vertipaq_analyzer)
-    * [Tabular Object Model (TOM)](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Tabular%20Object%20Model.ipynb)
+    * [Tabular Object Model](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Tabular%20Object%20Model.ipynb) [(TOM)](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.tom.html)
     * [Translate a semantic model's metadata](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.translate_semantic_model)
     * [Check Direct Lake Guardrails](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.lakehouse.html#sempy_labs.lakehouse.get_lakehouse_tables)
     * [Refresh](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Semantic%20Model%20Refresh.ipynb), [clear cache](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.clear_cache), [backup](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.backup_semantic_model), [restore](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.restore_semantic_model), [copy backup files](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.copy_semantic_model_backup_file), [move/deploy across workspaces](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.deploy_semantic_model)
@@ -24,6 +24,8 @@ Semantic Link Labs is a Python library designed for use in [Microsoft Fabric not
 * Reports
     * [Report Best Practice Analyzer (BPA)](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.report.html#sempy_labs.report.run_report_bpa)
     * [View report metadata](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Report%20Analysis.ipynb)
+    * [View semantic model objects most frequently used in Power BI reports](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.list_semantic_model_object_report_usage)
+    * [View broken reports](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.list_report_semantic_model_objects)
     * [Rebind reports](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.report.html#sempy_labs.report.report_rebind)
 * Capacities
     * [Migrating a Power BI Premium capacity (P sku) to a Fabric capacity (F sku)](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Capacity%20Migration.ipynb)
@@ -31,7 +33,7 @@ Semantic Link Labs is a Python library designed for use in [Microsoft Fabric not
     * Wrapper functions for [Power BI](https://learn.microsoft.com/rest/api/power-bi/), [Fabric](https://learn.microsoft.com/rest/api/fabric/articles/using-fabric-apis), and [Azure](https://learn.microsoft.com/rest/api/azure/?view=rest-power-bi-embedded-2021-01-01) APIs
 
 
-### Make sure you check out the starter [notebooks](https://github.com/microsoft/semantic-link-labs/tree/main/notebooks) for getting started!
+### Check out the [helper notebooks](https://github.com/microsoft/semantic-link-labs/tree/main/notebooks) for getting started!
 
 If you encounter any issues, please [raise a bug](https://github.com/microsoft/semantic-link-labs/issues/new?assignees=&labels=&projects=&template=bug_report.md&title=).
 
