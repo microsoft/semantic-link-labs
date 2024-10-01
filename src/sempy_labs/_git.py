@@ -314,7 +314,7 @@ def update_from_git(
     remote_commit_hash: str,
     conflict_resolution_policy: str,
     workspace_head: Optional[str] = None,
-    allow_override: Optional[bool] = False,
+    allow_override: bool = False,
     workspace: Optional[str] = None,
 ):
     """
@@ -341,9 +341,9 @@ def update_from_git(
     workspace, workspace_id = resolve_workspace_name_and_id(workspace)
 
     conflict_resolution_policies = ["PreferWorkspace", "PreferRemote"]
-    if "remote" in conflict_resolution_policies.lower():
+    if "remote" in [policy.lower() for policy in conflict_resolution_policies]:
         conflict_resolution_policies = "PreferRemote"
-    elif "workspace" in conflict_resolution_policies.lower():
+    elif "workspace" in [policy.lower() for policy in conflict_resolution_policies]:
         conflict_resolution_policies = "PreferWorkspace"
 
     if conflict_resolution_policy not in conflict_resolution_policies:

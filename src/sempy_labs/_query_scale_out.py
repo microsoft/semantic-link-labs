@@ -181,8 +181,8 @@ def disable_qso(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
 
 def set_qso(
     dataset: str,
-    auto_sync: Optional[bool] = True,
-    max_read_only_replicas: Optional[int] = -1,
+    auto_sync: bool = True,
+    max_read_only_replicas: int = -1,
     workspace: Optional[str] = None,
 ) -> pd.DataFrame:
     """

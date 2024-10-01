@@ -5,10 +5,8 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_id,
     resolve_dataset_id,
     pagination,
-    lro,
     resolve_item_type,
     format_dax_object_name,
-    pagination,
 )
 import pandas as pd
 from typing import Optional
@@ -84,7 +82,7 @@ def get_object_level_security(
 
 
 def list_tables(
-    dataset: str, workspace: Optional[str] = None, extended: Optional[bool] = False
+    dataset: str, workspace: Optional[str] = None, extended: bool = False
 ) -> pd.DataFrame:
     """
     Shows a semantic model's tables and their properties.
@@ -707,9 +705,9 @@ def list_lakehouses(workspace: Optional[str] = None) -> pd.DataFrame:
     return df
 
 
-def list_warehouses(workspace: Optional[str] = None) -> pd.DataFrame:
+def list_sql_endpoints(workspace: Optional[str] = None) -> pd.DataFrame:
     """
-    Shows the warehouses within a workspace.
+    Shows the SQL endpoints within a workspace.
 
     Parameters
     ----------
@@ -721,64 +719,10 @@ def list_warehouses(workspace: Optional[str] = None) -> pd.DataFrame:
     Returns
     -------
     pandas.DataFrame
-        A pandas dataframe showing the warehouses within a workspace.
+        A pandas dataframe showing the SQL endpoints within a workspace.
     """
 
-    df = pd.DataFrame(
-        columns=[
-            "Warehouse Name",
-            "Warehouse ID",
-            "Description",
-            "Connection Info",
-            "Created Date",
-            "Last Updated Time",
-        ]
-    )
-
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/warehouses")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
-
-    for r in responses:
-        for v in r.get("value", []):
-            prop = v.get("properties", {})
-
-            new_data = {
-                "Warehouse Name": v.get("displayName"),
-                "Warehouse ID": v.get("id"),
-                "Description": v.get("description"),
-                "Connection Info": prop.get("connectionInfo"),
-                "Created Date": prop.get("createdDate"),
-                "Last Updated Time": prop.get("lastUpdatedTime"),
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    return df
-
-
-def list_sqlendpoints(workspace: Optional[str] = None) -> pd.DataFrame:
-    """
-    Shows the SQL Endpoints within a workspace.
-
-    Parameters
-    ----------
-    workspace : str, default=None
-        The Fabric workspace name.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-    pandas.DataFrame
-        A pandas dataframe showing the SQL Endpoints within a workspace.
-    """
-
-    df = pd.DataFrame(columns=["SQL Endpoint ID", "SQL Endpoint Name", "Description"])
+    df = pd.DataFrame(columns=["SQL Endpoint Id", "SQL Endpoint Name", "Description"])
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
@@ -793,312 +737,8 @@ def list_sqlendpoints(workspace: Optional[str] = None) -> pd.DataFrame:
         for v in r.get("value", []):
 
             new_data = {
-                "SQL Endpoint ID": v.get("id"),
+                "SQL Endpoint Id": v.get("id"),
                 "SQL Endpoint Name": v.get("displayName"),
-                "Description": v.get("description"),
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    return df
-
-
-def list_mirroredwarehouses(workspace: Optional[str] = None) -> pd.DataFrame:
-    """
-    Shows the mirrored warehouses within a workspace.
-
-    Parameters
-    ----------
-    workspace : str, default=None
-        The Fabric workspace name.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-    pandas.DataFrame
-        A pandas dataframe showing the mirrored warehouses within a workspace.
-    """
-
-    df = pd.DataFrame(
-        columns=["Mirrored Warehouse", "Mirrored Warehouse ID", "Description"]
-    )
-
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/mirroredWarehouses")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
-
-    for r in responses:
-        for v in r.get("value", []):
-
-            new_data = {
-                "Mirrored Warehouse": v.get("displayName"),
-                "Mirrored Warehouse ID": v.get("id"),
-                "Description": v.get("description"),
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    return df
-
-
-def list_kqldatabases(workspace: Optional[str] = None) -> pd.DataFrame:
-    """
-    Shows the KQL databases within a workspace.
-
-    Parameters
-    ----------
-    workspace : str, default=None
-        The Fabric workspace name.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-    pandas.DataFrame
-        A pandas dataframe showing the KQL Databases within a workspace.
-    """
-
-    df = pd.DataFrame(
-        columns=[
-            "KQL Database Name",
-            "KQL Database ID",
-            "Description",
-            "Parent Eventhouse Item ID",
-            "Query Service URI",
-            "Ingestion Service URI",
-            "Kusto Database Type",
-        ]
-    )
-
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/kqlDatabases")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
-
-    for r in responses:
-        for v in r.get("value", []):
-            prop = v.get("properties", {})
-
-            new_data = {
-                "KQL Database Name": v.get("displayName"),
-                "KQL Database ID": v.get("id"),
-                "Description": v.get("description"),
-                "Parent Eventhouse Item ID": prop.get("parentEventhouseItemId"),
-                "Query Service URI": prop.get("queryServiceUri"),
-                "Ingestion Service URI": prop.get("ingestionServiceUri"),
-                "Kusto Database Type": prop.get("kustoDatabaseType"),
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    return df
-
-
-def list_kqlquerysets(workspace: Optional[str] = None) -> pd.DataFrame:
-    """
-    Shows the KQL Querysets within a workspace.
-
-    Parameters
-    ----------
-    workspace : str, default=None
-        The Fabric workspace name.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-    pandas.DataFrame
-        A pandas dataframe showing the KQL Querysets within a workspace.
-    """
-
-    df = pd.DataFrame(columns=["KQL Queryset Name", "KQL Queryset ID", "Description"])
-
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/kqlQuerysets")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
-
-    for r in responses:
-        for v in r.get("value", []):
-
-            new_data = {
-                "KQL Queryset Name": v.get("displayName"),
-                "KQL Queryset ID": v.get("id"),
-                "Description": v.get("description"),
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    return df
-
-
-def list_mlmodels(workspace: Optional[str] = None) -> pd.DataFrame:
-    """
-    Shows the ML models within a workspace.
-
-    Parameters
-    ----------
-    workspace : str, default=None
-        The Fabric workspace name.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-    pandas.DataFrame
-        A pandas dataframe showing the ML models within a workspace.
-    """
-
-    df = pd.DataFrame(columns=["ML Model Name", "ML Model ID", "Description"])
-
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/mlModels")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
-
-    for r in responses:
-        for v in r.get("value", []):
-            model_id = v.get("id")
-            modelName = v.get("displayName")
-            desc = v.get("description")
-
-            new_data = {
-                "ML Model Name": modelName,
-                "ML Model ID": model_id,
-                "Description": desc,
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    return df
-
-
-def list_eventstreams(workspace: Optional[str] = None) -> pd.DataFrame:
-    """
-    Shows the eventstreams within a workspace.
-
-    Parameters
-    ----------
-    workspace : str, default=None
-        The Fabric workspace name.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-    pandas.DataFrame
-        A pandas dataframe showing the eventstreams within a workspace.
-    """
-
-    df = pd.DataFrame(columns=["Eventstream Name", "Eventstream ID", "Description"])
-
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/eventstreams")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
-
-    for r in responses:
-        for v in r.get("value", []):
-            new_data = {
-                "Eventstream Name": v.get("displayName"),
-                "Eventstream ID": v.get("id"),
-                "Description": v.get("description"),
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    return df
-
-
-def list_datapipelines(workspace: Optional[str] = None) -> pd.DataFrame:
-    """
-    Shows the data pipelines within a workspace.
-
-    Parameters
-    ----------
-    workspace : str, default=None
-        The Fabric workspace name.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-    pandas.DataFrame
-        A pandas dataframe showing the data pipelines within a workspace.
-    """
-
-    df = pd.DataFrame(columns=["Data Pipeline Name", "Data Pipeline ID", "Description"])
-
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/dataPipelines")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
-
-    for r in responses:
-        for v in r.get("value", []):
-            new_data = {
-                "Data Pipeline Name": v.get("displayName"),
-                "Data Pipeline ID": v.get("id"),
-                "Description": v.get("description"),
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    return df
-
-
-def list_mlexperiments(workspace: Optional[str] = None) -> pd.DataFrame:
-    """
-    Shows the ML experiments within a workspace.
-
-    Parameters
-    ----------
-    workspace : str, default=None
-        The Fabric workspace name.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-    pandas.DataFrame
-        A pandas dataframe showing the ML experiments within a workspace.
-    """
-
-    df = pd.DataFrame(columns=["ML Experiment Name", "ML Experiment ID", "Description"])
-
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/mlExperiments")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
-
-    for r in responses:
-        for v in r.get("value", []):
-            new_data = {
-                "ML Experiment Name": v.get("displayName"),
-                "ML Experiment ID": v.get("id"),
                 "Description": v.get("description"),
             }
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
@@ -1146,43 +786,6 @@ def list_datamarts(workspace: Optional[str] = None) -> pd.DataFrame:
     return df
 
 
-def create_warehouse(
-    warehouse: str, description: Optional[str] = None, workspace: Optional[str] = None
-):
-    """
-    Creates a Fabric warehouse.
-
-    Parameters
-    ----------
-    warehouse: str
-        Name of the warehouse.
-    description : str, default=None
-        A description of the warehouse.
-    workspace : str, default=None
-        The Fabric workspace name.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
-    """
-
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    request_body = {"displayName": warehouse}
-
-    if description:
-        request_body["description"] = description
-
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/warehouses/", json=request_body
-    )
-
-    lro(client, response, status_codes=[201, 202])
-
-    print(
-        f"{icons.green_dot} The '{warehouse}' warehouse has been created within the '{workspace}' workspace."
-    )
-
-
 def update_item(
     item_type: str,
     current_name: str,
@@ -1210,27 +813,14 @@ def update_item(
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    itemTypes = {
-        "DataPipeline": "dataPipelines",
-        "Eventstream": "eventstreams",
-        "KQLDatabase": "kqlDatabases",
-        "KQLQueryset": "kqlQuerysets",
-        "Lakehouse": "lakehouses",
-        "MLExperiment": "mlExperiments",
-        "MLModel": "mlModels",
-        "Notebook": "notebooks",
-        "Warehouse": "warehouses",
-    }
-
     item_type = item_type.replace(" ", "").capitalize()
 
-    if item_type not in itemTypes.keys():
+    if item_type not in icons.itemTypes.keys():
         raise ValueError(
             f"{icons.red_dot} The '{item_type}' is not a valid item type. "
         )
 
-    itemType = itemTypes[item_type]
+    itemType = icons.itemTypes[item_type]
 
     dfI = fabric.list_items(workspace=workspace, type=item_type)
     dfI_filt = dfI[(dfI["Display Name"] == current_name)]
@@ -1264,7 +854,7 @@ def update_item(
 
 
 def list_relationships(
-    dataset: str, workspace: Optional[str] = None, extended: Optional[bool] = False
+    dataset: str, workspace: Optional[str] = None, extended: bool = False
 ) -> pd.DataFrame:
     """
     Shows a semantic model's relationships and their properties.
@@ -1688,9 +1278,6 @@ def list_capacities() -> pd.DataFrame:
     """
     Shows the capacities and their properties.
 
-    Parameters
-    ----------
-
     Returns
     -------
     pandas.DataFrame
@@ -1778,7 +1365,7 @@ def list_reports_using_semantic_model(
 
 
 def list_report_semantic_model_objects(
-    dataset: str, workspace: Optional[str] = None, extended: Optional[bool] = False
+    dataset: str, workspace: Optional[str] = None, extended: bool = False
 ) -> pd.DataFrame:
     """
     Shows a list of semantic model objects (i.e. columns, measures, hierarchies) used in all reports which feed data from
@@ -1872,8 +1459,8 @@ def list_report_semantic_model_objects(
 def list_semantic_model_object_report_usage(
     dataset: str,
     workspace: Optional[str] = None,
-    include_dependencies: Optional[bool] = False,
-    extended: Optional[bool] = False,
+    include_dependencies: bool = False,
+    extended: bool = False,
 ) -> pd.DataFrame:
     """
     Shows a list of semantic model objects and how many times they are referenced in all reports which rely on this semantic model.

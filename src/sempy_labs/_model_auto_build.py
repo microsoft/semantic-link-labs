@@ -34,10 +34,6 @@ def model_auto_build(
         The Fabric workspace used by the lakehouse.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-
     """
 
     workspace = fabric.resolve_workspace_name(workspace)

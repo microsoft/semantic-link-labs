@@ -1,3 +1,44 @@
+from sempy_labs._ml_models import (
+    list_ml_models,
+    create_ml_model,
+    delete_ml_model,
+)
+from sempy_labs._ml_experiments import (
+    list_ml_experiments,
+    create_ml_experiment,
+    delete_ml_experiment,
+)
+from sempy_labs._warehouses import (
+    create_warehouse,
+    list_warehouses,
+    delete_warehouse,
+)
+from sempy_labs._data_pipelines import (
+    list_data_pipelines,
+    create_data_pipeline,
+    delete_data_pipeline,
+)
+from sempy_labs._eventhouses import (
+    create_eventhouse,
+    list_eventhouses,
+    delete_eventhouse,
+)
+from sempy_labs._eventstreams import (
+    list_eventstreams,
+    create_eventstream,
+    delete_eventstream,
+)
+from sempy_labs._kql_querysets import (
+    list_kql_querysets,
+    create_kql_queryset,
+    delete_kql_queryset,
+)
+from sempy_labs._kql_databases import (
+    list_kql_databases,
+    create_kql_database,
+    delete_kql_database,
+)
+from sempy_labs._mirrored_warehouses import list_mirrored_warehouses
 from sempy_labs._environments import (
     create_environment,
     delete_environment,
@@ -109,6 +150,10 @@ from sempy_labs._list_functions import (
     list_lakehouses,
     list_warehouses,
     create_warehouse,
+    list_dashboards,
+    list_datamarts,
+    list_lakehouses,
+    list_sql_endpoints,
     update_item,
 )
 from sempy_labs._helper_functions import (
@@ -235,7 +280,6 @@ __all__ = [
     "cancel_dataset_refresh",
     "translate_semantic_model",
     "vertipaq_analyzer",
-    # 'visualize_vertipaq',
     "import_vertipaq_analyzer",
     "list_semantic_model_objects",
     "list_shortcuts",
@@ -297,4 +341,38 @@ __all__ = [
     "migrate_access_settings",
     "migrate_delegated_tenant_settings",
     "convert_to_friendly_case",
+    "resume_fabric_capacity",
+    "suspend_fabric_capacity",
+    "update_fabric_capacity",
+    "delete_fabric_capacity",
+    "check_fabric_capacity_name_availablility",
+    "delete_embedded_capacity",
+    "delete_premium_capacity",
+    "list_mirrored_warehouses",
+    "list_kql_databases",
+    "create_kql_database",
+    "delete_kql_database",
+    "create_warehouse",
+    "list_warehouses",
+    "delete_warehouse",
+    "create_eventhouse",
+    "list_eventhouses",
+    "delete_eventhouse",
+    "list_data_pipelines",
+    "create_data_pipeline",
+    "delete_data_pipeline",
+    "list_eventstreams",
+    "create_eventstream",
+    "delete_eventstream",
+    "list_kql_querysets",
+    "create_kql_queryset",
+    "delete_kql_queryset",
+    "list_ml_models",
+    "create_ml_model",
+    "delete_ml_model",
+    "list_ml_experiments",
+    "create_ml_experiment",
+    "delete_ml_experiment",
+    "list_sql_endpoints",
+    "list_datamarts",
 ]

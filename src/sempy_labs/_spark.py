@@ -91,9 +91,9 @@ def create_custom_pool(
     max_node_count: int,
     min_executors: int,
     max_executors: int,
-    node_family: Optional[str] = "MemoryOptimized",
-    auto_scale_enabled: Optional[bool] = True,
-    dynamic_executor_allocation_enabled: Optional[bool] = True,
+    node_family: str = "MemoryOptimized",
+    auto_scale_enabled: bool = True,
+    dynamic_executor_allocation_enabled: bool = True,
     workspace: Optional[str] = None,
 ):
     """
@@ -299,7 +299,7 @@ def delete_custom_pool(pool_name: str, workspace: Optional[str] = None):
 
 
 def get_spark_settings(
-    workspace: Optional[str] = None, return_dataframe: Optional[bool] = True
+    workspace: Optional[str] = None, return_dataframe: bool = True
 ) -> pd.DataFrame | dict:
     """
     Shows the spark settings for a workspace.

@@ -13,10 +13,10 @@ def refresh_semantic_model(
     dataset: str,
     tables: Optional[Union[str, List[str]]] = None,
     partitions: Optional[Union[str, List[str]]] = None,
-    refresh_type: Optional[str] = None,
-    retry_count: Optional[int] = 0,
-    apply_refresh_policy: Optional[bool] = True,
-    max_parallelism: Optional[int] = 10,
+    refresh_type: str = "full",
+    retry_count: int = 0,
+    apply_refresh_policy: bool = True,
+    max_parallelism: int = 10,
     workspace: Optional[str] = None,
 ):
     """
@@ -30,7 +30,7 @@ def refresh_semantic_model(
         A string or a list of tables to refresh.
     partitions: str, List[str], default=None
         A string or a list of partitions to refresh. Partitions must be formatted as such: 'Table Name'[Partition Name].
-    refresh_type : str, default='full'
+    refresh_type : str, default="full"
         The type of processing to perform. Types align with the TMSL refresh command types: full, clearValues, calculate, dataOnly, automatic, and defragment. The add type isn't supported. Defaults to "full".
     retry_count : int, default=0
         Number of times the operation retries before failing.
@@ -47,9 +47,6 @@ def refresh_semantic_model(
     """
 
     workspace = fabric.resolve_workspace_name(workspace)
-
-    if refresh_type is None:
-        refresh_type = "full"
 
     if isinstance(tables, str):
         tables = [tables]
@@ -74,18 +71,9 @@ def refresh_semantic_model(
         refresh_type.lower().replace("only", "Only").replace("values", "Values")
     )
 
-    refreshTypes = [
-        "full",
-        "automatic",
-        "dataOnly",
-        "calculate",
-        "clearValues",
-        "defragment",
-    ]
-
-    if refresh_type not in refreshTypes:
+    if refresh_type not in icons.refreshTypes:
         raise ValueError(
-            f"{icons.red_dot} Invalid refresh type. Refresh type must be one of these values: {refreshTypes}."
+            f"{icons.red_dot} Invalid refresh type. Refresh type must be one of these values: {icons.refreshTypes}."
         )
 
     if len(objects) == 0:

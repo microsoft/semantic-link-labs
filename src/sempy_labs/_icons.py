@@ -93,3 +93,23 @@ sku_mapping = {
     "P4": "F512",
     "P5": "F1024",
 }
+refreshTypes = [
+    "full",
+    "automatic",
+    "dataOnly",
+    "calculate",
+    "clearValues",
+    "defragment",
+]
+
+itemTypes = {
+    "DataPipeline": "dataPipelines",
+    "Eventstream": "eventstreams",
+    "KQLDatabase": "kqlDatabases",
+    "KQLQueryset": "kqlQuerysets",
+    "Lakehouse": "lakehouses",
+    "MLExperiment": "mlExperiments",
+    "MLModel": "mlModels",
+    "Notebook": "notebooks",
+    "Warehouse": "warehouses",
+}

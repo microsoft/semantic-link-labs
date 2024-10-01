@@ -3,7 +3,6 @@ import pandas as pd
 import warnings
 import datetime
 from IPython.display import display, HTML
-from pyspark.sql import SparkSession
 from sempy_labs._model_dependencies import get_model_calc_dependencies
 from sempy_labs._helper_functions import (
     format_dax_object_name,
@@ -13,6 +12,7 @@ from sempy_labs._helper_functions import (
     resolve_workspace_capacity,
     resolve_dataset_id,
     get_language_codes,
+    get_max_run_id,
 )
 from sempy_labs.lakehouse import get_lakehouse_tables, lakehouse_attached
 from sempy_labs.tom import connect_semantic_model
@@ -30,9 +30,9 @@ def run_model_bpa(
     dataset: str,
     rules: Optional[pd.DataFrame] = None,
     workspace: Optional[str] = None,
-    export: Optional[bool] = False,
-    return_dataframe: Optional[bool] = False,
-    extended: Optional[bool] = False,
+    export: bool = False,
+    return_dataframe: bool = False,
+    extended: bool = False,
     language: Optional[str] = None,
     **kwargs,
 ):
@@ -151,6 +151,7 @@ def run_model_bpa(
             def translate_using_spark(rule_file):
 
                 from synapse.ml.services import Translate
+                from pyspark.sql import SparkSession
 
                 rules_temp = rule_file.copy()
                 rules_temp = rules_temp.drop(["Expression", "URL", "Severity"], axis=1)
@@ -346,15 +347,11 @@ def run_model_bpa(
 
         dfExport["Severity"].replace(icons.severity_mapping, inplace=True)
 
-        spark = SparkSession.builder.getOrCreate()
-        query = f"SELECT MAX(RunId) FROM {lakehouse}.{delta_table_name}"
-
         if len(lakeT_filt) == 0:
             runId = 1
         else:
-            dfSpark = spark.sql(query)
-            maxRunId = dfSpark.collect()[0][0]
-            runId = maxRunId + 1
+            max_run_id = get_max_run_id(table_name=delta_table_name)
+            runId = max_run_id + 1
 
         now = datetime.datetime.now()
         dfD = fabric.list_datasets(workspace=workspace, mode="rest")
@@ -514,4 +511,5 @@ def run_model_bpa(
     tab_html += "</div>"
 
     # Display the tabs, tab contents, and run the script
-    return display(HTML(styles + tab_html + content_html + script))
+    if not export:
+        return display(HTML(styles + tab_html + content_html + script))

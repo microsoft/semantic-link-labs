@@ -313,7 +313,7 @@ def _create_report(
     dataset: str,
     dataset_workspace: Optional[str] = None,
     report_workspace: Optional[str] = None,
-    update_if_exists: Optional[bool] = False,
+    update_if_exists: bool = False,
 ):
 
     from sempy_labs.report import report_rebind

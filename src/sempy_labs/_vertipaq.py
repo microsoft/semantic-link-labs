@@ -13,6 +13,7 @@ from sempy_labs._helper_functions import (
     resolve_dataset_id,
     save_as_delta_table,
     resolve_workspace_capacity,
+    get_max_run_id,
 )
 from sempy_labs._list_functions import list_relationships, list_tables
 from sempy_labs.lakehouse import lakehouse_attached, get_lakehouse_tables
@@ -27,7 +28,7 @@ def vertipaq_analyzer(
     dataset: str,
     workspace: Optional[str] = None,
     export: Optional[str] = None,
-    read_stats_from_data: Optional[bool] = False,
+    read_stats_from_data: bool = False,
     **kwargs,
 ):
     """
@@ -336,10 +337,10 @@ def vertipaq_analyzer(
             int_cols.append(k)
         elif v in ["float", "double"] and k != "Temperature":
             pct_cols.append(k)
-    colSize[int_cols] = colSize[int_cols].applymap("{:,}".format)
-    temp[int_cols] = temp[int_cols].applymap("{:,}".format)
-    colSize[pct_cols] = colSize[pct_cols].applymap("{:.2f}%".format)
-    temp[pct_cols] = temp[pct_cols].applymap("{:.2f}%".format)
+    colSize[int_cols] = colSize[int_cols].map("{:,}".format)
+    temp[int_cols] = temp[int_cols].map("{:,}".format)
+    colSize[pct_cols] = colSize[pct_cols].map("{:.2f}%".format)
+    temp[pct_cols] = temp[pct_cols].map("{:.2f}%".format)
 
     # Tables
     int_cols = []
@@ -351,8 +352,8 @@ def vertipaq_analyzer(
             pct_cols.append(k)
     export_Table = dfT.copy()
 
-    dfT[int_cols] = dfT[int_cols].applymap("{:,}".format)
-    dfT[pct_cols] = dfT[pct_cols].applymap("{:.2f}%".format)
+    dfT[int_cols] = dfT[int_cols].map("{:,}".format)
+    dfT[pct_cols] = dfT[pct_cols].map("{:.2f}%".format)
 
     #  Relationships
     dfR = pd.merge(
@@ -391,7 +392,7 @@ def vertipaq_analyzer(
             int_cols.append(k)
     if not read_stats_from_data:
         int_cols.remove("Missing Rows")
-    dfR[int_cols] = dfR[int_cols].applymap("{:,}".format)
+    dfR[int_cols] = dfR[int_cols].map("{:,}".format)
 
     # Partitions
     dfP = dfP[
@@ -414,7 +415,7 @@ def vertipaq_analyzer(
         if v in ["int", "long", "double", "float"]:
             int_cols.append(k)
     intList = ["Record Count", "Segment Count", "Records per Segment"]
-    dfP[intList] = dfP[intList].applymap("{:,}".format)
+    dfP[intList] = dfP[intList].map("{:,}".format)
 
     # Hierarchies
     dfH_filt = dfH[dfH["Level Ordinal"] == 0]
@@ -426,7 +427,7 @@ def vertipaq_analyzer(
     dfH_filt["Used Size"] = dfH_filt["Used Size"].astype(int)
     export_Hier = dfH_filt.copy()
     intList = ["Used Size"]
-    dfH_filt[intList] = dfH_filt[intList].applymap("{:,}".format)
+    dfH_filt[intList] = dfH_filt[intList].map("{:,}".format)
 
     # Model
     # Converting to KB/MB/GB necessitates division by 1024 * 1000.
@@ -456,7 +457,7 @@ def vertipaq_analyzer(
     for k, v in vertipaq_map["Model"].items():
         if v in ["long", "int"] and k != "Compatibility Level":
             int_cols.append(k)
-    dfModel[int_cols] = dfModel[int_cols].applymap("{:,}".format)
+    dfModel[int_cols] = dfModel[int_cols].map("{:,}".format)
 
     dataFrames = {
         "dfModel": dfModel,
@@ -483,26 +484,23 @@ def vertipaq_analyzer(
             )
 
     if export == "table":
-        spark = SparkSession.builder.getOrCreate()
+        # spark = SparkSession.builder.getOrCreate()
 
         lakehouse_id = fabric.get_lakehouse_id()
         lake_workspace = fabric.resolve_workspace_name()
         lakehouse = resolve_lakehouse_name(
             lakehouse_id=lakehouse_id, workspace=lake_workspace
         )
-        lakeTName = "vertipaq_analyzer_model"
+        lakeTName = "vertipaqanalyzer_model"
 
         lakeT = get_lakehouse_tables(lakehouse=lakehouse, workspace=lake_workspace)
         lakeT_filt = lakeT[lakeT["Table Name"] == lakeTName]
 
-        query = f"SELECT MAX(RunId) FROM {lakehouse}.{lakeTName}"
-
         if len(lakeT_filt) == 0:
             runId = 1
         else:
-            dfSpark = spark.sql(query)
-            maxRunId = dfSpark.collect()[0][0]
-            runId = maxRunId + 1
+            max_run_id = get_max_run_id(table_name=lakeTName)
+            runId = max_run_id + 1
 
         dfMap = {
             "Columns": ["Columns", export_Col],

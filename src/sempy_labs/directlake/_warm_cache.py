@@ -15,7 +15,7 @@ import sempy_labs._icons as icons
 def warm_direct_lake_cache_perspective(
     dataset: str,
     perspective: str,
-    add_dependencies: Optional[bool] = False,
+    add_dependencies: bool = False,
     workspace: Optional[str] = None,
 ) -> pd.DataFrame:
     """

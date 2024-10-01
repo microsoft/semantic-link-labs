@@ -100,7 +100,7 @@ def add_table_to_direct_lake_semantic_model(
     dataset: str,
     table_name: str,
     lakehouse_table_name: str,
-    refresh: Optional[bool] = True,
+    refresh: bool = True,
     workspace: Optional[str] = None,
 ):
     """

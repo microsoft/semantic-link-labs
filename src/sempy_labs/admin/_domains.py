@@ -30,7 +30,7 @@ def resolve_domain_id(domain_name: str) -> UUID:
     return dfL_filt["Domain ID"].iloc[0]
 
 
-def list_domains(non_empty_only: Optional[bool] = False) -> pd.DataFrame:
+def list_domains(non_empty_only: bool = False) -> pd.DataFrame:
     """
     Shows a list of domains.
 

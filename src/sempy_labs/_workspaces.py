@@ -22,9 +22,6 @@ def delete_user_from_workspace(email_address: str, workspace: Optional[str] = No
         The name of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
