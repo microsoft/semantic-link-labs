@@ -1064,9 +1064,11 @@ def convert_to_friendly_case(text: str) -> str:
     str
         Text converted into a business-friendly text.
     """
+    if text is not None:
+        text = text.replace("_", " ")
+        # Insert space before each capital letter, avoiding double spaces
+        text = re.sub(r"(?<!\s)(?=[A-Z])", " ", text)
+        # Strip leading/trailing whitespace and capitalize the first letter of each word
+        text = text.strip().title()
 
-    text = text.replace("_", " ")
-    # Insert space before each capital letter, avoiding double spaces
-    text = re.sub(r"(?<!\s)(?=[A-Z])", " ", text)
-    # Strip leading/trailing whitespace and capitalize the first letter of each word
-    return text.strip().title()
+    return text
