@@ -72,7 +72,6 @@ from sempy_labs._capacities import (
     delete_embedded_capacity,
     delete_premium_capacity,
 )
-
 from sempy_labs._spark import (
     get_spark_settings,
     update_spark_settings,
@@ -81,7 +80,6 @@ from sempy_labs._spark import (
     delete_custom_pool,
     update_custom_pool,
 )
-
 from sempy_labs._workspaces import (
     list_workspace_users,
     update_workspace_user,
@@ -146,10 +144,6 @@ from sempy_labs._list_functions import (
     list_shortcuts,
     get_object_level_security,
     list_capacities,
-    list_dashboards,
-    list_lakehouses,
-    list_warehouses,
-    create_warehouse,
     list_dashboards,
     list_datamarts,
     list_lakehouses,
@@ -250,6 +244,7 @@ __all__ = [
     "list_warehouses",
     "list_workspace_role_assignments",
     "create_warehouse",
+    "delete_warehouse",
     "update_item",
     "create_abfss_path",
     "format_dax_object_name",
@@ -352,9 +347,6 @@ __all__ = [
     "list_kql_databases",
     "create_kql_database",
     "delete_kql_database",
-    "create_warehouse",
-    "list_warehouses",
-    "delete_warehouse",
     "create_eventhouse",
     "list_eventhouses",
     "delete_eventhouse",
