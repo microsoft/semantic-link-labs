@@ -485,7 +485,8 @@ def scan_workspaces(
     workspace: Optional[str | List[str]] = None,
 ) -> dict:
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    if workspace is None:
+        workspace = fabric.resolve_workspace_name()
 
     if isinstance(workspace, str):
         workspace = [workspace]
