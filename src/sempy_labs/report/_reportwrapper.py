@@ -7,6 +7,7 @@ from sempy_labs._helper_functions import (
     _extract_json,
     _add_part,
     lro,
+    make_clickable,
 )
 from typing import Optional, List
 import pandas as pd
@@ -362,8 +363,8 @@ class ReportWrapper:
                                 ignore_index=True,
                             )
 
-        df["Page URL"] = (
-            f"{helper.get_web_url(report=self._report, workspace=self._workspace)}/{df['Page Name']}"
+        df["Page URL"] = df["Page Name"].apply(
+            lambda page_name: f"{helper.get_web_url(report=self._report, workspace=self._workspace)}/{page_name}"
         )
 
         bool_cols = ["Hidden", "Locked", "Used"]
@@ -373,6 +374,7 @@ class ReportWrapper:
             df = self._add_extended(dataframe=df)
 
         return df
+        # return df.style.format({"Page URL": make_clickable})
 
     def list_visual_filters(self, extended: bool = False) -> pd.DataFrame:
         """
@@ -639,11 +641,12 @@ class ReportWrapper:
         bool_cols = ["Hidden", "Active", "Drillthrough Target Page"]
         df[bool_cols] = df[bool_cols].astype(bool)
 
-        df["Page URL"] = (
-            f"{helper.get_web_url(report=self._report, workspace=self._workspace)}/{df['Page Name']}"
+        df["Page URL"] = df["Page Name"].apply(
+            lambda page_name: f"{helper.get_web_url(report=self._report, workspace=self._workspace)}/{page_name}"
         )
 
         return df
+        # return df.style.format({"Page URL": make_clickable})
 
     def list_visuals(self) -> pd.DataFrame:
         """

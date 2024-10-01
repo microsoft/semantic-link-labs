@@ -14,6 +14,7 @@ from sempy_labs._helper_functions import (
 from sempy_labs.lakehouse import get_lakehouse_tables, lakehouse_attached
 import sempy_labs._icons as icons
 from IPython.display import display, HTML
+import sempy_labs.report._report_helper as helper
 
 
 @log
@@ -50,6 +51,7 @@ def run_report_bpa(
     """
 
     rpt = ReportWrapper(report=report, workspace=workspace)
+
     dfCV = rpt.list_custom_visuals()
     dfP = rpt.list_pages()
     dfRF = rpt.list_report_filters()
@@ -57,6 +59,12 @@ def run_report_bpa(
         dfRF["Table Name"], dfRF["Object Name"]
     )
     dfPF = rpt.list_page_filters()
+    # Convert back to dataframe
+    #if isinstance(dfPF, pd.io.formats.style.Styler):
+    #    dfPF = dfPF.data
+    #if isinstance(dfP, pd.io.formats.style.Styler):
+    #    dfP = dfP.data
+
     dfPF["Filter Object"] = (
         dfPF["Page Display Name"]
         + " : "
@@ -134,7 +142,7 @@ def run_report_bpa(
             df_output["Severity"] = row["Severity"]
             df_output["Description"] = row["Description"]
             df_output["URL"] = row["URL"]
-            df_output["Report URL"] = rpt._get_web_url()
+            df_output["Report URL"] = helper.get_web_url(report=report, workspace=workspace)
 
             page_mapping_dict = dfP.set_index("Page Display Name")["Page URL"].to_dict()
 
