@@ -1056,3 +1056,27 @@ def resolve_environment_id(environment: str, workspace: Optional[str] = None) ->
 def make_clickable(val):
 
     return f'<a target="_blank" href="{val}">{val}</a>'
+
+
+def convert_to_friendly_case(text: str) -> str:
+    """
+    Converts a string of pascal/camel/snake case to business-friendly case.
+
+    Parameters
+    ----------
+    text : str
+        The text to convert.
+
+    Returns
+    -------
+    str
+        Text converted into a business-friendly text.
+    """
+    if text is not None:
+        text = text.replace("_", " ")
+        # Insert space before each capital letter, avoiding double spaces
+        text = re.sub(r"(?<!\s)(?=[A-Z])", " ", text)
+        # Strip leading/trailing whitespace and capitalize the first letter of each word
+        text = text.strip().title()
+
+    return text

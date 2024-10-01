@@ -16,7 +16,7 @@ def test_create_shortcut_onelake(fabric_rest_client_mock, resolve_item_id_mock, 
 
         if workspace_name == "destination_workspace":
             return "00000000-0000-0000-0000-000000000002"
-        
+
         assert False, f"Unexpected workspace: {workspace_name}"
 
     resolve_workspace_id_mock.side_effect = resolve_workspace_id_mock_side_effect
