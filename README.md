@@ -77,7 +77,7 @@ An even better way to ensure the semantic-link-labs library is available in your
 2. Select your newly created environment within the 'Environment' drop down in the navigation bar at the top of the notebook
 
 ## Version History
-* [0.8.1](https://github.com/microsoft/semantic-link-labs/releases/tag/0.8.1) (October 1, 2024)
+* [0.8.1](https://github.com/microsoft/semantic-link-labs/releases/tag/0.8.1) (October 2, 2024)
 * [0.8.0](https://github.com/microsoft/semantic-link-labs/releases/tag/0.8.0) (September 25, 2024)
 * [0.7.4](https://github.com/microsoft/semantic-link-labs/releases/tag/0.7.4) (September 16, 2024)
 * [0.7.3](https://github.com/microsoft/semantic-link-labs/releases/tag/0.7.3) (September 11, 2024)
@@ -125,7 +125,7 @@ Check out my [blog post](https://www.elegantbi.com/post/direct-lake-migration) o
 5. Back in the notebook, the next step will create your new Direct Lake semantic model with the name of your choice, taking all the relevant properties from the orignal semantic model and refreshing/framing your new semantic model.
 
 > [!NOTE]
-> As of version 0.2.1, calculated tables are also migrated to Direct Lake (as data tables with their DAX expression stored as model annotations in the new semantic model). Additionally, Field Parameters are migrated as they were in the original semantic model (as a calculated table).
+> Calculated tables are also migrated to Direct Lake (as data tables with their DAX expression stored as model annotations in the new semantic model). Additionally, Field Parameters are migrated as they were in the original semantic model (as a calculated table). [Auto date/time tables](https://learn.microsoft.com/power-bi/guidance/auto-date-time) are not migrated. Auto date/time must be disabled in Power BI Desktop and proper date table(s) must be created prior to migration.
 
 6. Finally, you can easily rebind your all reports which use the import/DQ semantic model to the new Direct Lake semantic model in one click.
 
@@ -137,6 +137,14 @@ Check out my [blog post](https://www.elegantbi.com/post/direct-lake-migration) o
 * Field parameters are migrated to the new semantic model as they were in the original semantic model (as calculated tables). Any calculated columns used in field parameters are automatically removed in the new semantic model's field parameter(s).
 * Non-supported objects are not transferred (i.e. calculated columns, relationships using columns with unsupported data types etc.).
 * Reports used by your original semantic model will be rebinded to your new semantic model.
+
+### Limitations
+* Calculated columns are not migrated.
+* Auto date/time tables are not migrated.
+* References to calculated columns in Field Parameters are removed.
+* References to calculated columns in measure expressions or other DAX expressions will break.
+* Calculated tables are migrated as possible. The success of this migration depends on the interdependencies and complexity of the calculated table. This part of the migration is a workaround as technically calculated tables are not supported in Direct Lake.
+* See [here](https://learn.microsoft.com/fabric/get-started/direct-lake-overview#considerations-and-limitations) for the rest of the limitations of Direct Lake.
 
 ## Contributing
 
