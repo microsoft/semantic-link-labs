@@ -87,7 +87,9 @@ def get_measure_dependencies(
                                             "Object Type": r["Object Type"],
                                             "Referenced Object": dependency.iloc[4],
                                             "Referenced Table": dependency.iloc[3],
-                                            "Referenced Object Type": dependency.iloc[5],
+                                            "Referenced Object Type": dependency.iloc[
+                                                5
+                                            ],
                                             "Done": d,
                                             "Full Object Name": r["Full Object Name"],
                                             "Referenced Full Object Name": dependency.iloc[
@@ -112,7 +114,9 @@ def get_measure_dependencies(
                                             "Object Type": r["Object Type"],
                                             "Referenced Object": dependency.iloc[4],
                                             "Referenced Table": dependency.iloc[3],
-                                            "Referenced Object Type": dependency.iloc[5],
+                                            "Referenced Object Type": dependency.iloc[
+                                                5
+                                            ],
                                             "Done": d,
                                             "Full Object Name": r["Full Object Name"],
                                             "Referenced Full Object Name": dependency.iloc[
@@ -216,7 +220,9 @@ def get_model_calc_dependencies(
                                             "Object Type": r["Object Type"],
                                             "Referenced Object": dependency.iloc[4],
                                             "Referenced Table": dependency.iloc[3],
-                                            "Referenced Object Type": dependency.iloc[5],
+                                            "Referenced Object Type": dependency.iloc[
+                                                5
+                                            ],
                                             "Done": d,
                                             "Full Object Name": r["Full Object Name"],
                                             "Referenced Full Object Name": dependency.iloc[
@@ -241,7 +247,9 @@ def get_model_calc_dependencies(
                                             "Object Type": r["Object Type"],
                                             "Referenced Object": dependency.iloc[5],
                                             "Referenced Table": dependency.iloc[4],
-                                            "Referenced Object Type": dependency.iloc[6],
+                                            "Referenced Object Type": dependency.iloc[
+                                                6
+                                            ],
                                             "Done": d,
                                             "Full Object Name": r["Full Object Name"],
                                             "Referenced Full Object Name": dependency.iloc[

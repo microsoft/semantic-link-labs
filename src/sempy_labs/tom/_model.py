@@ -4248,6 +4248,37 @@ class TOMWrapper:
                 isCalcTable = True
         return isCalcTable
 
+    def update_lineage_tags(self):
+        """
+        Adds lineage and source lineage tags for relevant semantic model objects if they do not exist.
+        """
+
+        for t in self.model.Tables:
+            if len(t.LineageTag) == 0:
+                t.LineageTag = generate_guid()
+            if len(t.SourceLineageTag) == 0:
+                t.SourceLineageTag = generate_guid()
+        for c in self.all_columns():
+            if len(c.LineageTag) == 0:
+                c.LineageTag = generate_guid()
+            if len(c.SourceLineageTag) == 0:
+                c.SourceLineageTag = generate_guid()
+        for m in self.all_measures():
+            if len(m.LineageTag) == 0:
+                m.LineageTag = generate_guid()
+            if len(m.SourceLineageTag) == 0:
+                m.SourceLineageTag = generate_guid()
+        for h in self.all_hierarchies():
+            if len(h.LineageTag) == 0:
+                h.LineageTag = generate_guid()
+            if len(h.SourceLineageTag) == 0:
+                h.SourceLineageTag = generate_guid()
+        for lvl in self.all_levels():
+            if len(lvl.LineageTag) == 0:
+                lvl.LineageTag = generate_guid()
+            if len(h.SourceLineageTag) == 0:
+                h.SourceLineageTag = generate_guid()
+
     def generate_measure_descriptions(
         self,
         measure_name: Optional[str | List[str]] = None,
@@ -4294,10 +4325,14 @@ class TOMWrapper:
             }
             for m_name in measure_list:
                 expr, t_name = next(
-                    (ms.Expression, ms.Parent.Name) for ms in self.all_measures() if ms.Name == m_name
+                    (ms.Expression, ms.Parent.Name)
+                    for ms in self.all_measures()
+                    if ms.Name == m_name
                 )
                 if t_name is None:
-                    raise ValueError(f"{icons.red_dot} The '{m_name}' measure does not exist in the '{self._dataset}' semantic model within the '{self._workspace}' workspace.")
+                    raise ValueError(
+                        f"{icons.red_dot} The '{m_name}' measure does not exist in the '{self._dataset}' semantic model within the '{self._workspace}' workspace."
+                    )
 
                 new_item = {
                     "urn": m_name,

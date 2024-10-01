@@ -60,9 +60,9 @@ def run_report_bpa(
     )
     dfPF = rpt.list_page_filters()
     # Convert back to dataframe
-    #if isinstance(dfPF, pd.io.formats.style.Styler):
+    # if isinstance(dfPF, pd.io.formats.style.Styler):
     #    dfPF = dfPF.data
-    #if isinstance(dfP, pd.io.formats.style.Styler):
+    # if isinstance(dfP, pd.io.formats.style.Styler):
     #    dfP = dfP.data
 
     dfPF["Filter Object"] = (
@@ -142,7 +142,9 @@ def run_report_bpa(
             df_output["Severity"] = row["Severity"]
             df_output["Description"] = row["Description"]
             df_output["URL"] = row["URL"]
-            df_output["Report URL"] = helper.get_web_url(report=report, workspace=workspace)
+            df_output["Report URL"] = helper.get_web_url(
+                report=report, workspace=workspace
+            )
 
             page_mapping_dict = dfP.set_index("Page Display Name")["Page URL"].to_dict()
 

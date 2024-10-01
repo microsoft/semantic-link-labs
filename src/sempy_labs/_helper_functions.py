@@ -999,7 +999,9 @@ def resolve_warehouse_id(warehouse: str, workspace: Optional[str]) -> UUID:
     """
 
     workspace = fabric.resolve_workspace_name(workspace)
-    return fabric.resolve_item_id(item_name=warehouse, type='Warehouse', workspace=workspace)
+    return fabric.resolve_item_id(
+        item_name=warehouse, type="Warehouse", workspace=workspace
+    )
 
 
 def get_language_codes(languages: str | List[str]):
@@ -1048,7 +1050,7 @@ def get_azure_token_credentials(
 
 def convert_to_alphanumeric_lowercase(input_string):
 
-    # Removes non-alphanumeric characters 
+    # Removes non-alphanumeric characters
     cleaned_string = re.sub(r"[^a-zA-Z0-9]", "", input_string)
     cleaned_string = cleaned_string.lower()
 
@@ -1071,7 +1073,9 @@ def resolve_environment_id(environment: str, workspace: Optional[str] = None) ->
     """
 
     workspace = fabric.resolve_workspace_name(workspace)
-    return fabric.resolve_item_id(item_name=environment, type='Environment', workspace=workspace)
+    return fabric.resolve_item_id(
+        item_name=environment, type="Environment", workspace=workspace
+    )
 
 
 def make_clickable(val):
@@ -1119,7 +1123,9 @@ def resolve_notebook_id(notebook: str, workspace: Optional[str] = None) -> UUID:
     """
 
     workspace = fabric.resolve_workspace_name(workspace)
-    return fabric.resolve_item_id(item_name=notebook, type='Notebook', workspace=workspace)
+    return fabric.resolve_item_id(
+        item_name=notebook, type="Notebook", workspace=workspace
+    )
 
 
 def generate_guid():
