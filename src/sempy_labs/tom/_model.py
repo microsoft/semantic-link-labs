@@ -4233,10 +4233,14 @@ class TOMWrapper:
             }
             for m_name in measure_list:
                 expr, t_name = next(
-                    (ms.Expression, ms.Parent.Name) for ms in self.all_measures() if ms.Name == m_name
+                    (ms.Expression, ms.Parent.Name)
+                    for ms in self.all_measures()
+                    if ms.Name == m_name
                 )
                 if t_name is None:
-                    raise ValueError(f"{icons.red_dot} The '{m_name}' measure does not exist in the '{self._dataset}' semantic model within the '{self._workspace}' workspace.")
+                    raise ValueError(
+                        f"{icons.red_dot} The '{m_name}' measure does not exist in the '{self._dataset}' semantic model within the '{self._workspace}' workspace."
+                    )
 
                 new_item = {
                     "urn": m_name,

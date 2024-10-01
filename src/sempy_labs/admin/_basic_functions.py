@@ -804,3 +804,112 @@ def list_items(
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
+
+
+def list_activity_events(
+    start_time: str,
+    end_time: str,
+    activity_filter: Optional[str] = None,
+    user_id_filter: Optional[str] = None,
+):
+    """
+    Shows a list of audit activity events for a tenant.
+
+    Parameters
+    ----------
+    start_time : str
+        Start date and time of the window for audit event results. Example: "2024-09-25T07:55:00".
+    end_time : str
+        End date and time of the window for audit event results. Example: "2024-09-25T08:55:00".
+    activity_filter : str, default=None
+        Filter value for activities. Example: 'viewreport'.
+    user_id_filter : str, default=None
+        Email address of the user.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of audit activity events for a tenant.
+    """
+
+    # https://learn.microsoft.com/en-us/rest/api/power-bi/admin/get-activity-events
+
+    df = pd.DataFrame(
+        columns=[
+            "Id",
+            "Record Type",
+            "Creation Time",
+            "Operation",
+            "Organization Id",
+            "User Type",
+            "User Key",
+            "Workload",
+            "Result Status",
+            "User Id",
+            "Client IP",
+            "User Agent",
+            "Activity",
+            "Workspace Name",
+            "Workspace Id",
+            "Object Id",
+            "Request Id",
+            "Object Type",
+            "Object Display Name",
+            "Experience",
+            "Refresh Enforcement Policy",
+        ]
+    )
+
+    tic = "%27"
+    space = "%20"
+    client = fabric.PowerBIRestClient()
+    base_url = "/v1.0/myorg/admin/activityevents"
+    conditions = []
+
+    if activity_filter is not None:
+        conditions.append(f"Activity{space}eq{space}{tic}{activity_filter}{tic}")
+    if user_id_filter is not None:
+        conditions.append(f"UserId{space}eq{space}{tic}{user_id_filter}{tic}")
+
+    filter_value = (
+        f"&filter={f'{space}and{space}'.join(conditions)}" if conditions else ""
+    )
+
+    full_url = f"{base_url}?startDateTime={tic}{start_time}{tic}&endDateTime={tic}{end_time}{tic}{filter_value}"
+    response = client.get(full_url)
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    responses = pagination(client, response)
+
+    for r in responses:
+        for i in r.get("activityEventEntities", []):
+            new_data = {
+                "Id": i.get("id"),
+                "Record Type": i.get("RecordType"),
+                "Creation Time": i.get("CreationTime"),
+                "Operation": i.get("Operation"),
+                "Organization Id": i.get("OrganizationId"),
+                "User Type": i.get("UserType"),
+                "User Key": i.get("UserKey"),
+                "Workload": i.get("Workload"),
+                "Result Status": i.get("ResultStatus"),
+                "User Id": i.get("UserId"),
+                "Client IP": i.get("ClientIP"),
+                "User Agent": i.get("UserAgent"),
+                "Activity": i.get("Activity"),
+                "Workspace Name": i.get("WorkSpaceName"),
+                "Workspace Id": i.get("WorkspaceId"),
+                "Object Id": i.get("ObjectId"),
+                "Request Id": i.get("RequestId"),
+                "Object Type": i.get("ObjectType"),
+                "Object Display Name": i.get("ObjectDisplayName"),
+                "Experience": i.get("Experience"),
+                "Refresh Enforcement Policy": i.get("RefreshEnforcementPolicy"),
+            }
+            df = pd.concat(
+                [df, pd.DataFrame(new_data, index=[0])],
+                ignore_index=True,
+            )
+
+    return df
