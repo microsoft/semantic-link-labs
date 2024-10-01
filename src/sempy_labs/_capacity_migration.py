@@ -264,9 +264,6 @@ def migrate_capacity_settings(source_capacity: str, target_capacity: str):
         Name of the source capacity.
     target_capacity : str
         Name of the target capacity.
-
-    Returns
-    -------
     """
 
     dfC = fabric.list_capacities()
@@ -407,9 +404,6 @@ def migrate_access_settings(source_capacity: str, target_capacity: str):
         Name of the source capacity.
     target_capacity : str
         Name of the target capacity.
-
-    Returns
-    -------
     """
 
     dfC = fabric.list_capacities()
@@ -456,9 +450,6 @@ def migrate_notification_settings(source_capacity: str, target_capacity: str):
         Name of the source capacity.
     target_capacity : str
         Name of the target capacity.
-
-    Returns
-    -------
     """
 
     dfC = fabric.list_capacities()
@@ -507,9 +498,6 @@ def migrate_delegated_tenant_settings(source_capacity: str, target_capacity: str
         Name of the source capacity.
     target_capacity : str
         Name of the target capacity.
-
-    Returns
-    -------
     """
 
     dfC = fabric.list_capacities()
@@ -635,6 +623,7 @@ def migrate_spark_settings(source_capacity: str, target_capacity: str):
     )
 
 
+@log
 def migrate_fabric_trial_capacity(
     azure_subscription_id: str,
     key_vault_uri: str,
@@ -681,6 +670,10 @@ def migrate_fabric_trial_capacity(
 
     from sempy_labs._list_functions import list_capacities
 
+    notebook_workspace_id = fabric.get_notebook_workspace_id()
+    dfW = fabric.list_workspaces(filter=f"id eq '{notebook_workspace_id}'")
+    notebook_capacity_id = dfW["Capacity Id"].iloc[0].lower()
+
     dfC = list_capacities()
     dfC_filt = dfC[dfC["Display Name"] == source_capacity]
 
@@ -688,6 +681,13 @@ def migrate_fabric_trial_capacity(
         raise ValueError(
             f"{icons.red_dot} The {source_capacity}' capacity does not exist."
         )
+
+    source_capacity_id = dfC_filt["Id"].iloc[0].lower()
+    if source_capacity_id == notebook_capacity_id:
+        print(
+            f"{icons.warning} The '{source_capacity}' capacity cannot be both the source capacity as well as the capacity in which the notebook is running."
+        )
+        return
 
     # Use same region as source capacity if no region is specified
     if target_capacity_region is None:
