@@ -20,11 +20,11 @@ def get_direct_lake_guardrails() -> pd.DataFrame:
     tables = pd.read_html(url)
     for df in tables:
         first_column_name = df.columns[0]
-        if first_column_name.startswith('Fabric'):
+        if first_column_name.startswith("Fabric"):
             df[first_column_name] = df[first_column_name].str.split("/")
             df = df.explode(first_column_name, ignore_index=True)
             break
-    
+
     return df
 
 
