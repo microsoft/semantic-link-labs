@@ -7,10 +7,7 @@ import sempy_labs._icons as icons
 def get_direct_lake_guardrails() -> pd.DataFrame:
     """
     Shows the guardrails for when Direct Lake semantic models will fallback to Direct Query
-     based on Microsoft's `online documentation <https://learn.microsoft.com/power-bi/enterprise/directlake-overview>`_.
-
-    Parameters
-    ----------
+    based on Microsoft's `online documentation <https://learn.microsoft.com/power-bi/enterprise/directlake-overview>`_.
 
     Returns
     -------
@@ -21,10 +18,13 @@ def get_direct_lake_guardrails() -> pd.DataFrame:
     url = "https://learn.microsoft.com/power-bi/enterprise/directlake-overview"
 
     tables = pd.read_html(url)
-    df = tables[0]
-    df["Fabric SKUs"] = df["Fabric SKUs"].str.split("/")
-    df = df.explode("Fabric SKUs", ignore_index=True)
-
+    for df in tables:
+        first_column_name = df.columns[0]
+        if first_column_name.startswith('Fabric'):
+            df[first_column_name] = df[first_column_name].str.split("/")
+            df = df.explode(first_column_name, ignore_index=True)
+            break
+    
     return df
 
 
