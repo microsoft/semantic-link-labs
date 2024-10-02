@@ -1309,9 +1309,8 @@ class ReportWrapper:
         ----------
         theme_file_path : str
             The file path of the theme.json file. This can either be from a Fabric lakehouse or from the web.
-            Examples:
-                file_path = '/lakehouse/default/Files/CY23SU09.json'
-                file_path = 'https://raw.githubusercontent.com/PowerBiDevCamp/FabricUserApiDemo/main/FabricUserApiDemo/DefinitionTemplates/Shared/Reports/StaticResources/SharedResources/BaseThemes/CY23SU08.json'
+            Example for lakehouse: file_path = '/lakehouse/default/Files/CY23SU09.json'
+            Example for web url: file_path = 'https://raw.githubusercontent.com/PowerBiDevCamp/FabricUserApiDemo/main/FabricUserApiDemo/DefinitionTemplates/Shared/Reports/StaticResources/SharedResources/BaseThemes/CY23SU08.json'
         """
 
         import requests

@@ -108,11 +108,11 @@ def create_custom_pool(
     min_node_count : int
         The `minimum node count <https://learn.microsoft.com/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool?tabs=HTTP#autoscaleproperties>`_.
     max_node_count : int
-        The `maximum node count <https://learn.microsoft.com/en-us/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool?tabs=HTTP#autoscaleproperties>`_.
+        The maximum node count.
     min_executors : int
         The `minimum executors <https://learn.microsoft.com/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool?tabs=HTTP#dynamicexecutorallocationproperties>`_.
     max_executors : int
-        The `maximum executors <https://learn.microsoft.com/en-us/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool?tabs=HTTP#dynamicexecutorallocationproperties>`_.
+        The maximum executors.
     node_family : str, default='MemoryOptimized'
         The `node family <https://learn.microsoft.com/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool?tabs=HTTP#nodefamily>`_.
     auto_scale_enabled : bool, default=True
@@ -182,13 +182,13 @@ def update_custom_pool(
         The `minimum node count <https://learn.microsoft.com/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool?tabs=HTTP#autoscaleproperties>`_.
         Defaults to None which keeps the existing property setting.
     max_node_count : int, default=None
-        The `maximum node count <https://learn.microsoft.com/en-us/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool?tabs=HTTP#autoscaleproperties>`_.
+        The maximum node count.
         Defaults to None which keeps the existing property setting.
     min_executors : int, default=None
         The `minimum executors <https://learn.microsoft.com/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool?tabs=HTTP#dynamicexecutorallocationproperties>`_.
         Defaults to None which keeps the existing property setting.
     max_executors : int, default=None
-        The `maximum executors <https://learn.microsoft.com/en-us/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool?tabs=HTTP#dynamicexecutorallocationproperties>`_.
+        The maximum executors.
         Defaults to None which keeps the existing property setting.
     node_family : str, default=None
         The `node family <https://learn.microsoft.com/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool?tabs=HTTP#nodefamily>`_.
@@ -407,10 +407,10 @@ def update_spark_settings(
         `Default pool <https://learn.microsoft.com/rest/api/fabric/spark/workspace-settings/update-spark-settings?tabs=HTTP#poolproperties>`_ for workspace.
         Defaults to None which keeps the existing property setting.
     max_node_count : int, default=None
-        The `maximum node count <https://learn.microsoft.com/en-us/rest/api/fabric/spark/workspace-settings/update-spark-settings?tabs=HTTP#starterpoolproperties>`_.
+        The maximum node count.
         Defaults to None which keeps the existing property setting.
     max_executors : int, default=None
-        The `maximum executors <https://learn.microsoft.com/rest/api/fabric/spark/workspace-settings/update-spark-settings?tabs=HTTP#starterpoolproperties>`_.
+        The maximum executors.
         Defaults to None which keeps the existing property setting.
     environment_name : str, default=None
         The name of the `default environment <https://learn.microsoft.com/rest/api/fabric/spark/workspace-settings/update-spark-settings?tabs=HTTP#environmentproperties>`_. Empty string indicated there is no workspace default environment

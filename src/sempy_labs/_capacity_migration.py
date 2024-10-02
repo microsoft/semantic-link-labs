@@ -136,8 +136,7 @@ def migrate_capacities(
     resource_group : str | dict
         The name of the Azure resource group.
         For A skus, this parameter will be ignored and the resource group used for the F sku will be the same as the A sku's resource group.
-        For P skus, if this parameter is a string, it will use that resource group for all of the newly created F skus.
-                    if this parameter is a dictionary, it will use that mapping (capacity name -> resource group) for creating capacities with the mapped resource groups.
+        For P skus, if this parameter is a string, it will use that resource group for all of the newly created F skus. If this parameter is a dictionary, it will use that mapping (capacity name -> resource group) for creating capacities with the mapped resource groups.
     capacities : str | List[str], default=None
         The capacity(ies) to migrate from A/P -> F sku.
         Defaults to None which migrates all accessible A/P sku capacities to F skus.
