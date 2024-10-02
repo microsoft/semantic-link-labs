@@ -4260,14 +4260,29 @@ class TOMWrapper:
 
     def update_lineage_tags(self):
         """
-        Adds lineage and source lineage tags for relevant semantic model objects if they do not exist.
+        Adds lineage and source lineage tags for relevant semantic model objects if they do not exist. Also updates schema name for Direct Lake (entity) partitions.
         """
+
+        import Microsoft.AnalysisServices.Tabular as TOM
 
         for t in self.model.Tables:
             if len(t.LineageTag) == 0:
                 t.LineageTag = generate_guid()
             if len(t.SourceLineageTag) == 0:
-                t.SourceLineageTag = generate_guid()
+                if next(p.Mode for p in t.Partitions) == TOM.ModeType.DirectLake:
+                    partition_name = next(p.Name for p in t.Partitions)
+                    entity_name = t.Partitions[partition_name].Source.EntityName
+                    schema_name = t.Partitions[partition_name].Source.SchemaName
+
+                    # Update schema name and source lineage tag for DL (entity) partitions
+                    if len(schema_name) == 0:
+                        schema_name = icons.default_schema
+                        t.Partitions[partition_name].Source.SchemaName = (
+                            icons.default_schema
+                        )
+                    t.SourceLineageTag = f"[{schema_name}].[{entity_name}]"
+                else:
+                    t.SourceLineageTag = generate_guid()
         for c in self.all_columns():
             if len(c.LineageTag) == 0:
                 c.LineageTag = generate_guid()

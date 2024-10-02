@@ -113,3 +113,4 @@ itemTypes = {
     "Notebook": "notebooks",
     "Warehouse": "warehouses",
 }
+default_schema = "dbo"
