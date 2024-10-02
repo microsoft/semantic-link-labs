@@ -135,21 +135,17 @@ class ReportWrapper:
 
     def get_theme(self, theme_type: str = "baseTheme") -> dict:
         """
-        Obtains
+        Obtains the theme file of the report.
 
         Parameters
         ----------
-        dataset : str
-            Name of the semantic model.
-        workspace : str, default=None
-            The Fabric workspace name.
-            Defaults to None which resolves to the workspace of the attached lakehouse
-            or if no lakehouse attached, resolves to the workspace of the notebook.
+        theme_type : str, default="baseTheme"
+            The theme type. Options: "baseTheme", "customTheme".
 
         Returns
         -------
-        pandas.DataFrame
-            A pandas dataframe showing a list of all columns in the semantic model which are not used in any related Power BI reports (including dependencies).
+        dict
+            The theme.json file
         """
 
         theme_types = ["baseTheme", "customTheme"]
