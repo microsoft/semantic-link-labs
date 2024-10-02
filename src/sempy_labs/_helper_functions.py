@@ -13,7 +13,6 @@ from uuid import UUID
 import sempy_labs._icons as icons
 import urllib.parse
 from azure.core.credentials import TokenCredential, AccessToken
-import deltalake
 
 
 def create_abfss_path(
@@ -1135,6 +1134,7 @@ def generate_guid():
 
 def get_max_run_id(table_name: str) -> int:
 
+    import deltalake
     table_path = f"/lakehouse/default/Tables/{table_name}/"
     delta_table = deltalake.DeltaTable(table_path)
     data = delta_table.to_pandas()
