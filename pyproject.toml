@@ -7,7 +7,7 @@ name="semantic-link-labs"
 authors = [
     { name = "Microsoft Corporation" },
 ]
-version="0.8.1"
+version="0.8.2"
 description="Semantic Link Labs for Microsoft Fabric"
 readme="README.md"
 requires-python=">=3.10,<3.12"
@@ -29,7 +29,6 @@ dependencies = [
     "polib",
     "azure.mgmt.resource",
     "jsonpath_ng",
-    "deltalake",
 ]
 
 [tool.setuptools.packages.find]
@@ -47,7 +46,7 @@ test = [
 Repository = "https://github.com/microsoft/semantic-link-labs.git"
 
 [[tool.mypy.overrides]]
-module = "sempy.*,Microsoft.*,System.*,anytree.*,powerbiclient.*,synapse.ml.services.*,polib.*,azure.mgmt.resource.*,jsonpath_ng.*,deltalake.*"
+module = "sempy.*,Microsoft.*,System.*,anytree.*,powerbiclient.*,synapse.ml.services.*,polib.*,azure.mgmt.resource.*,jsonpath_ng.*"
 ignore_missing_imports = true
 
 [tool.flake8]

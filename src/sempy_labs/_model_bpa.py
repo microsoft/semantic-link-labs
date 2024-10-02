@@ -350,7 +350,9 @@ def run_model_bpa(
         if len(lakeT_filt) == 0:
             runId = 1
         else:
-            max_run_id = get_max_run_id(table_name=delta_table_name)
+            max_run_id = get_max_run_id(
+                lakehouse=lakehouse, table_name=delta_table_name
+            )
             runId = max_run_id + 1
 
         now = datetime.datetime.now()

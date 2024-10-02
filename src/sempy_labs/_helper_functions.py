@@ -1132,12 +1132,13 @@ def generate_guid():
     return str(uuid.uuid4())
 
 
-def get_max_run_id(table_name: str) -> int:
+def get_max_run_id(lakehouse: str, table_name: str) -> int:
 
-    import deltalake
-    table_path = f"/lakehouse/default/Tables/{table_name}/"
-    delta_table = deltalake.DeltaTable(table_path)
-    data = delta_table.to_pandas()
-    max_run_id = data["RunId"].max()
+    from pyspark.sql import SparkSession
+
+    spark = SparkSession.builder.getOrCreate()
+    query = f"SELECT MAX(RunId) FROM {lakehouse}.{table_name}"
+    dfSpark = spark.sql(query)
+    max_run_id = dfSpark.collect()[0][0]
 
     return max_run_id

@@ -13,4 +13,3 @@ polib
 powerbiclient
 azure.mgmt.resource
 jsonpath_ng
-deltalake

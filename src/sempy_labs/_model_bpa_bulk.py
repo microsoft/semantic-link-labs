@@ -92,7 +92,7 @@ def run_model_bpa_bulk(
     if len(lakeT_filt) == 0:
         runId = 1
     else:
-        max_run_id = get_max_run_id(table_name=output_table)
+        max_run_id = get_max_run_id(lakehouse=lakehouse, table_name=output_table)
         runId = max_run_id + 1
 
     if isinstance(workspace, str):
