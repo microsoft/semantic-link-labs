@@ -10,6 +10,7 @@ azure-storage-blob>=12.9.0
 anytree
 IPython
 polib
+powerbiclient
 azure.mgmt.resource
 jsonpath_ng
 deltalake
