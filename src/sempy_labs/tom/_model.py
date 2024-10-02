@@ -4286,8 +4286,13 @@ class TOMWrapper:
         for lvl in self.all_levels():
             if len(lvl.LineageTag) == 0:
                 lvl.LineageTag = generate_guid()
-            if len(h.SourceLineageTag) == 0:
-                h.SourceLineageTag = generate_guid()
+            if len(lvl.SourceLineageTag) == 0:
+                lvl.SourceLineageTag = generate_guid()
+        for e in self.model.Expressions():
+            if len(e.LineageTag) == 0:
+                e.LineageTag = generate_guid()
+            if len(e.SourceLineageTag) == 0:
+                e.SourceLineageTag = generate_guid()
 
     def generate_measure_descriptions(
         self,
