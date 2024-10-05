@@ -360,7 +360,7 @@ def export_report(
         request_body["powerBIReportConfiguration"]["reportLevelFilters"] = [
             report_level_filter
         ]
-    print(request_body)
+
     response = client.post(
         f"/v1.0/myorg/groups/{workspace_id}/reports/{reportId}/ExportTo",
         json=request_body,
