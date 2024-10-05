@@ -372,18 +372,14 @@ def export_report(
         response_body = json.loads(response.content)
         while response_body["status"] not in ["Succeeded", "Failed"]:
             time.sleep(3)
-            response = client.get(
-                f"{base_url}/exports/{export_id}"
-            )
+            response = client.get(f"{base_url}/exports/{export_id}")
             response_body = json.loads(response.content)
         if response_body["status"] == "Failed":
             raise ValueError(
                 f"{icons.red_dot} The export for the '{report}' report within the '{workspace}' workspace in the '{export_format}' format has failed."
             )
         else:
-            response = client.get(
-                f"{base_url}/exports/{export_id}/file"
-            )
+            response = client.get(f"{base_url}/exports/{export_id}/file")
             print(
                 f"{icons.in_progress} Saving the '{export_format}' export for the '{report}' report within the '{workspace}' workspace to the lakehouse..."
             )
