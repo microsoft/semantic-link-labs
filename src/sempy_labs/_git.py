@@ -372,7 +372,7 @@ def update_from_git(
     if response.status_code not in [200, 202]:
         raise FabricHTTPException(response)
 
-    lro(client, response)
+    lro(client, response, return_status_code=True)
 
     print(
         f"{icons.green_dot} The '{workspace}' workspace has been updated with commits pushed to the connected branch."
