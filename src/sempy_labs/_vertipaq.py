@@ -337,10 +337,13 @@ def vertipaq_analyzer(
             int_cols.append(k)
         elif v in ["float", "double"] and k != "Temperature":
             pct_cols.append(k)
-    colSize[int_cols] = colSize[int_cols].map("{:,}".format)
-    temp[int_cols] = temp[int_cols].map("{:,}".format)
-    colSize[pct_cols] = colSize[pct_cols].map("{:.2f}%".format)
-    temp[pct_cols] = temp[pct_cols].map("{:.2f}%".format)
+    for col in int_cols:
+        colSize[col] = colSize[col].map("{:,}".format)
+        temp[col] = temp[col].map("{:,}".format)
+
+    for col in pct_cols:
+        colSize[col] = colSize[col].map("{:.2f}%".format)
+        temp[col] = temp[col].map("{:.2f}%".format)
 
     # Tables
     int_cols = []
@@ -352,8 +355,11 @@ def vertipaq_analyzer(
             pct_cols.append(k)
     export_Table = dfT.copy()
 
-    dfT[int_cols] = dfT[int_cols].map("{:,}".format)
-    dfT[pct_cols] = dfT[pct_cols].map("{:.2f}%".format)
+    for col in int_cols:
+        dfT[col] = dfT[col].map("{:,}".format)
+
+    for col in pct_cols:
+        dfT[col] = dfT[col].map("{:.2f}%".format)
 
     #  Relationships
     dfR = pd.merge(
@@ -392,7 +398,8 @@ def vertipaq_analyzer(
             int_cols.append(k)
     if not read_stats_from_data:
         int_cols.remove("Missing Rows")
-    dfR[int_cols] = dfR[int_cols].map("{:,}".format)
+    for col in int_cols:
+        dfR[col] = dfR[col].map("{:,}".format)
 
     # Partitions
     dfP = dfP[
@@ -415,7 +422,8 @@ def vertipaq_analyzer(
         if v in ["int", "long", "double", "float"]:
             int_cols.append(k)
     intList = ["Record Count", "Segment Count", "Records per Segment"]
-    dfP[intList] = dfP[intList].map("{:,}".format)
+    for col in intList:
+        dfP[col] = dfP[col].map("{:,}".format)
 
     # Hierarchies
     dfH_filt = dfH[dfH["Level Ordinal"] == 0]
@@ -427,7 +435,8 @@ def vertipaq_analyzer(
     dfH_filt["Used Size"] = dfH_filt["Used Size"].astype(int)
     export_Hier = dfH_filt.copy()
     intList = ["Used Size"]
-    dfH_filt[intList] = dfH_filt[intList].map("{:,}".format)
+    for col in intList:
+        dfH_filt[col] = dfH_filt[col].map("{:,}".format)
 
     # Model
     # Converting to KB/MB/GB necessitates division by 1024 * 1000.
@@ -457,7 +466,8 @@ def vertipaq_analyzer(
     for k, v in vertipaq_map["Model"].items():
         if v in ["long", "int"] and k != "Compatibility Level":
             int_cols.append(k)
-    dfModel[int_cols] = dfModel[int_cols].map("{:,}".format)
+    for col in int_cols:
+        dfModel[col] = dfModel[col].map("{:,}".format)
 
     dataFrames = {
         "dfModel": dfModel,
