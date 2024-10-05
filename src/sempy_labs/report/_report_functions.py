@@ -181,6 +181,8 @@ def export_report(
     """
 
     # https://learn.microsoft.com/rest/api/power-bi/reports/export-to-file-in-group
+    # https://learn.microsoft.com/rest/api/power-bi/reports/get-export-to-file-status-in-group
+    # https://learn.microsoft.com/rest/api/power-bi/reports/get-file-of-export-to-file-in-group
 
     if not lakehouse_attached():
         raise ValueError(
@@ -222,7 +224,6 @@ def export_report(
     }
 
     export_format = export_format.upper()
-
     fileExt = validFormats.get(export_format)
     if fileExt is None:
         raise ValueError(
@@ -361,21 +362,18 @@ def export_report(
             report_level_filter
         ]
 
-    response = client.post(
-        f"/v1.0/myorg/groups/{workspace_id}/reports/{reportId}/ExportTo",
-        json=request_body,
-    )
+    base_url = f"/v1.0/myorg/groups/{workspace_id}/reports/{reportId}"
+    response = client.post(f"{base_url}/ExportTo", json=request_body)
+
     if response.status_code == 202:
         response_body = json.loads(response.content)
-        exportId = response_body["id"]
-        response = client.get(
-            f"/v1.0/myorg/groups/{workspace_id}/reports/{reportId}/exports/{exportId}"
-        )
+        export_id = response_body["id"]
+        response = client.get(f"{base_url}/exports/{export_id}")
         response_body = json.loads(response.content)
         while response_body["status"] not in ["Succeeded", "Failed"]:
             time.sleep(3)
             response = client.get(
-                f"/v1.0/myorg/groups/{workspace_id}/reports/{reportId}/exports/{exportId}"
+                f"{base_url}/exports/{export_id}"
             )
             response_body = json.loads(response.content)
         if response_body["status"] == "Failed":
@@ -384,7 +382,7 @@ def export_report(
             )
         else:
             response = client.get(
-                f"/v1.0/myorg/groups/{workspace_id}/reports/{reportId}/exports/{exportId}/file"
+                f"{base_url}/exports/{export_id}/file"
             )
             print(
                 f"{icons.in_progress} Saving the '{export_format}' export for the '{report}' report within the '{workspace}' workspace to the lakehouse..."
