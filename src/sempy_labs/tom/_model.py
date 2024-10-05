@@ -4313,7 +4313,7 @@ class TOMWrapper:
         self,
         measure_name: Optional[str | List[str]] = None,
         max_batch_size: Optional[int] = 5,
-    ):
+    ) -> pd.DataFrame:
         """
         Auto-generates descriptions for measures using an LLM.
 
@@ -4324,9 +4324,16 @@ class TOMWrapper:
             Defaults to None which generates descriptions for all measures in the semantic model.
         max_batch_size : int, default=5
             Sets the max batch size for each API call.
+
+        Returns
+        -------
+        pandas.DataFrame
+            A pandas dataframe showing the updated measure(s) and their new description(s).
         """
 
         # import concurrent.futures
+        if measure_name is None:
+            measure_name = [m.Name for m in self.all_measures()]
 
         if isinstance(measure_name, str):
             measure_name = [measure_name]
@@ -4387,6 +4394,26 @@ class TOMWrapper:
                     m.Parent.Name for m in self.all_measures() if m.Name == ms_name
                 )
                 self.model.Tables[table_name].Measures[ms_name].Description = desc
+
+        df = pd.DataFrame(
+            columns=["Table Name", "Measure Name", "Expression", "Description"]
+        )
+        data = []
+
+        for m in self.all_measures():
+            if m.Name in measure_name:
+                new_data = {
+                    "Table Name": m.Parent.Name,
+                    "Measure Name": m.Name,
+                    "Expression": m.Expression,
+                    "Description": m.Description,
+                }
+                data.append(new_data)
+
+        if data:
+            df = pd.concat([df, pd.DataFrame(data)], ignore_index=True)
+
+        return df
 
         # def process_measure(m):
         #     table_name = m.Parent.Name
