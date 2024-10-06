@@ -40,7 +40,7 @@ def translate_semantic_model(
     from pyspark.sql import SparkSession
     from sempy_labs.tom import connect_semantic_model
 
-    def clean_text(text, exclude_chars):
+    def _clean_text(text, exclude_chars):
         if exclude_chars:
             for char in exclude_chars:
                 text = text.replace(char, " ")
@@ -60,8 +60,8 @@ def translate_semantic_model(
     ) as tom:
 
         for o in tom.model.Tables:
-            oName = clean_text(o.Name, exclude_characters)
-            oDescription = clean_text(o.Description, exclude_characters)
+            oName = _clean_text(o.Name, exclude_characters)
+            oDescription = _clean_text(o.Description, exclude_characters)
             new_data = {
                 "Object Type": "Table",
                 "Name": o.Name,
@@ -75,9 +75,9 @@ def translate_semantic_model(
                 [df_prep, pd.DataFrame(new_data, index=[0])], ignore_index=True
             )
         for o in tom.all_columns():
-            oName = clean_text(o.Name, exclude_characters)
-            oDescription = clean_text(o.Description, exclude_characters)
-            oDisplayFolder = clean_text(o.DisplayFolder, exclude_characters)
+            oName = _clean_text(o.Name, exclude_characters)
+            oDescription = _clean_text(o.Description, exclude_characters)
+            oDisplayFolder = _clean_text(o.DisplayFolder, exclude_characters)
             new_data = {
                 "Object Type": "Column",
                 "Name": o.Name,
@@ -91,9 +91,9 @@ def translate_semantic_model(
                 [df_prep, pd.DataFrame(new_data, index=[0])], ignore_index=True
             )
         for o in tom.all_measures():
-            oName = clean_text(o.Name, exclude_characters)
-            oDescription = clean_text(o.Description, exclude_characters)
-            oDisplayFolder = clean_text(o.DisplayFolder, exclude_characters)
+            oName = _clean_text(o.Name, exclude_characters)
+            oDescription = _clean_text(o.Description, exclude_characters)
+            oDisplayFolder = _clean_text(o.DisplayFolder, exclude_characters)
             new_data = {
                 "Object Type": "Measure",
                 "Name": o.Name,
@@ -107,9 +107,9 @@ def translate_semantic_model(
                 [df_prep, pd.DataFrame(new_data, index=[0])], ignore_index=True
             )
         for o in tom.all_hierarchies():
-            oName = clean_text(o.Name, exclude_characters)
-            oDescription = clean_text(o.Description, exclude_characters)
-            oDisplayFolder = clean_text(o.DisplayFolder, exclude_characters)
+            oName = _clean_text(o.Name, exclude_characters)
+            oDescription = _clean_text(o.Description, exclude_characters)
+            oDisplayFolder = _clean_text(o.DisplayFolder, exclude_characters)
             new_data = {
                 "Object Type": "Hierarchy",
                 "Name": o.Name,
@@ -123,8 +123,8 @@ def translate_semantic_model(
                 [df_prep, pd.DataFrame(new_data, index=[0])], ignore_index=True
             )
         for o in tom.all_levels():
-            oName = clean_text(o.Name, exclude_characters)
-            oDescription = clean_text(o.Description, exclude_characters)
+            oName = _clean_text(o.Name, exclude_characters)
+            oDescription = _clean_text(o.Description, exclude_characters)
             new_data = {
                 "Object Type": "Level",
                 "Name": o.Name,

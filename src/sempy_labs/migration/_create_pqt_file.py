@@ -13,7 +13,7 @@ import sempy_labs._icons as icons
 def create_pqt_file(
     dataset: str,
     workspace: Optional[str] = None,
-    file_name: Optional[str] = "PowerQueryTemplate",
+    file_name: str = "PowerQueryTemplate",
 ):
     """
     Dynamically generates a `Power Query Template <https://learn.microsoft.com/power-query/power-query-template>`_ file based on the semantic model. The .pqt file is

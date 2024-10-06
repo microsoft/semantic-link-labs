@@ -11,7 +11,7 @@ from sempy.fabric.exceptions import FabricHTTPException
 
 def generate_shared_expression(
     item_name: Optional[str] = None,
-    item_type: Optional[str] = "Lakehouse",
+    item_type: str = "Lakehouse",
     workspace: Optional[str] = None,
 ) -> str:
     """

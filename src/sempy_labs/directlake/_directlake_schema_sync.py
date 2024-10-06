@@ -56,11 +56,6 @@ def direct_lake_schema_sync(
         )
     lakehouse_workspace = fabric.resolve_workspace_name(lakehouse_workspace_id)
 
-    if artifact_type == "Warehouse":
-        raise ValueError(
-            f"{icons.red_dot} This function is only valid for Direct Lake semantic models which source from Fabric lakehouses (not warehouses)."
-        )
-
     lc = get_lakehouse_columns(lakehouse_name, lakehouse_workspace)
 
     with connect_semantic_model(
