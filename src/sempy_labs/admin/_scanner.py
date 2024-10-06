@@ -7,13 +7,38 @@ import sempy_labs._icons as icons
 
 
 def scan_workspaces(
-    data_source_details: bool = False,
-    dataset_schema: bool = False,
     dataset_expressions: bool = False,
-    lineage: bool = False,
+    dataset_schema: bool = False,
+    data_source_details: bool = False,
     artifact_users: bool = False,
+    lineage: bool = False,
     workspace: Optional[str | List[str]] = None,
 ) -> dict:
+    """
+    Scans a workspace or set of workspace for detailed metadata.
+
+    Parameters
+    ----------
+    dataset_expressions : bool, default=False
+        Whether to return data source details.
+    dataset_schema : bool, defualt=False
+        Whether to return dataset schema (tables, columns and measures). If you set this parameter to true, you must fully enable metadata scanning in order for data to be returned.
+    data_source_details : bool, default=False
+        Whether to return dataset expressions (DAX and Mashup queries). If you set this parameter to true, you must fully enable metadata scanning in order for data to be returned.
+    artifact_users : bool, default=False
+        Whether to return user details for a Power BI item (such as a report or a dashboard).
+    lineage : bool, default=False
+        Whether to return lineage info (upstream dataflows, tiles, data source IDs).
+    workspace : str | List[str], default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    dict
+        The .json output showing the metadata for the workspace(s) and their items.
+    """
 
     # https://learn.microsoft.com/en-us/rest/api/power-bi/admin/workspace-info-post-workspace-info
 
@@ -34,8 +59,8 @@ def scan_workspaces(
     client = fabric.PowerBIRestClient()
     request_body = {"workspaces": workspace_list}
 
-    response_clause = f"/v1.0/myorg/admin/workspaces/getInfo?lineage={lineage}&datasourceDetails={data_source_details}&datasetSchema={dataset_schema}&datasetExpressions={dataset_expressions}&getArtifactUsers={artifact_users}"
-    response = client.post(response_clause, json=request_body)
+    url = f"/v1.0/myorg/admin/workspaces/getInfo?lineage={lineage}&datasourceDetails={data_source_details}&datasetSchema={dataset_schema}&datasetExpressions={dataset_expressions}&getArtifactUsers={artifact_users}"
+    response = client.post(url, json=request_body)
 
     if response.status_code != 202:
         raise FabricHTTPException(response)
@@ -430,11 +455,19 @@ class ScannerWrapper:
                 "Created Date",
                 "Content Provider Type",
                 "Sensitivity Label Id",
+                "Datasource Usages",
             ]
         )
 
         for w in self.output.get("workspaces", []):
             for obj in w.get("datasets", []):
+
+                ds_list = []
+                if "datasourceUsages" in obj:
+                    ds_list = [
+                        item["datasourceInstanceId"]
+                        for item in obj.get("datasourceUsages")
+                    ]
                 new_data = {
                     "Workspace Name": w.get("name"),
                     "Workspace Id": w.get("id"),
@@ -454,6 +487,7 @@ class ScannerWrapper:
                     "Sensitivity Label Id": obj.get("sensitivityLabel", {}).get(
                         "labelId"
                     ),
+                    "Datasource Usages": [ds_list],
                 }
                 df = pd.concat(
                     [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
@@ -740,5 +774,158 @@ class ScannerWrapper:
                 df = pd.concat(
                     [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
                 )
+
+        return df
+
+    def list_dataset_tables(self):
+
+        df = pd.DataFrame(
+            columns=[
+                "Workspace Name",
+                "Workspace Id",
+                "Dataset Name",
+                "Dataset Id",
+                "Table Name",
+                "Hidden",
+                "Storage Mode",
+                "Source Expression",
+            ]
+        )
+
+        for w in self.output.get("workspaces", []):
+            for obj in w.get("datasets", []):
+                for t in obj.get("tables", []):
+                    source = t.get("source", {})
+                    new_data = {
+                        "Workspace Name": w.get("name"),
+                        "Workspace Id": w.get("id"),
+                        "Dataset Name": obj.get("name"),
+                        "Dataset Id": obj.get("id"),
+                        "Table Name": t.get("name"),
+                        "Hidden": t.get("isHidden"),
+                        "Storage Mode": t.get("storageMode"),
+                        "Source Expression": source[0].get("expression") if source and isinstance(source[0], dict) else None
+                    }
+
+                    df = pd.concat(
+                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
+
+        bool_cols = ["Hidden"]
+        df[bool_cols] = df[bool_cols].astype(bool)
+
+        return df
+
+    def list_dataset_columns(self):
+
+        df = pd.DataFrame(
+            columns=[
+                "Workspace Name",
+                "Workspace Id",
+                "Dataset Name",
+                "Dataset Id",
+                "Table Name",
+                "Column Name",
+                "Data Type",
+                "Hidden",
+                "Column Type",
+                "Expression",
+            ]
+        )
+
+        for w in self.output.get("workspaces", []):
+            for obj in w.get("datasets", []):
+                for t in obj.get("tables", []):
+                    for c in t.get("columns", []):
+                        new_data = {
+                            "Workspace Name": w.get("name"),
+                            "Workspace Id": w.get("id"),
+                            "Dataset Name": obj.get("name"),
+                            "Dataset Id": obj.get("id"),
+                            "Table Name": t.get("name"),
+                            "Column Name": c.get("name"),
+                            "Data Type": c.get("dataType"),
+                            "Hidden": c.get("isHidden"),
+                            "Column Type": c.get("columnType"),
+                            "Expression": c.get("expression"),
+                        }
+
+                        df = pd.concat(
+                            [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                        )
+
+        bool_cols = ["Hidden"]
+        df[bool_cols] = df[bool_cols].astype(bool)
+
+        return df
+
+    def list_dataset_measures(self):
+
+        df = pd.DataFrame(
+            columns=[
+                "Workspace Name",
+                "Workspace Id",
+                "Dataset Name",
+                "Dataset Id",
+                "Table Name",
+                "Measure Name",
+                "Expression",
+                "Hidden",
+            ]
+        )
+
+        for w in self.output.get("workspaces", []):
+            for obj in w.get("datasets", []):
+                for t in obj.get("tables", []):
+                    for m in t.get("measures", []):
+                        new_data = {
+                            "Workspace Name": w.get("name"),
+                            "Workspace Id": w.get("id"),
+                            "Dataset Name": obj.get("name"),
+                            "Dataset Id": obj.get("id"),
+                            "Table Name": t.get("name"),
+                            "Measure Name": m.get("name"),
+                            "Expression": m.get("expression"),
+                            "Hidden": m.get("isHidden"),
+                        }
+
+                        df = pd.concat(
+                            [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                        )
+
+        bool_cols = ["Hidden"]
+        df[bool_cols] = df[bool_cols].astype(bool)
+
+        return df
+
+    def list_dataset_expressions(self):
+
+        df = pd.DataFrame(
+            columns=[
+                "Workspace Name",
+                "Workspace Id",
+                "Dataset Name",
+                "Dataset Id",
+                "Expression Name",
+                "Expression",
+            ]
+        )
+
+        for w in self.output.get("workspaces", []):
+            for obj in w.get("datasets", []):
+                for e in obj.get("expressions", []):
+
+                    new_data = {
+                        "Workspace Name": w.get("name"),
+                        "Workspace Id": w.get("id"),
+                        "Dataset Name": obj.get("name"),
+                        "Dataset Id": obj.get("id"),
+                        "Expression Name": e.get("name"),
+                        "Expression": e.get("expression"),
+                    }
+
+                    df = pd.concat(
+                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
 
         return df
