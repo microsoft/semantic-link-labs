@@ -452,6 +452,8 @@ class ScannerWrapper:
                 "Effective Identity Required",
                 "Effective Identity Roles Required",
                 "Target Storage Mode",
+                "Endorsement",
+                "Certified By",
                 "Created Date",
                 "Content Provider Type",
                 "Sensitivity Label Id",
@@ -468,6 +470,7 @@ class ScannerWrapper:
                         item["datasourceInstanceId"]
                         for item in obj.get("datasourceUsages")
                     ]
+                end = obj.get("endorsementDetails", {})
                 new_data = {
                     "Workspace Name": w.get("name"),
                     "Workspace Id": w.get("id"),
@@ -488,6 +491,8 @@ class ScannerWrapper:
                         "labelId"
                     ),
                     "Datasource Usages": [ds_list],
+                    "Endorsement": end.get("endorsement") if end else None,
+                    "Certified By": end.get("certifiedBy") if end else None,
                 }
                 df = pd.concat(
                     [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
@@ -646,19 +651,21 @@ class ScannerWrapper:
                 "Datamart Id",
                 "Description",
                 "State",
-                "Last Updated Date",
-                "Created Date",
                 "Modified Date",
-                "Created By",
                 "Modified By",
                 "Modified By Id",
-                "Created By Id",
+                "Configured By",
+                "Configured By Id",
+                "Suspended Batch Id"
                 "Sensitivity Label Id",
+                "Endorsement",
+                "Certified By",
             ]
         )
 
         for w in self.output.get("workspaces", []):
             for obj in w.get("datamarts", []):
+                end = obj.get("endorsementDetails", {})
                 new_data = {
                     "Workspace Name": w.get("name"),
                     "Workspace Id": w.get("id"),
@@ -666,16 +673,17 @@ class ScannerWrapper:
                     "Datamart Id": obj.get("id"),
                     "Description": obj.get("description"),
                     "State": obj.get("state"),
-                    "Last Updated Date": obj.get("lastUpdatedDate"),
-                    "Created Date": obj.get("createdDate"),
-                    "Modified Date": obj.get("modifiedDate"),
+                    "Modified Date": obj.get("modifiedDateTime"),
                     "Modified By": obj.get("modfiedBy"),
-                    "Created By": obj.get("createdBy"),
                     "Modified By Id": obj.get("modfiedById"),
-                    "Created By Id": obj.get("createdById"),
                     "Sensitivity Label Id": obj.get("sensitivityLabel", {}).get(
                         "labelId"
                     ),
+                    "Endorsement": end.get("endorsement") if end else None,
+                    "Certified By": end.get("certifiedBy") if end else None,
+                    "Suspended Batch Id": obj.get('suspendedBatchId'),
+                    "Configured By": obj.get('configuredBy'),
+                    "Configured By Id": obj.get('configuredById'),
                 }
                 df = pd.concat(
                     [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
@@ -692,14 +700,9 @@ class ScannerWrapper:
                 "Dashboard Name",
                 "Dashboard Id",
                 "Description",
-                "State",
-                "Last Updated Date",
-                "Created Date",
-                "Modified Date",
-                "Created By",
-                "Modified By",
-                "Modified By Id",
-                "Created By Id",
+                "Is Read Only",
+                "Data Classification",
+                "App Id",
                 "Sensitivity Label Id",
             ]
         )
@@ -709,17 +712,12 @@ class ScannerWrapper:
                 new_data = {
                     "Workspace Name": w.get("name"),
                     "Workspace Id": w.get("id"),
-                    "Dashboard Name": obj.get("name"),
+                    "Dashboard Name": obj.get("displayName"),
                     "Dashboard Id": obj.get("id"),
                     "Description": obj.get("description"),
-                    "State": obj.get("state"),
-                    "Last Updated Date": obj.get("lastUpdatedDate"),
-                    "Created Date": obj.get("createdDate"),
-                    "Modified Date": obj.get("modifiedDate"),
-                    "Modified By": obj.get("modfiedBy"),
-                    "Created By": obj.get("createdBy"),
-                    "Modified By Id": obj.get("modfiedById"),
-                    "Created By Id": obj.get("createdById"),
+                    "Is Read Only": obj.get("isReadOnly"),
+                    "Data Classification": obj.get('dataClassification'),
+                    "App Id": obj.get('appId'),
                     "Sensitivity Label Id": obj.get("sensitivityLabel", {}).get(
                         "labelId"
                     ),
@@ -727,6 +725,9 @@ class ScannerWrapper:
                 df = pd.concat(
                     [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
                 )
+
+        bool_cols = ["Is Read Only"]
+        df[bool_cols] = df[bool_cols].astype(bool)
 
         return df
 
@@ -739,37 +740,34 @@ class ScannerWrapper:
                 "Dataflow Name",
                 "Dataflow Id",
                 "Description",
-                "State",
-                "Last Updated Date",
-                "Created Date",
+                "Configured By",
+                "Model URL",
                 "Modified Date",
-                "Created By",
                 "Modified By",
-                "Modified By Id",
-                "Created By Id",
                 "Sensitivity Label Id",
+                "Endorsement",
+                "Certified By",
             ]
         )
 
         for w in self.output.get("workspaces", []):
             for obj in w.get("dataflows", []):
+                end = obj.get('endorsementDetails', {})
                 new_data = {
                     "Workspace Name": w.get("name"),
                     "Workspace Id": w.get("id"),
                     "Dataflow Name": obj.get("name"),
-                    "Dataflow Id": obj.get("id"),
+                    "Dataflow Id": obj.get("objectId"),
                     "Description": obj.get("description"),
-                    "State": obj.get("state"),
-                    "Last Updated Date": obj.get("lastUpdatedDate"),
-                    "Created Date": obj.get("createdDate"),
-                    "Modified Date": obj.get("modifiedDate"),
+                    "Modified Date": obj.get("modifiedDateTime"),
                     "Modified By": obj.get("modfiedBy"),
-                    "Created By": obj.get("createdBy"),
-                    "Modified By Id": obj.get("modfiedById"),
-                    "Created By Id": obj.get("createdById"),
+                    "Configured By": obj.get("configuredBy"),
+                    "Model URL": obj.get('modelUrl'),
                     "Sensitivity Label Id": obj.get("sensitivityLabel", {}).get(
                         "labelId"
                     ),
+                    "Endorsement": end.get("endorsement") if end else None,
+                    "Certified By": end.get("certifiedBy") if end else None,
                 }
                 df = pd.concat(
                     [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
@@ -777,7 +775,7 @@ class ScannerWrapper:
 
         return df
 
-    def list_dataset_tables(self):
+    def list_dataset_tables(self) -> pd.DataFrame:
 
         df = pd.DataFrame(
             columns=[
@@ -789,6 +787,7 @@ class ScannerWrapper:
                 "Hidden",
                 "Storage Mode",
                 "Source Expression",
+                "Description",
             ]
         )
 
@@ -804,7 +803,12 @@ class ScannerWrapper:
                         "Table Name": t.get("name"),
                         "Hidden": t.get("isHidden"),
                         "Storage Mode": t.get("storageMode"),
-                        "Source Expression": source[0].get("expression") if source and isinstance(source[0], dict) else None
+                        "Source Expression": (
+                            source[0].get("expression")
+                            if source and isinstance(source[0], dict)
+                            else None
+                        ),
+                        "Description": t.get("description"),
                     }
 
                     df = pd.concat(
@@ -816,7 +820,7 @@ class ScannerWrapper:
 
         return df
 
-    def list_dataset_columns(self):
+    def list_dataset_columns(self) -> pd.DataFrame:
 
         df = pd.DataFrame(
             columns=[
@@ -830,6 +834,7 @@ class ScannerWrapper:
                 "Hidden",
                 "Column Type",
                 "Expression",
+                "Description",
             ]
         )
 
@@ -848,6 +853,7 @@ class ScannerWrapper:
                             "Hidden": c.get("isHidden"),
                             "Column Type": c.get("columnType"),
                             "Expression": c.get("expression"),
+                            "Description": c.get("description"),
                         }
 
                         df = pd.concat(
@@ -859,7 +865,7 @@ class ScannerWrapper:
 
         return df
 
-    def list_dataset_measures(self):
+    def list_dataset_measures(self) -> pd.DataFrame:
 
         df = pd.DataFrame(
             columns=[
@@ -871,6 +877,7 @@ class ScannerWrapper:
                 "Measure Name",
                 "Expression",
                 "Hidden",
+                "Description",
             ]
         )
 
@@ -887,6 +894,7 @@ class ScannerWrapper:
                             "Measure Name": m.get("name"),
                             "Expression": m.get("expression"),
                             "Hidden": m.get("isHidden"),
+                            "Description": m.get("description"),
                         }
 
                         df = pd.concat(
@@ -898,7 +906,7 @@ class ScannerWrapper:
 
         return df
 
-    def list_dataset_expressions(self):
+    def list_dataset_expressions(self) -> pd.DataFrame:
 
         df = pd.DataFrame(
             columns=[
@@ -908,6 +916,7 @@ class ScannerWrapper:
                 "Dataset Id",
                 "Expression Name",
                 "Expression",
+                "Description",
             ]
         )
 
@@ -922,8 +931,32 @@ class ScannerWrapper:
                         "Dataset Id": obj.get("id"),
                         "Expression Name": e.get("name"),
                         "Expression": e.get("expression"),
+                        "Description": e.get("description"),
                     }
 
+                    df = pd.concat(
+                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
+
+        return df
+
+    def list_dashboard_tiles(self) -> pd.DataFrame:
+
+        df = pd.DataFrame(columns=[])
+
+        for w in self.output.get("workspaces", []):
+            for obj in w.get("dashboards", []):
+                for t in obj.get("tiles", []):
+                    new_data = {
+                        "Workspace Name": w.get("name"),
+                        "Workspace Id": w.get("id"),
+                        "Dashboard Name": obj.get("displayName"),
+                        "Dashboard Id": obj.get("id"),
+                        "Tile Id": t.get("id"),
+                        "Title": t.get("title"),
+                        "Report Id": t.get("reportId"),
+                        "Dataset Id": t.get("datasetId"),
+                    }
                     df = pd.concat(
                         [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
                     )
