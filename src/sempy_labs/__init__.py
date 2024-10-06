@@ -17,6 +17,7 @@ from sempy_labs._data_pipelines import (
     list_data_pipelines,
     create_data_pipeline,
     delete_data_pipeline,
+    get_data_pipeline_definition,
 )
 from sempy_labs._eventhouses import (
     create_eventhouse,
@@ -359,4 +360,5 @@ __all__ = [
     "delete_ml_experiment",
     "list_sql_endpoints",
     "list_datamarts",
+    "get_data_pipeline_definition",
 ]

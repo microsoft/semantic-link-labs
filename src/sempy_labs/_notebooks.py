@@ -38,10 +38,12 @@ def get_notebook_definition(
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-    notebook_id = resolve_notebook_id(notebook=notebook_name, workspace=workspace)
+    item_id = fabric.resolve_item_id(
+        item_name=notebook_name, type="Notebook", workspace=workspace
+    )
     client = fabric.FabricRestClient()
     response = client.post(
-        f"v1/workspaces/{workspace_id}/notebooks/{notebook_id}/getDefinition",
+        f"v1/workspaces/{workspace_id}/notebooks/{item_id}/getDefinition",
     )
 
     result = lro(client, response).json()

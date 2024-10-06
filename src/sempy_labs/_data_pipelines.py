@@ -6,6 +6,7 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     lro,
     pagination,
+    _decode_b64,
 )
 from sempy.fabric.exceptions import FabricHTTPException
 
@@ -116,3 +117,50 @@ def delete_data_pipeline(name: str, workspace: Optional[str] = None):
     print(
         f"{icons.green_dot} The '{name}' data pipeline within the '{workspace}' workspace has been deleted."
     )
+
+
+def get_data_pipeline_definition(
+    name: str, workspace: Optional[str] = None, decode: bool = True
+) -> dict | pd.DataFrame:
+    """
+    Obtains the definition of a data pipeline.
+
+    Parameters
+    ----------
+    name : str
+        The name of the data pipeline.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    decode : bool, default=True
+        decode : bool, default=True
+        If True, decodes the data pipeline definition file into .json format.
+        If False, obtains the data pipeline definition file a pandas DataFrame format.
+
+    Returns
+    -------
+    dict | pandas.DataFrame
+        A pandas dataframe showing the data pipelines within a workspace.
+    """
+
+    workspace = fabric.resolve_workspace_name(workspace)
+    workspace_id = fabric.resolve_workspace_id(workspace)
+    item_id = fabric.resolve_item_id(
+        item_name=name, type="DataPipeline", workspace=workspace
+    )
+
+    client = fabric.FabricRestClient()
+    response = client.post(
+        f"/v1/workspaces/{workspace_id}/dataPipelines/{item_id}/getDefinition"
+    )
+    result = lro(client, response).json()
+
+    df = pd.json_normalize(result["definition"]["parts"])
+
+    if not decode:
+        return df
+    content = df[df["path"] == "pipeline-content.json"]
+    payload = content["payload"].iloc[0]
+
+    return _decode_b64(payload)
