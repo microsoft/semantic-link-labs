@@ -136,6 +136,256 @@ class ScannerWrapper:
 
         return df
 
+    def list_dashboards(self) -> pd.DataFrame:
+
+        df = pd.DataFrame(
+            columns=[
+                "Workspace Name",
+                "Workspace Id",
+                "Dashboard Name",
+                "Dashboard Id",
+                "Description",
+                "Is Read Only",
+                "Data Classification",
+                "App Id",
+                "Sensitivity Label Id",
+            ]
+        )
+
+        for w in self.output.get("workspaces", []):
+            for obj in w.get("dashboards", []):
+                new_data = {
+                    "Workspace Name": w.get("name"),
+                    "Workspace Id": w.get("id"),
+                    "Dashboard Name": obj.get("displayName"),
+                    "Dashboard Id": obj.get("id"),
+                    "Description": obj.get("description"),
+                    "Is Read Only": obj.get("isReadOnly"),
+                    "Data Classification": obj.get("dataClassification"),
+                    "App Id": obj.get("appId"),
+                    "Sensitivity Label Id": obj.get("sensitivityLabel", {}).get(
+                        "labelId"
+                    ),
+                }
+                df = pd.concat(
+                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                )
+
+        bool_cols = ["Is Read Only"]
+        df[bool_cols] = df[bool_cols].astype(bool)
+
+        return df
+
+    def list_dataflows(self) -> pd.DataFrame:
+
+        df = pd.DataFrame(
+            columns=[
+                "Workspace Name",
+                "Workspace Id",
+                "Dataflow Name",
+                "Dataflow Id",
+                "Description",
+                "Configured By",
+                "Model URL",
+                "Modified Date",
+                "Modified By",
+                "Sensitivity Label Id",
+                "Endorsement",
+                "Certified By",
+            ]
+        )
+
+        for w in self.output.get("workspaces", []):
+            for obj in w.get("dataflows", []):
+                end = obj.get("endorsementDetails", {})
+                new_data = {
+                    "Workspace Name": w.get("name"),
+                    "Workspace Id": w.get("id"),
+                    "Dataflow Name": obj.get("name"),
+                    "Dataflow Id": obj.get("objectId"),
+                    "Description": obj.get("description"),
+                    "Modified Date": obj.get("modifiedDateTime"),
+                    "Modified By": obj.get("modfiedBy"),
+                    "Configured By": obj.get("configuredBy"),
+                    "Model URL": obj.get("modelUrl"),
+                    "Sensitivity Label Id": obj.get("sensitivityLabel", {}).get(
+                        "labelId"
+                    ),
+                    "Endorsement": end.get("endorsement") if end else None,
+                    "Certified By": end.get("certifiedBy") if end else None,
+                }
+                df = pd.concat(
+                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                )
+
+        return df
+
+    def list_datamarts(self) -> pd.DataFrame:
+
+        df = pd.DataFrame(
+            columns=[
+                "Workspace Name",
+                "Workspace Id",
+                "Datamart Name",
+                "Datamart Id",
+                "Description",
+                "State",
+                "Modified Date",
+                "Modified By",
+                "Modified By Id",
+                "Configured By",
+                "Configured By Id",
+                "Suspended Batch Id" "Sensitivity Label Id",
+                "Endorsement",
+                "Certified By",
+            ]
+        )
+
+        for w in self.output.get("workspaces", []):
+            for obj in w.get("datamarts", []):
+                end = obj.get("endorsementDetails", {})
+                new_data = {
+                    "Workspace Name": w.get("name"),
+                    "Workspace Id": w.get("id"),
+                    "Datamart Name": obj.get("name"),
+                    "Datamart Id": obj.get("id"),
+                    "Description": obj.get("description"),
+                    "State": obj.get("state"),
+                    "Modified Date": obj.get("modifiedDateTime"),
+                    "Modified By": obj.get("modfiedBy"),
+                    "Modified By Id": obj.get("modfiedById"),
+                    "Sensitivity Label Id": obj.get("sensitivityLabel", {}).get(
+                        "labelId"
+                    ),
+                    "Endorsement": end.get("endorsement") if end else None,
+                    "Certified By": end.get("certifiedBy") if end else None,
+                    "Suspended Batch Id": obj.get("suspendedBatchId"),
+                    "Configured By": obj.get("configuredBy"),
+                    "Configured By Id": obj.get("configuredById"),
+                }
+                df = pd.concat(
+                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                )
+
+        return df
+
+    def list_datasets(self) -> pd.DataFrame:
+
+        df = pd.DataFrame(
+            columns=[
+                "Workspace Name",
+                "Workspace Id",
+                "Dataset Name",
+                "Dataset Id",
+                "Configured By",
+                "Description",
+                "Effective Identity Required",
+                "Effective Identity Roles Required",
+                "Target Storage Mode",
+                "Schema May Not Be Up To Date",
+                "Endorsement",
+                "Certified By",
+                "Created Date",
+                "Content Provider Type",
+                "Sensitivity Label Id",
+                "Datasource Usages",
+            ]
+        )
+
+        for w in self.output.get("workspaces", []):
+            for obj in w.get("datasets", []):
+
+                ds_list = []
+                if "datasourceUsages" in obj:
+                    ds_list = [
+                        item["datasourceInstanceId"]
+                        for item in obj.get("datasourceUsages")
+                    ]
+                end = obj.get("endorsementDetails", {})
+                new_data = {
+                    "Workspace Name": w.get("name"),
+                    "Workspace Id": w.get("id"),
+                    "Dataset Name": obj.get("name"),
+                    "Dataset Id": obj.get("id"),
+                    "Description": obj.get("description"),
+                    "Configured By": obj.get("configuredBy"),
+                    "Effective Identity Required": obj.get(
+                        "isEffectiveIdentityRequired"
+                    ),
+                    "Effective Identity Roles Required": obj.get(
+                        "isEffectiveIdentityRolesRequired"
+                    ),
+                    "Target Storage Mode": obj.get("targetStorageMode"),
+                    "Created Date": obj.get("createdDate"),
+                    "Content Provider Type": obj.get("contentProviderType"),
+                    "Sensitivity Label Id": obj.get("sensitivityLabel", {}).get(
+                        "labelId"
+                    ),
+                    "Datasource Usages": [ds_list],
+                    "Endorsement": end.get("endorsement") if end else None,
+                    "Certified By": end.get("certifiedBy") if end else None,
+                    "Schema May Not Be Up To Date": obj.get("schemaMayNotBeUpToDate"),
+                }
+                df = pd.concat(
+                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                )
+
+        bool_cols = [
+            "Effective Identity Required",
+            "Effective Identity Roles Required",
+            "Schema May Not Be Up To Date",
+        ]
+        df[bool_cols] = df[bool_cols].astype(bool)
+
+        return df
+
+    def list_eventhouses(self) -> pd.DataFrame:
+
+        df = pd.DataFrame(
+            columns=[
+                "Workspace Name",
+                "Workspace Id",
+                "Eventhouse Name",
+                "Eventhouse Id",
+                "Description",
+                "State",
+                "Last Updated Date",
+                "Created Date",
+                "Modified Date",
+                "Created By",
+                "Modified By",
+                "Modified By Id",
+                "Created By Id",
+                "Sensitivity Label Id",
+            ]
+        )
+
+        for w in self.output.get("workspaces", []):
+            for obj in w.get("Eventhouse", []):
+                new_data = {
+                    "Workspace Name": w.get("name"),
+                    "Workspace Id": w.get("id"),
+                    "Eventhouse Name": obj.get("name"),
+                    "Eventhouse Id": obj.get("id"),
+                    "Description": obj.get("description"),
+                    "State": obj.get("state"),
+                    "Last Updated Date": obj.get("lastUpdatedDate"),
+                    "Created Date": obj.get("createdDate"),
+                    "Modified Date": obj.get("modifiedDate"),
+                    "Modified By": obj.get("modfiedBy"),
+                    "Created By": obj.get("createdBy"),
+                    "Modified By Id": obj.get("modfiedById"),
+                    "Created By Id": obj.get("createdById"),
+                    "Sensitivity Label Id": obj.get("sensitivityLabel", {}).get(
+                        "labelId"
+                    ),
+                }
+                df = pd.concat(
+                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                )
+
+        return df
+
     def list_kql_databases(self) -> pd.DataFrame:
 
         df = pd.DataFrame(
@@ -184,53 +434,6 @@ class ScannerWrapper:
                     "Ingestion Service URI": ep.get("IngestionServiceUri"),
                     "Region": ep.get("Region"),
                     "Kusto Database Type": ep.get("KustoDatabaseType"),
-                }
-                df = pd.concat(
-                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                )
-
-        return df
-
-    def list_eventhouses(self) -> pd.DataFrame:
-
-        df = pd.DataFrame(
-            columns=[
-                "Workspace Name",
-                "Workspace Id",
-                "Eventhouse Name",
-                "Eventhouse Id",
-                "Description",
-                "State",
-                "Last Updated Date",
-                "Created Date",
-                "Modified Date",
-                "Created By",
-                "Modified By",
-                "Modified By Id",
-                "Created By Id",
-                "Sensitivity Label Id",
-            ]
-        )
-
-        for w in self.output.get("workspaces", []):
-            for obj in w.get("Eventhouse", []):
-                new_data = {
-                    "Workspace Name": w.get("name"),
-                    "Workspace Id": w.get("id"),
-                    "Eventhouse Name": obj.get("name"),
-                    "Eventhouse Id": obj.get("id"),
-                    "Description": obj.get("description"),
-                    "State": obj.get("state"),
-                    "Last Updated Date": obj.get("lastUpdatedDate"),
-                    "Created Date": obj.get("createdDate"),
-                    "Modified Date": obj.get("modifiedDate"),
-                    "Modified By": obj.get("modfiedBy"),
-                    "Created By": obj.get("createdBy"),
-                    "Modified By Id": obj.get("modfiedById"),
-                    "Created By Id": obj.get("createdById"),
-                    "Sensitivity Label Id": obj.get("sensitivityLabel", {}).get(
-                        "labelId"
-                    ),
                 }
                 df = pd.concat(
                     [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
@@ -439,69 +642,42 @@ class ScannerWrapper:
 
         return df
 
-    def list_datasets(self) -> pd.DataFrame:
+    def list_sql_endpoints(self) -> pd.DataFrame:
 
         df = pd.DataFrame(
             columns=[
                 "Workspace Name",
                 "Workspace Id",
-                "Dataset Name",
-                "Dataset Id",
+                "SQL Endpoint Name",
+                "SQL Endpoint Id",
                 "Configured By",
-                "Description",
-                "Effective Identity Required",
-                "Effective Identity Roles Required",
-                "Target Storage Mode",
-                "Schema May Not Be Up To Date",
-                "Endorsement",
-                "Certified By",
-                "Created Date",
-                "Content Provider Type",
+                "Configured By Id",
+                "Modified By",
+                "Modified By Id",
+                "Modified Date",
                 "Sensitivity Label Id",
-                "Datasource Usages",
             ]
         )
 
         for w in self.output.get("workspaces", []):
-            for obj in w.get("datasets", []):
-
-                ds_list = []
-                if "datasourceUsages" in obj:
-                    ds_list = [
-                        item["datasourceInstanceId"]
-                        for item in obj.get("datasourceUsages")
-                    ]
-                end = obj.get("endorsementDetails", {})
+            for obj in w.get("SQLAnalyticsEndpoint", []):
                 new_data = {
                     "Workspace Name": w.get("name"),
                     "Workspace Id": w.get("id"),
-                    "Dataset Name": obj.get("name"),
-                    "Dataset Id": obj.get("id"),
-                    "Description": obj.get('description'),
+                    "SQL Endpoint Name": obj.get("name"),
+                    "SQL Endpoint Id": obj.get("id"),
                     "Configured By": obj.get("configuredBy"),
-                    "Effective Identity Required": obj.get(
-                        "isEffectiveIdentityRequired"
-                    ),
-                    "Effective Identity Roles Required": obj.get(
-                        "isEffectiveIdentityRolesRequired"
-                    ),
-                    "Target Storage Mode": obj.get("targetStorageMode"),
-                    "Created Date": obj.get("createdDate"),
-                    "Content Provider Type": obj.get("contentProviderType"),
+                    "Configured By Id": obj.get("configuredById"),
+                    "Modified By": obj.get("modifiedBy"),
+                    "Modified By Id": obj.get("modifiedById"),
+                    "Modified Date": obj.get("modifiedDateTime"),
                     "Sensitivity Label Id": obj.get("sensitivityLabel", {}).get(
                         "labelId"
                     ),
-                    "Datasource Usages": [ds_list],
-                    "Endorsement": end.get("endorsement") if end else None,
-                    "Certified By": end.get("certifiedBy") if end else None,
-                    "Schema May Not Be Up To Date": obj.get('schemaMayNotBeUpToDate'),
                 }
                 df = pd.concat(
                     [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
                 )
-
-        bool_cols = ["Effective Identity Required", "Effective Identity Roles Required", "Schema May Not Be Up To Date"]
-        df[bool_cols] = df[bool_cols].astype(bool)
 
         return df
 
@@ -529,45 +705,6 @@ class ScannerWrapper:
                     "Workspace Id": w.get("id"),
                     "Warehouse Name": obj.get("name"),
                     "Warehouse Id": obj.get("id"),
-                    "Configured By": obj.get("configuredBy"),
-                    "Configured By Id": obj.get("configuredById"),
-                    "Modified By": obj.get("modifiedBy"),
-                    "Modified By Id": obj.get("modifiedById"),
-                    "Modified Date": obj.get("modifiedDateTime"),
-                    "Sensitivity Label Id": obj.get("sensitivityLabel", {}).get(
-                        "labelId"
-                    ),
-                }
-                df = pd.concat(
-                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                )
-
-        return df
-
-    def list_sql_endpoints(self) -> pd.DataFrame:
-
-        df = pd.DataFrame(
-            columns=[
-                "Workspace Name",
-                "Workspace Id",
-                "SQL Endpoint Name",
-                "SQL Endpoint Id",
-                "Configured By",
-                "Configured By Id",
-                "Modified By",
-                "Modified By Id",
-                "Modified Date",
-                "Sensitivity Label Id",
-            ]
-        )
-
-        for w in self.output.get("workspaces", []):
-            for obj in w.get("SQLAnalyticsEndpoint", []):
-                new_data = {
-                    "Workspace Name": w.get("name"),
-                    "Workspace Id": w.get("id"),
-                    "SQL Endpoint Name": obj.get("name"),
-                    "SQL Endpoint Id": obj.get("id"),
                     "Configured By": obj.get("configuredBy"),
                     "Configured By Id": obj.get("configuredById"),
                     "Modified By": obj.get("modifiedBy"),
@@ -643,140 +780,7 @@ class ScannerWrapper:
 
         return df
 
-    def list_datamarts(self) -> pd.DataFrame:
-
-        df = pd.DataFrame(
-            columns=[
-                "Workspace Name",
-                "Workspace Id",
-                "Datamart Name",
-                "Datamart Id",
-                "Description",
-                "State",
-                "Modified Date",
-                "Modified By",
-                "Modified By Id",
-                "Configured By",
-                "Configured By Id",
-                "Suspended Batch Id"
-                "Sensitivity Label Id",
-                "Endorsement",
-                "Certified By",
-            ]
-        )
-
-        for w in self.output.get("workspaces", []):
-            for obj in w.get("datamarts", []):
-                end = obj.get("endorsementDetails", {})
-                new_data = {
-                    "Workspace Name": w.get("name"),
-                    "Workspace Id": w.get("id"),
-                    "Datamart Name": obj.get("name"),
-                    "Datamart Id": obj.get("id"),
-                    "Description": obj.get("description"),
-                    "State": obj.get("state"),
-                    "Modified Date": obj.get("modifiedDateTime"),
-                    "Modified By": obj.get("modfiedBy"),
-                    "Modified By Id": obj.get("modfiedById"),
-                    "Sensitivity Label Id": obj.get("sensitivityLabel", {}).get(
-                        "labelId"
-                    ),
-                    "Endorsement": end.get("endorsement") if end else None,
-                    "Certified By": end.get("certifiedBy") if end else None,
-                    "Suspended Batch Id": obj.get('suspendedBatchId'),
-                    "Configured By": obj.get('configuredBy'),
-                    "Configured By Id": obj.get('configuredById'),
-                }
-                df = pd.concat(
-                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                )
-
-        return df
-
-    def list_dashboards(self) -> pd.DataFrame:
-
-        df = pd.DataFrame(
-            columns=[
-                "Workspace Name",
-                "Workspace Id",
-                "Dashboard Name",
-                "Dashboard Id",
-                "Description",
-                "Is Read Only",
-                "Data Classification",
-                "App Id",
-                "Sensitivity Label Id",
-            ]
-        )
-
-        for w in self.output.get("workspaces", []):
-            for obj in w.get("dashboards", []):
-                new_data = {
-                    "Workspace Name": w.get("name"),
-                    "Workspace Id": w.get("id"),
-                    "Dashboard Name": obj.get("displayName"),
-                    "Dashboard Id": obj.get("id"),
-                    "Description": obj.get("description"),
-                    "Is Read Only": obj.get("isReadOnly"),
-                    "Data Classification": obj.get('dataClassification'),
-                    "App Id": obj.get('appId'),
-                    "Sensitivity Label Id": obj.get("sensitivityLabel", {}).get(
-                        "labelId"
-                    ),
-                }
-                df = pd.concat(
-                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                )
-
-        bool_cols = ["Is Read Only"]
-        df[bool_cols] = df[bool_cols].astype(bool)
-
-        return df
-
-    def list_dataflows(self) -> pd.DataFrame:
-
-        df = pd.DataFrame(
-            columns=[
-                "Workspace Name",
-                "Workspace Id",
-                "Dataflow Name",
-                "Dataflow Id",
-                "Description",
-                "Configured By",
-                "Model URL",
-                "Modified Date",
-                "Modified By",
-                "Sensitivity Label Id",
-                "Endorsement",
-                "Certified By",
-            ]
-        )
-
-        for w in self.output.get("workspaces", []):
-            for obj in w.get("dataflows", []):
-                end = obj.get('endorsementDetails', {})
-                new_data = {
-                    "Workspace Name": w.get("name"),
-                    "Workspace Id": w.get("id"),
-                    "Dataflow Name": obj.get("name"),
-                    "Dataflow Id": obj.get("objectId"),
-                    "Description": obj.get("description"),
-                    "Modified Date": obj.get("modifiedDateTime"),
-                    "Modified By": obj.get("modfiedBy"),
-                    "Configured By": obj.get("configuredBy"),
-                    "Model URL": obj.get('modelUrl'),
-                    "Sensitivity Label Id": obj.get("sensitivityLabel", {}).get(
-                        "labelId"
-                    ),
-                    "Endorsement": end.get("endorsement") if end else None,
-                    "Certified By": end.get("certifiedBy") if end else None,
-                }
-                df = pd.concat(
-                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                )
-
-        return df
-
+    # Dataset functions
     def list_dataset_tables(self) -> pd.DataFrame:
 
         df = pd.DataFrame(
@@ -942,6 +946,7 @@ class ScannerWrapper:
 
         return df
 
+    # Dashboard functions
     def list_dashboard_tiles(self) -> pd.DataFrame:
 
         df = pd.DataFrame(columns=[])
@@ -958,6 +963,369 @@ class ScannerWrapper:
                         "Title": t.get("title"),
                         "Report Id": t.get("reportId"),
                         "Dataset Id": t.get("datasetId"),
+                    }
+                    df = pd.concat(
+                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
+
+        return df
+
+    # User functions
+    def list_reports_users(self) -> pd.DataFrame:
+
+        df = pd.DataFrame(
+            columns=[
+                "Workspace Name",
+                "Workspace Id",
+                "Report Name",
+                "Report Id",
+                "Report Type",
+                "Report User Access Right",
+                "Email Address",
+                "Display Name",
+                "Identifier",
+                "Graph Id",
+                "Principal Type",
+                "User Type",
+            ]
+        )
+
+        for w in self.output.get("workspaces", []):
+            for obj in w.get("reports", []):
+                for u in obj.get("users", []):
+                    new_data = {
+                        "Workspace Name": w.get("name"),
+                        "Workspace Id": w.get("id"),
+                        "Report Name": obj.get("name"),
+                        "Report Id": obj.get("id"),
+                        "Report Type": obj.get("reportType"),
+                        "Report User Access Right": u.get("reportUserAccessRight"),
+                        "Email Address": u.get("emailAddress"),
+                        "Display Name": u.get("displayName"),
+                        "Identifier": u.get("identifier"),
+                        "Graph Id": u.get("graphId"),
+                        "Principal Type": u.get("principalType"),
+                        "User Type": u.get("userType"),
+                    }
+                    df = pd.concat(
+                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
+
+        return df
+
+    def list_dataset_users(self) -> pd.DataFrame:
+
+        df = pd.DataFrame(
+            columns=[
+                "Workspace Name",
+                "Workspace Id",
+                "Dataset Name",
+                "Dataset Id",
+                "Dataset User Access Right",
+                "Email Address",
+                "Display Name",
+                "Identifier",
+                "Graph Id",
+                "Principal Type",
+                "User Type",
+            ]
+        )
+
+        for w in self.output.get("workspaces", []):
+            for obj in w.get("datasets", []):
+                for u in obj.get("users", []):
+                    new_data = {
+                        "Workspace Name": w.get("name"),
+                        "Workspace Id": w.get("id"),
+                        "Dataset Name": obj.get("name"),
+                        "Dataset Id": obj.get("id"),
+                        "Dataset User Access Right": u.get("datasetUserAccessRight"),
+                        "Email Address": u.get("emailAddress"),
+                        "Display Name": u.get("displayName"),
+                        "Identifier": u.get("identifier"),
+                        "Graph Id": u.get("graphId"),
+                        "Principal Type": u.get("principalType"),
+                        "User Type": u.get("userType"),
+                    }
+                    df = pd.concat(
+                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
+
+        return df
+
+    def list_lakehouse_users(self) -> pd.DataFrame:
+
+        df = pd.DataFrame(
+            columns=[
+                "Workspace Name",
+                "Workspace Id",
+                "Lakehouse Name",
+                "Lakehouse Id",
+                "Artifact User Access Right",
+                "Email Address",
+                "Display Name",
+                "Identifier",
+                "Graph Id",
+                "Principal Type",
+                "User Type",
+            ]
+        )
+
+        for w in self.output.get("workspaces", []):
+            for obj in w.get("Lakehouse", []):
+                for u in obj.get("users", []):
+                    new_data = {
+                        "Workspace Name": w.get("name"),
+                        "Workspace Id": w.get("id"),
+                        "Lakehouse Name": obj.get("name"),
+                        "Lakehouse Id": obj.get("id"),
+                        "Artifact User Access Right": u.get("artifactUserAccessRight"),
+                        "Email Address": u.get("emailAddress"),
+                        "Display Name": u.get("displayName"),
+                        "Identifier": u.get("identifier"),
+                        "Graph Id": u.get("graphId"),
+                        "Principal Type": u.get("principalType"),
+                        "User Type": u.get("userType"),
+                    }
+                    df = pd.concat(
+                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
+
+        return df
+
+    def list_notebook_users(self) -> pd.DataFrame:
+
+        df = pd.DataFrame(
+            columns=[
+                "Workspace Name",
+                "Workspace Id",
+                "Notebook Name",
+                "Notebook Id",
+                "Artifact User Access Right",
+                "Email Address",
+                "Display Name",
+                "Identifier",
+                "Graph Id",
+                "Principal Type",
+                "User Type",
+            ]
+        )
+
+        for w in self.output.get("workspaces", []):
+            for obj in w.get("Notebook", []):
+                for u in obj.get("users", []):
+                    new_data = {
+                        "Workspace Name": w.get("name"),
+                        "Workspace Id": w.get("id"),
+                        "Notebook Name": obj.get("name"),
+                        "Notebook Id": obj.get("id"),
+                        "Artifact User Access Right": u.get("artifactUserAccessRight"),
+                        "Email Address": u.get("emailAddress"),
+                        "Display Name": u.get("displayName"),
+                        "Identifier": u.get("identifier"),
+                        "Graph Id": u.get("graphId"),
+                        "Principal Type": u.get("principalType"),
+                        "User Type": u.get("userType"),
+                    }
+                    df = pd.concat(
+                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
+
+        return df
+
+    def list_notebook_users(self) -> pd.DataFrame:
+
+        df = pd.DataFrame(
+            columns=[
+                "Workspace Name",
+                "Workspace Id",
+                "Notebook Name",
+                "Notebook Id",
+                "Artifact User Access Right",
+                "Email Address",
+                "Display Name",
+                "Identifier",
+                "Graph Id",
+                "Principal Type",
+                "User Type",
+            ]
+        )
+
+        for w in self.output.get("workspaces", []):
+            for obj in w.get("Notebook", []):
+                for u in obj.get("users", []):
+                    new_data = {
+                        "Workspace Name": w.get("name"),
+                        "Workspace Id": w.get("id"),
+                        "Notebook Name": obj.get("name"),
+                        "Notebook Id": obj.get("id"),
+                        "Artifact User Access Right": u.get("artifactUserAccessRight"),
+                        "Email Address": u.get("emailAddress"),
+                        "Display Name": u.get("displayName"),
+                        "Identifier": u.get("identifier"),
+                        "Graph Id": u.get("graphId"),
+                        "Principal Type": u.get("principalType"),
+                        "User Type": u.get("userType"),
+                    }
+                    df = pd.concat(
+                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
+
+        return df
+
+    def list_warehouse_users(self) -> pd.DataFrame:
+
+        df = pd.DataFrame(
+            columns=[
+                "Workspace Name",
+                "Workspace Id",
+                "Warehouse Name",
+                "Warehouse Id",
+                "Datamart User Access Right",
+                "Email Address",
+                "Display Name",
+                "Identifier",
+                "Graph Id",
+                "Principal Type",
+                "User Type",
+            ]
+        )
+
+        for w in self.output.get("workspaces", []):
+            for obj in w.get("warehouses", []):
+                for u in obj.get("users", []):
+                    new_data = {
+                        "Workspace Name": w.get("name"),
+                        "Workspace Id": w.get("id"),
+                        "Warehouse Name": obj.get("name"),
+                        "Warehouse Id": obj.get("id"),
+                        "Datamart User Access Right": u.get("datamartUserAccessRight"),
+                        "Email Address": u.get("emailAddress"),
+                        "Display Name": u.get("displayName"),
+                        "Identifier": u.get("identifier"),
+                        "Graph Id": u.get("graphId"),
+                        "Principal Type": u.get("principalType"),
+                        "User Type": u.get("userType"),
+                    }
+                    df = pd.concat(
+                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
+
+        return df
+
+    def list_sql_endpoint_users(self) -> pd.DataFrame:
+
+        df = pd.DataFrame(
+            columns=[
+                "Workspace Name",
+                "Workspace Id",
+                "SQL Endpoint Name",
+                "SQL Endpoint Id",
+                "Datamart User Access Right",
+                "Email Address",
+                "Display Name",
+                "Identifier",
+                "Graph Id",
+                "Principal Type",
+                "User Type",
+            ]
+        )
+
+        for w in self.output.get("workspaces", []):
+            for obj in w.get("SQLAnalyticsEndpoint", []):
+                for u in obj.get("users", []):
+                    new_data = {
+                        "Workspace Name": w.get("name"),
+                        "Workspace Id": w.get("id"),
+                        "SQL Endpoint Name": obj.get("name"),
+                        "SQL Endpoint Id": obj.get("id"),
+                        "Datamart User Access Right": u.get("datamartUserAccessRight"),
+                        "Email Address": u.get("emailAddress"),
+                        "Display Name": u.get("displayName"),
+                        "Identifier": u.get("identifier"),
+                        "Graph Id": u.get("graphId"),
+                        "Principal Type": u.get("principalType"),
+                        "User Type": u.get("userType"),
+                    }
+                    df = pd.concat(
+                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
+
+        return df
+
+    def list_dashboard_users(self) -> pd.DataFrame:
+
+        df = pd.DataFrame(
+            columns=[
+                "Workspace Name",
+                "Workspace Id",
+                "Dashboard Name",
+                "Dashboard Id",
+                "App User Access Right",
+                "Email Address",
+                "Display Name",
+                "Identifier",
+                "Graph Id",
+                "Principal Type",
+                # "User Type",
+            ]
+        )
+
+        for w in self.output.get("workspaces", []):
+            for obj in w.get("dashboards", []):
+                for u in obj.get("users", []):
+                    new_data = {
+                        "Workspace Name": w.get("name"),
+                        "Workspace Id": w.get("id"),
+                        "Dashboard Name": obj.get("displayName"),
+                        "Dashboard Id": obj.get("id"),
+                        "App User Access Right": u.get("appUserAccessRight"),
+                        "Email Address": u.get("emailAddress"),
+                        "Display Name": u.get("displayName"),
+                        "Identifier": u.get("identifier"),
+                        "Graph Id": u.get("graphId"),
+                        "Principal Type": u.get("principalType"),
+                        # "User Type": u.get("userType"),
+                    }
+                    df = pd.concat(
+                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
+
+        return df
+
+    def list_dataflow_users(self) -> pd.DataFrame:
+
+        df = pd.DataFrame(
+            columns=[
+                "Workspace Name",
+                "Workspace Id",
+                "Dataflow Name",
+                "Dataflow Id",
+                "App User Access Right",
+                "Email Address",
+                "Display Name",
+                "Identifier",
+                "Graph Id",
+                "Principal Type",
+                # "User Type",
+            ]
+        )
+
+        for w in self.output.get("workspaces", []):
+            for obj in w.get("dataflows", []):
+                for u in obj.get("users", []):
+                    new_data = {
+                        "Workspace Name": w.get("name"),
+                        "Workspace Id": w.get("id"),
+                        "Dataflow Name": obj.get("name"),
+                        "Dataflow Id": obj.get("id"),
+                        "App User Access Right": u.get("appUserAccessRight"),
+                        "Email Address": u.get("emailAddress"),
+                        "Display Name": u.get("displayName"),
+                        "Identifier": u.get("identifier"),
+                        "Graph Id": u.get("graphId"),
+                        "Principal Type": u.get("principalType"),
+                        # "User Type": u.get("userType"),
                     }
                     df = pd.concat(
                         [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
