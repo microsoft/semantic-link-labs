@@ -74,68 +74,71 @@ def vertipaq_analyzer(
     data_type_timestamp = "timestamp"
     data_type_double = "double"
     data_type_bool = "bool"
+    int_format = "int"
+    pct_format = "pct"
+    no_format = ""
 
     vertipaq_map = {
         "Model": {
-            "Dataset Name": data_type_string,
-            "Total Size": data_type_long,
-            "Table Count": data_type_long,
-            "Column Count": data_type_long,
-            "Compatibility Level": data_type_long,
-            "Default Mode": data_type_string,
+            "Dataset Name": [data_type_string, no_format],
+            "Total Size": [data_type_long, int_format],
+            "Table Count": [data_type_long, int_format],
+            "Column Count": [data_type_long, int_format],
+            "Compatibility Level": [data_type_long, no_format],
+            "Default Mode": [data_type_string, no_format],
         },
         "Tables": {
-            "Table Name": data_type_string,
-            "Type": data_type_string,
-            "Row Count": data_type_long,
-            "Total Size": data_type_long,
-            "Dictionary Size": data_type_long,
-            "Data Size": data_type_long,
-            "Hierarchy Size": data_type_long,
-            "Relationship Size": data_type_long,
-            "User Hierarchy Size": data_type_long,
-            "Partitions": data_type_long,
-            "Columns": data_type_long,
-            "% DB": data_type_double,
+            "Table Name": [data_type_string, no_format],
+            "Type": [data_type_string, no_format],
+            "Row Count": [data_type_long, int_format],
+            "Total Size": [data_type_long, int_format],
+            "Dictionary Size": [data_type_long, int_format],
+            "Data Size": [data_type_long, int_format],
+            "Hierarchy Size": [data_type_long, int_format],
+            "Relationship Size": [data_type_long, int_format],
+            "User Hierarchy Size": [data_type_long, int_format],
+            "Partitions": [data_type_long, int_format],
+            "Columns": [data_type_long, int_format],
+            "% DB": [data_type_double, pct_format],
         },
         "Partitions": {
-            "Table Name": data_type_string,
-            "Partition Name": data_type_string,
-            "Mode": data_type_string,
-            "Record Count": data_type_long,
-            "Segment Count": data_type_long,
-            "Records per Segment": data_type_double,
+            "Table Name": [data_type_string, no_format],
+            "Partition Name": [data_type_string, no_format],
+            "Mode": [data_type_string, no_format],
+            "Record Count": [data_type_long, int_format],
+            "Segment Count": [data_type_long, int_format],
+            "Records per Segment": [data_type_double, int_format],
         },
         "Columns": {
-            "Table Name": data_type_string,
-            "Column Name": data_type_string,
-            "Type": data_type_string,
-            "Cardinality": data_type_long,
-            "Total Size": data_type_long,
-            "Data Size": data_type_long,
-            "Dictionary Size": data_type_long,
-            "Hierarchy Size": data_type_long,
-            "% Table": data_type_double,
-            "% DB": data_type_double,
-            "Data Type": data_type_string,
-            "Encoding": data_type_string,
-            "Is Resident": data_type_bool,
-            "Temperature": data_type_double,
-            "Last Accessed": data_type_timestamp,
+            "Table Name": [data_type_string, no_format],
+            "Column Name": [data_type_string, no_format],
+            "Type": [data_type_string, no_format],
+            "Cardinality": [data_type_long, int_format],
+            "Total Size": [data_type_long, int_format],
+            "Data Size": [data_type_long, int_format],
+            "Dictionary Size": [data_type_long, int_format],
+            "Hierarchy Size": [data_type_long, int_format],
+            "% Table": [data_type_double, pct_format],
+            "% DB": [data_type_double, pct_format],
+            "Data Type": [data_type_string, no_format],
+            "Encoding": [data_type_string, no_format],
+            "Is Resident": [data_type_bool, no_format],
+            "Temperature": [data_type_double, int_format],
+            "Last Accessed": [data_type_timestamp, no_format],
         },
         "Hierarchies": {
-            "Table Name": data_type_string,
-            "Hierarchy Name": data_type_string,
-            "Used Size": data_type_long,
+            "Table Name": [data_type_string, no_format],
+            "Hierarchy Name": [data_type_string, no_format],
+            "Used Size": [data_type_long, int_format],
         },
         "Relationships": {
-            "From Object": data_type_string,
-            "To Object": data_type_string,
-            "Multiplicity": data_type_string,
-            "Used Size": data_type_long,
-            "Max From Cardinality": data_type_long,
-            "Max To Cardinality": data_type_long,
-            "Missing Rows": data_type_long,
+            "From Object": [data_type_string, no_format],
+            "To Object": [data_type_string, no_format],
+            "Multiplicity": [data_type_string, no_format],
+            "Used Size": [data_type_long, int_format],
+            "Max From Cardinality": [data_type_long, int_format],
+            "Max To Cardinality": [data_type_long, int_format],
+            "Missing Rows": [data_type_long, int_format],
         },
     }
 
@@ -163,7 +166,8 @@ def vertipaq_analyzer(
         table_count = tom.model.Tables.Count
         column_count = len(list(tom.all_columns()))
 
-    dfR["Missing Rows"] = None
+    dfR["Missing Rows"] = 0
+    dfR["Missing Rows"] = dfR["Missing Rows"].astype(int)
 
     # Direct Lake
     if read_stats_from_data:
@@ -323,43 +327,15 @@ def vertipaq_analyzer(
     dfC["% DB"] = round((dfC["Total Size"] / db_total_size) * 100, 2)
     columnList = list(vertipaq_map["Columns"].keys())
 
+    dfC = dfC[dfC['Type'] != 'RowNumber'].reset_index(drop=True)
+
     colSize = dfC[columnList].sort_values(by="Total Size", ascending=False)
     temp = dfC[columnList].sort_values(by="Temperature", ascending=False)
     colSize.reset_index(drop=True, inplace=True)
     temp.reset_index(drop=True, inplace=True)
 
     export_Col = colSize.copy()
-
-    int_cols = []
-    pct_cols = []
-    for k, v in vertipaq_map["Columns"].items():
-        if v in ["int", "long"]:
-            int_cols.append(k)
-        elif v in ["float", "double"] and k != "Temperature":
-            pct_cols.append(k)
-    for col in int_cols:
-        colSize[col] = colSize[col].map("{:,}".format)
-        temp[col] = temp[col].map("{:,}".format)
-
-    for col in pct_cols:
-        colSize[col] = colSize[col].map("{:.2f}%".format)
-        temp[col] = temp[col].map("{:.2f}%".format)
-
-    # Tables
-    int_cols = []
-    pct_cols = []
-    for k, v in vertipaq_map["Tables"].items():
-        if v in ["int", "long"]:
-            int_cols.append(k)
-        elif v in ["float", "double"]:
-            pct_cols.append(k)
     export_Table = dfT.copy()
-
-    for col in int_cols:
-        dfT[col] = dfT[col].map("{:,}".format)
-
-    for col in pct_cols:
-        dfT[col] = dfT[col].map("{:.2f}%".format)
 
     #  Relationships
     dfR = pd.merge(
@@ -392,15 +368,6 @@ def vertipaq_analyzer(
     dfR.reset_index(drop=True, inplace=True)
     export_Rel = dfR.copy()
 
-    int_cols = []
-    for k, v in vertipaq_map["Relationships"].items():
-        if v in ["int", "long"]:
-            int_cols.append(k)
-    if not read_stats_from_data:
-        int_cols.remove("Missing Rows")
-    for col in int_cols:
-        dfR[col] = dfR[col].map("{:,}".format)
-
     # Partitions
     dfP = dfP[
         [
@@ -417,13 +384,6 @@ def vertipaq_analyzer(
     )  # Remove after records per segment is fixed
     dfP.reset_index(drop=True, inplace=True)
     export_Part = dfP.copy()
-    int_cols = []
-    for k, v in vertipaq_map["Partitions"].items():
-        if v in ["int", "long", "double", "float"]:
-            int_cols.append(k)
-    intList = ["Record Count", "Segment Count", "Records per Segment"]
-    for col in intList:
-        dfP[col] = dfP[col].map("{:,}".format)
 
     # Hierarchies
     dfH_filt = dfH[dfH["Level Ordinal"] == 0]
@@ -434,9 +394,6 @@ def vertipaq_analyzer(
     dfH_filt.fillna({"Used Size": 0}, inplace=True)
     dfH_filt["Used Size"] = dfH_filt["Used Size"].astype(int)
     export_Hier = dfH_filt.copy()
-    intList = ["Used Size"]
-    for col in intList:
-        dfH_filt[col] = dfH_filt[col].map("{:,}".format)
 
     # Model
     # Converting to KB/MB/GB necessitates division by 1024 * 1000.
@@ -462,12 +419,63 @@ def vertipaq_analyzer(
     dfModel.reset_index(drop=True, inplace=True)
     dfModel["Default Mode"] = dfModel["Default Mode"].astype(str)
     export_Model = dfModel.copy()
-    int_cols = []
-    for k, v in vertipaq_map["Model"].items():
-        if v in ["long", "int"] and k != "Compatibility Level":
-            int_cols.append(k)
-    for col in int_cols:
-        dfModel[col] = dfModel[col].map("{:,}".format)
+
+    def _style_columns_based_on_types(dataframe: pd.DataFrame, column_type_mapping):
+
+        format_mapping = {
+            "int": "{:,}",
+            "pct": "{:.2f}%",
+            "": "{}",
+        }
+
+        format_dict = {
+            col: format_mapping[dt] for col, dt in column_type_mapping.items()
+        }
+
+        return dataframe.style.format(format_dict)
+
+    dfModel = _style_columns_based_on_types(
+        dfModel,
+        column_type_mapping={
+            key: values[1] for key, values in vertipaq_map["Model"].items()
+        },
+    )
+    dfT = _style_columns_based_on_types(
+        dfT,
+        column_type_mapping={
+            key: values[1] for key, values in vertipaq_map["Tables"].items()
+        },
+    )
+    dfP = _style_columns_based_on_types(
+        dfP,
+        column_type_mapping={
+            key: values[1] for key, values in vertipaq_map["Partitions"].items()
+        },
+    )
+    colSize = _style_columns_based_on_types(
+        colSize,
+        column_type_mapping={
+            key: values[1] for key, values in vertipaq_map["Columns"].items()
+        },
+    )
+    temp = _style_columns_based_on_types(
+        temp,
+        column_type_mapping={
+            key: values[1] for key, values in vertipaq_map["Columns"].items()
+        },
+    )
+    dfR = _style_columns_based_on_types(
+        dfR,
+        column_type_mapping={
+            key: values[1] for key, values in vertipaq_map["Relationships"].items()
+        },
+    )
+    dfH_filt = _style_columns_based_on_types(
+        dfH_filt,
+        column_type_mapping={
+            key: values[1] for key, values in vertipaq_map["Hierarchies"].items()
+        },
+    )
 
     dataFrames = {
         "dfModel": dfModel,
@@ -494,8 +502,6 @@ def vertipaq_analyzer(
             )
 
     if export == "table":
-        # spark = SparkSession.builder.getOrCreate()
-
         lakehouse_id = fabric.get_lakehouse_id()
         lake_workspace = fabric.resolve_workspace_name()
         lakehouse = resolve_lakehouse_name(
@@ -570,7 +576,7 @@ def vertipaq_analyzer(
 
             schema.update(
                 {
-                    key.replace(" ", "_"): value
+                    key.replace(" ", "_"): value[0]
                     for key, value in vertipaq_map[key_name].items()
                 }
             )
@@ -749,7 +755,11 @@ def visualize_vertipaq(dataframes):
             "ColumnName": "Column Name",
             "Tooltip": "The name of the column",
         },
-        {"ViewName": "Column", "ColumnName": "Type", "Tooltip": "The type of column"},
+        {
+            "ViewName": "Column",
+            "ColumnName": "Type",
+            "Tooltip": "The type of column",
+        },
         {
             "ViewName": "Column",
             "ColumnName": "Cardinality",
