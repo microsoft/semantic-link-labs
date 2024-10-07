@@ -1,3 +1,8 @@
+from sempy_labs._external_data_shares import (
+    list_external_data_shares_in_item,
+    create_external_data_share,
+    revoke_external_data_share,
+)
 from sempy_labs._ml_models import (
     list_ml_models,
     create_ml_model,
@@ -361,4 +366,7 @@ __all__ = [
     "list_sql_endpoints",
     "list_datamarts",
     "get_data_pipeline_definition",
+    "list_external_data_shares_in_item",
+    "create_external_data_share",
+    "revoke_external_data_share",
 ]
