@@ -448,10 +448,11 @@ class ScannerWrapper:
                 "Dataset Name",
                 "Dataset Id",
                 "Configured By",
-                "Configured By Id",
+                "Description",
                 "Effective Identity Required",
                 "Effective Identity Roles Required",
                 "Target Storage Mode",
+                "Schema May Not Be Up To Date",
                 "Endorsement",
                 "Certified By",
                 "Created Date",
@@ -476,8 +477,8 @@ class ScannerWrapper:
                     "Workspace Id": w.get("id"),
                     "Dataset Name": obj.get("name"),
                     "Dataset Id": obj.get("id"),
+                    "Description": obj.get('description'),
                     "Configured By": obj.get("configuredBy"),
-                    "Configured By Id": obj.get("configuredById"),
                     "Effective Identity Required": obj.get(
                         "isEffectiveIdentityRequired"
                     ),
@@ -493,12 +494,13 @@ class ScannerWrapper:
                     "Datasource Usages": [ds_list],
                     "Endorsement": end.get("endorsement") if end else None,
                     "Certified By": end.get("certifiedBy") if end else None,
+                    "Schema May Not Be Up To Date": obj.get('schemaMayNotBeUpToDate'),
                 }
                 df = pd.concat(
                     [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
                 )
 
-        bool_cols = ["Effective Identity Required", "Effective Identity Roles Required"]
+        bool_cols = ["Effective Identity Required", "Effective Identity Roles Required", "Schema May Not Be Up To Date"]
         df[bool_cols] = df[bool_cols].astype(bool)
 
         return df
