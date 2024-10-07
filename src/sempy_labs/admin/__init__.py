@@ -1,3 +1,7 @@
+from sempy_labs.admin._scanner import (
+    scan_workspaces,
+    ScannerWrapper,
+)
 from sempy_labs.admin._basic_functions import (
     assign_workspaces_to_capacity,
     list_capacities,
@@ -50,4 +54,6 @@ __all__ = [
     "unassign_workspaces_from_capacity",
     "list_external_data_shares",
     "revoke_external_data_share",
+    "scan_workspaces",
+    "ScannerWrapper",
 ]

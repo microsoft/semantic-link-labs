@@ -10,7 +10,6 @@ from sempy_labs._helper_functions import (
 import datetime
 import numpy as np
 import pandas as pd
-import time
 
 
 def list_workspaces(
@@ -477,48 +476,6 @@ def list_capacities_delegated_tenant_settings(
             combined_response["continuationToken"] = r["continuationToken"]
 
         return combined_response
-
-
-def scan_workspaces(
-    data_source_details: bool = False,
-    dataset_schema: bool = False,
-    dataset_expressions: bool = False,
-    lineage: bool = False,
-    artifact_users: bool = False,
-    workspace: Optional[str | List[str]] = None,
-) -> dict:
-
-    workspace = fabric.resolve_workspace_name(workspace)
-
-    if isinstance(workspace, str):
-        workspace = [workspace]
-
-    workspace_list = []
-
-    for w in workspace:
-        workspace_list.append(fabric.resolve_workspace_id(w))
-
-    client = fabric.PowerBIRestClient()
-    request_body = {"workspaces": workspace_list}
-
-    response_clause = f"/v1.0/myorg/admin/workspaces/getInfo?lineage={lineage}&datasourceDetails={data_source_details}&datasetSchema={dataset_schema}&datasetExpressions={dataset_expressions}&getArtifactUsers={artifact_users}"
-    response = client.post(response_clause, json=request_body)
-
-    if response.status_code != 202:
-        raise FabricHTTPException(response)
-    scan_id = response.json()["id"]
-    scan_status = response.json().get("status")
-    while scan_status not in ["Succeeded", "Failed"]:
-        time.sleep(1)
-        response = client.get(f"/v1.0/myorg/admin/workspaces/scanStatus/{scan_id}")
-        scan_status = response.json().get("status")
-    if scan_status == "Failed":
-        raise FabricHTTPException(response)
-    response = client.get(f"/v1.0/myorg/admin/workspaces/scanResult/{scan_id}")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    return response.json()
 
 
 def list_datasets() -> pd.DataFrame:
