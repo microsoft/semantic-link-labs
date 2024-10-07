@@ -9,7 +9,7 @@ from sempy.fabric.exceptions import FabricHTTPException
 from sempy_labs._helper_functions import resolve_warehouse_id, resolve_lakehouse_id
 
 
-def bytes2mswin_bstr(value: bytes) -> bytes:
+def _bytes2mswin_bstr(value: bytes) -> bytes:
     """Convert a sequence of bytes into a (MS-Windows) BSTR (as bytes).
 
     See https://github.com/mkleehammer/pyodbc/issues/228#issuecomment-319190980
@@ -68,7 +68,7 @@ class ConnectBase:
 
         # Set up the connection string
         access_token = SynapseTokenProvider()()
-        tokenstruct = bytes2mswin_bstr(access_token.encode())
+        tokenstruct = _bytes2mswin_bstr(access_token.encode())
         conn_str = f"DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={tds_endpoint};DATABASE={name};Encrypt=Yes;"
 
         if timeout is not None:

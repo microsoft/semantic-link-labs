@@ -72,7 +72,7 @@ def get_directlake_guardrails_for_sku(sku_size: str) -> pd.DataFrame:
     Parameters
     ----------
     sku_size : str
-        Sku size of a workspace/capacity
+        Sku size of a workspace/capacity.
 
     Returns
     -------

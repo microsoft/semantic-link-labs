@@ -1487,7 +1487,7 @@ def list_semantic_model_object_report_usage(
         is sorted descending by 'Report Usage Count'.
     """
 
-    from sempy_labs._model_dependencies import get_measure_dependencies
+    from sempy_labs._model_dependencies import get_model_calc_dependencies
     from sempy_labs._helper_functions import format_dax_object_name
 
     workspace = fabric.resolve_workspace_name(workspace)
@@ -1503,7 +1503,7 @@ def list_semantic_model_object_report_usage(
         )
     else:
         df = pd.DataFrame(columns=["Table Name", "Object Name", "Object Type"])
-        dep = get_measure_dependencies(dataset=dataset, workspace=workspace)
+        dep = get_model_calc_dependencies(dataset=dataset, workspace=workspace)
 
         for i, r in dfR.iterrows():
             object_type = r["Object Type"]
@@ -1515,7 +1515,10 @@ def list_semantic_model_object_report_usage(
                 "Object Type": object_type,
             }
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-            if object_type == "Measure":
+            df["Referenced Object Type"] = df["Referenced Object Type"].replace(
+                "Attribute Hierarchy", "Column"
+            )
+            if object_type in ["Measure", "Calc Column", "Calc Table", "Hierarchy"]:
                 df_filt = dep[dep["Object Name"] == object_name][
                     ["Referenced Table", "Referenced Object", "Referenced Object Type"]
                 ]
