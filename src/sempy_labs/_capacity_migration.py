@@ -682,6 +682,10 @@ def migrate_fabric_trial_capacity(
             f"{icons.red_dot} The {source_capacity}' capacity does not exist."
         )
 
+    source_capacity_sku = dfC_filt["Sku"].iloc[0]
+    if not source_capacity_sku.startswith('FT'):
+        raise ValueError(f"{icons.red_dot} This function is for migrating Fabric trial capacites to Fabric capacities.")
+
     source_capacity_id = dfC_filt["Id"].iloc[0].lower()
     if source_capacity_id == notebook_capacity_id:
         print(
