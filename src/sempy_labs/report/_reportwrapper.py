@@ -7,7 +7,7 @@ from sempy_labs._helper_functions import (
     _extract_json,
     _add_part,
     lro,
-    make_clickable,
+    # _make_clickable,
 )
 from typing import Optional, List
 import pandas as pd
@@ -370,7 +370,7 @@ class ReportWrapper:
             df = self._add_extended(dataframe=df)
 
         return df
-        # return df.style.format({"Page URL": make_clickable})
+        # return df.style.format({"Page URL": _make_clickable})
 
     def list_visual_filters(self, extended: bool = False) -> pd.DataFrame:
         """
@@ -642,7 +642,7 @@ class ReportWrapper:
         )
 
         return df
-        # return df.style.format({"Page URL": make_clickable})
+        # return df.style.format({"Page URL": _make_clickable})
 
     def list_visuals(self) -> pd.DataFrame:
         """
