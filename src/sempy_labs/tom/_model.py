@@ -4315,7 +4315,9 @@ class TOMWrapper:
         max_batch_size: Optional[int] = 5,
     ) -> pd.DataFrame:
         """
-        Auto-generates descriptions for measures using an LLM.
+        Auto-generates descriptions for measures using an LLM. This function requires a paid F-sku (Fabric) of F64 or higher.
+        Setting the 'readonly' parameter in connect_semantic_model to True will allow you to see the auto-generated descriptions in a dataframe. Setting the 'readonly' parameter
+        to False will update the descriptions for the measures within the 'measure_name' parameter.
 
         Parameters
         ----------
@@ -4330,6 +4332,11 @@ class TOMWrapper:
         pandas.DataFrame
             A pandas dataframe showing the updated measure(s) and their new description(s).
         """
+
+        df = pd.DataFrame(
+            columns=["Table Name", "Measure Name", "Expression", "Description"]
+        )
+        data = []
 
         # import concurrent.futures
         if measure_name is None:
@@ -4390,24 +4397,21 @@ class TOMWrapper:
                 if ms_name.startswith("urn: "):
                     ms_name = ms_name[5:]
                 desc = item.get("description")
-                table_name = next(
-                    m.Parent.Name for m in self.all_measures() if m.Name == ms_name
+                (table_name, expr) = next(
+                    (m.Parent.Name, m.Expression)
+                    for m in self.all_measures()
+                    if m.Name == ms_name
                 )
                 self.model.Tables[table_name].Measures[ms_name].Description = desc
 
-        df = pd.DataFrame(
-            columns=["Table Name", "Measure Name", "Expression", "Description"]
-        )
-        data = []
-
-        for m in self.all_measures():
-            if m.Name in measure_name:
+                # Collect new descriptions in a dataframe
                 new_data = {
-                    "Table Name": m.Parent.Name,
-                    "Measure Name": m.Name,
-                    "Expression": m.Expression,
-                    "Description": m.Description,
+                    "Table Name": table_name,
+                    "Measure Name": ms_name,
+                    "Expression": expr,
+                    "Description": desc,
                 }
+
                 data.append(new_data)
 
         if data:
