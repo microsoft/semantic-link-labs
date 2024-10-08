@@ -4,7 +4,6 @@ from uuid import UUID
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 from sempy_labs._helper_functions import resolve_workspace_name_and_id, pagination
-import datetime
 import numpy as np
 import pandas as pd
 import time
@@ -122,8 +121,6 @@ def assign_workspaces_to_capacity(
     batch_size = 999
     for i in range(0, len(workspaces), batch_size):
         batch = workspaces[i : i + batch_size].tolist()
-        batch_length = len(batch)
-        start_time = datetime.datetime.now()
         request_body = {
             "capacityMigrationAssignments": [
                 {
@@ -141,10 +138,6 @@ def assign_workspaces_to_capacity(
 
         if response.status_code != 200:
             raise FabricHTTPException(response)
-        end_time = datetime.datetime.now()
-        print(
-            f"Total time for assigning {str(batch_length)} workspaces is {str((end_time - start_time).total_seconds())}"
-        )
     print(
         f"{icons.green_dot} The workspaces have been assigned to the '{target_capacity}' capacity."
     )
