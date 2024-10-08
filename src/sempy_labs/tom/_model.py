@@ -15,6 +15,7 @@ from typing import List, Iterator, Optional, Union, TYPE_CHECKING
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
+from sempy_labs._helper_functions import get_azure_token_credentials
 
 if TYPE_CHECKING:
     import Microsoft.AnalysisServices.Tabular
@@ -33,17 +34,69 @@ class TOMWrapper:
     _workspace: str
     _readonly: bool
     _tables_added: List[str]
+    _key_vault_uri: str
+    _key_vault_tenant_id: str
+    _key_vault_client_id: str
+    _key_vault_client_secret: str
 
-    def __init__(self, dataset, workspace, readonly):
+    def __init__(
+        self,
+        dataset,
+        workspace,
+        readonly,
+        key_vault_uri,
+        key_vault_tenant_id,
+        key_vault_client_id,
+        key_vault_client_secret,
+    ):
         self._dataset = dataset
         self._workspace = workspace
         self._readonly = readonly
+        self._key_vault_uri = key_vault_uri
+        self._key_vault_tenant_id = key_vault_tenant_id
+        self._key_vault_client_id = key_vault_client_id
+        self._key_vault_client_secret = key_vault_client_secret
         self._tables_added = []
 
-        self._tom_server = fabric.create_tom_server(
-            readonly=readonly, workspace=workspace
-        )
-        self.model = self._tom_server.Databases.GetByName(dataset).Model
+        if key_vault_uri is None:
+            self._tom_server = fabric.create_tom_server(
+                readonly=readonly, workspace=workspace
+            )
+            self.model = self._tom_server.Databases.GetByName(dataset).Model
+        else:
+            # from sempy.fabric._environment import _get_workspace_url
+            from sempy.fabric._client._utils import _build_adomd_connection_string
+            import Microsoft.AnalysisServices.Tabular as TOM
+            from Microsoft.AnalysisServices import AccessToken
+            from sempy.fabric._token_provider import (
+                create_on_access_token_expired_callback,
+                ConstantTokenProvider,
+            )
+            from System import Func
+
+            token, credential, headers = get_azure_token_credentials(
+                key_vault_uri=key_vault_uri,
+                key_vault_tenant_id=key_vault_tenant_id,
+                key_vault_client_id=key_vault_client_id,
+                key_vault_client_secret=key_vault_client_secret,
+                audience="https://analysis.windows.net/powerbi/api/.default",
+            )
+
+            tom_server = TOM.Server()
+            get_access_token = create_on_access_token_expired_callback(
+                ConstantTokenProvider(token)
+            )
+            tom_server.AccessToken = get_access_token(None)
+            tom_server.OnAccessTokenExpired = Func[AccessToken, AccessToken](
+                get_access_token
+            )
+            workspace_url = f"powerbi://api.powerbi.com/v1.0/myorg/{workspace}"
+            connection_str = _build_adomd_connection_string(
+                workspace_url, readonly=readonly
+            )
+
+            self._tom_server.Connect(connection_str)
+            self.model = self._tom_server.Databases.GetByName(dataset).Model
 
     def all_columns(self):
         """
@@ -4441,10 +4494,18 @@ class TOMWrapper:
 @log
 @contextmanager
 def connect_semantic_model(
-    dataset: str, readonly: bool = True, workspace: Optional[str] = None
+    dataset: str,
+    readonly: bool = True,
+    workspace: Optional[str] = None,
+    key_vault_uri: Optional[str] = None,
+    key_vault_tenant_id: Optional[str] = None,
+    key_vault_client_id: Optional[str] = None,
+    key_vault_client_secret: Optional[str] = None,
 ) -> Iterator[TOMWrapper]:
     """
     Connects to the Tabular Object Model (TOM) within a semantic model.
+    To connect to a Service Principal, follow the steps documented `here <https://learn.microsoft.com/power-bi/enterprise/service-premium-service-principal>`_. Make sure to set up an Azure Key Vault containing
+    secrets for the Tenant ID, Client (Application) ID, and Client Secret. Specify the key vault parameters accordingly.
 
     Parameters
     ----------
@@ -4456,6 +4517,14 @@ def connect_semantic_model(
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    key_vault_uri : str
+        The name of the `Azure key vault <https://azure.microsoft.com/products/key-vault>`_ URI. Example: "https://<Key Vault Name>.vault.azure.net/"
+    key_vault_tenant_id : str
+        The name of the Azure key vault secret storing the Tenant ID.
+    key_vault_client_id : str
+        The name of the Azure key vault secret storing the Client ID.
+    key_vault_client_secret : str
+        The name of the Azure key vault secret storing the Client Secret.
 
     Returns
     -------
@@ -4470,7 +4539,24 @@ def connect_semantic_model(
         workspace_id = fabric.get_workspace_id()
         workspace = fabric.resolve_workspace_name(workspace_id)
 
-    tw = TOMWrapper(dataset=dataset, workspace=workspace, readonly=readonly)
+    if key_vault_uri is not None and (
+        key_vault_client_secret is None
+        or key_vault_client_id is None
+        or key_vault_tenant_id is None
+    ):
+        raise ValueError(
+            f"{icons.red_dot} If specifying a key vault URI, you must specify the rest of the key vault parameters."
+        )
+
+    tw = TOMWrapper(
+        dataset=dataset,
+        workspace=workspace,
+        readonly=readonly,
+        key_vault_uri=key_vault_uri,
+        key_vault_tenant_id=key_vault_tenant_id,
+        key_vault_client_id=key_vault_client_id,
+        key_vault_client_secret=key_vault_client_secret,
+    )
     try:
         yield tw
     finally:

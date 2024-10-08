@@ -1022,10 +1022,13 @@ def get_azure_token_credentials(
     key_vault_tenant_id: str,
     key_vault_client_id: str,
     key_vault_client_secret: str,
+    audience: str = "https://management.azure.com/.default",
 ) -> Tuple[str, str, dict]:
 
     from notebookutils import mssparkutils
     from azure.identity import ClientSecretCredential
+
+    # https://analysis.windows.net/powerbi/api/.default
 
     tenant_id = mssparkutils.credentials.getSecret(key_vault_uri, key_vault_tenant_id)
     client_id = mssparkutils.credentials.getSecret(key_vault_uri, key_vault_client_id)
@@ -1037,7 +1040,7 @@ def get_azure_token_credentials(
         tenant_id=tenant_id, client_id=client_id, client_secret=client_secret
     )
 
-    token = credential.get_token("https://management.azure.com/.default").token
+    token = credential.get_token(audience).token
 
     headers = {
         "Authorization": f"Bearer {token}",
