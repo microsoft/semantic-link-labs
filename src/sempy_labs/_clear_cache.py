@@ -2,7 +2,7 @@ import sempy.fabric as fabric
 from sempy_labs._helper_functions import (
     resolve_dataset_id,
     is_default_semantic_model,
-    get_adls_client,
+    _get_adls_client,
 )
 from typing import Optional
 import sempy_labs._icons as icons
@@ -213,7 +213,7 @@ def copy_semantic_model_backup_file(
     source_path = f"/{source_workspace}/{source_file_name}"
     target_path = f"/{target_workspace}/{target_file_name}"
 
-    client = get_adls_client(account_name=storage_account)
+    client = _get_adls_client(account_name=storage_account)
 
     source_file_system_client = client.get_file_system_client(
         file_system=source_file_system
@@ -316,7 +316,7 @@ def list_storage_account_files(
         ]
     )
 
-    onelake = get_adls_client(storage_account)
+    onelake = _get_adls_client(storage_account)
     fs = onelake.get_file_system_client(container)
 
     for x in list(fs.get_paths()):

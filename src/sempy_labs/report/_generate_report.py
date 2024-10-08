@@ -2,7 +2,6 @@ import sempy.fabric as fabric
 import pandas as pd
 import json
 import os
-import time
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
@@ -113,7 +112,7 @@ def create_report_from_reportjson(
 
     response = client.post(f"/v1/workspaces/{workspace_id}/reports", json=request_body)
 
-    lro(client, response, status_codes=[201, 202])
+    lro(client, response, status_codes=[201, 202], return_status_code=True)
 
     print(
         f"{icons.green_dot} Succesfully created the '{report}' report within the '{workspace}' workspace."
@@ -313,50 +312,48 @@ def _create_report(
     dataset: str,
     dataset_workspace: Optional[str] = None,
     report_workspace: Optional[str] = None,
-    update_if_exists: bool = False,
+    overwrite: bool = False,
 ):
 
     from sempy_labs.report import report_rebind
 
     report_workspace = fabric.resolve_workspace_name(report_workspace)
     report_workspace_id = fabric.resolve_workspace_id(report_workspace)
-    client = fabric.FabricRestClient()
+    dataset_workspace = fabric.resolve_workspace_name(dataset_workspace)
 
     dfR = fabric.list_reports(workspace=report_workspace)
     dfR_filt = dfR[dfR["Name"] == report]
 
     updated_report = False
-
+    client = fabric.FabricRestClient()
     # Create report if it does not exist
     if len(dfR_filt) == 0:
         response = client.post(
             f"/v1/workspaces/{report_workspace_id}/reports",
             json=request_body,
-            lro_wait=True,
         )
-        if response.status_code not in [200, 201]:
-            raise FabricHTTPException(response)
+
+        lro(client, response, status_codes=[201, 202], return_status_code=True)
+
         print(
             f"{icons.green_dot} The '{report}' report has been created within the '{report_workspace}'"
         )
         updated_report = True
     # Update the report if it exists
-    elif len(dfR_filt) > 0 and update_if_exists:
+    elif len(dfR_filt) > 0 and overwrite:
         report_id = dfR_filt["Id"].iloc[0]
         response = client.post(
             f"/v1/workspaces/{report_workspace_id}/reports/{report_id}/updateDefinition",
             json=request_body,
-            lro_wait=True,
         )
-        if response.status_code not in [200, 201]:
-            raise FabricHTTPException(response)
+        lro(client, response, return_status_code=True)
         print(
             f"{icons.green_dot} The '{report}' report has been updated within the '{report_workspace}'"
         )
         updated_report = True
     else:
         raise ValueError(
-            f"{icons.red_dot} The '{report}' report within the '{report_workspace}' workspace already exists and it was selected not to update it if the report already exists."
+            f"{icons.red_dot} The '{report}' report within the '{report_workspace}' workspace already exists and the 'overwrite' parameter was set to False."
         )
 
     # Rebind the report to the semantic model to make sure it is pointed at the correct semantic model

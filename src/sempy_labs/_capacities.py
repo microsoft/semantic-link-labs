@@ -4,7 +4,7 @@ from sempy._utils._log import log
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 import requests
-from sempy_labs._helper_functions import get_azure_token_credentials
+from sempy_labs._helper_functions import _get_azure_token_credentials
 import pandas as pd
 
 
@@ -143,7 +143,7 @@ def create_fabric_capacity(
             f"{icons.red_dot} Invalid region. Valid options: {valid_regions}."
         )
 
-    azure_token, credential, headers = get_azure_token_credentials(
+    azure_token, credential, headers = _get_azure_token_credentials(
         key_vault_uri=key_vault_uri,
         key_vault_tenant_id=key_vault_tenant_id,
         key_vault_client_id=key_vault_client_id,
@@ -274,7 +274,7 @@ def suspend_fabric_capacity(
     """
     # https://learn.microsoft.com/en-us/rest/api/microsoftfabric/fabric-capacities/suspend?view=rest-microsoftfabric-2023-11-01&tabs=HTTP
 
-    azure_token, credential, headers = get_azure_token_credentials(
+    azure_token, credential, headers = _get_azure_token_credentials(
         key_vault_uri=key_vault_uri,
         key_vault_tenant_id=key_vault_tenant_id,
         key_vault_client_id=key_vault_client_id,
@@ -323,7 +323,7 @@ def resume_fabric_capacity(
 
     # https://learn.microsoft.com/en-us/rest/api/microsoftfabric/fabric-capacities/resume?view=rest-microsoftfabric-2023-11-01&tabs=HTTP
 
-    azure_token, credential, headers = get_azure_token_credentials(
+    azure_token, credential, headers = _get_azure_token_credentials(
         key_vault_uri=key_vault_uri,
         key_vault_tenant_id=key_vault_tenant_id,
         key_vault_client_id=key_vault_client_id,
@@ -372,7 +372,7 @@ def delete_embedded_capacity(
 
     # https://learn.microsoft.com/en-us/rest/api/power-bi-embedded/capacities/delete?view=rest-power-bi-embedded-2021-01-01&tabs=HTTP
 
-    azure_token, credential, headers = get_azure_token_credentials(
+    azure_token, credential, headers = _get_azure_token_credentials(
         key_vault_uri=key_vault_uri,
         key_vault_tenant_id=key_vault_tenant_id,
         key_vault_client_id=key_vault_client_id,
@@ -449,7 +449,7 @@ def delete_fabric_capacity(
 
     # https://learn.microsoft.com/en-us/rest/api/microsoftfabric/fabric-capacities/delete?view=rest-microsoftfabric-2023-11-01&tabs=HTTP
 
-    azure_token, credential, headers = get_azure_token_credentials(
+    azure_token, credential, headers = _get_azure_token_credentials(
         key_vault_uri=key_vault_uri,
         key_vault_tenant_id=key_vault_tenant_id,
         key_vault_client_id=key_vault_client_id,
@@ -515,7 +515,7 @@ def update_fabric_capacity(
             f"{icons.red_dot} If specified, the 'tags' parameter must be a dictionary."
         )
 
-    azure_token, credential, headers = get_azure_token_credentials(
+    azure_token, credential, headers = _get_azure_token_credentials(
         key_vault_uri=key_vault_uri,
         key_vault_tenant_id=key_vault_tenant_id,
         key_vault_client_id=key_vault_client_id,
@@ -558,7 +558,7 @@ def check_fabric_capacity_name_availablility(
 ) -> bool:
     # https://learn.microsoft.com/en-us/rest/api/microsoftfabric/fabric-capacities/check-name-availability?view=rest-microsoftfabric-2023-11-01&tabs=HTTP
 
-    azure_token, credential, headers = get_azure_token_credentials(
+    azure_token, credential, headers = _get_azure_token_credentials(
         key_vault_uri=key_vault_uri,
         key_vault_tenant_id=key_vault_tenant_id,
         key_vault_client_id=key_vault_client_id,

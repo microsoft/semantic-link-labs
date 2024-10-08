@@ -181,6 +181,8 @@ def export_report(
     """
 
     # https://learn.microsoft.com/rest/api/power-bi/reports/export-to-file-in-group
+    # https://learn.microsoft.com/rest/api/power-bi/reports/get-export-to-file-status-in-group
+    # https://learn.microsoft.com/rest/api/power-bi/reports/get-file-of-export-to-file-in-group
 
     if not lakehouse_attached():
         raise ValueError(
@@ -222,7 +224,6 @@ def export_report(
     }
 
     export_format = export_format.upper()
-
     fileExt = validFormats.get(export_format)
     if fileExt is None:
         raise ValueError(
@@ -286,9 +287,6 @@ def export_report(
     reportId = dfI_filt["Id"].iloc[0]
     client = fabric.PowerBIRestClient()
 
-    dfVisual = list_report_visuals(report=report, workspace=workspace)
-    dfPage = list_report_pages(report=report, workspace=workspace)
-
     if (
         export_format in ["BMP", "EMF", "GIF", "JPEG", "TIFF"]
         and reportType == "PaginatedReport"
@@ -314,6 +312,7 @@ def export_report(
             request_body = {"format": export_format, "powerBIReportConfiguration": {}}
 
             request_body["powerBIReportConfiguration"]["pages"] = []
+            dfPage = list_report_pages(report=report, workspace=workspace)
 
             for page in page_name:
                 dfPage_filt = dfPage[dfPage["Page ID"] == page]
@@ -335,9 +334,11 @@ def export_report(
             request_body = {"format": export_format, "powerBIReportConfiguration": {}}
 
             request_body["powerBIReportConfiguration"]["pages"] = []
+            dfVisual = list_report_visuals(report=report, workspace=workspace)
             a = 0
             for page in page_name:
                 visual = visual_name[a]
+
                 dfVisual_filt = dfVisual[
                     (dfVisual["Page ID"] == page) & (dfVisual["Visual ID"] == visual)
                 ]
@@ -360,32 +361,25 @@ def export_report(
         request_body["powerBIReportConfiguration"]["reportLevelFilters"] = [
             report_level_filter
         ]
-    print(request_body)
-    response = client.post(
-        f"/v1.0/myorg/groups/{workspace_id}/reports/{reportId}/ExportTo",
-        json=request_body,
-    )
+
+    base_url = f"/v1.0/myorg/groups/{workspace_id}/reports/{reportId}"
+    response = client.post(f"{base_url}/ExportTo", json=request_body)
+
     if response.status_code == 202:
         response_body = json.loads(response.content)
-        exportId = response_body["id"]
-        response = client.get(
-            f"/v1.0/myorg/groups/{workspace_id}/reports/{reportId}/exports/{exportId}"
-        )
+        export_id = response_body["id"]
+        response = client.get(f"{base_url}/exports/{export_id}")
         response_body = json.loads(response.content)
         while response_body["status"] not in ["Succeeded", "Failed"]:
             time.sleep(3)
-            response = client.get(
-                f"/v1.0/myorg/groups/{workspace_id}/reports/{reportId}/exports/{exportId}"
-            )
+            response = client.get(f"{base_url}/exports/{export_id}")
             response_body = json.loads(response.content)
         if response_body["status"] == "Failed":
             raise ValueError(
                 f"{icons.red_dot} The export for the '{report}' report within the '{workspace}' workspace in the '{export_format}' format has failed."
             )
         else:
-            response = client.get(
-                f"/v1.0/myorg/groups/{workspace_id}/reports/{reportId}/exports/{exportId}/file"
-            )
+            response = client.get(f"{base_url}/exports/{export_id}/file")
             print(
                 f"{icons.in_progress} Saving the '{export_format}' export for the '{report}' report within the '{workspace}' workspace to the lakehouse..."
             )

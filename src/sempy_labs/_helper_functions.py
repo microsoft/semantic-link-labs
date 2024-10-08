@@ -961,15 +961,15 @@ class FabricTokenCredential(TokenCredential):
         **kwargs: any,
     ) -> AccessToken:
 
-        from notebookutils import mssparkutils
+        import notebookutils
 
-        token = mssparkutils.credentials.getToken(scopes)
+        token = notebookutils.credentials.getToken(scopes)
         access_token = AccessToken(token, 0)
 
         return access_token
 
 
-def get_adls_client(account_name):
+def _get_adls_client(account_name):
 
     from azure.storage.filedatalake import DataLakeServiceClient
 
@@ -1017,19 +1017,22 @@ def get_language_codes(languages: str | List[str]):
     return languages
 
 
-def get_azure_token_credentials(
+def _get_azure_token_credentials(
     key_vault_uri: str,
     key_vault_tenant_id: str,
     key_vault_client_id: str,
     key_vault_client_secret: str,
+    audience: str = "https://management.azure.com/.default",
 ) -> Tuple[str, str, dict]:
 
-    from notebookutils import mssparkutils
+    import notebookutils
     from azure.identity import ClientSecretCredential
 
-    tenant_id = mssparkutils.credentials.getSecret(key_vault_uri, key_vault_tenant_id)
-    client_id = mssparkutils.credentials.getSecret(key_vault_uri, key_vault_client_id)
-    client_secret = mssparkutils.credentials.getSecret(
+    # "https://analysis.windows.net/powerbi/api/.default"
+
+    tenant_id = notebookutils.credentials.getSecret(key_vault_uri, key_vault_tenant_id)
+    client_id = notebookutils.credentials.getSecret(key_vault_uri, key_vault_client_id)
+    client_secret = notebookutils.credentials.getSecret(
         key_vault_uri, key_vault_client_secret
     )
 
@@ -1037,7 +1040,7 @@ def get_azure_token_credentials(
         tenant_id=tenant_id, client_id=client_id, client_secret=client_secret
     )
 
-    token = credential.get_token("https://management.azure.com/.default").token
+    token = credential.get_token(audience).token
 
     headers = {
         "Authorization": f"Bearer {token}",
@@ -1077,7 +1080,7 @@ def resolve_environment_id(environment: str, workspace: Optional[str] = None) ->
     )
 
 
-def make_clickable(val):
+def _make_clickable(val):
 
     return f'<a target="_blank" href="{val}">{val}</a>'
 
@@ -1132,7 +1135,7 @@ def generate_guid():
     return str(uuid.uuid4())
 
 
-def get_max_run_id(lakehouse: str, table_name: str) -> int:
+def _get_max_run_id(lakehouse: str, table_name: str) -> int:
 
     from pyspark.sql import SparkSession
 
