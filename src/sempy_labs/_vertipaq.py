@@ -327,7 +327,7 @@ def vertipaq_analyzer(
     dfC["% DB"] = round((dfC["Total Size"] / db_total_size) * 100, 2)
     columnList = list(vertipaq_map["Columns"].keys())
 
-    dfC = dfC[dfC['Type'] != 'RowNumber'].reset_index(drop=True)
+    dfC = dfC[dfC["Type"] != "RowNumber"].reset_index(drop=True)
 
     colSize = dfC[columnList].sort_values(by="Total Size", ascending=False)
     temp = dfC[columnList].sort_values(by="Temperature", ascending=False)
