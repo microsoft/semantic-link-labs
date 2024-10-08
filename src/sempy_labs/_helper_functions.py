@@ -961,9 +961,9 @@ class FabricTokenCredential(TokenCredential):
         **kwargs: any,
     ) -> AccessToken:
 
-        from notebookutils import mssparkutils
+        import notebookutils
 
-        token = mssparkutils.credentials.getToken(scopes)
+        token = notebookutils.credentials.getToken(scopes)
         access_token = AccessToken(token, 0)
 
         return access_token
@@ -1024,12 +1024,12 @@ def get_azure_token_credentials(
     key_vault_client_secret: str,
 ) -> Tuple[str, str, dict]:
 
-    from notebookutils import mssparkutils
+    import notebookutils
     from azure.identity import ClientSecretCredential
 
-    tenant_id = mssparkutils.credentials.getSecret(key_vault_uri, key_vault_tenant_id)
-    client_id = mssparkutils.credentials.getSecret(key_vault_uri, key_vault_client_id)
-    client_secret = mssparkutils.credentials.getSecret(
+    tenant_id = notebookutils.credentials.getSecret(key_vault_uri, key_vault_tenant_id)
+    client_id = notebookutils.credentials.getSecret(key_vault_uri, key_vault_client_id)
+    client_secret = notebookutils.credentials.getSecret(
         key_vault_uri, key_vault_client_secret
     )
 
