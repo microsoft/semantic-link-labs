@@ -33,6 +33,8 @@ class TOMWrapper:
     _workspace: str
     _readonly: bool
     _tables_added: List[str]
+    _table_map = dict
+    _column_map = dict
 
     def __init__(self, dataset, workspace, readonly):
         self._dataset = dataset
@@ -44,6 +46,18 @@ class TOMWrapper:
             readonly=readonly, workspace=workspace
         )
         self.model = self._tom_server.Databases.GetByName(dataset).Model
+
+        self._table_map = {}
+        self._column_map = {}
+        for t in self.model.Tables:
+            if len(t.LineageTag) == 0:
+                t.LineageTag = generate_guid()
+            self._table_map[t.LineageTag] = t.Name
+
+        for c in self.all_columns():
+            if len(c.LineageTag) == 0:
+                c.LineageTag = generate_guid()
+            self._column_map[c.LineageTag] = [c.Name, c.DataType]
 
     def all_columns(self):
         """
@@ -291,8 +305,6 @@ class TOMWrapper:
             obj.LineageTag = generate_guid()
         if source_lineage_tag is not None:
             obj.SourceLineageTag = source_lineage_tag
-        else:
-            obj.SourceLineageTag = generate_guid()
         if detail_rows_expression is not None:
             drd = TOM.DetailRowsDefinition()
             drd.Expression = detail_rows_expression
@@ -388,8 +400,6 @@ class TOMWrapper:
             obj.LineageTag = generate_guid()
         if source_lineage_tag is not None:
             obj.SourceLineageTag = source_lineage_tag
-        else:
-            obj.SourceLineageTag = generate_guid()
         self.model.Tables[table_name].Columns.Add(obj)
 
     def add_data_column(
@@ -478,8 +488,6 @@ class TOMWrapper:
             obj.LineageTag = generate_guid()
         if source_lineage_tag is not None:
             obj.SourceLineageTag = source_lineage_tag
-        else:
-            obj.SourceLineagetTag = generate_guid()
         self.model.Tables[table_name].Columns.Add(obj)
 
     def add_calculated_column(
@@ -568,8 +576,6 @@ class TOMWrapper:
             obj.LineageTag = generate_guid()
         if source_lineage_tag is not None:
             obj.SourceLineageTag = source_lineage_tag
-        else:
-            obj.SourceLineagetTag = generate_guid()
         self.model.Tables[table_name].Columns.Add(obj)
 
     def add_calculation_item(
@@ -785,8 +791,6 @@ class TOMWrapper:
             obj.LineageTag = generate_guid()
         if source_lineage_tag is not None:
             obj.SourceLineageTag = source_lineage_tag
-        else:
-            obj.SourceLineagetTag = generate_guid()
         self.model.Tables[table_name].Hierarchies.Add(obj)
 
         for col in columns:
@@ -795,7 +799,6 @@ class TOMWrapper:
             lvl.Name = levels[columns.index(col)]
             lvl.Ordinal = columns.index(col)
             lvl.LineageTag = generate_guid()
-            lvl.SourceLineageTag = generate_guid()
             self.model.Tables[table_name].Hierarchies[hierarchy_name].Levels.Add(lvl)
 
     def add_relationship(
@@ -969,8 +972,6 @@ class TOMWrapper:
             exp.LineageTag = generate_guid()
         if source_lineage_tag is not None:
             exp.SourceLineageTag = source_lineage_tag
-        else:
-            exp.SourceLineageTag = generate_guid()
         exp.Kind = TOM.ExpressionKind.M
         exp.Expression = expression
 
@@ -2654,8 +2655,6 @@ class TOMWrapper:
             t.LineageTag = generate_guid()
         if source_lineage_tag is not None:
             t.SourceLineageTag = source_lineage_tag
-        else:
-            t.SourceLineagetTag = generate_guid()
         t.Hidden = hidden
         self.model.Tables.Add(t)
 
@@ -2710,8 +2709,6 @@ class TOMWrapper:
             t.LineageTag = generate_guid()
         if source_lineage_tag is not None:
             t.SourceLineageTag = source_lineage_tag
-        else:
-            t.SourceLineagetTag = generate_guid()
         t.Hidden = hidden
         t.Partitions.Add(par)
         self.model.Tables.Add(t)
@@ -4281,33 +4278,57 @@ class TOMWrapper:
                             icons.default_schema
                         )
                     t.SourceLineageTag = f"[{schema_name}].[{entity_name}]"
-                else:
-                    t.SourceLineageTag = generate_guid()
         for c in self.all_columns():
             if len(c.LineageTag) == 0:
                 c.LineageTag = generate_guid()
-            if len(c.SourceLineageTag) == 0:
-                c.SourceLineageTag = generate_guid()
         for m in self.all_measures():
             if len(m.LineageTag) == 0:
                 m.LineageTag = generate_guid()
-            if len(m.SourceLineageTag) == 0:
-                m.SourceLineageTag = generate_guid()
         for h in self.all_hierarchies():
             if len(h.LineageTag) == 0:
                 h.LineageTag = generate_guid()
-            if len(h.SourceLineageTag) == 0:
-                h.SourceLineageTag = generate_guid()
         for lvl in self.all_levels():
             if len(lvl.LineageTag) == 0:
                 lvl.LineageTag = generate_guid()
-            if len(lvl.SourceLineageTag) == 0:
-                lvl.SourceLineageTag = generate_guid()
         for e in self.model.Expressions():
             if len(e.LineageTag) == 0:
                 e.LineageTag = generate_guid()
-            if len(e.SourceLineageTag) == 0:
-                e.SourceLineageTag = generate_guid()
+
+    def add_changed_property(self, object, property: str):
+        """
+        Adds a `ChangedProperty <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.changedproperty.property?view=analysisservices-dotnet#microsoft-analysisservices-tabular-changedproperty-property>`_ property to a semantic model object. Only adds the property if it does not already exist for the object.
+
+        Parameters
+        ----------
+        object : TOM Object
+            The TOM object within the semantic model.
+        property : str
+            The property to set (i.e. 'Name', 'DataType').
+        """
+
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        if object.ObjectType not in [TOM.ObjectType.Table, TOM.ObjectType.Column]:
+            raise ValueError(
+                f"{icons.red_dot} The 'ChangedProperty' property is only valid for tables and columns."
+            )
+
+        if property not in ["Name", "DataType"]:
+            raise ValueError(
+                f"{icons.red_dot} The 'property' can only be a value of 'Name' or 'DataType'."
+            )
+
+        if object.ObjectType == TOM.ObjectType.Table and property == "DataType":
+            raise ValueError(
+                f"{icons.red_dot} There is no 'DataType' property for tables."
+            )
+
+        cp = TOM.ChangedProperty()
+        cp.Property = property
+
+        # Only add the property if it does not already exist for that object
+        if not any(c.Property == property for c in object.ChangedProperties):
+            object.ChangedProperties.Add(cp)
 
     def generate_measure_descriptions(
         self,
@@ -4456,6 +4477,29 @@ class TOMWrapper:
 
     def close(self):
         if not self._readonly and self.model is not None:
+
+            import Microsoft.AnalysisServices.Tabular as TOM
+
+            # ChangedProperty logic
+            for t in self.model.Tables:
+                if any(
+                    p.SourceType == TOM.PartitionSourceType.Entity for p in t.Partitions
+                ):
+                    if t.LineageTag in self._table_map.keys():
+                        if self._table_map.get(t.LineageTag) != t.Name:
+                            self.add_changed_property(object=t, property="Name")
+
+            for c in self.all_columns():
+                if c.LineageTag in self._column_map.keys():
+                    if any(
+                        p.SourceType == TOM.PartitionSourceType.Entity
+                        for p in c.Parent.Partitions
+                    ):
+                        if self._column_map.get(c.LineageTag)[0] != c.Name:
+                            self.add_changed_property(object=c, property="Name")
+                    if self._column_map.get(c.LineageTag)[1] != c.DataType:
+                        self.add_changed_property(object=c, property="DataType")
+
             self.model.SaveChanges()
 
             if len(self._tables_added) > 0:

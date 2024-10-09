@@ -1,5 +1,8 @@
 import sempy.fabric as fabric
-from sempy_labs._helper_functions import resolve_dataset_id, resolve_report_id
+from sempy_labs._helper_functions import (
+    resolve_dataset_id,
+    resolve_report_id,
+)
 from typing import Optional, List
 from sempy._utils._log import log
 import sempy_labs._icons as icons
