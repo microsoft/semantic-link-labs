@@ -82,12 +82,12 @@ class TOMWrapper:
                 audience="https://analysis.windows.net/powerbi/api/.default",
             )
 
-            tom_server = TOM.Server()
+            self._tom_server = TOM.Server()
             get_access_token = create_on_access_token_expired_callback(
                 ConstantTokenProvider(token)
             )
-            tom_server.AccessToken = get_access_token(None)
-            tom_server.OnAccessTokenExpired = Func[AccessToken, AccessToken](
+            self._tom_server.AccessToken = get_access_token(None)
+            self._tom_server.OnAccessTokenExpired = Func[AccessToken, AccessToken](
                 get_access_token
             )
             workspace_url = f"powerbi://api.powerbi.com/v1.0/myorg/{workspace}"
