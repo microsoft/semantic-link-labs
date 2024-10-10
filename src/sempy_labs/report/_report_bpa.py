@@ -10,6 +10,7 @@ from sempy_labs._helper_functions import (
     resolve_report_id,
     resolve_lakehouse_name,
     resolve_workspace_capacity,
+    _get_max_run_id,
 )
 from sempy_labs.lakehouse import get_lakehouse_tables, lakehouse_attached
 import sempy_labs._icons as icons
@@ -192,8 +193,6 @@ def run_report_bpa(
         return finalDF
 
     if export:
-        from pyspark.sql import SparkSession
-
         if not lakehouse_attached():
             raise ValueError(
                 f"{icons.red_dot} In order to export the BPA results, a lakehouse must be attached to the notebook."
@@ -202,7 +201,7 @@ def run_report_bpa(
         now = datetime.datetime.now()
         delta_table_name = "reportbparesults"
         lakehouse_id = fabric.get_lakehouse_id()
-        lake_workspace = fabric.get_workspace_id()
+        lake_workspace = fabric.resolve_workspace_name()
         lakehouse = resolve_lakehouse_name(
             lakehouse_id=lakehouse_id, workspace=lake_workspace
         )
@@ -210,15 +209,13 @@ def run_report_bpa(
         lakeT = get_lakehouse_tables(lakehouse=lakehouse, workspace=lake_workspace)
         lakeT_filt = lakeT[lakeT["Table Name"] == delta_table_name]
 
-        spark = SparkSession.builder.getOrCreate()
-        query = f"SELECT MAX(RunId) FROM {lakehouse}.{delta_table_name}"
-
         if len(lakeT_filt) == 0:
             runId = 1
         else:
-            dfSpark = spark.sql(query)
-            maxRunId = dfSpark.collect()[0][0]
-            runId = maxRunId + 1
+            max_run_id = _get_max_run_id(
+                lakehouse=lakehouse, table_name=delta_table_name
+            )
+            runId = max_run_id + 1
 
         export_df = finalDF.copy()
         capacity_id, capacity_name = resolve_workspace_capacity(workspace=workspace)
@@ -232,7 +229,7 @@ def run_report_bpa(
         export_df["Timestamp"] = now
         export_df["RunId"] = export_df["RunId"].astype(int)
 
-        export_df = [
+        export_df = export_df[
             [
                 "Capacity Name",
                 "Capacity Id",
@@ -249,6 +246,7 @@ def run_report_bpa(
                 "URL",
             ]
         ]
+
         save_as_delta_table(
             dataframe=export_df,
             delta_table_name=delta_table_name,
