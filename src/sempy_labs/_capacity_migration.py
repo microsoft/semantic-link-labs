@@ -7,6 +7,7 @@ from sempy_labs._workspaces import assign_workspace_to_capacity
 from sempy_labs.admin._basic_functions import (
     assign_workspaces_to_capacity,
     _list_capacities_meta,
+    list_capacities,
 )
 from sempy_labs._helper_functions import (
     resolve_capacity_id,
@@ -668,14 +669,12 @@ def migrate_fabric_trial_capacity(
         Defaults to None which resolves to the admin members on the Trial SKU.
     """
 
-    from sempy_labs._list_functions import list_capacities
-
     notebook_workspace_id = fabric.get_notebook_workspace_id()
     dfW = fabric.list_workspaces(filter=f"id eq '{notebook_workspace_id}'")
     notebook_capacity_id = dfW["Capacity Id"].iloc[0].lower()
 
     dfC = list_capacities()
-    dfC_filt = dfC[dfC["Display Name"] == source_capacity]
+    dfC_filt = dfC[dfC["Capacity Name"] == source_capacity]
 
     if len(dfC_filt) == 0:
         raise ValueError(
@@ -683,10 +682,12 @@ def migrate_fabric_trial_capacity(
         )
 
     source_capacity_sku = dfC_filt["Sku"].iloc[0]
-    if not source_capacity_sku.startswith('FT'):
-        raise ValueError(f"{icons.red_dot} This function is for migrating Fabric trial capacites to Fabric capacities.")
+    if not source_capacity_sku.startswith("FT"):
+        raise ValueError(
+            f"{icons.red_dot} This function is for migrating Fabric trial capacites to Fabric capacities."
+        )
 
-    source_capacity_id = dfC_filt["Id"].iloc[0].lower()
+    source_capacity_id = dfC_filt["Capacity Id"].iloc[0].lower()
     if source_capacity_id == notebook_capacity_id:
         print(
             f"{icons.warning} The '{source_capacity}' capacity cannot be both the source capacity as well as the capacity in which the notebook is running."
@@ -704,7 +705,7 @@ def migrate_fabric_trial_capacity(
     if target_capacity_admin_members is None:
         target_capacity_admin_members = dfC_filt["Admins"].iloc[0]
 
-    dfC_filt = dfC[dfC["Display Name"] == target_capacity]
+    dfC_filt = dfC[dfC["Capacity Name"] == target_capacity]
     if len(dfC_filt) == 0:
         create_fabric_capacity(
             capacity_name=target_capacity,
