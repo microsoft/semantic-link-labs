@@ -4308,27 +4308,28 @@ class TOMWrapper:
 
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        if object.ObjectType not in [TOM.ObjectType.Table, TOM.ObjectType.Column]:
-            raise ValueError(
-                f"{icons.red_dot} The 'ChangedProperty' property is only valid for tables and columns."
-            )
-
-        if property not in ["Name", "DataType"]:
-            raise ValueError(
-                f"{icons.red_dot} The 'property' can only be a value of 'Name' or 'DataType'."
-            )
-
-        if object.ObjectType == TOM.ObjectType.Table and property == "DataType":
-            raise ValueError(
-                f"{icons.red_dot} There is no 'DataType' property for tables."
-            )
-
         cp = TOM.ChangedProperty()
         cp.Property = property
 
         # Only add the property if it does not already exist for that object
         if not any(c.Property == property for c in object.ChangedProperties):
             object.ChangedProperties.Add(cp)
+
+    def remove_changed_property(self, object, property: str):
+        """
+        Removes a `ChangedProperty <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.changedproperty.property?view=analysisservices-dotnet#microsoft-analysisservices-tabular-changedproperty-property>`_ property to a semantic model object. Only adds the property if it does not already exist for the object.
+
+        Parameters
+        ----------
+        object : TOM Object
+            The TOM object within the semantic model.
+        property : str
+            The property to set (i.e. 'Name', 'DataType').
+        """
+
+        for cp in object.ChangedProperties:
+            if cp.Property == property:
+                object.ChangedProperties.Remove(cp)
 
     def generate_measure_descriptions(
         self,
