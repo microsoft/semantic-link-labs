@@ -4486,12 +4486,12 @@ class TOMWrapper:
                 if any(
                     p.SourceType == TOM.PartitionSourceType.Entity for p in t.Partitions
                 ):
-                    if t.LineageTag in self._table_map.keys():
+                    if t.LineageTag in list(self._table_map.keys()):
                         if self._table_map.get(t.LineageTag) != t.Name:
                             self.add_changed_property(object=t, property="Name")
 
             for c in self.all_columns():
-                if c.LineageTag in self._column_map.keys():
+                if c.LineageTag in list(self._column_map.keys()):
                     if any(
                         p.SourceType == TOM.PartitionSourceType.Entity
                         for p in c.Parent.Partitions
