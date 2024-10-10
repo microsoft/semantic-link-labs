@@ -8,7 +8,6 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     lro,
     _decode_b64,
-    resolve_notebook_id,
 )
 from sempy.fabric.exceptions import FabricHTTPException
 

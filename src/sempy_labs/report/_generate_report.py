@@ -11,7 +11,6 @@ from sempy_labs._helper_functions import (
 )
 import sempy_labs._icons as icons
 from sempy._utils._log import log
-from sempy.fabric.exceptions import FabricHTTPException
 
 
 def create_report_from_reportjson(

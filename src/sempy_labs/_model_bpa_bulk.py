@@ -49,8 +49,6 @@ def run_model_bpa_bulk(
         The semantic models to always skip when running this analysis.
     """
 
-    import pyspark.sql.functions as F
-
     if not lakehouse_attached():
         raise ValueError(
             f"{icons.red_dot} No lakehouse is attached to this notebook. Must attach a lakehouse to the notebook."

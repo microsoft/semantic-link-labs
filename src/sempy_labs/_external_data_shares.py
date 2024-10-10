@@ -171,7 +171,9 @@ def list_external_data_shares_in_item(
                 "Paths": [i.get("paths")],
                 "Creator Principal Id": i.get("creatorPrincipal", {}).get("id"),
                 "Creator Principal Type": i.get("creatorPrincipal", {}).get("type"),
-                "Recipient User Principal Name": i.get("recipient", {}).get("userPrincipalName"),
+                "Recipient User Principal Name": i.get("recipient", {}).get(
+                    "userPrincipalName"
+                ),
                 "Status": i.get("status"),
                 "Expiration Time UTC": i.get("expriationTimeUtc"),
                 "Workspace Id": i.get("workspaceId"),
