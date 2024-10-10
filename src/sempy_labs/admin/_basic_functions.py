@@ -114,10 +114,10 @@ def assign_workspaces_to_capacity(
         # )["Id"].values
         dfW = list_workspaces()
         dfW = dfW[dfW["Capacity Id"].str.upper() == source_capacity_id.upper()]
-        workspaces = dfW["Name"].values.tolist()
+        workspaces = dfW["Name"].tolist()
     else:
         dfW = list_workspaces()
-        workspaces = dfW[dfW["Name"].isin(workspace)]["Id"].values.tolist()
+        workspaces = dfW[dfW["Name"].isin(workspace)]["Id"].tolist()
 
     # workspaces = np.array(workspaces)
     batch_size = 999
