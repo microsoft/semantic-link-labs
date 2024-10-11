@@ -5,6 +5,7 @@ import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 from sempy_labs._helper_functions import resolve_workspace_name_and_id, pagination
 import pandas as pd
+import numpy as np
 import time
 
 
@@ -114,12 +115,12 @@ def assign_workspaces_to_capacity(
         # )["Id"].values
         dfW = list_workspaces()
         dfW = dfW[dfW["Capacity Id"].str.upper() == source_capacity_id.upper()]
-        workspaces = dfW["Name"].tolist()
+        workspaces = dfW["Id"].tolist()
     else:
         dfW = list_workspaces()
         workspaces = dfW[dfW["Name"].isin(workspace)]["Id"].tolist()
 
-    # workspaces = np.array(workspaces)
+    workspaces = np.array(workspaces)
     batch_size = 999
     for i in range(0, len(workspaces), batch_size):
         batch = workspaces[i : i + batch_size].tolist()
