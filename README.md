@@ -21,7 +21,8 @@ Semantic Link Labs is a Python library designed for use in [Microsoft Fabric not
     * [Check Direct Lake Guardrails](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.lakehouse.html#sempy_labs.lakehouse.get_lakehouse_tables)
     * [Refresh](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Semantic%20Model%20Refresh.ipynb), [clear cache](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.clear_cache), [backup](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.backup_semantic_model), [restore](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.restore_semantic_model), [copy backup files](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.copy_semantic_model_backup_file), [move/deploy across workspaces](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.deploy_semantic_model)
     * [Run DAX queries which impersonate a user](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.evaluate_dax_impersonation)
-    * Manage [Query Scale Out](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Query%20Scale%20Out.ipynb).
+    * [Manage Query Scale Out](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Query%20Scale%20Out.ipynb).
+    * [Auto-generate descriptions for any/all measures in bulk](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.tom.html#sempy_labs.tom.TOMWrapper.generate_measure_descriptions)
 * Reports
     * [Report Best Practice Analyzer (BPA)](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.report.html#sempy_labs.report.run_report_bpa)
     * [View report metadata](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Report%20Analysis.ipynb)
@@ -30,6 +31,7 @@ Semantic Link Labs is a Python library designed for use in [Microsoft Fabric not
     * [Rebind reports](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.report.html#sempy_labs.report.report_rebind)
 * Capacities
     * [Migrating a Power BI Premium capacity (P sku) to a Fabric capacity (F sku)](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Capacity%20Migration.ipynb)
+    * [Create](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.create_fabric_capacity)/[update](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.update_fabric_capacity)/[suspend](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.suspend_fabric_capacity)/[resume](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.resume_fabric_capacity) Fabric capacities.
 * APIs
     * Wrapper functions for [Power BI](https://learn.microsoft.com/rest/api/power-bi/), [Fabric](https://learn.microsoft.com/rest/api/fabric/articles/using-fabric-apis), and [Azure](https://learn.microsoft.com/rest/api/azure/?view=rest-power-bi-embedded-2021-01-01) APIs
 
