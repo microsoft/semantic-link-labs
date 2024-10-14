@@ -3,7 +3,10 @@ import sempy.fabric as fabric
 import pandas as pd
 import re
 from datetime import datetime
-from sempy_labs._helper_functions import format_dax_object_name
+from sempy_labs._helper_functions import (
+    format_dax_object_name,
+    make_list_unique,
+)
 from sempy_labs._list_functions import list_relationships
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
 from sempy_labs.directlake._dl_helper import check_fallback_reason
@@ -11,6 +14,7 @@ from contextlib import contextmanager
 from typing import List, Iterator, Optional, Union, TYPE_CHECKING
 from sempy._utils._log import log
 import sempy_labs._icons as icons
+import ast
 
 if TYPE_CHECKING:
     import Microsoft.AnalysisServices.Tabular
@@ -4081,24 +4085,23 @@ class TOMWrapper:
 
     def close(self):
 
-        import ast
-        from sempy_labs._helper_functions import make_list_unique
-
         if not self._readonly and self.model is not None:
             ann_name = 'PBI_ProTooling'
             self._sll_tags.append('SLL')
             tags = [f"{self._sll_prefix}{a}" for a in self._sll_tags]
 
             if not any(a.Name == ann_name for a in self.model.Annotations):
-                tags = make_list_unique(tags)
-                self.set_annotation(object=self.model, name=ann_name, value=f'{tags}')
+                ann_list = make_list_unique(tags)
+                new_ann_value = str(ann_list).replace("'", '"')
+                self.set_annotation(object=self.model, name=ann_name, value=new_ann_value)
             else:
                 try:
                     ann_value = self.get_annotation_value(object=self.model, name=ann_name)
-                    ann_value = ast.literal_eval(ann_value)
-                    ann_value += tags
-                    ann_value = make_list_unique(ann_value)
-                    self.set_annotation(object=self.model, name=ann_name, value=str(ann_value).replace("'", '"'))
+                    ann_list = ast.literal_eval(ann_value)
+                    ann_list += tags
+                    ann_list = make_list_unique(ann_list)
+                    new_ann_value = str(ann_list).replace("'", '"')
+                    self.set_annotation(object=self.model, name=ann_name, value=new_ann_value)
                 except Exception:
                     pass
 
