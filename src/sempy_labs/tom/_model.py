@@ -4308,11 +4308,10 @@ class TOMWrapper:
 
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        cp = TOM.ChangedProperty()
-        cp.Property = property
-
         # Only add the property if it does not already exist for that object
         if not any(c.Property == property for c in object.ChangedProperties):
+            cp = TOM.ChangedProperty()
+            cp.Property = property
             object.ChangedProperties.Add(cp)
 
     def remove_changed_property(self, object, property: str):
