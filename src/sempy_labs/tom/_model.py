@@ -36,7 +36,7 @@ class TOMWrapper:
         self._readonly = readonly
         self._tables_added = []
         self._sll_prefix = 'SLL_'
-        self._sll_tag = f"{self._sll_prefix}TOM"
+        self._sll_tags = []
 
         self._tom_server = fabric.create_tom_server(
             readonly=readonly, workspace=workspace
@@ -1535,7 +1535,7 @@ class TOMWrapper:
             print(
                 f"{icons.green_dot} The {property} property for the '{object.Parent.Name}'[{object.Name}] {str(object.ObjectType).lower()} has been translated into '{language}' as '{value}'."
             )
-        self._sll_tag = f"{self._sll_prefix}TranslateSemanticModel"
+        self._sll_tags.append("TranslateSemanticModel")
 
     def remove_translation(
         self,
@@ -2803,7 +2803,7 @@ class TOMWrapper:
             runId = "1"
         self.set_annotation(object=self.model, name="Vertipaq_Run", value=runId)
 
-        self._sll_tag = f"{self._sll_prefix}SetVertipaqAnnotations"
+        self._sll_tags.append("VertipaqAnnotations")
 
     def row_count(self, object: Union["TOM.Partition", "TOM.Table"]):
         """
@@ -4082,21 +4082,23 @@ class TOMWrapper:
     def close(self):
 
         import ast
+        from sempy_labs._helper_functions import make_list_unique
 
         if not self._readonly and self.model is not None:
             ann_name = 'PBI_ProTooling'
-            sll_value = self._sll_tag
-            o = self.model
+            self._sll_tags.append('SLL')
+            tags = [f"{self._sll_prefix}{a}" for a in self._sll_tags]
 
-            ann_value = self.get_annotation_value(object=o, name=ann_name)
-
-            if ann_value is None:
-                self.set_annotation(object=o, name=ann_name, value=f'["{sll_value}"]')
+            if not any(a.Name == ann_name for a in self.model.Annotations):
+                tags = make_list_unique(tags)
+                self.set_annotation(object=self.model, name=ann_name, value=f'{tags}')
             else:
                 try:
+                    ann_value = self.get_annotation_value(object=self.model, name=ann_name)
                     ann_value = ast.literal_eval(ann_value)
-                    ann_value.append(sll_value)
-                    self.set_annotation(object=o, name=ann_name, value=str(ann_value).replace("'", '"'))
+                    ann_value += tags
+                    ann_value = make_list_unique(ann_value)
+                    self.set_annotation(object=self.model, name=ann_name, value=str(ann_value).replace("'", '"'))
                 except Exception:
                     pass
 

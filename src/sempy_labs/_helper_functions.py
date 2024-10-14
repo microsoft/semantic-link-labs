@@ -900,3 +900,8 @@ def get_adls_client(account_name):
     )
 
     return service_client
+
+
+def make_list_unique(my_list):
+
+    return list(set(my_list))
