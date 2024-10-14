@@ -1001,4 +1001,6 @@ def list_activity_events(
                 ignore_index=True,
             )
 
+    df["Creation Time"] = pd.to_datetime(df["Creation Time"])
+
     return df
