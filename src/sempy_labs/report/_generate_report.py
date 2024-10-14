@@ -23,6 +23,8 @@ def create_report_from_reportjson(
     """
     Creates a report based on a report.json file (and an optional themes.json file).
 
+    This is a wrapper function for the following API: `Items - Create Report <https://learn.microsoft.com/rest/api/fabric/report/items/create-report`_.
+
     Parameters
     ----------
     report : str
@@ -124,6 +126,8 @@ def update_report_from_reportjson(
     """
     Updates a report based on a report.json file.
 
+    This is a wrapper function for the following API: `Items - Update Report Definition <https://learn.microsoft.com/rest/api/fabric/report/items/update-report-definition`_.
+
     Parameters
     ----------
     report : str
@@ -178,6 +182,8 @@ def update_report_from_reportjson(
 def get_report_definition(report: str, workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Gets the collection of definition files of a report.
+
+    This is a wrapper function for the following API: `Items - Get Report Definition <https://learn.microsoft.com/rest/api/fabric/report/items/get-report-definition`_.
 
     Parameters
     ----------

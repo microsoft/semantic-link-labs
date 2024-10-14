@@ -59,6 +59,8 @@ def assign_workspace_to_dataflow_storage(
     """
     Assigns a dataflow storage account to a workspace.
 
+    This is a wrapper function for the following API: `Dataflow Storage Accounts - Groups AssignToDataflowStorage <https://learn.microsoft.com/rest/api/power-bi/dataflow-storage-accounts/groups-assign-to-dataflow-storage`_.
+
     Parameters
     ----------
     dataflow_storage_account : str
@@ -98,6 +100,8 @@ def assign_workspace_to_dataflow_storage(
 def list_dataflow_storage_accounts() -> pd.DataFrame:
     """
     Shows the accessible dataflow storage accounts.
+
+    This is a wrapper function for the following API: `Dataflow Storage Accounts - Get Dataflow Storage Accounts <https://learn.microsoft.com/rest/api/power-bi/dataflow-storage-accounts/get-dataflow-storage-accounts`_.
 
     Returns
     -------

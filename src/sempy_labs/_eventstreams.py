@@ -14,6 +14,8 @@ def list_eventstreams(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the eventstreams within a workspace.
 
+    This is a wrapper function for the following API: `Items - List Eventstreams <https://learn.microsoft.com/rest/api/fabric/environment/items/list-eventstreams`_.
+
     Parameters
     ----------
     workspace : str, default=None
@@ -56,6 +58,8 @@ def create_eventstream(
     """
     Creates a Fabric eventstream.
 
+    This is a wrapper function for the following API: `Items - Create Eventstream <https://learn.microsoft.com/rest/api/fabric/environment/items/create-eventstream`_.
+
     Parameters
     ----------
     name: str
@@ -90,6 +94,8 @@ def create_eventstream(
 def delete_eventstream(name: str, workspace: Optional[str] = None):
     """
     Deletes a Fabric eventstream.
+
+    This is a wrapper function for the following API: `Items - Delete Eventstream <https://learn.microsoft.com/rest/api/fabric/environment/items/delete-eventstream`_.
 
     Parameters
     ----------
