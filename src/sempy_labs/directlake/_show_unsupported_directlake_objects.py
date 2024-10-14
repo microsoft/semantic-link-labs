@@ -11,7 +11,7 @@ def show_unsupported_direct_lake_objects(
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Returns a list of a semantic model's objects which are not supported by Direct Lake based on
-     `official documentation <https://learn.microsoft.com/power-bi/enterprise/directlake-overview#known-issues-and-limitations>`_.
+    `official documentation <https://learn.microsoft.com/power-bi/enterprise/directlake-overview#known-issues-and-limitations>`_.
 
     Parameters
     ----------

@@ -17,7 +17,7 @@ def create_pqt_file(
 ):
     """
     Dynamically generates a `Power Query Template <https://learn.microsoft.com/power-query/power-query-template>`_ file based on the semantic model. The .pqt file is
-     saved within the Files section of your lakehouse.
+    saved within the Files section of your lakehouse.
 
     Dataflows Gen2 has a `limit of 50 tables <https://learn.microsoft.com/power-query/power-query-online-limits>`_. If there are more than 50 tables, this will save multiple Power Query Template
     files (with each file having a max of 50 tables).
