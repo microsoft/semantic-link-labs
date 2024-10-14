@@ -1,7 +1,7 @@
 # Semantic Link Labs
 
 [![PyPI version](https://badge.fury.io/py/semantic-link-labs.svg)](https://badge.fury.io/py/semantic-link-labs)
-[![Read The Docs](https://readthedocs.org/projects/semantic-link-labs/badge/?version=0.8.2&style=flat)](https://readthedocs.org/projects/semantic-link-labs/)
+[![Read The Docs](https://readthedocs.org/projects/semantic-link-labs/badge/?version=0.8.3&style=flat)](https://readthedocs.org/projects/semantic-link-labs/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Downloads](https://static.pepy.tech/badge/semantic-link-labs)](https://pepy.tech/project/semantic-link-labs)
 
@@ -21,7 +21,7 @@ Semantic Link Labs is a Python library designed for use in [Microsoft Fabric not
     * [Check Direct Lake Guardrails](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.lakehouse.html#sempy_labs.lakehouse.get_lakehouse_tables)
     * [Refresh](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Semantic%20Model%20Refresh.ipynb), [clear cache](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.clear_cache), [backup](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.backup_semantic_model), [restore](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.restore_semantic_model), [copy backup files](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.copy_semantic_model_backup_file), [move/deploy across workspaces](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.deploy_semantic_model)
     * [Run DAX queries which impersonate a user](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.evaluate_dax_impersonation)
-    * [Manage Query Scale Out](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Query%20Scale%20Out.ipynb).
+    * [Manage Query Scale Out](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Query%20Scale%20Out.ipynb)
     * [Auto-generate descriptions for any/all measures in bulk](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.tom.html#sempy_labs.tom.TOMWrapper.generate_measure_descriptions)
 * Reports
     * [Report Best Practice Analyzer (BPA)](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.report.html#sempy_labs.report.run_report_bpa)
@@ -80,6 +80,7 @@ An even better way to ensure the semantic-link-labs library is available in your
 2. Select your newly created environment within the 'Environment' drop down in the navigation bar at the top of the notebook
 
 ## Version History
+* [0.8.3](https://github.com/microsoft/semantic-link-labs/releases/tag/0.8.3) (October 14, 2024)
 * [0.8.2](https://github.com/microsoft/semantic-link-labs/releases/tag/0.8.2) (October 2, 2024)
 * [0.8.1](https://github.com/microsoft/semantic-link-labs/releases/tag/0.8.1) (October 2, 2024)
 * [0.8.0](https://github.com/microsoft/semantic-link-labs/releases/tag/0.8.0) (September 25, 2024)
