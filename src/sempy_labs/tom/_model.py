@@ -4290,7 +4290,7 @@ class TOMWrapper:
         for lvl in self.all_levels():
             if len(lvl.LineageTag) == 0:
                 lvl.LineageTag = generate_guid()
-        for e in self.model.Expressions():
+        for e in self.model.Expressions:
             if len(e.LineageTag) == 0:
                 e.LineageTag = generate_guid()
 
