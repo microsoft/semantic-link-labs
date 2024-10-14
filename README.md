@@ -33,7 +33,7 @@ Semantic Link Labs is a Python library designed for use in [Microsoft Fabric not
     * [Migrating a Power BI Premium capacity (P sku) to a Fabric capacity (F sku)](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Capacity%20Migration.ipynb)
     * [Create](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.create_fabric_capacity)/[update](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.update_fabric_capacity)/[suspend](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.suspend_fabric_capacity)/[resume](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.resume_fabric_capacity) Fabric capacities.
 * APIs
-    * Wrapper functions for [Power BI](https://learn.microsoft.com/rest/api/power-bi/), [Fabric](https://learn.microsoft.com/rest/api/fabric/articles/using-fabric-apis), and [Azure](https://learn.microsoft.com/rest/api/azure/?view=rest-power-bi-embedded-2021-01-01) APIs
+    * Wrapper functions for [Power BI](https://learn.microsoft.com/rest/api/power-bi/), [Fabric](https://learn.microsoft.com/rest/api/fabric/articles/using-fabric-apis), and [Azure (Fabric Capacity)](https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities?view=rest-microsoftfabric-2023-11-01) APIs
 
 
 ### Check out the [helper notebooks](https://github.com/microsoft/semantic-link-labs/tree/main/notebooks) for getting started!
