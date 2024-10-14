@@ -16,6 +16,8 @@ def create_eventhouse(
     """
     Creates a Fabric eventhouse.
 
+    This is a wrapper function for the following API: `Items - Create Eventhouse <https://learn.microsoft.com/rest/api/fabric/environment/items/create-eventhouse`_.
+
     Parameters
     ----------
     name: str
@@ -50,6 +52,8 @@ def create_eventhouse(
 def list_eventhouses(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the eventhouses within a workspace.
+
+    This is a wrapper function for the following API: `Items - List Eventhouses <https://learn.microsoft.com/rest/api/fabric/environment/items/list-eventhouses`_.
 
     Parameters
     ----------
@@ -90,6 +94,8 @@ def list_eventhouses(workspace: Optional[str] = None) -> pd.DataFrame:
 def delete_eventhouse(name: str, workspace: Optional[str] = None):
     """
     Deletes a Fabric eventhouse.
+
+    This is a wrapper function for the following API: `Items - Delete Eventhouse <https://learn.microsoft.com/rest/api/fabric/environment/items/delete-eventhouse`_.
 
     Parameters
     ----------
