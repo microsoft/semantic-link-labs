@@ -49,8 +49,6 @@ def run_model_bpa_bulk(
         The semantic models to always skip when running this analysis.
     """
 
-    import pyspark.sql.functions as F
-
     if not lakehouse_attached():
         raise ValueError(
             f"{icons.red_dot} No lakehouse is attached to this notebook. Must attach a lakehouse to the notebook."
@@ -61,24 +59,6 @@ def run_model_bpa_bulk(
 
     skip_models.extend(["ModelBPA", "Fabric Capacity Metrics"])
 
-    cols = [
-        "Capacity Name",
-        "Capacity Id",
-        "Workspace Name",
-        "Workspace Id",
-        "Dataset Name",
-        "Dataset Id",
-        "Configured By",
-        "Rule Name",
-        "Category",
-        "Severity",
-        "Object Type",
-        "Object Name",
-        "Description",
-        "URL",
-        "RunId",
-        "Timestamp",
-    ]
     now = datetime.datetime.now()
     output_table = "modelbparesults"
     lakehouse_workspace = fabric.resolve_workspace_name()
@@ -108,7 +88,7 @@ def run_model_bpa_bulk(
         wksp = r["Name"]
         wksp_id = r["Id"]
         capacity_id, capacity_name = resolve_workspace_capacity(workspace=wksp)
-        df = pd.DataFrame(columns=cols)
+        df = pd.DataFrame(columns=list(icons.bpa_schema.keys()))
         dfD = fabric.list_datasets(workspace=wksp, mode="rest")
 
         # Exclude default semantic models
@@ -139,8 +119,8 @@ def run_model_bpa_bulk(
                             rules=rules,
                             extended=extended,
                         )
-                        bpa_df["Capacity Id"] = capacity_id
                         bpa_df["Capacity Name"] = capacity_name
+                        bpa_df["Capacity Id"] = capacity_id
                         bpa_df["Workspace Name"] = wksp
                         bpa_df["Workspace Id"] = wksp_id
                         bpa_df["Dataset Name"] = dataset_name
@@ -148,7 +128,7 @@ def run_model_bpa_bulk(
                         bpa_df["Configured By"] = config_by
                         bpa_df["Timestamp"] = now
                         bpa_df["RunId"] = runId
-                        bpa_df = bpa_df[cols]
+                        bpa_df = bpa_df[list(icons.bpa_schema.keys())]
 
                         bpa_df["RunId"] = bpa_df["RunId"].astype("int")
 
@@ -168,10 +148,14 @@ def run_model_bpa_bulk(
                 print(
                     f"{icons.in_progress} Saving the Model BPA results of the '{wksp}' workspace to the '{output_table}' within the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace..."
                 )
+
+                schema = {key.replace(' ', '_'): value for key, value in icons.bpa_schema.items()}
+
                 save_as_delta_table(
                     dataframe=df,
                     delta_table_name=output_table,
                     write_mode="append",
+                    schema=schema,
                     merge_schema=True,
                 )
                 print(
