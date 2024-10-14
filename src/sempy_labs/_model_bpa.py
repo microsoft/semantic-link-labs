@@ -387,10 +387,12 @@ def run_model_bpa(
         dfExport.insert(5, colName, dfExport.pop(colName))
 
         dfExport.columns = dfExport.columns.str.replace(" ", "_")
+        schema = {key.replace(' ', '_'): value for key, value in icons.bpa_schema.items()}
         save_as_delta_table(
             dataframe=dfExport,
             delta_table_name=delta_table_name,
             write_mode="append",
+            schema=schema,
             merge_schema=True,
         )
 
