@@ -13,15 +13,19 @@ import time
 
 
 def list_workspaces(
-    top: Optional[int] = 5000, skip: Optional[int] = None
+    top: Optional[int] = 5000, filter: Optional[str] = None, skip: Optional[int] = None
 ) -> pd.DataFrame:
     """
     Lists workspaces for the organization. This function is the admin version of list_workspaces.
+
+    This is a wrapper function for the following API: `Admin - Groups GetGroupsAsAdmin <https://learn.microsoft.com/rest/api/power-bi/admin/groups-get-groups-as-admin>`_.
 
     Parameters
     ----------
     top : int, default=5000
         Returns only the first n results. This parameter is mandatory and must be in the range of 1-5000.
+    filter : str, default=None
+        Returns a subset of a results based on `Odata filter <https://docs.oasis-open.org/odata/odata/v4.01/odata-v4.01-part2-url-conventions.html#sec_SystemQueryOptions>`_ query parameter condition.
     skip : int, default=None
         Skips the first n results. Use with top to fetch results beyond the first 5000.
 
@@ -48,6 +52,8 @@ def list_workspaces(
     url = f"/v1.0/myorg/admin/groups?$top={top}"
     if skip is not None:
         url = f"{url}&$skip={skip}"
+    if filter is not None:
+        url = f"{url}&$filter={filter}"
 
     client = fabric.PowerBIRestClient()
     response = client.get(url)
@@ -91,6 +97,8 @@ def assign_workspaces_to_capacity(
     """
     Assigns a workspace to a capacity. This function is the admin version.
 
+    This is a wrapper function for the following API: `Admin - Capacities AssignWorkspacesToCapacity <https://learn.microsoft.com/rest/api/power-bi/admin/capacities-assign-workspaces-to-capacity>`_.
+
     Parameters
     ----------
     source_capacity : str
@@ -113,9 +121,6 @@ def assign_workspaces_to_capacity(
     target_capacity_id = dfC_filt["Capacity Id"].iloc[0]
 
     if workspace is None:
-        # workspaces = fabric.list_workspaces(
-        #    filter=f"capacityId eq '{source_capacity_id.upper()}'"
-        # )["Id"].values
         dfW = list_workspaces()
         dfW = dfW[dfW["Capacity Id"].str.upper() == source_capacity_id.upper()]
         workspaces = dfW["Id"].tolist()
@@ -153,6 +158,8 @@ def list_capacities() -> pd.DataFrame:
     """
     Shows the a list of capacities and their properties. This function is the admin version.
 
+    This is a wrapper function for the following API: `Admin - Get Capacities As Admin <https://learn.microsoft.com/rest/api/power-bi/admin/get-capacities-as-admin>`_.
+
     Returns
     -------
     pandas.DataFrame
@@ -189,13 +196,13 @@ def list_tenant_settings() -> pd.DataFrame:
     """
     Lists all tenant settings.
 
+    This is a wrapper function for the following API: `Tenants - List Tenant Settings <https://learn.microsoft.com/rest/api/fabric/admin/tenants/list-tenant-settings>`_.
+
     Returns
     -------
     pandas.DataFrame
         A pandas dataframe showing the tenant settings.
     """
-
-    # https://learn.microsoft.com/en-us/rest/api/fabric/admin/tenants/list-tenant-settings?tabs=HTTP
 
     client = fabric.FabricRestClient()
     response = client.get("/v1/admin/tenantsettings")
@@ -262,15 +269,15 @@ def _list_capacities_meta() -> pd.DataFrame:
 
 def unassign_workspaces_from_capacity(workspaces: str | List[str]):
     """
-    Unassigns workspace(s) from their capacity. This function is the admin version of list_workspaces.
+    Unassigns workspace(s) from their capacity.
+
+    This is a wrapper function for the following API: `Admin - Capacities UnassignWorkspacesFromCapacity <https://learn.microsoft.com/rest/api/power-bi/admin/capacities-unassign-workspaces-from-capacity>`_.
 
     Parameters
     ----------
     workspaces : str | List[str]
         The Fabric workspace name(s).
     """
-
-    # https://learn.microsoft.com/en-us/rest/api/power-bi/admin/capacities-unassign-workspaces-from-capacity
 
     if isinstance(workspaces, str):
         workspaces = [workspaces]
@@ -293,13 +300,13 @@ def list_external_data_shares():
     """
     Lists external data shares in the tenant. This function is for admins.
 
+    This is a wrapper function for the following API: `External Data Shares - List External Data Shares <https://learn.microsoft.com/rest/api/fabric/admin/external-data-shares/list-external-data-shares>`_.
+
     Returns
     -------
     pandas.DataFrame
         A pandas dataframe showing a list of external data shares in the tenant.
     """
-
-    # https://learn.microsoft.com/en-us/rest/api/fabric/admin/external-data-shares/list-external-data-shares?tabs=HTTP
 
     df = pd.DataFrame(
         columns=[
@@ -355,6 +362,8 @@ def revoke_external_data_share(
     """
     Revokes the specified external data share. Note: This action cannot be undone.
 
+    This is a wrapper function for the following API: `External Data Shares - Revoke External Data Share <https://learn.microsoft.com/rest/api/fabric/admin/external-data-shares/revoke-external-data-share`_.
+
     Parameters
     ----------
     external_data_share_id : UUID
@@ -384,22 +393,22 @@ def revoke_external_data_share(
 
 def list_capacities_delegated_tenant_settings(
     return_dataframe: bool = True,
-) -> Optional[pd.DataFrame | dict]:
+) -> pd.DataFrame | dict:
     """
     Returns list of tenant setting overrides that override at the capacities.
+
+    This is a wrapper function for the following API: `Tenants - List Capacities Tenant Settings Overrides <https://learn.microsoft.com/rest/api/fabric/admin/tenants/list-capacities-tenant-settings-overrides`_.
 
     Parameters
     ----------
     return_dataframe : bool, default=True
-        If True, returns a dataframe. If False, returns a dictionary
+        If True, returns a dataframe. If False, returns a dictionary.
 
     Returns
     -------
-    pandas.DataFrame
+    pandas.DataFrame | dict
         A pandas dataframe showing a list of tenant setting overrides that override at the capacities.
     """
-
-    # https://learn.microsoft.com/en-us/rest/api/fabric/admin/tenants/list-capacities-tenant-settings-overrides?tabs=HTTP
 
     df = pd.DataFrame(
         columns=[
@@ -519,13 +528,13 @@ def list_datasets() -> pd.DataFrame:
     """
     Shows a list of datasets for the organization.
 
+    This is a wrapper function for the following API: `Admin - Datasets GetDatasetsAsAdmin <https://learn.microsoft.com/rest/api/power-bi/admin/datasets-get-datasets-as-admin`_.
+
     Returns
     -------
     pandas.DataFrame
         A pandas dataframe showing a list of datasets for the organization.
     """
-
-    # https://learn.microsoft.com/en-us/rest/api/power-bi/admin/datasets-get-datasets-as-admin
 
     df = pd.DataFrame(
         columns=[
@@ -609,6 +618,8 @@ def list_item_access_details(
     """
     Returns a list of users (including groups and service principals) and lists their workspace roles.
 
+    This is a wrapper function for the following API: `Items - List Item Access Details <https://learn.microsoft.com/rest/api/fabric/admin/items/list-item-access-details`_.
+
     Parameters
     ----------
     item_name : str
@@ -625,8 +636,6 @@ def list_item_access_details(
     pandas.DataFrame
         A pandas dataframe showing a list of users (including groups and service principals) and lists their workspace roles.
     """
-
-    # https://learn.microsoft.com/en-us/rest/api/fabric/admin/items/list-item-access-details?tabs=HTTP
 
     workspace = fabric.resolve_workspace_name(workspace)
     workspace_id = fabric.resolve_workspace_id(workspace)
@@ -678,7 +687,9 @@ def list_access_entities(
     user_email_address: str,
 ) -> pd.DataFrame:
     """
-    Shows a list of permission details for Fabric and PowerBI items the specified user can access.
+    Shows a list of permission details for Fabric and Power BI items the specified user can access.
+
+    This is a wrapper function for the following API: `Users - List Access Entities <https://learn.microsoft.com/rest/api/fabric/admin/users/list-access-entities`_.
 
     Parameters
     ----------
@@ -688,10 +699,8 @@ def list_access_entities(
     Returns
     -------
     pandas.DataFrame
-        A pandas dataframe showing a list of permission details for Fabric and PowerBI items the specified user can access.
+        A pandas dataframe showing a list of permission details for Fabric and Power BI items the specified user can access.
     """
-
-    # https://learn.microsoft.com/en-us/rest/api/fabric/admin/users/list-access-entities?tabs=HTTP
 
     df = pd.DataFrame(
         columns=[
@@ -732,6 +741,8 @@ def list_workspace_access_details(
     """
     Shows a list of users (including groups and Service Principals) that have access to the specified workspace.
 
+    This is a wrapper function for the following API: `Workspaces - List Workspace Access Details <https://learn.microsoft.com/rest/api/fabric/admin/workspaces/list-workspace-access-details`_.
+
     Parameters
     ----------
     workspace : str, default=None
@@ -745,10 +756,12 @@ def list_workspace_access_details(
         A pandas dataframe showing a list of users (including groups and Service Principals) that have access to the specified workspace.
     """
 
-    # https://learn.microsoft.com/en-us/rest/api/fabric/admin/workspaces/list-workspace-access-details?tabs=HTTP
-
-    workspace_name = fabric.resolve_workspace_name(workspace)
-    workspace_id = fabric.resolve_workspace_id(workspace_name)
+    if workspace is None:
+        workspace_name = fabric.resolve_workspace_name(workspace)
+        workspace_id = fabric.resolve_workspace_id(workspace_name)
+    else:
+        workspace_id = fabric.resolve_workspace_id(workspace)
+        workspace_name = workspace
 
     df = pd.DataFrame(
         columns=[
@@ -786,7 +799,9 @@ def list_items(
     type: Optional[str] = None,
 ) -> pd.DataFrame:
     """
-    Shows a list of active Fabric and PowerBI items.
+    Shows a list of active Fabric and Power BI items.
+
+    This is a wrapper function for the following API: `Items - List Items <https://learn.microsoft.com/rest/api/fabric/admin/items/list-items`_.
 
     Parameters
     ----------
@@ -806,8 +821,6 @@ def list_items(
     pandas.DataFrame
         A pandas dataframe showing a list of active Fabric and Power BI items.
     """
-
-    # https://learn.microsoft.com/en-us/rest/api/fabric/admin/items/list-items?tabs=HTTP
 
     url = "/v1/admin/items?"
 
@@ -891,6 +904,8 @@ def list_activity_events(
     """
     Shows a list of audit activity events for a tenant.
 
+    This is a wrapper function for the following API: `Admin - Get Activity Events <https://learn.microsoft.com/rest/api/power-bi/admin/get-activity-events`_.
+
     Parameters
     ----------
     start_time : str
@@ -907,8 +922,6 @@ def list_activity_events(
     pandas.DataFrame
         A pandas dataframe showing a list of audit activity events for a tenant.
     """
-
-    # https://learn.microsoft.com/en-us/rest/api/power-bi/admin/get-activity-events
 
     df = pd.DataFrame(
         columns=[
