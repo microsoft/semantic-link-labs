@@ -65,8 +65,6 @@ def create_fabric_capacity(
 
     from azure.mgmt.resource import ResourceManagementClient
 
-    capacity_suffix = "fsku"
-
     if isinstance(admin_members, str):
         admin_members = [admin_members]
 
@@ -503,7 +501,6 @@ def update_fabric_capacity(
         The email address(es) of the admin(s) of the Fabric capacity.
     tags : dict, default=None
         Tag(s) to add to the capacity. Example: {'tagName': 'tagValue'}.
-
     """
 
     # https://learn.microsoft.com/en-us/rest/api/microsoftfabric/fabric-capacities/update?view=rest-microsoftfabric-2023-11-01&tabs=HTTP
@@ -556,6 +553,31 @@ def check_fabric_capacity_name_availablility(
     key_vault_client_id: str,
     key_vault_client_secret: str,
 ) -> bool:
+    """
+    This function updates a Fabric capacity's properties.
+
+    Parameters
+    ----------
+    capacity_name : str
+        Name of the Fabric capacity.
+    azure_subscription_id : str
+        The Azure subscription ID.
+    region : str
+        The region name.
+    key_vault_uri : str
+        The name of the `Azure key vault <https://azure.microsoft.com/products/key-vault>`_ URI. Example: "https://<Key Vault Name>.vault.azure.net/"
+    key_vault_tenant_id : str
+        The name of the Azure key vault secret storing the Tenant ID.
+    key_vault_client_id : str
+        The name of the Azure key vault secret storing the Client ID.
+    key_vault_client_secret : str
+        The name of the Azure key vault secret storing the Client Secret.
+
+    Returns
+    -------
+    bool
+        An indication as to whether the Fabric capacity name is available or not.
+    """
     # https://learn.microsoft.com/en-us/rest/api/microsoftfabric/fabric-capacities/check-name-availability?view=rest-microsoftfabric-2023-11-01&tabs=HTTP
 
     azure_token, credential, headers = _get_azure_token_credentials(
@@ -575,3 +597,59 @@ def check_fabric_capacity_name_availablility(
         raise FabricHTTPException(response)
 
     return bool(response.json().get("nameAvailable"))
+
+
+def create_resource_group(
+    azure_subscription_id: str,
+    key_vault_uri: str,
+    key_vault_tenant_id: str,
+    key_vault_client_id: str,
+    key_vault_client_secret: str,
+    resource_group: str,
+    region: str,
+):
+    """
+    This function creates a resource group in a region within an Azure subscription.
+
+    Parameters
+    ----------
+    azure_subscription_id : str
+        The Azure subscription ID.
+    key_vault_uri : str
+        The name of the `Azure key vault <https://azure.microsoft.com/products/key-vault>`_ URI. Example: "https://<Key Vault Name>.vault.azure.net/"
+    key_vault_tenant_id : str
+        The name of the Azure key vault secret storing the Tenant ID.
+    key_vault_client_id : str
+        The name of the Azure key vault secret storing the Client ID.
+    key_vault_client_secret : str
+        The name of the Azure key vault secret storing the Client Secret.
+    resource_group : str
+        The name of the Azure resource group to be created.
+    region : str
+        The name of the region in which the resource group will be created.
+    """
+
+    from azure.mgmt.resource import ResourceManagementClient
+
+    azure_token, credential, headers = get_azure_token_credentials(
+        key_vault_uri=key_vault_uri,
+        key_vault_tenant_id=key_vault_tenant_id,
+        key_vault_client_id=key_vault_client_id,
+        key_vault_client_secret=key_vault_client_secret,
+    )
+
+    resource_client = ResourceManagementClient(credential, azure_subscription_id)
+
+    if resource_client.resource_groups.check_existence(resource_group):
+        print(
+            f"{icons.info} The '{resource_group}' resource group already exists in the '{region}' region within the '{azure_subscription_id}' Azure subscription."
+        )
+        return
+
+    resource_client.resource_groups.create_or_update(
+        resource_group, {"location": region}
+    )
+
+    print(
+        f"{icons.green_dot} The '{resource_group}' resource group has been created within the '{region}' region within the '{azure_subscription_id}' Azure subscription."
+    )

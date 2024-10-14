@@ -7,7 +7,6 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     pagination,
 )
-import datetime
 import numpy as np
 import pandas as pd
 import time
@@ -106,27 +105,28 @@ def assign_workspaces_to_capacity(
     if isinstance(workspace, str):
         workspace = [workspace]
 
-    dfC = fabric.list_capacities()
-    dfC_filt = dfC[dfC["Display Name"] == source_capacity]
-    source_capacity_id = dfC_filt["Id"].iloc[0]
+    dfC = list_capacities()
+    dfC_filt = dfC[dfC["Capacity Name"] == source_capacity]
+    source_capacity_id = dfC_filt["Capacity Id"].iloc[0]
 
-    dfC_filt = dfC[dfC["Display Name"] == target_capacity]
-    target_capacity_id = dfC_filt["Id"].iloc[0]
+    dfC_filt = dfC[dfC["Capacity Name"] == target_capacity]
+    target_capacity_id = dfC_filt["Capacity Id"].iloc[0]
 
     if workspace is None:
-        workspaces = fabric.list_workspaces(
-            filter=f"capacityId eq '{source_capacity_id.upper()}'"
-        )["Id"].values
+        # workspaces = fabric.list_workspaces(
+        #    filter=f"capacityId eq '{source_capacity_id.upper()}'"
+        # )["Id"].values
+        dfW = list_workspaces()
+        dfW = dfW[dfW["Capacity Id"].str.upper() == source_capacity_id.upper()]
+        workspaces = dfW["Id"].tolist()
     else:
-        dfW = fabric.list_workspaces()
-        workspaces = dfW[dfW["Name"].isin(workspace)]["Id"].values
+        dfW = list_workspaces()
+        workspaces = dfW[dfW["Name"].isin(workspace)]["Id"].tolist()
 
     workspaces = np.array(workspaces)
     batch_size = 999
     for i in range(0, len(workspaces), batch_size):
         batch = workspaces[i : i + batch_size].tolist()
-        batch_length = len(batch)
-        start_time = datetime.datetime.now()
         request_body = {
             "capacityMigrationAssignments": [
                 {
@@ -144,10 +144,6 @@ def assign_workspaces_to_capacity(
 
         if response.status_code != 200:
             raise FabricHTTPException(response)
-        end_time = datetime.datetime.now()
-        print(
-            f"Total time for assigning {str(batch_length)} workspaces is {str((end_time - start_time).total_seconds())}"
-        )
     print(
         f"{icons.green_dot} The workspaces have been assigned to the '{target_capacity}' capacity."
     )
@@ -156,9 +152,6 @@ def assign_workspaces_to_capacity(
 def list_capacities() -> pd.DataFrame:
     """
     Shows the a list of capacities and their properties. This function is the admin version.
-
-    Parameters
-    ----------
 
     Returns
     -------
@@ -488,7 +481,8 @@ def scan_workspaces(
     workspace: Optional[str | List[str]] = None,
 ) -> dict:
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    if workspace is None:
+        workspace = fabric.resolve_workspace_name()
 
     if isinstance(workspace, str):
         workspace = [workspace]

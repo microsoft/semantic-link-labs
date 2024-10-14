@@ -7,12 +7,41 @@ from sempy_labs._workspaces import assign_workspace_to_capacity
 from sempy_labs.admin._basic_functions import (
     assign_workspaces_to_capacity,
     _list_capacities_meta,
+    list_capacities,
 )
 from sempy_labs._helper_functions import (
     resolve_capacity_id,
     convert_to_alphanumeric_lowercase,
 )
 from sempy_labs._capacities import create_fabric_capacity
+
+
+def migrate_settings(source_capacity: str, target_capacity: str):
+
+    migrate_capacity_settings(
+        source_capacity=source_capacity,
+        target_capacity=target_capacity,
+    )
+    migrate_access_settings(
+        source_capacity=source_capacity,
+        target_capacity=target_capacity,
+    )
+    migrate_notification_settings(
+        source_capacity=source_capacity,
+        target_capacity=target_capacity,
+    )
+    migrate_spark_settings(
+        source_capacity=source_capacity,
+        target_capacity=target_capacity,
+    )
+    migrate_delegated_tenant_settings(
+        source_capacity=source_capacity,
+        target_capacity=target_capacity,
+    )
+    migrate_disaster_recovery_settings(
+        source_capacity=source_capacity,
+        target_capacity=target_capacity,
+    )
 
 
 @log
@@ -146,8 +175,6 @@ def migrate_capacities(
         If set to True, only migrates P skus. If set to False, migrates both P and A skus.
     """
 
-    from sempy_labs._list_functions import list_capacities
-
     if isinstance(capacities, str):
         capacities = [capacities]
 
@@ -158,7 +185,7 @@ def migrate_capacities(
     if capacities is None:
         dfC_filt = dfC.copy()
     else:
-        dfC_filt = dfC[dfC["Display Name"].isin(capacities)]
+        dfC_filt = dfC[dfC["Capacity Name"].isin(capacities)]
 
     if p_sku_only:
         dfC_filt = dfC_filt[dfC_filt["Sku"].str.startswith("P")]
@@ -177,14 +204,14 @@ def migrate_capacities(
         return
 
     for _, r in dfC_filt.iterrows():
-        cap_name = r["Display Name"]
+        cap_name = r["Capacity Name"]
         region = r["Region"]
         sku_size = r["Sku"]
         admins = r["Admins"]
         tgt_capacity = f"{convert_to_alphanumeric_lowercase(cap_name)}{icons.migrate_capacity_suffix}"
 
         # Check if target capacity exists
-        dfC_tgt = dfC[dfC["Display Name"] == tgt_capacity]
+        dfC_tgt = dfC[dfC["Capacity Name"] == tgt_capacity]
 
         if sku_size[:1] == "A" and use_existing_rg_for_A_sku:
             rg = None
@@ -221,24 +248,7 @@ def migrate_capacities(
             )
 
             # Migrate settings to new capacity
-            migrate_capacity_settings(
-                source_capacity=cap_name, target_capacity=tgt_capacity
-            )
-            migrate_access_settings(
-                source_capacity=cap_name, target_capacity=tgt_capacity
-            )
-            migrate_notification_settings(
-                source_capacity=cap_name, target_capacity=tgt_capacity
-            )
-            migrate_delegated_tenant_settings(
-                source_capacity=cap_name, target_capacity=tgt_capacity
-            )
-            migrate_disaster_recovery_settings(
-                source_capacity=cap_name, target_capacity=tgt_capacity
-            )
-            migrate_spark_settings(
-                source_capacity=cap_name, target_capacity=tgt_capacity
-            )
+            migrate_settings(source_capacity=cap_name, target_capacity=tgt_capacity)
 
 
 @log
@@ -252,24 +262,21 @@ def migrate_capacity_settings(source_capacity: str, target_capacity: str):
         Name of the source capacity.
     target_capacity : str
         Name of the target capacity.
-
-    Returns
-    -------
     """
 
-    dfC = fabric.list_capacities()
-    dfC_filt = dfC[dfC["Display Name"] == source_capacity]
+    dfC = list_capacities()
+    dfC_filt = dfC[dfC["Capacity Name"] == source_capacity]
     if len(dfC_filt) == 0:
         raise ValueError(
             f"{icons.red_dot} The '{source_capacity}' capacity does not exist."
         )
-    source_capacity_id = dfC_filt["Id"].iloc[0].upper()
-    dfC_filt = dfC[dfC["Display Name"] == target_capacity]
+    source_capacity_id = dfC_filt["Capacity Id"].iloc[0].upper()
+    dfC_filt = dfC[dfC["Capacity Name"] == target_capacity]
     if len(dfC_filt) == 0:
         raise ValueError(
             f"{icons.red_dot} The '{target_capacity}' capacity does not exist."
         )
-    target_capacity_id = dfC_filt["Id"].iloc[0].upper()
+    target_capacity_id = dfC_filt["Capacity Id"].iloc[0].upper()
 
     workloads_params = "capacityCustomParameters?workloadIds=ADM&workloadIds=CDSA&workloadIds=DMS&workloadIds=RsRdlEngine&workloadIds=ScreenshotEngine&workloadIds=AS&workloadIds=QES&workloadIds=DMR&workloadIds=ESGLake&workloadIds=NLS&workloadIds=lake&workloadIds=TIPS&workloadIds=Kusto&workloadIds=Lakehouse&workloadIds=SparkCore&workloadIds=DI&workloadIds=Notebook&workloadIds=ML&workloadIds=ES&workloadIds=Reflex&workloadIds=Must&workloadIds=dmh&workloadIds=PowerBI&workloadIds=HLS"
 
@@ -350,19 +357,19 @@ def migrate_disaster_recovery_settings(source_capacity: str, target_capacity: st
         Name of the target capacity.
     """
 
-    dfC = fabric.list_capacities()
-    dfC_filt = dfC[dfC["Display Name"] == source_capacity]
+    dfC = list_capacities()
+    dfC_filt = dfC[dfC["Capacity Name"] == source_capacity]
     if len(dfC_filt) == 0:
         raise ValueError(
             f"{icons.red_dot} The '{source_capacity}' capacity does not exist."
         )
-    source_capacity_id = dfC_filt["Id"].iloc[0].upper()
-    dfC_filt = dfC[dfC["Display Name"] == target_capacity]
+    source_capacity_id = dfC_filt["Capacity Id"].iloc[0].upper()
+    dfC_filt = dfC[dfC["Capacity Name"] == target_capacity]
     if len(dfC_filt) == 0:
         raise ValueError(
             f"{icons.red_dot} The '{target_capacity}' capacity does not exist."
         )
-    target_capacity_id = dfC_filt["Id"].iloc[0].upper()
+    target_capacity_id = dfC_filt["Capacity Id"].iloc[0].upper()
 
     client = fabric.PowerBIRestClient()
     response_get_source = client.get(f"capacities/{source_capacity_id}/config")
@@ -395,24 +402,21 @@ def migrate_access_settings(source_capacity: str, target_capacity: str):
         Name of the source capacity.
     target_capacity : str
         Name of the target capacity.
-
-    Returns
-    -------
     """
 
-    dfC = fabric.list_capacities()
-    dfC_filt = dfC[dfC["Display Name"] == source_capacity]
+    dfC = list_capacities()
+    dfC_filt = dfC[dfC["Capacity Name"] == source_capacity]
     if len(dfC_filt) == 0:
         raise ValueError(
             f"{icons.red_dot} The '{source_capacity}' capacity does not exist."
         )
-    source_capacity_id = dfC_filt["Id"].iloc[0].upper()
-    dfC_filt = dfC[dfC["Display Name"] == target_capacity]
+    source_capacity_id = dfC_filt["Capacity Id"].iloc[0].upper()
+    dfC_filt = dfC[dfC["Capacity Name"] == target_capacity]
     if len(dfC_filt) == 0:
         raise ValueError(
             f"{icons.red_dot} The '{target_capacity}' capacity does not exist."
         )
-    target_capacity_id = dfC_filt["Id"].iloc[0].upper()
+    target_capacity_id = dfC_filt["Capacity Id"].iloc[0].upper()
 
     client = fabric.PowerBIRestClient()
     response_get_source = client.get(f"capacities/{source_capacity_id}")
@@ -444,24 +448,21 @@ def migrate_notification_settings(source_capacity: str, target_capacity: str):
         Name of the source capacity.
     target_capacity : str
         Name of the target capacity.
-
-    Returns
-    -------
     """
 
-    dfC = fabric.list_capacities()
-    dfC_filt = dfC[dfC["Display Name"] == source_capacity]
+    dfC = list_capacities()
+    dfC_filt = dfC[dfC["Capacity Name"] == source_capacity]
     if len(dfC_filt) == 0:
         raise ValueError(
             f"{icons.red_dot} The '{source_capacity}' capacity does not exist."
         )
-    source_capacity_id = dfC_filt["Id"].iloc[0].upper()
-    dfC_filt = dfC[dfC["Display Name"] == target_capacity]
+    source_capacity_id = dfC_filt["Capacity Id"].iloc[0].upper()
+    dfC_filt = dfC[dfC["Capacity Name"] == target_capacity]
     if len(dfC_filt) == 0:
         raise ValueError(
             f"{icons.red_dot} The '{target_capacity}' capacity does not exist."
         )
-    target_capacity_id = dfC_filt["Id"].iloc[0].upper()
+    target_capacity_id = dfC_filt["Capacity Id"].iloc[0].upper()
 
     client = fabric.PowerBIRestClient()
     response_get_source = client.get(f"capacities/{source_capacity_id}")
@@ -495,26 +496,23 @@ def migrate_delegated_tenant_settings(source_capacity: str, target_capacity: str
         Name of the source capacity.
     target_capacity : str
         Name of the target capacity.
-
-    Returns
-    -------
     """
 
-    dfC = fabric.list_capacities()
+    dfC = list_capacities()
 
-    dfC_filt = dfC[dfC["Display Name"] == source_capacity]
+    dfC_filt = dfC[dfC["Capacity Name"] == source_capacity]
     if len(dfC_filt) == 0:
         raise ValueError(
             f"{icons.red_dot} The '{source_capacity}' capacity does not exist."
         )
-    source_capacity_id = dfC_filt["Id"].iloc[0].upper()
+    source_capacity_id = dfC_filt["Capacity Id"].iloc[0].upper()
 
-    dfC_filt = dfC[dfC["Display Name"] == target_capacity]
+    dfC_filt = dfC[dfC["Capacity Name"] == target_capacity]
     if len(dfC_filt) == 0:
         raise ValueError(
             f"{icons.red_dot} The '{target_capacity}' capacity does not exist."
         )
-    target_capacity_id = dfC_filt["Id"].iloc[0].upper()
+    target_capacity_id = dfC_filt["Capacity Id"].iloc[0].upper()
 
     client = fabric.FabricRestClient()
     response_get = client.get("v1/admin/capacities/delegatedTenantSettingOverrides")
@@ -620,4 +618,113 @@ def migrate_spark_settings(source_capacity: str, target_capacity: str):
         raise FabricHTTPException(response_put)
     print(
         f"{icons.green_dot} The spark settings have been migrated from the '{source_capacity}' capacity to the '{target_capacity}' capacity."
+    )
+
+
+@log
+def migrate_fabric_trial_capacity(
+    azure_subscription_id: str,
+    key_vault_uri: str,
+    key_vault_tenant_id: str,
+    key_vault_client_id: str,
+    key_vault_client_secret: str,
+    resource_group: str,
+    source_capacity: str,
+    target_capacity: str,
+    target_capacity_sku: str = "F64",
+    target_capacity_region: Optional[str] = None,
+    target_capacity_admin_members: Optional[str | List[str]] = None,
+):
+    """
+    This function migrates a Fabric trial capacity to a Fabric capacity. If the 'target_capacity' does not exist, it is created with the relevant target capacity parameters (sku, region, admin members).
+
+    Parameters
+    ----------
+    azure_subscription_id : str
+        The Azure subscription ID.
+    key_vault_uri : str
+        The name of the `Azure key vault <https://azure.microsoft.com/products/key-vault>`_ URI. Example: "https://<Key Vault Name>.vault.azure.net/"
+    key_vault_tenant_id : str
+        The name of the Azure key vault secret storing the Tenant ID.
+    key_vault_client_id : str
+        The name of the Azure key vault secret storing the Client ID.
+    key_vault_client_secret : str
+        The name of the Azure key vault secret storing the Client Secret.
+    resource_group : str
+        The name of the Azure resource group.
+    source_capacity : str
+        The name of the Fabric trial capacity.
+    target_capacity : str
+        The name of the new Fabric capacity (F SKU). If this capacity does not exist, it will be created.
+    target_capacity_sku : str, default="F64"
+        If the target capacity does not exist, this property sets the SKU size for the target capacity.
+    target_capacity_region : str, default=None
+        If the target capacity does not exist, this property sets the region for the target capacity.
+        Defaults to None which resolves to the region in which the Trial SKU exists.
+    target_capacity_admin_members : str, default=None
+        If the target capacity does not exist, this property sets the admin members for the target capacity.
+        Defaults to None which resolves to the admin members on the Trial SKU.
+    """
+
+    notebook_workspace_id = fabric.get_notebook_workspace_id()
+    dfW = fabric.list_workspaces(filter=f"id eq '{notebook_workspace_id}'")
+    notebook_capacity_id = dfW["Capacity Id"].iloc[0].lower()
+
+    dfC = list_capacities()
+    dfC_filt = dfC[dfC["Capacity Name"] == source_capacity]
+
+    if len(dfC_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} The {source_capacity}' capacity does not exist."
+        )
+
+    source_capacity_sku = dfC_filt["Sku"].iloc[0]
+    if not source_capacity_sku.startswith("FT"):
+        raise ValueError(
+            f"{icons.red_dot} This function is for migrating Fabric trial capacites to Fabric capacities."
+        )
+
+    source_capacity_id = dfC_filt["Capacity Id"].iloc[0].lower()
+    if source_capacity_id == notebook_capacity_id:
+        print(
+            f"{icons.warning} The '{source_capacity}' capacity cannot be both the source capacity as well as the capacity in which the notebook is running."
+        )
+        return
+
+    # Use same region as source capacity if no region is specified
+    if target_capacity_region is None:
+        target_capacity_region = dfC_filt["Region"].iloc[0]
+
+    # Use same admins as source capacity
+    if isinstance(target_capacity_admin_members, str):
+        target_capacity_admin_members = [target_capacity_admin_members]
+
+    if target_capacity_admin_members is None:
+        target_capacity_admin_members = dfC_filt["Admins"].iloc[0]
+
+    dfC_filt = dfC[dfC["Capacity Name"] == target_capacity]
+    if len(dfC_filt) == 0:
+        create_fabric_capacity(
+            capacity_name=target_capacity,
+            azure_subscription_id=azure_subscription_id,
+            key_vault_uri=key_vault_uri,
+            key_vault_tenant_id=key_vault_tenant_id,
+            key_vault_client_id=key_vault_client_id,
+            key_vault_client_secret=key_vault_client_secret,
+            resource_group=resource_group,
+            region=target_capacity_region,
+            admin_members=target_capacity_admin_members,
+            sku=target_capacity_sku,
+        )
+
+    assign_workspaces_to_capacity(
+        source_capacity=source_capacity,
+        target_capacity=target_capacity,
+        workspace=None,
+    )
+
+    # This migrates all the capacity settings
+    migrate_settings(
+        source_capacity=source_capacity,
+        target_capacity=target_capacity,
     )

@@ -67,6 +67,7 @@ from sempy_labs._capacity_migration import (
     migrate_delegated_tenant_settings,
     migrate_capacity_settings,
     migrate_disaster_recovery_settings,
+    migrate_fabric_trial_capacity,
 )
 from sempy_labs._capacities import (
     create_fabric_capacity,
@@ -77,6 +78,7 @@ from sempy_labs._capacities import (
     check_fabric_capacity_name_availablility,
     delete_embedded_capacity,
     delete_premium_capacity,
+    create_resource_group,
 )
 from sempy_labs._spark import (
     get_spark_settings,
@@ -369,4 +371,6 @@ __all__ = [
     "list_external_data_shares_in_item",
     "create_external_data_share",
     "revoke_external_data_share",
+    "migrate_fabric_trial_capacity",
+    "create_resource_group",
 ]
