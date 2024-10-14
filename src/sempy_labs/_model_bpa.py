@@ -220,9 +220,9 @@ def run_model_bpa(
 
             rules = translate_using_spark(rules)
 
-        rules["Severity"].replace("Warning", icons.warning, inplace=True)
-        rules["Severity"].replace("Error", icons.error, inplace=True)
-        rules["Severity"].replace("Info", icons.info, inplace=True)
+        rules.loc[rules["Severity"] == "Warning", "Severity"] = icons.warning
+        rules.loc[rules["Severity"] == "Error", "Severity"] = icons.error
+        rules.loc[rules["Severity"] == "Info", "Severity"] = icons.info
 
         pd.set_option("display.max_colwidth", 1000)
 

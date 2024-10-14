@@ -160,7 +160,7 @@ def run_model_bpa_bulk(
                         )
                         print(e)
 
-                df["Severity"].replace(icons.severity_mapping, inplace=True)
+                df["Severity"].replace(icons.severity_mapping)
 
                 # Append save results individually for each workspace (so as not to create a giant dataframe)
                 print(
