@@ -86,7 +86,7 @@ def get_object_level_security(
 
 
 def list_tables(
-    dataset: str, workspace: Optional[str] = None, extended: Optional[bool] = False
+    dataset: str, workspace: Optional[str] = None, extended: bool = False
 ) -> pd.DataFrame:
     """
     Shows a semantic model's tables and their properties.
@@ -169,8 +169,17 @@ def list_tables(
                 dataset=dataset,
                 workspace=workspace,
                 dax_string="""
-                SELECT [DIMENSION_NAME],[DIMENSION_CARDINALITY] FROM $SYSTEM.MDSCHEMA_DIMENSIONS
+                SELECT [DIMENSION_NAME],[ROWS_COUNT] FROM $SYSTEM.DISCOVER_STORAGE_TABLES
+                WHERE RIGHT ( LEFT ( TABLE_ID, 2 ), 1 ) <> '$'
             """,
+            )
+
+            model_size = (
+                dict_sum.sum()
+                + data_sum.sum()
+                + hier_sum.sum()
+                + rel_sum.sum()
+                + uh_sum.sum()
             )
 
         rows = []
@@ -209,9 +218,7 @@ def list_tables(
                 new_data.update(
                     {
                         "Row Count": (
-                            rc[rc["DIMENSION_NAME"] == t_name][
-                                "DIMENSION_CARDINALITY"
-                            ].iloc[0]
+                            rc[rc["DIMENSION_NAME"] == t_name]["ROWS_COUNT"].iloc[0]
                             if not rc.empty
                             else 0
                         ),
@@ -221,15 +228,32 @@ def list_tables(
                         "Hierarchy Size": h_size,
                         "Relationship Size": r_size,
                         "User Hierarchy Size": u_size,
+                        "Partitions": int(len(t.Partitions)),
+                        "Columns": sum(
+                            1 for c in t.Columns if str(c.Type) != "RowNumber"
+                        ),
+                        "% DB": round((total_size / model_size) * 100, 2),
                     }
                 )
 
             rows.append(new_data)
 
-        int_cols = ['Row Count', 'Total Size', 'Dictionary Size', 'Data Size', 'Hierarchy Size', 'Relationship Size', 'User Hierarchy Size']
-        df[int_cols] = df[int_cols].astype(int)
-
         df = pd.DataFrame(rows)
+
+        if extended:
+            int_cols = [
+                "Row Count",
+                "Total Size",
+                "Dictionary Size",
+                "Data Size",
+                "Hierarchy Size",
+                "Relationship Size",
+                "User Hierarchy Size",
+                "Partitions",
+                "Columns",
+            ]
+            df[int_cols] = df[int_cols].astype(int)
+            df["% DB"] = df["% DB"].astype(float)
 
     return df
 

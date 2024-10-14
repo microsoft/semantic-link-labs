@@ -883,6 +883,7 @@ class FabricTokenCredential(TokenCredential):
     ) -> AccessToken:
 
         from notebookutils import mssparkutils
+
         token = mssparkutils.credentials.getToken(scopes)
         access_token = AccessToken(token, 0)
 

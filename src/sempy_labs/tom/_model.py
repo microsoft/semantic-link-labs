@@ -39,7 +39,7 @@ class TOMWrapper:
         self._workspace = workspace
         self._readonly = readonly
         self._tables_added = []
-        self._sll_prefix = 'SLL_'
+        self._sll_prefix = "SLL_"
         self._sll_tags = []
 
         self._tom_server = fabric.create_tom_server(
@@ -4086,22 +4086,28 @@ class TOMWrapper:
     def close(self):
 
         if not self._readonly and self.model is not None:
-            ann_name = 'PBI_ProTooling'
-            self._sll_tags.append('SLL')
+            ann_name = "PBI_ProTooling"
             tags = [f"{self._sll_prefix}{a}" for a in self._sll_tags]
+            tags.append("SLL")
 
             if not any(a.Name == ann_name for a in self.model.Annotations):
                 ann_list = make_list_unique(tags)
                 new_ann_value = str(ann_list).replace("'", '"')
-                self.set_annotation(object=self.model, name=ann_name, value=new_ann_value)
+                self.set_annotation(
+                    object=self.model, name=ann_name, value=new_ann_value
+                )
             else:
                 try:
-                    ann_value = self.get_annotation_value(object=self.model, name=ann_name)
+                    ann_value = self.get_annotation_value(
+                        object=self.model, name=ann_name
+                    )
                     ann_list = ast.literal_eval(ann_value)
                     ann_list += tags
                     ann_list = make_list_unique(ann_list)
                     new_ann_value = str(ann_list).replace("'", '"')
-                    self.set_annotation(object=self.model, name=ann_name, value=new_ann_value)
+                    self.set_annotation(
+                        object=self.model, name=ann_name, value=new_ann_value
+                    )
                 except Exception:
                     pass
 
