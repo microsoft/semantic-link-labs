@@ -11,7 +11,10 @@ from sempy.fabric.exceptions import FabricHTTPException
 
 
 def create_warehouse(
-    warehouse: str, description: Optional[str] = None, workspace: Optional[str] = None
+    warehouse: str,
+    description: Optional[str] = None,
+    case_insensitive_collation: bool = False,
+    workspace: Optional[str] = None,
 ):
     """
     Creates a Fabric warehouse.
@@ -22,6 +25,8 @@ def create_warehouse(
         Name of the warehouse.
     description : str, default=None
         A description of the warehouse.
+    case_insensitive_collation: bool, default=False
+        If True, creates the warehouse with case-insensitive collation.
     workspace : str, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -34,6 +39,11 @@ def create_warehouse(
 
     if description:
         request_body["description"] = description
+    if case_insensitive_collation:
+        request_body.setdefault("creationPayload", {})
+        request_body["creationPayload"][
+            "defaultCollation"
+        ] = "Latin1_General_100_CI_AS_KS_WS_SC_UTF8"
 
     client = fabric.FabricRestClient()
     response = client.post(
