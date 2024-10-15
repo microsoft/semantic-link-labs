@@ -521,20 +521,41 @@ def update_fabric_capacity(
 
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}?api-version={icons.azure_api_version}"
 
+    get_response = requests.get(url, headers=headers)
+    if get_response.status_code != 200:
+        raise FabricHTTPException(get_response)
+
+    get_json = get_response.json()
+    current_sku = get_json.get("sku", {}).get("name")
+    current_admins = (
+        get_json.get("properties", {}).get("administration", {}).get("members")
+    )
+    current_tags = get_json.get("tags")
+
     payload = {}
+    payload["sku"] = {
+        "name": current_sku,
+        "tier": "Fabric",
+    }
+    payload["tags"] = current_tags
+    payload["properties"] = get_json["properties"]
+
     if sku is not None:
-        payload["sku"] = {"name": sku, "tier": "Fabric"}
+        payload["sku"]["name"] = sku
     if admin_members is not None:
-        payload["properties"] = {"administration": {"members": [admin_members]}}
+        payload["properties"]["administration"]["members"] = admin_members
+    if tags is not None:
+        payload["tags"] = tags
+
+    # Do not proceed if no properties are being changed
+    if current_sku == sku and current_admins == admin_members and current_tags == tags:
+        print(
+            f"{icons.yellow_dot} The properties of the '{capacity_name}' are the same as those specified in the parameters of this function. No changes have been made."
+        )
+        return
 
     payload = _add_sll_tag(payload, tags)
-
-    if payload == {}:
-        raise ValueError(
-            f"{icons.warning} No parameters have been set to update the '{capacity_name}' capacity."
-        )
-
-    response = requests.patch(url, headers=headers, data=payload)
+    response = requests.patch(url, headers=headers, json=payload)
 
     if response.status_code != 202:
         raise FabricHTTPException(response)
