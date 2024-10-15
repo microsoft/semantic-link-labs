@@ -1,11 +1,19 @@
 import sempy.fabric as fabric
 import time
-from sempy_labs._helper_functions import resolve_dataset_id
+from sempy_labs._helper_functions import (
+    resolve_dataset_id,
+    resolve_workspace_name_and_id,
+    _get_partition_map,
+    _process_and_display_chart,
+)
 from typing import Any, List, Optional, Union
 from sempy._utils._log import log
 import sempy_labs._icons as icons
-from sempy_labs._helper_functions import resolve_workspace_name_and_id
 from sempy.fabric.exceptions import FabricHTTPException
+import pandas as pd
+import warnings
+from IPython.display import clear_output
+import ipywidgets as widgets
 
 
 @log
@@ -18,6 +26,7 @@ def refresh_semantic_model(
     apply_refresh_policy: bool = True,
     max_parallelism: int = 10,
     workspace: Optional[str] = None,
+    visualize: bool = False,
 ):
     """
     Refreshes a semantic model.
@@ -76,54 +85,160 @@ def refresh_semantic_model(
             f"{icons.red_dot} Invalid refresh type. Refresh type must be one of these values: {icons.refreshTypes}."
         )
 
-    if len(objects) == 0:
-        requestID = fabric.refresh_dataset(
-            dataset=dataset,
-            workspace=workspace,
-            refresh_type=refresh_type,
-            retry_count=retry_count,
-            apply_refresh_policy=apply_refresh_policy,
-            max_parallelism=max_parallelism,
+    def refresh_and_trace_dataset(
+        dataset,
+        workspace,
+        refresh_type,
+        retry_count,
+        apply_refresh_policy,
+        max_parallelism,
+        objects,
+        visualize,
+    ):
+        # Ignore specific warnings
+        warnings.filterwarnings(
+            "ignore",
+            message="No trace logs have been recorded. Try starting the trace with a larger 'delay'",
         )
-    else:
-        requestID = fabric.refresh_dataset(
-            dataset=dataset,
-            workspace=workspace,
-            refresh_type=refresh_type,
-            retry_count=retry_count,
-            apply_refresh_policy=apply_refresh_policy,
-            max_parallelism=max_parallelism,
-            objects=objects,
-        )
-    print(
-        f"{icons.in_progress} Refresh of the '{dataset}' semantic model within the '{workspace}' workspace is in progress..."
-    )
-    if len(objects) != 0:
-        print(objects)
 
-    while True:
-        requestDetails = fabric.get_refresh_execution_details(
-            dataset=dataset, refresh_request_id=requestID, workspace=workspace
-        )
-        status = requestDetails.status
-
-        # Check if the refresh has completed
-        if status == "Completed":
-            break
-        elif status == "Failed":
-            raise ValueError(
-                f"{icons.red_dot} The refresh of the '{dataset}' semantic model within the '{workspace}' workspace has failed."
+        # Function to perform dataset refresh
+        def refresh_dataset():
+            return fabric.refresh_dataset(
+                dataset=dataset,
+                workspace=workspace,
+                refresh_type=refresh_type,
+                retry_count=retry_count,
+                apply_refresh_policy=apply_refresh_policy,
+                max_parallelism=max_parallelism,
+                objects=objects if objects else None,
             )
-        elif status == "Cancelled":
+
+        def check_refresh_status(request_id):
+            request_details = fabric.get_refresh_execution_details(
+                dataset=dataset, refresh_request_id=request_id, workspace=workspace
+            )
+            return request_details.status
+
+        def display_trace_logs(trace, partition_map, widget, title):
+            df = trace.get_trace_logs()
+            if not df.empty:
+                df = df[
+                    df["Event Subclass"].isin(["ExecuteSql", "Process"])
+                ].reset_index(drop=True)
+                df = pd.merge(
+                    df,
+                    partition_map[["PartitionID", "Object Name"]],
+                    left_on="Object ID",
+                    right_on="PartitionID",
+                    how="left",
+                )
+                _process_and_display_chart(df, title=title, widget=widget)
+
+        # Start the refresh process
+        if not visualize:
+            request_id = refresh_dataset()
+        print(
+            f"{icons.in_progress} Refresh of the '{dataset}' semantic model within the '{workspace}' workspace is in progress..."
+        )
+
+        # Monitor refresh progress and handle tracing if visualize is enabled
+        if visualize:
+            partition_map = _get_partition_map(dataset, workspace)
+            widget = widgets.Output()
+
+            base_cols = ["EventClass", "EventSubclass", "CurrentTime", "TextData"]
+            end_cols = base_cols + [
+                "StartTime",
+                "EndTime",
+                "Duration",
+                "CpuTime",
+                "Success",
+                "IntegerData",
+                "ObjectID",
+            ]
+            refresh_event_schema = {
+                "JobGraph": base_cols,
+                "ProgressReportEnd": end_cols,
+            }
+
+            with fabric.create_trace_connection(
+                dataset=dataset, workspace=workspace
+            ) as trace_connection:
+                with trace_connection.create_trace(refresh_event_schema) as trace:
+                    trace.start()
+
+                    request_id = refresh_dataset()
+
+                    while True:
+                        status = check_refresh_status(request_id)
+
+                        # Check if the refresh has completed
+                        if status == "Completed":
+                            break
+                        elif status == "Failed":
+                            raise ValueError(
+                                f"{icons.red_dot} The refresh of the '{dataset}' semantic model within the '{workspace}' workspace has failed."
+                            )
+                        elif status == "Cancelled":
+                            print(
+                                f"{icons.yellow_dot} The refresh of the '{dataset}' semantic model within the '{workspace}' workspace has been cancelled."
+                            )
+                            return
+
+                        # Capture and display logs in real-time
+                        display_trace_logs(
+                            trace, partition_map, widget, title="Refresh in progress..."
+                        )
+
+                        time.sleep(3)  # Wait before the next check
+
+                    # Final log display after completion
+                    time.sleep(5)
+                    clear_output(wait=True)
+
+                    # Stop trace and display final chart
+                    df = trace.stop()
+                    display_trace_logs(
+                        trace, partition_map, widget, title="Refresh Completed"
+                    )
+
             print(
-                f"{icons.yellow_dot} The refresh of the '{dataset}' semantic model within the '{workspace}' workspace has been cancelled."
+                f"{icons.green_dot} Refresh of the '{dataset}' semantic model within the '{workspace}' workspace is complete."
             )
-            return
 
-        time.sleep(3)
+            return df
 
-    print(
-        f"{icons.green_dot} Refresh of the '{dataset}' semantic model within the '{workspace}' workspace is complete."
+        # For non-visualize case, only check refresh status
+        else:
+            while True:
+                status = check_refresh_status(request_id)
+                if status == "Completed":
+                    break
+                elif status == "Failed":
+                    raise ValueError(
+                        f"{icons.red_dot} The refresh of the '{dataset}' semantic model within the '{workspace}' workspace has failed."
+                    )
+                elif status == "Cancelled":
+                    print(
+                        f"{icons.yellow_dot} The refresh of the '{dataset}' semantic model within the '{workspace}' workspace has been cancelled."
+                    )
+                    return
+
+                time.sleep(3)
+
+            print(
+                f"{icons.green_dot} Refresh of the '{dataset}' semantic model within the '{workspace}' workspace is complete."
+            )
+
+    refresh_and_trace_dataset(
+        dataset=dataset,
+        workspace=workspace,
+        refresh_type=refresh_type,
+        retry_count=retry_count,
+        apply_refresh_policy=apply_refresh_policy,
+        max_parallelism=max_parallelism,
+        objects=objects,
+        visualize=visualize,
     )
 
 
