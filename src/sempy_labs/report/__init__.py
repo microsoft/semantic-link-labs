@@ -1,7 +1,9 @@
 from sempy_labs.report._reportwrapper import (
     ReportWrapper,
 )
-
+from sempy_labs.report._paginated import (
+    get_report_datasources,
+)
 from sempy_labs.report._generate_report import (
     create_report_from_reportjson,
     get_report_definition,
@@ -39,4 +41,5 @@ __all__ = [
     "ReportWrapper",
     "report_bpa_rules",
     "run_report_bpa",
+    "get_report_datasources",
 ]
