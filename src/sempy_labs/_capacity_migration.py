@@ -632,7 +632,6 @@ def migrate_fabric_trial_capacity(
     source_capacity: str,
     target_capacity: str,
     target_capacity_sku: str = "F64",
-    target_capacity_region: Optional[str] = None,
     target_capacity_admin_members: Optional[str | List[str]] = None,
 ):
     """
@@ -658,9 +657,6 @@ def migrate_fabric_trial_capacity(
         The name of the new Fabric capacity (F SKU). If this capacity does not exist, it will be created.
     target_capacity_sku : str, default="F64"
         If the target capacity does not exist, this property sets the SKU size for the target capacity.
-    target_capacity_region : str, default=None
-        If the target capacity does not exist, this property sets the region for the target capacity.
-        Defaults to None which resolves to the region in which the Trial SKU exists.
     target_capacity_admin_members : str, default=None
         If the target capacity does not exist, this property sets the admin members for the target capacity.
         Defaults to None which resolves to the admin members on the Trial SKU.
@@ -691,9 +687,7 @@ def migrate_fabric_trial_capacity(
         )
         return
 
-    # Use same region as source capacity if no region is specified
-    if target_capacity_region is None:
-        target_capacity_region = dfC_filt["Region"].iloc[0]
+    target_capacity_region = dfC_filt["Region"].iloc[0]
 
     # Use same admins as source capacity
     if isinstance(target_capacity_admin_members, str):
