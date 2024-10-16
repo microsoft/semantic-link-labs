@@ -750,9 +750,9 @@ class ReportWrapper:
 
                 # Alt Text
                 matches = parse(
-                    "$.visual.visualContainerObjects.general[0].properties.altText.expr.Literal.Value"
+                    "$.visual.visualContainerObjects.general[0].properties.altText.expr"
                 ).find(visual_json)
-                alt_text = matches[0].value[1:-1] if matches else ""
+                alt_text = helper.get_expression(matches[0].value) if matches else ""
 
                 # Show items with no data
                 def find_show_all_with_jsonpath(obj):
