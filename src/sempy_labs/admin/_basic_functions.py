@@ -779,6 +779,18 @@ def list_workspace_access_details(
     return df
 
 
+def _resolve_item_id(item_name: str, type: str, workspace: Optional[str] = None) -> UUID:
+
+    workspace = fabric.resolve_workspace_name(workspace)
+    dfI = list_items(workspace=workspace, type=type)
+    dfI_filt = dfI[dfI['Item Name'] == item_name]
+
+    if len(dfI_filt) == 0:
+        raise ValueError(f"The '{item_name}' {type} does not exist within the '{workspace}' workspace.")
+
+    return dfI_filt["Item Id"].iloc[0]
+
+
 def list_items(
     capacity_name: Optional[str] = None,
     workspace: Optional[str] = None,
