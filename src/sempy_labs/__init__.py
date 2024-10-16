@@ -1,3 +1,7 @@
+from sempy_labs._workloads import (
+    list_workloads,
+    patch_workload,
+)
 from sempy_labs._external_data_shares import (
     list_external_data_shares_in_item,
     create_external_data_share,
@@ -373,4 +377,6 @@ __all__ = [
     "revoke_external_data_share",
     "migrate_fabric_trial_capacity",
     "create_resource_group",
+    "list_workloads",
+    "patch_workload",
 ]
