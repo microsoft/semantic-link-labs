@@ -84,13 +84,13 @@ def list_deployment_pipeline_stages(deployment_pipeline: str) -> pd.DataFrame:
     for r in responses:
         for v in r.get("value", []):
             new_data = {
-                "Deployment Pipeline Stage Id": v["id"],
-                "Deployment Pipeline Stage Name": v["displayName"],
-                "Description": v["description"],
-                "Order": v["order"],
-                "Workspace Id": v["workspaceId"],
-                "Workspace Name": v["workspaceName"],
-                "Public": v["isPublic"],
+                "Deployment Pipeline Stage Id": v.get("id"),
+                "Deployment Pipeline Stage Name": v.get("displayName"),
+                "Description": v.get("description"),
+                "Order": v.get("order"),
+                "Workspace Id": v.get("workspaceId"),
+                "Workspace Name": v.get("workspaceName"),
+                "Public": v.get("isPublic"),
             }
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
