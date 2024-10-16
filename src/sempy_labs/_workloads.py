@@ -1,5 +1,4 @@
 import sempy.fabric as fabric
-from sempy_labs._helper_functions import resolve_capacity_id
 import pandas as pd
 from typing import Optional
 import sempy_labs._icons as icons
@@ -23,6 +22,8 @@ def list_workloads(capacity_name: str) -> pd.DataFrame:
     pandas.DataFrame
         A pandas dataframe showing the current state of the specified capacity workloads.
     """
+
+    from sempy_labs._helper_functions import resolve_capacity_id
 
     df = pd.DataFrame(
         columns=["Workload Name", "State", "Max Memory Percentage Set By User"]
@@ -74,6 +75,8 @@ def patch_workload(
         The percentage of the maximum memory that a workload can consume (set by the user).
     """
 
+    from sempy_labs._helper_functions import resolve_capacity_id
+
     capacity_id = resolve_capacity_id(capacity_name=capacity_name)
 
     states = ["Disabled", "Enabled", "Unsupported"]
@@ -121,5 +124,5 @@ def patch_workload(
         raise FabricHTTPException(response)
 
     print(
-        f"'The '{workload_name}' workload within the '{capacity_name}' capacity has been updated accordingly."
+        f"The '{workload_name}' workload within the '{capacity_name}' capacity has been updated accordingly."
     )
