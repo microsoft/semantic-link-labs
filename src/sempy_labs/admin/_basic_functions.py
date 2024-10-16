@@ -1,5 +1,5 @@
 import sempy.fabric as fabric
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Tuple
 from uuid import UUID
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
@@ -628,11 +628,8 @@ def list_item_access_details(
 
     # https://learn.microsoft.com/en-us/rest/api/fabric/admin/items/list-item-access-details?tabs=HTTP
 
-    workspace = fabric.resolve_workspace_name(workspace)
-    workspace_id = fabric.resolve_workspace_id(workspace)
-    item_id = fabric.resolve_item_id(
-        item_name=item_name, type=type, workspace=workspace
-    )
+    workspace_name, workspace_id = _resolve_workspace_name_and_id(workspace)
+    item_id = _resolve_item_id(item_name=item_name, type=type, workspace=workspace_name)
 
     df = pd.DataFrame(
         columns=[
@@ -747,8 +744,7 @@ def list_workspace_access_details(
 
     # https://learn.microsoft.com/en-us/rest/api/fabric/admin/workspaces/list-workspace-access-details?tabs=HTTP
 
-    workspace_name = fabric.resolve_workspace_name(workspace)
-    workspace_id = fabric.resolve_workspace_id(workspace_name)
+    workspace_name, workspace_id = _resolve_workspace_name_and_id(workspace)
 
     df = pd.DataFrame(
         columns=[
@@ -779,16 +775,31 @@ def list_workspace_access_details(
     return df
 
 
-def _resolve_item_id(item_name: str, type: str, workspace: Optional[str] = None) -> UUID:
+def _resolve_item_id(
+    item_name: str, type: str, workspace: Optional[str] = None
+) -> UUID:
 
-    workspace = fabric.resolve_workspace_name(workspace)
-    dfI = list_items(workspace=workspace, type=type)
-    dfI_filt = dfI[dfI['Item Name'] == item_name]
+    workspace_name, workspace_id = _resolve_workspace_name_and_id(workspace)
+    dfI = list_items(workspace=workspace_name, type=type)
+    dfI_filt = dfI[dfI["Item Name"] == item_name]
 
     if len(dfI_filt) == 0:
-        raise ValueError(f"The '{item_name}' {type} does not exist within the '{workspace}' workspace.")
+        raise ValueError(
+            f"The '{item_name}' {type} does not exist within the '{workspace_name}' workspace."
+        )
 
     return dfI_filt["Item Id"].iloc[0]
+
+
+def _resolve_workspace_name_and_id(workspace: str) -> Tuple[str, UUID]:
+
+    dfW = list_workspaces()
+    dfW_filt = dfW[dfW["Name"] == workspace]
+
+    workspace_name = dfW_filt["Name"].iloc[0]
+    workspace_id = dfW_filt["Id"].iloc[0]
+
+    return workspace_name, workspace_id
 
 
 def list_items(
@@ -841,8 +852,7 @@ def list_items(
     )
 
     if workspace is not None:
-        workspace = fabric.resolve_workspace_name(workspace)
-        workspace_id = fabric.resolve_workspace_id(workspace)
+        workspace_name, workspace_id = _resolve_workspace_name_and_id(workspace)
         url += f"workspaceId={workspace_id}&"
     if capacity_name is not None:
         dfC = list_capacities()
