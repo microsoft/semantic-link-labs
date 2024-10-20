@@ -114,3 +114,17 @@ itemTypes = {
     "Warehouse": "warehouses",
 }
 default_schema = "dbo"
+base_cols = ["EventClass", "EventSubclass", "CurrentTime", "TextData"]
+end_cols = base_cols + [
+    "StartTime",
+    "EndTime",
+    "Duration",
+    "CpuTime",
+    "Success",
+    "IntegerData",
+    "ObjectID",
+]
+refresh_event_schema = {
+    "JobGraph": base_cols,
+    "ProgressReportEnd": end_cols,
+}
