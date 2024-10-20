@@ -10,10 +10,11 @@ from sempy_labs._helper_functions import (
 import numpy as np
 import pandas as pd
 import time
+import urllib.parse
 
 
 def list_workspaces(
-    top: Optional[int] = 5000, skip: Optional[int] = None
+    top: Optional[int] = 5000, filter: Optional[str] = None, skip: Optional[int] = None,
 ) -> pd.DataFrame:
     """
     Lists workspaces for the organization. This function is the admin version of list_workspaces.
@@ -22,6 +23,8 @@ def list_workspaces(
     ----------
     top : int, default=5000
         Returns only the first n results. This parameter is mandatory and must be in the range of 1-5000.
+    filter : str, default=None
+        Returns a subset of a results based on `Odata filter <https://docs.oasis-open.org/odata/odata/v4.01/odata-v4.01-part2-url-conventions.html#sec_SystemQueryOptions>`_ query parameter condition.
     skip : int, default=None
         Skips the first n results. Use with top to fetch results beyond the first 5000.
 
@@ -48,6 +51,8 @@ def list_workspaces(
     url = f"/v1.0/myorg/admin/groups?$top={top}"
     if skip is not None:
         url = f"{url}&$skip={skip}"
+    if filter is not None:
+        url = f"{url}&$filter={filter}"
 
     client = fabric.PowerBIRestClient()
     response = client.get(url)
@@ -793,9 +798,8 @@ def _resolve_item_id(
 
 def _resolve_workspace_name_and_id(workspace: str) -> Tuple[str, UUID]:
 
-    dfW = list_workspaces()
-    dfW_filt = dfW[dfW["Name"] == workspace]
-
+    filter_condition = urllib.parse.quote(workspace)
+    dfW_filt = list_workspaces(filter=f"name eq '{filter_condition}'")
     workspace_name = dfW_filt["Name"].iloc[0]
     workspace_id = dfW_filt["Id"].iloc[0]
 
