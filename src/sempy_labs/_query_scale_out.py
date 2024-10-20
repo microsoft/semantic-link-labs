@@ -13,6 +13,8 @@ def qso_sync(dataset: str, workspace: Optional[str] = None):
     """
     Triggers a query scale-out sync of read-only replicas for the specified dataset from the specified workspace.
 
+    This is a wrapper function for the following API: `Datasets - Trigger Query Scale Out Sync In Group <https://learn.microsoft.com/rest/api/power-bi/datasets/trigger-query-scale-out-sync-in-group`_.
+
     Parameters
     ----------
     dataset : str
@@ -22,8 +24,6 @@ def qso_sync(dataset: str, workspace: Optional[str] = None):
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
-
-    # https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/trigger-query-scale-out-sync-in-group
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
     dataset_id = resolve_dataset_id(dataset, workspace)
@@ -46,6 +46,8 @@ def qso_sync_status(
     """
     Returns the query scale-out sync status for the specified dataset from the specified workspace.
 
+    This is a wrapper function for the following API: `Datasets - Get Query Scale Out Sync Status In Group <https://learn.microsoft.com/rest/api/power-bi/datasets/get-query-scale-out-sync-status-in-group`_.
+
     Parameters
     ----------
     dataset : str
@@ -60,8 +62,6 @@ def qso_sync_status(
     Tuple[pandas.DataFrame, pandas.DataFrame]
         2 pandas dataframes showing the query scale-out sync status.
     """
-
-    # https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/get-query-scale-out-sync-status-in-group
 
     df = pd.DataFrame(
         columns=[
@@ -143,6 +143,8 @@ def disable_qso(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Sets the max read-only replicas to 0, disabling query scale out.
 
+    This is a wrapper function for the following API: `Datasets - Update Dataset In Group <https://learn.microsoft.com/rest/api/power-bi/datasets/update-dataset-in-group`_.
+
     Parameters
     ----------
     dataset : str
@@ -188,6 +190,8 @@ def set_qso(
     """
     Sets the query scale out settings for a semantic model.
 
+    This is a wrapper function for the following API: `Datasets - Update Dataset In Group <https://learn.microsoft.com/rest/api/power-bi/datasets/update-dataset-in-group`_.
+
     Parameters
     ----------
     dataset : str
@@ -208,8 +212,6 @@ def set_qso(
     """
 
     from sempy_labs._helper_functions import is_default_semantic_model
-
-    # https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/update-dataset-in-group
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
     dataset_id = resolve_dataset_id(dataset, workspace)

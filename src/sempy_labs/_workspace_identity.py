@@ -12,6 +12,8 @@ def provision_workspace_identity(workspace: Optional[str] = None):
     """
     Provisions a workspace identity for a workspace.
 
+    This is a wrapper function for the following API: `Workspaces - Provision Identity <https://learn.microsoft.com/rest/api/fabric/core/workspaces/provision-identity`_.
+
     Parameters
     ----------
     workspace : str, default=None
@@ -19,8 +21,6 @@ def provision_workspace_identity(workspace: Optional[str] = None):
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
-
-    # https://learn.microsoft.com/en-us/rest/api/fabric/core/workspaces/provision-identity?tabs=HTTP
 
     workspace, workspace_id = resolve_workspace_name_and_id(workspace)
 
@@ -41,6 +41,8 @@ def deprovision_workspace_identity(workspace: Optional[str] = None):
     """
     Deprovisions a workspace identity for a workspace.
 
+    This is a wrapper function for the following API: `Workspaces - Derovision Identity <https://learn.microsoft.com/rest/api/fabric/core/workspaces/deprovision-identity`_.
+
     Parameters
     ----------
     workspace : str, default=None
@@ -48,8 +50,6 @@ def deprovision_workspace_identity(workspace: Optional[str] = None):
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
-
-    # https://learn.microsoft.com/en-us/rest/api/fabric/core/workspaces/deprovision-identity?tabs=HTTP
 
     workspace, workspace_id = resolve_workspace_name_and_id(workspace)
 

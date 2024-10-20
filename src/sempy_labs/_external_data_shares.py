@@ -20,6 +20,8 @@ def create_external_data_share(
     """
     Creates an external data share for a given path or list of paths in the specified item.
 
+    This is a wrapper function for the following API: `External Data Shares - Create External Data Share <https://learn.microsoft.com/rest/api/fabric/core/external-data-shares/create-external-data-share`_.
+
     Parameters
     ----------
     item_name : str
@@ -71,6 +73,8 @@ def revoke_external_data_share(
     """
     Revokes the specified external data share. Note: This action cannot be undone.
 
+    This is a wrapper function for the following API: `External Data Shares - Revoke External Data Share <https://learn.microsoft.com/rest/api/fabric/core/external-data-shares/revoke-external-data-share`_.
+
     Parameters
     ----------
     external_data_share_id : UUID
@@ -84,8 +88,6 @@ def revoke_external_data_share(
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
-
-    # https://learn.microsoft.com/en-us/rest/api/fabric/core/external-data-shares/revoke-external-data-share?tabs=HTTP
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
     item_id = fabric.resolve_item_id(
@@ -111,6 +113,8 @@ def list_external_data_shares_in_item(
     """
     Returns a list of the external data shares that exist for the specified item.
 
+    This is a wrapper function for the following API: `External Data Shares - List External Data Shares In Item <https://learn.microsoft.com/rest/api/fabric/core/external-data-shares/list-external-data-shares-in-item`_.
+
     Parameters
     ----------
     item_name : str
@@ -127,8 +131,6 @@ def list_external_data_shares_in_item(
     pandas.DataFrame
         A pandas dataframe showing a list of the external data shares that exist for the specified item.
     """
-
-    # https://learn.microsoft.com/en-us/rest/api/fabric/core/external-data-shares/list-external-data-shares-in-item?tabs=HTTP
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
     item_id = fabric.resolve_item_id(

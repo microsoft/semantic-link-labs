@@ -14,6 +14,8 @@ def list_kql_databases(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the KQL databases within a workspace.
 
+    This is a wrapper function for the following API: `Items - List KQL Databases <https://learn.microsoft.com/rest/api/fabric/kqldatabase/items/list-kql-databases`_.
+
     Parameters
     ----------
     workspace : str, default=None
@@ -72,6 +74,8 @@ def create_kql_database(
     """
     Creates a KQL database.
 
+    This is a wrapper function for the following API: `Items - Create KQL Database <https://learn.microsoft.com/rest/api/fabric/kqldatabase/items/create-kql-database`_.
+
     Parameters
     ----------
     name: str
@@ -106,6 +110,8 @@ def create_kql_database(
 def delete_kql_database(name: str, workspace: Optional[str] = None):
     """
     Deletes a KQL database.
+
+    This is a wrapper function for the following API: `Items - Delete KQL Database <https://learn.microsoft.com/rest/api/fabric/kqldatabase/items/delete-kql-database`_.
 
     Parameters
     ----------

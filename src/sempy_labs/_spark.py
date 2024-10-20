@@ -12,6 +12,8 @@ def list_custom_pools(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Lists all `custom pools <https://learn.microsoft.com/fabric/data-engineering/create-custom-spark-pools>`_ within a workspace.
 
+    This is a wrapper function for the following API: `Custom Pools - List Workspace Custom Pools <https://learn.microsoft.com/rest/api/fabric/spark/custom-pools/list-workspace-custom-pools`_.
+
     Parameters
     ----------
     workspace : str, default=None
@@ -25,7 +27,6 @@ def list_custom_pools(workspace: Optional[str] = None) -> pd.DataFrame:
         A pandas dataframe showing all the custom pools within the Fabric workspace.
     """
 
-    # https://learn.microsoft.com/rest/api/fabric/spark/custom-pools/list-workspace-custom-pools
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     df = pd.DataFrame(
@@ -99,6 +100,8 @@ def create_custom_pool(
     """
     Creates a `custom pool <https://learn.microsoft.com/fabric/data-engineering/create-custom-spark-pools>`_ within a workspace.
 
+    This is a wrapper function for the following API: `Custom Pools - Create Workspace Custom Pool <https://learn.microsoft.com/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool`_.
+
     Parameters
     ----------
     pool_name : str
@@ -125,7 +128,6 @@ def create_custom_pool(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    # https://learn.microsoft.com/en-us/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     request_body = {
@@ -171,6 +173,8 @@ def update_custom_pool(
     """
     Updates the properties of a `custom pool <https://learn.microsoft.com/fabric/data-engineering/create-custom-spark-pools>`_ within a workspace.
 
+    This is a wrapper function for the following API: `Custom Pools - Update Workspace Custom Pool <https://learn.microsoft.com/rest/api/fabric/spark/custom-pools/update-workspace-custom-pool`_.
+
     Parameters
     ----------
     pool_name : str
@@ -205,7 +209,6 @@ def update_custom_pool(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    # https://learn.microsoft.com/en-us/rest/api/fabric/spark/custom-pools/update-workspace-custom-pool?tabs=HTTP
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     df = list_custom_pools(workspace=workspace)
@@ -267,6 +270,8 @@ def delete_custom_pool(pool_name: str, workspace: Optional[str] = None):
     """
     Deletes a `custom pool <https://learn.microsoft.com/fabric/data-engineering/create-custom-spark-pools>`_ within a workspace.
 
+    This is a wrapper function for the following API: `Custom Pools - Delete Workspace Custom Pool <https://learn.microsoft.com/rest/api/fabric/spark/custom-pools/delete-workspace-custom-pool`_.
+
     Parameters
     ----------
     pool_name : str
@@ -304,6 +309,8 @@ def get_spark_settings(
     """
     Shows the spark settings for a workspace.
 
+    This is a wrapper function for the following API: `Workspace Settings - Get Spark Settings <https://learn.microsoft.com/rest/api/fabric/spark/workspace-settings/get-spark-settings`_.
+
     Parameters
     ----------
     workspace : str, default=None
@@ -319,7 +326,6 @@ def get_spark_settings(
         A pandas dataframe showing the spark settings for a workspace.
     """
 
-    # https://learn.microsoft.com/en-us/rest/api/fabric/spark/workspace-settings/get-spark-settings?tabs=HTTP
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     df = pd.DataFrame(
@@ -392,6 +398,8 @@ def update_spark_settings(
     """
     Updates the spark settings for a workspace.
 
+    This is a wrapper function for the following API: `Workspace Settings - Update Spark Settings <https://learn.microsoft.com/rest/api/fabric/spark/workspace-settings/update-spark-settings`_.
+
     Parameters
     ----------
     automatic_log_enabled : bool, default=None
@@ -424,7 +432,6 @@ def update_spark_settings(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    # https://learn.microsoft.com/en-us/rest/api/fabric/spark/workspace-settings/update-spark-settings?tabs=HTTP
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     request_body = get_spark_settings(workspace=workspace, return_dataframe=False)
