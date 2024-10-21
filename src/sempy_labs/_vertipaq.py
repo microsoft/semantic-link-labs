@@ -69,76 +69,67 @@ def vertipaq_analyzer(
 
     workspace = fabric.resolve_workspace_name(workspace)
 
-    data_type_string = "string"
-    data_type_long = "long"
-    data_type_timestamp = "timestamp"
-    data_type_double = "double"
-    data_type_bool = "bool"
-    int_format = "int"
-    pct_format = "pct"
-    no_format = ""
-
     vertipaq_map = {
         "Model": {
-            "Dataset Name": [data_type_string, no_format],
-            "Total Size": [data_type_long, int_format],
-            "Table Count": [data_type_long, int_format],
-            "Column Count": [data_type_long, int_format],
-            "Compatibility Level": [data_type_long, no_format],
-            "Default Mode": [data_type_string, no_format],
+            "Dataset Name": [icons.data_type_string, icons.no_format],
+            "Total Size": [icons.data_type_long, icons.int_format],
+            "Table Count": [icons.data_type_long, icons.int_format],
+            "Column Count": [icons.data_type_long, icons.int_format],
+            "Compatibility Level": [icons.data_type_long, icons.no_format],
+            "Default Mode": [icons.data_type_string, icons.no_format],
         },
         "Tables": {
-            "Table Name": [data_type_string, no_format],
-            "Type": [data_type_string, no_format],
-            "Row Count": [data_type_long, int_format],
-            "Total Size": [data_type_long, int_format],
-            "Dictionary Size": [data_type_long, int_format],
-            "Data Size": [data_type_long, int_format],
-            "Hierarchy Size": [data_type_long, int_format],
-            "Relationship Size": [data_type_long, int_format],
-            "User Hierarchy Size": [data_type_long, int_format],
-            "Partitions": [data_type_long, int_format],
-            "Columns": [data_type_long, int_format],
-            "% DB": [data_type_double, pct_format],
+            "Table Name": [icons.data_type_string, icons.no_format],
+            "Type": [icons.data_type_string, icons.no_format],
+            "Row Count": [icons.data_type_long, icons.int_format],
+            "Total Size": [icons.data_type_long, icons.int_format],
+            "Dictionary Size": [icons.data_type_long, icons.int_format],
+            "Data Size": [icons.data_type_long, icons.int_format],
+            "Hierarchy Size": [icons.data_type_long, icons.int_format],
+            "Relationship Size": [icons.data_type_long, icons.int_format],
+            "User Hierarchy Size": [icons.data_type_long, icons.int_format],
+            "Partitions": [icons.data_type_long, icons.int_format],
+            "Columns": [icons.data_type_long, icons.int_format],
+            "% DB": [icons.data_type_double, icons.pct_format],
         },
         "Partitions": {
-            "Table Name": [data_type_string, no_format],
-            "Partition Name": [data_type_string, no_format],
-            "Mode": [data_type_string, no_format],
-            "Record Count": [data_type_long, int_format],
-            "Segment Count": [data_type_long, int_format],
-            "Records per Segment": [data_type_double, int_format],
+            "Table Name": [icons.data_type_string, icons.no_format],
+            "Partition Name": [icons.data_type_string, icons.no_format],
+            "Mode": [icons.data_type_string, icons.no_format],
+            "Record Count": [icons.data_type_long, icons.int_format],
+            "Segment Count": [icons.data_type_long, icons.int_format],
+            "Records per Segment": [icons.data_type_double, icons.int_format],
         },
         "Columns": {
-            "Table Name": [data_type_string, no_format],
-            "Column Name": [data_type_string, no_format],
-            "Type": [data_type_string, no_format],
-            "Cardinality": [data_type_long, int_format],
-            "Total Size": [data_type_long, int_format],
-            "Data Size": [data_type_long, int_format],
-            "Dictionary Size": [data_type_long, int_format],
-            "Hierarchy Size": [data_type_long, int_format],
-            "% Table": [data_type_double, pct_format],
-            "% DB": [data_type_double, pct_format],
-            "Data Type": [data_type_string, no_format],
-            "Encoding": [data_type_string, no_format],
-            "Is Resident": [data_type_bool, no_format],
-            "Temperature": [data_type_double, int_format],
-            "Last Accessed": [data_type_timestamp, no_format],
+            "Table Name": [icons.data_type_string, icons.no_format],
+            "Column Name": [icons.data_type_string, icons.no_format],
+            "Type": [icons.data_type_string, icons.no_format],
+            "Cardinality": [icons.data_type_long, icons.int_format],
+            "Total Size": [icons.data_type_long, icons.int_format],
+            "Data Size": [icons.data_type_long, icons.int_format],
+            "Dictionary Size": [icons.data_type_long, icons.int_format],
+            "Hierarchy Size": [icons.data_type_long, icons.int_format],
+            "% Table": [icons.data_type_double, icons.pct_format],
+            "% DB": [icons.data_type_double, icons.pct_format],
+            "Data Type": [icons.data_type_string, icons.no_format],
+            "Encoding": [icons.data_type_string, icons.no_format],
+            "Is Resident": [icons.data_type_bool, icons.no_format],
+            "Temperature": [icons.data_type_double, icons.int_format],
+            "Last Accessed": [icons.data_type_timestamp, icons.no_format],
         },
         "Hierarchies": {
-            "Table Name": [data_type_string, no_format],
-            "Hierarchy Name": [data_type_string, no_format],
-            "Used Size": [data_type_long, int_format],
+            "Table Name": [icons.data_type_string, icons.no_format],
+            "Hierarchy Name": [icons.data_type_string, icons.no_format],
+            "Used Size": [icons.data_type_long, icons.int_format],
         },
         "Relationships": {
-            "From Object": [data_type_string, no_format],
-            "To Object": [data_type_string, no_format],
-            "Multiplicity": [data_type_string, no_format],
-            "Used Size": [data_type_long, int_format],
-            "Max From Cardinality": [data_type_long, int_format],
-            "Max To Cardinality": [data_type_long, int_format],
-            "Missing Rows": [data_type_long, int_format],
+            "From Object": [icons.data_type_string, icons.no_format],
+            "To Object": [icons.data_type_string, icons.no_format],
+            "Multiplicity": [icons.data_type_string, icons.no_format],
+            "Used Size": [icons.data_type_long, icons.int_format],
+            "Max From Cardinality": [icons.data_type_long, icons.int_format],
+            "Max To Cardinality": [icons.data_type_long, icons.int_format],
+            "Missing Rows": [icons.data_type_long, icons.int_format],
         },
     }
 
@@ -565,13 +556,13 @@ def vertipaq_analyzer(
             df.columns = df.columns.str.replace(" ", "_")
 
             schema = {
-                "Capacity_Name": data_type_string,
-                "Capacity_Id": data_type_string,
-                "Workspace_Name": data_type_string,
-                "Workspace_Id": data_type_string,
-                "Dataset_Name": data_type_string,
-                "Dataset_Id": data_type_string,
-                "Configured_By": data_type_string,
+                "Capacity_Name": icons.data_type_string,
+                "Capacity_Id": icons.data_type_string,
+                "Workspace_Name": icons.data_type_string,
+                "Workspace_Id": icons.data_type_string,
+                "Dataset_Name": icons.data_type_string,
+                "Dataset_Id": icons.data_type_string,
+                "Configured_By": icons.data_type_string,
             }
 
             schema.update(
@@ -580,8 +571,8 @@ def vertipaq_analyzer(
                     for key, value in vertipaq_map[key_name].items()
                 }
             )
-            schema["RunId"] = data_type_long
-            schema["Timestamp"] = data_type_timestamp
+            schema["RunId"] = icons.data_type_long
+            schema["Timestamp"] = icons.data_type_timestamp
 
             delta_table_name = f"VertipaqAnalyzer_{obj}".lower()
             save_as_delta_table(

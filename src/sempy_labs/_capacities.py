@@ -286,7 +286,7 @@ def suspend_fabric_capacity(
     if response.status_code != 202:
         raise FabricHTTPException(response)
 
-    print(f"{icons.green_dot} The '{capacity_name} capacity has been suspended.")
+    print(f"{icons.green_dot} The '{capacity_name}' capacity has been suspended.")
 
 
 def resume_fabric_capacity(
@@ -335,7 +335,7 @@ def resume_fabric_capacity(
     if response.status_code != 202:
         raise FabricHTTPException(response)
 
-    print(f"{icons.green_dot} The '{capacity_name} capacity has been resumed.")
+    print(f"{icons.green_dot} The '{capacity_name}' capacity has been resumed.")
 
 
 def delete_embedded_capacity(
@@ -384,7 +384,7 @@ def delete_embedded_capacity(
     if response.status_code not in [200, 202]:
         raise FabricHTTPException(response)
 
-    print(f"{icons.green_dot} The '{capacity_name} capacity has been deleted.")
+    print(f"{icons.green_dot} The '{capacity_name}' capacity has been deleted.")
 
 
 def delete_premium_capacity(capacity_name: str):
@@ -461,7 +461,7 @@ def delete_fabric_capacity(
     if response.status_code != 202:
         raise FabricHTTPException(response)
 
-    print(f"{icons.green_dot} The '{capacity_name} capacity has been deleted.")
+    print(f"{icons.green_dot} The '{capacity_name}' capacity has been deleted.")
 
 
 def update_fabric_capacity(
@@ -540,7 +540,7 @@ def update_fabric_capacity(
         raise FabricHTTPException(response)
 
     print(
-        f"{icons.green_dot} The '{capacity_name} capacity has been updated accordingly."
+        f"{icons.green_dot} The '{capacity_name}' capacity has been updated accordingly."
     )
 
 

@@ -114,3 +114,31 @@ itemTypes = {
     "Warehouse": "warehouses",
 }
 default_schema = "dbo"
+
+data_type_string = "string"
+data_type_long = "long"
+data_type_timestamp = "timestamp"
+data_type_double = "double"
+data_type_bool = "bool"
+int_format = "int"
+pct_format = "pct"
+no_format = ""
+
+bpa_schema = {
+    "Capacity Name": data_type_string,
+    "Capacity Id": data_type_string,
+    "Workspace Name": data_type_string,
+    "Workspace Id": data_type_string,
+    "Dataset Name": data_type_string,
+    "Dataset Id": data_type_string,
+    "Configured By": data_type_string,
+    "Rule Name": data_type_string,
+    "Category": data_type_string,
+    "Severity": data_type_string,
+    "Object Type": data_type_string,
+    "Object Name": data_type_string,
+    "Description": data_type_string,
+    "URL": data_type_string,
+    "RunId": data_type_long,
+    "Timestamp": data_type_timestamp,
+}
