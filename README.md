@@ -11,6 +11,10 @@
 
 Semantic Link Labs is a Python library designed for use in [Microsoft Fabric notebooks](https://learn.microsoft.com/fabric/data-engineering/how-to-use-notebook). This library extends the capabilities of [Semantic Link](https://learn.microsoft.com/fabric/data-science/semantic-link-overview) offering additional functionalities to seamlessly integrate and work alongside it. The goal of Semantic Link Labs is to simplify technical processes, empowering people to focus on higher level activities and allowing tasks that are better suited for machines to be efficiently handled without human intervention.
 
+If you encounter any issues, please [raise a bug](https://github.com/microsoft/semantic-link-labs/issues/new?assignees=&labels=&projects=&template=bug_report.md&title=).
+
+If you have ideas for new features/functions, please [request a feature](https://github.com/microsoft/semantic-link-labs/issues/new?assignees=&labels=&projects=&template=feature_request.md&title=).
+
 ## Featured Scenarios
 * Semantic Models
     * [Migrating an import/DirectQuery semantic model to Direct Lake](https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#direct-lake-migration)
@@ -38,11 +42,23 @@ Semantic Link Labs is a Python library designed for use in [Microsoft Fabric not
     * Wrapper functions for [Power BI](https://learn.microsoft.com/rest/api/power-bi/), [Fabric](https://learn.microsoft.com/rest/api/fabric/articles/using-fabric-apis), and [Azure (Fabric Capacity)](https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities?view=rest-microsoftfabric-2023-11-01) APIs
 
 
-### Check out the [helper notebooks](https://github.com/microsoft/semantic-link-labs/tree/main/notebooks) for getting started!
+## [Helper Notebooks](https://github.com/microsoft/semantic-link-labs/tree/main/notebooks)
 
-If you encounter any issues, please [raise a bug](https://github.com/microsoft/semantic-link-labs/issues/new?assignees=&labels=&projects=&template=bug_report.md&title=).
+Check out the [helper notebooks](https://github.com/microsoft/semantic-link-labs/tree/main/notebooks) for getting started! 
+Run the code below to load all the helper notebooks to the workspace of your choice at once.
+```python
+import sempy_labs as labs
+import requests
 
-If you have ideas for new features/functions, please [request a feature](https://github.com/microsoft/semantic-link-labs/issues/new?assignees=&labels=&projects=&template=feature_request.md&title=).
+workspace_name = None # Update this to the workspace in which you want to save the notebooks
+api_url = "https://api.github.com/repos/microsoft/semantic-link-labs/contents/notebooks"
+response = requests.get(api_url)
+files = response.json()
+notebook_files = {file['name'][:-6]: file['html_url'] for file in files if file['name'].endswith('.ipynb')}
+
+for file_name, file_url in notebook_files.items():
+    labs.import_notebook_from_web(notebook_name=file_name, url=file_url, workspace=workspace)
+```
 
 ## Install the library in a Fabric notebook
 ```python
@@ -61,7 +77,7 @@ from sempy_labs import ConnectWarehouse
 from sempy_labs import ConnectLakehouse
 ```
 
-## Load semantic-link-labs into a custom [Fabric environment](https://learn.microsoft.com/fabric/data-engineering/create-and-use-environment)
+## Load Semantic Link Labs into a custom [Fabric environment](https://learn.microsoft.com/fabric/data-engineering/create-and-use-environment)
 An even better way to ensure the semantic-link-labs library is available in your workspace/notebooks is to load it as a library in a custom Fabric environment. If you do this, you will not have to run the above '%pip install' code every time in your notebook. Please follow the steps below.
 
 #### Create a custom environment
