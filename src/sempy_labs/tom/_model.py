@@ -4192,15 +4192,7 @@ class TOMWrapper:
             Name of the column to use for sorting. Must be of integer (Int64) data type.
         """
 
-        import Microsoft.AnalysisServices.Tabular as TOM
-
         sbc = self.model.Tables[table_name].Columns[sort_by_column]
-
-        if sbc.DataType != TOM.DataType.Int64:
-            raise ValueError(
-                f"{icons.red_dot} Invalid sort by column data type. The sort by column must be of 'Int64' data type."
-            )
-
         self.model.Tables[table_name].Columns[column_name].SortByColumn = sbc
 
     def remove_sort_by_column(self, table_name: str, column_name: str):
