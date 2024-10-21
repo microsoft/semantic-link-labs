@@ -19,6 +19,8 @@ def create_warehouse(
     """
     Creates a Fabric warehouse.
 
+    This is a wrapper function for the following API: `Items - Create Warehouse <https://learn.microsoft.com/rest/api/fabric/warehouse/items/create-warehouse`_.
+
     Parameters
     ----------
     warehouse: str
@@ -60,6 +62,8 @@ def create_warehouse(
 def list_warehouses(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the warehouses within a workspace.
+
+    This is a wrapper function for the following API: `Items - List Warehouses <https://learn.microsoft.com/rest/api/fabric/warehouse/items/list-warehouses`_.
 
     Parameters
     ----------
@@ -114,6 +118,8 @@ def list_warehouses(workspace: Optional[str] = None) -> pd.DataFrame:
 def delete_warehouse(name: str, workspace: Optional[str] = None):
     """
     Deletes a Fabric warehouse.
+
+    This is a wrapper function for the following API: `Items - Delete Warehouse <https://learn.microsoft.com/rest/api/fabric/warehouse/items/delete-warehouse`_.
 
     Parameters
     ----------

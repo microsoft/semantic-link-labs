@@ -33,6 +33,8 @@ def get_report_json(
     """
     Gets the report.json file content of a Power BI report.
 
+    This is a wrapper function for the following API: `Items - Get Report Definition <https://learn.microsoft.com/rest/api/fabric/report/items/get-report-definition`_.
+
     Parameters
     ----------
     report : str
@@ -156,6 +158,8 @@ def export_report(
 ):
     """
     Exports a Power BI report to a file in your lakehouse.
+
+    This is a wrapper function for the following APIs: `Reports - Export To File In Group <https://learn.microsoft.com/rest/api/power-bi/reports/export-to-file-in-group`_, `Reports - Get Export To File Status In Group <https://learn.microsoft.com/rest/api/power-bi/reports/get-export-to-file-status-in-group>`_, `Reports - Get File Of Export To File In Group <https://learn.microsoft.com/rest/api/power-bi/reports/get-file-of-export-to-file-in-group>`_.
 
     Parameters
     ----------
@@ -400,6 +404,8 @@ def clone_report(
 ):
     """
     Clones a Power BI report.
+
+    This is a wrapper function for the following API: `Reports - Clone Report In Group <https://learn.microsoft.com/rest/api/power-bi/reports/clone-report-in-group`_.
 
     Parameters
     ----------

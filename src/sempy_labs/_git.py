@@ -21,6 +21,8 @@ def connect_workspace_to_git(
     """
     Connects a workspace to a git repository.
 
+    This is a wrapper function for the following API: `Git - Connect <https://learn.microsoft.com/rest/api/fabric/core/git/connect`_.
+
     Parameters
     ----------
     organization_name : str
@@ -40,8 +42,6 @@ def connect_workspace_to_git(
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
-
-    # https://learn.microsoft.com/en-us/rest/api/fabric/core/git/connect?tabs=HTTP
 
     workspace, workspace_id = resolve_workspace_name_and_id(workspace)
 
@@ -72,6 +72,8 @@ def disconnect_workspace_from_git(workspace: Optional[str] = None):
     """
     Disconnects a workpsace from a git repository.
 
+    This is a wrapper function for the following API: `Git - Disconnect <https://learn.microsoft.com/rest/api/fabric/core/git/disconnect`_.
+
     Parameters
     ----------
     workspace : str, default=None
@@ -79,8 +81,6 @@ def disconnect_workspace_from_git(workspace: Optional[str] = None):
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
-
-    # https://learn.microsoft.com/en-us/rest/api/fabric/core/git/disconnect?tabs=HTTP
 
     workspace, workspace_id = resolve_workspace_name_and_id(workspace)
 
@@ -98,6 +98,8 @@ def get_git_status(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Obtains the Git status of items in the workspace, that can be committed to Git.
 
+    This is a wrapper function for the following API: `Git - Get Status <https://learn.microsoft.com/rest/api/fabric/core/git/get-status`_.
+
     Parameters
     ----------
     workspace : str, default=None
@@ -110,8 +112,6 @@ def get_git_status(workspace: Optional[str] = None) -> pd.DataFrame:
     pandas.DataFrame
         A pandas dataframe showing the Git status of items in the workspace.
     """
-
-    # https://learn.microsoft.com/en-us/rest/api/fabric/core/git/get-status?tabs=HTTP
 
     workspace, workspace_id = resolve_workspace_name_and_id(workspace)
 
@@ -161,6 +161,8 @@ def get_git_connection(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Obtains the Git status of items in the workspace, that can be committed to Git.
 
+    This is a wrapper function for the following API: `Git - Get Connection <https://learn.microsoft.com/rest/api/fabric/core/git/get-connection`_.
+
     Parameters
     ----------
     workspace : str, default=None
@@ -173,8 +175,6 @@ def get_git_connection(workspace: Optional[str] = None) -> pd.DataFrame:
     pandas.DataFrame
         A pandas dataframe showing the Git status of items in the workspace.
     """
-
-    # https://learn.microsoft.com/en-us/rest/api/fabric/core/git/get-status?tabs=HTTP
 
     workspace, workspace_id = resolve_workspace_name_and_id(workspace)
 
@@ -221,6 +221,8 @@ def initialize_git_connection(workspace: Optional[str] = None):
     """
     Initializes a connection for a workspace that is connected to Git.
 
+    This is a wrapper function for the following API: `Git - Initialize Connection <https://learn.microsoft.com/rest/api/fabric/core/git/initialize-connection`_.
+
     Parameters
     ----------
     workspace : str, default=None
@@ -228,8 +230,6 @@ def initialize_git_connection(workspace: Optional[str] = None):
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
-
-    # https://learn.microsoft.com/en-us/rest/api/fabric/core/git/initialize-connection?tabs=HTTP
 
     workspace, workspace_id = resolve_workspace_name_and_id(workspace)
 
@@ -252,6 +252,8 @@ def commit_to_git(
     """
     Commits all or a selection of items within a workspace to Git.
 
+    This is a wrapper function for the following API: `Git - Commit to Git <https://learn.microsoft.com/rest/api/fabric/core/git/commit-to-git`_.
+
     Parameters
     ----------
     comment : str
@@ -264,8 +266,6 @@ def commit_to_git(
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
-
-    # https://learn.microsoft.com/en-us/rest/api/fabric/core/git/commit-to-git?tabs=HTTP
 
     workspace, workspace_id = resolve_workspace_name_and_id(workspace)
 
@@ -320,6 +320,8 @@ def update_from_git(
     """
     Updates the workspace with commits pushed to the connected branch.
 
+    This is a wrapper function for the following API: `Git - Update From Git <https://learn.microsoft.com/rest/api/fabric/core/git/update-from-git`_.
+
     Parameters
     ----------
     workspace_head : str
@@ -335,8 +337,6 @@ def update_from_git(
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
-
-    # https://learn.microsoft.com/en-us/rest/api/fabric/core/git/update-from-git?tabs=HTTP
 
     workspace, workspace_id = resolve_workspace_name_and_id(workspace)
 

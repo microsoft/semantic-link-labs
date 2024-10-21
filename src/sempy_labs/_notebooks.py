@@ -18,6 +18,8 @@ def get_notebook_definition(
     """
     Obtains the notebook definition.
 
+    This is a wrapper function for the following API: `Items - Get Notebook Definition <https://learn.microsoft.com/rest/api/fabric/notebook/items/get-notebook-definition`_.
+
     Parameters
     ----------
     notebook_name : str

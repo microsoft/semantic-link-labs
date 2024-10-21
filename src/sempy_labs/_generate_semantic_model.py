@@ -85,6 +85,8 @@ def create_semantic_model_from_bim(
     """
     Creates a new semantic model based on a Model.bim file.
 
+    This is a wrapper function for the following API: `Items - Create Semantic Model <https://learn.microsoft.com/rest/api/fabric/semanticmodel/items/create-semantic-model`_.
+
     Parameters
     ----------
     dataset : str
@@ -148,6 +150,8 @@ def update_semantic_model_from_bim(
 ):
     """
     Updates a semantic model definition based on a Model.bim file.
+
+    This is a wrapper function for the following API: `Items - Update Semantic Model Definition <https://learn.microsoft.com/rest/api/fabric/semanticmodel/items/update-semantic-model-definition`_.
 
     Parameters
     ----------
@@ -286,6 +290,8 @@ def get_semantic_model_bim(
 ) -> dict:
     """
     Extracts the Model.bim file for a given semantic model.
+
+    This is a wrapper function for the following API: `Items - Get Semantic Model Definition <https://learn.microsoft.com/rest/api/fabric/semanticmodel/items/get-semantic-model-definition`_.
 
     Parameters
     ----------

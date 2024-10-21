@@ -14,6 +14,8 @@ def list_kql_querysets(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the KQL querysets within a workspace.
 
+    This is a wrapper function for the following API: `Items - List KQL Querysets <https://learn.microsoft.com/rest/api/fabric/kqlqueryset/items/list-kql-querysets`_.
+
     Parameters
     ----------
     workspace : str, default=None
@@ -62,6 +64,8 @@ def create_kql_queryset(
     """
     Creates a KQL queryset.
 
+    This is a wrapper function for the following API: `Items - Create KQL Queryset <https://learn.microsoft.com/rest/api/fabric/kqlqueryset/items/create-kql-queryset`_.
+
     Parameters
     ----------
     name: str
@@ -96,6 +100,8 @@ def create_kql_queryset(
 def delete_kql_queryset(name: str, workspace: Optional[str] = None):
     """
     Deletes a KQL queryset.
+
+    This is a wrapper function for the following API: `Items - Delete KQL Queryset <https://learn.microsoft.com/rest/api/fabric/kqlqueryset/items/delete-kql-queryset`_.
 
     Parameters
     ----------

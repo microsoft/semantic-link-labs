@@ -37,6 +37,8 @@ def create_fabric_capacity(
     """
     This function creates a new Fabric capacity within an Azure subscription.
 
+    This is a wrapper function for the following API: `Fabric Capacities - Create Or Update <https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities/create-or-update?view=rest-microsoftfabric-2023-11-01>`_.
+
     Parameters
     ----------
     capacity_name : str
@@ -253,6 +255,8 @@ def suspend_fabric_capacity(
     """
     This function suspends a Fabric capacity.
 
+    This is a wrapper function for the following API: `Fabric Capacities - Suspend <https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities/suspend?view=rest-microsoftfabric-2023-11-01>`_.
+
     Parameters
     ----------
     capacity_name : str
@@ -300,6 +304,8 @@ def resume_fabric_capacity(
 ):
     """
     This function resumes a Fabric capacity.
+
+    This is a wrapper function for the following API: `Fabric Capacities - Resume <https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities/resume?view=rest-microsoftfabric-2023-11-01>`_.
 
     Parameters
     ----------
@@ -427,6 +433,8 @@ def delete_fabric_capacity(
     """
     This function deletes a Fabric capacity.
 
+    This is a wrapper function for the following API: `Fabric Capacities - Delete <https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities/delete?view=rest-microsoftfabric-2023-11-01>`_.
+
     Parameters
     ----------
     capacity_name : str
@@ -478,6 +486,8 @@ def update_fabric_capacity(
 ):
     """
     This function updates a Fabric capacity's properties.
+
+    This is a wrapper function for the following API: `Fabric Capacities - Update <https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities/update?view=rest-microsoftfabric-2023-11-01>`_.
 
     Parameters
     ----------
@@ -556,6 +566,8 @@ def check_fabric_capacity_name_availablility(
     """
     This function updates a Fabric capacity's properties.
 
+    This is a wrapper function for the following API: `Fabric Capacities - Check Name Availability <https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities/check-name-availability?view=rest-microsoftfabric-2023-11-01>`_.
+
     Parameters
     ----------
     capacity_name : str
@@ -610,6 +622,8 @@ def create_resource_group(
 ):
     """
     This function creates a resource group in a region within an Azure subscription.
+
+    This is a wrapper function for the following API: `ResourceGroupsOperations Class - CreateOrUpdate <https://learn.microsoft.com/python/api/azure-mgmt-resource/azure.mgmt.resource.resources.v2022_09_01.operations.resourcegroupsoperations?view=azure-python#azure-mgmt-resource-resources-v2022-09-01-operations-resourcegroupsoperations-create-or-update>`_.
 
     Parameters
     ----------

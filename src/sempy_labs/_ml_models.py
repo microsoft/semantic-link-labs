@@ -14,6 +14,8 @@ def list_ml_models(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the ML models within a workspace.
 
+    This is a wrapper function for the following API: `Items - List ML Models <https://learn.microsoft.com/rest/api/fabric/mlmodel/items/list-ml-models`_.
+
     Parameters
     ----------
     workspace : str, default=None
@@ -60,6 +62,8 @@ def create_ml_model(
     """
     Creates a Fabric ML model.
 
+    This is a wrapper function for the following API: `Items - Create ML Model <https://learn.microsoft.com/rest/api/fabric/mlmodel/items/create-ml-model`_.
+
     Parameters
     ----------
     name: str
@@ -92,6 +96,8 @@ def create_ml_model(
 def delete_ml_model(name: str, workspace: Optional[str] = None):
     """
     Deletes a Fabric ML model.
+
+    This is a wrapper function for the following API: `Items - Delete ML Model <https://learn.microsoft.com/rest/api/fabric/mlmodel/items/delete-ml-model`_.
 
     Parameters
     ----------
