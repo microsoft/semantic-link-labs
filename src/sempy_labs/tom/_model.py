@@ -6,6 +6,7 @@ from datetime import datetime
 from sempy_labs._helper_functions import (
     format_dax_object_name,
     generate_guid,
+    make_list_unique,
 )
 from sempy_labs._list_functions import list_relationships
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
@@ -15,6 +16,7 @@ from typing import List, Iterator, Optional, Union, TYPE_CHECKING
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
+import ast
 
 if TYPE_CHECKING:
     import Microsoft.AnalysisServices.Tabular
@@ -41,6 +43,8 @@ class TOMWrapper:
         self._workspace = workspace
         self._readonly = readonly
         self._tables_added = []
+        self._sll_prefix = "SLL_"
+        self._sll_tags = []
 
         self._tom_server = fabric.create_tom_server(
             readonly=readonly, workspace=workspace
@@ -1646,6 +1650,7 @@ class TOMWrapper:
             print(
                 f"{icons.green_dot} The {property} property for the '{object.Parent.Name}'[{object.Name}] {str(object.ObjectType).lower()} has been translated into '{language}' as '{value}'."
             )
+        self._sll_tags.append("TranslateSemanticModel")
 
     def remove_translation(
         self,
@@ -2948,6 +2953,8 @@ class TOMWrapper:
         except Exception:
             runId = "1"
         self.set_annotation(object=self.model, name="Vertipaq_Run", value=runId)
+
+        self._sll_tags.append("VertipaqAnnotations")
 
     def row_count(self, object: Union["TOM.Partition", "TOM.Table"]):
         """
@@ -4476,6 +4483,7 @@ class TOMWrapper:
         #     executor.map(process_measure, self.all_measures())
 
     def close(self):
+
         if not self._readonly and self.model is not None:
 
             import Microsoft.AnalysisServices.Tabular as TOM
@@ -4499,6 +4507,31 @@ class TOMWrapper:
                             self.add_changed_property(object=c, property="Name")
                     if self._column_map.get(c.LineageTag)[1] != c.DataType:
                         self.add_changed_property(object=c, property="DataType")
+
+            ann_name = "PBI_ProTooling"
+            tags = [f"{self._sll_prefix}{a}" for a in self._sll_tags]
+            tags.append("SLL")
+
+            if not any(a.Name == ann_name for a in self.model.Annotations):
+                ann_list = make_list_unique(tags)
+                new_ann_value = str(ann_list).replace("'", '"')
+                self.set_annotation(
+                    object=self.model, name=ann_name, value=new_ann_value
+                )
+            else:
+                try:
+                    ann_value = self.get_annotation_value(
+                        object=self.model, name=ann_name
+                    )
+                    ann_list = ast.literal_eval(ann_value)
+                    ann_list += tags
+                    ann_list = make_list_unique(ann_list)
+                    new_ann_value = str(ann_list).replace("'", '"')
+                    self.set_annotation(
+                        object=self.model, name=ann_name, value=new_ann_value
+                    )
+                except Exception:
+                    pass
 
             self.model.SaveChanges()
 

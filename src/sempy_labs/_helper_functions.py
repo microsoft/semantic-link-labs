@@ -1145,3 +1145,8 @@ def _get_max_run_id(lakehouse: str, table_name: str) -> int:
     max_run_id = dfSpark.collect()[0][0]
 
     return max_run_id
+
+
+def make_list_unique(my_list):
+
+    return list(set(my_list))
