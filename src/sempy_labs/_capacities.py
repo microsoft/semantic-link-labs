@@ -543,7 +543,7 @@ def update_fabric_capacity(
     if sku is not None:
         payload["sku"]["name"] = sku
     if admin_members is not None:
-        payload["properties"]["administration"]["members"] = admin_members
+        payload["properties"] = {"administration": {"members": admin_members}}
     if tags is not None:
         payload["tags"] = tags
 
@@ -652,7 +652,7 @@ def create_resource_group(
 
     from azure.mgmt.resource import ResourceManagementClient
 
-    azure_token, credential, headers = get_azure_token_credentials(
+    azure_token, credential, headers = _get_azure_token_credentials(
         key_vault_uri=key_vault_uri,
         key_vault_tenant_id=key_vault_tenant_id,
         key_vault_client_id=key_vault_client_id,
