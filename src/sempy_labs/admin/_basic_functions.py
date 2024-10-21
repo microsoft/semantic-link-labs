@@ -1,5 +1,5 @@
 import sempy.fabric as fabric
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Tuple
 from uuid import UUID
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
@@ -10,10 +10,11 @@ from sempy_labs._helper_functions import (
 import numpy as np
 import pandas as pd
 import time
+import urllib.parse
 
 
 def list_workspaces(
-    top: Optional[int] = 5000, skip: Optional[int] = None
+    top: Optional[int] = 5000, filter: Optional[str] = None, skip: Optional[int] = None,
 ) -> pd.DataFrame:
     """
     Lists workspaces for the organization. This function is the admin version of list_workspaces.
@@ -22,6 +23,8 @@ def list_workspaces(
     ----------
     top : int, default=5000
         Returns only the first n results. This parameter is mandatory and must be in the range of 1-5000.
+    filter : str, default=None
+        Returns a subset of a results based on `Odata filter <https://docs.oasis-open.org/odata/odata/v4.01/odata-v4.01-part2-url-conventions.html#sec_SystemQueryOptions>`_ query parameter condition.
     skip : int, default=None
         Skips the first n results. Use with top to fetch results beyond the first 5000.
 
@@ -48,6 +51,8 @@ def list_workspaces(
     url = f"/v1.0/myorg/admin/groups?$top={top}"
     if skip is not None:
         url = f"{url}&$skip={skip}"
+    if filter is not None:
+        url = f"{url}&$filter={filter}"
 
     client = fabric.PowerBIRestClient()
     response = client.get(url)
@@ -628,11 +633,8 @@ def list_item_access_details(
 
     # https://learn.microsoft.com/en-us/rest/api/fabric/admin/items/list-item-access-details?tabs=HTTP
 
-    workspace = fabric.resolve_workspace_name(workspace)
-    workspace_id = fabric.resolve_workspace_id(workspace)
-    item_id = fabric.resolve_item_id(
-        item_name=item_name, type=type, workspace=workspace
-    )
+    workspace_name, workspace_id = _resolve_workspace_name_and_id(workspace)
+    item_id = _resolve_item_id(item_name=item_name, type=type, workspace=workspace_name)
 
     df = pd.DataFrame(
         columns=[
@@ -747,8 +749,7 @@ def list_workspace_access_details(
 
     # https://learn.microsoft.com/en-us/rest/api/fabric/admin/workspaces/list-workspace-access-details?tabs=HTTP
 
-    workspace_name = fabric.resolve_workspace_name(workspace)
-    workspace_id = fabric.resolve_workspace_id(workspace_name)
+    workspace_name, workspace_id = _resolve_workspace_name_and_id(workspace)
 
     df = pd.DataFrame(
         columns=[
@@ -777,6 +778,32 @@ def list_workspace_access_details(
         df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
 
     return df
+
+
+def _resolve_item_id(
+    item_name: str, type: str, workspace: Optional[str] = None
+) -> UUID:
+
+    workspace_name, workspace_id = _resolve_workspace_name_and_id(workspace)
+    dfI = list_items(workspace=workspace_name, type=type)
+    dfI_filt = dfI[dfI["Item Name"] == item_name]
+
+    if len(dfI_filt) == 0:
+        raise ValueError(
+            f"The '{item_name}' {type} does not exist within the '{workspace_name}' workspace."
+        )
+
+    return dfI_filt["Item Id"].iloc[0]
+
+
+def _resolve_workspace_name_and_id(workspace: str) -> Tuple[str, UUID]:
+
+    filter_condition = urllib.parse.quote(workspace)
+    dfW_filt = list_workspaces(filter=f"name eq '{filter_condition}'")
+    workspace_name = dfW_filt["Name"].iloc[0]
+    workspace_id = dfW_filt["Id"].iloc[0]
+
+    return workspace_name, workspace_id
 
 
 def list_items(
@@ -829,8 +856,7 @@ def list_items(
     )
 
     if workspace is not None:
-        workspace = fabric.resolve_workspace_name(workspace)
-        workspace_id = fabric.resolve_workspace_id(workspace)
+        workspace_name, workspace_id = _resolve_workspace_name_and_id(workspace)
         url += f"workspaceId={workspace_id}&"
     if capacity_name is not None:
         dfC = list_capacities()
