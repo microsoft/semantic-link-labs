@@ -57,7 +57,7 @@ files = response.json()
 notebook_files = {file['name'][:-6]: file['html_url'] for file in files if file['name'].endswith('.ipynb')}
 
 for file_name, file_url in notebook_files.items():
-    labs.import_notebook_from_web(notebook_name=file_name, url=file_url, workspace=workspace)
+    labs.import_notebook_from_web(notebook_name=file_name, url=file_url, workspace=workspace_name)
 ```
 
 ## Install the library in a Fabric notebook
