@@ -2114,7 +2114,7 @@ class TOMWrapper:
             if c.Parent.Name == table_name and c.Parent.DataCategory == "Time"
         )
 
-    def mark_as_date_table(self, table_name: str, column_name: str):
+    def mark_as_date_table(self, table_name: str, column_name: str, validate: bool = False):
         """
         Marks a table as a `date table <https://learn.microsoft.com/power-bi/transform-model/desktop-date-tables>`_.
 
@@ -2124,6 +2124,8 @@ class TOMWrapper:
             Name of the table.
         column_name : str
             Name of the date column in the table.
+        validate : bool, default=False
+            If True, performs a validation on if the the date table is viable.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
@@ -2134,31 +2136,32 @@ class TOMWrapper:
                 f"{icons.red_dot} The column specified in the 'column_name' parameter in this function must be of DateTime data type."
             )
 
-        daxQuery = f"""
-        define measure '{table_name}'[test] = 
-        var mn = MIN('{table_name}'[{column_name}])
-        var ma = MAX('{table_name}'[{column_name}])
-        var x = COUNTROWS(DISTINCT('{table_name}'[{column_name}]))
-        var y = DATEDIFF(mn, ma, DAY) + 1
-        return if(y = x, 1,0)
+        if validate:
+            dax_query = f"""
+            define measure '{table_name}'[test] = 
+            var mn = MIN('{table_name}'[{column_name}])
+            var ma = MAX('{table_name}'[{column_name}])
+            var x = COUNTROWS(DISTINCT('{table_name}'[{column_name}]))
+            var y = DATEDIFF(mn, ma, DAY) + 1
+            return if(y = x, 1,0)
 
-        EVALUATE
-        SUMMARIZECOLUMNS(
-        "1",[test]
-        )
-        """
-        df = fabric.evaluate_dax(
-            dataset=self._dataset, workspace=self._workspace, dax_string=daxQuery
-        )
-        value = df["1"].iloc[0]
-        if value != "1":
-            raise ValueError(
-                f"{icons.red_dot} The '{column_name}' within the '{table_name}' table does not contain contiguous date values."
+            EVALUATE
+            SUMMARIZECOLUMNS(
+            "1",[test]
             )
+            """
+            df = fabric.evaluate_dax(
+                dataset=self._dataset, workspace=self._workspace, dax_string=dax_query
+            )
+            value = df["[1]"].iloc[0]
+            if value != "1":
+                raise ValueError(
+                    f"{icons.red_dot} The '{column_name}' within the '{table_name}' table does not contain contiguous date values."
+                )
 
         # Mark as a date table
         t.DataCategory = "Time"
-        c.Columns[column_name].IsKey = True
+        c.IsKey = True
         print(
             f"{icons.green_dot} The '{table_name}' table has been marked as a date table using the '{column_name}' column as its primary date key."
         )
