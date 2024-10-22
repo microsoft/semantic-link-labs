@@ -148,10 +148,25 @@ def delete_warehouse(name: str, workspace: Optional[str] = None):
     )
 
 
-def get_warehouse_tables(warehouse: str, workspace: Optional[str] = None):
+def get_warehouse_tables(warehouse: str, workspace: Optional[str] = None) -> pd.DataFrame:
 
-    if workspace is None:
-        workspace = fabric.resolve_workspace_name(workspace)
+    """
+    Shows a list of the tables in the Fabric warehouse.
+
+    Parameters
+    ----------
+    warehouse : str
+        Name of the Fabric warehouse.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of the tables in the Fabric warehouse.
+    """
 
     from sempy_labs._sql import ConnectWarehouse
 
@@ -167,10 +182,24 @@ def get_warehouse_tables(warehouse: str, workspace: Optional[str] = None):
     return df
 
 
-def get_warehouse_columns(warehouse: str, workspace: Optional[str] = None):
+def get_warehouse_columns(warehouse: str, workspace: Optional[str] = None) -> pd.DataFrame:
+    """
+    Shows a list of the columns in each table within the Fabric warehouse.
 
-    if workspace is None:
-        workspace = fabric.resolve_workspace_name(workspace)
+    Parameters
+    ----------
+    warehouse : str
+        Name of the Fabric warehouse.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of the columns in each table within the Fabric warehouse.
+    """
 
     from sempy_labs._sql import ConnectWarehouse
 
