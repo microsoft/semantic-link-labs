@@ -27,7 +27,15 @@ def get_report_datasources(
     """
 
     df = pd.DataFrame(
-        columns=["Report Name", "Report Id", "Datasource Id", "Datasource Type", "Gateway Id", "Server", "Database"]
+        columns=[
+            "Report Name",
+            "Report Id",
+            "Datasource Id",
+            "Datasource Type",
+            "Gateway Id",
+            "Server",
+            "Database",
+        ]
     )
 
     if workspace is None:

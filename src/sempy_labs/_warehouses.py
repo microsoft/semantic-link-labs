@@ -146,3 +146,44 @@ def delete_warehouse(name: str, workspace: Optional[str] = None):
     print(
         f"{icons.green_dot} The '{name}' warehouse within the '{workspace}' workspace has been deleted."
     )
+
+
+def get_warehouse_tables(warehouse: str, workspace: Optional[str] = None):
+
+    if workspace is None:
+        workspace = fabric.resolve_workspace_name(workspace)
+
+    from sempy_labs._sql import ConnectWarehouse
+
+    with ConnectWarehouse(warehouse=warehouse, workspace=workspace) as sql:
+        df = sql.query(
+            """
+        SELECT TABLE_SCHEMA, TABLE_NAME, TABLE_TYPE
+        FROM INFORMATION_SCHEMA.TABLES
+        WHERE TABLE_TYPE = 'BASE TABLE'
+        """
+        )
+
+    return df
+
+
+def get_warehouse_columns(warehouse: str, workspace: Optional[str] = None):
+
+    if workspace is None:
+        workspace = fabric.resolve_workspace_name(workspace)
+
+    from sempy_labs._sql import ConnectWarehouse
+
+    with ConnectWarehouse(warehouse=warehouse, workspace=workspace) as sql:
+        df = sql.query(
+            """
+        SELECT t.TABLE_SCHEMA, t.TABLE_NAME, c.COLUMN_NAME, c.DATA_TYPE, c.IS_NULLABLE, c.CHARACTER_MAXIMUM_LENGTH
+        FROM INFORMATION_SCHEMA.TABLES AS t
+        LEFT JOIN INFORMATION_SCHEMA.COLUMNS AS c
+        ON t.TABLE_NAME = c.TABLE_NAME
+        AND t.TABLE_SCHEMA = c.TABLE_SCHEMA
+        WHERE t.TABLE_TYPE = 'BASE TABLE'
+        """
+        )
+
+    return df
