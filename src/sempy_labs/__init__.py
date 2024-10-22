@@ -21,6 +21,8 @@ from sempy_labs._warehouses import (
     create_warehouse,
     list_warehouses,
     delete_warehouse,
+    get_warehouse_columns,
+    get_warehouse_tables,
 )
 from sempy_labs._data_pipelines import (
     list_data_pipelines,
@@ -379,4 +381,6 @@ __all__ = [
     "create_resource_group",
     "list_workloads",
     "patch_workload",
+    "get_warehouse_columns",
+    "get_warehouse_tables",
 ]

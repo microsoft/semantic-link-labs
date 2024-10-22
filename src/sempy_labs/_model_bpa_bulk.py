@@ -149,7 +149,10 @@ def run_model_bpa_bulk(
                     f"{icons.in_progress} Saving the Model BPA results of the '{wksp}' workspace to the '{output_table}' within the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace..."
                 )
 
-                schema = {key.replace(' ', '_'): value for key, value in icons.bpa_schema.items()}
+                schema = {
+                    key.replace(" ", "_"): value
+                    for key, value in icons.bpa_schema.items()
+                }
 
                 save_as_delta_table(
                     dataframe=df,

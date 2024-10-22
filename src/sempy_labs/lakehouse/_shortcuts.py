@@ -171,7 +171,7 @@ def delete_shortcut(
     """
     Deletes a shortcut.
 
-    This is a wrapper function for the following API: `OneLake Shortcuts - Delete Shortcut <https://learn.microsoft.com/rest/api/fabric/core/onelake-shortcuts/delete-shortcut`_.    
+    This is a wrapper function for the following API: `OneLake Shortcuts - Delete Shortcut <https://learn.microsoft.com/rest/api/fabric/core/onelake-shortcuts/delete-shortcut`_.
 
     Parameters
     ----------

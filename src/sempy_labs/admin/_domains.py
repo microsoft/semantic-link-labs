@@ -9,7 +9,7 @@ from uuid import UUID
 
 def resolve_domain_id(domain_name: str) -> UUID:
     """
-    Obtains the domain Id for a given domain name.    
+    Obtains the domain Id for a given domain name.
 
     Parameters
     ----------
