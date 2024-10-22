@@ -151,7 +151,7 @@ def delete_warehouse(name: str, workspace: Optional[str] = None):
 def get_warehouse_tables(warehouse: str, workspace: Optional[str] = None) -> pd.DataFrame:
 
     """
-    Shows a list of the tables in the Fabric warehouse.
+    Shows a list of the tables in the Fabric warehouse. This function is based on INFORMATION_SCHEMA.TABLES.
 
     Parameters
     ----------
@@ -184,7 +184,7 @@ def get_warehouse_tables(warehouse: str, workspace: Optional[str] = None) -> pd.
 
 def get_warehouse_columns(warehouse: str, workspace: Optional[str] = None) -> pd.DataFrame:
     """
-    Shows a list of the columns in each table within the Fabric warehouse.
+    Shows a list of the columns in each table within the Fabric warehouse. This function is based on INFORMATION_SCHEMA.COLUMNS.
 
     Parameters
     ----------
