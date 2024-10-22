@@ -14,7 +14,9 @@ import urllib.parse
 
 
 def list_workspaces(
-    top: Optional[int] = 5000, filter: Optional[str] = None, skip: Optional[int] = None,
+    top: Optional[int] = 5000,
+    filter: Optional[str] = None,
+    skip: Optional[int] = None,
 ) -> pd.DataFrame:
     """
     Lists workspaces for the organization. This function is the admin version of list_workspaces.
