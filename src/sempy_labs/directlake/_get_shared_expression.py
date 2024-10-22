@@ -52,7 +52,7 @@ def get_shared_expression(
 
     sh = (
         'let\n\tdatabase = Sql.Database("'
-        + sqlEPCS.upper()
+        + sqlEPCS
         + '", "'
         + sqlepid
         + '")\nin\n\tdatabase'

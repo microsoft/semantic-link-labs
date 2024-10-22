@@ -106,9 +106,24 @@ def migrate_tables_columns_to_semantic_model(
     with connect_semantic_model(
         dataset=new_dataset, readonly=False, workspace=new_dataset_workspace
     ) as tom:
+
+        # Additional updates
+        tom.set_annotation(
+            object=tom.model, name="__PBI_TimeIntelligenceEnabled", value="0"
+        )
+        tom.set_annotation(
+            object=tom.model, name="PBI_QueryOrder", value='["DatabaseQuery"]'
+        )
+        tom.add_translation(language="en-US")
+        # Begin migration
         if not any(e.Name == "DatabaseQuery" for e in tom.model.Expressions):
             tom.add_expression("DatabaseQuery", expression=shEx)
             print(f"{icons.green_dot} The 'DatabaseQuery' expression has been added.")
+            tom.set_annotation(
+                object=tom.model.Expressions["DatabaseQuery"],
+                name="PBI_IncludeFutureArtifacts",
+                value="False",
+            )
 
         for i, r in dfT_filt.iterrows():
             tName = r["Name"]

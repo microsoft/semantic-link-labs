@@ -918,6 +918,7 @@ class TOMWrapper:
         part = TOM.Partition()
         part.Name = name
         part.Source = TOM.CalculationGroupSource()
+        part.Mode = TOM.ModeType.Import
         tbl.Partitions.Add(part)
 
         sortCol = "Ordinal"
@@ -2702,6 +2703,7 @@ class TOMWrapper:
 
         par = TOM.Partition()
         par.Name = name
+        par.Mode = TOM.ModeType.Import
 
         parSource = TOM.CalculatedPartitionSource()
         parSource.Expression = expression

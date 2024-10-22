@@ -337,6 +337,7 @@ def migrate_field_parameters(
             try:
                 par = TOM.Partition()
                 par.Name = tName
+                par.Mode = TOM.ModeType.Import
 
                 parSource = TOM.CalculatedPartitionSource()
                 par.Source = parSource
@@ -345,7 +346,6 @@ def migrate_field_parameters(
                 tbl = TOM.Table()
                 tbl.Name = tName
                 tbl.LineageTag = generate_guid()
-                tbl.SourceLineageTag = generate_guid()
                 tbl.Partitions.Add(par)
 
                 columns = ["Value1", "Value2", "Value3"]
@@ -356,7 +356,6 @@ def migrate_field_parameters(
                     col.SourceColumn = "[" + colName + "]"
                     col.DataType = TOM.DataType.String
                     col.LineageTag = generate_guid()
-                    col.SourceLineageTag = generate_guid()
 
                     tbl.Columns.Add(col)
 

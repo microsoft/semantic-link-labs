@@ -65,7 +65,13 @@ def create_blank_semantic_model(
             "compatibilityLevel": {compatibility_level},
             "model": {{
             "culture": "en-US",
-            "defaultPowerBIDataSourceVersion": "powerBI_V3"
+            "collation": "Latin1_General_100_BIN2_UTF8",
+            "dataAccessOptions": {{
+                "legacyRedirects": true,
+                "returnErrorValuesAsNull": true,
+            }},
+            "defaultPowerBIDataSourceVersion": "powerBI_V3",
+            "sourceQueryCulture": "en-US",
             }}
         }}
         }}
