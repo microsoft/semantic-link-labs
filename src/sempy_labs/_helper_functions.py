@@ -1250,7 +1250,7 @@ def _process_and_display_chart(df, title, widget):
         "mark": "bar",
         "encoding": {
             "y": {
-                "field": "Object Name", 
+                "field": "Object Name",
                 "type": "ordinal",
                 "axis": {
                     "labelFontSize": 15,
@@ -1288,9 +1288,6 @@ def _process_and_display_chart(df, title, widget):
     }"""
     )
 
-    # Clear the output and display the updated chart
-    # if clear:
-    #    clear_output(wait=True)
     with widget:
         widget.clear_output(wait=True)
-        _show_chart(spec, title=title)
+    _show_chart(spec, title=title)

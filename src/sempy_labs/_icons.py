@@ -93,14 +93,15 @@ sku_mapping = {
     "P4": "F512",
     "P5": "F1024",
 }
-refreshTypes = [
-    "full",
-    "automatic",
-    "dataOnly",
-    "calculate",
-    "clearValues",
-    "defragment",
-]
+
+refresh_type_mapping = {
+    "full": "full",
+    "auto": "automatic",
+    "data": "dataOnly",
+    "calc": "calculate",
+    "clear": "clearValues",
+    "defrag": "defragment",
+}
 
 itemTypes = {
     "DataPipeline": "dataPipelines",

@@ -79,13 +79,16 @@ def refresh_semantic_model(
 
         objects = objects + [extract_names(partition) for partition in partitions]
 
-    refresh_type = (
-        refresh_type.lower().replace("only", "Only").replace("values", "Values")
-    )
+    refresh_type = refresh_type.lower()
+    for prefix, mapped_value in icons.refresh_type_mapping.items():
+        if refresh_type.startswith(prefix):
+            refresh_type = mapped_value
+            break
 
-    if refresh_type not in icons.refreshTypes:
+    valid_refresh_types = list(icons.refresh_type_mapping.values())
+    if refresh_type not in valid_refresh_types:
         raise ValueError(
-            f"{icons.red_dot} Invalid refresh type. Refresh type must be one of these values: {icons.refreshTypes}."
+            f"{icons.red_dot} Invalid refresh type. Refresh type must be one of these values: {valid_refresh_types}."
         )
 
     def refresh_and_trace_dataset(
@@ -150,12 +153,19 @@ def refresh_semantic_model(
                 ].reset_index(drop=True)
                 df = pd.merge(
                     df,
-                    partition_map[["PartitionID", "Object Name"]],
+                    partition_map[
+                        ["PartitionID", "Object Name", "TableName", "PartitionName"]
+                    ],
                     left_on="Object ID",
                     right_on="PartitionID",
                     how="left",
                 )
                 _process_and_display_chart(df, title=title, widget=widget)
+                if stop:
+                    df.drop(["Object Name", "PartitionID"], axis=1, inplace=True)
+                    df.rename(columns={"TableName": "Table Name"}, inplace=True)
+                    df.rename(columns={"PartitionName": "Partition Name"}, inplace=True)
+                    return df
 
         # Start the refresh process
         if not visualize:
@@ -201,11 +211,9 @@ def refresh_semantic_model(
 
                     # Final log display after completion
                     time.sleep(5)
-                    clear_output(wait=True)
 
                     # Stop trace and display final chart
-
-                    display_trace_logs(
+                    final_df = display_trace_logs(
                         trace,
                         partition_map,
                         widget,
@@ -213,11 +221,10 @@ def refresh_semantic_model(
                         stop=True,
                     )
 
-            print(
-                f"{icons.green_dot} Refresh of the '{dataset}' semantic model within the '{workspace}' workspace is complete."
-            )
-
-            return df
+                    print(
+                        f"{icons.green_dot} Refresh of the '{dataset}' semantic model within the '{workspace}' workspace is complete."
+                    )
+                    return final_df
 
         # For non-visualize case, only check refresh status
         else:
@@ -239,7 +246,7 @@ def refresh_semantic_model(
                 f"{icons.green_dot} Refresh of the '{dataset}' semantic model within the '{workspace}' workspace is complete."
             )
 
-    refresh_and_trace_dataset(
+    final_output = refresh_and_trace_dataset(
         dataset=dataset,
         workspace=workspace,
         refresh_type=refresh_type,
@@ -249,6 +256,8 @@ def refresh_semantic_model(
         objects=objects,
         visualize=visualize,
     )
+
+    return final_output
 
 
 @log
