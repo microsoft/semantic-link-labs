@@ -30,7 +30,7 @@ def get_shared_expression(
     workspace = fabric.resolve_workspace_name(workspace)
     if lakehouse is None:
         lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse = resolve_lakehouse_name(lakehouse_id)
+        lakehouse = resolve_lakehouse_name(lakehouse_id, workspace)
 
     dfL = list_lakehouses(workspace=workspace)
     lakeDetail = dfL[dfL["Lakehouse Name"] == lakehouse]
@@ -39,6 +39,12 @@ def get_shared_expression(
     sqlepid = lakeDetail["SQL Endpoint ID"].iloc[0]
     provStatus = lakeDetail["SQL Endpoint Provisioning Status"].iloc[0]
 
+    parts = sqlEPCS.split(".", 1)
+    if parts:
+        parts[0] = parts[0].upper()
+
+    sqlEPCS = ".".join(parts)
+
     if provStatus == "InProgress":
         raise ValueError(
             f"{icons.red_dot} The SQL Endpoint for the '{lakehouse}' lakehouse within the '{workspace}' workspace has not yet been provisioned. Please wait until it has been provisioned."
@@ -46,7 +52,7 @@ def get_shared_expression(
 
     sh = (
         'let\n\tdatabase = Sql.Database("'
-        + sqlEPCS
+        + sqlEPCS.upper()
         + '", "'
         + sqlepid
         + '")\nin\n\tdatabase'

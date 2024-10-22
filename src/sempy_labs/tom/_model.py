@@ -2114,7 +2114,9 @@ class TOMWrapper:
             if c.Parent.Name == table_name and c.Parent.DataCategory == "Time"
         )
 
-    def mark_as_date_table(self, table_name: str, column_name: str, validate: bool = False):
+    def mark_as_date_table(
+        self, table_name: str, column_name: str, validate: bool = False
+    ):
         """
         Marks a table as a `date table <https://learn.microsoft.com/power-bi/transform-model/desktop-date-tables>`_.
 
