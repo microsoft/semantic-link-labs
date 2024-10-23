@@ -646,11 +646,11 @@ def model_bpa_rules(
             ),
             (
                 "Maintenance",
-                "Column",
+                ["Column", "Measure", "Table"],
                 "Info",
                 "Visible objects with no description",
                 lambda obj, tom: obj.IsHidden is False and len(obj.Description) == 0,
-                "Calculation groups have no function unless they have calculation items.",
+                "Add descriptions to objects. These descriptions are shown on hover within the Field List in Power BI Desktop. Additionally, you can leverage these descriptions to create an automated data dictionary.",
             ),
             (
                 "Formatting",
