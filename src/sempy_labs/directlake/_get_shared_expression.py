@@ -30,7 +30,7 @@ def get_shared_expression(
     workspace = fabric.resolve_workspace_name(workspace)
     if lakehouse is None:
         lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse = resolve_lakehouse_name(lakehouse_id)
+        lakehouse = resolve_lakehouse_name(lakehouse_id, workspace)
 
     dfL = list_lakehouses(workspace=workspace)
     lakeDetail = dfL[dfL["Lakehouse Name"] == lakehouse]
@@ -38,6 +38,12 @@ def get_shared_expression(
     sqlEPCS = lakeDetail["SQL Endpoint Connection String"].iloc[0]
     sqlepid = lakeDetail["SQL Endpoint ID"].iloc[0]
     provStatus = lakeDetail["SQL Endpoint Provisioning Status"].iloc[0]
+
+    parts = sqlEPCS.split(".", 1)
+    if parts:
+        parts[0] = parts[0].upper()
+
+    sqlEPCS = ".".join(parts)
 
     if provStatus == "InProgress":
         raise ValueError(

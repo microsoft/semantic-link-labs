@@ -282,6 +282,8 @@ def migrate_field_parameters(
     if new_dataset_workspace is None:
         new_dataset_workspace = workspace
 
+    icons.sll_tags.append("DirectLakeMigration")
+
     dfC = fabric.list_columns(dataset=dataset, workspace=workspace)
     dfC["Column Object"] = format_dax_object_name(dfC["Table Name"], dfC["Column Name"])
     dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
@@ -337,6 +339,7 @@ def migrate_field_parameters(
             try:
                 par = TOM.Partition()
                 par.Name = tName
+                par.Mode = TOM.ModeType.Import
 
                 parSource = TOM.CalculatedPartitionSource()
                 par.Source = parSource
@@ -345,7 +348,6 @@ def migrate_field_parameters(
                 tbl = TOM.Table()
                 tbl.Name = tName
                 tbl.LineageTag = generate_guid()
-                tbl.SourceLineageTag = generate_guid()
                 tbl.Partitions.Add(par)
 
                 columns = ["Value1", "Value2", "Value3"]
@@ -356,7 +358,6 @@ def migrate_field_parameters(
                     col.SourceColumn = "[" + colName + "]"
                     col.DataType = TOM.DataType.String
                     col.LineageTag = generate_guid()
-                    col.SourceLineageTag = generate_guid()
 
                     tbl.Columns.Add(col)
 

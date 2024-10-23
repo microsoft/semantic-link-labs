@@ -113,6 +113,7 @@ def run_model_bpa(
         )
 
     if extended:
+        icons.sll_tags.append("ModelBPAExtended")
         with connect_semantic_model(
             dataset=dataset, workspace=workspace, readonly=False
         ) as tom:

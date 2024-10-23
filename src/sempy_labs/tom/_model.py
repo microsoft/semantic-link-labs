@@ -43,8 +43,6 @@ class TOMWrapper:
         self._workspace = workspace
         self._readonly = readonly
         self._tables_added = []
-        self._sll_prefix = "SLL_"
-        self._sll_tags = []
 
         self._tom_server = fabric.create_tom_server(
             readonly=readonly, workspace=workspace
@@ -918,6 +916,7 @@ class TOMWrapper:
         part = TOM.Partition()
         part.Name = name
         part.Source = TOM.CalculationGroupSource()
+        part.Mode = TOM.ModeType.Import
         tbl.Partitions.Add(part)
 
         sortCol = "Ordinal"
@@ -992,10 +991,13 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        cul = TOM.Culture()
-        cul.Name = language
-
         if not any(c.Name == language for c in self.model.Cultures):
+            cul = TOM.Culture()
+            cul.Name = language
+            lm = TOM.LinguisticMetadata()
+            lm.ContentType = TOM.ContentType.Json
+            lm.Content = f'{{"Version": "1.0.0", "Language": "{language}"}}'
+            cul.LinguisticMetadata = lm
             self.model.Cultures.Add(cul)
 
     def add_perspective(self, perspective_name: str):
@@ -1650,7 +1652,6 @@ class TOMWrapper:
             print(
                 f"{icons.green_dot} The {property} property for the '{object.Parent.Name}'[{object.Name}] {str(object.ObjectType).lower()} has been translated into '{language}' as '{value}'."
             )
-        self._sll_tags.append("TranslateSemanticModel")
 
     def remove_translation(
         self,
@@ -2114,7 +2115,9 @@ class TOMWrapper:
             if c.Parent.Name == table_name and c.Parent.DataCategory == "Time"
         )
 
-    def mark_as_date_table(self, table_name: str, column_name: str):
+    def mark_as_date_table(
+        self, table_name: str, column_name: str, validate: bool = False
+    ):
         """
         Marks a table as a `date table <https://learn.microsoft.com/power-bi/transform-model/desktop-date-tables>`_.
 
@@ -2124,6 +2127,8 @@ class TOMWrapper:
             Name of the table.
         column_name : str
             Name of the date column in the table.
+        validate : bool, default=False
+            If True, performs a validation on if the the date table is viable.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
@@ -2134,31 +2139,32 @@ class TOMWrapper:
                 f"{icons.red_dot} The column specified in the 'column_name' parameter in this function must be of DateTime data type."
             )
 
-        daxQuery = f"""
-        define measure '{table_name}'[test] = 
-        var mn = MIN('{table_name}'[{column_name}])
-        var ma = MAX('{table_name}'[{column_name}])
-        var x = COUNTROWS(DISTINCT('{table_name}'[{column_name}]))
-        var y = DATEDIFF(mn, ma, DAY) + 1
-        return if(y = x, 1,0)
+        if validate:
+            dax_query = f"""
+            define measure '{table_name}'[test] = 
+            var mn = MIN('{table_name}'[{column_name}])
+            var ma = MAX('{table_name}'[{column_name}])
+            var x = COUNTROWS(DISTINCT('{table_name}'[{column_name}]))
+            var y = DATEDIFF(mn, ma, DAY) + 1
+            return if(y = x, 1,0)
 
-        EVALUATE
-        SUMMARIZECOLUMNS(
-        "1",[test]
-        )
-        """
-        df = fabric.evaluate_dax(
-            dataset=self._dataset, workspace=self._workspace, dax_string=daxQuery
-        )
-        value = df["1"].iloc[0]
-        if value != "1":
-            raise ValueError(
-                f"{icons.red_dot} The '{column_name}' within the '{table_name}' table does not contain contiguous date values."
+            EVALUATE
+            SUMMARIZECOLUMNS(
+            "1",[test]
             )
+            """
+            df = fabric.evaluate_dax(
+                dataset=self._dataset, workspace=self._workspace, dax_string=dax_query
+            )
+            value = df["[1]"].iloc[0]
+            if value != "1":
+                raise ValueError(
+                    f"{icons.red_dot} The '{column_name}' within the '{table_name}' table does not contain contiguous date values."
+                )
 
         # Mark as a date table
         t.DataCategory = "Time"
-        c.Columns[column_name].IsKey = True
+        c.IsKey = True
         print(
             f"{icons.green_dot} The '{table_name}' table has been marked as a date table using the '{column_name}' column as its primary date key."
         )
@@ -2697,6 +2703,7 @@ class TOMWrapper:
 
         par = TOM.Partition()
         par.Name = name
+        par.Mode = TOM.ModeType.Import
 
         parSource = TOM.CalculatedPartitionSource()
         parSource.Expression = expression
@@ -2954,7 +2961,7 @@ class TOMWrapper:
             runId = "1"
         self.set_annotation(object=self.model, name="Vertipaq_Run", value=runId)
 
-        self._sll_tags.append("VertipaqAnnotations")
+        icons.sll_tags.append("VertipaqAnnotations")
 
     def row_count(self, object: Union["TOM.Partition", "TOM.Table"]):
         """
@@ -4189,15 +4196,7 @@ class TOMWrapper:
             Name of the column to use for sorting. Must be of integer (Int64) data type.
         """
 
-        import Microsoft.AnalysisServices.Tabular as TOM
-
         sbc = self.model.Tables[table_name].Columns[sort_by_column]
-
-        if sbc.DataType != TOM.DataType.Int64:
-            raise ValueError(
-                f"{icons.red_dot} Invalid sort by column data type. The sort by column must be of 'Int64' data type."
-            )
-
         self.model.Tables[table_name].Columns[column_name].SortByColumn = sbc
 
     def remove_sort_by_column(self, table_name: str, column_name: str):
@@ -4508,27 +4507,26 @@ class TOMWrapper:
                     if self._column_map.get(c.LineageTag)[1] != c.DataType:
                         self.add_changed_property(object=c, property="DataType")
 
-            ann_name = "PBI_ProTooling"
-            tags = [f"{self._sll_prefix}{a}" for a in self._sll_tags]
+            tags = [f"{icons.sll_prefix}{a}" for a in icons.sll_tags]
             tags.append("SLL")
 
-            if not any(a.Name == ann_name for a in self.model.Annotations):
+            if not any(a.Name == icons.sll_ann_name for a in self.model.Annotations):
                 ann_list = make_list_unique(tags)
                 new_ann_value = str(ann_list).replace("'", '"')
                 self.set_annotation(
-                    object=self.model, name=ann_name, value=new_ann_value
+                    object=self.model, name=icons.sll_ann_name, value=new_ann_value
                 )
             else:
                 try:
                     ann_value = self.get_annotation_value(
-                        object=self.model, name=ann_name
+                        object=self.model, name=icons.sll_ann_name
                     )
                     ann_list = ast.literal_eval(ann_value)
                     ann_list += tags
                     ann_list = make_list_unique(ann_list)
                     new_ann_value = str(ann_list).replace("'", '"')
                     self.set_annotation(
-                        object=self.model, name=ann_name, value=new_ann_value
+                        object=self.model, name=icons.sll_ann_name, value=new_ann_value
                     )
                 except Exception:
                     pass

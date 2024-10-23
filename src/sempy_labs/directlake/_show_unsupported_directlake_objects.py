@@ -59,13 +59,7 @@ def show_unsupported_direct_lake_objects(
     dfR["From Column Data Type"] = merged_from["Data Type"]
     dfR["To Column Data Type"] = merged_to["Data Type"]
 
-    dfR_filt = dfR[
-        (
-            (dfR["From Column Data Type"] == "DateTime")
-            | (dfR["To Column Data Type"] == "DateTime")
-        )
-        | (dfR["From Column Data Type"] != dfR["To Column Data Type"])
-    ]
+    dfR_filt = dfR[(dfR["From Column Data Type"] != dfR["To Column Data Type"])]
     r = dfR_filt[
         [
             "From Table",

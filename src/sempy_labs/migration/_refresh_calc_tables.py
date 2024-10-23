@@ -26,6 +26,7 @@ def refresh_calc_tables(dataset: str, workspace: Optional[str] = None):
 
     spark = SparkSession.builder.getOrCreate()
     workspace = fabric.resolve_workspace_name(workspace)
+    icons.sll_tags.append("DirectLakeMigration")
 
     @retry(
         sleep_time=1,

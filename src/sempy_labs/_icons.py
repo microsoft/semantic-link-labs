@@ -142,3 +142,7 @@ bpa_schema = {
     "RunId": data_type_long,
     "Timestamp": data_type_timestamp,
 }
+
+sll_ann_name = "PBI_ProTooling"
+sll_prefix = "SLL_"
+sll_tags = []
