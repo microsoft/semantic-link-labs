@@ -977,7 +977,7 @@ def list_activity_events(
         conditions.append(f"UserId{space}eq{space}{tic}{user_id_filter}{tic}")
 
     filter_value = (
-        f"&filter={f'{space}and{space}'.join(conditions)}" if conditions else ""
+        f"&$filter={f'{space}and{space}'.join(conditions)}" if conditions else ""
     )
 
     full_url = f"{base_url}?startDateTime={tic}{start_time}{tic}&endDateTime={tic}{end_time}{tic}{filter_value}"
