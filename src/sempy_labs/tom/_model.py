@@ -6,7 +6,7 @@ from datetime import datetime
 from sempy_labs._helper_functions import (
     format_dax_object_name,
     generate_guid,
-    make_list_unique,
+    _make_list_unique,
 )
 from sempy_labs._list_functions import list_relationships
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
@@ -4511,7 +4511,7 @@ class TOMWrapper:
             tags.append("SLL")
 
             if not any(a.Name == icons.sll_ann_name for a in self.model.Annotations):
-                ann_list = make_list_unique(tags)
+                ann_list = _make_list_unique(tags)
                 new_ann_value = str(ann_list).replace("'", '"')
                 self.set_annotation(
                     object=self.model, name=icons.sll_ann_name, value=new_ann_value
@@ -4523,7 +4523,7 @@ class TOMWrapper:
                     )
                     ann_list = ast.literal_eval(ann_value)
                     ann_list += tags
-                    ann_list = make_list_unique(ann_list)
+                    ann_list = _make_list_unique(ann_list)
                     new_ann_value = str(ann_list).replace("'", '"')
                     self.set_annotation(
                         object=self.model, name=icons.sll_ann_name, value=new_ann_value
