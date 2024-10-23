@@ -972,12 +972,14 @@ def list_activity_events(
     conditions = []
 
     if activity_filter is not None:
-        conditions.append(f"Activity{space}eq{space}{tic}{activity_filter}{tic}")
+        activity_filter_condition = urllib.parse.quote(activity_filter)
+        conditions.append(f"Activity{space}eq{space}{tic}{activity_filter_condition}{tic}")
     if user_id_filter is not None:
-        conditions.append(f"UserId{space}eq{space}{tic}{user_id_filter}{tic}")
+        user_id_filter_condition = urllib.parse.quote(user_id_filter)
+        conditions.append(f"UserId{space}eq{space}{tic}{user_id_filter_condition}{tic}")
 
     filter_value = (
-        f"&filter={f'{space}and{space}'.join(conditions)}" if conditions else ""
+        f"&$filter={f'{space}and{space}'.join(conditions)}" if conditions else ""
     )
 
     full_url = f"{base_url}?startDateTime={tic}{start_time}{tic}&endDateTime={tic}{end_time}{tic}{filter_value}"
