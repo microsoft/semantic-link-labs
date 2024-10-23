@@ -104,6 +104,8 @@ from sempy_labs._workspaces import (
 from sempy_labs._notebooks import (
     get_notebook_definition,
     import_notebook_from_web,
+    update_notebook_definition,
+    create_notebook,
 )
 from sempy_labs._sql import (
     ConnectWarehouse,
@@ -379,4 +381,6 @@ __all__ = [
     "create_resource_group",
     "list_workloads",
     "patch_workload",
+    "update_notebook_definition",
+    "create_notebook",
 ]

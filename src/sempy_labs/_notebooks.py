@@ -65,6 +65,7 @@ def import_notebook_from_web(
     url: str,
     description: Optional[str] = None,
     workspace: Optional[str] = None,
+    overwrite: bool = False,
 ):
     """
     Creates a new notebook within a workspace based on a Jupyter notebook hosted in the web.
@@ -85,16 +86,12 @@ def import_notebook_from_web(
         The name of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    overwrite : bool, default=False
+        If set to True, overwrites the existing notebook in the workspace if it exists.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-    client = fabric.FabricRestClient()
-    dfI = fabric.list_items(workspace=workspace, type="Notebook")
-    dfI_filt = dfI[dfI["Display Name"] == notebook_name]
-    if len(dfI_filt) > 0:
-        raise ValueError(
-            f"{icons.red_dot} The '{notebook_name}' already exists within the '{workspace}' workspace."
-        )
+    if workspace is None:
+        workspace = fabric.resolve_workspace_name(workspace)
 
     # Fix links to go to the raw github file
     starting_text = "https://github.com/"
@@ -107,11 +104,56 @@ def import_notebook_from_web(
     response = requests.get(url)
     if response.status_code != 200:
         raise FabricHTTPException(response)
-    file_content = response.content
-    notebook_payload = base64.b64encode(file_content)
+
+    dfI = fabric.list_items(workspace=workspace, type="Notebook")
+    dfI_filt = dfI[dfI["Display Name"] == notebook_name]
+    if len(dfI_filt) == 0:
+        create_notebook(
+            name=notebook_name,
+            notebook_content=response.content,
+            workspace=workspace,
+            description=description,
+        )
+    elif len(dfI_filt) > 0 and overwrite:
+        update_notebook_definition(
+            name=notebook_name, notebook_content=response.content, workspace=workspace
+        )
+    else:
+        raise ValueError(
+            f"{icons.red_dot} The '{notebook_name}' already exists within the '{workspace}' workspace and 'overwrite' is set to False."
+        )
+
+
+def create_notebook(
+    name: str,
+    notebook_content: str,
+    description: Optional[str] = None,
+    workspace: Optional[str] = None,
+):
+    """
+    Creates a new notebook with a definition within a workspace.
+
+    Parameters
+    ----------
+    name : str
+        The name of the notebook to be created.
+    notebook_content : str
+        The Jupyter notebook content (not in Base64 format).
+    description : str, default=None
+        The description of the notebook.
+        Defaults to None which does not place a description.
+    workspace : str, default=None
+        The name of the workspace.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    client = fabric.FabricRestClient()
+    notebook_payload = base64.b64encode(notebook_content)
 
     request_body = {
-        "displayName": notebook_name,
+        "displayName": name,
         "definition": {
             "format": "ipynb",
             "parts": [
@@ -131,5 +173,56 @@ def import_notebook_from_web(
     lro(client, response, status_codes=[201, 202])
 
     print(
-        f"{icons.green_dot} The '{notebook_name}' notebook was created within the '{workspace}' workspace."
+        f"{icons.green_dot} The '{name}' notebook was created within the '{workspace}' workspace."
+    )
+
+
+def update_notebook_definition(
+    name: str, notebook_content: str, workspace: Optional[str] = None
+):
+    """
+    Updates an existing notebook with a new definition.
+
+    Parameters
+    ----------
+    name : str
+        The name of the notebook to be created.
+    notebook_content : str
+        The Jupyter notebook content (not in Base64 format).
+    workspace : str, default=None
+        The name of the workspace.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    client = fabric.FabricRestClient()
+    notebook_payload = base64.b64encode(notebook_content)
+    notebook_id = fabric.resolve_item_id(
+        item_name=name, type="Notebook", workspace=workspace
+    )
+
+    request_body = {
+        "displayName": name,
+        "definition": {
+            "format": "ipynb",
+            "parts": [
+                {
+                    "path": "notebook-content.py",
+                    "payload": notebook_payload,
+                    "payloadType": "InlineBase64",
+                }
+            ],
+        },
+    }
+
+    response = client.post(
+        f"v1/workspaces/{workspace_id}/notebooks/{notebook_id}/updateDefinition",
+        json=request_body,
+    )
+
+    lro(client, response, return_status_code=True)
+
+    print(
+        f"{icons.green_dot} The '{name}' notebook was updated within the '{workspace}' workspace."
     )
