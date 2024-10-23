@@ -93,14 +93,15 @@ sku_mapping = {
     "P4": "F512",
     "P5": "F1024",
 }
-refreshTypes = [
-    "full",
-    "automatic",
-    "dataOnly",
-    "calculate",
-    "clearValues",
-    "defragment",
-]
+
+refresh_type_mapping = {
+    "full": "full",
+    "auto": "automatic",
+    "data": "dataOnly",
+    "calc": "calculate",
+    "clear": "clearValues",
+    "defrag": "defragment",
+}
 
 itemTypes = {
     "DataPipeline": "dataPipelines",
@@ -146,3 +147,17 @@ bpa_schema = {
 sll_ann_name = "PBI_ProTooling"
 sll_prefix = "SLL_"
 sll_tags = []
+base_cols = ["EventClass", "EventSubclass", "CurrentTime", "TextData"]
+end_cols = base_cols + [
+    "StartTime",
+    "EndTime",
+    "Duration",
+    "CpuTime",
+    "Success",
+    "IntegerData",
+    "ObjectID",
+]
+refresh_event_schema = {
+    "JobGraph": base_cols,
+    "ProgressReportEnd": end_cols,
+}

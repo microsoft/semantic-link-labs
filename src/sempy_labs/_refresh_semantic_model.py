@@ -1,11 +1,20 @@
 import sempy.fabric as fabric
 import time
-from sempy_labs._helper_functions import resolve_dataset_id
+from sempy_labs._helper_functions import (
+    resolve_dataset_id,
+    resolve_workspace_name_and_id,
+    _get_partition_map,
+    _process_and_display_chart,
+)
 from typing import Any, List, Optional, Union
 from sempy._utils._log import log
 import sempy_labs._icons as icons
-from sempy_labs._helper_functions import resolve_workspace_name_and_id
 from sempy.fabric.exceptions import FabricHTTPException
+import pandas as pd
+import warnings
+from IPython.display import clear_output
+import ipywidgets as widgets
+import json
 
 
 @log
@@ -18,6 +27,7 @@ def refresh_semantic_model(
     apply_refresh_policy: bool = True,
     max_parallelism: int = 10,
     workspace: Optional[str] = None,
+    visualize: bool = False,
 ):
     """
     Refreshes a semantic model.
@@ -44,6 +54,8 @@ def refresh_semantic_model(
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    visualize : bool, default=False
+        If True, displays a Gantt chart showing the refresh statistics for each table/partition.
     """
 
     workspace = fabric.resolve_workspace_name(workspace)
@@ -67,64 +79,185 @@ def refresh_semantic_model(
 
         objects = objects + [extract_names(partition) for partition in partitions]
 
-    refresh_type = (
-        refresh_type.lower().replace("only", "Only").replace("values", "Values")
-    )
-
-    if refresh_type not in icons.refreshTypes:
-        raise ValueError(
-            f"{icons.red_dot} Invalid refresh type. Refresh type must be one of these values: {icons.refreshTypes}."
-        )
-
-    if len(objects) == 0:
-        requestID = fabric.refresh_dataset(
-            dataset=dataset,
-            workspace=workspace,
-            refresh_type=refresh_type,
-            retry_count=retry_count,
-            apply_refresh_policy=apply_refresh_policy,
-            max_parallelism=max_parallelism,
-        )
-    else:
-        requestID = fabric.refresh_dataset(
-            dataset=dataset,
-            workspace=workspace,
-            refresh_type=refresh_type,
-            retry_count=retry_count,
-            apply_refresh_policy=apply_refresh_policy,
-            max_parallelism=max_parallelism,
-            objects=objects,
-        )
-    print(
-        f"{icons.in_progress} Refresh of the '{dataset}' semantic model within the '{workspace}' workspace is in progress..."
-    )
-    if len(objects) != 0:
-        print(objects)
-
-    while True:
-        requestDetails = fabric.get_refresh_execution_details(
-            dataset=dataset, refresh_request_id=requestID, workspace=workspace
-        )
-        status = requestDetails.status
-
-        # Check if the refresh has completed
-        if status == "Completed":
+    refresh_type = refresh_type.lower()
+    for prefix, mapped_value in icons.refresh_type_mapping.items():
+        if refresh_type.startswith(prefix):
+            refresh_type = mapped_value
             break
-        elif status == "Failed":
-            raise ValueError(
-                f"{icons.red_dot} The refresh of the '{dataset}' semantic model within the '{workspace}' workspace has failed."
+
+    valid_refresh_types = list(icons.refresh_type_mapping.values())
+    if refresh_type not in valid_refresh_types:
+        raise ValueError(
+            f"{icons.red_dot} Invalid refresh type. Refresh type must be one of these values: {valid_refresh_types}."
+        )
+
+    def refresh_and_trace_dataset(
+        dataset,
+        workspace,
+        refresh_type,
+        retry_count,
+        apply_refresh_policy,
+        max_parallelism,
+        objects,
+        visualize,
+    ):
+        # Ignore specific warnings
+        warnings.filterwarnings(
+            "ignore",
+            message="No trace logs have been recorded. Try starting the trace with a larger 'delay'",
+        )
+
+        def extract_failure_error():
+            error_messages = []
+            combined_messages = ""
+            final_message = f"{icons.red_dot} The refresh of the '{dataset}' semantic model within the '{workspace}' workspace has failed."
+            for _, r in fabric.get_refresh_execution_details(
+                refresh_request_id=request_id,
+                dataset=dataset,
+                workspace=workspace,
+            ).messages.iterrows():
+                error_messages.append(f"{r['Type']}: {r['Message']}")
+
+            if error_messages:
+                combined_messages = "\n".join(error_messages)
+            final_message += f"'\n' {combined_messages}"
+
+            return final_message
+
+        # Function to perform dataset refresh
+        def refresh_dataset():
+            return fabric.refresh_dataset(
+                dataset=dataset,
+                workspace=workspace,
+                refresh_type=refresh_type,
+                retry_count=retry_count,
+                apply_refresh_policy=apply_refresh_policy,
+                max_parallelism=max_parallelism,
+                objects=objects if objects else None,
             )
-        elif status == "Cancelled":
+
+        def check_refresh_status(request_id):
+            request_details = fabric.get_refresh_execution_details(
+                dataset=dataset, refresh_request_id=request_id, workspace=workspace
+            )
+            return request_details.status
+
+        def display_trace_logs(trace, partition_map, widget, title, stop=False):
+            if stop:
+                df = trace.stop()
+            else:
+                df = trace.get_trace_logs()
+            if not df.empty:
+                df = df[
+                    df["Event Subclass"].isin(["ExecuteSql", "Process"])
+                ].reset_index(drop=True)
+                df = pd.merge(
+                    df,
+                    partition_map[
+                        ["PartitionID", "Object Name", "TableName", "PartitionName"]
+                    ],
+                    left_on="Object ID",
+                    right_on="PartitionID",
+                    how="left",
+                )
+                _process_and_display_chart(df, title=title, widget=widget)
+                if stop:
+                    df.drop(["Object Name", "PartitionID"], axis=1, inplace=True)
+                    df.rename(columns={"TableName": "Table Name"}, inplace=True)
+                    df.rename(columns={"PartitionName": "Partition Name"}, inplace=True)
+                    return df
+
+        # Start the refresh process
+        if not visualize:
+            request_id = refresh_dataset()
+        print(
+            f"{icons.in_progress} Refresh of the '{dataset}' semantic model within the '{workspace}' workspace is in progress..."
+        )
+
+        # Monitor refresh progress and handle tracing if visualize is enabled
+        if visualize:
+            partition_map = _get_partition_map(dataset, workspace)
+            widget = widgets.Output()
+
+            with fabric.create_trace_connection(
+                dataset=dataset, workspace=workspace
+            ) as trace_connection:
+                with trace_connection.create_trace(icons.refresh_event_schema) as trace:
+                    trace.start()
+                    request_id = refresh_dataset()
+
+                    while True:
+                        status = check_refresh_status(request_id)
+                        # Check if the refresh has completed
+                        if status == "Completed":
+                            break
+                        elif status == "Failed":
+                            raise ValueError(extract_failure_error())
+                        elif status == "Cancelled":
+                            print(
+                                f"{icons.yellow_dot} The refresh of the '{dataset}' semantic model within the '{workspace}' workspace has been cancelled."
+                            )
+                            return
+
+                        # Capture and display logs in real-time
+                        display_trace_logs(
+                            trace,
+                            partition_map,
+                            widget,
+                            title="Refresh in progress...",
+                        )
+
+                        time.sleep(3)  # Wait before the next check
+
+                    # Final log display after completion
+                    time.sleep(5)
+
+                    # Stop trace and display final chart
+                    final_df = display_trace_logs(
+                        trace,
+                        partition_map,
+                        widget,
+                        title="Refresh Completed",
+                        stop=True,
+                    )
+
+                    print(
+                        f"{icons.green_dot} Refresh of the '{dataset}' semantic model within the '{workspace}' workspace is complete."
+                    )
+                    return final_df
+
+        # For non-visualize case, only check refresh status
+        else:
+            while True:
+                status = check_refresh_status(request_id)
+                if status == "Completed":
+                    break
+                elif status == "Failed":
+                    raise ValueError(extract_failure_error())
+                elif status == "Cancelled":
+                    print(
+                        f"{icons.yellow_dot} The refresh of the '{dataset}' semantic model within the '{workspace}' workspace has been cancelled."
+                    )
+                    return
+
+                time.sleep(3)
+
             print(
-                f"{icons.yellow_dot} The refresh of the '{dataset}' semantic model within the '{workspace}' workspace has been cancelled."
+                f"{icons.green_dot} Refresh of the '{dataset}' semantic model within the '{workspace}' workspace is complete."
             )
-            return
 
-        time.sleep(3)
-
-    print(
-        f"{icons.green_dot} Refresh of the '{dataset}' semantic model within the '{workspace}' workspace is complete."
+    final_output = refresh_and_trace_dataset(
+        dataset=dataset,
+        workspace=workspace,
+        refresh_type=refresh_type,
+        retry_count=retry_count,
+        apply_refresh_policy=apply_refresh_policy,
+        max_parallelism=max_parallelism,
+        objects=objects,
+        visualize=visualize,
     )
+
+    return final_output
 
 
 @log
@@ -173,3 +306,94 @@ def cancel_dataset_refresh(
     print(
         f"{icons.green_dot} The '{request_id}' refresh request for the '{dataset}' semantic model within the '{workspace}' workspace has been cancelled."
     )
+
+
+def get_semantic_model_refresh_history(
+    dataset: str, request_id: Optional[str] = None, workspace: Optional[str] = None
+):
+
+    workspace_name = fabric.resolve_workspace_name(workspace)
+    workspace_id = fabric.resolve_workspace_id(workspace_name)
+    df = pd.DataFrame(
+        columns=[
+            "Request Id",
+            "Refresh Type",
+            "Start Time",
+            "End Time",
+            "Status",
+            "Extended Status",
+        ]
+    )
+
+    dataset_id = fabric.resolve_item_id(
+        item_name=dataset, workspace=workspace_id, type="SemanticModel"
+    )
+    client = fabric.PowerBIRestClient()
+    response = client.get(
+        f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/refreshes"
+    )
+    data = []
+
+    for i in response.json().get("value", []):
+        error = i.get("serviceExceptionJson")
+        if error:
+            error_json = json.loads(error)
+        if request_id is None:
+            new_data = {
+                "Request Id": i.get("requestId"),
+                "Refresh Type": i.get("refreshType"),
+                "Start Time": i.get("startTime"),
+                "End Time": i.get("endTime"),
+                "Error Code": error_json.get("errorCode") if error else None,
+                "Error Description": (
+                    error_json.get("errorDescription") if error else None
+                ),
+                "Status": i.get("status"),
+                "Extended Status": i.get("extendedStatus"),
+                "Attempts": i.get("refreshAttempts"),
+            }
+            data.append(new_data)
+
+        elif request_id == i.get("requestId"):
+            for attempt in i.get("refreshAttempts", []):
+                attempt_error = attempt.get("serviceExceptionJson")
+                if attempt_error:
+                    attempt_error_json = json.loads(attempt_error)
+                new_data = {
+                    "Request Id": i.get("requestId"),
+                    "Refresh Type": i.get("refreshType"),
+                    "Start Time": i.get("startTime"),
+                    "End Time": i.get("endTime"),
+                    "Error Code": error_json.get("errorCode") if error else None,
+                    "Error Description": (
+                        error_json.get("errorDescription") if error else None
+                    ),
+                    "Status": i.get("status"),
+                    "Extended Status": i.get("extendedStatus"),
+                    "Attempt Id": attempt.get("attemptId"),
+                    "Attempt Start Time": attempt.get("startTime"),
+                    "Attempt End Time": attempt.get("endTime"),
+                    "Attempt Error Code": (
+                        attempt_error_json.get("errorCode") if attempt_error else None
+                    ),
+                    "Attempt Error Description": (
+                        attempt_error_json.get("errorDescription")
+                        if attempt_error
+                        else None
+                    ),
+                    "Type": attempt.get("type"),
+                }
+                data.append(new_data)
+
+    if data:
+        df = pd.DataFrame(data)
+
+    # date_cols = ["Start Time", "End Time"]
+    # df[date_cols] = df[date_cols].apply(pd.to_datetime)
+
+    if "Attempt Id" in df.columns:
+        df["Attempt Id"] = df["Attempt Id"].astype(int)
+        # date_cols = ["Attempt Start Time", "Attempt End Time"]
+        # df[date_cols] = df[date_cols].apply(pd.to_datetime)
+
+    return df

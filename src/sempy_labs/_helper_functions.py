@@ -13,6 +13,8 @@ from uuid import UUID
 import sempy_labs._icons as icons
 import urllib.parse
 from azure.core.credentials import TokenCredential, AccessToken
+import numpy as np
+from IPython.display import display, HTML
 
 
 def create_abfss_path(
@@ -1147,6 +1149,150 @@ def _get_max_run_id(lakehouse: str, table_name: str) -> int:
     return max_run_id
 
 
-def make_list_unique(my_list):
+def _make_list_unique(my_list):
 
     return list(set(my_list))
+
+
+def _get_partition_map(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
+
+    if workspace is None:
+        workspace = fabric.resolve_workspace_name()
+
+    partitions = fabric.evaluate_dax(
+        dataset=dataset,
+        workspace=workspace,
+        dax_string="""
+    select [ID] AS [PartitionID], [TableID], [Name] AS [PartitionName] from $system.tmschema_partitions
+    """,
+    )
+
+    tables = fabric.evaluate_dax(
+        dataset=dataset,
+        workspace=workspace,
+        dax_string="""
+    select [ID] AS [TableID], [Name] AS [TableName] from $system.tmschema_tables
+    """,
+    )
+
+    partition_map = pd.merge(partitions, tables, on="TableID", how="left")
+    partition_map["PartitionID"] = partition_map["PartitionID"].astype(str)
+    partition_counts = partition_map.groupby("TableID")["PartitionID"].transform(
+        "count"
+    )
+    partition_map["Object Name"] = partition_map.apply(
+        lambda row: (
+            f"'{row['TableName']}'[{row['PartitionName']}]"
+            if partition_counts[row.name] > 1
+            else row["TableName"]
+        ),
+        axis=1,
+    )
+    return partition_map
+
+
+def _show_chart(spec, title):
+
+    h = f"""
+    <!DOCTYPE html>
+    <html>
+        <head>
+            <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+            <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+            <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+            <style>
+                table, th, td {{
+                border: 10px solid #e7e9eb;
+                border-collapse: collapse;
+                }}
+            </style>
+        </head>
+        <body>
+            <table>
+                <tr>
+                    <td style="text-align: center;">
+                        <h1>{title}</h1>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <div id="vis"></div>
+                    </td>
+                </tr>
+            </table>    
+            <script type="text/javascript">
+                var spec = {spec};
+                var opt = {{"renderer": "canvas", "actions": false}};
+                vegaEmbed("#vis", spec, opt);
+            </script>
+        </body>
+    </html>"""
+
+    display(HTML(h))
+
+
+def _process_and_display_chart(df, title, widget):
+
+    # Convert time columns to milliseconds
+    df["Start"] = df["Start Time"].astype(np.int64) / int(1e6)
+    df["End"] = df["End Time"].astype(np.int64) / int(1e6)
+
+    # Calculate the time offset for proper Gantt chart rendering
+    Offset = min(df["Start"])
+    df["Start"] = df["Start"] - Offset
+    df["End"] = df["End"] - Offset
+
+    # Vega-Lite spec for Gantt chart
+    spec = (
+        """{
+        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+        "description": "A simple bar chart with ranged data (aka Gantt Chart).",
+        "data": { "values": """
+        + df.to_json(orient="records")
+        + """ },
+        "width": 700,
+        "height": 400,
+        "mark": "bar",
+        "encoding": {
+            "y": {
+                "field": "Object Name",
+                "type": "ordinal",
+                "axis": {
+                    "labelFontSize": 15,
+                    "titleFontSize": 20,
+                    "title": "Object"
+                }
+            },
+            "x": {
+                "field": "Start", 
+                "type": "quantitative", 
+                "title": "milliseconds",
+                "axis": {
+                    "titleFontSize": 20
+                }
+            },
+            "x2": {"field": "End"},
+            "color": {
+                "field": "Event Subclass",
+                "scale": {
+                    "domain": ["Process", "ExecuteSql"],
+                    "range": ["#FFC000","#0070C0"]
+                },
+                "legend": {
+                    "labelFontSize": 20,
+                    "titleFontSize": 20,
+                    "title": "Event Type"
+                }
+            },
+            "tooltip": [
+                {"field": "Duration", "type": "quantitative", "format": ","},
+                {"field": "Cpu Time", "type": "quantitative", "format": ","},
+                {"field": "Event Subclass", "type": "nominal"}
+            ]
+        }
+    }"""
+    )
+
+    with widget:
+        widget.clear_output(wait=True)
+    _show_chart(spec, title=title)

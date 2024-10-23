@@ -215,6 +215,7 @@ from sempy_labs._query_scale_out import (
 from sempy_labs._refresh_semantic_model import (
     refresh_semantic_model,
     cancel_dataset_refresh,
+    get_semantic_model_refresh_history,
 )
 from sempy_labs._translations import translate_semantic_model
 from sempy_labs._vertipaq import (
@@ -383,4 +384,5 @@ __all__ = [
     "patch_workload",
     "update_notebook_definition",
     "create_notebook",
+    "get_semantic_model_refresh_history",
 ]
