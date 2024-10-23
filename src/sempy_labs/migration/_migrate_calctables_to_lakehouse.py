@@ -282,6 +282,8 @@ def migrate_field_parameters(
     if new_dataset_workspace is None:
         new_dataset_workspace = workspace
 
+    icons.sll_tags.append("DirectLakeMigration")
+
     dfC = fabric.list_columns(dataset=dataset, workspace=workspace)
     dfC["Column Object"] = format_dax_object_name(dfC["Table Name"], dfC["Column Name"])
     dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)

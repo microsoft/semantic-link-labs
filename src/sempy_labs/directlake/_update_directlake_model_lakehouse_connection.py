@@ -53,6 +53,8 @@ def update_direct_lake_model_lakehouse_connection(
             f"Therefore it cannot be used to support the '{dataset}' semantic model within the '{workspace}' workspace."
         )
 
+    icons.sll_tags.append("UpdateDLConnection")
+
     shEx = get_shared_expression(lakehouse, lakehouse_workspace)
 
     with connect_semantic_model(

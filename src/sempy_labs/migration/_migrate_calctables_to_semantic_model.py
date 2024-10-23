@@ -64,6 +64,8 @@ def migrate_calc_tables_to_semantic_model(
         lakehouse_id = fabric.get_lakehouse_id()
         lakehouse = resolve_lakehouse_name(lakehouse_id, lakehouse_workspace)
 
+    icons.sll_tags.append("DirectLakeMigration")
+
     # Get calc tables but not field parameters
     dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
     dfP_filt = dfP[(dfP["Source Type"] == "Calculated")]

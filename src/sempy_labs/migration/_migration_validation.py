@@ -46,6 +46,8 @@ def migration_validation(
     if new_dataset_workspace is None:
         new_dataset_workspace = workspace
 
+    icons.sll_tags.append("DirectLakeMigration")
+
     dfA = list_semantic_model_objects(dataset=dataset, workspace=workspace)
     dfB = list_semantic_model_objects(
         dataset=new_dataset, workspace=new_dataset_workspace

@@ -130,6 +130,8 @@ def generate_direct_lake_semantic_model(
 
     dfLT = get_lakehouse_tables(lakehouse=lakehouse, workspace=lakehouse_workspace)
 
+    icons.sll_tags.append("GenerateDLModel")
+
     # Validate lakehouse tables
     for t in lakehouse_tables:
         if t not in dfLT["Table Name"].values:

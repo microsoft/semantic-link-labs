@@ -43,8 +43,6 @@ class TOMWrapper:
         self._workspace = workspace
         self._readonly = readonly
         self._tables_added = []
-        self._sll_prefix = "SLL_"
-        self._sll_tags = []
 
         self._tom_server = fabric.create_tom_server(
             readonly=readonly, workspace=workspace
@@ -993,10 +991,12 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        cul = TOM.Culture()
-        cul.Name = language
-
         if not any(c.Name == language for c in self.model.Cultures):
+            cul = TOM.Culture()
+            cul.Name = language
+            lm = TOM.LinguisticMetadata()
+            lm.ContentType = TOM.ContentType.Json
+            lm.Content = f'{{"Version": "1.0.0", "Language": "{language}"}}'
             self.model.Cultures.Add(cul)
 
     def add_perspective(self, perspective_name: str):
@@ -1651,7 +1651,6 @@ class TOMWrapper:
             print(
                 f"{icons.green_dot} The {property} property for the '{object.Parent.Name}'[{object.Name}] {str(object.ObjectType).lower()} has been translated into '{language}' as '{value}'."
             )
-        self._sll_tags.append("TranslateSemanticModel")
 
     def remove_translation(
         self,
@@ -2961,7 +2960,7 @@ class TOMWrapper:
             runId = "1"
         self.set_annotation(object=self.model, name="Vertipaq_Run", value=runId)
 
-        self._sll_tags.append("VertipaqAnnotations")
+        icons.sll_tags.append("VertipaqAnnotations")
 
     def row_count(self, object: Union["TOM.Partition", "TOM.Table"]):
         """
@@ -4507,27 +4506,26 @@ class TOMWrapper:
                     if self._column_map.get(c.LineageTag)[1] != c.DataType:
                         self.add_changed_property(object=c, property="DataType")
 
-            ann_name = "PBI_ProTooling"
-            tags = [f"{self._sll_prefix}{a}" for a in self._sll_tags]
+            tags = [f"{icons.sll_prefix}{a}" for a in icons.sll_tags]
             tags.append("SLL")
 
-            if not any(a.Name == ann_name for a in self.model.Annotations):
+            if not any(a.Name == icons.sll_ann_name for a in self.model.Annotations):
                 ann_list = make_list_unique(tags)
                 new_ann_value = str(ann_list).replace("'", '"')
                 self.set_annotation(
-                    object=self.model, name=ann_name, value=new_ann_value
+                    object=self.model, name=icons.sll_ann_name, value=new_ann_value
                 )
             else:
                 try:
                     ann_value = self.get_annotation_value(
-                        object=self.model, name=ann_name
+                        object=self.model, name=icons.sll_ann_name
                     )
                     ann_list = ast.literal_eval(ann_value)
                     ann_list += tags
                     ann_list = make_list_unique(ann_list)
                     new_ann_value = str(ann_list).replace("'", '"')
                     self.set_annotation(
-                        object=self.model, name=ann_name, value=new_ann_value
+                        object=self.model, name=icons.sll_ann_name, value=new_ann_value
                     )
                 except Exception:
                     pass

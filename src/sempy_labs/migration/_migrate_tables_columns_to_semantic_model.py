@@ -61,6 +61,8 @@ def migrate_tables_columns_to_semantic_model(
         lakehouse_id = fabric.get_lakehouse_id()
         lakehouse = resolve_lakehouse_name(lakehouse_id, lakehouse_workspace)
 
+    icons.sll_tags.append("DirectLakeMigration")
+
     # Check that lakehouse is attached to the notebook
     if not lakehouse_attached() and (lakehouse is None and lakehouse_workspace is None):
         raise ValueError(

@@ -55,6 +55,8 @@ def translate_semantic_model(
         columns=["Object Type", "Name", "Description", "Display Folder"]
     )
 
+    icons.sll_tags.append("TranslateSemanticModel")
+
     with connect_semantic_model(
         dataset=dataset, readonly=False, workspace=workspace
     ) as tom:

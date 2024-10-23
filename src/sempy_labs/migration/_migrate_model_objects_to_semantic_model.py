@@ -52,6 +52,8 @@ def migrate_model_objects_to_semantic_model(
     if new_dataset_workspace is None:
         new_dataset_workspace = workspace
 
+    icons.sll_tags.append("DirectLakeMigration")
+
     dfT = fabric.list_tables(dataset=dataset, workspace=workspace)
     dfC = fabric.list_columns(dataset=dataset, workspace=workspace)
     dfM = fabric.list_measures(dataset=dataset, workspace=workspace)
@@ -333,14 +335,6 @@ def migrate_model_objects_to_semantic_model(
                 elif isDirectLake and r.FromColumn.DataType != r.ToColumn.DataType:
                     print(
                         f"{icons.warning} The {relName} relationship was not created as Direct Lake does not support relationships based on columns with different data types."
-                    )
-                # Direct Lake using DateTime columns
-                elif isDirectLake and (
-                    r.FromColumn.DataType == TOM.DataType.DateTime
-                    or r.ToColumn.DataType == TOM.DataType.DateTime
-                ):
-                    print(
-                        f"{icons.red_dot} The {relName} relationship was not created as Direct Lake does not support relationships based on columns of DateTime data type."
                     )
                 # Columns do not exist in the new semantic model
                 elif not any(
