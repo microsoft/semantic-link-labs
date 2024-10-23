@@ -116,7 +116,7 @@ def migrate_tables_columns_to_semantic_model(
         tom.set_annotation(
             object=tom.model, name="PBI_QueryOrder", value='["DatabaseQuery"]'
         )
-        tom.add_translation(language="en-US")
+
         # Begin migration
         if not any(e.Name == "DatabaseQuery" for e in tom.model.Expressions):
             tom.add_expression("DatabaseQuery", expression=shEx)

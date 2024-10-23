@@ -997,6 +997,7 @@ class TOMWrapper:
             lm = TOM.LinguisticMetadata()
             lm.ContentType = TOM.ContentType.Json
             lm.Content = f'{{"Version": "1.0.0", "Language": "{language}"}}'
+            cul.LinguisticMetadata = lm
             self.model.Cultures.Add(cul)
 
     def add_perspective(self, perspective_name: str):

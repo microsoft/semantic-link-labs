@@ -64,16 +64,27 @@ def create_blank_semantic_model(
             "name": '{dataset}',
             "compatibilityLevel": {compatibility_level},
             "model": {{
-            "culture": "en-US",
-            "collation": "Latin1_General_100_BIN2_UTF8",
-            "dataAccessOptions": {{
-                "legacyRedirects": true,
-                "returnErrorValuesAsNull": true,
-            }},
-            "defaultPowerBIDataSourceVersion": "powerBI_V3",
-            "sourceQueryCulture": "en-US",
+                "cultures": [
+                    {{
+                        "name": "en-US",
+                        "linguisticMetadata": {{
+                            "content": {{
+                                "Version": "1.0.0",
+                                "Language": "en-US"
+                            }},
+                            "contentType": "json"
+                        }}
+                    }}
+                ],
+                "collation": "Latin1_General_100_BIN2_UTF8",
+                "dataAccessOptions": {{
+                    "legacyRedirects": true,
+                    "returnErrorValuesAsNull": true,
+                }},
+                "defaultPowerBIDataSourceVersion": "powerBI_V3",
+                "sourceQueryCulture": "en-US",
+                }}
             }}
-        }}
         }}
     }}
     """
