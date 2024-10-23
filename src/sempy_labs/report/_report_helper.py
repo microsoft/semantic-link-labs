@@ -5,6 +5,7 @@ import re
 import base64
 import json
 import requests
+from pyspark.sql.functions import col
 
 
 vis_type_mapping = {
@@ -252,3 +253,53 @@ def find_entity_property_pairs(data, result=None, keys_path=None):
             find_entity_property_pairs(item, result, keys_path)
 
     return result
+
+def get_aggtype_description(aggtype_id):
+    schema_url = "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/semanticQuery/1.2.0/schema.json"
+    response = requests.get(schema_url)
+    schema = response.json()
+    aggtypes_schema = schema.get("definitions", {}).get("QueryAggregateFunction", {})
+
+    aggtype_desc = "unknown"
+    for item in aggtypes_schema['anyOf']:
+        if item['const'] == aggtype_id:
+            aggtype_desc = item['description']
+
+    return aggtype_desc
+
+def get_expression(expr_json):
+    expr_type = list(expr_json.keys())[0] 
+    if expr_type == "Literal":
+        text = (expr_json.get('Literal', {})
+            .get('Value', {}))
+        expr = f"Text: {text[1:-1]}"
+
+    elif expr_type == "Aggregation":
+        entity = (expr_json.get('Aggregation', {})
+            .get('Expression', {})
+            .get('Column', {})
+            .get('Expression', {})
+            .get('SourceRef', {})
+            .get('Entity', 'Entity not found'))
+        column = (expr_json.get('Aggregation', {})
+            .get('Expression', {})
+            .get('Column', {})
+            .get('Property', 'Column not found'))
+        function_id = (expr_json.get('Aggregation', {})
+            .get('Function', 999))
+        function = get_aggtype_description(function_id)
+        expr = f"Field value: {function}('{entity}'[{column}])"
+
+    elif expr_type == "Measure":
+        entity = (expr_json.get('Measure', {})
+            .get('Expression', {})
+            .get('SourceRef', {})
+            .get('Entity', 'Entity not found'))
+        measure = (expr_json.get('Measure', {})
+            .get('Property', 'Measure not found'))
+        expr = f"Measure: '{entity}'[{measure}]"
+        
+    else:
+        expr = 'Unknown'
+
+    return expr
