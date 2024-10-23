@@ -1515,7 +1515,7 @@ def list_semantic_model_object_report_usage(
                 "Object Type": object_type,
             }
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-            df["Referenced Object Type"] = df["Referenced Object Type"].replace(
+            df["Object Type"] = df["Object Type"].replace(
                 "Attribute Hierarchy", "Column"
             )
             if object_type in ["Measure", "Calc Column", "Calc Table", "Hierarchy"]:
