@@ -11,10 +11,13 @@ import numpy as np
 import pandas as pd
 import time
 import urllib.parse
+from datetime import datetime
 
 
 def list_workspaces(
-    top: Optional[int] = 5000, filter: Optional[str] = None, skip: Optional[int] = None,
+    top: Optional[int] = 5000,
+    filter: Optional[str] = None,
+    skip: Optional[int] = None,
 ) -> pd.DataFrame:
     """
     Lists workspaces for the organization. This function is the admin version of list_workspaces.
@@ -938,6 +941,14 @@ def list_activity_events(
     pandas.DataFrame
         A pandas dataframe showing a list of audit activity events for a tenant.
     """
+
+    start_dt = datetime.strptime(start_time, "%Y-%m-%dT%H:%M:%S")
+    end_dt = datetime.strptime(end_time, "%Y-%m-%dT%H:%M:%S")
+
+    if not start_dt.date() == end_dt.date():
+        raise ValueError(
+            f"{icons.red_dot} Start and End Times must be within the same UTC day. Please refer to the documentation here: https://learn.microsoft.com/rest/api/power-bi/admin/get-activity-events#get-audit-activity-events-within-a-time-window-and-for-a-specific-activity-type-and-user-id-example"
+        )
 
     df = pd.DataFrame(
         columns=[
