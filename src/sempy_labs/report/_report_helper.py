@@ -254,18 +254,19 @@ def find_entity_property_pairs(data, result=None, keys_path=None):
 
     return result
 
-def get_aggtype_description(aggtype_id):
-    schema_url = "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/semanticQuery/1.2.0/schema.json"
-    response = requests.get(schema_url)
-    schema = response.json()
-    aggtypes_schema = schema.get("definitions", {}).get("QueryAggregateFunction", {})
+def get_agg_type_mapping():  
 
-    aggtype_desc = "unknown"
-    for item in aggtypes_schema['anyOf']:
-        if item['const'] == aggtype_id:
-            aggtype_desc = item['description']
+    schema_url = "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/semanticQuery/1.2.0/schema.json"  
+    response = requests.get(schema_url)  
+    schema = response.json()  
+    aggtypes_schema = schema.get("definitions", {}).get("QueryAggregateFunction", {})  
 
-    return aggtype_desc
+    agg_type_map = {}  
+    agg_type_map = {a.get('const'): a.get('description') for a in aggtypes_schema.get('anyOf', []) if 'const' in a and 'description' in a}  
+
+    return agg_type_map
+
+agg_type_map = get_agg_type_mapping()
 
 def get_expression(expr_json):
     expr_type = list(expr_json.keys())[0] 
@@ -287,7 +288,7 @@ def get_expression(expr_json):
             .get('Property', 'Column not found'))
         function_id = (expr_json.get('Aggregation', {})
             .get('Function', 999))
-        function = get_aggtype_description(function_id)
+        function = agg_type_map.get(function_id, "unknown")
         expr = f"Field value: {function}('{entity}'[{column}])"
 
     elif expr_type == "Measure":
