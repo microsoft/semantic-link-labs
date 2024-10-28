@@ -157,7 +157,7 @@ def get_lakehouse_tables(
     if extended:
         intColumns = ["Files", "Row Groups", "Table Size"]
         df[intColumns] = df[intColumns].astype(int)
-        df["SKU"] = guardrail["Fabric SKUs"].iloc[0]
+        df["SKU"] = guardrail["Fabric SKU"].iloc[0]
         df["Parquet File Guardrail"] = guardrail["Parquet files per table"].iloc[0]
         df["Row Group Guardrail"] = guardrail["Row groups per table"].iloc[0]
         df["Row Count Guardrail"] = (
