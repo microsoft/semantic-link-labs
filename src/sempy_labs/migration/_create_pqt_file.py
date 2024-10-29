@@ -81,14 +81,24 @@ def create_pqt_file(
         for e in tom.model.Expressions:
             expr_map[e.Name] = [str(e.Kind), e.Expression]
 
-        # Dataflows Gen2 max table limit is 50.
+        # Sort the table_map dictionary by key in ascending order
+        sorted_table_map = dict(sorted(table_map.items()))
+        # Dataflows Gen2 max power query limit is 50.
         max_length = 50
         table_chunks = [
-            dict(list(table_map.items())[i : i + max_length])
-            for i in range(0, len(table_map), max_length)
+            dict(list(sorted_table_map.items())[i : i + max_length])
+            for i in range(0, len(sorted_table_map), max_length)
+        ]
+        # Sort the expression_map dictionary by key in ascending order
+        sorted_expression_map = dict(sorted(expr_map.items()))
+
+        # Expressions also count as part of the power query so needs to be split up
+        expression_chunks = [
+            dict(list(sorted_expression_map.items())[i : i + max_length])
+            for i in range(0, len(sorted_expression_map), max_length)
         ]
 
-        def create_pqt(table_map: dict, expr_map: dict, file_name: str):
+        def create_pqt(table_map: dict, expr_map: dict, file_name: str, is_table: bool = True):
 
             class QueryMetadata:
                 def __init__(
@@ -126,23 +136,25 @@ def create_pqt_file(
             mdfileName = "MashupDocument.pq"
             mdFilePath = os.path.join(subFolderPath, mdfileName)
             sb = "section Section1;"
-            for t_name, query in table_map.items():
-                sb = f'{sb}\nshared #"{t_name}" = '
-                if query is not None:
-                    pQueryNoSpaces = (
-                        query.replace(" ", "")
-                        .replace("\n", "")
-                        .replace("\t", "")
-                        .replace("\r", "")
-                    )
-                    if pQueryNoSpaces.startswith('letSource=""'):
-                        query = 'let\n\tSource = ""\nin\n\tSource'
-                sb = f"{sb}{query};"
-
-            for e_name, kind_expr in expr_map.items():
-                expr = kind_expr[1]
-                sb = f'{sb}\nshared #"{e_name}" = {expr};'
-
+            
+            if is_table:
+                for t_name, query in table_map.items():
+                    sb = f'{sb}\nshared #"{t_name}" = '
+                    if query is not None:
+                        pQueryNoSpaces = (
+                            query.replace(" ", "")
+                            .replace("\n", "")
+                            .replace("\t", "")
+                            .replace("\r", "")
+                        )
+                        if pQueryNoSpaces.startswith('letSource=""'):
+                            query = 'let\n\tSource = ""\nin\n\tSource'
+                    sb = f"{sb}{query};"
+            else:
+                for e_name, kind_expr in expr_map.items():
+                    expr = kind_expr[1]
+                    sb = f'{sb}\nshared #"{e_name}" = {expr};'
+            
             with open(mdFilePath, "w") as file:
                 file.write(sb)
 
@@ -151,20 +163,22 @@ def create_pqt_file(
             mmFilePath = os.path.join(subFolderPath, mmfileName)
             queryMetadata = []
 
-            for t_name, query in table_map.items():
-                queryMetadata.append(
-                    QueryMetadata(t_name, None, None, None, True, False)
-                )
-            for e_name, kind_expr in expr_map.items():
-                e_kind = kind_expr[0]
-                if e_kind == "M":
+            if is_table:
+                for t_name, query in table_map.items():
                     queryMetadata.append(
-                        QueryMetadata(e_name, None, None, None, True, False)
+                        QueryMetadata(t_name, None, None, None, True, False)
                     )
-                else:
-                    queryMetadata.append(
-                        QueryMetadata(e_name, None, None, None, False, False)
-                    )
+            else:
+                for e_name, kind_expr in expr_map.items():
+                    e_kind = kind_expr[0]
+                    if e_kind == "M":
+                        queryMetadata.append(
+                            QueryMetadata(e_name, None, None, None, True, False)
+                        )
+                    else:
+                        queryMetadata.append(
+                            QueryMetadata(e_name, None, None, None, False, False)
+                        )
 
             rootObject = RootObject(
                 "en-US", "2.132.328.0", queryMetadata
@@ -220,9 +234,26 @@ def create_pqt_file(
                 f"{icons.green_dot} '{file_name}.pqt' has been created based on the '{dataset}' semantic model in the '{workspace}' workspace within the Files section of your lakehouse."
             )
 
-        a = 0
-        for t_map in table_chunks:
-            if a > 0:
-                file_name = f"{file_name}_{a}"
-            a += 1
-            create_pqt(t_map, expr_map, file_name=file_name)
+        def create_files(list_chunks, file_name,is_table):
+            a = 0
+            for l_map in list_chunks:
+                file_name_new =  f"{file_name}"
+                if a > 0 or (a == 0 and len(list_chunks) > 1):
+                    file_name_new = f"{file_name_new}_{a}"
+                else:
+                    file_name_new = f"{file_name_new}"
+                    
+                a += 1
+                # Make sure folder exists after first passthrough
+                folderPath = "/lakehouse/default/Files"
+                subFolderPath = os.path.join(folderPath, "pqtnewfolder")
+                os.makedirs(subFolderPath, exist_ok=True)
+                if is_table:
+                    create_pqt(l_map, None, file_name=file_name_new, is_table=is_table)
+                else:
+                    create_pqt(None, l_map, file_name=file_name_new, is_table=is_table)
+            return 
+
+
+        create_files(table_chunks, f"{file_name}_Tables", is_table=True)
+        create_files(expression_chunks, f"{file_name}_Expressions", is_table=False)
