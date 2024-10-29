@@ -544,7 +544,7 @@ def language_validate(language: str):
     return lang
 
 
-def resolve_workspace_name_and_id(workspace: Optional[str] = None) -> Tuple[str, str]:
+def resolve_workspace_name_and_id(workspace: Optional[str] | Optional[uuid] = None) -> Tuple[str, str]:
     """
     Obtains the name and ID of the Fabric workspace.
 
@@ -563,6 +563,10 @@ def resolve_workspace_name_and_id(workspace: Optional[str] = None) -> Tuple[str,
 
     if workspace is None:
         workspace_id = fabric.get_workspace_id()
+        workspace = fabric.resolve_workspace_name(workspace_id)
+    # Workspace Id
+    if len(workspace) == 36 and all(workspace[i] == '-' for i in [8, 13, 18, 23]):
+        workspace_id = workspace
         workspace = fabric.resolve_workspace_name(workspace_id)
     else:
         workspace_id = fabric.resolve_workspace_id(workspace)
