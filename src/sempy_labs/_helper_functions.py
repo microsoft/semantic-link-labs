@@ -209,6 +209,43 @@ def resolve_dataset_name(dataset_id: UUID, workspace: Optional[str] = None) -> s
     return obj
 
 
+def resolve_dataflow_name_and_id(dataflow: str, workspace: Optional[str] = None) -> Tuple[str, str]:
+    """
+    Obtains the name and ID of the dataflow.
+
+    Parameters
+    ----------
+    dataflow : str
+        The name of the dataflow.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    Tuple[str, str]
+        The dataflow name and ID.
+    """
+
+    if workspace is None:
+        workspace_id = fabric.get_workspace_id()
+        workspace = fabric.resolve_workspace_name(workspace_id)
+    else:
+        workspace, workspace_id = resolve_workspace_name_and_id(workspace)
+    
+    dataflows = list_dataflows(workspace)
+    filtered_dataflows = dataflows[(dataflows["Dataflow Name"].str.lower() == dataflow.lower()) | (dataflows["Dataflow Id"] == dataflow)]
+
+    if filtered_dataflows.empty:
+        return "", ""
+
+    dataflow = filtered_dataflows["Dataflow Name"].iloc[0]
+    dataflow_id = filtered_dataflows["Dataflow Id"].iloc[0]
+
+    return str(dataflow), str(dataflow_id)
+
+
 def resolve_lakehouse_name(
     lakehouse_id: Optional[UUID] = None, workspace: Optional[str] = None
 ) -> str:
