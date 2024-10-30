@@ -21,6 +21,8 @@ from sempy_labs._warehouses import (
     create_warehouse,
     list_warehouses,
     delete_warehouse,
+    get_warehouse_columns,
+    get_warehouse_tables,
 )
 from sempy_labs._data_pipelines import (
     list_data_pipelines,
@@ -385,4 +387,6 @@ __all__ = [
     "update_notebook_definition",
     "create_notebook",
     "get_semantic_model_refresh_history",
+    "get_warehouse_columns",
+    "get_warehouse_tables",
 ]
