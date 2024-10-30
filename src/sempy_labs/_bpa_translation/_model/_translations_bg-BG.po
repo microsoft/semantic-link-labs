@@ -612,8 +612,8 @@ msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
-"https://learn.microsoft.com/power-bi/transform-model/desktop-storage-"
-"mode#propagation-of-the-dual-setting"
+"Когато използвате DirectQuery, таблиците с измерения трябва да бъдат "
+"зададени на двоен режим, за да се подобри производителността на заявката."
 
 # description
 msgid "Minimize Power Query transformations"
@@ -778,6 +778,13 @@ msgstr ""
 "DAX израз, за да се намали излишъкът."
 
 # description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Добавянето на постоянна стойност може да доведе до влошаване на "
+"производителността."
+
+# description
 msgid "Avoid using '1-(x/y)' syntax"
 msgstr ""
 "Вместо да използвате синтаксиса \"1-(x/y)\" или \"1+(x/y)\", за да "
@@ -858,9 +865,16 @@ msgstr ""
 "модела с релация."
 
 # description
-msgid "Visible objects with no description"
+msgid "Calculation groups with no calculation items"
 msgstr ""
 "Изчислителните групи нямат функция, освен ако нямат елементи за изчисление."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Добавяне на описания към обекти. Тези описания се показват при задържане на "
+"курсора на мишката в списъка с полета в Power BI Desktop. Освен това можете "
+"да използвате тези описания, за да създадете автоматизиран речник на данни."
 
 # description
 msgid "Provide format string for 'Date' columns"
@@ -884,8 +898,24 @@ msgid "Add data category for columns"
 msgstr "Добавете свойство Категория данни за подходящи колони."
 
 # description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"За по-добро потребителско изживяване мерките percengage трябва да бъдат "
+"форматирани със знак \"%\"."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"За по-добро потребителско изживяване целите числа трябва да бъдат "
+"форматирани със запетаи."
+
+# description
 msgid "Hide foreign keys"
-msgstr "Външните ключове винаги трябва да бъдат скрити."
+msgstr ""
+"Външните ключове винаги трябва да бъдат скрити, тъй като не трябва да се "
+"използват от крайните потребители."
 
 # description
 msgid "Mark primary keys"

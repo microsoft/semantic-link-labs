@@ -3,6 +3,7 @@ import sempy.fabric as fabric
 from sempy_labs.lakehouse import get_lakehouse_columns
 from sempy_labs.directlake._dl_helper import get_direct_lake_source
 from sempy_labs.tom import connect_semantic_model
+from sempy_labs._helper_functions import _convert_data_type
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
@@ -88,7 +89,7 @@ def direct_lake_schema_sync(
                         f"{icons.yellow_dot} The '{lakeCName}' column exists in the '{lakeTName}' lakehouse table but not in the '{dataset}' semantic model within the '{workspace}' workspace."
                     )
                     if add_to_model:
-                        dt = icons.data_type_mapping.get(dType)
+                        dt = _convert_data_type(dType)
                         tom.add_data_column(
                             table_name=table_name,
                             column_name=lakeCName,

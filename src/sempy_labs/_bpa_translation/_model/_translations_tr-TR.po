@@ -605,8 +605,8 @@ msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
-"https://learn.microsoft.com/power-bi/transform-model/desktop-storage-"
-"mode#propagation-of-the-dual-setting"
+"DirectQuery kullanılırken, sorgu performansını artırmak için boyut "
+"tablolarının İkili moda ayarlanması gerekir."
 
 # description
 msgid "Minimize Power Query transformations"
@@ -767,6 +767,11 @@ msgstr ""
 "tanımlanan iki ölçümden kaçınılmalıdır."
 
 # description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "Sabit bir değer eklemek performans düşüşüne neden olabilir."
+
+# description
 msgid "Avoid using '1-(x/y)' syntax"
 msgstr ""
 "Yüzde hesaplaması elde etmek için '1-(x/y)' veya '1+(x/y)' sözdizimini "
@@ -845,10 +850,17 @@ msgstr ""
 "vurgular."
 
 # description
-msgid "Visible objects with no description"
+msgid "Calculation groups with no calculation items"
 msgstr ""
 "Hesaplama grupları, hesaplama öğelerine sahip olmadıkça hiçbir işleve sahip "
 "değildir."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Nesnelere açıklamalar ekleyin. Bu açıklamalar, Power BI Desktop'taki Alan "
+"Listesi'nde üzerine gelindiğinde gösterilir. Ayrıca, otomatik bir veri "
+"sözlüğü oluşturmak için bu açıklamalardan yararlanabilirsiniz."
 
 # description
 msgid "Provide format string for 'Date' columns"
@@ -872,8 +884,24 @@ msgid "Add data category for columns"
 msgstr "Uygun sütunlar için Veri Kategorisi özelliği ekleyin."
 
 # description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Daha iyi bir kullanıcı deneyimi için, percengage ölçüleri '%' işaretiyle "
+"biçimlendirilmelidir."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Daha iyi bir kullanıcı deneyimi için tam sayılar virgülle "
+"biçimlendirilmelidir."
+
+# description
 msgid "Hide foreign keys"
-msgstr "Yabancı anahtarlar her zaman gizlenmelidir."
+msgstr ""
+"Yabancı anahtarlar, son kullanıcılar tarafından kullanılmaması gerektiği "
+"için her zaman gizlenmelidir."
 
 # description
 msgid "Mark primary keys"

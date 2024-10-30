@@ -593,8 +593,8 @@ msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
-"https://learn.microsoft.com/power-bi/transform-model/desktop-storage-"
-"mode#propagation-of-the-dual-setting"
+"هنگام استفاده از DirectQuery، جداول ابعاد باید روی حالت دوگانه تنظیم شوند تا"
+" عملکرد پرس و جو بهبود یابد."
 
 # description
 msgid "Minimize Power Query transformations"
@@ -734,7 +734,7 @@ msgstr ""
 # description
 msgid "The EVALUATEANDLOG function should not be used in production models"
 msgstr ""
-"تابع EVALUATEANDLOG فقط برای استفاده در محیط های توسعه/test است و نباید در "
+"تابع EVALUATEANDLOG فقط در محیط های توسعه/آزمایش استفاده می شود و نباید در "
 "مدل های تولیدی استفاده شود."
 
 # description
@@ -750,6 +750,11 @@ msgid "No two measures should have the same definition"
 msgstr ""
 "برای کاهش افزونگی باید از دو معیار با نام های مختلف و تعریف شده با عبارت DAX"
 " یکسان اجتناب شود."
+
+# description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "افزودن یک مقدار ثابت ممکن است منجر به کاهش عملکرد شود."
 
 # description
 msgid "Avoid using '1-(x/y)' syntax"
@@ -830,9 +835,16 @@ msgstr ""
 "متصل نیستند."
 
 # description
-msgid "Visible objects with no description"
+msgid "Calculation groups with no calculation items"
 msgstr ""
 "گروه های محاسباتی هیچ عملکردی ندارند مگر اینکه موارد محاسباتی داشته باشند."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"توضیحات را به اشیاء اضافه کنید. این توضیحات در شناور در لیست فیلدها در Power"
+" BI Desktop نشان داده می شود. علاوه بر این، می توانید از این توضیحات برای "
+"ایجاد یک فرهنگ لغت داده خودکار استفاده کنید."
 
 # description
 msgid "Provide format string for 'Date' columns"
@@ -856,8 +868,22 @@ msgid "Add data category for columns"
 msgstr "ویژگی Data Category را برای ستون های مناسب اضافه کنید."
 
 # description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"برای تجربه کاربری بهتر، معیارهای percengage باید با علامت \"٪\" قالب بندی "
+"شوند."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "برای تجربه کاربری بهتر، اعداد کامل باید با کاما قالب بندی شوند."
+
+# description
 msgid "Hide foreign keys"
-msgstr "کلیدهای خارجی همیشه باید پنهان باشند."
+msgstr ""
+"کلیدهای خارجی همیشه باید پنهان باشند زیرا کاربران نهایی نباید از آنها "
+"استفاده کنند."
 
 # description
 msgid "Mark primary keys"

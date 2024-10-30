@@ -607,8 +607,8 @@ msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
-"https://learn.microsoft.com/power-bi/transform-model/desktop-storage-"
-"mode#propagation-of-the-dual-setting"
+"Pri používaní režimu DirectQuery by mali byť tabuľky dimenzií nastavené na "
+"duálny režim, aby sa zlepšil výkon dotazu."
 
 # description
 msgid "Minimize Power Query transformations"
@@ -770,6 +770,11 @@ msgstr ""
 "vyjadrením DAX, aby sa znížila nadbytočnosť."
 
 # description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "Pridanie konštantnej hodnoty môže viesť k zníženiu výkonu."
+
+# description
 msgid "Avoid using '1-(x/y)' syntax"
 msgstr ""
 "Namiesto použitia syntaxe \"1-(x/y)\" alebo \"1+(x/y)\" na dosiahnutie "
@@ -847,9 +852,16 @@ msgstr ""
 "tabuľkou v modeli so vzťahom."
 
 # description
-msgid "Visible objects with no description"
+msgid "Calculation groups with no calculation items"
 msgstr ""
 "Výpočtové skupiny nemajú žiadnu funkciu, pokiaľ nemajú výpočtové položky."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Pridajte popisy k objektom. Tieto popisy sa zobrazia po umiestnení kurzora "
+"myši v zozname polí v aplikácii Power BI Desktop. Okrem toho môžete tieto "
+"popisy využiť na vytvorenie automatizovaného dátového slovníka."
 
 # description
 msgid "Provide format string for 'Date' columns"
@@ -873,8 +885,23 @@ msgid "Add data category for columns"
 msgstr "Pridajte vlastnosť Kategória údajov pre príslušné stĺpce."
 
 # description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Pre lepší používateľský zážitok by mali byť mierky percengage formátované "
+"znamienkom \"%\"."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Pre lepší používateľský zážitok by mali byť celé čísla formátované čiarkami."
+
+# description
 msgid "Hide foreign keys"
-msgstr "Cudzie kľúče by mali byť vždy skryté."
+msgstr ""
+"Cudzie kľúče by mali byť vždy skryté, pretože by ich nemali používať koncoví"
+" používatelia."
 
 # description
 msgid "Mark primary keys"

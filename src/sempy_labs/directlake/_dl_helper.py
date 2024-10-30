@@ -9,6 +9,7 @@ from sempy_labs._helper_functions import (
     retry,
     resolve_dataset_id,
     resolve_lakehouse_name,
+    _convert_data_type,
 )
 
 
@@ -180,7 +181,7 @@ def generate_direct_lake_semantic_model(
             for i, r in dfLC_filt.iterrows():
                 lakeCName = r["Column Name"]
                 dType = r["Data Type"]
-                dt = icons.data_type_mapping.get(dType)
+                dt = _convert_data_type(dType)
                 tom.add_data_column(
                     table_name=t,
                     column_name=lakeCName,

@@ -579,9 +579,7 @@ msgstr ""
 msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
-msgstr ""
-"https://learn.microsoft.com/power-bi/transform-model/desktop-storage-"
-"mode#propagation-of-the-dual-setting"
+msgstr "DirectQuery በሚጠቀሙበት ጊዜ የመጠየቂያ አፈጻጸም ለማሻሻል ወደ Dual mode መመደብ አለበት."
 
 # description
 msgid "Minimize Power Query transformations"
@@ -718,6 +716,11 @@ msgstr ""
 "አለባቸው."
 
 # description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "የማያቋርጥ ዋጋ መጨመር የሥራ ውርጅና ሊያስከትል ይችላል።"
+
+# description
 msgid "Avoid using '1-(x/y)' syntax"
 msgstr ""
 "'1-(x/y)' ወይም '1+(x/y)' syntax በመጠቀም የመቶ ስሌትን ለማሳካት ከመጠቀም ይልቅ መሠረታዊ የሆኑትን የ "
@@ -785,8 +788,14 @@ msgid "Ensure tables have relationships"
 msgstr "ይህ ደንብ በሞዴሉ ውስጥ ከማንኛውም ሌላ ጠረጴዛ ጋር ግንኙነት የሌላቸው ሠንጠረዦች ጎላ አድርጎ ይገልጻል።"
 
 # description
-msgid "Visible objects with no description"
+msgid "Calculation groups with no calculation items"
 msgstr "የስሌት ቡድኖች የስሌት እቃዎች ካልኖራቸው በስተቀር ምንም ተግባር የላቸውም።"
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"በዕቃዎች ላይ መግለጫዎችን ይጨምሩ. እነዚህ መግለጫዎች በፓወር ቢ አይ ዴስክቶፕ ውስጥ በሚገኘው የመስክ ዝርዝር ውስጥ "
+"በhover ላይ ይታያሉ. በተጨማሪም እነዚህን መግለጫዎች አውቶማቲክ የመረጃ መዝገበ ቃላት ለመፍጠር መጠቀም ትችላለህ።"
 
 # description
 msgid "Provide format string for 'Date' columns"
@@ -807,8 +816,18 @@ msgid "Add data category for columns"
 msgstr "ለተስማሚ ዓምዶች የዳታ መደብ ርብርብ ይጨምሩ."
 
 # description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "የተሻለ የተጠቃሚ ልምድ ለማግኘት, የመተግበሪያ መለኪያዎች በ a '%' ምልክት መሰራት አለባቸው."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "የተሻለ የተጠቃሚ ተሞክሮ ለማግኘት, ሙሉ ቁጥሮች commas ጋር መሰራት አለበት."
+
+# description
 msgid "Hide foreign keys"
-msgstr "የውጭ ቁልፍ ሁሌም መደበቅ አለበት።"
+msgstr "የውጭ ቁልፎች መጨረሻ ተጠቃሚዎች ሊጠቀሙባቸው ስለማይገባ ምንጊዜም መደበቅ ይኖርባቸዋል።"
 
 # description
 msgid "Mark primary keys"

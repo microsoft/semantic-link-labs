@@ -578,8 +578,7 @@ msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
-"https://learn.microsoft.com/power-bi/transform-model/desktop-storage-"
-"mode#propagation-of-the-dual-setting"
+"DirectQuery を使用する場合は、クエリのパフォーマンスを向上させるために、ディメンション テーブルをデュアル モードに設定する必要があります。"
 
 # description
 msgid "Minimize Power Query transformations"
@@ -704,6 +703,11 @@ msgid "No two measures should have the same definition"
 msgstr "冗長性を減らすために、名前が異なり、同じ DAX 式で定義された 2 つのメジャーは避ける必要があります。"
 
 # description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "定数値を追加すると、パフォーマンスが低下する可能性があります。"
+
+# description
 msgid "Avoid using '1-(x/y)' syntax"
 msgstr ""
 "'1-(x/y)' または '1+(x/y)' 構文を使用してパーセンテージ計算を行う代わりに、基本的な DAX 関数 (次を参照) "
@@ -766,8 +770,14 @@ msgid "Ensure tables have relationships"
 msgstr "このルールは、リレーションシップを持つモデル内の他のテーブルに接続されていないテーブルを強調表示します。"
 
 # description
-msgid "Visible objects with no description"
+msgid "Calculation groups with no calculation items"
 msgstr "計算グループは、計算項目がない限り機能しません。"
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"オブジェクトに説明を追加します。これらの説明は、Power BI Desktop のフィールド リスト内でマウス "
+"ポインターを合わせると表示されます。さらに、これらの説明を活用して、自動化されたデータディクショナリを作成できます。"
 
 # description
 msgid "Provide format string for 'Date' columns"
@@ -788,8 +798,18 @@ msgid "Add data category for columns"
 msgstr "適切な列の [データ カテゴリ] プロパティを追加します。"
 
 # description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "ユーザーエクスペリエンスを向上させるために、percengageメジャーは「%」記号でフォーマットする必要があります。"
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "ユーザーエクスペリエンスを向上させるには、整数をコンマで書式設定する必要があります。"
+
+# description
 msgid "Hide foreign keys"
-msgstr "外部キーは常に非表示にする必要があります。"
+msgstr "外部キーは、エンド ユーザーが使用しないように、常に非表示にする必要があります。"
 
 # description
 msgid "Mark primary keys"

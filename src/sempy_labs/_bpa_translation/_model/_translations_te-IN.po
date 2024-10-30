@@ -601,8 +601,8 @@ msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
-"https://learn.microsoft.com/power-bi/transform-model/desktop-storage-"
-"mode#propagation-of-the-dual-setting"
+"డైరెక్ట్ క్వెరీని ఉపయోగిస్తున్నప్పుడు, క్వైరీ పనితీరును మెరుగుపరచడం కొరకు "
+"డైమెన్షన్ టేబుల్ లను డ్యూయల్ మోడ్ కు సెట్ చేయాలి."
 
 # description
 msgid "Minimize Power Query transformations"
@@ -763,6 +763,11 @@ msgstr ""
 "నిర్వచించబడిన రెండు కొలతలను నివారించాలి."
 
 # description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "స్థిరమైన విలువను జోడించడం పనితీరు క్షీణతకు దారితీయవచ్చు."
+
+# description
 msgid "Avoid using '1-(x/y)' syntax"
 msgstr ""
 "శాతం లెక్కింపును సాధించడానికి '1-(x/y)' లేదా '1+(x/y)' వాక్యనిర్మాణాన్ని "
@@ -842,8 +847,15 @@ msgstr ""
 "హైలైట్ చేస్తుంది."
 
 # description
-msgid "Visible objects with no description"
+msgid "Calculation groups with no calculation items"
 msgstr "లెక్కింపు అంశాలు ఉంటే తప్ప లెక్కింపు సమూహాలకు పని ఉండదు."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"ఆబ్జెక్టులకు వివరణలను జోడించండి. పవర్ BI డెస్క్ టాప్ లోని ఫీల్డ్ లిస్ట్ లో ఈ"
+" వివరణలు చూపబడతాయి. అదనంగా, మీరు స్వయంచాలక డేటా నిఘంటువును సృష్టించడానికి ఈ "
+"వివరణలను ఉపయోగించవచ్చు."
 
 # description
 msgid "Provide format string for 'Date' columns"
@@ -867,8 +879,23 @@ msgid "Add data category for columns"
 msgstr "తగిన కాలమ్ ల కొరకు డేటా కేటగిరీ ప్రాపర్టీని జోడించండి."
 
 # description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"మెరుగైన వినియోగదారు అనుభవం కొరకు, పర్సెంగేజ్ కొలతలను '%' గుర్తుతో ఫార్మాట్ "
+"చేయాలి."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"మెరుగైన వినియోగదారు అనుభవం కోసం, మొత్తం సంఖ్యలను కమాస్ తో ఫార్మాట్ చేయాలి."
+
+# description
 msgid "Hide foreign keys"
-msgstr "విదేశీ తాళాలు ఎప్పుడూ దాచి ఉంచాలి."
+msgstr ""
+"విదేశీ కీలను ఎల్లప్పుడూ దాచాలి ఎందుకంటే వాటిని తుది వినియోగదారులు "
+"ఉపయోగించకూడదు."
 
 # description
 msgid "Mark primary keys"

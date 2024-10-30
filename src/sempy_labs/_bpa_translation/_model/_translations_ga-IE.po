@@ -607,8 +607,8 @@ msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
-"https://learn.microsoft.com/power-bi/transform-model/desktop-storage-"
-"mode#propagation-of-the-dual-setting"
+"Agus DirectQuery á úsáid, ba chóir táblaí toise a shocrú go mód Dual chun "
+"feidhmíocht cheist a fheabhsú."
 
 # description
 msgid "Minimize Power Query transformations"
@@ -774,6 +774,13 @@ msgstr ""
 "slonn DAX céanna a sheachaint chun iomarcaíocht a laghdú."
 
 # description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"D'fhéadfadh díghrádú feidhmíochta a bheith mar thoradh ar luach tairiseach a"
+" chur leis."
+
+# description
 msgid "Avoid using '1-(x/y)' syntax"
 msgstr ""
 "In ionad an chomhréir '1-(x/y)' nó '1+(x/y)' a úsáid chun ríomh céatadáin a "
@@ -857,8 +864,15 @@ msgstr ""
 "eile sa tsamhail le caidreamh."
 
 # description
-msgid "Visible objects with no description"
+msgid "Calculation groups with no calculation items"
 msgstr "Níl aon fheidhm ag grúpaí ríofa mura bhfuil míreanna ríofa acu."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Cuir tuairiscí le rudaí. Taispeántar na tuairiscí seo ar ainliú laistigh den"
+" Liosta Allamuigh i Power BI Desktop. Ina theannta sin, is féidir leat na "
+"tuairiscí seo a ghiaráil chun foclóir sonraí uathoibrithe a chruthú."
 
 # description
 msgid "Provide format string for 'Date' columns"
@@ -882,8 +896,24 @@ msgid "Add data category for columns"
 msgstr "Cuir maoin Catagóir Sonraí leis le haghaidh colúin chuí."
 
 # description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Le haghaidh taithí úsáideora níos fearr, ba cheart bearta percengage a "
+"fhormáidiú le comhartha '%'."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Le haghaidh taithí úsáideora níos fearr, ba cheart slánuimhreacha a "
+"fhormáidiú le camóga."
+
+# description
 msgid "Hide foreign keys"
-msgstr "Ba chóir eochracha eachtracha a chur i bhfolach i gcónaí."
+msgstr ""
+"Ba chóir eochracha eachtracha a chur i bhfolach i gcónaí mar nár chóir "
+"d'úsáideoirí deiridh iad a úsáid."
 
 # description
 msgid "Mark primary keys"

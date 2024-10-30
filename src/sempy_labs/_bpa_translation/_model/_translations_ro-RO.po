@@ -609,8 +609,8 @@ msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
-"https://learn.microsoft.com/power-bi/transform-model/desktop-storage-"
-"mode#propagation-of-the-dual-setting"
+"Atunci când utilizați DirectQuery, tabelele de parametri trebuie setate în "
+"modul dublu pentru a îmbunătăți performanța interogării."
 
 # description
 msgid "Minimize Power Query transformations"
@@ -777,6 +777,12 @@ msgstr ""
 "evitate pentru a reduce redundanța."
 
 # description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Adăugarea unei valori constante poate duce la degradarea performanței."
+
+# description
 msgid "Avoid using '1-(x/y)' syntax"
 msgstr ""
 "În loc să utilizați sintaxa \"1-(x/y)\" sau \"1+(x/y)\" pentru a obține un "
@@ -857,9 +863,16 @@ msgstr ""
 "tabel din model cu o relație."
 
 # description
-msgid "Visible objects with no description"
+msgid "Calculation groups with no calculation items"
 msgstr ""
 "Grupurile de calcul nu au nicio funcție decât dacă au elemente de calcul."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Adăugați descrieri la obiecte. Aceste descrieri sunt afișate la trecerea cu "
+"mouse-ul în Lista de câmpuri din Power BI Desktop. În plus, puteți utiliza "
+"aceste descrieri pentru a crea un dicționar automat de date."
 
 # description
 msgid "Provide format string for 'Date' columns"
@@ -885,8 +898,24 @@ msgstr ""
 "Adăugați proprietatea Categorie de date pentru coloanele corespunzătoare."
 
 # description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Pentru o experiență mai bună a utilizatorului, măsurile percengage ar trebui"
+" formatate cu un semn \"%\"."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Pentru o experiență mai bună a utilizatorului, numerele întregi ar trebui "
+"formatate cu virgule."
+
+# description
 msgid "Hide foreign keys"
-msgstr "Cheile străine ar trebui să fie întotdeauna ascunse."
+msgstr ""
+"Cheile străine ar trebui să fie întotdeauna ascunse, deoarece nu ar trebui "
+"să fie utilizate de utilizatorii finali."
 
 # description
 msgid "Mark primary keys"

@@ -598,8 +598,8 @@ msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
-"https://learn.microsoft.com/power-bi/transform-model/desktop-storage-"
-"mode#propagation-of-the-dual-setting"
+"Kun käytät DirectQueryä, dimensiotaulukot on määritettävä kaksoistilaan "
+"kyselyn suorituskyvyn parantamiseksi."
 
 # description
 msgid "Minimize Power Query transformations"
@@ -759,6 +759,11 @@ msgstr ""
 "eri nimet ja jotka on määritelty samalla DAX-lausekkeella."
 
 # description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "Vakioarvon lisääminen voi heikentää suorituskykyä."
+
+# description
 msgid "Avoid using '1-(x/y)' syntax"
 msgstr ""
 "Sen sijaan, että käyttäisit 1-(x/y)- tai 1+(x/y)-syntaksia "
@@ -836,9 +841,16 @@ msgstr ""
 "mallin taulukkoon, jolla on yhteys."
 
 # description
-msgid "Visible objects with no description"
+msgid "Calculation groups with no calculation items"
 msgstr ""
 "Laskentaryhmillä ei ole funktiota, ellei niillä ole laskentanimikkeitä."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Lisää objekteihin kuvauksia. Nämä kuvaukset näkyvät viemällä hiiren osoitin "
+"Power BI Desktopin kenttäluettelossa. Lisäksi voit hyödyntää näitä kuvauksia"
+" luodaksesi automaattisen tietosanakirjan."
 
 # description
 msgid "Provide format string for 'Date' columns"
@@ -862,8 +874,23 @@ msgid "Add data category for columns"
 msgstr "Lisää Tietoluokka-ominaisuus sopiville sarakkeille."
 
 # description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Käyttökokemuksen parantamiseksi percengagement-mittarit tulisi muotoilla "
+"%-merkillä."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Käyttökokemuksen parantamiseksi kokonaisluvut tulisi muotoilla pilkuilla."
+
+# description
 msgid "Hide foreign keys"
-msgstr "Vieraat avaimet tulee aina piilottaa."
+msgstr ""
+"Vieraat avaimet on aina piilotettava, koska loppukäyttäjät eivät saa käyttää"
+" niitä."
 
 # description
 msgid "Mark primary keys"

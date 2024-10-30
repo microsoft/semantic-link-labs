@@ -81,6 +81,7 @@ def get_directlake_guardrails_for_sku(sku_size: str) -> pd.DataFrame:
     """
 
     df = get_direct_lake_guardrails()
-    filtered_df = df[df["Fabric SKUs"] == sku_size]
+    col_name = df.columns[0]
+    filtered_df = df[df[col_name] == sku_size]
 
     return filtered_df

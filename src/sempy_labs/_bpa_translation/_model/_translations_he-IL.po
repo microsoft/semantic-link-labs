@@ -588,8 +588,8 @@ msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
-"https://learn.microsoft.com/power-bi/transform-model/desktop-storage-"
-"mode#propagation-of-the-dual-setting"
+"בעת שימוש ב- DirectQuery, יש להגדיר טבלאות ממדים למצב כפול כדי לשפר את "
+"ביצועי השאילתה."
 
 # description
 msgid "Minimize Power Query transformations"
@@ -734,6 +734,11 @@ msgstr ""
 "להפחית יתירות."
 
 # description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "הוספת ערך קבוע עלולה להוביל לירידה בביצועים."
+
+# description
 msgid "Avoid using '1-(x/y)' syntax"
 msgstr ""
 "במקום להשתמש בתחביר '1-(x/y)' או '1+(x/y)' כדי להשיג חישוב אחוזים, השתמש "
@@ -804,8 +809,15 @@ msgid "Ensure tables have relationships"
 msgstr "כלל זה מדגיש טבלאות שאינן מחוברות לאף טבלה אחרת במודל עם קשר גומלין."
 
 # description
-msgid "Visible objects with no description"
+msgid "Calculation groups with no calculation items"
 msgstr "לקבוצות חישוב אין פונקציה אלא אם כן יש להן פריטי חישוב."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"הוסף תיאורים לאובייקטים. תיאורים אלה מוצגים בעת ריחוף בתוך רשימת השדות ב- "
+"Power BI Desktop. בנוסף, באפשרותך למנף תיאורים אלה ליצירת מילון נתונים "
+"אוטומטי."
 
 # description
 msgid "Provide format string for 'Date' columns"
@@ -828,8 +840,20 @@ msgid "Add data category for columns"
 msgstr "המאפיין הוסף קטגוריית נתונים עבור עמודות מתאימות."
 
 # description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "לקבלת חוויית משתמש טובה יותר, יש לעצב את המדדים הקבועים עם סימן '%'."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "לקבלת חוויית משתמש טובה יותר, יש לעצב מספרים שלמים באמצעות פסיקים."
+
+# description
 msgid "Hide foreign keys"
-msgstr "מפתחות זרים תמיד צריך להיות מוסתר."
+msgstr ""
+"מפתחות זרים צריכים תמיד להיות מוסתרים מכיוון שמשתמשי קצה אינם צריכים להשתמש "
+"בהם."
 
 # description
 msgid "Mark primary keys"

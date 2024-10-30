@@ -192,9 +192,6 @@ def create_model_bpa_semantic_model(
         The workspace in which the lakehouse resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
     """
 
     from sempy_labs._helper_functions import resolve_lakehouse_name
@@ -233,7 +230,7 @@ def create_model_bpa_semantic_model(
             tom.model
 
     dyn_connect()
-
+    icons.sll_tags.append("ModelBPABulk")
     table_exists = False
     with connect_semantic_model(
         dataset=dataset, readonly=False, workspace=lakehouse_workspace

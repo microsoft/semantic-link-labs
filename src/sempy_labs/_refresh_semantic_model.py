@@ -12,7 +12,6 @@ import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 import pandas as pd
 import warnings
-from IPython.display import clear_output
 import ipywidgets as widgets
 import json
 
@@ -28,7 +27,7 @@ def refresh_semantic_model(
     max_parallelism: int = 10,
     workspace: Optional[str] = None,
     visualize: bool = False,
-):
+) -> pd.DataFrame | None:
     """
     Refreshes a semantic model.
 
@@ -56,6 +55,11 @@ def refresh_semantic_model(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     visualize : bool, default=False
         If True, displays a Gantt chart showing the refresh statistics for each table/partition.
+
+    Returns
+    -------
+    pandas.DataFrame | None
+        If 'visualize' is set to True, returns a pandas dataframe showing the SSAS trace output used to generate the visualization.
     """
 
     workspace = fabric.resolve_workspace_name(workspace)
@@ -310,7 +314,29 @@ def cancel_dataset_refresh(
 
 def get_semantic_model_refresh_history(
     dataset: str, request_id: Optional[str] = None, workspace: Optional[str] = None
-):
+) -> pd.DataFrame:
+    """
+    Obtains the semantic model refresh history (refreshes executed via the Enhanced Refresh API).
+
+    This is a wrapper function for the following API: `Datasets - Get Refresh History In Group <https://learn.microsoft.com/rest/api/power-bi/datasets/get-refresh-history-in-group>`_.
+
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    request_id : str, default=None
+        The request id of a semantic model refresh.
+        Defaults to None which resolves to showing all refresh requests for the given semantic model.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the semantic model refresh history.
+    """
 
     workspace_name = fabric.resolve_workspace_name(workspace)
     workspace_id = fabric.resolve_workspace_id(workspace_name)

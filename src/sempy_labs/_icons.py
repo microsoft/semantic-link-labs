@@ -10,20 +10,6 @@ bullet = "\u2022"
 warning = "⚠️"
 error = "\u274C"
 info = "ℹ️"
-data_type_mapping = {
-    "string": "String",
-    "int": "Int64",
-    "tinyint": "Int64",
-    "smallint": "Int64",
-    "bigint": "Int64",
-    "boolean": "Boolean",
-    "timestamp": "DateTime",
-    "date": "DateTime",
-    "decimal(38,18)": "Decimal",
-    "decimal(19,4)": "Decimal",
-    "double": "Double",
-    "float": "Double",
-}
 measure_icon = "\u2211"
 table_icon = "\u229E"
 column_icon = "\u229F"

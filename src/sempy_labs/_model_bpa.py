@@ -56,7 +56,7 @@ def run_model_bpa(
     extended : bool, default=False
         If True, runs the set_vertipaq_annotations function to collect Vertipaq Analyzer statistics to be used in the analysis of the semantic model.
     language : str, default=None
-        Specifying a language code (i.e. 'it-IT' for Italian) will auto-translate the Category, Rule Name and Description into the specified language.
+        Specifying a language name or code (i.e. 'it-IT' for Italian) will auto-translate the Category, Rule Name and Description into the specified language.
         Defaults to None which resolves to English.
 
     Returns

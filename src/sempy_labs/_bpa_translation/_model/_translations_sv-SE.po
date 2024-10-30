@@ -598,8 +598,8 @@ msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
-"https://learn.microsoft.com/power-bi/transform-model/desktop-storage-"
-"mode#propagation-of-the-dual-setting"
+"När du använder DirectQuery bör dimensionstabeller ställas in på dubbelt "
+"läge för att förbättra frågeprestanda."
 
 # description
 msgid "Minimize Power Query transformations"
@@ -758,6 +758,12 @@ msgstr ""
 "för att minska redundansen."
 
 # description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Om du lägger till ett konstant värde kan det leda till prestandaförsämring."
+
+# description
 msgid "Avoid using '1-(x/y)' syntax"
 msgstr ""
 "I stället för att använda syntaxen \"1-(x/y)\" eller \"1+(x/y)\" för att "
@@ -837,8 +843,15 @@ msgstr ""
 "tabell i modellen med en relation."
 
 # description
-msgid "Visible objects with no description"
+msgid "Calculation groups with no calculation items"
 msgstr "Beräkningsgrupper har ingen funktion om de inte har beräkningsobjekt."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Lägg till beskrivningar till objekt. Dessa beskrivningar visas när du hovrar"
+" över fältlistan i Power BI Desktop. Dessutom kan du använda dessa "
+"beskrivningar för att skapa en automatiserad dataordlista."
 
 # description
 msgid "Provide format string for 'Date' columns"
@@ -862,8 +875,23 @@ msgid "Add data category for columns"
 msgstr "Lägg till egenskapen Datakategori för lämpliga kolumner."
 
 # description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"För en bättre användarupplevelse bör percengage-mått formateras med ett "
+"%-tecken."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"För en bättre användarupplevelse bör heltal formateras med kommatecken."
+
+# description
 msgid "Hide foreign keys"
-msgstr "Sekundärnycklar ska alltid vara dolda."
+msgstr ""
+"Sekundärnycklar bör alltid vara dolda eftersom de inte bör användas av "
+"slutanvändare."
 
 # description
 msgid "Mark primary keys"

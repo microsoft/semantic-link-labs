@@ -609,8 +609,8 @@ msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
-"https://learn.microsoft.com/power-bi/transform-model/desktop-storage-"
-"mode#propagation-of-the-dual-setting"
+"A DirectQuery használatakor a dimenziótáblákat kettős módra kell állítani a "
+"lekérdezési teljesítmény javítása érdekében."
 
 # description
 msgid "Minimize Power Query transformations"
@@ -775,6 +775,11 @@ msgstr ""
 "ugyanazzal a DAX-kifejezéssel definiált mértéket."
 
 # description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "Állandó érték hozzáadása teljesítménycsökkenéshez vezethet."
+
+# description
 msgid "Avoid using '1-(x/y)' syntax"
 msgstr ""
 "Az \"1-(x/y)\" vagy az \"1+(x/y)\" szintaxis használata helyett használja az"
@@ -854,10 +859,17 @@ msgstr ""
 "más táblájához kapcsolattal."
 
 # description
-msgid "Visible objects with no description"
+msgid "Calculation groups with no calculation items"
 msgstr ""
 "A számítási csoportoknak csak akkor van funkciójuk, ha számítási elemekkel "
 "rendelkeznek."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Leírások hozzáadása objektumokhoz. Ezek a leírások a Power BI Desktop "
+"mezőlistáján belül jelennek meg. Ezenkívül ezeket a leírásokat "
+"felhasználhatja egy automatizált adatszótár létrehozásához."
 
 # description
 msgid "Provide format string for 'Date' columns"
@@ -883,8 +895,24 @@ msgid "Add data category for columns"
 msgstr "Adja hozzá az Adatkategória tulajdonságot a megfelelő oszlopokhoz."
 
 # description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"A jobb felhasználói élmény érdekében a percengage mértékeket \"%\" jellel "
+"kell formázni."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"A jobb felhasználói élmény érdekében az egész számokat vesszővel kell "
+"formázni."
+
+# description
 msgid "Hide foreign keys"
-msgstr "Az idegen kulcsokat mindig el kell rejteni."
+msgstr ""
+"Az idegen kulcsokat mindig rejtve kell tartani, mivel a végfelhasználók nem "
+"használhatják őket."
 
 # description
 msgid "Mark primary keys"

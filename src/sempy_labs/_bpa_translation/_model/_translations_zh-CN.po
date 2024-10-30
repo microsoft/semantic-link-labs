@@ -564,9 +564,7 @@ msgstr ""
 msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
-msgstr ""
-"https://learn.microsoft.com/power-bi/transform-model/desktop-storage-"
-"mode#propagation-of-the-dual-setting"
+msgstr "使用 DirectQuery 时，应将维度表设置为双模式，以提高查询性能。"
 
 # description
 msgid "Minimize Power Query transformations"
@@ -672,6 +670,11 @@ msgid "No two measures should have the same definition"
 msgstr "应避免使用名称不同且由同一 DAX 表达式定义的两个度量值，以减少冗余。"
 
 # description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "添加常量值可能会导致性能下降。"
+
+# description
 msgid "Avoid using '1-(x/y)' syntax"
 msgstr ""
 "不要使用“1-（x/y）”或“1+（x/y）”语法来实现百分比计算，而是使用基本的 DAX "
@@ -728,8 +731,13 @@ msgid "Ensure tables have relationships"
 msgstr "此规则突出显示未通过关系连接到模型中任何其他表的表的表。"
 
 # description
-msgid "Visible objects with no description"
+msgid "Calculation groups with no calculation items"
 msgstr "除非计算组具有计算项，否则它们没有功能。"
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"为对象添加描述。将鼠标悬停在 Power BI Desktop 的字段列表中时，会显示这些描述。此外，您还可以利用这些描述创建自动数据字典。"
 
 # description
 msgid "Provide format string for 'Date' columns"
@@ -748,8 +756,18 @@ msgid "Add data category for columns"
 msgstr "为相应的列添加 Data Category 属性。"
 
 # description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "为了获得更好的用户体验，percengage 度量的格式应为“%”号。"
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "为了获得更好的用户体验，整数的格式应使用逗号。"
+
+# description
 msgid "Hide foreign keys"
-msgstr "外键应始终处于隐藏状态。"
+msgstr "外键应始终隐藏，因为最终用户不应使用它们。"
 
 # description
 msgid "Mark primary keys"

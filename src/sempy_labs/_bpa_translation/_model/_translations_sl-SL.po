@@ -607,8 +607,8 @@ msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
-"https://learn.microsoft.com/power-bi/transform-model/desktop-storage-"
-"mode#propagation-of-the-dual-setting"
+"Ko uporabljate DirectQuery, morajo biti tabele razsežnosti nastavljene na "
+"dvojni način, da se izboljša učinkovitost delovanja poizvedbe."
 
 # description
 msgid "Minimize Power Query transformations"
@@ -766,6 +766,12 @@ msgstr ""
 "imeni, ki sta opredeljena z istim izrazom DAX."
 
 # description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Dodajanje konstantne vrednosti lahko povzroči poslabšanje učinkovitosti."
+
+# description
 msgid "Avoid using '1-(x/y)' syntax"
 msgstr ""
 "Namesto sintakse »1-(x/y)« ali »1+(x/y)« za izračun odstotka uporabite "
@@ -844,9 +850,16 @@ msgstr ""
 "z relacijo."
 
 # description
-msgid "Visible objects with no description"
+msgid "Calculation groups with no calculation items"
 msgstr ""
 "Skupine za izračun nimajo funkcije, razen če imajo elemente za izračun."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Dodajanje opisov predmetom. Ti opisi so prikazani, ko premaknete kazalec "
+"miške na seznamu polj v programu Power BI Desktop. Poleg tega lahko te opise"
+" uporabite za ustvarjanje samodejnega podatkovnega slovarja."
 
 # description
 msgid "Provide format string for 'Date' columns"
@@ -870,8 +883,23 @@ msgid "Add data category for columns"
 msgstr "Dodajte lastnost »Kategorija podatkov« za ustrezne stolpce."
 
 # description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Za boljšo uporabniško izkušnjo morajo biti merila percengage oblikovane z "
+"znakom »%«."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Za boljšo uporabniško izkušnjo je treba cele številke oblikovati z vejicami."
+
+# description
 msgid "Hide foreign keys"
-msgstr "Tuji ključi morajo biti vedno skriti."
+msgstr ""
+"Tuji ključi morajo biti vedno skriti, saj jih končni uporabniki ne smejo "
+"uporabljati."
 
 # description
 msgid "Mark primary keys"

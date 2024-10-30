@@ -1,3 +1,8 @@
+from sempy_labs._managed_private_endpoints import (
+    list_managed_private_endpoints,
+    create_managed_private_endpoint,
+    delete_managed_private_endpoint,
+)
 from sempy_labs._workloads import (
     list_workloads,
     patch_workload,
@@ -389,4 +394,7 @@ __all__ = [
     "get_semantic_model_refresh_history",
     "get_warehouse_columns",
     "get_warehouse_tables",
+    "list_managed_private_endpoints",
+    "create_managed_private_endpoint",
+    "delete_managed_private_endpoint",
 ]

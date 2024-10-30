@@ -618,8 +618,8 @@ msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
-"https://learn.microsoft.com/power-bi/transform-model/desktop-storage-"
-"mode#propagation-of-the-dual-setting"
+"Quando si usa DirectQuery, le tabelle delle dimensioni devono essere "
+"impostate sulla modalità doppia per migliorare le prestazioni delle query."
 
 # description
 msgid "Minimize Power Query transformations"
@@ -789,6 +789,12 @@ msgstr ""
 "diversi e definite dalla stessa espressione DAX."
 
 # description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"L'aggiunta di un valore costante può portare a un degrado delle prestazioni."
+
+# description
 msgid "Avoid using '1-(x/y)' syntax"
 msgstr ""
 "Anziché usare la sintassi '1-(x/y)' o '1+(x/y)' per ottenere un calcolo "
@@ -872,10 +878,18 @@ msgstr ""
 "nel modello con una relazione."
 
 # description
-msgid "Visible objects with no description"
+msgid "Calculation groups with no calculation items"
 msgstr ""
 "I gruppi di calcolo non hanno alcuna funzione a meno che non dispongano di "
 "elementi di calcolo."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Aggiungere descrizioni agli oggetti. Queste descrizioni vengono visualizzate"
+" al passaggio del mouse all'interno dell'elenco dei campi in Power BI "
+"Desktop. Inoltre, è possibile sfruttare queste descrizioni per creare un "
+"dizionario di dati automatizzato."
 
 # description
 msgid "Provide format string for 'Date' columns"
@@ -901,8 +915,24 @@ msgid "Add data category for columns"
 msgstr "Aggiungere la proprietà Categoria dati per le colonne appropriate."
 
 # description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Per una migliore esperienza utente, le misure percengage devono essere "
+"formattate con un segno \"%\"."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Per una migliore esperienza utente, i numeri interi devono essere formattati"
+" con virgole."
+
+# description
 msgid "Hide foreign keys"
-msgstr "Le chiavi esterne devono essere sempre nascoste."
+msgstr ""
+"Le chiavi esterne devono essere sempre nascoste in quanto non devono essere "
+"utilizzate dagli utenti finali."
 
 # description
 msgid "Mark primary keys"

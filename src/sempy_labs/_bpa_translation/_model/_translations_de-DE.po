@@ -618,8 +618,8 @@ msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
-"https://learn.microsoft.com/power-bi/transform-model/desktop-storage-"
-"mode#propagation-of-the-dual-setting"
+"Bei Verwendung von DirectQuery sollten Dimensionstabellen auf den Dualmodus "
+"festgelegt werden, um die Abfrageleistung zu verbessern."
 
 # description
 msgid "Minimize Power Query transformations"
@@ -790,6 +790,12 @@ msgstr ""
 "definiert sind, sollten vermieden werden, um Redundanz zu reduzieren."
 
 # description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Das Hinzufügen eines konstanten Werts kann zu Leistungseinbußen führen."
+
+# description
 msgid "Avoid using '1-(x/y)' syntax"
 msgstr ""
 "Anstatt die Syntax \"1-(x/y)\" oder \"1+(x/y)\" zu verwenden, um eine "
@@ -873,10 +879,18 @@ msgstr ""
 "durch eine Beziehung verbunden sind."
 
 # description
-msgid "Visible objects with no description"
+msgid "Calculation groups with no calculation items"
 msgstr ""
 "Berechnungsgruppen haben keine Funktion, es sei denn, sie verfügen über "
 "Berechnungselemente."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Fügen Sie Beschreibungen zu Objekten hinzu. Diese Beschreibungen werden "
+"angezeigt, wenn Sie mit der Maus auf die Feldliste in Power BI Desktop "
+"zeigen. Darüber hinaus können Sie diese Beschreibungen nutzen, um ein "
+"automatisiertes Datenwörterbuch zu erstellen."
 
 # description
 msgid "Provide format string for 'Date' columns"
@@ -904,8 +918,24 @@ msgstr ""
 "hinzu."
 
 # description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Für eine bessere Benutzererfahrung sollten Percengage-Messungen mit einem "
+"%-Zeichen formatiert werden."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Für eine bessere Benutzererfahrung sollten ganze Zahlen mit Kommas "
+"formatiert werden."
+
+# description
 msgid "Hide foreign keys"
-msgstr "Fremdschlüssel sollten immer ausgeblendet werden."
+msgstr ""
+"Fremdschlüssel sollten immer ausgeblendet werden, da sie nicht von "
+"Endbenutzern verwendet werden sollten."
 
 # description
 msgid "Mark primary keys"

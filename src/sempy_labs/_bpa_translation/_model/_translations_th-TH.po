@@ -595,8 +595,8 @@ msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
-"https://learn.microsoft.com/power-bi/transform-model/desktop-storage-"
-"mode#propagation-of-the-dual-setting"
+"เมื่อใช้ DirectQuery "
+"ควรตั้งค่าตารางมิติเป็นโหมดคู่เพื่อปรับปรุงประสิทธิภาพการสืบค้น"
 
 # description
 msgid "Minimize Power Query transformations"
@@ -750,6 +750,11 @@ msgstr ""
 "เดียวกันเพื่อลดความซ้ําซ้อน"
 
 # description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "การเพิ่มค่าคงที่อาจทําให้ประสิทธิภาพลดลง"
+
+# description
 msgid "Avoid using '1-(x/y)' syntax"
 msgstr ""
 "แทนที่จะใช้ไวยากรณ์ '1-(x/y)' หรือ '1+(x/y)' เพื่อให้ได้การคํานวณเปอร์เซ็นต์"
@@ -825,8 +830,16 @@ msgstr ""
 "กฎนี้เน้นตารางที่ไม่ได้เชื่อมต่อกับตารางอื่นในแบบจําลองที่มีความสัมพันธ์"
 
 # description
-msgid "Visible objects with no description"
+msgid "Calculation groups with no calculation items"
 msgstr "กลุ่มการคํานวณไม่มีฟังก์ชัน เว้นแต่จะมีรายการการคํานวณ"
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"เพิ่มคําอธิบายให้กับวัตถุ "
+"คําอธิบายเหล่านี้จะแสดงเมื่อวางเมาส์เหนือภายในรายการเขตข้อมูลใน Power BI "
+"Desktop นอกจากนี้ "
+"คุณสามารถใช้ประโยชน์จากคําอธิบายเหล่านี้เพื่อสร้างพจนานุกรมข้อมูลอัตโนมัติได้"
 
 # description
 msgid "Provide format string for 'Date' columns"
@@ -847,8 +860,22 @@ msgid "Add data category for columns"
 msgstr "เพิ่มคุณสมบัติประเภทข้อมูลสําหรับคอลัมน์ที่เหมาะสม"
 
 # description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"เพื่อประสบการณ์การใช้งานที่ดียิ่งขึ้น ควรจัดรูปแบบมาตรการ percengage "
+"ด้วยเครื่องหมาย '%'"
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"เพื่อประสบการณ์การใช้งานที่ดียิ่งขึ้น "
+"ควรจัดรูปแบบจํานวนเต็มด้วยเครื่องหมายจุลภาค"
+
+# description
 msgid "Hide foreign keys"
-msgstr "ควรซ่อนคีย์ต่างประเทศเสมอ"
+msgstr "ควรซ่อนคีย์ต่างประเทศไว้เสมอ เนื่องจากผู้ใช้ปลายทางไม่ควรใช้"
 
 # description
 msgid "Mark primary keys"

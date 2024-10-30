@@ -3,6 +3,7 @@ import sempy.fabric as fabric
 from sempy_labs.tom import connect_semantic_model
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
 from sempy_labs.directlake._dl_helper import get_direct_lake_source
+from sempy_labs._helper_functions import _convert_data_type
 from typing import List, Optional, Union
 import sempy_labs._icons as icons
 
@@ -12,7 +13,6 @@ def update_direct_lake_partition_entity(
     table_name: Union[str, List[str]],
     entity_name: Union[str, List[str]],
     workspace: Optional[str] = None,
-    **kwargs,
 ):
     """
     Remaps a table (or tables) in a Direct Lake semantic model to a table in a lakehouse.
@@ -31,28 +31,8 @@ def update_direct_lake_partition_entity(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    if "lakehouse" in kwargs:
-        print(
-            "The 'lakehouse' parameter has been deprecated as it is no longer necessary. Please remove this parameter from the function going forward."
-        )
-        del kwargs["lakehouse"]
-    if "lakehouse_workspace" in kwargs:
-        print(
-            "The 'lakehouse_workspace' parameter has been deprecated as it is no longer necessary. Please remove this parameter from the function going forward."
-        )
-        del kwargs["lakehouse_workspace"]
-
-    workspace = fabric.resolve_workspace_name(workspace)
-
-    artifact_type, lakehouse_name, lakehouse_id, lakehouse_workspace_id = (
-        get_direct_lake_source(dataset=dataset, workspace=workspace)
-    )
-
-    if artifact_type == "Warehouse":
-        raise ValueError(
-            f"{icons.red_dot} This function is only valid for Direct Lake semantic models which source from lakehouses, not warehouses."
-        )
-    lakehouse_workspace = fabric.resolve_workspace_name(lakehouse_workspace_id)
+    if workspace is None:
+        workspace = fabric.resolve_workspace_name(workspace)
 
     # Support both str & list types
     if isinstance(table_name, str):
@@ -64,6 +44,8 @@ def update_direct_lake_partition_entity(
         raise ValueError(
             f"{icons.red_dot} The 'table_name' and 'entity_name' arrays must be of equal length."
         )
+
+    icons.sll_tags.append("UpdateDLPartition")
 
     with connect_semantic_model(
         dataset=dataset, readonly=False, workspace=workspace
@@ -88,12 +70,11 @@ def update_direct_lake_partition_entity(
                 raise ValueError(
                     f"{icons.red_dot} The '{tName}' table in the '{dataset}' semantic model has not been updated."
                 )
-            else:
-                tom.model.Tables[tName].Partitions[part_name].EntityName = eName
-                print(
-                    f"{icons.green_dot} The '{tName}' table in the '{dataset}' semantic model has been updated to point to the '{eName}' table "
-                    f"in the '{lakehouse_name}' lakehouse within the '{lakehouse_workspace}' workspace."
-                )
+
+            tom.model.Tables[tName].Partitions[part_name].EntityName = eName
+            print(
+                f"{icons.green_dot} The '{tName}' table in the '{dataset}' semantic model has been updated to point to the '{eName}' table."
+            )
 
 
 def add_table_to_direct_lake_semantic_model(
@@ -149,9 +130,9 @@ def add_table_to_direct_lake_semantic_model(
 
         table_count = tom.model.Tables.Count
 
-        if tom.is_direct_lake() is False and table_count > 0:
+        if not tom.is_direct_lake() and table_count > 0:
             raise ValueError(
-                "This function is only valid for Direct Lake semantic models or semantic models with no tables."
+                f"{icons.red_dot} This function is only valid for Direct Lake semantic models or semantic models with no tables."
             )
 
         if any(
@@ -204,7 +185,7 @@ def add_table_to_direct_lake_semantic_model(
         for i, r in dfLC_filt.iterrows():
             lakeCName = r["Column Name"]
             dType = r["Data Type"]
-            dt = icons.data_type_mapping.get(dType)
+            dt = _convert_data_type(dType)
             tom.add_data_column(
                 table_name=table_name,
                 column_name=lakeCName,

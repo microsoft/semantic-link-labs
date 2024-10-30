@@ -602,8 +602,8 @@ msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
-"https://learn.microsoft.com/power-bi/transform-model/desktop-storage-"
-"mode#propagation-of-the-dual-setting"
+"Při použití DirectQuery by měly být tabulky dimenzí nastaveny na duální "
+"režim, aby se zlepšil výkon dotazů."
 
 # description
 msgid "Minimize Power Query transformations"
@@ -761,6 +761,11 @@ msgstr ""
 "výrazem DAX, aby se snížila redundance."
 
 # description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "Přidání konstantní hodnoty může vést ke snížení výkonu."
+
+# description
 msgid "Avoid using '1-(x/y)' syntax"
 msgstr ""
 "Místo použití syntaxe \"1-(x/y)\" nebo \"1+(x/y)\" k dosažení výpočtu "
@@ -838,8 +843,15 @@ msgstr ""
 "tabulce v modelu se vztahem."
 
 # description
-msgid "Visible objects with no description"
+msgid "Calculation groups with no calculation items"
 msgstr "Skupiny výpočtů nemají žádnou funkci, pokud nemají položky výpočtu."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Přidejte k objektům popisy. Tyto popisy se zobrazí po najetí myší na seznam "
+"polí v Power BI Desktopu. Kromě toho můžete tyto popisy využít k vytvoření "
+"automatizovaného datového slovníku."
 
 # description
 msgid "Provide format string for 'Date' columns"
@@ -864,8 +876,23 @@ msgid "Add data category for columns"
 msgstr "Přidejte vlastnost Kategorie dat pro příslušné sloupce."
 
 # description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Pro lepší uživatelský zážitek by měly být míry percengage formátovány se "
+"znaménkem \"%\"."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Pro lepší uživatelský zážitek by měla být celá čísla formátována čárkami."
+
+# description
 msgid "Hide foreign keys"
-msgstr "Cizí klíče by měly být vždy skryté."
+msgstr ""
+"Cizí klíče by měly být vždy skryté, protože by je neměli používat koncoví "
+"uživatelé."
 
 # description
 msgid "Mark primary keys"

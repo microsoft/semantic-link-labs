@@ -1296,3 +1296,24 @@ def _process_and_display_chart(df, title, widget):
     with widget:
         widget.clear_output(wait=True)
     _show_chart(spec, title=title)
+
+
+def _convert_data_type(input_data_type: str) -> str:
+
+    data_type_mapping = {
+        "string": "String",
+        "int": "Int64",
+        "tinyint": "Int64",
+        "smallint": "Int64",
+        "bigint": "Int64",
+        "boolean": "Boolean",
+        "timestamp": "DateTime",
+        "date": "DateTime",
+        "double": "Double",
+        "float": "Double",
+    }
+
+    if "decimal" in input_data_type:
+        return "Decimal"
+    else:
+        return data_type_mapping.get(input_data_type)

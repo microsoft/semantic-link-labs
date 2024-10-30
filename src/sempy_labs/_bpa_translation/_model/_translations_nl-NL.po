@@ -613,8 +613,8 @@ msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
-"https://learn.microsoft.com/power-bi/transform-model/desktop-storage-"
-"mode#propagation-of-the-dual-setting"
+"Wanneer u DirectQuery gebruikt, moeten dimensietabellen worden ingesteld op "
+"de dubbele modus om de queryprestaties te verbeteren."
 
 # description
 msgid "Minimize Power Query transformations"
@@ -782,6 +782,12 @@ msgstr ""
 "expressie moeten worden vermeden om redundantie te verminderen."
 
 # description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Het toevoegen van een constante waarde kan leiden tot prestatievermindering."
+
+# description
 msgid "Avoid using '1-(x/y)' syntax"
 msgstr ""
 "In plaats van de syntaxis '1-(x/y)' of '1+(x/y)' te gebruiken om een "
@@ -866,9 +872,17 @@ msgstr ""
 "verbonden met een andere tabel in het model."
 
 # description
-msgid "Visible objects with no description"
+msgid "Calculation groups with no calculation items"
 msgstr ""
 "Berekeningsgroepen hebben geen functie, tenzij ze berekeningsitems hebben."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Voeg beschrijvingen toe aan objecten. Deze beschrijvingen worden weergegeven"
+" wanneer u de muisaanwijzer aanbrengt in de lijst met velden in Power BI "
+"Desktop. Bovendien kunt u deze beschrijvingen gebruiken om een "
+"geautomatiseerd gegevenswoordenboek te maken."
 
 # description
 msgid "Provide format string for 'Date' columns"
@@ -894,8 +908,24 @@ msgid "Add data category for columns"
 msgstr "Voeg de eigenschap Gegevenscategorie toe voor de juiste kolommen."
 
 # description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Voor een betere gebruikerservaring moeten percengage-metingen worden "
+"opgemaakt met een '%'-teken."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Voor een betere gebruikerservaring moeten hele getallen worden opgemaakt met"
+" komma's."
+
+# description
 msgid "Hide foreign keys"
-msgstr "Vreemde sleutels moeten altijd verborgen zijn."
+msgstr ""
+"Vreemde sleutels moeten altijd worden verborgen, omdat ze niet door "
+"eindgebruikers mogen worden gebruikt."
 
 # description
 msgid "Mark primary keys"

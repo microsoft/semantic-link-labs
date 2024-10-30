@@ -617,8 +617,8 @@ msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
-"https://learn.microsoft.com/power-bi/transform-model/desktop-storage-"
-"mode#propagation-of-the-dual-setting"
+"DirectQuery பயன்படுத்தும் போது, வினவல் செயல்திறனை மேம்படுத்த பரிமாண "
+"அட்டவணைகள் இரட்டை பயன்முறைக்கு அமைக்கப்பட வேண்டும்."
 
 # description
 msgid "Minimize Power Query transformations"
@@ -786,6 +786,11 @@ msgstr ""
 "இரண்டு நடவடிக்கைகள் பணிநீக்கத்தைக் குறைக்க தவிர்க்கப்பட வேண்டும்."
 
 # description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "நிலையான மதிப்பைச் சேர்ப்பது செயல்திறன் சரிவுக்கு வழிவகுக்கும்."
+
+# description
 msgid "Avoid using '1-(x/y)' syntax"
 msgstr ""
 "சதவீத கணக்கீட்டை அடைய '1- (x/y)' அல்லது '1+(x/y)' தொடரியல் பயன்படுத்துவதற்கு"
@@ -867,10 +872,17 @@ msgstr ""
 "அட்டவணைகளை எடுத்துக்காட்டுகிறது."
 
 # description
-msgid "Visible objects with no description"
+msgid "Calculation groups with no calculation items"
 msgstr ""
 "கணக்கீட்டு உருப்படிகள் இல்லாவிட்டால் கணக்கீட்டு குழுக்களுக்கு எந்த "
 "செயல்பாட்டும் இல்லை."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"பொருள்களுக்கு விளக்கங்களைச் சேர்க்கவும். இந்த விளக்கங்கள் Power BI "
+"டெஸ்க்டாப்பில் உள்ள புலப் பட்டியலில் மிதவையில் காட்டப்பட்டுள்ளன. கூடுதலாக, "
+"தானியங்கி தரவு அகராதியை உருவாக்க இந்த விளக்கங்களை நீங்கள் பயன்படுத்தலாம்."
 
 # description
 msgid "Provide format string for 'Date' columns"
@@ -895,8 +907,24 @@ msgid "Add data category for columns"
 msgstr "பொருத்தமான நெடுவரிசைகளுக்கு தரவு வகை குணத்தைச் சேர்க்கவும்."
 
 # description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"சிறந்த பயனர் அனுபவத்திற்கு, percengage நடவடிக்கைகள் '%' அடையாளத்துடன் "
+"வடிவமைக்கப்பட வேண்டும்."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"சிறந்த பயனர் அனுபவத்திற்காக, முழு எண்களும் காற்புள்ளிகளுடன் வடிவமைக்கப்பட "
+"வேண்டும்."
+
+# description
 msgid "Hide foreign keys"
-msgstr "வெளிநாட்டு விசைகள் எப்போதும் மறைக்கப்பட வேண்டும்."
+msgstr ""
+"வெளிநாட்டு விசைகள் எப்போதும் மறைக்கப்பட வேண்டும், ஏனெனில் அவை இறுதி "
+"பயனர்களால் பயன்படுத்தப்படக்கூடாது."
 
 # description
 msgid "Mark primary keys"

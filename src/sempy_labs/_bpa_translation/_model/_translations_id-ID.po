@@ -594,8 +594,8 @@ msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
-"https://learn.microsoft.com/power-bi/transform-model/desktop-storage-"
-"mode#propagation-of-the-dual-setting"
+"Saat menggunakan DirectQuery, tabel dimensi harus diatur ke mode ganda untuk"
+" meningkatkan performa kueri."
 
 # description
 msgid "Minimize Power Query transformations"
@@ -756,6 +756,11 @@ msgstr ""
 "sama harus dihindari untuk mengurangi redundansi."
 
 # description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "Menambahkan nilai konstan dapat menyebabkan penurunan kinerja."
+
+# description
 msgid "Avoid using '1-(x/y)' syntax"
 msgstr ""
 "Alih-alih menggunakan sintaks '1-(x/y)' atau '1+(x/y)' untuk mencapai "
@@ -836,10 +841,17 @@ msgstr ""
 "dengan hubungan."
 
 # description
-msgid "Visible objects with no description"
+msgid "Calculation groups with no calculation items"
 msgstr ""
 "Grup perhitungan tidak memiliki fungsi kecuali mereka memiliki item "
 "perhitungan."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Tambahkan deskripsi ke objek. Deskripsi ini ditampilkan saat mengarahkan "
+"kursor ke dalam Daftar Bidang di Power BI Desktop. Selain itu, Anda dapat "
+"memanfaatkan deskripsi ini untuk membuat kamus data otomatis."
 
 # description
 msgid "Provide format string for 'Date' columns"
@@ -865,8 +877,24 @@ msgid "Add data category for columns"
 msgstr "Tambahkan properti Kategori Data untuk kolom yang sesuai."
 
 # description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Untuk pengalaman pengguna yang lebih baik, pengukuran percengage harus "
+"diformat dengan tanda '%'."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Untuk pengalaman pengguna yang lebih baik, bilangan bulat harus diformat "
+"dengan koma."
+
+# description
 msgid "Hide foreign keys"
-msgstr "Kunci asing harus selalu disembunyikan."
+msgstr ""
+"Kunci asing harus selalu disembunyikan karena tidak boleh digunakan oleh "
+"pengguna akhir."
 
 # description
 msgid "Mark primary keys"

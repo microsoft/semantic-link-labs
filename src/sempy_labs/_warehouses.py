@@ -148,8 +148,9 @@ def delete_warehouse(name: str, workspace: Optional[str] = None):
     )
 
 
-def get_warehouse_tables(warehouse: str, workspace: Optional[str] = None) -> pd.DataFrame:
-
+def get_warehouse_tables(
+    warehouse: str, workspace: Optional[str] = None
+) -> pd.DataFrame:
     """
     Shows a list of the tables in the Fabric warehouse. This function is based on INFORMATION_SCHEMA.TABLES.
 
@@ -173,7 +174,7 @@ def get_warehouse_tables(warehouse: str, workspace: Optional[str] = None) -> pd.
     with ConnectWarehouse(warehouse=warehouse, workspace=workspace) as sql:
         df = sql.query(
             """
-        SELECT TABLE_SCHEMA, TABLE_NAME, TABLE_TYPE
+        SELECT TABLE_SCHEMA AS [Schema], TABLE_NAME AS [Table Name], TABLE_TYPE AS [Table Type]
         FROM INFORMATION_SCHEMA.TABLES
         WHERE TABLE_TYPE = 'BASE TABLE'
         """
@@ -182,7 +183,9 @@ def get_warehouse_tables(warehouse: str, workspace: Optional[str] = None) -> pd.
     return df
 
 
-def get_warehouse_columns(warehouse: str, workspace: Optional[str] = None) -> pd.DataFrame:
+def get_warehouse_columns(
+    warehouse: str, workspace: Optional[str] = None
+) -> pd.DataFrame:
     """
     Shows a list of the columns in each table within the Fabric warehouse. This function is based on INFORMATION_SCHEMA.COLUMNS.
 
@@ -206,7 +209,7 @@ def get_warehouse_columns(warehouse: str, workspace: Optional[str] = None) -> pd
     with ConnectWarehouse(warehouse=warehouse, workspace=workspace) as sql:
         df = sql.query(
             """
-        SELECT t.TABLE_SCHEMA, t.TABLE_NAME, c.COLUMN_NAME, c.DATA_TYPE, c.IS_NULLABLE, c.CHARACTER_MAXIMUM_LENGTH
+        SELECT t.TABLE_SCHEMA AS [Schema], t.TABLE_NAME AS [Table Name], c.COLUMN_NAME AS [Column Name], c.DATA_TYPE AS [Data Type], c.IS_NULLABLE AS [Is Nullable], c.CHARACTER_MAXIMUM_LENGTH AS [Character Max Length]
         FROM INFORMATION_SCHEMA.TABLES AS t
         LEFT JOIN INFORMATION_SCHEMA.COLUMNS AS c
         ON t.TABLE_NAME = c.TABLE_NAME

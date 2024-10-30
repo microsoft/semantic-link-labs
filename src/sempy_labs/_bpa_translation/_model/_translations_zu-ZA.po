@@ -613,8 +613,8 @@ msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
-"https://learn.microsoft.com/power-bi/transform-model/desktop-storage-"
-"mode#propagation-of-the-dual-setting"
+"Lapho usebenzisa i-DirectQuery, amatafula obukhulu kufanele abekwe kwimodi "
+"ye-Dual ukuze kuthuthukiswe ukusebenza kombuzo."
 
 # description
 msgid "Minimize Power Query transformations"
@@ -779,6 +779,11 @@ msgstr ""
 "ye-DAX kufanele zigwenywe ukunciphisa ukungasebenzi."
 
 # description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "Ukwengeza inani elihlala njalo kungaholela ekuwohlokeni kokusebenza."
+
+# description
 msgid "Avoid using '1-(x/y)' syntax"
 msgstr ""
 "Esikhundleni sokusebenzisa i-syntax '1- (x / y)' noma '1 +(x / y)' ukufeza "
@@ -860,9 +865,16 @@ msgstr ""
 "kumodeli enobudlelwano."
 
 # description
-msgid "Visible objects with no description"
+msgid "Calculation groups with no calculation items"
 msgstr ""
 "Amaqembu okubala awanawo umsebenzi ngaphandle kokuthi anezinto zokubala."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Engeza izincazelo ezintweni. Lezi zincazelo ziboniswa ku-hover ngaphakathi "
+"koHlu Lwensimu ku-Power BI Desktop. Ngaphezu kwalokho, ungasebenzisa lezi "
+"zincazelo ukudala isichazamazwi sedatha esizenzakalelayo."
 
 # description
 msgid "Provide format string for 'Date' columns"
@@ -888,8 +900,24 @@ msgid "Add data category for columns"
 msgstr "Engeza isici seSigaba Sedatha samakholomu afanele."
 
 # description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Ukuze uthole isipiliyoni esingcono somsebenzisi, izinyathelo ze-percengage "
+"kufanele zihlelwe ngophawu lwe-'%'."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Ukuze uthole isipiliyoni esingcono somsebenzisi, izinombolo eziphelele "
+"kufanele zihlelwe ngama-commas."
+
+# description
 msgid "Hide foreign keys"
-msgstr "Okhiye bangaphandle kufanele bahlale befihliwe."
+msgstr ""
+"Izihluthulelo zakwamanye amazwe kufanele zifihlwe ngaso sonke isikhathi "
+"njengoba kungafanele zisetshenziswe ngabasebenzisi bokugcina."
 
 # description
 msgid "Mark primary keys"

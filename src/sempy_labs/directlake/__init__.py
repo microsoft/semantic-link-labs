@@ -21,6 +21,7 @@ from sempy_labs.directlake._show_unsupported_directlake_objects import (
 )
 from sempy_labs.directlake._update_directlake_model_lakehouse_connection import (
     update_direct_lake_model_lakehouse_connection,
+    update_direct_lake_model_connection,
 )
 from sempy_labs.directlake._update_directlake_partition_entity import (
     update_direct_lake_partition_entity,
@@ -50,4 +51,5 @@ __all__ = [
     "add_table_to_direct_lake_semantic_model",
     "generate_direct_lake_semantic_model",
     "get_direct_lake_source",
+    "update_direct_lake_model_connection",
 ]

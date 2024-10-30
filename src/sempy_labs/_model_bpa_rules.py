@@ -158,6 +158,7 @@ def model_bpa_rules(
                     and r.ToTable.Name == obj.Name
                     for r in tom.used_in_relationships(object=obj)
                 ),
+                "When using DirectQuery, dimension tables should be set to Dual mode in order to improve query performance.",
                 "https://learn.microsoft.com/power-bi/transform-model/desktop-storage-mode#propagation-of-the-dual-setting",
             ),
             (
@@ -492,6 +493,7 @@ def model_bpa_rules(
                     obj.Expression,
                     flags=re.IGNORECASE,
                 ),
+                "Adding a constant value may lead to performance degradation.",
             ),
             (
                 "DAX Expressions",
@@ -643,6 +645,7 @@ def model_bpa_rules(
                 "Calculation groups with no calculation items",
                 lambda obj, tom: obj.CalculationGroup is not None
                 and not any(obj.CalculationGroup.CalculationItems),
+                "Calculation groups have no function unless they have calculation items.",
             ),
             (
                 "Maintenance",
@@ -710,6 +713,7 @@ def model_bpa_rules(
                 "Percentages should be formatted with thousands separators and 1 decimal",
                 lambda obj, tom: "%" in obj.FormatString
                 and obj.FormatString != "#,0.0%;-#,0.0%;#,0.0%",
+                "For a better user experience, percengage measures should be formatted with a '%' sign.",
             ),
             (
                 "Formatting",
@@ -719,6 +723,7 @@ def model_bpa_rules(
                 lambda obj, tom: "$" not in obj.FormatString
                 and "%" not in obj.FormatString
                 and obj.FormatString not in ["#,0", "#,0.0"],
+                "For a better user experience, whole numbers should be formatted with commas.",
             ),
             (
                 "Formatting",
@@ -731,7 +736,7 @@ def model_bpa_rules(
                     and r.FromCardinality == TOM.RelationshipEndCardinality.Many
                     for r in tom.used_in_relationships(object=obj)
                 ),
-                "Foreign keys should always be hidden.",
+                "Foreign keys should always be hidden as they should not be used by end users.",
             ),
             (
                 "Formatting",

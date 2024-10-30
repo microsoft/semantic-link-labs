@@ -608,8 +608,8 @@ msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
-"https://learn.microsoft.com/power-bi/transform-model/desktop-storage-"
-"mode#propagation-of-the-dual-setting"
+"Meta tintuża DirectQuery, it-tabelli tad-dimensjoni għandhom jiġu ssettjati "
+"għall-modalità Doppja sabiex tittejjeb il-prestazzjoni tal-mistoqsija."
 
 # description
 msgid "Minimize Power Query transformations"
@@ -772,6 +772,13 @@ msgstr ""
 "għandhom jiġu evitati biex titnaqqas is-sensji."
 
 # description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Iż-żieda ta' valur kostanti tista' twassal għal degradazzjoni tal-"
+"prestazzjoni."
+
+# description
 msgid "Avoid using '1-(x/y)' syntax"
 msgstr ""
 "Minflok tuża s-sintassi \"1-(x/y)\" jew \"1+(x/y)\" biex tikseb kalkolu "
@@ -855,10 +862,17 @@ msgstr ""
 "fil-mudell b'relazzjoni."
 
 # description
-msgid "Visible objects with no description"
+msgid "Calculation groups with no calculation items"
 msgstr ""
 "Il-gruppi ta' kalkolu m'għandhom l-ebda funzjoni sakemm ma jkollhomx "
 "elementi ta' kalkolu."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Żid deskrizzjonijiet ma' oġġetti. Dawn id-deskrizzjonijiet jidhru fuq hover "
+"fil-Lista tal-Qasam fil-Power BI Desktop. Barra minn hekk, tista 'tisfrutta "
+"dawn id-deskrizzjonijiet biex toħloq dizzjunarju awtomatizzat tad-dejta."
 
 # description
 msgid "Provide format string for 'Date' columns"
@@ -884,8 +898,24 @@ msgid "Add data category for columns"
 msgstr "Żid proprjetà tal-Kategorija tad-Dejta għal kolonni xierqa."
 
 # description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Għal esperjenza aħjar tal-utent, il-miżuri ta' percengage għandhom jiġu "
+"fformattjati b'sinjal '%'."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Għal esperjenza aħjar tal-utent, in-numri sħaħ għandhom jiġu fformattjati "
+"bil-virgoli."
+
+# description
 msgid "Hide foreign keys"
-msgstr "Iċ-ċwievet barranin għandhom dejjem ikunu moħbija."
+msgstr ""
+"It-tasti barranin għandhom dejjem ikunu moħbija peress li m'għandhomx "
+"jintużaw mill-utenti finali."
 
 # description
 msgid "Mark primary keys"

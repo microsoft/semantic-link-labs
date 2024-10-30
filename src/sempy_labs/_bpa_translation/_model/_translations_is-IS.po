@@ -597,8 +597,8 @@ msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
-"https://learn.microsoft.com/power-bi/transform-model/desktop-storage-"
-"mode#propagation-of-the-dual-setting"
+"Þegar DirectQuery er notað ætti að stilla víddartöflur á Tvöfalda stillingu "
+"til að bæta afköst fyrirspurna."
 
 # description
 msgid "Minimize Power Query transformations"
@@ -756,6 +756,11 @@ msgstr ""
 " DAX-tjáningu til að draga úr offramboðum."
 
 # description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "Að bæta við föstu gildi getur leitt til rýrnunar á afköstum."
+
+# description
 msgid "Avoid using '1-(x/y)' syntax"
 msgstr ""
 "Í stað þess að nota \"1-(x/y)\" eða \"1+(x/y)\" setningaskipan til að ná "
@@ -834,8 +839,15 @@ msgstr ""
 "líkaninu með vensl."
 
 # description
-msgid "Visible objects with no description"
+msgid "Calculation groups with no calculation items"
 msgstr "Reikniflokkar hafa enga virkni nema þeir hafi reikniatriði."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Bættu lýsingum við hluti. Þessar lýsingar eru sýndar þegar bendillinn er í "
+"reitalistanum í Power BI Desktop. Að auki geturðu nýtt þér þessar lýsingar "
+"til að búa til sjálfvirka gagnaorðabók."
 
 # description
 msgid "Provide format string for 'Date' columns"
@@ -860,8 +872,23 @@ msgid "Add data category for columns"
 msgstr "Bættu við Data Category eiginleika fyrir viðeigandi dálka."
 
 # description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Til að fá betri notendaupplifun ættu percengage mælingar að vera sniðnar með"
+" '%' merki."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Til að fá betri notendaupplifun ætti að forsníða heilar tölur með kommum."
+
+# description
 msgid "Hide foreign keys"
-msgstr "Erlendir lyklar ættu alltaf að vera faldir."
+msgstr ""
+"Erlendir lyklar ættu alltaf að vera faldir þar sem þeir ættu ekki að vera "
+"notaðir af notendum."
 
 # description
 msgid "Mark primary keys"

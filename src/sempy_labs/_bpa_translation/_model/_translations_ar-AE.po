@@ -590,8 +590,8 @@ msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
-"https://learn.microsoft.com/power-bi/transform-model/desktop-storage-"
-"mode#propagation-of-the-dual-setting"
+"عند استخدام DirectQuery، يجب تعيين جداول الأبعاد إلى الوضع المزدوج لتحسين "
+"أداء الاستعلام."
 
 # description
 msgid "Minimize Power Query transformations"
@@ -736,6 +736,11 @@ msgid "No two measures should have the same definition"
 msgstr "يجب تجنب تدبيرين بأسماء مختلفة ومعرفين بنفس تعبير DAX لتقليل التكرار."
 
 # description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "قد تؤدي إضافة قيمة ثابتة إلى تدهور الأداء."
+
+# description
 msgid "Avoid using '1-(x/y)' syntax"
 msgstr ""
 "بدلا من استخدام بناء الجملة \"1- (x / y)\" أو \"1 + (x / y)\" لتحقيق حساب "
@@ -809,8 +814,15 @@ msgstr ""
 "تبرز هذه القاعدة الجداول غير المتصلة بأي جدول آخر في النموذج له علاقة."
 
 # description
-msgid "Visible objects with no description"
+msgid "Calculation groups with no calculation items"
 msgstr "مجموعات الحساب ليس لها وظيفة ما لم يكن لديها عناصر حسابية."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"إضافة أوصاف إلى الكائنات. تظهر هذه الأوصاف عند التمرير داخل قائمة الحقول في "
+"Power BI Desktop. بالإضافة إلى ذلك، يمكنك الاستفادة من هذه الأوصاف لإنشاء "
+"قاموس بيانات تلقائي."
 
 # description
 msgid "Provide format string for 'Date' columns"
@@ -833,8 +845,20 @@ msgid "Add data category for columns"
 msgstr "إضافة خاصية فئة البيانات للأعمدة المناسبة."
 
 # description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "للحصول على تجربة مستخدم أفضل ، يجب تنسيق مقاييس percengage بعلامة \"٪\"."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "للحصول على تجربة مستخدم أفضل ، يجب تنسيق الأرقام الصحيحة بفواصل."
+
+# description
 msgid "Hide foreign keys"
-msgstr "يجب دائما إخفاء المفاتيح الخارجية."
+msgstr ""
+"يجب دائما إخفاء المفاتيح الخارجية حيث لا ينبغي استخدامها من قبل المستخدمين "
+"النهائيين."
 
 # description
 msgid "Mark primary keys"

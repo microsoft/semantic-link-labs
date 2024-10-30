@@ -609,8 +609,8 @@ msgid ""
 "Set dimensions tables to dual mode instead of import when using DirectQuery "
 "on fact tables"
 msgstr ""
-"https://learn.microsoft.com/power-bi/transform-model/desktop-storage-"
-"mode#propagation-of-the-dual-setting"
+"Quan s'utilitza DirectQuery, les taules de dimensions s'han de definir en "
+"mode dual per millorar el rendiment de les consultes."
 
 # description
 msgid "Minimize Power Query transformations"
@@ -774,6 +774,11 @@ msgstr ""
 "expressió DAX per reduir la redundància."
 
 # description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "Afegir un valor constant pot provocar una degradació del rendiment."
+
+# description
 msgid "Avoid using '1-(x/y)' syntax"
 msgstr ""
 "En lloc d'utilitzar la sintaxi '1-(x/y)' o '1+(x/y)' per aconseguir un "
@@ -853,9 +858,17 @@ msgstr ""
 " del model amb una relació."
 
 # description
-msgid "Visible objects with no description"
+msgid "Calculation groups with no calculation items"
 msgstr ""
 "Els grups de càlcul no tenen cap funció tret que tinguin elements de càlcul."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Afegiu descripcions als objectes. Aquestes descripcions es mostren al passar"
+" el cursor per sobre dins de la llista de camps del Power BI Desktop. A més,"
+" podeu aprofitar aquestes descripcions per crear un diccionari de dades "
+"automatitzat."
 
 # description
 msgid "Provide format string for 'Date' columns"
@@ -880,8 +893,24 @@ msgid "Add data category for columns"
 msgstr "Afegiu la propietat Data Category per a les columnes adequades."
 
 # description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Per a una millor experiència d'usuari, les mesures de percengage s'han de "
+"formatar amb un signe \"%\"."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Per a una millor experiència d'usuari, els nombres enters s'han de formatar "
+"amb comes."
+
+# description
 msgid "Hide foreign keys"
-msgstr "Les claus estrangeres sempre s'han d'amagar."
+msgstr ""
+"Les claus estrangeres sempre s'han d'amagar, ja que no han de ser "
+"utilitzades pels usuaris finals."
 
 # description
 msgid "Mark primary keys"
