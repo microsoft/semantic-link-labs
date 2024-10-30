@@ -60,8 +60,8 @@ def export_report(
         raise FabricHTTPException(response)
 
     # Save file to the attached lakehouse
-    with open(f"/lakehouse/default/Files/{file_name}.pbix", "w") as file:
-        file.write(response.text)
+    with open(f"/lakehouse/default/Files/{file_name}.pbix", "wb") as file:
+        file.write(response.content)
 
     print(
         f"{icons.green_dot} The '{report}' report within the '{workspace}' workspace has been exported to the attached lakehouse as the '{file_name}' file."
