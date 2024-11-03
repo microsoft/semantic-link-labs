@@ -71,7 +71,7 @@ def update_direct_lake_partition_entity(
                     f"{icons.red_dot} The '{tName}' table in the '{dataset}' semantic model has not been updated."
                 )
 
-            tom.model.Tables[tName].Partitions[part_name].EntityName = eName
+            tom.model.Tables[tName].Partitions[part_name].Source.EntityName = eName
             print(
                 f"{icons.green_dot} The '{tName}' table in the '{dataset}' semantic model has been updated to point to the '{eName}' table."
             )
