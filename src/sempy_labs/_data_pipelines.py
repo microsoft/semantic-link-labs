@@ -15,7 +15,7 @@ def list_data_pipelines(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the data pipelines within a workspace.
 
-    This is a wrapper function for the following API: `Items - List Data Pipelines <https://learn.microsoft.com/rest/api/fabric/datapipeline/items/list-data-pipelines`_.
+    This is a wrapper function for the following API: `Items - List Data Pipelines <https://learn.microsoft.com/rest/api/fabric/datapipeline/items/list-data-pipelines>`_.
 
     Parameters
     ----------
@@ -59,7 +59,7 @@ def create_data_pipeline(
     """
     Creates a Fabric data pipeline.
 
-    This is a wrapper function for the following API: `Items - Create Data Pipeline <https://learn.microsoft.com/rest/api/fabric/datapipeline/items/create-data-pipeline`_.
+    This is a wrapper function for the following API: `Items - Create Data Pipeline <https://learn.microsoft.com/rest/api/fabric/datapipeline/items/create-data-pipeline>`_.
 
     Parameters
     ----------
@@ -96,7 +96,7 @@ def delete_data_pipeline(name: str, workspace: Optional[str] = None):
     """
     Deletes a Fabric data pipeline.
 
-    This is a wrapper function for the following API: `Items - Delete Data Pipeline <https://learn.microsoft.com/rest/api/fabric/datapipeline/items/delete-data-pipeline`_.
+    This is a wrapper function for the following API: `Items - Delete Data Pipeline <https://learn.microsoft.com/rest/api/fabric/datapipeline/items/delete-data-pipeline>`_.
 
     Parameters
     ----------

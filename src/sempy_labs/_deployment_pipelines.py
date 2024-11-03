@@ -11,7 +11,7 @@ def list_deployment_pipelines() -> pd.DataFrame:
     """
     Shows a list of deployment pipelines the user can access.
 
-    This is a wrapper function for the following API: `Deployment Pipelines - List Deployment Pipelines <https://learn.microsoft.com/rest/api/fabric/core/deployment-pipelines/list-deployment-pipelines`_.
+    This is a wrapper function for the following API: `Deployment Pipelines - List Deployment Pipelines <https://learn.microsoft.com/rest/api/fabric/core/deployment-pipelines/list-deployment-pipelines>`_.
 
     Returns
     -------
@@ -47,7 +47,7 @@ def list_deployment_pipeline_stages(deployment_pipeline: str) -> pd.DataFrame:
     """
     Shows the specified deployment pipeline stages.
 
-    This is a wrapper function for the following API: `Deployment Pipelines - List Deployment Pipeline Stages <https://learn.microsoft.com/rest/api/fabric/core/deployment-pipelines/list-deployment-pipeline-stages`_.
+    This is a wrapper function for the following API: `Deployment Pipelines - List Deployment Pipeline Stages <https://learn.microsoft.com/rest/api/fabric/core/deployment-pipelines/list-deployment-pipeline-stages>`_.
 
     Parameters
     ----------
@@ -110,7 +110,7 @@ def list_deployment_pipeline_stage_items(
     """
     Shows the supported items from the workspace assigned to the specified stage of the specified deployment pipeline.
 
-    This is a wrapper function for the following API: `Deployment Pipelines - List Deployment Pipeline Stage Items <https://learn.microsoft.com/rest/api/fabric/core/deployment-pipelines/list-deployment-pipeline-stage-items`_.
+    This is a wrapper function for the following API: `Deployment Pipelines - List Deployment Pipeline Stage Items <https://learn.microsoft.com/rest/api/fabric/core/deployment-pipelines/list-deployment-pipeline-stage-items>`_.
 
     Parameters
     ----------

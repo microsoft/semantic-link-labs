@@ -14,7 +14,7 @@ def delete_user_from_workspace(email_address: str, workspace: Optional[str] = No
     """
     Removes a user from a workspace.
 
-    This is a wrapper function for the following API: `Groups - Delete User In Group <https://learn.microsoft.com/rest/api/power-bi/groups/delete-user-in-group`_.
+    This is a wrapper function for the following API: `Groups - Delete User In Group <https://learn.microsoft.com/rest/api/power-bi/groups/delete-user-in-group>`_.
 
     Parameters
     ----------
@@ -47,7 +47,7 @@ def update_workspace_user(
     """
     Updates a user's role within a workspace.
 
-    This is a wrapper function for the following API: `Groups - Update Group User <https://learn.microsoft.com/rest/api/power-bi/groups/update-group-user`_.
+    This is a wrapper function for the following API: `Groups - Update Group User <https://learn.microsoft.com/rest/api/power-bi/groups/update-group-user>`_.
 
     Parameters
     ----------
@@ -99,7 +99,7 @@ def list_workspace_users(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     A list of all the users of a workspace and their roles.
 
-    This is a wrapper function for the following API: `Workspaces - List Workspace Role Assignments <https://learn.microsoft.com/rest/api/fabric/core/workspaces/list-workspace-role-assignments`_.
+    This is a wrapper function for the following API: `Workspaces - List Workspace Role Assignments <https://learn.microsoft.com/rest/api/fabric/core/workspaces/list-workspace-role-assignments>`_.
 
     Parameters
     ----------
@@ -148,7 +148,7 @@ def add_user_to_workspace(
     """
     Adds a user to a workspace.
 
-    This is a wrapper function for the following API: `Groups - Add Group User <https://learn.microsoft.com/rest/api/power-bi/groups/add-group-user`_.
+    This is a wrapper function for the following API: `Groups - Add Group User <https://learn.microsoft.com/rest/api/power-bi/groups/add-group-user>`_.
 
     Parameters
     ----------
@@ -204,7 +204,7 @@ def assign_workspace_to_capacity(capacity_name: str, workspace: Optional[str] = 
     """
     Assigns a workspace to a capacity.
 
-    This is a wrapper function for the following API: `Workspaces - Assign To Capacity <https://learn.microsoft.com/rest/api/fabric/core/workspaces/assign-to-capacity`_.
+    This is a wrapper function for the following API: `Workspaces - Assign To Capacity <https://learn.microsoft.com/rest/api/fabric/core/workspaces/assign-to-capacity>`_.
 
     Parameters
     ----------
@@ -238,7 +238,7 @@ def unassign_workspace_from_capacity(workspace: Optional[str] = None):
     """
     Unassigns a workspace from its assigned capacity.
 
-    This is a wrapper function for the following API: `Workspaces - Unassign From Capacity <https://learn.microsoft.com/rest/api/fabric/core/workspaces/unassign-from-capacity`_.
+    This is a wrapper function for the following API: `Workspaces - Unassign From Capacity <https://learn.microsoft.com/rest/api/fabric/core/workspaces/unassign-from-capacity>`_.
 
     Parameters
     ----------
@@ -264,7 +264,7 @@ def list_workspace_role_assignments(workspace: Optional[str] = None) -> pd.DataF
     """
     Shows the members of a given workspace.
 
-    This is a wrapper function for the following API: `Workspaces - List Workspace Role Assignments <https://learn.microsoft.com/rest/api/fabric/core/workspaces/list-workspace-role-assignments`_.
+    This is a wrapper function for the following API: `Workspaces - List Workspace Role Assignments <https://learn.microsoft.com/rest/api/fabric/core/workspaces/list-workspace-role-assignments>`_.
 
     Parameters
     ----------
