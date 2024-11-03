@@ -8,6 +8,7 @@ from sempy_labs._helper_functions import (
 from sempy_labs._model_dependencies import get_model_calc_dependencies
 from typing import Optional
 from sempy._utils._log import log
+from tqdm.auto import tqdm
 
 
 @log
@@ -42,10 +43,7 @@ def evaluate_dax_impersonation(
         A pandas dataframe holding the result of the DAX query.
     """
 
-    # https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/execute-queries-in-group
-
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-
     dataset_id = resolve_dataset_id(dataset=dataset, workspace=workspace)
 
     request_body = {
@@ -68,8 +66,32 @@ def evaluate_dax_impersonation(
 
 @log
 def get_dax_query_dependencies(
-    dataset: str, dax_string: str, workspace: Optional[str] = None
-):
+    dataset: str,
+    dax_string: str,
+    put_in_memory: bool = False,
+    workspace: Optional[str] = None,
+) -> pd.DataFrame:
+    """
+    Obtains the columns on which a DAX query depends, including model dependencies. Shows Vertipaq statistics (i.e. Total Size, Data Size, Dictionary Size, Hierarchy Size) for easy prioritizing.
+
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    dax_string : str
+        The DAX query.
+    put_in_memory : bool, default=False
+        If True, ensures that the dependent columns are put into memory in order to give realistic Vertipaq stats (i.e. Total Size etc.).
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the dependent columns of a given DAX query including model dependencies.
+    """
 
     if workspace is None:
         workspace = fabric.resolve_workspace_name(workspace)
@@ -80,8 +102,8 @@ def get_dax_query_dependencies(
         EVALUATE
         VAR source_query = "{dax_string}"
         VAR all_dependencies = SELECTCOLUMNS(
-            INFO.CALCDEPENDENCY("QUERY", source_query), 
-                "Referenced Object Type",[REFERENCED_OBJECT_TYPE], 
+            INFO.CALCDEPENDENCY("QUERY", source_query),
+                "Referenced Object Type",[REFERENCED_OBJECT_TYPE],
                 "Referenced Table", [REFERENCED_TABLE],
                 "Referenced Object", [REFERENCED_OBJECT]
             )             
@@ -132,20 +154,64 @@ def get_dax_query_dependencies(
     # Get vertipaq stats, filter to just the objects in the df dataframe
     df["Full Object"] = format_dax_object_name(df["Table"], df["Object"])
     dfC = fabric.list_columns(dataset=dataset, workspace=workspace, extended=True)
-    dfC["Full Object"] = format_dax_object_name(
-        dfC["Table Name"], dfC["Column Name"]
-    )
+    dfC["Full Object"] = format_dax_object_name(dfC["Table Name"], dfC["Column Name"])
+
     dfC_filtered = dfC[dfC["Full Object"].isin(df["Full Object"].values)][
         [
             "Table Name",
             "Column Name",
-            "Column Cardinality",
             "Total Size",
             "Data Size",
             "Dictionary Size",
             "Hierarchy Size",
+            "Is Resident",
+            "Full Object",
         ]
     ].reset_index(drop=True)
+
+    if put_in_memory:
+        not_in_memory = dfC_filtered[dfC_filtered["Is Resident"] == False]
+
+        if len(not_in_memory) > 0:
+            tbls = not_in_memory["Table Name"].unique()
+
+            # Run basic query to get columns into memory; completed one table at a time (so as not to overload the capacity)
+            for table_name in (bar := tqdm(tbls)):
+                bar.set_description(f"Warming the '{table_name}' table...")
+                css = ", ".join(
+                    not_in_memory[not_in_memory["Table Name"] == table_name][
+                        "Full Object"
+                    ]
+                    .astype(str)
+                    .tolist()
+                )
+                dax = f"""EVALUATE TOPN(1,SUMMARIZECOLUMNS({css}))"""
+                fabric.evaluate_dax(
+                    dataset=dataset, dax_string=dax, workspace=workspace
+                )
+
+            # Get column stats again
+            dfC = fabric.list_columns(
+                dataset=dataset, workspace=workspace, extended=True
+            )
+            dfC["Full Object"] = format_dax_object_name(
+                dfC["Table Name"], dfC["Column Name"]
+            )
+
+            dfC_filtered = dfC[dfC["Full Object"].isin(df["Full Object"].values)][
+                [
+                    "Table Name",
+                    "Column Name",
+                    "Total Size",
+                    "Data Size",
+                    "Dictionary Size",
+                    "Hierarchy Size",
+                    "Is Resident",
+                    "Full Object",
+                ]
+            ].reset_index(drop=True)
+
+    dfC_filtered.drop(["Full Object"], axis=1, inplace=True)
 
     return dfC_filtered
 
@@ -154,14 +220,31 @@ def get_dax_query_dependencies(
 def get_dax_query_memory_size(
     dataset: str, dax_string: str, workspace: Optional[str] = None
 ) -> int:
+    """
+    Obtains the total size, in bytes, used by all columns that the DAX query depends on.
+
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    dax_string : str
+        The DAX query.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    int
+        The total size, in bytes, used by all columns that the DAX query depends on.
+    """
 
     if workspace is None:
         workspace = fabric.resolve_workspace_name(workspace)
 
     df = get_dax_query_dependencies(
-        dataset=dataset,
-        workspace=workspace,
-        dax_string=dax_string,
+        dataset=dataset, workspace=workspace, dax_string=dax_string, put_in_memory=True
     )
 
     return df["Total Size"].sum()

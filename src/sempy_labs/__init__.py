@@ -135,7 +135,11 @@ from sempy_labs._connections import (
     # create_connection_vnet,
     # create_connection_on_prem
 )
-from sempy_labs._dax import evaluate_dax_impersonation
+from sempy_labs._dax import (
+    evaluate_dax_impersonation,
+    get_dax_query_dependencies,
+    get_dax_query_memory_size,
+)
 from sempy_labs._generate_semantic_model import (
     create_blank_semantic_model,
     create_semantic_model_from_bim,
@@ -373,4 +377,6 @@ __all__ = [
     "revoke_external_data_share",
     "migrate_fabric_trial_capacity",
     "create_resource_group",
+    "get_dax_query_dependencies",
+    "get_dax_query_memory_size",
 ]

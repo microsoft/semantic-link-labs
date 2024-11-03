@@ -177,7 +177,7 @@ def warm_direct_lake_cache_isresident(
     dfC["DAX Object Name"] = format_dax_object_name(
         dfC["Table Name"], dfC["Column Name"]
     )
-    dfC_filtered = dfC[dfC["Is Resident"]]
+    dfC_filtered = dfC[dfC["Is Resident"] == True]
 
     if len(dfC_filtered) == 0:
         raise ValueError(
@@ -186,17 +186,18 @@ def warm_direct_lake_cache_isresident(
 
     # Refresh/frame dataset
     refresh_semantic_model(dataset=dataset, refresh_type="full", workspace=workspace)
-
     time.sleep(2)
 
-    tbls = dfC_filtered["Table Name"].unique()
-    column_values = dfC_filtered["DAX Object Name"].tolist()
-
     # Run basic query to get columns into memory; completed one table at a time (so as not to overload the capacity)
-    for tableName in (bar := tqdm(tbls)):
-        bar.set_description(f"Warming the '{tableName}' table...")
-        css = ",".join(map(str, column_values))
-        dax = """EVALUATE TOPN(1,SUMMARIZECOLUMNS(""" + css + "))" ""
+    tbls = dfC_filtered["Table Name"].unique()
+    for table_name in (bar := tqdm(tbls)):
+        bar.set_description(f"Warming the '{table_name}' table...")
+        css = ", ".join(
+            dfC_filtered[dfC_filtered["Table Name"] == table_name]["DAX Object Name"]
+            .astype(str)
+            .tolist()
+        )
+        dax = f"""EVALUATE TOPN(1,SUMMARIZECOLUMNS({css}))"""
         fabric.evaluate_dax(dataset=dataset, dax_string=dax, workspace=workspace)
 
     print(
