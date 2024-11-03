@@ -412,18 +412,19 @@ def vertipaq_analyzer(
     export_Model = dfModel.copy()
 
     def _style_columns_based_on_types(dataframe: pd.DataFrame, column_type_mapping):
-
-        format_mapping = {
-            "int": "{:,}",
-            "pct": "{:.2f}%",
-            "": "{}",
+        # Define formatting functions based on the type mappings
+        format_funcs = {
+            "int": lambda x: "{:,}".format(x) if pd.notnull(x) else "",
+            "pct": lambda x: "{:.2f}%".format(x) if pd.notnull(x) else "",
+            "": lambda x: "{}".format(x),
         }
 
-        format_dict = {
-            col: format_mapping[dt] for col, dt in column_type_mapping.items()
-        }
+        # Apply the formatting function to each column based on its specified type
+        for col, dt in column_type_mapping.items():
+            if dt in format_funcs:
+                dataframe[col] = dataframe[col].map(format_funcs[dt])
 
-        return dataframe.style.format(format_dict)
+        return dataframe
 
     dfModel = _style_columns_based_on_types(
         dfModel,
@@ -979,7 +980,8 @@ def import_vertipaq_analyzer(folder_path: str, file_name: str):
     dfs = {}
     for file_name in zip_ref.namelist():
         df = pd.read_csv(extracted_dir + "/" + file_name)
-        dfs[file_name] = df
+        df_name = file_name[:-4]
+        dfs[df_name] = df
 
     visualize_vertipaq(dfs)
 
