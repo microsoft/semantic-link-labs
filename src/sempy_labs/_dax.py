@@ -1,6 +1,6 @@
 import sempy.fabric as fabric
 import pandas as pd
-from typing import Optional
+from typing import Optional, Tuple
 from sempy._utils._log import log
 import time
 import sempy_labs._icons as icons
@@ -74,7 +74,7 @@ def trace_dax(
     clear_cache_before_run: bool = False,
     clear_cache_before_each_query: bool = False,
     workspace: Optional[str] = None,
-):
+) -> Tuple[pd.DataFrame, dict]:
     """
     Runs a SQL Profiler trace over a set of DAX queries.
 
@@ -101,8 +101,9 @@ def trace_dax(
 
     Returns
     -------
-    pandas.DataFrame
+    Tuple[pandas.DataFrame, dict]
         A pandas dataframe showing the SQL profiler trace results of the DAX queries.
+        A dictionary of the query results in pandas dataframes.
     """
 
     if workspace is None:
@@ -119,6 +120,8 @@ def trace_dax(
         "QueryBegin": begin_cols + ["ApplicationName"],
         "QueryEnd": end_cols + ["ApplicationName"],
     }
+
+    query_results = {}
 
     if clear_cache_before_run:
         clear_cache(dataset=dataset, workspace=workspace)
@@ -137,9 +140,12 @@ def trace_dax(
                 ):
                     clear_cache(dataset=dataset, workspace=workspace)
 
-                fabric.evaluate_dax(
+                result = fabric.evaluate_dax(
                     dataset=dataset, workspace=workspace, dax_string=dax
                 )
+                # Add results to output
+                query_results[name] = result
+
                 time.sleep(rest_time)
                 print(f"{icons.green_dot} The '{name}' query has completed.")
 
@@ -155,4 +161,4 @@ def trace_dax(
             df["Query Name"] = pd.to_numeric(df["Query Name"], downcast="integer")
             df["Query Name"] = df["Query Name"].map(lambda x: query_names[x - 1])
 
-    return df
+    return df, query_results
