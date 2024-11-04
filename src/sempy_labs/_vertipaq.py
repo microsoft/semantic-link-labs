@@ -21,6 +21,7 @@ from sempy_labs.directlake import get_direct_lake_source
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
+from pathlib import Path
 
 
 @log
@@ -980,7 +981,8 @@ def import_vertipaq_analyzer(folder_path: str, file_name: str):
     dfs = {}
     for file_name in zip_ref.namelist():
         df = pd.read_csv(extracted_dir + "/" + file_name)
-        df_name = file_name[:-4]
+        file_path = Path(file_name)
+        df_name = file_path.stem
         dfs[df_name] = df
 
     visualize_vertipaq(dfs)
