@@ -16,7 +16,7 @@ def create_environment(
     """
     Creates a Fabric environment.
 
-    This is a wrapper function for the following API: `Items - Create Environment <https://learn.microsoft.com/rest/api/fabric/environment/items/create-environment`_.
+    This is a wrapper function for the following API: `Items - Create Environment <https://learn.microsoft.com/rest/api/fabric/environment/items/create-environment>`_.
 
     Parameters
     ----------
@@ -53,7 +53,7 @@ def list_environments(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the environments within a workspace.
 
-    This is a wrapper function for the following API: `Items - List Environments <https://learn.microsoft.com/rest/api/fabric/environment/items/list-environments`_.
+    This is a wrapper function for the following API: `Items - List Environments <https://learn.microsoft.com/rest/api/fabric/environment/items/list-environments>`_.
 
     Parameters
     ----------
@@ -95,7 +95,7 @@ def delete_environment(environment: str, workspace: Optional[str] = None):
     """
     Deletes a Fabric environment.
 
-    This is a wrapper function for the following API: `Items - Delete Environment <https://learn.microsoft.com/rest/api/fabric/environment/items/delete-environment`_.
+    This is a wrapper function for the following API: `Items - Delete Environment <https://learn.microsoft.com/rest/api/fabric/environment/items/delete-environment>`_.
 
     Parameters
     ----------

@@ -19,7 +19,7 @@ def report_rebind(
     """
     Rebinds a report to a semantic model.
 
-    This is a wrapper function for the following API: `Reports - Rebind Report In Group <https://learn.microsoft.com/rest/api/power-bi/reports/rebind-report-in-group`_.
+    This is a wrapper function for the following API: `Reports - Rebind Report In Group <https://learn.microsoft.com/rest/api/power-bi/reports/rebind-report-in-group>`_.
 
     Parameters
     ----------

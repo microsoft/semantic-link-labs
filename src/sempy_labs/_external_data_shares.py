@@ -20,7 +20,7 @@ def create_external_data_share(
     """
     Creates an external data share for a given path or list of paths in the specified item.
 
-    This is a wrapper function for the following API: `External Data Shares - Create External Data Share <https://learn.microsoft.com/rest/api/fabric/core/external-data-shares/create-external-data-share`_.
+    This is a wrapper function for the following API: `External Data Shares - Create External Data Share <https://learn.microsoft.com/rest/api/fabric/core/external-data-shares/create-external-data-share>`_.
 
     Parameters
     ----------

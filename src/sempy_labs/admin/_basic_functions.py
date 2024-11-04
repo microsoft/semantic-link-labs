@@ -366,7 +366,7 @@ def revoke_external_data_share(
     """
     Revokes the specified external data share. Note: This action cannot be undone.
 
-    This is a wrapper function for the following API: `External Data Shares - Revoke External Data Share <https://learn.microsoft.com/rest/api/fabric/admin/external-data-shares/revoke-external-data-share`_.
+    This is a wrapper function for the following API: `External Data Shares - Revoke External Data Share <https://learn.microsoft.com/rest/api/fabric/admin/external-data-shares/revoke-external-data-share>`_.
 
     Parameters
     ----------
@@ -399,7 +399,7 @@ def list_capacities_delegated_tenant_settings(
     """
     Returns list of tenant setting overrides that override at the capacities.
 
-    This is a wrapper function for the following API: `Tenants - List Capacities Tenant Settings Overrides <https://learn.microsoft.com/rest/api/fabric/admin/tenants/list-capacities-tenant-settings-overrides`_.
+    This is a wrapper function for the following API: `Tenants - List Capacities Tenant Settings Overrides <https://learn.microsoft.com/rest/api/fabric/admin/tenants/list-capacities-tenant-settings-overrides>`_.
 
     Parameters
     ----------
@@ -530,7 +530,7 @@ def list_datasets() -> pd.DataFrame:
     """
     Shows a list of datasets for the organization.
 
-    This is a wrapper function for the following API: `Admin - Datasets GetDatasetsAsAdmin <https://learn.microsoft.com/rest/api/power-bi/admin/datasets-get-datasets-as-admin`_.
+    This is a wrapper function for the following API: `Admin - Datasets GetDatasetsAsAdmin <https://learn.microsoft.com/rest/api/power-bi/admin/datasets-get-datasets-as-admin>`_.
 
     Returns
     -------
@@ -620,7 +620,7 @@ def list_item_access_details(
     """
     Returns a list of users (including groups and service principals) and lists their workspace roles.
 
-    This is a wrapper function for the following API: `Items - List Item Access Details <https://learn.microsoft.com/rest/api/fabric/admin/items/list-item-access-details`_.
+    This is a wrapper function for the following API: `Items - List Item Access Details <https://learn.microsoft.com/rest/api/fabric/admin/items/list-item-access-details>`_.
 
     Parameters
     ----------
@@ -688,7 +688,7 @@ def list_access_entities(
     """
     Shows a list of permission details for Fabric and Power BI items the specified user can access.
 
-    This is a wrapper function for the following API: `Users - List Access Entities <https://learn.microsoft.com/rest/api/fabric/admin/users/list-access-entities`_.
+    This is a wrapper function for the following API: `Users - List Access Entities <https://learn.microsoft.com/rest/api/fabric/admin/users/list-access-entities>`_.
 
     Parameters
     ----------
@@ -740,7 +740,7 @@ def list_workspace_access_details(
     """
     Shows a list of users (including groups and Service Principals) that have access to the specified workspace.
 
-    This is a wrapper function for the following API: `Workspaces - List Workspace Access Details <https://learn.microsoft.com/rest/api/fabric/admin/workspaces/list-workspace-access-details`_.
+    This is a wrapper function for the following API: `Workspaces - List Workspace Access Details <https://learn.microsoft.com/rest/api/fabric/admin/workspaces/list-workspace-access-details>`_.
 
     Parameters
     ----------
@@ -821,7 +821,7 @@ def list_items(
     """
     Shows a list of active Fabric and Power BI items.
 
-    This is a wrapper function for the following API: `Items - List Items <https://learn.microsoft.com/rest/api/fabric/admin/items/list-items`_.
+    This is a wrapper function for the following API: `Items - List Items <https://learn.microsoft.com/rest/api/fabric/admin/items/list-items>`_.
 
     Parameters
     ----------
@@ -923,7 +923,7 @@ def list_activity_events(
     """
     Shows a list of audit activity events for a tenant.
 
-    This is a wrapper function for the following API: `Admin - Get Activity Events <https://learn.microsoft.com/rest/api/power-bi/admin/get-activity-events`_.
+    This is a wrapper function for the following API: `Admin - Get Activity Events <https://learn.microsoft.com/rest/api/power-bi/admin/get-activity-events>`_.
 
     Parameters
     ----------

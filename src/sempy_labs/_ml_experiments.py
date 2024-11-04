@@ -14,7 +14,7 @@ def list_ml_experiments(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the ML experiments within a workspace.
 
-    This is a wrapper function for the following API: `Items - List ML Experiments <https://learn.microsoft.com/rest/api/fabric/mlexperiment/items/list-ml-experiments`_.
+    This is a wrapper function for the following API: `Items - List ML Experiments <https://learn.microsoft.com/rest/api/fabric/mlexperiment/items/list-ml-experiments>`_.
 
     Parameters
     ----------
@@ -62,7 +62,7 @@ def create_ml_experiment(
     """
     Creates a Fabric ML experiment.
 
-    This is a wrapper function for the following API: `Items - Create ML Experiment <https://learn.microsoft.com/rest/api/fabric/mlexperiment/items/create-ml-experiment`_.
+    This is a wrapper function for the following API: `Items - Create ML Experiment <https://learn.microsoft.com/rest/api/fabric/mlexperiment/items/create-ml-experiment>`_.
 
     Parameters
     ----------
@@ -99,7 +99,7 @@ def delete_ml_experiment(name: str, workspace: Optional[str] = None):
     """
     Deletes a Fabric ML experiment.
 
-    This is a wrapper function for the following API: `Items - Delete ML Experiment <https://learn.microsoft.com/rest/api/fabric/mlexperiment/items/delete-ml-experiment`_.
+    This is a wrapper function for the following API: `Items - Delete ML Experiment <https://learn.microsoft.com/rest/api/fabric/mlexperiment/items/delete-ml-experiment>`_.
 
     Parameters
     ----------

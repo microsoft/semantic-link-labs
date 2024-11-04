@@ -21,7 +21,7 @@ def connect_workspace_to_git(
     """
     Connects a workspace to a git repository.
 
-    This is a wrapper function for the following API: `Git - Connect <https://learn.microsoft.com/rest/api/fabric/core/git/connect`_.
+    This is a wrapper function for the following API: `Git - Connect <https://learn.microsoft.com/rest/api/fabric/core/git/connect>`_.
 
     Parameters
     ----------
@@ -72,7 +72,7 @@ def disconnect_workspace_from_git(workspace: Optional[str] = None):
     """
     Disconnects a workpsace from a git repository.
 
-    This is a wrapper function for the following API: `Git - Disconnect <https://learn.microsoft.com/rest/api/fabric/core/git/disconnect`_.
+    This is a wrapper function for the following API: `Git - Disconnect <https://learn.microsoft.com/rest/api/fabric/core/git/disconnect>`_.
 
     Parameters
     ----------
@@ -98,7 +98,7 @@ def get_git_status(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Obtains the Git status of items in the workspace, that can be committed to Git.
 
-    This is a wrapper function for the following API: `Git - Get Status <https://learn.microsoft.com/rest/api/fabric/core/git/get-status`_.
+    This is a wrapper function for the following API: `Git - Get Status <https://learn.microsoft.com/rest/api/fabric/core/git/get-status>.
 
     Parameters
     ----------
@@ -161,7 +161,7 @@ def get_git_connection(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Obtains the Git status of items in the workspace, that can be committed to Git.
 
-    This is a wrapper function for the following API: `Git - Get Connection <https://learn.microsoft.com/rest/api/fabric/core/git/get-connection`_.
+    This is a wrapper function for the following API: `Git - Get Connection <https://learn.microsoft.com/rest/api/fabric/core/git/get-connection>`_.
 
     Parameters
     ----------
@@ -221,7 +221,7 @@ def initialize_git_connection(workspace: Optional[str] = None):
     """
     Initializes a connection for a workspace that is connected to Git.
 
-    This is a wrapper function for the following API: `Git - Initialize Connection <https://learn.microsoft.com/rest/api/fabric/core/git/initialize-connection`_.
+    This is a wrapper function for the following API: `Git - Initialize Connection <https://learn.microsoft.com/rest/api/fabric/core/git/initialize-connection>`_.
 
     Parameters
     ----------
@@ -252,7 +252,7 @@ def commit_to_git(
     """
     Commits all or a selection of items within a workspace to Git.
 
-    This is a wrapper function for the following API: `Git - Commit to Git <https://learn.microsoft.com/rest/api/fabric/core/git/commit-to-git`_.
+    This is a wrapper function for the following API: `Git - Commit to Git <https://learn.microsoft.com/rest/api/fabric/core/git/commit-to-git>`_.
 
     Parameters
     ----------
@@ -320,7 +320,7 @@ def update_from_git(
     """
     Updates the workspace with commits pushed to the connected branch.
 
-    This is a wrapper function for the following API: `Git - Update From Git <https://learn.microsoft.com/rest/api/fabric/core/git/update-from-git`_.
+    This is a wrapper function for the following API: `Git - Update From Git <https://learn.microsoft.com/rest/api/fabric/core/git/update-from-git>`_.
 
     Parameters
     ----------

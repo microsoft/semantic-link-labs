@@ -31,7 +31,7 @@ def get_lakehouse_tables(
     """
     Shows the tables of a lakehouse and their respective properties. Option to include additional properties relevant to Direct Lake guardrails.
 
-    This is a wrapper function for the following API: `Tables - List Tables <https://learn.microsoft.com/rest/api/fabric/lakehouse/tables/list-tables`_ plus extended capabilities.
+    This is a wrapper function for the following API: `Tables - List Tables <https://learn.microsoft.com/rest/api/fabric/lakehouse/tables/list-tables>`_ plus extended capabilities.
 
     Parameters
     ----------

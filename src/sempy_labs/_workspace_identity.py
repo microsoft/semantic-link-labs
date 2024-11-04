@@ -12,7 +12,7 @@ def provision_workspace_identity(workspace: Optional[str] = None):
     """
     Provisions a workspace identity for a workspace.
 
-    This is a wrapper function for the following API: `Workspaces - Provision Identity <https://learn.microsoft.com/rest/api/fabric/core/workspaces/provision-identity`_.
+    This is a wrapper function for the following API: `Workspaces - Provision Identity <https://learn.microsoft.com/rest/api/fabric/core/workspaces/provision-identity>`_.
 
     Parameters
     ----------
@@ -41,7 +41,7 @@ def deprovision_workspace_identity(workspace: Optional[str] = None):
     """
     Deprovisions a workspace identity for a workspace.
 
-    This is a wrapper function for the following API: `Workspaces - Derovision Identity <https://learn.microsoft.com/rest/api/fabric/core/workspaces/deprovision-identity`_.
+    This is a wrapper function for the following API: `Workspaces - Derovision Identity <https://learn.microsoft.com/rest/api/fabric/core/workspaces/deprovision-identity>`_.
 
     Parameters
     ----------

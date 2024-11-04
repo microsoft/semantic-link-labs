@@ -12,7 +12,7 @@ def list_mirrored_warehouses(workspace: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the mirrored warehouses within a workspace.
 
-    This is a wrapper function for the following API: `Items - List Mirrored Warehouses <https://learn.microsoft.com/rest/api/fabric/mirroredwarehouse/items/list-mirrored-warehouses`_.
+    This is a wrapper function for the following API: `Items - List Mirrored Warehouses <https://learn.microsoft.com/rest/api/fabric/mirroredwarehouse/items/list-mirrored-warehouses>`_.
 
     Parameters
     ----------

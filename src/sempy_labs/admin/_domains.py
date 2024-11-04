@@ -84,7 +84,7 @@ def list_domain_workspaces(domain_name: str) -> pd.DataFrame:
     """
     Shows a list of workspaces within the domain.
 
-    This is a wrapper function for the following API: `Domains - List Domain Workspaces <https://learn.microsoft.com/rest/api/fabric/admin/domains/list-domain-workspaces?tabs=HTTP>`_.
+    This is a wrapper function for the following API: `Domains - List Domain Workspaces <https://learn.microsoft.com/rest/api/fabric/admin/domains/list-domain-workspaces>`_.
 
     Parameters
     ----------
