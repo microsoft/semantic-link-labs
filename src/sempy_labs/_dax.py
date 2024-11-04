@@ -73,6 +73,8 @@ def trace_dax(
     rest_time: int = 2,
     clear_cache_before_run: bool = False,
     clear_cache_before_each_query: bool = False,
+    trace_vertipaq_se: bool = False,
+    trace_direct_query: bool = False,
     workspace: Optional[str] = None,
 ) -> Tuple[pd.DataFrame, dict]:
     """
@@ -94,6 +96,10 @@ def trace_dax(
         If True, clears the cache before running any DAX queries.
     clear_cache_before_each_query : bool, default=False
         If True, clears the cache before running each DAX query.
+    trace_vertipaq_se : bool, default=False
+        If True, adds the following events to the trace: VertiPaq SE Query Begin, VertiPaq SE Query End, VertiPaq SE Query Cache Match
+    trace_direct_query : bool, default=False
+        If True, adds the following events to the trace: Direct Query Begin, Direct Query End
     workspace : str, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -112,14 +118,20 @@ def trace_dax(
     base_cols = ["EventClass", "EventSubclass", "CurrentTime", "NTUserName", "TextData"]
     begin_cols = base_cols + ["StartTime"]
     end_cols = base_cols + ["StartTime", "EndTime", "Duration", "CpuTime", "Success"]
+    dq_cols = ["EventClass", "CurrentTime", "StartTime", "EndTime", "Duration", "CpuTime", "Success", "Error", "TextData"]
 
     event_schema = {
-        "VertiPaqSEQueryBegin": begin_cols,
-        "VertiPaqSEQueryEnd": end_cols,
-        "VertiPaqSEQueryCacheMatch": base_cols,
         "QueryBegin": begin_cols + ["ApplicationName"],
         "QueryEnd": end_cols + ["ApplicationName"],
     }
+
+    if trace_vertipaq_se:
+        event_schema["VertiPaqSEQueryBegin"] = begin_cols
+        event_schema["VertiPaqSEQueryEnd"] = end_cols
+        event_schema["VertiPaqSEQueryCacheMatch"] = base_cols
+    if trace_direct_query:
+        event_schema["DirectQueryBegin"] = dq_cols
+        event_schema["DirectQueryEnd"] = dq_cols
 
     query_results = {}
 
