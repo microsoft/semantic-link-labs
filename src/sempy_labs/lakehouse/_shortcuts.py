@@ -4,9 +4,10 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_id,
     resolve_workspace_name_and_id,
 )
-from typing import Optional
+from typing import Optional, Union
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
+from uuid import UUID
 
 
 def create_shortcut_onelake(
@@ -87,43 +88,110 @@ def create_shortcut_onelake(
         ) from e
 
 
-def create_shortcut(
+def create_shortcut_adls(
     shortcut_name: str,
     location: str,
     subpath: str,
-    source: str,
-    connection_id: str,
+    connection: Union[str, UUID],
+    path: str = "Tables",
     lakehouse: Optional[str] = None,
     workspace: Optional[str] = None,
 ):
     """
-    Creates a `shortcut <https://learn.microsoft.com/fabric/onelake/onelake-shortcuts>`_ to an ADLS Gen2 or Amazon S3 source.
+    Creates a `shortcut <https://learn.microsoft.com/fabric/onelake/onelake-shortcuts>`_ to an ADLS Gen2 source.
 
     Parameters
     ----------
     shortcut_name : str
     location : str
     subpath : str
-    source : str
-    connection_id: str
-    lakehouse : str
+    connection: Union[str, UUID]
+        A string representing the connection that is bound with the shortcut. This can either be the connection Id or the connection name.
+    path : str, default="Tables"
+        A string representing the full path where the shortcut is created, including either "Files" or "Tables".
+    lakehouse : str, default=None
         The Fabric lakehouse in which the shortcut will be created.
+        Defaults to None which resolves to the default lakehouse attached to the notebook.
     workspace : str, default=None
         The name of the Fabric workspace in which the shortcut will be created.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
+    _create_shortcut_base(
+        shortcut_name=shortcut_name,
+        location=location,
+        subpath=subpath,
+        source="adlsGen2",
+        connection=connection,
+        path=path,
+        lakehouse=lakehouse,
+        workspace=workspace,
+    )
+
+
+def create_shortcut_amazons3(
+    shortcut_name: str,
+    location: str,
+    subpath: str,
+    connection: Union[str, UUID],
+    path: str = "Tables",
+    lakehouse: Optional[str] = None,
+    workspace: Optional[str] = None,
+):
+    """
+    Creates a `shortcut <https://learn.microsoft.com/fabric/onelake/onelake-shortcuts>`_ to an Amazon S3 source.
+
+    Parameters
+    ----------
+    shortcut_name : str
+    location : str
+    subpath : str
+    connection: Union[str, UUID]
+        A string representing the connection that is bound with the shortcut. This can either be the connection Id or the connection name.
+    path : str, default="Tables"
+        A string representing the full path where the shortcut is created, including either "Files" or "Tables".
+    lakehouse : str, default=None
+        The Fabric lakehouse in which the shortcut will be created.
+        Defaults to None which resolves to the default lakehouse attached to the notebook.
+    workspace : str, default=None
+        The name of the Fabric workspace in which the shortcut will be created.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    _create_shortcut_base(
+        shortcut_name=shortcut_name,
+        location=location,
+        subpath=subpath,
+        source="amazonS3",
+        connection=connection,
+        path=path,
+        lakehouse=lakehouse,
+        workspace=workspace,
+    )
+
+
+def _create_shortcut_base(
+    shortcut_name: str,
+    location: str,
+    subpath: str,
+    source: str,
+    connection: Union[str, UUID],
+    path: str = "Tables",
+    lakehouse: Optional[str] = None,
+    workspace: Optional[str] = None,
+):
+
+    from sempy_labs._connections import list_connections
+
     source_titles = {"adlsGen2": "ADLS Gen2", "amazonS3": "Amazon S3"}
+    sources = list(source_titles.keys())
 
-    sourceValues = list(source_titles.keys())
-
-    if source not in sourceValues:
+    if source not in sources:
         raise ValueError(
-            f"{icons.red_dot} The 'source' parameter must be one of these values: {sourceValues}."
+            f"{icons.red_dot} The 'source' parameter must be one of these values: {sources}."
         )
-
-    sourceTitle = source_titles[source]
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
@@ -131,13 +199,28 @@ def create_shortcut(
         lakehouse_id = fabric.get_lakehouse_id()
     else:
         lakehouse_id = resolve_lakehouse_id(lakehouse, workspace)
+        lakehouse = resolve_lakehouse_name(lakehouse_id, workspace)
 
     client = fabric.FabricRestClient()
-    shortcutActualName = shortcut_name.replace(" ", "")
+    shortcut_name_no_spaces = shortcut_name.replace(" ", "")
+
+    # Validate connection
+    dfC = list_connections()
+    dfC_filt = dfC[dfC["Connection Id"] == connection]
+
+    if len(dfC_filt) == 0:
+        dfC_filt = dfC[dfC["Connection Name"] == connection]
+        if len(dfC_filt) == 0:
+            raise ValueError(
+                f"{icons.red_dot} The '{connection}' connection does not exist."
+            )
+        connection_id = dfC_filt["Connection Id"].iloc[0]
+    else:
+        connection_id = dfC_filt["Connection Id"].iloc[0]
 
     request_body = {
-        "path": "Tables",
-        "name": shortcutActualName,
+        "path": path,
+        "name": shortcut_name_no_spaces,
         "target": {
             source: {
                 "location": location,
@@ -147,22 +230,17 @@ def create_shortcut(
         },
     }
 
-    try:
-        response = client.post(
-            f"/v1/workspaces/{workspace_id}/items/{lakehouse_id}/shortcuts",
-            json=request_body,
-        )
-        if response.status_code == 201:
-            print(
-                f"{icons.green_dot} The shortcut '{shortcutActualName}' was created in the '{lakehouse}' lakehouse within"
-                f" the '{workspace} workspace. It is based on the '{subpath}' table in '{sourceTitle}'."
-            )
-        else:
-            print(response.status_code)
-    except Exception as e:
-        raise ValueError(
-            f"{icons.red_dot} Failed to create a shortcut for the '{shortcut_name}' table."
-        ) from e
+    response = client.post(
+        f"/v1/workspaces/{workspace_id}/items/{lakehouse_id}/shortcuts",
+        json=request_body,
+    )
+
+    if response.status_code != 201:
+        raise FabricHTTPException(response)
+
+    print(
+        f"{icons.green_dot} The shortcut '{shortcut_name_no_spaces}' was created in the '{lakehouse}' lakehouse within the '{workspace} workspace. It is based on the '{subpath}' table in '{source_titles[source]}'."
+    )
 
 
 def delete_shortcut(
