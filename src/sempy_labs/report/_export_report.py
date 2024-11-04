@@ -3,6 +3,7 @@ import sempy_labs._icons as icons
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
+    resolve_lakehouse_name,
 )
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from sempy.fabric.exceptions import FabricHTTPException
@@ -39,6 +40,10 @@ def export_report(
             f"{icons.red_dot} A lakehouse must be attached to the notebook."
         )
 
+    lakehouse_id = fabric.get_lakehouse_id()
+    workspace_name = fabric.resolve_workspace_name()
+    lakehouse_name = resolve_lakehouse_name(lakehouse_id=lakehouse_id, workspace=workspace_name)
+
     download_types = ["LiveConnect", "IncludeModel"]
     if download_type not in download_types:
         raise ValueError(
@@ -64,5 +69,5 @@ def export_report(
         file.write(response.content)
 
     print(
-        f"{icons.green_dot} The '{report}' report within the '{workspace}' workspace has been exported to the attached lakehouse as the '{file_name}' file."
+        f"{icons.green_dot} The '{report}' report within the '{workspace}' workspace has been exported as the '{file_name}' file in the '{lakehouse_name}' lakehouse within the '{workspace_name} workspace."
     )
