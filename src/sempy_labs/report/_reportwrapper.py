@@ -1332,6 +1332,7 @@ class ReportWrapper:
 
         theme_name = json_file["name"]
         theme_name_full = f"{theme_name}.json"
+        rd = self.rdef
 
         # Add theme.json file to request_body
         file_payload = _conv_b64(json_file)
@@ -1345,11 +1346,12 @@ class ReportWrapper:
             "type": "CustomTheme",
         }
 
-        rd = self.rdef
         for _, r in rd.iterrows():
             path = r["path"]
             payload = r["payload"]
-            if path != report_path:
+            if path == filePath:
+                pass
+            elif path != report_path:
                 _add_part(request_body, path, payload)
             # Update the report.json file
             else:
