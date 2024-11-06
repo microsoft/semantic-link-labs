@@ -1,3 +1,14 @@
+from sempy_labs._mirrored_databases import (
+    get_mirrored_database_definition,
+    get_mirroring_status,
+    list_mirrored_databases,
+    stop_mirroring,
+    start_mirroring,
+    create_mirrored_database,
+    delete_mirrored_database,
+    update_mirrored_database_definition,
+    get_tables_mirroring_status,
+)
 from sempy_labs._managed_private_endpoints import (
     list_managed_private_endpoints,
     create_managed_private_endpoint,
@@ -403,4 +414,13 @@ __all__ = [
     "delete_managed_private_endpoint",
     "get_dax_query_dependencies",
     "get_dax_query_memory_size",
+    "get_mirrored_database_definition",
+    "get_mirroring_status",
+    "list_mirrored_databases",
+    "stop_mirroring",
+    "start_mirroring",
+    "create_mirrored_database",
+    "delete_mirrored_database",
+    "update_mirrored_database_definition",
+    "get_tables_mirroring_status",
 ]

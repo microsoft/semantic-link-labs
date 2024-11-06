@@ -186,7 +186,7 @@ def update_notebook_definition(
     Parameters
     ----------
     name : str
-        The name of the notebook to be created.
+        The name of the notebook to be updated.
     notebook_content : str
         The Jupyter notebook content (not in Base64 format).
     workspace : str, default=None
