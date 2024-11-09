@@ -317,12 +317,11 @@ def trace_dax_warm(
             time.sleep(5)
 
             query_names = list(dax_queries.keys())
-            query_begin = df["Event Class"] == "QueryBegin"
 
             if dl_tables:
                 # Filter out unnecessary operations
                 df = df[~df['Application Name'].isin(['PowerBI', 'PowerBIEIM']) & (~df['Text Data'].str.startswith('EVALUATE {1}'))]
-
+                query_begin = df["Event Class"] == "QueryBegin"
                 # Name queries per dictionary
                 df["Query Name"] = (query_begin).cumsum()
                 df["Query Name"] = df["Query Name"].where(query_begin, None).ffill()
@@ -331,6 +330,7 @@ def trace_dax_warm(
             else:
                 # Filter out unnecessary operations
                 df = df[(~df['Text Data'].str.startswith('EVALUATE {1}'))]
+                query_begin = df["Event Class"] == "QueryBegin"
                 # Name queries per dictionary
                 suffix = '_removeXXX'
                 query_names_full = [item for query in query_names for item in (f"{query}{suffix}", query)]
@@ -341,5 +341,7 @@ def trace_dax_warm(
                 # Step 4: Map to full query names
                 df["Query Name"] = df["Query Name"].map(lambda x: query_names_full[x - 1])
                 df = df[~df['Query Name'].str.endswith(suffix)]
+
+    df = df.reset_index(drop=True)
 
     return df, query_results
