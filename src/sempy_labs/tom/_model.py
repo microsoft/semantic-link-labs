@@ -887,6 +887,7 @@ class TOMWrapper:
         precedence: int,
         description: Optional[str] = None,
         hidden: bool = False,
+        column_name: str = "Name",
     ):
         """
         Adds a `calculation group <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.calculationgroup?view=analysisservices-dotnet>`_ to a semantic model.
@@ -901,9 +902,10 @@ class TOMWrapper:
             A description of the calculation group.
         hidden : bool, default=False
             Whether the calculation group is hidden/visible.
+        column_name : str, default="Name"
+            The name of the calculation group column.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
-        import System
 
         tbl = TOM.Table()
         tbl.Name = name
@@ -925,14 +927,14 @@ class TOMWrapper:
         col1.Name = sortCol
         col1.SourceColumn = sortCol
         col1.IsHidden = True
-        col1.DataType = System.Enum.Parse(TOM.DataType, "Int64")
+        col1.DataType = TOM.DataType.Int64
 
         tbl.Columns.Add(col1)
 
         col2 = TOM.DataColumn()
-        col2.Name = "Name"
-        col2.SourceColumn = "Name"
-        col2.DataType = System.Enum.Parse(TOM.DataType, "String")
+        col2.Name = column_name
+        col2.SourceColumn = column_name
+        col2.DataType = TOM.DataType.String
         # col.SortByColumn = m.Tables[name].Columns[sortCol]
         tbl.Columns.Add(col2)
 
