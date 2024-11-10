@@ -692,6 +692,7 @@ class ReportWrapper:
         custom_visuals = rptJson.get("publicCustomVisuals", [])
         page_mapping, visual_mapping = helper.visual_page_mapping(self)
         helper.populate_custom_visual_display_names()
+        agg_type_map = helper._get_agg_type_mapping()
 
         def contains_key(data, keys_to_check):
             matches = parse("$..*").find(data)
@@ -738,21 +739,36 @@ class ReportWrapper:
 
                 # Title
                 matches = parse(
-                    "$.visual.visualContainerObjects.title[0].properties.text.expr.Literal.Value"
+                    "$.visual.visualContainerObjects.title[0].properties.text.expr"
                 ).find(visual_json)
-                title = matches[0].value[1:-1] if matches else ""
+                # title = matches[0].value[1:-1] if matches else ""
+                title = (
+                    helper._get_expression(matches[0].value, agg_type_map)
+                    if matches
+                    else ""
+                )
 
                 # SubTitle
                 matches = parse(
-                    "$.visual.visualContainerObjects.subTitle[0].properties.text.expr.Literal.Value"
+                    "$.visual.visualContainerObjects.subTitle[0].properties.text.expr"
                 ).find(visual_json)
-                sub_title = matches[0].value[1:-1] if matches else ""
+                # sub_title = matches[0].value[1:-1] if matches else ""
+                sub_title = (
+                    helper._get_expression(matches[0].value, agg_type_map)
+                    if matches
+                    else ""
+                )
 
                 # Alt Text
                 matches = parse(
-                    "$.visual.visualContainerObjects.general[0].properties.altText.expr.Literal.Value"
+                    "$.visual.visualContainerObjects.general[0].properties.altText.expr"
                 ).find(visual_json)
-                alt_text = matches[0].value[1:-1] if matches else ""
+                # alt_text = matches[0].value[1:-1] if matches else ""
+                alt_text = (
+                    helper._get_expression(matches[0].value, agg_type_map)
+                    if matches
+                    else ""
+                )
 
                 # Show items with no data
                 def find_show_all_with_jsonpath(obj):
