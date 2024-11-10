@@ -140,6 +140,7 @@ from sempy_labs._dataflows import (
     list_dataflow_storage_accounts,
     assign_workspace_to_dataflow_storage,
     list_dataflows,
+    list_upstream_dataflows,
 )
 from sempy_labs._connections import (
     list_connections,
@@ -403,4 +404,5 @@ __all__ = [
     "delete_managed_private_endpoint",
     "get_dax_query_dependencies",
     "get_dax_query_memory_size",
+    "list_upstream_dataflows",
 ]

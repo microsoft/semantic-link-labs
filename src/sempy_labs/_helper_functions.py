@@ -1317,3 +1317,27 @@ def _convert_data_type(input_data_type: str) -> str:
         return "Decimal"
     else:
         return data_type_mapping.get(input_data_type)
+
+
+def _is_valid_uuid(
+    guid: str,
+):
+    """
+    Validates if a string is a valid GUID in version 4
+
+    Parameters
+    ----------
+    guid : str
+        GUID to be validated.
+
+    Returns
+    -------
+    bool
+        Boolean that indicates if the string is a GUID or not.
+    """
+
+    try:
+        UUID(str(guid), version=4)
+        return True
+    except ValueError:
+        return False
