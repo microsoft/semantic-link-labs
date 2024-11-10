@@ -46,8 +46,7 @@ def create_pqt_file(
     workspace = fabric.resolve_workspace_name(workspace)
 
     folderPath = "/lakehouse/default/Files"
-    subFolderPath = os.path.join(folderPath, "pqtnewfolder")
-    os.makedirs(subFolderPath, exist_ok=True)
+    subFolderPath = os.path.join(folderPath, "pqtnewfolder")    
 
     with connect_semantic_model(
         dataset=dataset, workspace=workspace, readonly=True
@@ -81,14 +80,18 @@ def create_pqt_file(
         for e in tom.model.Expressions:
             expr_map[e.Name] = [str(e.Kind), e.Expression]
 
+        expressions = tom.model.Expressions.Count
+
         # Dataflows Gen2 max table limit is 50.
-        max_length = 50
+        max_length = 50 - expressions
         table_chunks = [
             dict(list(table_map.items())[i : i + max_length])
             for i in range(0, len(table_map), max_length)
         ]
 
         def create_pqt(table_map: dict, expr_map: dict, file_name: str):
+
+            os.makedirs(subFolderPath, exist_ok=True)
 
             class QueryMetadata:
                 def __init__(
@@ -225,4 +228,4 @@ def create_pqt_file(
             if a > 0:
                 file_name = f"{file_name}_{a}"
             a += 1
-            create_pqt(t_map, expr_map, file_name=file_name)
+            create_pqt(t_map, expr_map, file_name=file_name)            
