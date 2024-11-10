@@ -744,7 +744,7 @@ class ScannerWrapper:
 
         return df
 
-    def list_users(self) -> pd.DataFrame:
+    def list_workspace_users(self) -> pd.DataFrame:
 
         df = pd.DataFrame(
             columns=[
@@ -841,6 +841,8 @@ class ScannerWrapper:
                 "Column Type",
                 "Expression",
                 "Description",
+                "Sort By Column",
+                "Summarize By",
             ]
         )
 
@@ -860,6 +862,8 @@ class ScannerWrapper:
                             "Column Type": c.get("columnType"),
                             "Expression": c.get("expression"),
                             "Description": c.get("description"),
+                            "Sort By Column": c.get("sortByColumn"),
+                            "Summarize By": c.get("summarizeBy"),
                         }
 
                         df = pd.concat(
@@ -883,6 +887,7 @@ class ScannerWrapper:
                 "Measure Name",
                 "Expression",
                 "Hidden",
+                "Format String",
                 "Description",
             ]
         )
@@ -900,6 +905,7 @@ class ScannerWrapper:
                             "Measure Name": m.get("name"),
                             "Expression": m.get("expression"),
                             "Hidden": m.get("isHidden"),
+                            "Format String": m.get("formatString"),
                             "Description": m.get("description"),
                         }
 
@@ -946,6 +952,94 @@ class ScannerWrapper:
 
         return df
 
+    def list_dataset_roles(self, include_members: bool = False) -> pd.DataFrame:
+
+        df = pd.DataFrame(
+            columns=[
+                "Workspace Name",
+                "Workspace Id",
+                "Dataset Name",
+                "Dataset Id",
+                "Role Name",
+                "Model Permission",
+            ]
+        )
+
+        for w in self.output.get("workspaces", []):
+            for obj in w.get("datasets", []):
+                for e in obj.get("roles", []):
+
+                    if not include_members:
+                        new_data = {
+                            "Workspace Name": w.get("name"),
+                            "Workspace Id": w.get("id"),
+                            "Dataset Name": obj.get("name"),
+                            "Dataset Id": obj.get("id"),
+                            "Role Name": e.get("name"),
+                            "Model Permission": e.get("modelPermission"),
+                        }
+
+                        df = pd.concat(
+                            [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                        )
+                    else:
+                        for rm in e.get("members", []):
+                            new_data = {
+                                "Workspace Name": w.get("name"),
+                                "Workspace Id": w.get("id"),
+                                "Dataset Name": obj.get("name"),
+                                "Dataset Id": obj.get("id"),
+                                "Role Name": e.get("name"),
+                                "Model Permission": e.get("modelPermission"),
+                                "Member Name": rm.get("memberName"),
+                                "Member Id": rm.get("memberId"),
+                                "Member Type": rm.get("memberType"),
+                                "Identity Provider": rm.get("identityProvider"),
+                            }
+
+                            df = pd.concat(
+                                [df, pd.DataFrame(new_data, index=[0])],
+                                ignore_index=True,
+                            )
+
+        return df
+
+    def list_dataset_row_level_security(self) -> pd.DataFrame:
+
+        df = pd.DataFrame(
+            columns=[
+                "Workspace Name",
+                "Workspace Id",
+                "Dataset Name",
+                "Dataset Id",
+                "Role Name",
+                "Model Permission",
+                "Table Name",
+                "Filter Expression",
+            ]
+        )
+
+        for w in self.output.get("workspaces", []):
+            for obj in w.get("datasets", []):
+                for e in obj.get("roles", []):
+                    for tp in e.get("tablePermissions", []):
+                        new_data = {
+                            "Workspace Name": w.get("name"),
+                            "Workspace Id": w.get("id"),
+                            "Dataset Name": obj.get("name"),
+                            "Dataset Id": obj.get("id"),
+                            "Role Name": e.get("name"),
+                            "Model Permission": e.get("modelPermission"),
+                            "Table Name": tp.get("name"),
+                            "Filter Expression": tp.get("filterExpression"),
+                        }
+
+                        df = pd.concat(
+                            [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                        )
+
+        return df
+
     # Dashboard functions
     def list_dashboard_tiles(self) -> pd.DataFrame:
 
@@ -971,7 +1065,7 @@ class ScannerWrapper:
         return df
 
     # User functions
-    def list_reports_users(self) -> pd.DataFrame:
+    def list_report_users(self) -> pd.DataFrame:
 
         df = pd.DataFrame(
             columns=[
@@ -1133,46 +1227,6 @@ class ScannerWrapper:
 
         return df
 
-    def list_notebook_users(self) -> pd.DataFrame:
-
-        df = pd.DataFrame(
-            columns=[
-                "Workspace Name",
-                "Workspace Id",
-                "Notebook Name",
-                "Notebook Id",
-                "Artifact User Access Right",
-                "Email Address",
-                "Display Name",
-                "Identifier",
-                "Graph Id",
-                "Principal Type",
-                "User Type",
-            ]
-        )
-
-        for w in self.output.get("workspaces", []):
-            for obj in w.get("Notebook", []):
-                for u in obj.get("users", []):
-                    new_data = {
-                        "Workspace Name": w.get("name"),
-                        "Workspace Id": w.get("id"),
-                        "Notebook Name": obj.get("name"),
-                        "Notebook Id": obj.get("id"),
-                        "Artifact User Access Right": u.get("artifactUserAccessRight"),
-                        "Email Address": u.get("emailAddress"),
-                        "Display Name": u.get("displayName"),
-                        "Identifier": u.get("identifier"),
-                        "Graph Id": u.get("graphId"),
-                        "Principal Type": u.get("principalType"),
-                        "User Type": u.get("userType"),
-                    }
-                    df = pd.concat(
-                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                    )
-
-        return df
-
     def list_warehouse_users(self) -> pd.DataFrame:
 
         df = pd.DataFrame(
@@ -1261,13 +1315,13 @@ class ScannerWrapper:
                 "Workspace Id",
                 "Dashboard Name",
                 "Dashboard Id",
-                "App User Access Right",
+                "Dashboard User Access Right",
                 "Email Address",
                 "Display Name",
                 "Identifier",
                 "Graph Id",
                 "Principal Type",
-                # "User Type",
+                "User Type",
             ]
         )
 
@@ -1279,13 +1333,13 @@ class ScannerWrapper:
                         "Workspace Id": w.get("id"),
                         "Dashboard Name": obj.get("displayName"),
                         "Dashboard Id": obj.get("id"),
-                        "App User Access Right": u.get("appUserAccessRight"),
+                        "Dashboard User Access Right": u.get("appUserAccessRight"),
                         "Email Address": u.get("emailAddress"),
                         "Display Name": u.get("displayName"),
                         "Identifier": u.get("identifier"),
                         "Graph Id": u.get("graphId"),
                         "Principal Type": u.get("principalType"),
-                        # "User Type": u.get("userType"),
+                        "User Type": u.get("userType"),
                     }
                     df = pd.concat(
                         [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
@@ -1301,13 +1355,13 @@ class ScannerWrapper:
                 "Workspace Id",
                 "Dataflow Name",
                 "Dataflow Id",
-                "App User Access Right",
+                "Dataflow User Access Right",
                 "Email Address",
                 "Display Name",
                 "Identifier",
                 "Graph Id",
                 "Principal Type",
-                # "User Type",
+                "User Type",
             ]
         )
 
@@ -1319,13 +1373,13 @@ class ScannerWrapper:
                         "Workspace Id": w.get("id"),
                         "Dataflow Name": obj.get("name"),
                         "Dataflow Id": obj.get("id"),
-                        "App User Access Right": u.get("appUserAccessRight"),
+                        "Dataflow User Access Right": u.get("appUserAccessRight"),
                         "Email Address": u.get("emailAddress"),
                         "Display Name": u.get("displayName"),
                         "Identifier": u.get("identifier"),
                         "Graph Id": u.get("graphId"),
                         "Principal Type": u.get("principalType"),
-                        # "User Type": u.get("userType"),
+                        "User Type": u.get("userType"),
                     }
                     df = pd.concat(
                         [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
