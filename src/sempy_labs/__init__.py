@@ -199,6 +199,8 @@ from sempy_labs._helper_functions import (
     get_capacity_id,
     get_capacity_name,
     resolve_capacity_name,
+    get_token,
+    get_token_from_key_vault,
 )
 from sempy_labs._model_bpa_bulk import (
     run_model_bpa_bulk,
@@ -403,4 +405,6 @@ __all__ = [
     "delete_managed_private_endpoint",
     "get_dax_query_dependencies",
     "get_dax_query_memory_size",
+    "get_token",
+    "get_token_from_key_vault",
 ]
