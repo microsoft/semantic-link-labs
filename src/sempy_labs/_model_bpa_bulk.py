@@ -73,7 +73,6 @@ def run_model_bpa_bulk(
     )
     lakeT = get_lakehouse_tables(lakehouse=lakehouse, workspace=lakehouse_workspace)
     lakeT_filt = lakeT[lakeT["Table Name"] == output_table]
-    # query = f"SELECT MAX(RunId) FROM {lakehouse}.{output_table}"
     if len(lakeT_filt) == 0:
         runId = 1
     else:
@@ -151,28 +150,31 @@ def run_model_bpa_bulk(
                         )
                         print(e)
 
-                df["Severity"].replace(icons.severity_mapping)
+                if len(df) == 0:
+                    print(f"{icons.yellow_dot} No BPA results to save for the '{wksp}' workspace.")
+                else:
+                    df["Severity"].replace(icons.severity_mapping)
 
-                # Append save results individually for each workspace (so as not to create a giant dataframe)
-                print(
-                    f"{icons.in_progress} Saving the Model BPA results of the '{wksp}' workspace to the '{output_table}' within the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace..."
-                )
+                    # Append save results individually for each workspace (so as not to create a giant dataframe)
+                    print(
+                        f"{icons.in_progress} Saving the Model BPA results of the '{wksp}' workspace to the '{output_table}' within the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace..."
+                    )
 
-                schema = {
-                    key.replace(" ", "_"): value
-                    for key, value in icons.bpa_schema.items()
-                }
+                    schema = {
+                        key.replace(" ", "_"): value
+                        for key, value in icons.bpa_schema.items()
+                    }
 
-                save_as_delta_table(
-                    dataframe=df,
-                    delta_table_name=output_table,
-                    write_mode="append",
-                    schema=schema,
-                    merge_schema=True,
-                )
-                print(
-                    f"{icons.green_dot} Saved BPA results to the '{output_table}' delta table."
-                )
+                    save_as_delta_table(
+                        dataframe=df,
+                        delta_table_name=output_table,
+                        write_mode="append",
+                        schema=schema,
+                        merge_schema=True,
+                    )
+                    print(
+                        f"{icons.green_dot} Saved BPA results to the '{output_table}' delta table."
+                    )
 
     print(f"{icons.green_dot} Bulk BPA scan complete.")
 
