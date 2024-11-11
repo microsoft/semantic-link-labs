@@ -151,6 +151,7 @@ from sempy_labs._dataflows import (
     list_dataflow_storage_accounts,
     assign_workspace_to_dataflow_storage,
     list_dataflows,
+    list_upstream_dataflows,
 )
 from sempy_labs._connections import (
     list_connections,
@@ -423,4 +424,5 @@ __all__ = [
     "delete_mirrored_database",
     "update_mirrored_database_definition",
     "get_tables_mirroring_status",
+    "list_upstream_dataflows",
 ]
