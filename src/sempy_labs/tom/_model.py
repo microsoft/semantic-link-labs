@@ -51,15 +51,19 @@ class TOMWrapper:
 
         self._table_map = {}
         self._column_map = {}
-        for t in self.model.Tables:
-            if len(t.LineageTag) == 0:
-                t.LineageTag = generate_guid()
-            self._table_map[t.LineageTag] = t.Name
+        self._compat_level = self.model.Model.Database.CompatibilityLevel
 
-        for c in self.all_columns():
-            if len(c.LineageTag) == 0:
-                c.LineageTag = generate_guid()
-            self._column_map[c.LineageTag] = [c.Name, c.DataType]
+        # Minimum campat level for lineage tags is 1540 (https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.table.lineagetag?view=analysisservices-dotnet#microsoft-analysisservices-tabular-table-lineagetag)
+        if self._compat_level >= 1540:
+            for t in self.model.Tables:
+                if len(t.LineageTag) == 0:
+                    t.LineageTag = generate_guid()
+                self._table_map[t.LineageTag] = t.Name
+
+            for c in self.all_columns():
+                if len(c.LineageTag) == 0:
+                    c.LineageTag = generate_guid()
+                self._column_map[c.LineageTag] = [c.Name, c.DataType]
 
     def all_columns(self):
         """
@@ -4481,32 +4485,58 @@ class TOMWrapper:
         # with concurrent.futures.ThreadPoolExecutor() as executor:
         #     executor.map(process_measure, self.all_measures())
 
+    def set_value_filter_behavior(self, value_filter_behavior: str = "Automatic"):
+        """
+        Sets the `Value Filter Behavior <https://learn.microsoft.com/power-bi/transform-model/value-filter-behavior>`_ property for the semantic model.
+
+        Parameters
+        ----------
+        value_filter_behavior : str , default="Automatic"
+            Determines value filter behavior for SummarizeColumns. Valid options: 'Automatic', 'Independent', 'Coalesced'.
+        """
+
+        import Microsoft.AnalysisServices.Tabular as TOM
+        import System
+
+        value_filter_behavior = value_filter_behavior.capitalize()
+        min_compat = 1606
+
+        if self.model.Model.Database.CompatibilityLevel < min_compat:
+            self.model.Model.Database.CompatibilityLevel = min_compat
+
+        self.model.ValueFilterBehavior = System.Enum.Parse(
+            TOM.ValueFilterBehaviorType, value_filter_behavior
+        )
+
     def close(self):
 
         if not self._readonly and self.model is not None:
 
             import Microsoft.AnalysisServices.Tabular as TOM
 
-            # ChangedProperty logic
-            for t in self.model.Tables:
-                if any(
-                    p.SourceType == TOM.PartitionSourceType.Entity for p in t.Partitions
-                ):
-                    if t.LineageTag in list(self._table_map.keys()):
-                        if self._table_map.get(t.LineageTag) != t.Name:
-                            self.add_changed_property(object=t, property="Name")
-
-            for c in self.all_columns():
-                if c.LineageTag in list(self._column_map.keys()):
+            # ChangedProperty logic (min compat level is 1567) https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.changedproperty?view=analysisservices-dotnet
+            if self.model.Model.Database.CompatibilityLevel >= 1567:
+                for t in self.model.Tables:
                     if any(
                         p.SourceType == TOM.PartitionSourceType.Entity
-                        for p in c.Parent.Partitions
+                        for p in t.Partitions
                     ):
-                        if self._column_map.get(c.LineageTag)[0] != c.Name:
-                            self.add_changed_property(object=c, property="Name")
-                    if self._column_map.get(c.LineageTag)[1] != c.DataType:
-                        self.add_changed_property(object=c, property="DataType")
+                        if t.LineageTag in list(self._table_map.keys()):
+                            if self._table_map.get(t.LineageTag) != t.Name:
+                                self.add_changed_property(object=t, property="Name")
 
+                for c in self.all_columns():
+                    if c.LineageTag in list(self._column_map.keys()):
+                        if any(
+                            p.SourceType == TOM.PartitionSourceType.Entity
+                            for p in c.Parent.Partitions
+                        ):
+                            if self._column_map.get(c.LineageTag)[0] != c.Name:
+                                self.add_changed_property(object=c, property="Name")
+                        if self._column_map.get(c.LineageTag)[1] != c.DataType:
+                            self.add_changed_property(object=c, property="DataType")
+
+            # SLL Tags
             tags = [f"{icons.sll_prefix}{a}" for a in icons.sll_tags]
             tags.append("SLL")
 
