@@ -4486,7 +4486,7 @@ class TOMWrapper:
 
     def set_value_filter_behavior(self, value_filter_behavior: str = "Automatic"):
         """
-        Sets the `Value Filter Behavior <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.model.valuefilterbehavior?view=analysisservices-dotnet#microsoft-analysisservices-tabular-model-valuefilterbehavior>`_ property for the semantic model.
+        Sets the `Value Filter Behavior <https://learn.microsoft.com/power-bi/transform-model/value-filter-behavior>`_ property for the semantic model.
 
         Parameters
         ----------
