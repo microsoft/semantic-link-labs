@@ -16,7 +16,6 @@ from azure.core.credentials import TokenCredential, AccessToken
 import numpy as np
 from IPython.display import display, HTML
 from sempy.fabric._token_provider import TokenProvider
-import notebookutils
 
 
 def create_abfss_path(
@@ -964,6 +963,8 @@ class FabricTokenCredential(TokenCredential):
         enable_cae: bool = False,
         **kwargs: any,
     ) -> AccessToken:
+        
+        import notebookutils
 
         token = notebookutils.credentials.getToken(scopes)
         access_token = AccessToken(token, 0)
@@ -1027,6 +1028,7 @@ def _get_azure_token_credentials(
     audience: str = "https://management.azure.com/.default",
 ) -> Tuple[str, str, dict]:
 
+    import notebookutils
     from azure.identity import ClientSecretCredential
 
     # "https://analysis.windows.net/powerbi/api/.default"
@@ -1081,6 +1083,7 @@ def get_token_from_key_vault(
     key_vault_client_secret: str,
     audience: Literal["pbi", "storage"] = "pbi",
 ):
+    import notebookutils
 
     tenant_id = notebookutils.credentials.getSecret(key_vault_uri, key_vault_tenant_id)
     client_id = notebookutils.credentials.getSecret(key_vault_uri, key_vault_client_id)
