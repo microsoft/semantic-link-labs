@@ -42,7 +42,9 @@ def export_report(
 
     lakehouse_id = fabric.get_lakehouse_id()
     workspace_name = fabric.resolve_workspace_name()
-    lakehouse_name = resolve_lakehouse_name(lakehouse_id=lakehouse_id, workspace=workspace_name)
+    lakehouse_name = resolve_lakehouse_name(
+        lakehouse_id=lakehouse_id, workspace=workspace_name
+    )
 
     download_types = ["LiveConnect", "IncludeModel"]
     if download_type not in download_types:

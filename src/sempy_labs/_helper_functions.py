@@ -8,13 +8,15 @@ from sempy.fabric.exceptions import FabricHTTPException
 import pandas as pd
 from functools import wraps
 import datetime
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Literal
 from uuid import UUID
 import sempy_labs._icons as icons
 import urllib.parse
 from azure.core.credentials import TokenCredential, AccessToken
 import numpy as np
 from IPython.display import display, HTML
+from sempy.fabric._token_provider import TokenProvider
+import notebookutils
 
 
 def create_abfss_path(
@@ -963,8 +965,6 @@ class FabricTokenCredential(TokenCredential):
         **kwargs: any,
     ) -> AccessToken:
 
-        import notebookutils
-
         token = notebookutils.credentials.getToken(scopes)
         access_token = AccessToken(token, 0)
 
@@ -1027,7 +1027,6 @@ def _get_azure_token_credentials(
     audience: str = "https://management.azure.com/.default",
 ) -> Tuple[str, str, dict]:
 
-    import notebookutils
     from azure.identity import ClientSecretCredential
 
     # "https://analysis.windows.net/powerbi/api/.default"
@@ -1050,6 +1049,60 @@ def _get_azure_token_credentials(
     }
 
     return token, credential, headers
+
+
+def get_token(
+    tenant_id: str,
+    client_id: str,
+    client_secret: str,
+    audience: Literal["pbi", "storage"] = "pbi",
+):
+
+    from azure.identity import ClientSecretCredential
+
+    credential = ClientSecretCredential(
+        tenant_id=tenant_id, client_id=client_id, client_secret=client_secret
+    )
+
+    if audience == "pbi":
+        return credential.get_token(
+            "https://analysis.windows.net/powerbi/api/.default"
+        ).token
+    elif audience == "storage":
+        return credential.get_token("https://storage.azure.com/.default").token
+    else:
+        raise NotImplementedError
+
+
+def get_token_from_key_vault(
+    key_vault_uri: str,
+    key_vault_tenant_id: str,
+    key_vault_client_id: str,
+    key_vault_client_secret: str,
+    audience: Literal["pbi", "storage"] = "pbi",
+):
+
+    tenant_id = notebookutils.credentials.getSecret(key_vault_uri, key_vault_tenant_id)
+    client_id = notebookutils.credentials.getSecret(key_vault_uri, key_vault_client_id)
+    client_secret = notebookutils.credentials.getSecret(
+        key_vault_uri, key_vault_client_secret
+    )
+
+    return get_token(tenant_id, client_id, client_secret, audience)
+
+
+class _ServicePrincipalTokenProviderWithToken(TokenProvider):
+
+    def __init__(self, token):
+        self.token = token
+
+    def __call__(self, audience: Literal["pbi", "storage"] = "pbi") -> str:
+        if audience == "pbi":
+            return self.token
+        elif audience == "storage":
+            return self.token
+        else:
+            raise NotImplementedError
 
 
 def convert_to_alphanumeric_lowercase(input_string):
