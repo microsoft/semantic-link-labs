@@ -9,14 +9,14 @@ from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from sempy.fabric.exceptions import FabricHTTPException
 
 
-def export_report(
+def download_report(
     report: str,
     file_name: Optional[str] = None,
     download_type: str = "LiveConnect",
     workspace: Optional[str] = None,
 ):
     """
-    Exports the specified report from the specified workspace to a Power BI .pbix file.
+    Downloads the specified report from the specified workspace to a Power BI .pbix file.
 
     This is a wrapper function for the following API: `Reports - Export Report In Group <https://learn.microsoft.com/rest/api/power-bi/reports/export-report-in-group>`.
 

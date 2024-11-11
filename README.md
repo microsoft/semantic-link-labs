@@ -1,7 +1,7 @@
 # Semantic Link Labs
 
 [![PyPI version](https://badge.fury.io/py/semantic-link-labs.svg)](https://badge.fury.io/py/semantic-link-labs)
-[![Read The Docs](https://readthedocs.org/projects/semantic-link-labs/badge/?version=0.8.4&style=flat)](https://readthedocs.org/projects/semantic-link-labs/)
+[![Read The Docs](https://readthedocs.org/projects/semantic-link-labs/badge/?version=0.8.5&style=flat)](https://readthedocs.org/projects/semantic-link-labs/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Downloads](https://static.pepy.tech/badge/semantic-link-labs)](https://pepy.tech/project/semantic-link-labs)
 
@@ -104,6 +104,7 @@ An even better way to ensure the semantic-link-labs library is available in your
 2. Select your newly created environment within the 'Environment' drop down in the navigation bar at the top of the notebook
 
 ## Version History
+* [0.8.5](https://github.com/microsoft/semantic-link-labs/releases/tag/0.8.5) (November 13, 2024)
 * [0.8.4](https://github.com/microsoft/semantic-link-labs/releases/tag/0.8.4) (October 30, 2024)
 * [0.8.3](https://github.com/microsoft/semantic-link-labs/releases/tag/0.8.3) (October 14, 2024)
 * [0.8.2](https://github.com/microsoft/semantic-link-labs/releases/tag/0.8.2) (October 2, 2024)
