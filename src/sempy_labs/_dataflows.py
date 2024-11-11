@@ -162,7 +162,9 @@ def list_upstream_dataflows(
 
     workspace_name = fabric.resolve_workspace_name(workspace)
     workspace_id = fabric.resolve_workspace_id(workspace)
-    (dataflow_name, dataflow_id) = _resolve_dataflow_name_and_id(dataflow=dataflow, workspace=workspace)
+    (dataflow_name, dataflow_id) = _resolve_dataflow_name_and_id(
+        dataflow=dataflow, workspace=workspace
+    )
     client = fabric.PowerBIRestClient()
 
     df = pd.DataFrame(
@@ -178,8 +180,9 @@ def list_upstream_dataflows(
         ]
     )
 
-    def collect_upstreams(client, dataflow_id, dataflow_name, workspace_id, workspace_name):
-
+    def collect_upstreams(
+        client, dataflow_id, dataflow_name, workspace_id, workspace_name
+    ):
         response = client.get(
             f"/v1.0/myorg/groups/{workspace_id}/dataflows/{dataflow_id}/upstreamDataflows"
         )
@@ -187,38 +190,41 @@ def list_upstream_dataflows(
             raise FabricHTTPException(response)
 
         values = response.json().get("value", [])
-        if values:
-            for v in values:
-                tgt_dataflow_id = v.get("targetDataflowId")
-                tgt_workspace_id = v.get("groupId")
-                tgt_workspace_name = fabric.resolve_workspace_name(tgt_workspace_id)
-                (tgt_dataflow_name, tgt_dataflow_id) = _resolve_dataflow_name_and_id(dataflow=tgt_dataflow_id, workspace=tgt_workspace_name)
+        for v in values:
+            tgt_dataflow_id = v.get("targetDataflowId")
+            tgt_workspace_id = v.get("groupId")
+            tgt_workspace_name = fabric.resolve_workspace_name(tgt_workspace_id)
+            (tgt_dataflow_name, _) = _resolve_dataflow_name_and_id(
+                dataflow=tgt_dataflow_id, workspace=tgt_workspace_name
+            )
 
-                new_data = {
-                    "Dataflow Name": dataflow_name,
-                    "Dataflow Id": dataflow_id,
-                    "Workspace Name": workspace_name,
-                    "Workspace Id": workspace_id,
-                    "Upstream Dataflow Name": tgt_dataflow_name,
-                    "Upstream Dataflow Id": tgt_dataflow_id,
-                    "Upstream Workspace Name": tgt_workspace_name,
-                    "Upstream Workspace Id": tgt_workspace_id,
-                }
+            df.loc[len(df)] = {
+                "Dataflow Name": dataflow_name,
+                "Dataflow Id": dataflow_id,
+                "Workspace Name": workspace_name,
+                "Workspace Id": workspace_id,
+                "Upstream Dataflow Name": tgt_dataflow_name,
+                "Upstream Dataflow Id": tgt_dataflow_id,
+                "Upstream Workspace Name": tgt_workspace_name,
+                "Upstream Workspace Id": tgt_workspace_id,
+            }
 
-                nonlocal df
-                df = pd.concat(
-                    [df, pd.DataFrame(new_data, index=[0])],
-                    ignore_index=True,
-                )
-
-                collect_upstreams(client, tgt_dataflow_id, tgt_dataflow_name, tgt_workspace_id, tgt_workspace_name)
+            collect_upstreams(
+                client,
+                tgt_dataflow_id,
+                tgt_dataflow_name,
+                tgt_workspace_id,
+                tgt_workspace_name,
+            )
 
     collect_upstreams(client, dataflow_id, dataflow_name, workspace_id, workspace_name)
 
     return df
 
 
-def _resolve_dataflow_name_and_id(dataflow: str | UUID, workspace: Optional[str] = None) -> Tuple[str, UUID]:
+def _resolve_dataflow_name_and_id(
+    dataflow: str | UUID, workspace: Optional[str] = None
+) -> Tuple[str, UUID]:
 
     if workspace is None:
         workspace = fabric.resolve_workspace_name(workspace)
@@ -226,14 +232,16 @@ def _resolve_dataflow_name_and_id(dataflow: str | UUID, workspace: Optional[str]
     dfD = list_dataflows(workspace=workspace)
 
     if _is_valid_uuid(dataflow):
-        dfD_filt = dfD[dfD['Dataflow Id'] == dataflow]
+        dfD_filt = dfD[dfD["Dataflow Id"] == dataflow]
     else:
-        dfD_filt = dfD[dfD['Dataflow Name'] == dataflow]
+        dfD_filt = dfD[dfD["Dataflow Name"] == dataflow]
 
     if len(dfD_filt) == 0:
-        raise ValueError(f"{icons.red_dot} The '{dataflow}' dataflow does not exist within the '{workspace}' workspace.")
+        raise ValueError(
+            f"{icons.red_dot} The '{dataflow}' dataflow does not exist within the '{workspace}' workspace."
+        )
 
-    dataflow_id = dfD_filt['Dataflow Id'].iloc[0]
-    dataflow_name = dfD_filt['Dataflow Name'].iloc[0]
+    dataflow_id = dfD_filt["Dataflow Id"].iloc[0]
+    dataflow_name = dfD_filt["Dataflow Name"].iloc[0]
 
     return dataflow_name, dataflow_id
