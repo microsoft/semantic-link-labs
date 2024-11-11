@@ -53,6 +53,7 @@ class TOMWrapper:
         self._column_map = {}
         self._compat_level = self.model.Model.Database.CompatibilityLevel
 
+        # Minimum campat level for lineage tags is 1540 (https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.table.lineagetag?view=analysisservices-dotnet#microsoft-analysisservices-tabular-table-lineagetag)
         if self._compat_level >= 1540:
             for t in self.model.Tables:
                 if len(t.LineageTag) == 0:
@@ -4498,9 +4499,10 @@ class TOMWrapper:
         import System
 
         value_filter_behavior = value_filter_behavior.capitalize()
+        min_compat = 1606
 
-        if self.model.Model.Database.ComaptibilityLevel < 1606:
-            self.model.Model.Database.CompatibilityLevel = 1606
+        if self.model.Model.Database.CompatibilityLevel < min_compat:
+            self.model.Model.Database.CompatibilityLevel = min_compat
 
         self.model.ValueFilterBehavior = System.Enum.Parse(
             TOM.ValueFilterBehaviorType, value_filter_behavior
@@ -4512,8 +4514,8 @@ class TOMWrapper:
 
             import Microsoft.AnalysisServices.Tabular as TOM
 
-            # ChangedProperty logic
-            if self._compat_level >= 1567:
+            # ChangedProperty logic (min compat level is 1567) https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.changedproperty?view=analysisservices-dotnet
+            if self.model.Model.Database.CompatibilityLevel >= 1567:
                 for t in self.model.Tables:
                     if any(
                         p.SourceType == TOM.PartitionSourceType.Entity
