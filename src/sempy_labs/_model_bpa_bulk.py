@@ -25,6 +25,7 @@ def run_model_bpa_bulk(
     language: Optional[str] = None,
     workspace: Optional[str | List[str]] = None,
     skip_models: Optional[str | List[str]] = ["ModelBPA", "Fabric Capacity Metrics"],
+    skip_models_in_workspace: Optional[dict] = None,
 ):
     """
     Runs the semantic model Best Practice Analyzer across all semantic models in a workspace (or all accessible workspaces).
@@ -33,8 +34,6 @@ def run_model_bpa_bulk(
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
     rules : pandas.DataFrame, default=None
         A pandas dataframe containing rules to be evaluated. Based on the format of the dataframe produced by the model_bpa_rules function.
     extended : bool, default=False
@@ -47,6 +46,12 @@ def run_model_bpa_bulk(
         Defaults to None which scans all accessible workspaces.
     skip_models : str | List[str], default=['ModelBPA', 'Fabric Capacity Metrics']
         The semantic models to always skip when running this analysis.
+    skip_models_in_workspace : dict, default=None
+        A dictionary showing specific semantic models within specific workspaces to skip. See the example below:
+        {
+            "Workspace A": ["Dataset1", "Dataset2"],
+            "Workspace B": ["Dataset5", "Dataset 8"],
+        }
     """
 
     if not lakehouse_attached():
@@ -90,6 +95,10 @@ def run_model_bpa_bulk(
         capacity_id, capacity_name = resolve_workspace_capacity(workspace=wksp)
         df = pd.DataFrame(columns=list(icons.bpa_schema.keys()))
         dfD = fabric.list_datasets(workspace=wksp, mode="rest")
+
+        # Skip models in workspace
+        skip_models_wkspc = skip_models_in_workspace.get(wksp)
+        dfD = dfD[~dfD["Dataset Name"].isin(skip_models_wkspc)]
 
         # Exclude default semantic models
         if len(dfD) > 0:
