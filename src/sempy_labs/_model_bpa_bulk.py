@@ -88,6 +88,11 @@ def run_model_bpa_bulk(
     else:
         dfW_filt = dfW[dfW["Name"].isin(workspace)]
 
+    if len(dfW_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} There are no valid workspaces to assess. This is likely due to not having proper permissions to the workspace(s) entered in the 'workspace' parameter."
+        )
+
     for i, r in dfW_filt.iterrows():
         wksp = r["Name"]
         wksp_id = r["Id"]
@@ -151,7 +156,9 @@ def run_model_bpa_bulk(
                         print(e)
 
                 if len(df) == 0:
-                    print(f"{icons.yellow_dot} No BPA results to save for the '{wksp}' workspace.")
+                    print(
+                        f"{icons.yellow_dot} No BPA results to save for the '{wksp}' workspace."
+                    )
                 else:
                     df["Severity"].replace(icons.severity_mapping)
 
