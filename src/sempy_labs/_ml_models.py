@@ -69,7 +69,7 @@ def create_ml_model(
     name: str
         Name of the ML model.
     description : str, default=None
-        A description of the environment.
+        A description of the ML model.
     workspace : str, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
