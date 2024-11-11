@@ -60,19 +60,11 @@ def list_mirrored_databases(workspace: Optional[str] = None) -> pd.DataFrame:
                 "Mirrored Database Name": v.get("displayName"),
                 "Mirrored Database Id": v.get("id"),
                 "Description": v.get("description"),
-                "OneLake Tables Path": (
-                    prop.get("oneLakeTablesPath") if prop is not None else None
-                ),
-                "SQL Endpoint Connection String": (
-                    sql.get("connectionString") if sql is not None else None
-                ),
-                "SQL Endpoint Id": sql.get("id") if sql is not None else None,
-                "Provisioning Status": (
-                    sql.get("provisioningStatus") if sql is not None else None
-                ),
-                "Default Schema": (
-                    prop.get("defaultSchema") if prop is not None else None
-                ),
+                "OneLake Tables Path": prop.get("oneLakeTablesPath"),
+                "SQL Endpoint Connection String": sql.get("connectionString"),
+                "SQL Endpoint Id": sql.get("id"),
+                "Provisioning Status": sql.get("provisioningStatus"),
+                "Default Schema": prop.get("defaultSchema"),
             }
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
@@ -251,9 +243,9 @@ def get_tables_mirroring_status(
                 "Source Schema Name": v.get("sourceSchemaName"),
                 "Source Table Name": v.get("sourceTableName"),
                 "Status": v.get("status"),
-                "Processed Bytes": m.get("processedBytes") if m is not None else None,
-                "Processed Rows": m.get("processedRows") if m is not None else None,
-                "Last Sync Date": m.get("lastSyncDateTime") if m is not None else None,
+                "Processed Bytes": m.get("processedBytes"),
+                "Processed Rows": m.get("processedRows"),
+                "Last Sync Date": m.get("lastSyncDateTime"),
             }
 
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
