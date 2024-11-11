@@ -33,8 +33,6 @@ def run_model_bpa_bulk(
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
     rules : pandas.DataFrame, default=None
         A pandas dataframe containing rules to be evaluated. Based on the format of the dataframe produced by the model_bpa_rules function.
     extended : bool, default=False

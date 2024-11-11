@@ -226,7 +226,7 @@ def refresh_semantic_model(
                     )
 
                     print(
-                        f"{icons.green_dot} Refresh of the '{dataset}' semantic model within the '{workspace}' workspace is complete."
+                        f"{icons.green_dot} Refresh '{refresh_type}' of the '{dataset}' semantic model within the '{workspace}' workspace is complete."
                     )
                     return final_df
 
@@ -247,7 +247,7 @@ def refresh_semantic_model(
                 time.sleep(3)
 
             print(
-                f"{icons.green_dot} Refresh of the '{dataset}' semantic model within the '{workspace}' workspace is complete."
+                f"{icons.green_dot} Refresh '{refresh_type}' of the '{dataset}' semantic model within the '{workspace}' workspace is complete."
             )
 
     final_output = refresh_and_trace_dataset(
