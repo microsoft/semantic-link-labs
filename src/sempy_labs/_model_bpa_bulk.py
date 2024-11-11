@@ -25,6 +25,7 @@ def run_model_bpa_bulk(
     language: Optional[str] = None,
     workspace: Optional[str | List[str]] = None,
     skip_models: Optional[str | List[str]] = ["ModelBPA", "Fabric Capacity Metrics"],
+    skip_models_in_workspace: Optional[dict] = None,
 ):
     """
     Runs the semantic model Best Practice Analyzer across all semantic models in a workspace (or all accessible workspaces).
@@ -45,6 +46,12 @@ def run_model_bpa_bulk(
         Defaults to None which scans all accessible workspaces.
     skip_models : str | List[str], default=['ModelBPA', 'Fabric Capacity Metrics']
         The semantic models to always skip when running this analysis.
+    skip_models_in_workspace : dict, default=None
+        A dictionary showing specific semantic models within specific workspaces to skip. See the example below:
+        {
+            "Workspace A": ["Dataset1", "Dataset2"],
+            "Workspace B": ["Dataset5", "Dataset 8"],
+        }
     """
 
     if not lakehouse_attached():
@@ -66,7 +73,6 @@ def run_model_bpa_bulk(
     )
     lakeT = get_lakehouse_tables(lakehouse=lakehouse, workspace=lakehouse_workspace)
     lakeT_filt = lakeT[lakeT["Table Name"] == output_table]
-    # query = f"SELECT MAX(RunId) FROM {lakehouse}.{output_table}"
     if len(lakeT_filt) == 0:
         runId = 1
     else:
@@ -82,12 +88,21 @@ def run_model_bpa_bulk(
     else:
         dfW_filt = dfW[dfW["Name"].isin(workspace)]
 
+    if len(dfW_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} There are no valid workspaces to assess. This is likely due to not having proper permissions to the workspace(s) entered in the 'workspace' parameter."
+        )
+
     for i, r in dfW_filt.iterrows():
         wksp = r["Name"]
         wksp_id = r["Id"]
         capacity_id, capacity_name = resolve_workspace_capacity(workspace=wksp)
         df = pd.DataFrame(columns=list(icons.bpa_schema.keys()))
         dfD = fabric.list_datasets(workspace=wksp, mode="rest")
+
+        # Skip models in workspace
+        skip_models_wkspc = skip_models_in_workspace.get(wksp)
+        dfD = dfD[~dfD["Dataset Name"].isin(skip_models_wkspc)]
 
         # Exclude default semantic models
         if len(dfD) > 0:
@@ -140,28 +155,33 @@ def run_model_bpa_bulk(
                         )
                         print(e)
 
-                df["Severity"].replace(icons.severity_mapping)
+                if len(df) == 0:
+                    print(
+                        f"{icons.yellow_dot} No BPA results to save for the '{wksp}' workspace."
+                    )
+                else:
+                    df["Severity"].replace(icons.severity_mapping)
 
-                # Append save results individually for each workspace (so as not to create a giant dataframe)
-                print(
-                    f"{icons.in_progress} Saving the Model BPA results of the '{wksp}' workspace to the '{output_table}' within the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace..."
-                )
+                    # Append save results individually for each workspace (so as not to create a giant dataframe)
+                    print(
+                        f"{icons.in_progress} Saving the Model BPA results of the '{wksp}' workspace to the '{output_table}' within the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace..."
+                    )
 
-                schema = {
-                    key.replace(" ", "_"): value
-                    for key, value in icons.bpa_schema.items()
-                }
+                    schema = {
+                        key.replace(" ", "_"): value
+                        for key, value in icons.bpa_schema.items()
+                    }
 
-                save_as_delta_table(
-                    dataframe=df,
-                    delta_table_name=output_table,
-                    write_mode="append",
-                    schema=schema,
-                    merge_schema=True,
-                )
-                print(
-                    f"{icons.green_dot} Saved BPA results to the '{output_table}' delta table."
-                )
+                    save_as_delta_table(
+                        dataframe=df,
+                        delta_table_name=output_table,
+                        write_mode="append",
+                        schema=schema,
+                        merge_schema=True,
+                    )
+                    print(
+                        f"{icons.green_dot} Saved BPA results to the '{output_table}' delta table."
+                    )
 
     print(f"{icons.green_dot} Bulk BPA scan complete.")
 

@@ -1144,7 +1144,7 @@ def _get_max_run_id(lakehouse: str, table_name: str) -> int:
     spark = SparkSession.builder.getOrCreate()
     query = f"SELECT MAX(RunId) FROM {lakehouse}.{table_name}"
     dfSpark = spark.sql(query)
-    max_run_id = dfSpark.collect()[0][0]
+    max_run_id = dfSpark.collect()[0][0] or 0
 
     return max_run_id
 
