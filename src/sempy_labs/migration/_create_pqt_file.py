@@ -46,7 +46,7 @@ def create_pqt_file(
     workspace = fabric.resolve_workspace_name(workspace)
 
     folderPath = "/lakehouse/default/Files"
-    subFolderPath = os.path.join(folderPath, "pqtnewfolder")    
+    subFolderPath = os.path.join(folderPath, "pqtnewfolder")
 
     with connect_semantic_model(
         dataset=dataset, workspace=workspace, readonly=True
@@ -228,4 +228,4 @@ def create_pqt_file(
             if a > 0:
                 file_name = f"{file_name}_{a}"
             a += 1
-            create_pqt(t_map, expr_map, file_name=file_name)            
+            create_pqt(t_map, expr_map, file_name=file_name)

@@ -10,9 +10,7 @@ from sempy_labs.report._generate_report import (
     update_report_from_reportjson,
     create_model_bpa_report,
 )
-from sempy_labs.report._download_report import (
-    download_report
-)
+from sempy_labs.report._download_report import download_report
 from sempy_labs.report._report_functions import (
     get_report_json,
     # report_dependency_tree,

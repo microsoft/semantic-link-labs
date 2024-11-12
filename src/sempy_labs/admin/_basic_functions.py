@@ -1031,3 +1031,49 @@ def list_activity_events(
     df["Creation Time"] = pd.to_datetime(df["Creation Time"])
 
     return df
+
+
+def list_modified_workspaces(
+    modified_since: Optional[str] = None,
+    exclude_inactive_workspaces: bool = False,
+    exclude_personal_workspaces: bool = False,
+) -> pd.DataFrame:
+    """
+    Gets a list of workspace IDs in the organization.
+
+    This is a wrapper function for the following API: `Admin - WorkspaceInfo GetModifiedWorkspaces <https://learn.microsoft.com/rest/api/power-bi/admin/workspace-info-get-modified-workspaces>`_.
+
+    Parameters
+    ----------
+    modified_since : str
+        Last modified date (must be in ISO 8601 compliant UTC format). Example: "2024-11-02T05:51:30.0000000Z".
+    exclude_inactive_workspaces : bool, default=False
+        Whether to exclude inactive workspaces.
+    exclude_personal_workspaces : bool, default=False
+        Whether to exclude personal workspaces.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of workspace IDs in the organization.
+    """
+
+    client = fabric.PowerBIRestClient()
+    url = "/v1.0/myorg/admin/workspaces/modified?"
+
+    if modified_since is not None:
+        url += f"modifiedSince={modified_since}&"
+    if exclude_inactive_workspaces:
+        url += f"excludeInActiveWorkspaces={exclude_inactive_workspaces}&"
+    if exclude_personal_workspaces:
+        url += f"excludePersonalWorkspaces={exclude_personal_workspaces}&"
+
+    url = url.rstrip("&").rstrip("?")
+
+    response = client.get(url)
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    df = pd.DataFrame(response.json()).rename(columns={"id": "Workspace Id"})
+
+    return df

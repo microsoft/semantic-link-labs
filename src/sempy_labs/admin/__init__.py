@@ -13,6 +13,7 @@ from sempy_labs.admin._basic_functions import (
     list_workspace_access_details,
     list_items,
     list_activity_events,
+    list_modified_workspaces,
 )
 from sempy_labs.admin._domains import (
     list_domains,
@@ -52,4 +53,5 @@ __all__ = [
     "list_external_data_shares",
     "revoke_external_data_share",
     "list_activity_events",
+    "list_modified_workspaces",
 ]
