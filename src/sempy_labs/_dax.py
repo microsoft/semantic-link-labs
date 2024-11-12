@@ -221,7 +221,7 @@ def get_dax_query_memory_size(
     dataset: str, dax_string: str, workspace: Optional[str] = None
 ) -> int:
     """
-    Obtains the total size, in bytes, used by all columns that the DAX query depends on.
+    Obtains the total size, in bytes, used by all columns that a DAX query depends on.
 
     Parameters
     ----------
