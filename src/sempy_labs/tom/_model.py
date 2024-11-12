@@ -2278,17 +2278,19 @@ class TOMWrapper:
         t = self.model.Tables[table_name]
 
         return (
-            any(
-                p.SourceType == TOM.PartitionSourceType.Calculated
-                and "NAMEOF(" in p.Source.Expression
-                for p in t.Partitions
-            )
+            self.is_field_parameter(table_name=table_name)
+            and t.Columns.Count == 4
+            and any("NAMEOF(" in p.Source.Expression for p in t.Partitions)
             and all(
                 "[Value" in c.SourceColumn
                 for c in t.Columns
-                if c.Type != TOM.ColumnType.RowNumber
+                if c.Type == TOM.ColumnType.Data
             )
-            and t.Columns.Count == 4
+            and any(
+                ep.Name == "ParameterMetadata"
+                for c in t.Columns
+                for ep in c.ExtendedProperties
+            )
         )
 
     def is_auto_date_table(self, table_name: str):
