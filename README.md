@@ -15,6 +15,10 @@ If you encounter any issues, please [raise a bug](https://github.com/microsoft/s
 
 If you have ideas for new features/functions, please [request a feature](https://github.com/microsoft/semantic-link-labs/issues/new?assignees=&labels=&projects=&template=feature_request.md&title=).
 
+Check out the video below for an introduction to Semantic Link, Semantic Link Labs and demos of key features!
+
+[![Semantic Link Labs Video](https://img.youtube.com/vi/LSoWDEZk9b0/0.jpg)](https://www.youtube.com/watch?v=LSoWDEZk9b0)
+
 ## Featured Scenarios
 * Semantic Models
     * [Migrating an import/DirectQuery semantic model to Direct Lake](https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#direct-lake-migration)

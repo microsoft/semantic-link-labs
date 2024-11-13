@@ -143,7 +143,9 @@ def vertipaq_analyzer(
         table_count = tom.model.Tables.Count
         column_count = len(list(tom.all_columns()))
         if table_count == 0:
-            print(f"{icons.warning} The '{dataset}' semantic model within the '{workspace}' workspace has no tables. Vertipaq Analyzer can only be run if the semantic model has tables.")
+            print(
+                f"{icons.warning} The '{dataset}' semantic model within the '{workspace}' workspace has no tables. Vertipaq Analyzer can only be run if the semantic model has tables."
+            )
             return
 
     dfT = list_tables(dataset=dataset, extended=True, workspace=workspace)

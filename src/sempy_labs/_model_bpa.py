@@ -125,7 +125,9 @@ def run_model_bpa(
 
         # Do not run BPA for models with no tables
         if tom.model.Tables.Count == 0:
-            print(f"{icons.warning} The '{dataset}' semantic model within the '{workspace}' workspace has no tables and therefore there are no valid BPA results.")
+            print(
+                f"{icons.warning} The '{dataset}' semantic model within the '{workspace}' workspace has no tables and therefore there are no valid BPA results."
+            )
             finalDF = pd.DataFrame(
                 columns=[
                     "Category",
