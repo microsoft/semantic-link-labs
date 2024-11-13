@@ -134,7 +134,20 @@ def vertipaq_analyzer(
         },
     }
 
+    with connect_semantic_model(
+        dataset=dataset, workspace=workspace, readonly=True
+    ) as tom:
+        compat_level = tom.model.Model.Database.CompatibilityLevel
+        is_direct_lake = tom.is_direct_lake()
+        def_mode = tom.model.DefaultMode
+        table_count = tom.model.Tables.Count
+        column_count = len(list(tom.all_columns()))
+        if table_count == 0:
+            print(f"{icons.warning} The '{dataset}' semantic model within the '{workspace}' workspace has no tables. Vertipaq Analyzer can only be run if the semantic model has tables.")
+            return
+
     dfT = list_tables(dataset=dataset, extended=True, workspace=workspace)
+
     dfT.rename(columns={"Name": "Table Name"}, inplace=True)
     columns_to_keep = list(vertipaq_map["Tables"].keys())
     dfT = dfT[dfT.columns.intersection(columns_to_keep)]
@@ -148,15 +161,6 @@ def vertipaq_analyzer(
     artifact_type, lakehouse_name, lakehouse_id, lakehouse_workspace_id = (
         get_direct_lake_source(dataset=dataset, workspace=workspace)
     )
-
-    with connect_semantic_model(
-        dataset=dataset, workspace=workspace, readonly=True
-    ) as tom:
-        compat_level = tom.model.Model.Database.CompatibilityLevel
-        is_direct_lake = tom.is_direct_lake()
-        def_mode = tom.model.DefaultMode
-        table_count = tom.model.Tables.Count
-        column_count = len(list(tom.all_columns()))
 
     dfR["Missing Rows"] = 0
     dfR["Missing Rows"] = dfR["Missing Rows"].astype(int)
@@ -395,6 +399,8 @@ def vertipaq_analyzer(
         y = db_total_size / (1024**2) * 1000000
     elif db_total_size >= 1000:
         y = db_total_size / (1024) * 1000
+    else:
+        y = db_total_size
     y = round(y)
 
     dfModel = pd.DataFrame(
