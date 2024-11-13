@@ -2280,7 +2280,7 @@ class TOMWrapper:
         return (
             self.is_field_parameter(table_name=table_name)
             and t.Columns.Count == 4
-            and any("NAMEOF(" in p.Source.Expression for p in t.Partitions)
+            and any("NAMEOF(" in p.Source.Expression.replace(' ', '') for p in t.Partitions)
             and all(
                 "[Value" in c.SourceColumn
                 for c in t.Columns
