@@ -16,7 +16,6 @@ from sempy_labs._model_bpa import run_model_bpa
 from typing import Optional, List
 from sempy._utils._log import log
 import sempy_labs._icons as icons
-import warnings
 
 
 @log
@@ -54,9 +53,6 @@ def run_model_bpa_bulk(
             "Workspace B": ["Dataset5", "Dataset 8"],
         }
     """
-
-    # Removing this warning: FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. To retain the old behavior, exclude the relevant entries before the concat operation.
-    warnings.simplefilter(action="ignore", category=FutureWarning)
 
     if not lakehouse_attached():
         raise ValueError(
@@ -152,6 +148,8 @@ def run_model_bpa_bulk(
 
                         bpa_df["RunId"] = bpa_df["RunId"].astype("int")
 
+                        if df.empty:
+                            df = bpa_df
                         if not bpa_df.empty:
                             df = pd.concat([df, bpa_df], ignore_index=True)
                         print(
@@ -168,7 +166,7 @@ def run_model_bpa_bulk(
                         f"{icons.yellow_dot} No BPA results to save for the '{wksp}' workspace."
                     )
                 else:
-                    df["Severity"].replace(icons.severity_mapping)
+                    df["Severity"].replace(icons.severity_mapping, inplace=True)
 
                     # Append save results individually for each workspace (so as not to create a giant dataframe)
                     print(
