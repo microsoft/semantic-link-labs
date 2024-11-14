@@ -101,8 +101,11 @@ def run_model_bpa_bulk(
         dfD = fabric.list_datasets(workspace=wksp, mode="rest")
 
         # Skip models in workspace
-        skip_models_wkspc = skip_models_in_workspace.get(wksp)
-        dfD = dfD[~dfD["Dataset Name"].isin(skip_models_wkspc)]
+        if skip_models_in_workspace is not None and isinstance(
+            skip_models_in_workspace, dict
+        ):
+            skip_models_wkspc = skip_models_in_workspace.get(wksp)
+            dfD = dfD[~dfD["Dataset Name"].isin(skip_models_wkspc)]
 
         # Exclude default semantic models
         if len(dfD) > 0:
@@ -145,7 +148,10 @@ def run_model_bpa_bulk(
 
                         bpa_df["RunId"] = bpa_df["RunId"].astype("int")
 
-                        df = pd.concat([df, bpa_df], ignore_index=True)
+                        if df.empty:
+                            df = bpa_df
+                        if not bpa_df.empty:
+                            df = pd.concat([df, bpa_df], ignore_index=True)
                         print(
                             f"{icons.green_dot} Collected Model BPA stats for the '{dataset_name}' semantic model within the '{wksp}' workspace."
                         )
@@ -160,7 +166,7 @@ def run_model_bpa_bulk(
                         f"{icons.yellow_dot} No BPA results to save for the '{wksp}' workspace."
                     )
                 else:
-                    df["Severity"].replace(icons.severity_mapping)
+                    df["Severity"].replace(icons.severity_mapping, inplace=True)
 
                     # Append save results individually for each workspace (so as not to create a giant dataframe)
                     print(

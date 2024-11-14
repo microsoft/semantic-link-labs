@@ -2278,7 +2278,7 @@ class TOMWrapper:
         t = self.model.Tables[table_name]
 
         return (
-            self.is_field_parameter(table_name=table_name)
+            self.is_calculated_table(table_name=table_name)
             and t.Columns.Count == 4
             and any(
                 "NAMEOF(" in p.Source.Expression.replace(" ", "") for p in t.Partitions
