@@ -55,7 +55,8 @@ def run_model_bpa_bulk(
         }
     """
 
-    warnings.simplefilter(action='ignore', category=FutureWarning)
+    # Removing this warning: FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. To retain the old behavior, exclude the relevant entries before the concat operation.
+    warnings.simplefilter(action="ignore", category=FutureWarning)
 
     if not lakehouse_attached():
         raise ValueError(
