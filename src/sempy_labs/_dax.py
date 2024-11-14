@@ -1,6 +1,7 @@
 import sempy
 import sempy.fabric as fabric
 import pandas as pd
+import datetime
 from typing import Optional, Tuple
 from sempy._utils._log import log
 import time
@@ -8,8 +9,13 @@ import sempy_labs._icons as icons
 from sempy_labs._helper_functions import (
     resolve_dataset_id,
     resolve_workspace_name_and_id,
+    _get_max_run_id,
+    resolve_lakehouse_name,
+    save_as_delta_table,
 )
+from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from sempy_labs._clear_cache import clear_cache
+from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 
 
 @log
@@ -68,6 +74,193 @@ def evaluate_dax_impersonation(
     return df
 
 
+@log
+def get_dax_query_dependencies(
+    dataset: str,
+    dax_string: str,
+    put_in_memory: bool = False,
+    workspace: Optional[str] = None,
+) -> pd.DataFrame:
+    """
+    Obtains the columns on which a DAX query depends, including model dependencies. Shows Vertipaq statistics (i.e. Total Size, Data Size, Dictionary Size, Hierarchy Size) for easy prioritizing.
+
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    dax_string : str
+        The DAX query.
+    put_in_memory : bool, default=False
+        If True, ensures that the dependent columns are put into memory in order to give realistic Vertipaq stats (i.e. Total Size etc.).
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the dependent columns of a given DAX query including model dependencies.
+    """
+
+    if workspace is None:
+        workspace = fabric.resolve_workspace_name(workspace)
+
+    # Escape quotes in dax
+    dax_string = dax_string.replace('"', '""')
+    final_query = f"""
+        EVALUATE
+        VAR source_query = "{dax_string}"
+        VAR all_dependencies = SELECTCOLUMNS(
+            INFO.CALCDEPENDENCY("QUERY", source_query),
+                "Referenced Object Type",[REFERENCED_OBJECT_TYPE],
+                "Referenced Table", [REFERENCED_TABLE],
+                "Referenced Object", [REFERENCED_OBJECT]
+            )             
+        RETURN all_dependencies
+        """
+    dep = fabric.evaluate_dax(
+        dataset=dataset, workspace=workspace, dax_string=final_query
+    )
+
+    # Clean up column names and values (remove outside square brackets, underscorees in object type)
+    dep.columns = dep.columns.map(lambda x: x[1:-1])
+    dep["Referenced Object Type"] = (
+        dep["Referenced Object Type"].str.replace("_", " ").str.title()
+    )
+    dep
+
+    # Dataframe df will contain the output of all dependencies of the objects used in the query
+    df = dep.copy()
+
+    cd = get_model_calc_dependencies(dataset=dataset, workspace=workspace)
+
+    for _, r in dep.iterrows():
+        ot = r["Referenced Object Type"]
+        object_name = r["Referenced Object"]
+        table_name = r["Referenced Table"]
+        cd_filt = cd[
+            (cd["Object Type"] == ot)
+            & (cd["Object Name"] == object_name)
+            & (cd["Table Name"] == table_name)
+        ]
+
+        # Adds in the dependencies of each object used in the query (i.e. relationship etc.)
+        if len(cd_filt) > 0:
+            subset = cd_filt[
+                ["Referenced Object Type", "Referenced Table", "Referenced Object"]
+            ]
+            df = pd.concat([df, subset], ignore_index=True)
+
+    df.columns = df.columns.map(lambda x: x.replace("Referenced ", ""))
+    # Remove duplicates
+    df = df.drop_duplicates().reset_index(drop=True)
+    # Only show columns and remove the rownumber column
+    df = df[
+        (df["Object Type"].isin(["Column", "Calc Column"]))
+        & (~df["Object"].str.startswith("RowNumber-"))
+    ]
+
+    # Get vertipaq stats, filter to just the objects in the df dataframe
+    df["Full Object"] = format_dax_object_name(df["Table"], df["Object"])
+    dfC = fabric.list_columns(dataset=dataset, workspace=workspace, extended=True)
+    dfC["Full Object"] = format_dax_object_name(dfC["Table Name"], dfC["Column Name"])
+
+    dfC_filtered = dfC[dfC["Full Object"].isin(df["Full Object"].values)][
+        [
+            "Table Name",
+            "Column Name",
+            "Total Size",
+            "Data Size",
+            "Dictionary Size",
+            "Hierarchy Size",
+            "Is Resident",
+            "Full Object",
+        ]
+    ].reset_index(drop=True)
+
+    if put_in_memory:
+        not_in_memory = dfC_filtered[dfC_filtered["Is Resident"] == False]
+
+        if len(not_in_memory) > 0:
+            tbls = not_in_memory["Table Name"].unique()
+
+            # Run basic query to get columns into memory; completed one table at a time (so as not to overload the capacity)
+            for table_name in (bar := tqdm(tbls)):
+                bar.set_description(f"Warming the '{table_name}' table...")
+                css = ", ".join(
+                    not_in_memory[not_in_memory["Table Name"] == table_name][
+                        "Full Object"
+                    ]
+                    .astype(str)
+                    .tolist()
+                )
+                dax = f"""EVALUATE TOPN(1,SUMMARIZECOLUMNS({css}))"""
+                fabric.evaluate_dax(
+                    dataset=dataset, dax_string=dax, workspace=workspace
+                )
+
+            # Get column stats again
+            dfC = fabric.list_columns(
+                dataset=dataset, workspace=workspace, extended=True
+            )
+            dfC["Full Object"] = format_dax_object_name(
+                dfC["Table Name"], dfC["Column Name"]
+            )
+
+            dfC_filtered = dfC[dfC["Full Object"].isin(df["Full Object"].values)][
+                [
+                    "Table Name",
+                    "Column Name",
+                    "Total Size",
+                    "Data Size",
+                    "Dictionary Size",
+                    "Hierarchy Size",
+                    "Is Resident",
+                    "Full Object",
+                ]
+            ].reset_index(drop=True)
+
+    dfC_filtered.drop(["Full Object"], axis=1, inplace=True)
+
+    return dfC_filtered
+
+
+@log
+def get_dax_query_memory_size(
+    dataset: str, dax_string: str, workspace: Optional[str] = None
+) -> int:
+    """
+    Obtains the total size, in bytes, used by all columns that a DAX query depends on.
+
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    dax_string : str
+        The DAX query.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    int
+        The total size, in bytes, used by all columns that the DAX query depends on.
+    """
+
+    if workspace is None:
+        workspace = fabric.resolve_workspace_name(workspace)
+
+    df = get_dax_query_dependencies(
+        dataset=dataset, workspace=workspace, dax_string=dax_string, put_in_memory=True
+    )
+
+    return df["Total Size"].sum()
+
+
+@log
 def trace_dax(
     dataset: str,
     dax_queries: dict,
@@ -266,28 +459,28 @@ def trace_dax_warm(
     ) as trace_connection:
         with trace_connection.create_trace(event_schema) as trace:
             trace.start()
-            print('trace started...')
+            print(f"{icons.in_progress} Starting performance testing...")
             # Loop through DAX queries
             for i, (name, dax) in enumerate(dax_queries.items()):
 
                 # Cold Cache Direct Lake
-                #if dl_tables:
-                    # Process Clear
+                # if dl_tables:
+                # Process Clear
                 #    refresh_semantic_model(
                 #        dataset=dataset,
                 #        workspace=workspace,
                 #        refresh_type="clearValues",
                 #        tables=dl_tables,
                 #    )
-                    # Process Full
+                # Process Full
                 #    refresh_semantic_model(
                 #        dataset=dataset, workspace=workspace, refresh_type="full"
                 #    )
-                    # Evaluate {1}
+                # Evaluate {1}
                 #    fabric.evaluate_dax(
                 #        dataset=dataset, workspace=workspace, dax_string=evaluate_one
                 #    )
-                    # Run DAX Query
+                # Run DAX Query
                 #    result = fabric.evaluate_dax(
                 #        dataset=dataset, workspace=workspace, dax_string=dax
                 #    )
@@ -320,30 +513,265 @@ def trace_dax_warm(
             query_names = list(dax_queries.keys())
 
             # DL Cold Cache
-            #if dl_tables:
-                # Filter out unnecessary operations
+            # if dl_tables:
+            # Filter out unnecessary operations
             #    df = df[~df['Application Name'].isin(['PowerBI', 'PowerBIEIM']) & (~df['Text Data'].str.startswith('EVALUATE {1}'))]
             #    query_begin = df["Event Class"] == "QueryBegin"
-                # Name queries per dictionary
+            # Name queries per dictionary
             #    df["Query Name"] = (query_begin).cumsum()
             #    df["Query Name"] = df["Query Name"].where(query_begin, None).ffill()
             #    df["Query Name"] = pd.to_numeric(df["Query Name"], downcast="integer")
             #    df["Query Name"] = df["Query Name"].map(lambda x: query_names[x - 1])
-            
+
             # Filter out unnecessary operations
-            df = df[(~df['Text Data'].str.startswith('EVALUATE {1}'))]
+            df = df[(~df["Text Data"].str.startswith("EVALUATE {1}"))]
             query_begin = df["Event Class"] == "QueryBegin"
             # Name queries per dictionary
-            suffix = '_removeXXX'
-            query_names_full = [item for query in query_names for item in (f"{query}{suffix}", query)]
+            suffix = "_removeXXX"
+            query_names_full = [
+                item for query in query_names for item in (f"{query}{suffix}", query)
+            ]
             # Step 3: Assign query names by group and convert to integer
             df["Query Name"] = (query_begin).cumsum()
             df["Query Name"] = df["Query Name"].where(query_begin, None).ffill()
             df["Query Name"] = pd.to_numeric(df["Query Name"], downcast="integer")
             # Step 4: Map to full query names
             df["Query Name"] = df["Query Name"].map(lambda x: query_names_full[x - 1])
-            df = df[~df['Query Name'].str.endswith(suffix)]
+            df = df[~df["Query Name"].str.endswith(suffix)]
 
     df = df.reset_index(drop=True)
 
     return df, query_results
+
+
+def run_benchmark(dataset: str, dax_queries: dict, workspace: Optional[str] = None):
+
+    if workspace is None:
+        workspace = fabric.resolve_workspace_name()
+
+    # Get RunId
+    table_name = "SLL_Measures"
+
+    if not lakehouse_attached():
+        raise ValueError(
+            f"{icons.red_dot} A lakehouse must be attached to the notebook."
+        )
+
+    lakehouse_id = fabric.get_lakehouse_id()
+    lakehouse_workspace = fabric.resolve_workspace_name()
+    lakehouse_name = resolve_lakehouse_name(lakehouse_id, lakehouse_workspace)
+
+    dfLT = get_lakehouse_tables(lakehouse_name, lakehouse_workspace)
+    dfLT_filt = dfLT[dfLT["Table Name"] == table_name]
+    if len(dfLT_filt) == 0:
+        run_id = 1
+    else:
+        run_id = _get_max_run_id(lakehouse=lakehouse_name, table_name=table_name) + 1
+    time_stamp = datetime.datetime.now()
+
+    def add_cols(df, run_id, time_stamp):
+        df.insert(0, "Workspace Name", workspace)
+        df.insert(1, "Dataset Name", dataset)
+        df["RunId"] = run_id
+        df["Timestamp"] = time_stamp
+
+        return df
+
+    def collect_metadata(dataset: str, run_id: int, workspace: Optional[str] = None):
+
+        dfM = fabric.list_measures(dataset=dataset, workspace=workspace)[
+            ["Table Name", "Measure Name", "Measure Expression"]
+        ]
+        dfC = fabric.list_columns(dataset=dataset, workspace=workspace, extended=True)[
+            [
+                "Table Name",
+                "Column Name",
+                "Type",
+                "Data Type",
+                "Column Cardinality",
+                "Total Size",
+                "Data Size",
+                "Dictionary Size",
+                "Hierarchy Size",
+                "Encoding",
+            ]
+        ]
+        dfC = dfC[dfC["Type"] != "RowNumber"]
+        dfT = fabric.list_tables(dataset=dataset, workspace=workspace, extended=True)[
+            ["Name", "Type", "Row Count"]
+        ]
+        dfT = dfT.rename(columns={"Name": "Table Name"})
+        dfR = fabric.list_relationships(dataset=dataset, workspace=workspace)
+        dfP = fabric.list_partitions(
+            dataset=dataset, workspace=workspace, extended=True
+        )[
+            [
+                "Table Name",
+                "Partition Name",
+                "Mode",
+                "Source Type",
+                "Query",
+                "Refreshed Time",
+                "Modified Time",
+                "Record Count",
+                "Records per Segment",
+                "Segment Count",
+            ]
+        ]
+
+        dfM = add_cols(dfM, run_id, time_stamp)
+        dfC = add_cols(dfC, run_id, time_stamp)
+        dfT = add_cols(dfT, run_id, time_stamp)
+        dfR = add_cols(dfR, run_id, time_stamp)
+        dfP = add_cols(dfP, run_id, time_stamp)
+
+        dfM_schema = {
+            "Workspace_Name": "string",
+            "Dataset_Name": "string",
+            "Table_Name": "string",
+            "Measure_Name": "string",
+            "Measure_Expression": "string",
+            "RunId": "long",
+            "Timestamp": "timestamp",
+        }
+        dfC_schema = {
+            "Workspace_Name": "string",
+            "Dataset_Name": "string",
+            "Table_Name": "string",
+            "Column_Name": "string",
+            "Type": "string",
+            "Data_Type": "string",
+            "Column_Cardinality": "long",
+            "Total_Size": "long",
+            "Data_Size": "long",
+            "Dictionary_Size": "long",
+            "Hierarchy_Size": "long",
+            "Encoding": "string",
+            "RunId": "long",
+            "Timestamp": "timestamp",
+        }
+        dfT_schema = {
+            "Workspace_Name": "string",
+            "Dataset_Name": "string",
+            "Table_Name": "string",
+            "Type": "string",
+            "Row_Count": "long",
+            "RunId": "long",
+            "Timestamp": "timestamp",
+        }
+        dfP_schema = {
+            "Workspace_Name": "string",
+            "Dataset_Name": "string",
+            "Table_Name": "string",
+            "Partition_Name": "string",
+            "Mode": "string",
+            "Source_Type": "string",
+            "Query": "string",
+            "Refreshed_Time": "timestamp",
+            "Modified_Time": "timestamp",
+            "Record_Count": "long",
+            "Records_per_Segment": "double",
+            "Segment_Count": "long",
+            "RunId": "long",
+            "Timestamp": "timestamp",
+        }
+
+        dfs = {
+            "Measures": [dfM, dfM_schema],
+            "Columns": [dfC, dfC_schema],
+            "Tables": [dfT, dfT_schema],
+            "Relationships": [dfR, None],
+            "Partitions": [dfP, dfP_schema],
+        }
+        print(f"{icons.in_progress} Saving semantic model metadata...")
+        for name, (df, df_schema) in dfs.items():
+            df.columns = df.columns.str.replace(" ", "_")
+
+            save_as_delta_table(
+                dataframe=df,
+                delta_table_name=f"SLL_{name}",
+                write_mode="append",
+                schema=df_schema,
+            )
+
+    collect_metadata(dataset=dataset, workspace=workspace, run_id=run_id)
+
+    # Run and save trace data
+    trace_result, query_result = trace_dax_warm(
+        dataset=dataset, workspace=workspace, dax_queries=dax_queries
+    )
+
+    trace_schema = {
+        "Workspace_Name": "string",
+        "Dataset_Name": "string",
+        "Query_Name": "string",
+        "Query_Text": "string",
+        "Duration": "long",
+        "SE_CPU": "long",
+        "SE_Queries": "long",
+        "Column_Dependencies": "str",
+        "Column_Dependencies_Size": "long",
+        "RunId": "long",
+        "Timestamp": "timestamp",
+    }
+    df = pd.DataFrame(columns=list(trace_schema.keys()))  # 'SE Duration'
+
+    for query_name in trace_result["Query Name"].unique().tolist():
+        df_trace = trace_result[trace_result["Query Name"] == query_name]
+        # Capture Query Text
+        query_begin = df_trace[df_trace["Event Class"] == "QueryBegin"]
+        query_text = query_begin["Text Data"].iloc[0]
+
+        # Filter to only end events; filter out internal events
+        df_trace = df_trace[
+            (~df_trace["Event Subclass"].str.endswith("Internal"))
+            & (df_trace["Event Class"].str.endswith("End"))
+        ]
+
+        # Collect query dependencies
+        dep = get_dax_query_dependencies(
+            dataset=dataset,
+            workspace=workspace,
+            dax_string=query_text,
+            put_in_memory=False,
+        )
+        total_size = dep["Total Size"].sum()
+        table_column_list = [
+            f"'{table}'[{column}]"
+            for table, column in zip(dep["Table Name"], dep["Column Name"])
+        ]
+
+        new_data = {
+            "Workspace_Name": workspace,
+            "Dataset_Name": dataset,
+            "Query_Name": query_name,
+            "Query_Text": query_text,
+            "Duration": df_trace[df_trace["Event Class"] == "QueryEnd"][
+                "Duration"
+            ].sum(),
+            "SE_CPU": df_trace["Cpu Time"].sum(),
+            "SE_Queries": len(df_trace) - 1,
+            "Column_Dependencies": str(table_column_list),
+            "Column_Dependencies_Size": total_size,
+            "RunId": run_id,
+            "Timestamp": time_stamp,
+        }
+
+        if df.empty:
+            df = pd.DataFrame(new_data, index=[0])
+        else:
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    save_as_delta_table(
+        dataframe=df,
+        delta_table_name="SLL_PerfBenchmark",
+        write_mode="append",
+        schema=trace_schema,
+    )
+
+
+# def analyze_benchmark_results():
+#    """
+#    Compares the perf results of the latest test with previous tests. Output is reason(s) why perf improved or degraded.
+#    """
+#    print('hi')
