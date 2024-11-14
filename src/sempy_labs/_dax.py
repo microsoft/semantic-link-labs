@@ -225,7 +225,6 @@ def trace_dax_warm(
         workspace = fabric.resolve_workspace_name()
 
     from sempy_labs.tom import connect_semantic_model
-    from sempy_labs._refresh_semantic_model import refresh_semantic_model
 
     sempy.fabric._client._utils._init_analysis_services()
     import Microsoft.AnalysisServices.Tabular as TOM
@@ -267,44 +266,46 @@ def trace_dax_warm(
     ) as trace_connection:
         with trace_connection.create_trace(event_schema) as trace:
             trace.start()
+            print('trace started...')
             # Loop through DAX queries
             for i, (name, dax) in enumerate(dax_queries.items()):
 
-                if dl_tables:
+                # Cold Cache Direct Lake
+                #if dl_tables:
                     # Process Clear
-                    refresh_semantic_model(
-                        dataset=dataset,
-                        workspace=workspace,
-                        refresh_type="clearValues",
-                        tables=dl_tables,
-                    )
+                #    refresh_semantic_model(
+                #        dataset=dataset,
+                #        workspace=workspace,
+                #        refresh_type="clearValues",
+                #        tables=dl_tables,
+                #    )
                     # Process Full
-                    refresh_semantic_model(
-                        dataset=dataset, workspace=workspace, refresh_type="full"
-                    )
+                #    refresh_semantic_model(
+                #        dataset=dataset, workspace=workspace, refresh_type="full"
+                #    )
                     # Evaluate {1}
-                    fabric.evaluate_dax(
-                        dataset=dataset, workspace=workspace, dax_string=evaluate_one
-                    )
+                #    fabric.evaluate_dax(
+                #        dataset=dataset, workspace=workspace, dax_string=evaluate_one
+                #    )
                     # Run DAX Query
-                    result = fabric.evaluate_dax(
-                        dataset=dataset, workspace=workspace, dax_string=dax
-                    )
-                else:
-                    # Run DAX Query
-                    fabric.evaluate_dax(
-                        dataset=dataset, workspace=workspace, dax_string=dax
-                    )
-                    # Clear Cache
-                    clear_cache(dataset=dataset, workspace=workspace)
-                    # Evaluate {1}
-                    fabric.evaluate_dax(
-                        dataset=dataset, workspace=workspace, dax_string=evaluate_one
-                    )
-                    # Run DAX Query
-                    result = fabric.evaluate_dax(
-                        dataset=dataset, workspace=workspace, dax_string=dax
-                    )
+                #    result = fabric.evaluate_dax(
+                #        dataset=dataset, workspace=workspace, dax_string=dax
+                #    )
+
+                # Run DAX Query
+                fabric.evaluate_dax(
+                    dataset=dataset, workspace=workspace, dax_string=dax
+                )
+                # Clear Cache
+                clear_cache(dataset=dataset, workspace=workspace)
+                # Evaluate {1}
+                fabric.evaluate_dax(
+                    dataset=dataset, workspace=workspace, dax_string=evaluate_one
+                )
+                # Run DAX Query
+                result = fabric.evaluate_dax(
+                    dataset=dataset, workspace=workspace, dax_string=dax
+                )
 
                 # Add results to output
                 query_results[name] = result
@@ -318,29 +319,30 @@ def trace_dax_warm(
 
             query_names = list(dax_queries.keys())
 
-            if dl_tables:
+            # DL Cold Cache
+            #if dl_tables:
                 # Filter out unnecessary operations
-                df = df[~df['Application Name'].isin(['PowerBI', 'PowerBIEIM']) & (~df['Text Data'].str.startswith('EVALUATE {1}'))]
-                query_begin = df["Event Class"] == "QueryBegin"
+            #    df = df[~df['Application Name'].isin(['PowerBI', 'PowerBIEIM']) & (~df['Text Data'].str.startswith('EVALUATE {1}'))]
+            #    query_begin = df["Event Class"] == "QueryBegin"
                 # Name queries per dictionary
-                df["Query Name"] = (query_begin).cumsum()
-                df["Query Name"] = df["Query Name"].where(query_begin, None).ffill()
-                df["Query Name"] = pd.to_numeric(df["Query Name"], downcast="integer")
-                df["Query Name"] = df["Query Name"].map(lambda x: query_names[x - 1])
-            else:
-                # Filter out unnecessary operations
-                df = df[(~df['Text Data'].str.startswith('EVALUATE {1}'))]
-                query_begin = df["Event Class"] == "QueryBegin"
-                # Name queries per dictionary
-                suffix = '_removeXXX'
-                query_names_full = [item for query in query_names for item in (f"{query}{suffix}", query)]
-                # Step 3: Assign query names by group and convert to integer
-                df["Query Name"] = (query_begin).cumsum()
-                df["Query Name"] = df["Query Name"].where(query_begin, None).ffill()
-                df["Query Name"] = pd.to_numeric(df["Query Name"], downcast="integer")
-                # Step 4: Map to full query names
-                df["Query Name"] = df["Query Name"].map(lambda x: query_names_full[x - 1])
-                df = df[~df['Query Name'].str.endswith(suffix)]
+            #    df["Query Name"] = (query_begin).cumsum()
+            #    df["Query Name"] = df["Query Name"].where(query_begin, None).ffill()
+            #    df["Query Name"] = pd.to_numeric(df["Query Name"], downcast="integer")
+            #    df["Query Name"] = df["Query Name"].map(lambda x: query_names[x - 1])
+            
+            # Filter out unnecessary operations
+            df = df[(~df['Text Data'].str.startswith('EVALUATE {1}'))]
+            query_begin = df["Event Class"] == "QueryBegin"
+            # Name queries per dictionary
+            suffix = '_removeXXX'
+            query_names_full = [item for query in query_names for item in (f"{query}{suffix}", query)]
+            # Step 3: Assign query names by group and convert to integer
+            df["Query Name"] = (query_begin).cumsum()
+            df["Query Name"] = df["Query Name"].where(query_begin, None).ffill()
+            df["Query Name"] = pd.to_numeric(df["Query Name"], downcast="integer")
+            # Step 4: Map to full query names
+            df["Query Name"] = df["Query Name"].map(lambda x: query_names_full[x - 1])
+            df = df[~df['Query Name'].str.endswith(suffix)]
 
     df = df.reset_index(drop=True)
 
