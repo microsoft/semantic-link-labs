@@ -190,7 +190,7 @@ def get_model_calc_dependencies(
     # Initialize dependency DataFrame with 'Done' status
     df = dep.copy()
     objs = {"Measure", "Calc Column", "Calculation Item", "Calc Table"}
-    df["Done"] = df["Referenced Object Type"].apply(lambda x: x not in objs)
+    df["Done"] = df["Referenced Object Type"].apply(lambda x: x not in objs).astype(bool)
     # Expand dependencies iteratively
     while not df["Done"].all():
         incomplete_rows = df[df["Done"] == False]

@@ -16,6 +16,7 @@ from sempy_labs._model_bpa import run_model_bpa
 from typing import Optional, List
 from sempy._utils._log import log
 import sempy_labs._icons as icons
+import warnings
 
 
 @log
@@ -53,6 +54,8 @@ def run_model_bpa_bulk(
             "Workspace B": ["Dataset5", "Dataset 8"],
         }
     """
+
+    warnings.simplefilter(action='ignore', category=FutureWarning)
 
     if not lakehouse_attached():
         raise ValueError(
@@ -101,8 +104,11 @@ def run_model_bpa_bulk(
         dfD = fabric.list_datasets(workspace=wksp, mode="rest")
 
         # Skip models in workspace
-        skip_models_wkspc = skip_models_in_workspace.get(wksp)
-        dfD = dfD[~dfD["Dataset Name"].isin(skip_models_wkspc)]
+        if skip_models_in_workspace is not None and isinstance(
+            skip_models_in_workspace, dict
+        ):
+            skip_models_wkspc = skip_models_in_workspace.get(wksp)
+            dfD = dfD[~dfD["Dataset Name"].isin(skip_models_wkspc)]
 
         # Exclude default semantic models
         if len(dfD) > 0:
@@ -145,7 +151,8 @@ def run_model_bpa_bulk(
 
                         bpa_df["RunId"] = bpa_df["RunId"].astype("int")
 
-                        df = pd.concat([df, bpa_df], ignore_index=True)
+                        if not bpa_df.empty:
+                            df = pd.concat([df, bpa_df], ignore_index=True)
                         print(
                             f"{icons.green_dot} Collected Model BPA stats for the '{dataset_name}' semantic model within the '{wksp}' workspace."
                         )
