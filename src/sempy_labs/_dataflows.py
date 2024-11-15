@@ -245,3 +245,51 @@ def _resolve_dataflow_name_and_id(
     dataflow_name = dfD_filt["Dataflow Name"].iloc[0]
 
     return dataflow_name, dataflow_id
+
+
+def get_dataflow_definition(
+    name: str, workspace: Optional[str] = None, decode: bool = True 
+) -> dict | pd.DataFrame:
+    """
+    Obtains the definition of a dataflow.
+
+    This is a wrapper function for the following API: `Dataflows - Get Dataflow <https://learn.microsoft.com/rest/api/power-bi/dataflows/get-dataflow>`_.
+
+    Parameters
+    ----------
+    name : str
+        The name of the dataflow.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    decode : bool, default=True
+        decode : bool, default=True
+        If True, decodes the dataflow definition file into .json format.
+        If False, obtains the dataflow definition file a pandas DataFrame format.
+
+    Returns
+    -------
+    dict | pandas.DataFrame
+        A pandas dataframe showing the data pipelines within a workspace.
+    """
+
+    workspace = fabric.resolve_workspace_name(workspace)
+    workspace_id = fabric.resolve_workspace_id(workspace)
+    dataflow_name, item_id = _resolve_dataflow_name_and_id(
+        dataflow=name, workspace=workspace
+    )
+
+    client = fabric.PowerBIRestClient()
+    response = client.get(
+        f"v1.0/myorg/groups/{workspace_id}/dataflows/{item_id}"
+    )
+
+    result = lro(client, response).json()
+
+    df = pd.json_normalize(result)
+
+    if not decode:
+        return df
+
+    return result
