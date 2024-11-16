@@ -235,7 +235,7 @@ def initialize_git_connection(workspace: Optional[str] = None) -> str:
     str
         Remote full SHA commit hash.
     """
-    
+
     workspace, workspace_id = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
