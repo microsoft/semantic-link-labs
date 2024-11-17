@@ -229,7 +229,7 @@ def initialize_git_connection(workspace: Optional[str] = None) -> str:
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    
+
     Returns
     -------
     str
@@ -250,7 +250,7 @@ def initialize_git_connection(workspace: Optional[str] = None) -> str:
         f"{icons.green_dot} The '{workspace}' workspace git connection has been initialized."
     )
 
-    return response.json()['remoteCommitHash']
+    return response.json()["remoteCommitHash"]
 
 
 def commit_to_git(
