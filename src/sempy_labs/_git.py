@@ -217,7 +217,7 @@ def get_git_connection(workspace: Optional[str] = None) -> pd.DataFrame:
     return df
 
 
-def initialize_git_connection(workspace: Optional[str] = None):
+def initialize_git_connection(workspace: Optional[str] = None) -> str:
     """
     Initializes a connection for a workspace that is connected to Git.
 
@@ -229,6 +229,11 @@ def initialize_git_connection(workspace: Optional[str] = None):
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    
+    Returns
+    -------
+    str
+        Remote full SHA commit hash.
     """
 
     workspace, workspace_id = resolve_workspace_name_and_id(workspace)
@@ -244,6 +249,8 @@ def initialize_git_connection(workspace: Optional[str] = None):
     print(
         f"{icons.green_dot} The '{workspace}' workspace git connection has been initialized."
     )
+
+    return response.json()['remoteCommitHash']
 
 
 def commit_to_git(
@@ -327,7 +334,7 @@ def update_from_git(
     workspace_head : str
         Full SHA hash that the workspace is synced to. This value may be null only after Initialize Connection.
         In other cases, the system will validate that the given value is aligned with the head known to the system.
-    remove_commit_hash : str
+    remote_commit_hash : str
         Remote full SHA commit hash.
     confilict_resolution_policy : str
         The `conflict resolution policy <https://learn.microsoft.com/rest/api/fabric/core/git/update-from-git?tabs=HTTP#conflictresolutionpolicy>`_.
