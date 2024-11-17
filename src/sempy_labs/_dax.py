@@ -426,12 +426,7 @@ def dax_perf_test(
     if workspace is None:
         workspace = fabric.resolve_workspace_name()
 
-    cache_type = cache_type.lower()
-    cache_types = ["warm", "cold"]
-    if cache_type not in cache_types:
-        raise ValueError(
-            f"{icons.red_dot} Invalid cache type. Valid options: {cache_types}."
-        )
+    cache_type = _validate_cache_type(cache_type)
 
     dl_tables = []
     with connect_semantic_model(
@@ -567,6 +562,17 @@ def dax_perf_test(
     return df, query_results
 
 
+def _validate_cache_type(cache_type: str) -> str:
+
+    cache_type = cache_type.lower()
+    cache_types = ["warm", "cold"]
+    if cache_type not in cache_types:
+        raise ValueError(
+            f"{icons.red_dot} Invalid cache type. Valid options: {cache_types}."
+        )
+    return cache_type
+
+
 def run_benchmark(
     dataset: str,
     dax_queries: dict,
@@ -576,6 +582,8 @@ def run_benchmark(
 
     if workspace is None:
         workspace = fabric.resolve_workspace_name()
+
+    cache_type = _validate_cache_type(cache_type)
 
     # Get RunId
     table_name = "SLL_Measures"
@@ -777,6 +785,7 @@ def run_benchmark(
             "Dataset_Name": dataset,
             "Query_Name": query_name,
             "Query_Text": query_text,
+            "Cache_Type": cache_type,
             "Duration": df_trace[df_trace["Event Class"] == "QueryEnd"][
                 "Duration"
             ].sum(),
