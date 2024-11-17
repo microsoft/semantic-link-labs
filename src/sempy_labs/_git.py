@@ -229,7 +229,7 @@ def initialize_git_connection(workspace: Optional[str] = None) -> str:
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    
+
     Returns
     -------
     str
@@ -250,7 +250,7 @@ def initialize_git_connection(workspace: Optional[str] = None) -> str:
         f"{icons.green_dot} The '{workspace}' workspace git connection has been initialized."
     )
 
-    return response.json()['remoteCommitHash']
+    return response.json()["remoteCommitHash"]
 
 
 def commit_to_git(
@@ -331,14 +331,15 @@ def update_from_git(
 
     Parameters
     ----------
-    workspace_head : str
-        Full SHA hash that the workspace is synced to. This value may be null only after Initialize Connection.
-        In other cases, the system will validate that the given value is aligned with the head known to the system.
     remote_commit_hash : str
         Remote full SHA commit hash.
     confilict_resolution_policy : str
         The `conflict resolution policy <https://learn.microsoft.com/rest/api/fabric/core/git/update-from-git?tabs=HTTP#conflictresolutionpolicy>`_.
+    workspace_head : str
+        Full SHA hash that the workspace is synced to. This value may be null only after Initialize Connection.
+        In other cases, the system will validate that the given value is aligned with the head known to the system.
     allow_override : bool, default=False
+        User consent to override incoming items during the update from Git process. When incoming items are present and the allow override items is not specified or is provided as false, the update operation will not start. Default value is false.
     workspace : str, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
