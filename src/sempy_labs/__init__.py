@@ -1,6 +1,6 @@
 from sempy_labs._authentication import (
     ServicePrincipalTokenProvider,
-    ServicePrincipalTokenProviderWithKeyVault,
+    ServicePrincipalTokenProviderFromKeyVault,
 )
 from sempy_labs._mirrored_databases import (
     get_mirrored_database_definition,
@@ -430,5 +430,5 @@ __all__ = [
     "get_tables_mirroring_status",
     "list_upstream_dataflows",
     "ServicePrincipalTokenProvider",
-    "ServicePrincipalTokenProviderWithKeyVault",
+    "ServicePrincipalTokenProviderFromKeyVault",
 ]

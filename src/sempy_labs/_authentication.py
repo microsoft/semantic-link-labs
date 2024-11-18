@@ -3,7 +3,7 @@ from sempy.fabric._token_provider import TokenProvider
 import notebookutils
 from azure.identity import ClientSecretCredential
 
-class ServicePrincipalTokenProviderWithKeyVault(TokenProvider):   
+class ServicePrincipalTokenProviderFromKeyVault(TokenProvider):   
     """
     Implementation of the sempy.fabric.TokenProvider to be used with Service Principal providing the Azure Key Vault information.
 
@@ -14,14 +14,18 @@ class ServicePrincipalTokenProviderWithKeyVault(TokenProvider):
     Parameters
     ----------
     key_vault_uri : str 
-        Azure Key Vault URL.
-    key_vault_tenant_id:str,
+        Azure Key Vault URI.
+    key_vault_tenant_id : str,
         Name of the secret in the Key Vault with the Fabric Tenant ID.
-    key_vault_client_id:str,
-        Name of the secret in the Key Vault with the SP Client ID.
-    key_vault_client_secret:str
-        Name of the secret in the Key Vault with the SP Client Secret.
-
+    key_vault_client_id : str,
+        Name of the secret in the Key Vault with the Service Principal Client ID.
+    key_vault_client_secret : str
+        Name of the secret in the Key Vault with the Service Principal Client Secret.
+    
+    Returns
+    -------
+    sempy.fabric.TokenProvider
+        Token provider to be used with FabricRestClient or PowerBIRestClient.
     """
 
     def __init__(self, 
@@ -34,13 +38,18 @@ class ServicePrincipalTokenProviderWithKeyVault(TokenProvider):
         Parameters
         ----------
         key_vault_uri : str 
-            Azure Key Vault URL.
-        key_vault_tenant_id:str,
+            Azure Key Vault URI.
+        key_vault_tenant_id : str,
             Name of the secret in the Key Vault with the Fabric Tenant ID.
-        key_vault_client_id:str,
-            Name of the secret in the Key Vault with the SP Client ID.
-        key_vault_client_secret:str
-            Name of the secret in the Key Vault with the SP Client Secret.
+        key_vault_client_id : str,
+            Name of the secret in the Key Vault with the Service Principal Client ID.
+        key_vault_client_secret : str
+            Name of the secret in the Key Vault with the Service Principal Client Secret.
+        
+        Returns
+        -------
+        sempy.fabric.TokenProvider
+            Token provider to be used with FabricRestClient or PowerBIRestClient.
         """
 
         self.key_vault_uri = key_vault_uri
@@ -86,6 +95,11 @@ class ServicePrincipalTokenProvider(TokenProvider):
         Service Principal App Client ID.
     client_secret : str
         Service Principal Secret.
+
+    Returns
+    -------
+    sempy.fabric.TokenProvider
+        Token provider to be used with FabricRestClient or PowerBIRestClient.
     """
 
     def __init__(self, 
@@ -102,6 +116,11 @@ class ServicePrincipalTokenProvider(TokenProvider):
             Service Principal App Client ID.
         client_secret : str
             Service Principal Secret.
+
+        Returns
+        -------
+        sempy.fabric.TokenProvider
+            Token provider to be used with FabricRestClient or PowerBIRestClient.
         """
         self.tenant_id = tenant_id
         self.client_id = client_id
