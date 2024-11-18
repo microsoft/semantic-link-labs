@@ -24,6 +24,25 @@ import warnings
 
 
 class ReportWrapper:
+    """
+    Connects to a Power BI report and retrieves its definition.
+
+    The ReportWrapper and all functions which depend on it require the report to be in the `PBIR <https://powerbi.microsoft.com/blog/power-bi-enhanced-report-format-pbir-in-power-bi-desktop-developer-mode-preview>`_ format.
+
+    Parameters
+    ----------
+    report : str
+        The name of the report.
+    workspace : str
+        The name of the workspace in which the report resides.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe containing the report metadata definition files.
+    """
 
     _report: str
     _workspace: str
@@ -34,6 +53,25 @@ class ReportWrapper:
         report: str,
         workspace: Optional[str] = None,
     ):
+        """
+        Connects to a Power BI report and retrieves its definition.
+
+        The ReportWrapper and all functions which depend on it require the report to be in the `PBIR <https://powerbi.microsoft.com/blog/power-bi-enhanced-report-format-pbir-in-power-bi-desktop-developer-mode-preview>`_ format.
+
+        Parameters
+        ----------
+        report : str
+            The name of the report.
+        workspace : str
+            The name of the workspace in which the report resides.
+            Defaults to None which resolves to the workspace of the attached lakehouse
+            or if no lakehouse attached, resolves to the workspace of the notebook.
+
+        Returns
+        -------
+        pandas.DataFrame
+            A pandas dataframe containing the report metadata definition files.
+        """
 
         from sempy_labs.report import get_report_definition
 
