@@ -1799,89 +1799,47 @@ class ReportWrapper:
 
         return json_file
 
-    def set_report_annotation(self, annotation_name: str, annotation_value: str):
-        """
-        Sets an annotation on the report. If the annotation already exists, the annotation value is updated.
-
-        Parameters
-        ----------
-        annotation_name : str
-            Name of the annotation.
-        annotation_value : str
-            Value of the annotation.
-        """
-
-        file_path = "definition/report.json"
-
-        payload = self.rdef[self.rdef["path"] == file_path]["payload"].iloc[0]
-        file = _decode_b64(payload)
-        json_file = _load_json(file)
-
-        new_file = self.__set_annotation(
-            json_file, name=annotation_name, value=annotation_value
-        )
-        new_payload = _conv_b64(new_file)
-
-        self._update_single_file(file_name=file_path, new_payload=new_payload)
-
-    def set_page_annotation(
-        self, page_name: str, annotation_name: str, annotation_value: str
-    ):
-        """
-        Sets an annotation on a page of the report. If the annotation already exists, the annotation value is updated.
-
-        Parameters
-        ----------
-        page_name : str
-            The page name (ID) or page display name.
-        annotation_name : str
-            Name of the annotation.
-        annotation_value : str
-            Value of the annotation.
-        """
-
-        page_id, page_display, file_path = helper.resolve_page_name(
-            self, page_name=page_name
-        )
-
-        payload = self.rdef[self.rdef["path"] == file_path]["payload"].iloc[0]
-        file = _decode_b64(payload)
-        json_file = _load_json(file)
-
-        new_file = self.__set_annotation(
-            json_file, name=annotation_name, value=annotation_value
-        )
-        new_payload = _conv_b64(new_file)
-
-        self._update_single_file(file_name=file_path, new_payload=new_payload)
-
-    def set_visual_annotation(
+    def set_annotation(
         self,
-        page_name: str,
-        visual_name: str,
         annotation_name: str,
         annotation_value: str,
+        page_name: Optional[str] = None,
+        visual_name: Optional[str] = None,
     ):
         """
-        Sets an annotation on a visual of the report. If the annotation already exists, the annotation value is updated.
+        Sets an annotation on the report/page/visual. If the annotation already exists, the annotation value is updated.
+        In order to set a report annotation, leave page_name=None, visual_name=None.
+        In order to set a page annotation, leave visual_annotation=None.
+        In order to set a visual annotation, set all parameters.
 
         Parameters
         ----------
-        page_name : str
-            The page name (ID) or page display name.
-        visual_name : str
-            The name (ID) of the visual.
         annotation_name : str
             Name of the annotation.
         annotation_value : str
             Value of the annotation.
+        page_name : str, default=None
+            The page name or page display name.
+            Set this annotation when setting an annotation on a page or visual.
+        visual_name : str, default=None
+            The visual name.
+            Set this property when setting an annotation on a visual.
         """
 
-        page_name, page_display_name, visual_name, file_path = (
-            helper.resolve_visual_name(
-                self, page_name=page_name, visual_name=visual_name
+        if page_name is None and visual_name is None:
+            file_path = "definition/report.json"
+        elif page_name is not None and visual_name is None:
+            page_id, page_display, file_path = helper.resolve_page_name(
+                self, page_name=page_name
             )
-        )
+        elif page_name is not None and visual_name is not None:
+            page_name, page_display_name, visual_name, file_path = (
+                helper.resolve_visual_name(
+                    self, page_name=page_name, visual_name=visual_name
+                )
+            )
+        else:
+            raise ValueError(f"{icons.red_dot}")
 
         payload = self.rdef[self.rdef["path"] == file_path]["payload"].iloc[0]
         file = _decode_b64(payload)
@@ -1906,76 +1864,44 @@ class ReportWrapper:
 
         return json_file
 
-    def remove_report_annotation(self, annotation_name: str):
-        """
-        Removes an annotation on the report.
-
-        Parameters
-        ----------
-        annotation_name : str
-            Name of the annotation.
-        """
-
-        file_path = "definition/report.json"
-
-        payload = self.rdef[self.rdef["path"] == file_path]["payload"].iloc[0]
-        file = _decode_b64(payload)
-        json_file = _load_json(file)
-
-        new_file = self.__remove_annotation(json_file, name=annotation_name)
-        new_payload = _conv_b64(new_file)
-
-        self._update_single_file(file_name=file_path, new_payload=new_payload)
-
-    def remove_page_annotation(self, page_name: str, annotation_name: str):
-        """
-        Removes an annotation on the page within the report.
-
-        Parameters
-        ----------
-        page_name : str
-            The page name (ID) or page display name.
-        annotation_name : str
-            Name of the annotation.
-        """
-
-        page_id, page_display, file_path = helper.resolve_page_name(
-            self, page_name=page_name
-        )
-
-        payload = self.rdef[self.rdef["path"] == file_path]["payload"].iloc[0]
-        file = _decode_b64(payload)
-        json_file = _load_json(file)
-
-        new_file = self.__remove_annotation(json_file, name=annotation_name)
-        new_payload = _conv_b64(new_file)
-
-        self._update_single_file(file_name=file_path, new_payload=new_payload)
-
-    def remove_visual_annotation(
+    def remove_annotation(
         self,
-        page_name: str,
-        visual_name: str,
         annotation_name: str,
+        page_name: Optional[str] = None,
+        visual_name: Optional[str] = None,
     ):
         """
-        Removes an annotation on the visual within the report.
+        Removes an annotation on the report/page/visual.
+        In order to remove a report annotation, leave page_name=None, visual_name=None.
+        In order to remove a page annotation, leave visual_annotation=None.
+        In order to remove a visual annotation, set all parameters.
 
         Parameters
         ----------
-        page_name : str
-            The page name (ID) or page display name.
-        visual_name : str
-            The name (ID) of the visual.
         annotation_name : str
             Name of the annotation.
+        page_name : str, default=None
+            The page name or page display name.
+            Set this annotation when setting an annotation on a page or visual.
+        visual_name : str, default=None
+            The visual name.
+            Set this property when setting an annotation on a visual.
         """
 
-        page_name, page_display_name, visual_name, file_path = (
-            helper.resolve_visual_name(
-                self, page_name=page_name, visual_name=visual_name
+        if page_name is None and visual_name is None:
+            file_path = "definition/report.json"
+        elif page_name is not None and visual_name is None:
+            page_id, page_display, file_path = helper.resolve_page_name(
+                self, page_name=page_name
             )
-        )
+        elif page_name is not None and visual_name is not None:
+            page_name, page_display_name, visual_name, file_path = (
+                helper.resolve_visual_name(
+                    self, page_name=page_name, visual_name=visual_name
+                )
+            )
+        else:
+            raise ValueError(f"{icons.red_dot}")
 
         payload = self.rdef[self.rdef["path"] == file_path]["payload"].iloc[0]
         file = _decode_b64(payload)
@@ -1994,70 +1920,28 @@ class ReportWrapper:
                 if ann.get("name") == name:
                     return ann.get("value")
 
-    def get_report_annotation_value(self, annotation_name: str) -> str:
-        """
-        Retrieves the annotation value for a report annotation.
-
-        Parameters
-        ----------
-        annotation_name : str
-            Name of the annotation.
-
-        Returns
-        -------
-        str
-            The annotation value.
-        """
-
-        file_path = "definition/report.json"
-
-        payload = self.rdef[self.rdef["path"] == file_path]["payload"].iloc[0]
-        file = _decode_b64(payload)
-        json_file = _load_json(file)
-
-        return self.__get_annotation_value(json_file, name=annotation_name)
-
-    def get_page_annotation_value(self, page_name: str, annotation_name: str) -> str:
-        """
-        Retrieves the annotation value for a page annotation.
-
-        Parameters
-        ----------
-        page_name : str
-            The page name (ID) or page display name.
-        annotation_name : str
-            Name of the annotation.
-
-        Returns
-        -------
-        str
-            The annotation value.
-        """
-
-        page_id, page_display, file_path = helper.resolve_page_name(
-            self, page_name=page_name
-        )
-
-        payload = self.rdef[self.rdef["path"] == file_path]["payload"].iloc[0]
-        file = _decode_b64(payload)
-        json_file = _load_json(file)
-
-        return self.__get_annotation_value(json_file, name=annotation_name)
-
-    def get_visual_annotation_value(
-        self, page_name: str, visual_name: str, annotation_name: str
+    def get_annotation_value(
+        self,
+        annotation_name: str,
+        page_name: Optional[str] = None,
+        visual_name: Optional[str] = None,
     ) -> str:
         """
-        Retrieves the annotation value for a visual annotation.
+        Retrieves the annotation value of an annotation on the report/page/visual.
+        In order to retrieve a report annotation value, leave page_name=None, visual_name=None.
+        In order to retrieve a page annotation value, leave visual_annotation=None.
+        In order to retrieve a visual annotation value, set all parameters.
 
         Parameters
         ----------
-        page_name : str
-            The page name (ID) or page display name.
-        visual_name : str
-            The name (ID) of the visual.
         annotation_name : str
             Name of the annotation.
+        page_name : str, default=None
+            The page name or page display name.
+            Set this annotation when setting an annotation on a page or visual.
+        visual_name : str, default=None
+            The visual name.
+            Set this property when setting an annotation on a visual.
 
         Returns
         -------
@@ -2065,11 +1949,20 @@ class ReportWrapper:
             The annotation value.
         """
 
-        page_name, page_display_name, visual_name, file_path = (
-            helper.resolve_visual_name(
-                self, page_name=page_name, visual_name=visual_name
+        if page_name is None and visual_name is None:
+            file_path = "definition/report.json"
+        elif page_name is not None and visual_name is None:
+            page_id, page_display, file_path = helper.resolve_page_name(
+                self, page_name=page_name
             )
-        )
+        elif page_name is not None and visual_name is not None:
+            page_name, page_display_name, visual_name, file_path = (
+                helper.resolve_visual_name(
+                    self, page_name=page_name, visual_name=visual_name
+                )
+            )
+        else:
+            raise ValueError(f"{icons.red_dot}")
 
         payload = self.rdef[self.rdef["path"] == file_path]["payload"].iloc[0]
         file = _decode_b64(payload)
