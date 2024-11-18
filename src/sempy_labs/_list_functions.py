@@ -1371,7 +1371,7 @@ def list_report_semantic_model_objects(
     Shows a list of semantic model objects (i.e. columns, measures, hierarchies) used in all reports which feed data from
     a given semantic model.
 
-    Requirement: Reports must be in the PBIR format.
+    Note: As with all functions which rely on the ReportWrapper, this function requires the report(s) to be in the 'PBIR' format.
 
     Parameters
     ----------

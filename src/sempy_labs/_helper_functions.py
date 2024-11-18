@@ -593,6 +593,10 @@ def _decode_b64(file, format: Optional[str] = "utf-8"):
     return result
 
 
+def _load_json(file):
+    return json.loads(file)
+
+
 def is_default_semantic_model(dataset: str, workspace: Optional[str] = None) -> bool:
     """
     Identifies whether a semantic model is a default semantic model.
