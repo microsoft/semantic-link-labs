@@ -787,8 +787,7 @@ def get_capacity_name(workspace: Optional[str] = None) -> str:
 
 def _resolve_workspace_capacity_name_id_sku(
     workspace: Optional[str] = None,
-) -> Tuple[UUID, str, str]:
-    """ """
+) -> Tuple[UUID, str, str, str]:
 
     workspace = fabric.resolve_workspace_name(workspace)
     filter_condition = urllib.parse.quote(workspace)
@@ -799,11 +798,13 @@ def _resolve_workspace_capacity_name_id_sku(
     if len(dfC_filt) == 1:
         capacity_name = dfC_filt["Display Name"].iloc[0]
         sku = dfC_filt["Sku"].iloc[0]
+        region = dfC_filt["Region"].iloc[0]
     else:
         capacity_name = None
         sku = None
+        region = None
 
-    return capacity_id, capacity_name, sku
+    return capacity_id, capacity_name, sku, region
 
 
 def resolve_capacity_name(capacity_id: Optional[UUID] = None) -> str:

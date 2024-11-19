@@ -585,7 +585,7 @@ def run_benchmark(
         workspace = fabric.resolve_workspace_name()
 
     workspace_id = fabric.resolve_workspace_id(workspace)
-    capacity_id, capacity_name, sku = _resolve_workspace_capacity_name_id_sku(workspace)
+    capacity_id, capacity_name, sku, region = _resolve_workspace_capacity_name_id_sku(workspace)
     dataset_id = resolve_dataset_id(dataset, workspace)
 
     cache_type = _validate_cache_type(cache_type)
@@ -789,6 +789,7 @@ def run_benchmark(
             "Capacity Name": capacity_name,
             "Capacity Id": capacity_id,
             "SKU": sku,
+            "Region": region,
             "Workspace_Name": workspace,
             "Workspace Id": workspace_id,
             "Dataset_Name": dataset,
