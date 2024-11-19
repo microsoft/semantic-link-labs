@@ -6,6 +6,7 @@ from sempy.fabric.exceptions import FabricHTTPException
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     pagination,
+    _is_valid_uuid
 )
 import numpy as np
 import pandas as pd
@@ -15,87 +16,113 @@ from datetime import datetime
 
 
 def list_workspaces(
-    top: Optional[int] = 5000,
+    top: Optional[int] = None,
     filter: Optional[str] = None,
     skip: Optional[int] = None,
+    capacity: Optional[str] = None,
+    workspace: Optional[str] = None,
+    workspace_state: Optional[str] = None,
+    workspace_type:  Optional[str] = None,
 ) -> pd.DataFrame:
     """
     Lists workspaces for the organization. This function is the admin version of list_workspaces.
 
-    This is a wrapper function for the following API: `Admin - Groups GetGroupsAsAdmin <https://learn.microsoft.com/rest/api/power-bi/admin/groups-get-groups-as-admin>`_.
+    This is a wrapper function for the following API: `Workspaces - List Workspaces - REST API (Admin) <https://learn.microsoft.com/en-us/rest/api/fabric/admin/workspaces/list-workspaces>`_.
 
     Parameters
     ----------
-    top : int, default=5000
-        Returns only the first n results. This parameter is mandatory and must be in the range of 1-5000.
-    filter : str, default=None
-        Returns a subset of a results based on `Odata filter <https://docs.oasis-open.org/odata/odata/v4.01/odata-v4.01-part2-url-conventions.html#sec_SystemQueryOptions>`_ query parameter condition.
-    skip : int, default=None
-        Skips the first n results. Use with top to fetch results beyond the first 5000.
+    top: int, default=None
+        Returns only the first N workspaces.
+    filter: str, default=None
+        --Deprecated--
+    skip: int, default=None
+        Skip the first N workspaces.
+    capacity : str, default=None
+        Returns only the workspaces in the specified Capacity.
+    workspace : str, default=None
+        Returns the workspace with the specific name.
+    workspace_state : str, default=None
+        Return only the workspace with the requested state. You can find the possible states in `Workspace States <https://learn.microsoft.com/en-us/rest/api/fabric/admin/workspaces/list-workspaces?tabs=HTTP#workspacestate>`_.
+    workspace_type : str, default=None
+        Return only the workspace of the specific type. You can find the possible types in `Workspace Types <https://learn.microsoft.com/en-us/rest/api/fabric/admin/workspaces/list-workspaces?tabs=HTTP#workspacetype>`_.
 
     Returns
     -------
     pandas.DataFrame
         A pandas dataframe showing a list of workspaces for the organization.
     """
+    client = fabric.FabricRestClient()
 
     df = pd.DataFrame(
         columns=[
             "Id",
-            "Is Read Only",
-            "Is On Dedicated Capacity",
-            "Type",
             "Name",
+            "State",
+            "Type",
             "Capacity Id",
-            "Default Dataset Storage Format",
-            "Pipeline Id",
-            "Has Workspace Level Settings",
         ]
     )
 
-    url = f"/v1.0/myorg/admin/groups?$top={top}"
-    if skip is not None:
-        url = f"{url}&$skip={skip}"
-    if filter is not None:
-        url = f"{url}&$filter={filter}"
+    url = f"/v1/admin/workspaces"
 
-    client = fabric.PowerBIRestClient()
-    response = client.get(url)
+    params = {}
+
+    if capacity is not None:       
+        params["capacityId"] = _resolve_capacity_name_and_id(capacity)[1]
+
+    if workspace is not None and not _is_valid_uuid(workspace):
+        params["name"] = workspace
+
+    if workspace_state is not None:
+        params["state"] = workspace_state
+
+    if workspace_type is not None:
+        params["type"] = workspace_type
+
+    url_parts = list(urllib.parse.urlparse(url))
+    url_parts[4] = urllib.parse.urlencode(params)
+    url=urllib.parse.urlunparse(url_parts)
+
+    response = client.get(path_or_url=url)
 
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    for v in response.json().get("value", []):
-        capacity_id = v.get("capacityId")
-        if capacity_id:
-            capacity_id = capacity_id.lower()
-        new_data = {
-            "Id": v.get("id"),
-            "Is Read Only": v.get("isReadOnly"),
-            "Is On Dedicated Capacity": v.get("isOnDedicatedCapacity"),
-            "Capacity Id": capacity_id,
-            "Default Dataset Storage Format": v.get("defaultDatasetStorageFormat"),
-            "Type": v.get("type"),
-            "Name": v.get("name"),
-            "State": v.get("state"),
-            "Pipeline Id": v.get("pipelineId"),
-            "Has Workspace Level Settings": v.get("hasWorkspaceLevelSettings"),
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    responsePaginated = pagination(client,response)
+   
+    workspaces = []
 
-    bool_cols = [
-        "Is Read Only",
-        "Is On Dedicated Capacity",
-        "Has Workspace Level Settings",
-    ]
-    df[bool_cols] = df[bool_cols].astype(bool)
+    for r in responsePaginated:
+        workspaces = workspaces + r.get("workspaces", [])
+
+    if len(workspaces) > 0:
+        df = pd.DataFrame(workspaces)
+        df.rename(
+            columns={
+                "id": "Id",
+                "name": "Name",
+                "state": "State",
+                "type": "Type",
+                "capacityId": "Capacity Id",
+            }, inplace=True
+        )
+
+        if workspace is not None and _is_valid_uuid(workspace):
+            df = df[df['Id'] == workspace]
+
+    if skip is not None:
+        df = df.tail(-skip)
+        df.reset_index(drop=True, inplace=True)
+
+    if top is not None:
+        df = df.head(top)    
 
     return df
 
 
 def assign_workspaces_to_capacity(
-    source_capacity: str,
-    target_capacity: str,
+    source_capacity: Optional[str] = None,
+    target_capacity: Optional[str] = None,    
     workspace: Optional[str | List[str]] = None,
 ):
     """
@@ -105,32 +132,35 @@ def assign_workspaces_to_capacity(
 
     Parameters
     ----------
-    source_capacity : str
-        The name of the source capacity.
-    target_capacity : str
+    source_capacity : str, default=None
+        The name of the source capacity. If the Workspace is not specified, this is parameter mandatory.
+    target_capacity : str, default=None
         The name of the target capacity.
     workspace : str | List[str], default=None
-        The name of the workspace(s).
+        The name or id of the workspace(s).
         Defaults to None which resolves to migrating all workspaces within the source capacity to the target capacity.
     """
+    if target_capacity is None:
+        raise ValueError("The parameter target_capacity is mandatory.")
 
-    if isinstance(workspace, str):
-        workspace = [workspace]
-
-    dfC = list_capacities()
-    dfC_filt = dfC[dfC["Capacity Name"] == source_capacity]
-    source_capacity_id = dfC_filt["Capacity Id"].iloc[0]
-
-    dfC_filt = dfC[dfC["Capacity Name"] == target_capacity]
-    target_capacity_id = dfC_filt["Capacity Id"].iloc[0]
-
+    if source_capacity is None and workspace is None:
+        raise ValueError("The parameters source_capacity or workspace needs to be specified.") 
+   
     if workspace is None:
-        dfW = list_workspaces()
-        dfW = dfW[dfW["Capacity Id"].str.upper() == source_capacity_id.upper()]
+        source_capacity_id = _resolve_capacity_name_and_id(source_capacity)[1]      
+        dfW = list_workspaces(capacity=source_capacity_id)
         workspaces = dfW["Id"].tolist()
     else:
-        dfW = list_workspaces()
+        if isinstance(workspace, str):
+            workspace = [workspace]
+        if source_capacity is None:
+            dfW = list_workspaces()
+        else:
+            dfW = list_workspaces(capacity=source_capacity_id)
         workspaces = dfW[dfW["Name"].isin(workspace)]["Id"].tolist()
+        workspaces = workspaces + dfW[dfW["Id"].isin(workspace)]["Id"].tolist()  
+
+    target_capacity_id = _resolve_capacity_name_and_id(target_capacity)[1]
 
     workspaces = np.array(workspaces)
     batch_size = 999
@@ -145,37 +175,46 @@ def assign_workspaces_to_capacity(
             ]
         }
 
-        client = fabric.PowerBIRestClient()
+        client = fabric.FabricRestClient()
+
         response = client.post(
             "/v1.0/myorg/admin/capacities/AssignWorkspaces",
             json=request_body,
         )
-
+        
         if response.status_code != 200:
             raise FabricHTTPException(response)
     print(
-        f"{icons.green_dot} The workspaces have been assigned to the '{target_capacity}' capacity."
+        f"{icons.green_dot} The workspaces have been assigned to the '{target_capacity}' capacity. A total of {len(workspaces)} were moved."
     )
 
 
-def list_capacities() -> pd.DataFrame:
+def list_capacities(
+    capacity: Optional[str] = None,
+) -> pd.DataFrame:
     """
     Shows the a list of capacities and their properties. This function is the admin version.
 
     This is a wrapper function for the following API: `Admin - Get Capacities As Admin <https://learn.microsoft.com/rest/api/power-bi/admin/get-capacities-as-admin>`_.
 
+    Parameters
+    ----------
+    capacity : str, default=None
+        Capacity name or id to filter.
+        
     Returns
     -------
     pandas.DataFrame
         A pandas dataframe showing the capacities and their properties
-    """
+    """    
+    client = fabric.FabricRestClient()
 
     df = pd.DataFrame(
         columns=["Capacity Id", "Capacity Name", "Sku", "Region", "State", "Admins"]
     )
 
-    client = fabric.PowerBIRestClient()
     response = client.get("/v1.0/myorg/admin/capacities")
+    
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
@@ -192,6 +231,12 @@ def list_capacities() -> pd.DataFrame:
                 "Admins": [i.get("admins", [])],
             }
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    if capacity is not None:
+        if _is_valid_uuid(capacity):
+            df = df[df["Capacity Id"] == capacity.lower()]
+        else:
+            df = df[df["Capacity Name"] == capacity]
 
     return df
 
@@ -1077,3 +1122,17 @@ def list_modified_workspaces(
     df = pd.DataFrame(response.json()).rename(columns={"id": "Workspace Id"})
 
     return df
+
+
+def _resolve_capacity_name_and_id(
+    capacity: str,
+) -> Tuple[str, UUID]:
+
+    dfC = list_capacities(capacity=capacity)
+    try:
+        capacity_name = dfC["Capacity Name"].iloc[0]
+        capacity_id = dfC["Capacity Id"].iloc[0]
+    except:
+        raise ValueError(f"Capacity {capacity} not found.")
+
+    return capacity_name, capacity_id
