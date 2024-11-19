@@ -8,7 +8,6 @@ from sempy_labs._helper_functions import (
     _add_part,
     lro,
     _decode_b64,
-    _load_json,
 )
 from typing import Optional, List
 import pandas as pd
@@ -1370,7 +1369,7 @@ class ReportWrapper:
             path = r["path"]
             if path == "definition/report.json":
                 file = _decode_b64(payload)
-                json_file = _load_json(file)
+                json_file = json.loads(file)
                 if "annotations" in json_file:
                     for ann in json_file["annotations"]:
                         new_data = {
@@ -1384,7 +1383,7 @@ class ReportWrapper:
                         )
             elif path.endswith("/page.json"):
                 file = _decode_b64(payload)
-                json_file = _load_json(file)
+                json_file = json.loads(file)
                 if "annotations" in json_file:
                     for ann in json_file["annotations"]:
                         new_data = {
@@ -1398,7 +1397,7 @@ class ReportWrapper:
                         )
             elif path.endswith("/visual.json"):
                 file = _decode_b64(payload)
-                json_file = _load_json(file)
+                json_file = json.loads(file)
                 page_display = visual_mapping.get(path)[1]
                 visual_name = json_file.get("name")
                 if "annotations" in json_file:
@@ -1540,7 +1539,7 @@ class ReportWrapper:
         pagePath = self.rdef[self.rdef["path"] == pages_file]
         payload = pagePath["payload"].iloc[0]
         page_file = _decode_b64(payload)
-        json_file = _load_json(page_file)
+        json_file = json.loads(page_file)
         json_file["activePageName"] = page_id
         file_payload = _conv_b64(json_file)
 
@@ -1588,7 +1587,7 @@ class ReportWrapper:
         rd_filt = self.rdef[self.rdef["path"] == file_path]
         payload = rd_filt["payload"].iloc[0]
         page_file = _decode_b64(payload)
-        json_file = _load_json(page_file)
+        json_file = json.loads(page_file)
         json_file["width"] = width
         json_file["height"] = height
         file_payload = _conv_b64(json_file)
@@ -1752,7 +1751,7 @@ class ReportWrapper:
         rd_filt = self.rdef[self.rdef["path"] == file_path]
         payload = rd_filt["payload"].iloc[0]
         obj_file = _decode_b64(payload)
-        obj_json = _load_json(obj_file)
+        obj_json = json.loads(obj_file)
         if hidden:
             obj_json["visibility"] = "HiddenInViewMode"
         else:
@@ -1879,11 +1878,11 @@ class ReportWrapper:
                 )
             )
         else:
-            raise ValueError(f"{icons.red_dot}")
+            raise ValueError(f"{icons.red_dot} Invalid parameters. If specifying a visual_name you must specify the page_name.")
 
         payload = self.rdef[self.rdef["path"] == file_path]["payload"].iloc[0]
         file = _decode_b64(payload)
-        json_file = _load_json(file)
+        json_file = json.loads(file)
 
         new_file = self.__set_annotation(
             json_file, name=annotation_name, value=annotation_value
@@ -1941,11 +1940,11 @@ class ReportWrapper:
                 )
             )
         else:
-            raise ValueError(f"{icons.red_dot}")
+            raise ValueError(f"{icons.red_dot} Invalid parameters. If specifying a visual_name you must specify the page_name.")
 
         payload = self.rdef[self.rdef["path"] == file_path]["payload"].iloc[0]
         file = _decode_b64(payload)
-        json_file = _load_json(file)
+        json_file = json.loads(file)
 
         new_file = self.__remove_annotation(json_file, name=annotation_name)
         new_payload = _conv_b64(new_file)
@@ -2002,11 +2001,11 @@ class ReportWrapper:
                 )
             )
         else:
-            raise ValueError(f"{icons.red_dot}")
+            raise ValueError(f"{icons.red_dot} Invalid parameters. If specifying a visual_name you must specify the page_name.")
 
         payload = self.rdef[self.rdef["path"] == file_path]["payload"].iloc[0]
         file = _decode_b64(payload)
-        json_file = _load_json(file)
+        json_file = json.loads(file)
 
         return self.__get_annotation_value(json_file, name=annotation_name)
 
