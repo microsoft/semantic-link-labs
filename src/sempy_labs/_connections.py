@@ -12,6 +12,16 @@ from sempy_labs._gateways import resolve_gateway_id
 
 
 def delete_connection(connection: str | UUID):
+    """
+    Delete a connection.
+
+    This is a wrapper function for the following API: `Connections - Delete Connection <https://learn.microsoft.com/rest/api/fabric/core/connections/delete-connection>`_.
+
+    Parameters
+    ----------
+    connection : str | UUID
+        The connection name or ID.
+    """
 
     connection_id = resolve_connection_id(connection)
 
@@ -25,6 +35,18 @@ def delete_connection(connection: str | UUID):
 
 
 def delete_connection_role_assignment(connection: str | UUID, role_assignment_id: UUID):
+    """
+    Delete the specified role assignment for the connection.
+
+    This is a wrapper function for the following API: `Connections - Delete Connection Role Assignment <https://learn.microsoft.com/rest/api/fabric/core/connections/delete-connection-role-assignment>`_.
+
+    Parameters
+    ----------
+    connection : str | UUID
+        The connection name or ID.
+    role_assignment_id : UUID
+        The role assignment ID.
+    """
 
     connection_id = resolve_connection_id(connection)
 
@@ -58,6 +80,21 @@ def resolve_connection_id(connection: str | UUID) -> UUID:
 
 
 def list_connection_role_assignments(connection: str | UUID) -> pd.DataFrame:
+    """
+    Returns a list of connection role assignments.
+
+    This is a wrapper function for the following API: `Connections - List Connection Role Assignments <https://learn.microsoft.com/rest/api/fabric/core/connections/list-connection-role-assignments>`_.
+
+    Parameters
+    ----------
+    connection : str | UUID
+        The connection name or ID.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of connection role assignments.
+    """
 
     connection_id = resolve_connection_id(connection)
 
@@ -173,6 +210,8 @@ def list_item_connections(
     """
     Shows the list of connections that the specified item is connected to.
 
+    This is a wrapper function for the following API: `Items - List Item Connections <https://learn.microsoft.com/rest/api/fabric/core/items/list-item-connections>`_.
+
     Parameters
     ----------
     item_name : str
@@ -189,8 +228,6 @@ def list_item_connections(
     pandas.DataFrame
         A pandas dataframe showing the list of connections that the specified item is connected to.
     """
-
-    # https://learn.microsoft.com/en-us/rest/api/fabric/core/items/list-item-connections?tabs=HTTP
 
     workspace = fabric.resolve_workspace_name(workspace)
     workspace_id = fabric.resolve_workspace_id(workspace)
@@ -294,8 +331,30 @@ def create_cloud_connection(
     connection_encryption: str = "NotEncrypted",
     skip_test_connection: bool = False,
 ):
+    """
+    Creates a shared cloud connection.
 
-    # https://learn.microsoft.com/en-us/rest/api/fabric/core/connections/create-connection?tabs=HTTP#createconnectiondetails
+    This is a wrapper function for the following API: `Connections - Create Connection <https://learn.microsoft.com/rest/api/fabric/core/connections/create-connection>`_.
+
+    Parameters
+    ----------
+    name : str
+        The name of the connection.
+    server_name : str
+        The name of the server.
+    database_name : str
+        The name of the database.
+    user_name : str
+        The username.
+    password : str
+        The password.
+    privacy_level : str
+        The `privacy level <https://learn.microsoft.com/rest/api/fabric/core/connections/create-connection?tabs=HTTP#privacylevel>`_ of the connection.
+    connection_encryption : str, default="NotEncrypted"
+        The connection encrpytion.
+    skip_test_connection: bool, default=False
+        If True, skips the test connection.
+    """
 
     request_body = {
         "connectivityType": "ShareableCloud",
@@ -348,6 +407,32 @@ def create_on_prem_connection(
     connection_encryption: str = "NotEncrypted",
     skip_test_connection: bool = False,
 ):
+    """
+    Creates an on-premises connection.
+
+    This is a wrapper function for the following API: `Connections - Create Connection <https://learn.microsoft.com/rest/api/fabric/core/connections/create-connection>`_.
+
+    Parameters
+    ----------
+    name : str
+        The name of the connection.
+    gateway : str | UUID
+        The name or Id of the gateway.
+    server_name : str
+        The name of the server.
+    database_name : str
+        The name of the database.
+    user_name : str
+        The username.
+    password : str
+        The password.
+    privacy_level : str
+        The `privacy level <https://learn.microsoft.com/rest/api/fabric/core/connections/create-connection?tabs=HTTP#privacylevel>`_ of the connection.
+    connection_encryption : str, default="NotEncrypted"
+        The connection encrpytion.
+    skip_test_connection: bool, default=False
+        If True, skips the test connection.
+    """
 
     gateway_id = resolve_gateway_id(gateway)
 
@@ -394,7 +479,7 @@ def create_on_prem_connection(
 
 def create_vnet_connection(
     name: str,
-    gateway: str,
+    gateway: str | UUID,
     server_name: str,
     database_name: str,
     user_name: str,
@@ -403,6 +488,32 @@ def create_vnet_connection(
     connection_encryption: Optional[str] = "NotEncrypted",
     skip_test_connection: bool = False,
 ):
+    """
+    Creates a virtual network gateway connection.
+
+    This is a wrapper function for the following API: `Connections - Create Connection <https://learn.microsoft.com/rest/api/fabric/core/connections/create-connection>`_.
+
+    Parameters
+    ----------
+    name : str
+        The name of the connection.
+    gateway : str | UUID
+        The name or Id of the gateway.
+    server_name : str
+        The name of the server.
+    database_name : str
+        The name of the database.
+    user_name : str
+        The username.
+    password : str
+        The password.
+    privacy_level : str
+        The `privacy level <https://learn.microsoft.com/rest/api/fabric/core/connections/create-connection?tabs=HTTP#privacylevel>`_ of the connection.
+    connection_encryption : str, default="NotEncrypted"
+        The connection encrpytion.
+    skip_test_connection: bool, default=False
+        If True, skips the test connection.
+    """
 
     gateway_id = resolve_gateway_id(gateway)
 
@@ -445,4 +556,6 @@ def create_vnet_connection(
     if response.status_code != 201:
         raise FabricHTTPException(response)
 
-    print(f"{icons.green_dot} The '{name}' vnet connection has been created.")
+    print(
+        f"{icons.green_dot} The '{name}' virtual network gateway connection has been created."
+    )

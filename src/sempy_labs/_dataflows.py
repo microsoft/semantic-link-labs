@@ -153,7 +153,6 @@ def list_upstream_dataflows(
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
-
     Returns
     -------
     pandas.DataFrame
