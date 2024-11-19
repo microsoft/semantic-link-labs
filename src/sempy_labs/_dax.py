@@ -585,7 +585,9 @@ def run_benchmark(
         workspace = fabric.resolve_workspace_name()
 
     workspace_id = fabric.resolve_workspace_id(workspace)
-    capacity_id, capacity_name, sku, region = _resolve_workspace_capacity_name_id_sku(workspace)
+    capacity_id, capacity_name, sku, region = _resolve_workspace_capacity_name_id_sku(
+        workspace
+    )
     dataset_id = resolve_dataset_id(dataset, workspace)
 
     cache_type = _validate_cache_type(cache_type)
@@ -751,7 +753,9 @@ def run_benchmark(
         "Query_Name": "string",
         "Query_Text": "string",
         "Duration": "long",
+        "SE_Duration": "long",
         "SE_CPU": "long",
+        "SE_Cache": "long",
         "SE_Queries": "long",
         "Column_Dependencies": "str",
         "Column_Dependencies_Size": "long",
@@ -771,6 +775,34 @@ def run_benchmark(
             (~df_trace["Event Subclass"].str.endswith("Internal"))
             & (df_trace["Event Class"].str.endswith("End"))
         ]
+
+        # SE Cache: # of times the cache match event occurred
+        se_cache = len(df_trace[df_trace["Event Class"] == "VertiPaqSEQueryCacheMatch"])
+
+        # Total Time -> QueryEnd Duration
+        total_duration = df_trace[df_trace["Event Class"] == "QueryEnd"][
+            "Duration"
+        ].sum()
+
+        # SE Duration: Sum of Duration for Vertipaq End or DQEnd event
+        se_duration = df_trace[
+            (df_trace["Event Class"].str.endswith("End"))
+            & (df_trace["Event Class"] != "QueryEnd")
+        ]["Duration"].sum()
+
+        # SE CPU: Sum of CPU for Vertipaq End or DQEnd event
+        se_cpu = se_duration = df_trace[
+            (df_trace["Event Class"].str.endswith("End"))
+            & (df_trace["Event Class"] != "QueryEnd")
+        ]["Cpu Time"].sum()
+
+        # SE Queries: # of times the Vertipaq End or DQEnd event occurred
+        se_queries = len(
+            df_trace[
+                (df_trace["Event Class"].str.endswith("End"))
+                & (df_trace["Event Class"] != "QueryEnd")
+            ]
+        )
 
         # Collect query dependencies
         dep = get_dax_query_dependencies(
@@ -797,11 +829,11 @@ def run_benchmark(
             "Query_Name": query_name,
             "Query_Text": query_text,
             "Cache_Type": cache_type,
-            "Duration": df_trace[df_trace["Event Class"] == "QueryEnd"][
-                "Duration"
-            ].sum(),
-            "SE_CPU": df_trace["Cpu Time"].sum(),
-            "SE_Queries": len(df_trace) - 1,
+            "Duration": total_duration,
+            "SE_Duration": se_duration,
+            "SE_Cache": se_cache,
+            "SE_CPU": se_cpu,
+            "SE_Queries": se_queries,
             "Column_Dependencies": str(table_column_list),
             "Column_Dependencies_Size": total_size,
             "RunId": run_id,

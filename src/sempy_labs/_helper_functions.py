@@ -542,7 +542,9 @@ def language_validate(language: str):
     return lang
 
 
-def resolve_workspace_name_and_id(workspace: Optional[str | UUID] = None) -> Tuple[str, UUID]:
+def resolve_workspace_name_and_id(
+    workspace: Optional[str | UUID] = None,
+) -> Tuple[str, UUID]:
     """
     Obtains the name and ID of the Fabric workspace.
 
