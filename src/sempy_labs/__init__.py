@@ -156,9 +156,12 @@ from sempy_labs._dataflows import (
 from sempy_labs._connections import (
     list_connections,
     list_item_connections,
-    # create_connection_cloud,
-    # create_connection_vnet,
-    # create_connection_on_prem
+    list_connection_role_assignments,
+    delete_connection,
+    delete_connection_role_assignment,
+    create_vnet_connection,
+    create_on_prem_connection,
+    create_cloud_connection,
 )
 from sempy_labs._dax import (
     evaluate_dax_impersonation,
@@ -267,9 +270,6 @@ __all__ = [
     "create_azure_storage_account",
     "delete_custom_pool",
     "clear_cache",
-    # create_connection_cloud,
-    # create_connection_vnet,
-    # create_connection_on_prem,
     "evaluate_dax_impersonation",
     "create_blank_semantic_model",
     "create_semantic_model_from_bim",
@@ -425,4 +425,10 @@ __all__ = [
     "update_mirrored_database_definition",
     "get_tables_mirroring_status",
     "list_upstream_dataflows",
+    "list_connection_role_assignments",
+    "delete_connection",
+    "delete_connection_role_assignment",
+    "create_vnet_connection",
+    "create_on_prem_connection",
+    "create_cloud_connection",
 ]

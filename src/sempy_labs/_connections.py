@@ -271,7 +271,7 @@ def list_item_connections(
     return df
 
 
-def list_supported_connection_types(
+def _list_supported_connection_types(
     gateway: Optional[str | UUID] = None, show_all_creation_methods: bool = False
 ) -> pd.DataFrame:
 
