@@ -6,7 +6,7 @@ from sempy.fabric.exceptions import FabricHTTPException
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     pagination,
-    _is_valid_uuid
+    _is_valid_uuid,
 )
 import numpy as np
 import pandas as pd
@@ -22,7 +22,7 @@ def list_workspaces(
     capacity: Optional[str] = None,
     workspace: Optional[str] = None,
     workspace_state: Optional[str] = None,
-    workspace_type:  Optional[str] = None,
+    workspace_type: Optional[str] = None,
 ) -> pd.DataFrame:
     """
     Lists workspaces for the organization. This function is the admin version of list_workspaces.
@@ -67,7 +67,7 @@ def list_workspaces(
 
     params = {}
 
-    if capacity is not None:       
+    if capacity is not None:
         params["capacityId"] = _resolve_capacity_name_and_id(capacity)[1]
 
     if workspace is not None and not _is_valid_uuid(workspace):
@@ -81,15 +81,15 @@ def list_workspaces(
 
     url_parts = list(urllib.parse.urlparse(url))
     url_parts[4] = urllib.parse.urlencode(params)
-    url=urllib.parse.urlunparse(url_parts)
+    url = urllib.parse.urlunparse(url_parts)
 
     response = client.get(path_or_url=url)
 
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    responsePaginated = pagination(client,response)
-   
+    responsePaginated = pagination(client, response)
+
     workspaces = []
 
     for r in responsePaginated:
@@ -104,25 +104,26 @@ def list_workspaces(
                 "state": "State",
                 "type": "Type",
                 "capacityId": "Capacity Id",
-            }, inplace=True
+            },
+            inplace=True,
         )
 
         if workspace is not None and _is_valid_uuid(workspace):
-            df = df[df['Id'] == workspace]
+            df = df[df["Id"] == workspace]
 
     if skip is not None:
         df = df.tail(-skip)
         df.reset_index(drop=True, inplace=True)
 
     if top is not None:
-        df = df.head(top)    
+        df = df.head(top)
 
     return df
 
 
 def assign_workspaces_to_capacity(
     source_capacity: Optional[str] = None,
-    target_capacity: Optional[str] = None,    
+    target_capacity: Optional[str] = None,
     workspace: Optional[str | List[str]] = None,
 ):
     """
@@ -144,10 +145,12 @@ def assign_workspaces_to_capacity(
         raise ValueError("The parameter target_capacity is mandatory.")
 
     if source_capacity is None and workspace is None:
-        raise ValueError("The parameters source_capacity or workspace needs to be specified.") 
-   
+        raise ValueError(
+            "The parameters source_capacity or workspace needs to be specified."
+        )
+
     if workspace is None:
-        source_capacity_id = _resolve_capacity_name_and_id(source_capacity)[1]      
+        source_capacity_id = _resolve_capacity_name_and_id(source_capacity)[1]
         dfW = list_workspaces(capacity=source_capacity_id)
         workspaces = dfW["Id"].tolist()
     else:
@@ -158,7 +161,7 @@ def assign_workspaces_to_capacity(
         else:
             dfW = list_workspaces(capacity=source_capacity_id)
         workspaces = dfW[dfW["Name"].isin(workspace)]["Id"].tolist()
-        workspaces = workspaces + dfW[dfW["Id"].isin(workspace)]["Id"].tolist()  
+        workspaces = workspaces + dfW[dfW["Id"].isin(workspace)]["Id"].tolist()
 
     target_capacity_id = _resolve_capacity_name_and_id(target_capacity)[1]
 
@@ -181,7 +184,7 @@ def assign_workspaces_to_capacity(
             "/v1.0/myorg/admin/capacities/AssignWorkspaces",
             json=request_body,
         )
-        
+
         if response.status_code != 200:
             raise FabricHTTPException(response)
     print(
@@ -201,12 +204,12 @@ def list_capacities(
     ----------
     capacity : str, default=None
         Capacity name or id to filter.
-        
+
     Returns
     -------
     pandas.DataFrame
         A pandas dataframe showing the capacities and their properties
-    """    
+    """
     client = fabric.FabricRestClient()
 
     df = pd.DataFrame(
@@ -214,7 +217,7 @@ def list_capacities(
     )
 
     response = client.get("/v1.0/myorg/admin/capacities")
-    
+
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
