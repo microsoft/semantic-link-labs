@@ -400,23 +400,10 @@ def run_model_bpa(
         dfExport["Timestamp"] = now
         dfExport["RunId"] = runId
         dfExport["Configured By"] = configured_by
-
         dfExport["RunId"] = dfExport["RunId"].astype("int")
 
-        colName = "Capacity Name"
-        dfExport.insert(0, colName, dfExport.pop(colName))
-        colName = "Capacity Id"
-        dfExport.insert(1, colName, dfExport.pop(colName))
-        colName = "Workspace Name"
-        dfExport.insert(2, colName, dfExport.pop(colName))
-        colName = "Workspace Id"
-        dfExport.insert(3, colName, dfExport.pop(colName))
-        colName = "Dataset Name"
-        dfExport.insert(4, colName, dfExport.pop(colName))
-        colName = "Configured By"
-        dfExport.insert(5, colName, dfExport.pop(colName))
-
-        dfExport.columns = dfExport.columns.str.replace(" ", "_")
+        dfExport = dfExport[list(icons.bpa_schema.keys())]
+        dfExport["RunId"] = dfExport["RunId"].astype("int")
         schema = {
             key.replace(" ", "_"): value for key, value in icons.bpa_schema.items()
         }
