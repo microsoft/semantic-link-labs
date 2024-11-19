@@ -542,13 +542,13 @@ def language_validate(language: str):
     return lang
 
 
-def resolve_workspace_name_and_id(workspace: Optional[str] = None) -> Tuple[str, str]:
+def resolve_workspace_name_and_id(workspace: Optional[str | UUID] = None) -> Tuple[str, UUID]:
     """
     Obtains the name and ID of the Fabric workspace.
 
     Parameters
     ----------
-    workspace : str, default=None
+    workspace : str | UUID, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -561,11 +561,12 @@ def resolve_workspace_name_and_id(workspace: Optional[str] = None) -> Tuple[str,
 
     if workspace is None:
         workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
+        workspace_name = fabric.resolve_workspace_name(workspace_id)
     else:
         workspace_id = fabric.resolve_workspace_id(workspace)
+        workspace_name = fabric.resolve_workspace_name(workspace_id)
 
-    return str(workspace), str(workspace_id)
+    return workspace_name, workspace_id
 
 
 def _extract_json(dataframe: pd.DataFrame) -> dict:
@@ -786,11 +787,12 @@ def get_capacity_name(workspace: Optional[str] = None) -> str:
 
 
 def _resolve_workspace_capacity_name_id_sku(
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
 ) -> Tuple[UUID, str, str, str]:
 
-    workspace = fabric.resolve_workspace_name(workspace)
-    filter_condition = urllib.parse.quote(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    filter_condition = urllib.parse.quote(workspace_name)
     dfW = fabric.list_workspaces(filter=f"name eq '{filter_condition}'")
     capacity_id = dfW["Capacity Id"].iloc[0]
     dfC = fabric.list_capacities()
@@ -1167,3 +1169,27 @@ def _get_max_run_id(lakehouse: str, table_name: str) -> int:
     max_run_id = dfSpark.collect()[0][0]
 
     return max_run_id
+
+
+def _is_valid_uuid(
+    guid: str,
+):
+    """
+    Validates if a string is a valid GUID in version 4
+
+    Parameters
+    ----------
+    guid : str
+        GUID to be validated.
+
+    Returns
+    -------
+    bool
+        Boolean that indicates if the string is a GUID or not.
+    """
+
+    try:
+        UUID(str(guid), version=4)
+        return True
+    except ValueError:
+        return False
