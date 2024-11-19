@@ -1413,6 +1413,8 @@ class ReportWrapper:
                             [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
                         )
 
+        return df
+
     # Automation functions
     def set_theme(self, theme_file_path: str):
         """
