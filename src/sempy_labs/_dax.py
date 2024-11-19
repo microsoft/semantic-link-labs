@@ -12,6 +12,7 @@ from sempy_labs._helper_functions import (
     _get_max_run_id,
     resolve_lakehouse_name,
     save_as_delta_table,
+    _resolve_workspace_capacity_name_id_sku,
 )
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from sempy_labs._clear_cache import clear_cache
@@ -583,6 +584,10 @@ def run_benchmark(
     if workspace is None:
         workspace = fabric.resolve_workspace_name()
 
+    workspace_id = fabric.resolve_workspace_id(workspace)
+    capacity_id, capacity_name, sku = _resolve_workspace_capacity_name_id_sku(workspace)
+    dataset_id = resolve_dataset_id(dataset, workspace)
+
     cache_type = _validate_cache_type(cache_type)
 
     # Get RunId
@@ -781,8 +786,13 @@ def run_benchmark(
         ]
 
         new_data = {
+            "Capacity Name": capacity_name,
+            "Capacity Id": capacity_id,
+            "SKU": sku,
             "Workspace_Name": workspace,
+            "Workspace Id": workspace_id,
             "Dataset_Name": dataset,
+            "Dataset Id": dataset_id,
             "Query_Name": query_name,
             "Query_Text": query_text,
             "Cache_Type": cache_type,

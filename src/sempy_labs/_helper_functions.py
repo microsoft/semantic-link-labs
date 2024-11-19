@@ -785,6 +785,27 @@ def get_capacity_name(workspace: Optional[str] = None) -> str:
     return dfC_filt["Display Name"].iloc[0]
 
 
+def _resolve_workspace_capacity_name_id_sku(
+    workspace: Optional[str] = None,
+) -> Tuple[UUID, str, str]:
+    """ """
+
+    workspace = fabric.resolve_workspace_name(workspace)
+    filter_condition = urllib.parse.quote(workspace)
+    dfW = fabric.list_workspaces(filter=f"name eq '{filter_condition}'")
+    capacity_id = dfW["Capacity Id"].iloc[0]
+    dfC = fabric.list_capacities()
+    dfC_filt = dfC[dfC["Id"] == capacity_id]
+    if len(dfC_filt) == 1:
+        capacity_name = dfC_filt["Display Name"].iloc[0]
+        sku = dfC_filt["Sku"].iloc[0]
+    else:
+        capacity_name = None
+        sku = None
+
+    return capacity_id, capacity_name, sku
+
+
 def resolve_capacity_name(capacity_id: Optional[UUID] = None) -> str:
     """
     Obtains the capacity name for a given capacity Id.
