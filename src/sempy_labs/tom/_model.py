@@ -4369,6 +4369,7 @@ class TOMWrapper:
         pandas.DataFrame
             A pandas dataframe showing the updated measure(s) and their new description(s).
         """
+        icons.sll_tags.append('GenerateMeasureDescriptions')
 
         df = pd.DataFrame(
             columns=["Table Name", "Measure Name", "Expression", "Description"]
