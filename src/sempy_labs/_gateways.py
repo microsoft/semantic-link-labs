@@ -177,19 +177,7 @@ def delete_gateway_role_assignment(gateway: str | UUID, role_assignement_id: UUI
     )
 
 
-def delete_gateway_member(gateway: str | UUID, gateway_member: UUID):
-    """
-    Delete gateway member of an on-premises gateway.
-
-    This is a wrapper function for the following API: `Gateways - Delete Gateway Member <https://learn.microsoft.com/rest/api/fabric/core/gateways/delete-gateway-member>`_.
-
-    Parameters
-    ----------
-    gateway : str | UUID
-        The gateway name or ID.
-    gateway_member : UUID
-        The gateway member ID.
-    """
+def _resolve_gateway_member_id(gateway: str | UUID, gateway_member: str | UUID) -> UUID:
 
     gateway_id = _resolve_gateway_id(gateway)
     dfM = list_gateway_members(gateway=gateway_id)
@@ -202,7 +190,28 @@ def delete_gateway_member(gateway: str | UUID, gateway_member: UUID):
         raise ValueError(
             f"{icons.red_dot} The '{gateway_member}' gateway member does not exist within the '{gateway}' gateway."
         )
-    member_id = dfM_filt["Member Id"].iloc[0]
+
+    return dfM_filt["Member Id"].iloc[0]
+
+
+def delete_gateway_member(gateway: str | UUID, gateway_member: str | UUID):
+    """
+    Delete gateway member of an on-premises gateway.
+
+    This is a wrapper function for the following API: `Gateways - Delete Gateway Member <https://learn.microsoft.com/rest/api/fabric/core/gateways/delete-gateway-member>`_.
+
+    Parameters
+    ----------
+    gateway : str | UUID
+        The gateway name or ID.
+    gateway_member : str | UUID
+        The gateway member name or ID.
+    """
+
+    gateway_id = _resolve_gateway_id(gateway)
+    member_id = _resolve_gateway_member_id(
+        gateway=gateway_id, gateway_member=gateway_member
+    )
 
     client = fabric.FabricRestClient()
     response = client.delete(f"/v1/gateways/{gateway_id}/members/{member_id}")
