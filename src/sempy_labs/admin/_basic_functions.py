@@ -17,12 +17,12 @@ from datetime import datetime
 
 def list_workspaces(
     top: Optional[int] = None,
-    filter: Optional[str] = None,
     skip: Optional[int] = None,
-    capacity: Optional[str] = None,
-    workspace: Optional[str] = None,
+    capacity: Optional[str | UUID] = None,
+    workspace: Optional[str | UUID] = None,
     workspace_state: Optional[str] = None,
     workspace_type: Optional[str] = None,
+    **kwargs,
 ) -> pd.DataFrame:
     """
     Lists workspaces for the organization. This function is the admin version of list_workspaces.
@@ -33,13 +33,11 @@ def list_workspaces(
     ----------
     top: int, default=None
         Returns only the first N workspaces.
-    filter: str, default=None
-        --Deprecated--
     skip: int, default=None
         Skip the first N workspaces.
-    capacity : str, default=None
+    capacity : str | UUID, default=None
         Returns only the workspaces in the specified Capacity.
-    workspace : str, default=None
+    workspace : str | UUID, default=None
         Returns the workspace with the specific name.
     workspace_state : str, default=None
         Return only the workspace with the requested state. You can find the possible states in `Workspace States <https://learn.microsoft.com/en-us/rest/api/fabric/admin/workspaces/list-workspaces?tabs=HTTP#workspacestate>`_.
@@ -51,6 +49,12 @@ def list_workspaces(
     pandas.DataFrame
         A pandas dataframe showing a list of workspaces for the organization.
     """
+    if "filter" in kwargs:
+        print(
+            "The 'filter' parameter has been deprecated. Please remove this parameter from the function going forward."
+        )
+        del kwargs["filter"]
+    
     client = fabric.FabricRestClient()
 
     df = pd.DataFrame(
@@ -108,6 +112,9 @@ def list_workspaces(
             inplace=True,
         )
 
+        df['Id'] = df['Id'].str.lower()
+        df['Capacity Id'] = df['Capacity Id'].str.lower()
+
         if workspace is not None and _is_valid_uuid(workspace):
             df = df[df["Id"] == workspace]
 
@@ -122,9 +129,9 @@ def list_workspaces(
 
 
 def assign_workspaces_to_capacity(
-    source_capacity: Optional[str] = None,
-    target_capacity: Optional[str] = None,
-    workspace: Optional[str | List[str]] = None,
+    source_capacity: Optional[str | UUID] = None,
+    target_capacity: Optional[str | UUID] = None,
+    workspace: Optional[str | List[str] | UUID | List[UUID]] = None,
 ):
     """
     Assigns a workspace to a capacity. This function is the admin version.
@@ -133,21 +140,19 @@ def assign_workspaces_to_capacity(
 
     Parameters
     ----------
-    source_capacity : str, default=None
+    source_capacity : str | UUID, default=None
         The name of the source capacity. If the Workspace is not specified, this is parameter mandatory.
-    target_capacity : str, default=None
+    target_capacity : str | UUID, default=None
         The name of the target capacity.
-    workspace : str | List[str], default=None
+    workspace : str | List[str] | UUID | List[UUID], default=None
         The name or id of the workspace(s).
         Defaults to None which resolves to migrating all workspaces within the source capacity to the target capacity.
     """
     if target_capacity is None:
-        raise ValueError("The parameter target_capacity is mandatory.")
+        raise ValueError(f"{icons.red_dot} The parameter 'target_capacity' is mandatory.")
 
     if source_capacity is None and workspace is None:
-        raise ValueError(
-            "The parameters source_capacity or workspace needs to be specified."
-        )
+        raise ValueError(f"{icons.red_dot} The parameters 'source_capacity' or 'workspace' needs to be specified.")
 
     if workspace is None:
         source_capacity_id = _resolve_capacity_name_and_id(source_capacity)[1]
@@ -162,6 +167,9 @@ def assign_workspaces_to_capacity(
             dfW = list_workspaces(capacity=source_capacity_id)
         workspaces = dfW[dfW["Name"].isin(workspace)]["Id"].tolist()
         workspaces = workspaces + dfW[dfW["Id"].isin(workspace)]["Id"].tolist()
+
+    if len(workspace) != len(workspaces):
+        raise ValueError(f"{icons.red_dot} Some of the workspaces provided are not valid.")
 
     target_capacity_id = _resolve_capacity_name_and_id(target_capacity)[1]
 
@@ -193,7 +201,7 @@ def assign_workspaces_to_capacity(
 
 
 def list_capacities(
-    capacity: Optional[str] = None,
+    capacity: Optional[str | UUID] = None,
 ) -> pd.DataFrame:
     """
     Shows the a list of capacities and their properties. This function is the admin version.
@@ -202,7 +210,7 @@ def list_capacities(
 
     Parameters
     ----------
-    capacity : str, default=None
+    capacity : str | UUID, default=None
         Capacity name or id to filter.
 
     Returns
@@ -1128,7 +1136,7 @@ def list_modified_workspaces(
 
 
 def _resolve_capacity_name_and_id(
-    capacity: str,
+    capacity: str | UUID,
 ) -> Tuple[str, UUID]:
 
     dfC = list_capacities(capacity=capacity)
