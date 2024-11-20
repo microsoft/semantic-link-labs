@@ -54,7 +54,7 @@ def list_workspaces(
             "The 'filter' parameter has been deprecated. Please remove this parameter from the function going forward."
         )
         del kwargs["filter"]
-    
+
     client = fabric.FabricRestClient()
 
     df = pd.DataFrame(
@@ -112,8 +112,8 @@ def list_workspaces(
             inplace=True,
         )
 
-        df['Id'] = df['Id'].str.lower()
-        df['Capacity Id'] = df['Capacity Id'].str.lower()
+        df["Id"] = df["Id"].str.lower()
+        df["Capacity Id"] = df["Capacity Id"].str.lower()
 
         if workspace is not None and _is_valid_uuid(workspace):
             df = df[df["Id"] == workspace]
@@ -149,10 +149,14 @@ def assign_workspaces_to_capacity(
         Defaults to None which resolves to migrating all workspaces within the source capacity to the target capacity.
     """
     if target_capacity is None:
-        raise ValueError(f"{icons.red_dot} The parameter 'target_capacity' is mandatory.")
+        raise ValueError(
+            f"{icons.red_dot} The parameter 'target_capacity' is mandatory."
+        )
 
     if source_capacity is None and workspace is None:
-        raise ValueError(f"{icons.red_dot} The parameters 'source_capacity' or 'workspace' needs to be specified.")
+        raise ValueError(
+            f"{icons.red_dot} The parameters 'source_capacity' or 'workspace' needs to be specified."
+        )
 
     if workspace is None:
         source_capacity_id = _resolve_capacity_name_and_id(source_capacity)[1]
@@ -169,7 +173,9 @@ def assign_workspaces_to_capacity(
         workspaces = workspaces + dfW[dfW["Id"].isin(workspace)]["Id"].tolist()
 
     if len(workspace) != len(workspaces):
-        raise ValueError(f"{icons.red_dot} Some of the workspaces provided are not valid.")
+        raise ValueError(
+            f"{icons.red_dot} Some of the workspaces provided are not valid."
+        )
 
     target_capacity_id = _resolve_capacity_name_and_id(target_capacity)[1]
 
@@ -329,7 +335,7 @@ def _list_capacities_meta() -> pd.DataFrame:
 
 def unassign_workspaces_from_capacity(workspaces: str | List[str]):
     """
-    Unassigns workspace(s) from their capacity.
+    Unassign workspace(s) from their capacity.
 
     This is a wrapper function for the following API: `Admin - Capacities UnassignWorkspacesFromCapacity <https://learn.microsoft.com/rest/api/power-bi/admin/capacities-unassign-workspaces-from-capacity>`_.
 
