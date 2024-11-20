@@ -112,7 +112,6 @@ def list_workspaces(
             inplace=True,
         )
 
-        df["Id"] = df["Id"].str.lower()
         df["Capacity Id"] = df["Capacity Id"].str.lower()
 
         if workspace is not None and _is_valid_uuid(workspace):
