@@ -61,7 +61,7 @@ def list_gateways() -> pd.DataFrame:
     return df
 
 
-def resolve_gateway_id(gateway: str | UUID) -> UUID:
+def _resolve_gateway_id(gateway: str | UUID) -> UUID:
 
     dfG = list_gateways()
     if _is_valid_uuid(gateway):
@@ -77,7 +77,7 @@ def resolve_gateway_id(gateway: str | UUID) -> UUID:
 
 def delete_gateway(gateway: str | UUID):
 
-    gateway_id = resolve_gateway_id(gateway)
+    gateway_id = _resolve_gateway_id(gateway)
     client = fabric.FabricRestClient()
     response = client.delete(f"/v1/gateways/{gateway_id}")
 
@@ -89,7 +89,7 @@ def delete_gateway(gateway: str | UUID):
 
 def list_gateway_role_assigments(gateway: str | UUID) -> pd.DataFrame:
 
-    gateway_id = resolve_gateway_id(gateway)
+    gateway_id = _resolve_gateway_id(gateway)
     client = fabric.FabricRestClient()
     response = client.delete(f"/v1/gateways/{gateway_id}/roleAssignments")
 
@@ -116,7 +116,7 @@ def list_gateway_role_assigments(gateway: str | UUID) -> pd.DataFrame:
 
 def delete_gateway_role_assignment(gateway: str | UUID, role_assignement_id: UUID):
 
-    gateway_id = resolve_gateway_id(gateway)
+    gateway_id = _resolve_gateway_id(gateway)
     client = fabric.FabricRestClient()
     response = client.delete(
         f"/v1/gateways/{gateway_id}/roleAssignments/{role_assignement_id}"
@@ -132,7 +132,7 @@ def delete_gateway_role_assignment(gateway: str | UUID, role_assignement_id: UUI
 
 def delete_gateway_member(gateway: str | UUID, gateway_member: UUID):
 
-    gateway_id = resolve_gateway_id(gateway)
+    gateway_id = _resolve_gateway_id(gateway)
     dfM = list_gateway_members(gateway=gateway_id)
 
     if _is_valid_uuid(gateway_member):
@@ -158,7 +158,7 @@ def delete_gateway_member(gateway: str | UUID, gateway_member: UUID):
 
 def list_gateway_members(gateway: str | UUID) -> pd.DataFrame:
 
-    gateway_id = resolve_gateway_id(gateway)
+    gateway_id = _resolve_gateway_id(gateway)
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/gateways/{gateway_id}/members")
 
@@ -239,7 +239,7 @@ def update_on_premises_gateway(
     load_balancing_setting: Optional[str] = None,
 ):
 
-    gateway_id = resolve_gateway_id(gateway)
+    gateway_id = _resolve_gateway_id(gateway)
 
     payload = {}
 
@@ -273,7 +273,7 @@ def update_vnet_gateway(
     number_of_member_gateways: Optional[int] = None,
 ):
 
-    gateway_id = resolve_gateway_id(gateway)
+    gateway_id = _resolve_gateway_id(gateway)
 
     payload = {}
 

@@ -1,3 +1,15 @@
+from sempy_labs._gateways import (
+    list_gateway_members,
+    list_gateway_role_assigments,
+    list_gateways,
+    delete_gateway,
+    delete_gateway_member,
+    delete_gateway_role_assignment,
+    create_vnet_gateway,
+    update_vnet_gateway,
+    update_on_premises_gateway,
+)
+
 from sempy_labs._authentication import (
     ServicePrincipalTokenProvider,
 )
@@ -435,4 +447,13 @@ __all__ = [
     "create_vnet_connection",
     "create_on_prem_connection",
     "create_cloud_connection",
+    "list_gateway_members",
+    "list_gateway_role_assigments",
+    "list_gateways",
+    "delete_gateway",
+    "delete_gateway_member",
+    "delete_gateway_role_assignment",
+    "create_vnet_gateway",
+    "update_vnet_gateway",
+    "update_on_premises_gateway",
 ]

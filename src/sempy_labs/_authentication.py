@@ -1,6 +1,5 @@
 from typing import Literal
 from sempy.fabric._token_provider import TokenProvider
-import notebookutils
 from azure.identity import ClientSecretCredential
 
 
@@ -12,6 +11,7 @@ class ServicePrincipalTokenProvider(TokenProvider):
     """
 
     def __init__(self, credential: ClientSecretCredential):
+
         self.credential = credential
 
     @classmethod
@@ -72,6 +72,9 @@ class ServicePrincipalTokenProvider(TokenProvider):
         sempy.fabric.TokenProvider
             Token provider to be used with FabricRestClient or PowerBIRestClient.
         """
+
+        import notebookutils
+
         tenant_id = notebookutils.credentials.getSecret(
             key_vault_uri, key_vault_tenant_id
         )
