@@ -23,7 +23,7 @@ def delete_connection(connection: str | UUID):
         The connection name or ID.
     """
 
-    connection_id = resolve_connection_id(connection)
+    connection_id = _resolve_connection_id(connection)
 
     client = fabric.FabricRestClient()
     response = client.delete(f"/v1/connections/{connection_id}")
@@ -48,7 +48,7 @@ def delete_connection_role_assignment(connection: str | UUID, role_assignment_id
         The role assignment ID.
     """
 
-    connection_id = resolve_connection_id(connection)
+    connection_id = _resolve_connection_id(connection)
 
     client = fabric.FabricRestClient()
     response = client.delete(
@@ -63,7 +63,7 @@ def delete_connection_role_assignment(connection: str | UUID, role_assignment_id
     )
 
 
-def resolve_connection_id(connection: str | UUID) -> UUID:
+def _resolve_connection_id(connection: str | UUID) -> UUID:
 
     dfC = list_connections()
     if _is_valid_uuid(connection):
@@ -96,7 +96,7 @@ def list_connection_role_assignments(connection: str | UUID) -> pd.DataFrame:
         A pandas dataframe showing a list of connection role assignments.
     """
 
-    connection_id = resolve_connection_id(connection)
+    connection_id = _resolve_connection_id(connection)
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/connections/{connection_id}/roleAssignments")

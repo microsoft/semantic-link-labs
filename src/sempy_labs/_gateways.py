@@ -12,6 +12,16 @@ import sempy_labs._icons as icons
 
 
 def list_gateways() -> pd.DataFrame:
+    """
+    Returns a list of all gateways the user has permission for, including on-premises, on-premises (personal mode), and virtual network gateways.
+
+    This is a wrapper function for the following API: `Gateways - List Gateways <https://learn.microsoft.com/rest/api/fabric/core/gateways/list-gateways>`_.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of all gateways the user has permission for, including on-premises, on-premises (personal mode), and virtual network gateways.
+    """
 
     client = fabric.FabricRestClient()
     response = client.get("/v1/gateways")
@@ -76,6 +86,16 @@ def _resolve_gateway_id(gateway: str | UUID) -> UUID:
 
 
 def delete_gateway(gateway: str | UUID):
+    """
+    Deletes a gateway.
+
+    This is a wrapper function for the following API: `Gateways - Delete Gateway <https://learn.microsoft.com/rest/api/fabric/core/gateways/delete-gateway>`_.
+
+    Parameters
+    ----------
+    gateway : str | UUID
+        The gateway name or ID.
+    """
 
     gateway_id = _resolve_gateway_id(gateway)
     client = fabric.FabricRestClient()
@@ -88,10 +108,25 @@ def delete_gateway(gateway: str | UUID):
 
 
 def list_gateway_role_assigments(gateway: str | UUID) -> pd.DataFrame:
+    """
+    Returns a list of gateway role assignments.
+
+    This is a wrapper function for the following API: `Gateways - List Gateway Role Assignments <https://learn.microsoft.com/rest/api/fabric/core/gateways/list-gateway-role-assignments>`_.
+
+    Parameters
+    ----------
+    gateway : str | UUID
+        The gateway name or ID.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of gateway role assignments.
+    """
 
     gateway_id = _resolve_gateway_id(gateway)
     client = fabric.FabricRestClient()
-    response = client.delete(f"/v1/gateways/{gateway_id}/roleAssignments")
+    response = client.get(f"/v1/gateways/{gateway_id}/roleAssignments")
 
     if response.status_code != 200:
         raise FabricHTTPException(response)
@@ -115,6 +150,18 @@ def list_gateway_role_assigments(gateway: str | UUID) -> pd.DataFrame:
 
 
 def delete_gateway_role_assignment(gateway: str | UUID, role_assignement_id: UUID):
+    """
+    Delete the specified role assignment for the gateway.
+
+    This is a wrapper function for the following API: `Gateways - Delete Gateway Role Assignment <https://learn.microsoft.com/rest/api/fabric/core/gateways/delete-gateway-role-assignment>`_.
+
+    Parameters
+    ----------
+    gateway : str | UUID
+        The gateway name or ID.
+    role_assignement_id : UUID
+        The role assignment ID.
+    """
 
     gateway_id = _resolve_gateway_id(gateway)
     client = fabric.FabricRestClient()
@@ -131,6 +178,18 @@ def delete_gateway_role_assignment(gateway: str | UUID, role_assignement_id: UUI
 
 
 def delete_gateway_member(gateway: str | UUID, gateway_member: UUID):
+    """
+    Delete gateway member of an on-premises gateway.
+
+    This is a wrapper function for the following API: `Gateways - Delete Gateway Member <https://learn.microsoft.com/rest/api/fabric/core/gateways/delete-gateway-member>`_.
+
+    Parameters
+    ----------
+    gateway : str | UUID
+        The gateway name or ID.
+    gateway_member : UUID
+        The gateway member ID.
+    """
 
     gateway_id = _resolve_gateway_id(gateway)
     dfM = list_gateway_members(gateway=gateway_id)
@@ -157,6 +216,21 @@ def delete_gateway_member(gateway: str | UUID, gateway_member: UUID):
 
 
 def list_gateway_members(gateway: str | UUID) -> pd.DataFrame:
+    """
+    Lists gateway members of an on-premises gateway.
+
+    This is a wrapper function for the following API: `Gateways - List Gateway Members <https://learn.microsoft.com/rest/api/fabric/core/gateways/list-gateway-members>`_.
+
+    Parameters
+    ----------
+    gateway : str | UUID
+        The gateway name or ID.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of gateway members of an on-premises gateway.
+    """
 
     gateway_id = _resolve_gateway_id(gateway)
     client = fabric.FabricRestClient()
@@ -191,17 +265,43 @@ def list_gateway_members(gateway: str | UUID) -> pd.DataFrame:
     bool_cols = ["Enabled"]
     df[bool_cols] = df[bool_cols].astype(bool)
 
+    return df
+
 
 def create_vnet_gateway(
     name: str,
     capacity: str | UUID,
     inactivity_minutes_before_sleep: int,
     number_of_member_gateways: int,
-    subscription_id: UUID,
+    subscription_id: str,
     resource_group: str,
     virtual_network: str,
     subnet: str,
 ):
+    """
+    Creates a virtual network gateway.
+
+    This is a wrapper function for the following API: `Gateways - Create Gateway <https://learn.microsoft.com/rest/api/fabric/core/gateways/create-gateway>`_.
+
+    Parameters
+    ----------
+    name : str
+        The gateway name.
+    capacity : str | UUID
+        The capacity name or Id.
+    inactivity_minutes_before_sleep : int
+        The minutes of inactivity before the virtual network gateway goes into auto-sleep. Must be one of the following values: 30, 60, 90, 120, 150, 240, 360, 480, 720, 1440.
+    number_of_member_gateways: int
+        The number of member gateways. A number between 1 and 7.
+    subscription_id : str
+        The subscription ID.
+    resource_group : str
+        The name of the resource group.
+    virtual_network : str
+        The name of the virtual network.
+    subnet : str
+        The name of the subnet.
+    """
 
     client = fabric.FabricRestClient()
 
@@ -229,15 +329,28 @@ def create_vnet_gateway(
     )
 
 
-# def add_gateway_role_assignment(gateway : str | UUID)\:
-
-
 def update_on_premises_gateway(
     gateway: str,
     allow_cloud_connection_refresh: Optional[bool] = None,
     allow_custom_connectors: Optional[bool] = None,
     load_balancing_setting: Optional[str] = None,
 ):
+    """
+    Updates an on-premises gateway.
+
+    This is a wrapper function for the following API: `Gateways - Update Gateway <https://learn.microsoft.com/rest/api/fabric/core/gateways/update-gateway>`_.
+
+    Parameters
+    ----------
+    gateway : str | UUID
+        The gateway name or ID.
+    allow_cloud_connection_refresh : bool, default=None
+        Whether to allow cloud connections to refresh through this on-premises gateway. True - Allow, False - Do not allow.
+    allow_custom_connectors : bool, default=None
+        Whether to allow custom connectors to be used with this on-premises gateway. True - Allow, False - Do not allow.
+    load_balancing_setting : str, default=None
+        The `load balancing setting <https://learn.microsoft.com/rest/api/fabric/core/gateways/update-gateway?tabs=HTTP#loadbalancingsetting>`_ of the on-premises gateway.
+    """
 
     gateway_id = _resolve_gateway_id(gateway)
 
@@ -272,6 +385,22 @@ def update_vnet_gateway(
     inactivity_minutes_before_sleep: Optional[int] = None,
     number_of_member_gateways: Optional[int] = None,
 ):
+    """
+    Updates a virtual network gateway.
+
+    This is a wrapper function for the following API: `Gateways - Update Gateway <https://learn.microsoft.com/rest/api/fabric/core/gateways/update-gateway>`_.
+
+    Parameters
+    ----------
+    gateway : str | UUID
+        The gateway name or ID.
+    capacity: str | UUID
+        The capacity name or ID.
+    inactivity_minutes_before_sleep : int, default=None
+        The minutes of inactivity before the virtual network gateway goes into auto-sleep. Must be one of the following values: 30, 60, 90, 120, 150, 240, 360, 480, 720, 1440.
+    number_of_member_gateways : int, default=None
+        The number of member gateways. A number between 1 and 7.
+    """
 
     gateway_id = _resolve_gateway_id(gateway)
 
