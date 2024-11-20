@@ -54,40 +54,60 @@ def create_blank_semantic_model(
             f"{icons.red_dot} Compatiblity level must be at least {min_compat}."
         )
 
-    tmsl = f"""
-    {{
-        "createOrReplace": {{
-        "object": {{
-            "database": '{dataset}'
-        }},
-        "database": {{
-            "name": '{dataset}',
-            "compatibilityLevel": {compatibility_level},
-            "model": {{
-                "cultures": [
-                    {{
-                        "name": "en-US",
-                        "linguisticMetadata": {{
-                            "content": {{
-                                "Version": "1.0.0",
-                                "Language": "en-US"
-                            }},
-                            "contentType": "json"
+    # If the model does not exist
+    if len(dfD_filt) == 0:
+        tmsl = f"""
+        {{
+            "createOrReplace": {{
+            "object": {{
+                "database": '{dataset}'
+            }},
+            "database": {{
+                "name": '{dataset}',
+                "compatibilityLevel": {compatibility_level},
+                "model": {{
+                    "cultures": [
+                        {{
+                            "name": "en-US",
+                            "linguisticMetadata": {{
+                                "content": {{
+                                    "Version": "1.0.0",
+                                    "Language": "en-US"
+                                }},
+                                "contentType": "json"
+                            }}
                         }}
+                    ],
+                    "collation": "Latin1_General_100_BIN2_UTF8",
+                    "dataAccessOptions": {{
+                        "legacyRedirects": true,
+                        "returnErrorValuesAsNull": true,
+                    }},
+                    "defaultPowerBIDataSourceVersion": "powerBI_V3",
+                    "sourceQueryCulture": "en-US",
                     }}
-                ],
-                "collation": "Latin1_General_100_BIN2_UTF8",
-                "dataAccessOptions": {{
-                    "legacyRedirects": true,
-                    "returnErrorValuesAsNull": true,
-                }},
-                "defaultPowerBIDataSourceVersion": "powerBI_V3",
-                "sourceQueryCulture": "en-US",
                 }}
             }}
         }}
-    }}
-    """
+        """
+    else:
+        tmsl = f"""
+        {{
+            "createOrReplace": {{
+            "object": {{
+                "database": '{dataset}'
+            }},
+            "database": {{
+                "name": '{dataset}',
+                "compatibilityLevel": {compatibility_level},
+                "model": {{
+                "culture": "en-US",
+                "defaultPowerBIDataSourceVersion": "powerBI_V3"
+                }}
+            }}
+            }}
+        }}
+        """
 
     fabric.execute_tmsl(script=tmsl, workspace=workspace)
 
