@@ -241,7 +241,7 @@ def update_semantic_model_from_bim(
         json=request_body,
     )
 
-    lro(client, response, status_codes=[200, 202])
+    lro(client, response, status_codes=[200, 202], return_status_code=True)
 
     print(
         f"{icons.green_dot} The '{dataset}' semantic model has been updated within the '{workspace}' workspace."
@@ -308,6 +308,7 @@ def deploy_semantic_model(
             dataset=target_dataset,
             bim_file=bim,
             workspace=target_workspace,
+            overwrite=overwrite,
         )
     # Update the semantic model if the model exists
     else:
