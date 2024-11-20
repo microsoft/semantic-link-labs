@@ -1349,7 +1349,7 @@ class ReportWrapper:
 
         return df
 
-    def list_annotations(self) -> pd.DataFrame:
+    def _list_annotations(self) -> pd.DataFrame:
         """
         Shows a list of annotations in the report.
 
@@ -1838,7 +1838,7 @@ class ReportWrapper:
 
         return json_file
 
-    def set_annotation(
+    def _set_annotation(
         self,
         annotation_name: str,
         annotation_value: str,
@@ -1903,7 +1903,7 @@ class ReportWrapper:
 
         return json_file
 
-    def remove_annotation(
+    def _remove_annotation(
         self,
         annotation_name: str,
         page_name: Optional[str] = None,
@@ -1959,7 +1959,7 @@ class ReportWrapper:
                 if ann.get("name") == name:
                     return ann.get("value")
 
-    def get_annotation_value(
+    def _get_annotation_value(
         self,
         annotation_name: str,
         page_name: Optional[str] = None,
