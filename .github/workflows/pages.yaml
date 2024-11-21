@@ -21,7 +21,7 @@ jobs:
         run: | 
           pip install docstring_parser
           pip install .
-          mkdir build_output_folder
+          mkdir build_outputs_folder
           pip install azure-core
           pip install azure-storage-blob
           python .github/workflows/_generate_func_examples.py
