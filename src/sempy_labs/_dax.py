@@ -13,11 +13,12 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
     save_as_delta_table,
     _resolve_workspace_capacity_name_id_sku,
+    format_dax_object_name,
 )
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from sempy_labs._clear_cache import clear_cache
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
-
+import tqdm
 
 @log
 def evaluate_dax_impersonation(
@@ -104,6 +105,8 @@ def get_dax_query_dependencies(
         A pandas dataframe showing the dependent columns of a given DAX query including model dependencies.
     """
 
+    from sempy_labs._model_dependencies import get_model_calc_dependencies
+
     if workspace is None:
         workspace = fabric.resolve_workspace_name(workspace)
 
@@ -117,7 +120,7 @@ def get_dax_query_dependencies(
                 "Referenced Object Type",[REFERENCED_OBJECT_TYPE],
                 "Referenced Table", [REFERENCED_TABLE],
                 "Referenced Object", [REFERENCED_OBJECT]
-            )             
+            )
         RETURN all_dependencies
         """
     dep = fabric.evaluate_dax(
@@ -737,7 +740,7 @@ def run_benchmark(
                 schema=df_schema,
             )
 
-    collect_metadata(dataset=dataset, workspace=workspace, run_id=run_id)
+    #collect_metadata(dataset=dataset, workspace=workspace, run_id=run_id)
 
     # Run and save trace data
     trace_result, query_result = dax_perf_test(
@@ -748,10 +751,15 @@ def run_benchmark(
     )
 
     trace_schema = {
+        "Capacity_Name": "string",
+        "Capacity_Id": "string",
         "Workspace_Name": "string",
+        "Workspace_Id": "string",
         "Dataset_Name": "string",
+        "Dataset_Id": "string",
         "Query_Name": "string",
         "Query_Text": "string",
+        "Cache_Type": "string",
         "Duration": "long",
         "SE_Duration": "long",
         "SE_CPU": "long",
@@ -818,21 +826,21 @@ def run_benchmark(
         ]
 
         new_data = {
-            "Capacity Name": capacity_name,
-            "Capacity Id": capacity_id,
+            "Capacity_Name": capacity_name,
+            "Capacity_Id": capacity_id,
             "SKU": sku,
             "Region": region,
             "Workspace_Name": workspace,
-            "Workspace Id": workspace_id,
+            "Workspace_Id": workspace_id,
             "Dataset_Name": dataset,
-            "Dataset Id": dataset_id,
-            "Query_Name": query_name,
-            "Query_Text": query_text,
+            "Dataset_Id": dataset_id,
+            "Query_Name": str(query_name),
+            "Query_Text": str(query_text),
             "Cache_Type": cache_type,
             "Duration": total_duration,
             "SE_Duration": se_duration,
-            "SE_Cache": se_cache,
             "SE_CPU": se_cpu,
+            "SE_Cache": se_cache,
             "SE_Queries": se_queries,
             "Column_Dependencies": str(table_column_list),
             "Column_Dependencies_Size": total_size,
@@ -845,16 +853,12 @@ def run_benchmark(
         else:
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
+        df['Query_Text'] = df['Query_Text'].astype(str)
+        print(df.dtypes)
+
     save_as_delta_table(
         dataframe=df,
         delta_table_name="SLL_PerfBenchmark",
         write_mode="append",
         schema=trace_schema,
     )
-
-
-# def analyze_benchmark_results():
-#    """
-#    Compares the perf results of the latest test with previous tests. Output is reason(s) why perf improved or degraded.
-#    """
-#    print('hi')
