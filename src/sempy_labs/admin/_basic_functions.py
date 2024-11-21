@@ -54,7 +54,7 @@ def list_workspaces(
             "The 'filter' parameter has been deprecated. Please remove this parameter from the function going forward."
         )
         del kwargs["filter"]
-    
+
     client = fabric.FabricRestClient()
 
     df = pd.DataFrame(
@@ -112,8 +112,8 @@ def list_workspaces(
             inplace=True,
         )
 
-        df['Id'] = df['Id'].str.lower()
-        df['Capacity Id'] = df['Capacity Id'].str.lower()
+        df["Id"] = df["Id"].str.lower()
+        df["Capacity Id"] = df["Capacity Id"].str.lower()
 
         if workspace is not None and _is_valid_uuid(workspace):
             df = df[df["Id"] == workspace.lower()]
@@ -201,10 +201,14 @@ def assign_workspaces_to_capacity(
         Defaults to None which resolves to migrating all workspaces within the source capacity to the target capacity.
     """
     if target_capacity is None:
-        raise ValueError(f"{icons.red_dot} The parameter 'target_capacity' is mandatory.")
+        raise ValueError(
+            f"{icons.red_dot} The parameter 'target_capacity' is mandatory."
+        )
 
     if source_capacity is None and workspace is None:
-        raise ValueError(f"{icons.red_dot} The parameters 'source_capacity' or 'workspace' needs to be specified.")
+        raise ValueError(
+            f"{icons.red_dot} The parameters 'source_capacity' or 'workspace' needs to be specified."
+        )
 
     if workspace is None:
         source_capacity_id = _resolve_capacity_name_and_id(source_capacity)[1]
@@ -221,7 +225,9 @@ def assign_workspaces_to_capacity(
         workspaces = workspaces + dfW[dfW["Id"].isin(workspace)]["Id"].tolist()
 
     if len(workspace) != len(workspaces):
-        raise ValueError(f"{icons.red_dot} Some of the workspaces provided are not valid.")
+        raise ValueError(
+            f"{icons.red_dot} Some of the workspaces provided are not valid."
+        )
 
     target_capacity_id = _resolve_capacity_name_and_id(target_capacity)[1]
 
@@ -251,6 +257,7 @@ def assign_workspaces_to_capacity(
         f"{icons.green_dot} The workspaces have been assigned to the '{target_capacity}' capacity. A total of {len(workspaces)} were moved."
     )
 
+
 def unassign_workspaces_from_capacity(
     workspaces: str | List[str] | UUID | List[UUID],
 ):
@@ -272,7 +279,9 @@ def unassign_workspaces_from_capacity(
     workspacesIds = workspacesIds + dfW[dfW["Id"].isin(workspaces)]["Id"].tolist()
 
     if len(workspacesIds) != len(workspaces):
-        raise ValueError(f"{icons.red_dot} Some of the workspaces provided are not valid.")
+        raise ValueError(
+            f"{icons.red_dot} Some of the workspaces provided are not valid."
+        )
 
     payload = {"workspacesToUnassign": workspacesIds}
 
@@ -285,7 +294,9 @@ def unassign_workspaces_from_capacity(
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    print(f"{icons.green_dot} A total of {len(workspacesIds)} workspaces have been unassigned.")
+    print(
+        f"{icons.green_dot} A total of {len(workspacesIds)} workspaces have been unassigned."
+    )
 
 
 def list_tenant_settings() -> pd.DataFrame:
@@ -546,7 +557,9 @@ def list_modified_workspaces(
 
     if modified_since is not None:
         modified_since_dt = dtparser(modified_since)
-        params["modifiedSince"] = f"{modified_since_dt.isoformat(timespec='microseconds')}0Z"
+        params["modifiedSince"] = (
+            f"{modified_since_dt.isoformat(timespec='microseconds')}0Z"
+        )
 
     if exclude_inactive_workspaces is not None:
         params["excludeInActiveWorkspaces"] = exclude_inactive_workspaces
@@ -556,7 +569,7 @@ def list_modified_workspaces(
 
     url_parts = list(urllib.parse.urlparse(url))
     url_parts[4] = urllib.parse.urlencode(params)
-    url=urllib.parse.urlunparse(url_parts)
+    url = urllib.parse.urlunparse(url_parts)
 
     response = client.get(url)
 
@@ -580,7 +593,7 @@ def scan_workspaces(
     """
     Get the inventory and details of the tenant.
 
-    This is a wrapper function for the following APIs: 
+    This is a wrapper function for the following APIs:
         `Admin - WorkspaceInfo PostWorkspaceInfo <https://learn.microsoft.com/en-gb/rest/api/power-bi/admin/workspace-info-post-workspace-info>`_.
         `Admin - WorkspaceInfo GetScanStatus <https://learn.microsoft.com/en-gb/rest/api/power-bi/admin/workspace-info-get-scan-status>`_.
         `Admin - WorkspaceInfo GetScanResult <https://learn.microsoft.com/en-gb/rest/api/power-bi/admin/workspace-info-get-scan-result>`_.
@@ -606,10 +619,10 @@ def scan_workspaces(
         A json object with the scan result.
     """
     scan_result = {
-        'workspaces' : [],
-        'datasourceInstances'  : [],
-        'misconfiguredDatasourceInstances' : []
-    }        
+        "workspaces": [],
+        "datasourceInstances": [],
+        "misconfiguredDatasourceInstances": [],
+    }
 
     client = fabric.FabricRestClient()
 
@@ -647,17 +660,21 @@ def scan_workspaces(
         response = client.get(f"/v1.0/myorg/admin/workspaces/scanResult/{scan_id}")
         if response.status_code != 200:
             raise FabricHTTPException(response)
-        
+
         responseJson = response.json()
 
-        if 'workspaces' in responseJson:
-            scan_result['workspaces'].extend(responseJson['workspaces'])
+        if "workspaces" in responseJson:
+            scan_result["workspaces"].extend(responseJson["workspaces"])
 
-        if 'datasourceInstances' in responseJson:
-            scan_result['datasourceInstances'].extend(responseJson['datasourceInstances'])
+        if "datasourceInstances" in responseJson:
+            scan_result["datasourceInstances"].extend(
+                responseJson["datasourceInstances"]
+            )
 
-        if 'misconfiguredDatasourceInstances' in responseJson:
-            scan_result['misconfiguredDatasourceInstances'].extend(responseJson['misconfiguredDatasourceInstances'])
+        if "misconfiguredDatasourceInstances" in responseJson:
+            scan_result["misconfiguredDatasourceInstances"].extend(
+                responseJson["misconfiguredDatasourceInstances"]
+            )
 
     return scan_result
 
@@ -728,7 +745,7 @@ def list_datasets(
 
     url_parts = list(urllib.parse.urlparse(url))
     url_parts[4] = urllib.parse.urlencode(params)
-    url=urllib.parse.urlunparse(url_parts)
+    url = urllib.parse.urlunparse(url_parts)
 
     response = client.get(url)
 
@@ -838,7 +855,7 @@ def list_items(
         ]
     )
 
-    client = fabric.FabricRestClient()   
+    client = fabric.FabricRestClient()
 
     params = {}
 
@@ -858,7 +875,7 @@ def list_items(
 
     url_parts = list(urllib.parse.urlparse(url))
     url_parts[4] = urllib.parse.urlencode(params)
-    url=urllib.parse.urlunparse(url_parts)
+    url = urllib.parse.urlunparse(url_parts)
 
     response = client.get(url)
 
@@ -891,16 +908,16 @@ def list_items(
 
     if item is not None:
         if _is_valid_uuid(item):
-            df = df[df['Item Id'] == item]
+            df = df[df["Item Id"] == item]
         else:
-            df = df[df['Item Name'] == item]
+            df = df[df["Item Name"] == item]
 
     return df
 
 
 def list_item_access_details(
-    item: str | UUID = None, 
-    type: Optional[str] = None, 
+    item: str | UUID = None,
+    type: Optional[str] = None,
     workspace: Optional[str | UUID] = None,
     **kwargs,
 ) -> pd.DataFrame:
@@ -931,14 +948,16 @@ def list_item_access_details(
         )
         item = kwargs["item_name"]
         del kwargs["item_name"]
-    
+
     if item is None:
         raise ValueError(f"{icons.red_dot} The parameter 'item' is mandatory.")
 
     client = fabric.FabricRestClient()
 
     workspace_name, workspace_id = _resolve_workspace_name_and_id(workspace)
-    item_name, item_id = _resolve_item_name_and_id(item=item, type=type, workspace=workspace_name)
+    item_name, item_id = _resolve_item_name_and_id(
+        item=item, type=type, workspace=workspace_name
+    )
 
     df = pd.DataFrame(
         columns=[
@@ -1149,9 +1168,7 @@ def list_activity_events(
         ]
     )
 
-    resposeJson = {
-        'activityEventEntities' : []
-    }
+    resposeJson = {"activityEventEntities": []}
 
     tic = "%27"
     space = "%20"
@@ -1173,16 +1190,16 @@ def list_activity_events(
 
     if user_id_filter is not None:
         conditions.append(f"UserId{space}eq{space}{tic}{user_id_filter}{tic}")
-    
+
     if conditions:
         params["filder"] = f"{f'{space}and{space}'.join(conditions)}"
 
     url_parts = list(urllib.parse.urlparse(url))
     url_parts[4] = urllib.parse.urlencode(params)
-    url=urllib.parse.urlunparse(url_parts)
+    url = urllib.parse.urlunparse(url_parts)
 
     response = client.get(url)
-    
+
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
@@ -1219,7 +1236,7 @@ def list_activity_events(
                     ignore_index=True,
                 )
         else:
-            resposeJson['activityEventEntities'].extend(r.get('activityEventEntities'))
+            resposeJson["activityEventEntities"].extend(r.get("activityEventEntities"))
 
     if return_dataframe:
         df["Creation Time"] = pd.to_datetime(df["Creation Time"])
@@ -1263,7 +1280,7 @@ def _list_capacities_meta() -> pd.DataFrame:
     )
 
     response = client.get("/v1.0/myorg/admin/capacities")
-    
+
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
@@ -1293,13 +1310,13 @@ def _resolve_workspace_name_and_id(
         workspace_name = dfW["Name"].iloc[0]
         workspace_id = dfW["Id"].iloc[0]
     except:
-        raise ValueError(f"Workspace {workspace} not found.")    
+        raise ValueError(f"Workspace {workspace} not found.")
 
     return workspace_name, workspace_id
 
 
 def _resolve_item_id(
-    item_name: str, 
+    item_name: str,
     type: Optional[str] = None,
     workspace: Optional[str | UUID] = None,
 ) -> UUID:
@@ -1316,7 +1333,7 @@ def _resolve_item_id(
 
 
 def _resolve_item_name_and_id(
-    item: str, 
+    item: str,
     type: Optional[str] = None,
     workspace: Optional[str | UUID] = None,
     **kwargs,
@@ -1331,12 +1348,16 @@ def _resolve_item_name_and_id(
     dfI = list_items(workspace=workspace, type=type, item=item)
 
     if len(dfI) > 1:
-        raise ValueError(f"There are more than 1 item with the name '{item}'. Please specify the 'type' and/or 'workspace' to be more precise.")    
+        raise ValueError(
+            f"There are more than 1 item with the name '{item}'. Please specify the 'type' and/or 'workspace' to be more precise."
+        )
 
     try:
         item_name = dfI["Item Name"].iloc[0]
         item_id = dfI["Item Id"].iloc[0]
     except:
-        raise ValueError(f"The '{item}' {type} does not exist within the '{workspace}' workspace or is not of type '{type}'.")    
+        raise ValueError(
+            f"The '{item}' {type} does not exist within the '{workspace}' workspace or is not of type '{type}'."
+        )
 
     return item_name, item_id
