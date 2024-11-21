@@ -130,6 +130,7 @@ for attr_name, attr_info in func_dict.items():
         markdown_example += f"\n### Returns\n> {return_type}; {ret.description}"
 
 # Write to file
-output_path = '/root/semantic-link-labs/docs/function_examples.md'
+output_path = 'build_outputs_folder/index.md'
+# output_path = '/root/semantic-link-labs/docs/function_examples.md'
 with open(output_path, 'w') as f:
     f.write(markdown_example)
