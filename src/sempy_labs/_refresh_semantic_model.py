@@ -27,6 +27,7 @@ def refresh_semantic_model(
     max_parallelism: int = 10,
     workspace: Optional[str] = None,
     visualize: bool = False,
+    commit_mode: str = "transactional",
 ) -> pd.DataFrame | None:
     """
     Refreshes a semantic model.
@@ -55,6 +56,8 @@ def refresh_semantic_model(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     visualize : bool, default=False
         If True, displays a Gantt chart showing the refresh statistics for each table/partition.
+    commit_mode : str, default="transactional"
+        Determines whether to commit objects in batches or only when complete. Modes are "transactional" and "partialBatch". Defaults to "transactional".
 
     Returns
     -------
@@ -104,6 +107,7 @@ def refresh_semantic_model(
         max_parallelism,
         objects,
         visualize,
+        commit_mode,
     ):
         # Ignore specific warnings
         warnings.filterwarnings(
@@ -137,6 +141,7 @@ def refresh_semantic_model(
                 retry_count=retry_count,
                 apply_refresh_policy=apply_refresh_policy,
                 max_parallelism=max_parallelism,
+                commit_mode=commit_mode,
                 objects=objects if objects else None,
             )
 
@@ -259,6 +264,7 @@ def refresh_semantic_model(
         max_parallelism=max_parallelism,
         objects=objects,
         visualize=visualize,
+        commit_mode=commit_mode,
     )
 
     return final_output
