@@ -853,8 +853,7 @@ def run_benchmark(
         else:
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-        df['Query_Text'] = df['Query_Text'].astype(str)
-        print(df.dtypes)
+    df['Query_Text'] = df['Query_Text'].astype(str)
 
     save_as_delta_table(
         dataframe=df,
