@@ -21,6 +21,7 @@ jobs:
         run: | 
           pip install docstring_parser
           pip install .
+          pip install azure-core
           python .github/workflows/_generate_func_examples.py
 
         shell: bash
