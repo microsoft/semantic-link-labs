@@ -1,4 +1,4 @@
-name: Semantic Link Labs Documentation
+name: Semantic Link Labs Documentation Generator
 on:
   workflow_dispatch: {}
   push:
