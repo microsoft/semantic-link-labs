@@ -18,7 +18,11 @@ jobs:
           python-version: "3.10"
 
       - name: Build Example Page
-        run: python .github/workflows/_generate_func_examples.py
+        run: | 
+          pip install docstring_parser
+          pip install .
+          python .github/workflows/_generate_func_examples.py
+
         shell: bash
 
   # Deploy job
