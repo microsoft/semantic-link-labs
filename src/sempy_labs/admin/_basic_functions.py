@@ -573,7 +573,6 @@ def list_modified_workspaces(
 
     response = client.get(url)
 
-    response = client.get(url)
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
