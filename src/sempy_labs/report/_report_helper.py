@@ -256,7 +256,7 @@ def find_entity_property_pairs(data, result=None, keys_path=None):
 
 def _get_agg_type_mapping() -> dict:
 
-    schema_url = "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/semanticQuery/1.2.0/schema.json"
+    schema_url = "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/semanticQuery/1.2.0/schema.json" 
     response = requests.get(schema_url)
     schema = response.json()
     aggtypes_schema = schema.get("definitions", {}).get("QueryAggregateFunction", {})
