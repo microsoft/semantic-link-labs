@@ -1,8 +1,4 @@
-import sempy.fabric as fabric
-from sempy_labs._helper_functions import resolve_lakehouse_name
-from sempy_labs._list_functions import list_lakehouses
 from typing import Optional
-import sempy_labs._icons as icons
 
 
 def get_shared_expression(
@@ -26,36 +22,8 @@ def get_shared_expression(
     str
         Shows the expression which can be used to connect a Direct Lake semantic model to its SQL Endpoint.
     """
+    from sempy_labs.directlake._generate_shared_expression import generate_shared_expression
 
-    workspace = fabric.resolve_workspace_name(workspace)
-    if lakehouse is None:
-        lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse = resolve_lakehouse_name(lakehouse_id, workspace)
-
-    dfL = list_lakehouses(workspace=workspace)
-    lakeDetail = dfL[dfL["Lakehouse Name"] == lakehouse]
-
-    sqlEPCS = lakeDetail["SQL Endpoint Connection String"].iloc[0]
-    sqlepid = lakeDetail["SQL Endpoint ID"].iloc[0]
-    provStatus = lakeDetail["SQL Endpoint Provisioning Status"].iloc[0]
-
-    parts = sqlEPCS.split(".", 1)
-    if parts:
-        parts[0] = parts[0].upper()
-
-    sqlEPCS = ".".join(parts)
-
-    if provStatus == "InProgress":
-        raise ValueError(
-            f"{icons.red_dot} The SQL Endpoint for the '{lakehouse}' lakehouse within the '{workspace}' workspace has not yet been provisioned. Please wait until it has been provisioned."
-        )
-
-    sh = (
-        'let\n\tdatabase = Sql.Database("'
-        + sqlEPCS
-        + '", "'
-        + sqlepid
-        + '")\nin\n\tdatabase'
+    return generate_shared_expression(
+        item_name=lakehouse, item_type='Lakehouse', workspace=workspace
     )
-
-    return sh

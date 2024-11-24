@@ -1,5 +1,4 @@
 import sempy.fabric as fabric
-from sempy_labs.directlake._get_shared_expression import get_shared_expression
 from sempy_labs.directlake._generate_shared_expression import generate_shared_expression
 from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
@@ -56,7 +55,7 @@ def update_direct_lake_model_lakehouse_connection(
 
     icons.sll_tags.append("UpdateDLConnection")
 
-    shEx = get_shared_expression(lakehouse, lakehouse_workspace)
+    shEx = generate_shared_expression(item_name=lakehouse, item_type='Lakehouse', workspace=lakehouse_workspace)
 
     with connect_semantic_model(
         dataset=dataset, readonly=False, workspace=workspace

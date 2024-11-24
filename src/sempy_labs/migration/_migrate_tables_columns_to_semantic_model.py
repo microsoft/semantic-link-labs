@@ -1,6 +1,6 @@
 import sempy.fabric as fabric
 import pandas as pd
-from sempy_labs.directlake._get_shared_expression import get_shared_expression
+from sempy_labs.directlake._generate_shared_expression import generate_shared_expression
 from sempy_labs._helper_functions import resolve_lakehouse_name, retry
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from sempy_labs.tom import connect_semantic_model
@@ -71,7 +71,7 @@ def migrate_tables_columns_to_semantic_model(
             "To attach a lakehouse to a notebook, go to the the 'Explorer' window to the left, click 'Lakehouses' to add your lakehouse to this notebook"
             "\nLearn more here: https://learn.microsoft.com/fabric/data-engineering/lakehouse-notebook-explore#add-or-remove-a-lakehouse"
         )
-    shEx = get_shared_expression(lakehouse, lakehouse_workspace)
+    shEx = generate_shared_expression(item_name=lakehouse, item_type='Lakehouse', workspace=lakehouse_workspace)
 
     dfC = fabric.list_columns(dataset=dataset, workspace=workspace)
     dfT = fabric.list_tables(dataset=dataset, workspace=workspace)
