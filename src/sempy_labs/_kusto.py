@@ -95,7 +95,7 @@ def semantic_model_logs(
     executing_user: Optional[str | List[str]] = None,
     duration_ms: Optional[int] = None,
     cpu_time_ms: Optional[int] = None,
-    timespan: Optional[int] = 1,
+    timespan: Optional[int | float] = 1,
     timespan_literal: Optional[str] = "hour",
 ) -> pd.DataFrame:
     """
