@@ -1077,3 +1077,140 @@ def list_modified_workspaces(
     df = pd.DataFrame(response.json()).rename(columns={"id": "Workspace Id"})
 
     return df
+
+
+def list_git_connections() -> pd.DataFrame:
+    """
+    Shows a list of Git connections.
+
+    This is a wrapper function for the following API: `Workspaces - List Git Connections <https://learn.microsoft.com/rest/api/fabric/admin/workspaces/list-git-connections>`_.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of Git connections.
+    """
+
+    client = fabric.FabricRestClient()
+    response = client.get("/v1/admin/workspaces/discoverGitConnections")
+
+    df = pd.DataFrame(columns=[
+        "Workspace Id",
+        "Organization Name",
+        "Owner Name",
+        "Project Name",
+        "Git Provider Type",
+        "Repository Name",
+        "Branch Name",
+        "Directory Name",
+    ])
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    responses = pagination(client, response)
+
+    for r in responses:
+        for v in r.get("value", []):
+            git = v.get('gitProviderDetails', {})
+            new_data = {
+                "Workspace Id": v.get("workspaceId"),
+                "Organization Name": git.get('organizationName'),
+                "Owner Name": git.get('ownerName'),
+                "Project Name": git.get('projectName'),
+                "Git Provider Type": git.get('gitProviderType'),
+                "Repository Name": git.get('repositoryName'),
+                "Branch Name": git.get('branchName'),
+                "Directory Name": git.get('directoryName'),
+            }
+
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    dfW = list_workspaces()
+    df = pd.merge(df, dfW[['Id', 'Name']], left_on='Workspace Id', right_on='Id', how='left')
+    new_col_name = 'Workspace Name'
+    df = df.rename(columns={'Name': new_col_name})
+    df.insert(1, new_col_name, df.pop(new_col_name))
+
+    df = df.drop(columns=['Id'])
+
+    return df
+
+
+def list_reports(
+    top: Optional[int] = None, skip: Optional[int] = None, filter: Optional[str] = None
+) -> pd.DataFrame:
+    """
+    Shows a list of reports for the organization.
+
+    This is a wrapper function for the following API: `Admin - Reports GetReportsAsAdmin <https://learn.microsoft.com/rest/api/power-bi/admin/reports-get-reports-as-admin>`_.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of reports for the organization.
+    """
+
+    df = pd.DataFrame(
+        columns=[
+            "Report Id",
+            "Report Name",
+            "Type",
+            "Web URL",
+            "Embed URL",
+            "Dataset Id",
+            "Created Date",
+            "Modified Date",
+            "Created By",
+            "Modified By",
+            "Sensitivity Label Id",
+            "Users",
+            "Subscriptions",
+            "Workspace Id",
+            "Report Flags",
+        ]
+    )
+
+    url = "/v1.0/myorg/admin/reports?"
+    if top is not None:
+        url += f"$top={top}&"
+    if skip is not None:
+        url += f"$skip={skip}&"
+    if filter is not None:
+        url += f"$filter={filter}&"
+
+    url.rstrip("$").rstrip("?")
+
+    client = fabric.PowerBIRestClient()
+    response = client.get(url)
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    for v in response.json().get("value", []):
+        new_data = {
+            "Report Id": v.get("id"),
+            "Report Name": v.get("name"),
+            "Type": v.get("reportType"),
+            "Web URL": v.get("webUrl"),
+            "Embed URL": v.get("embedUrl"),
+            "Dataset Id": v.get("datasetId"),
+            "Created Date": v.get("createdDateTime"),
+            "Modified Date": v.get("modifiedDateTime"),
+            "Created By": v.get("createdBy"),
+            "Modified By": v.get("modifiedBy"),
+            "Sensitivity Label Id": v.get("sensitivityLabel", {}).get("labelId"),
+            "Users": v.get("users"),
+            "Subscriptions": v.get("subscriptions"),
+            "Workspace Id": v.get("workspaceId"),
+            "Report Flags": v.get("reportFlags"),
+        }
+        df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
+
+    int_cols = ["Report Flags"]
+    df[int_cols] = df[int_cols].astype(int)
+
+    df["Created Date"] = pd.to_datetime(df["Created Date"], errors="coerce")
+    df["Modified Date"] = pd.to_datetime(df["Modified Date"], errors="coerce")
+
+    return df
