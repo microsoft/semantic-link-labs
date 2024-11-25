@@ -288,6 +288,9 @@ def get_dataflow_definition(
         # Placeholder for future API implementation
         client = {}  
         response = {}
+        raise ValueError(
+            f"The dataflow type '{type}' is not a valid option at this time and is a placeholder for future API implementation."
+        )
     else:
         raise ValueError(
             f"The dataflow type '{type}' is not a valid option."
