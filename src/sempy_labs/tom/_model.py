@@ -4515,6 +4515,32 @@ class TOMWrapper:
             TOM.ValueFilterBehaviorType, value_filter_behavior
         )
 
+    def model_mode(self) -> str:
+        """
+        Obtains the semantic model mode.
+
+        Returns
+        -------
+        str
+            The semantic model mode.
+        """
+
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        if self.is_direct_lake():
+            return 'Direct Lake'
+
+        partitions = list(self.all_partitions())
+        modes = {p.Mode for p in partitions}
+
+        if all(mode == TOM.ModeType.Import for mode in modes):
+            return 'Import'
+        elif all(mode in {TOM.ModeType.DirectQuery, TOM.ModeType.Dual} for mode in modes):
+            return 'DirectQuery'
+        else:
+            return 'Composite'
+        # TOM.ModeType.DirectQuery in modes and TOM.ModeType.Import in modes:
+
     def close(self):
 
         if not self._readonly and self.model is not None:

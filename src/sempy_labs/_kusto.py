@@ -6,6 +6,7 @@ from sempy._utils._log import log
 import sempy_labs._icons as icons
 from typing import Optional, List
 from uuid import UUID
+from sempy_labs._helper_functions import resolve_workspace_name_and_id
 
 
 @log
@@ -83,7 +84,7 @@ def query_kusto(cluster_uri: str, query: str, database: str) -> pd.DataFrame:
 
 
 def semantic_model_logs(
-    cluster_uri: str,
+    cluster_uri: Optional[str] = None,
     dataset: Optional[str | List[str]] = None,
     workspace: Optional[str | List[str]] = None,
     report: Optional[str | UUID | List[str] | List[UUID]] = None,
@@ -104,7 +105,7 @@ def semantic_model_logs(
 
     Parameters
     ----------
-    cluster_uri : str
+    cluster_uri : str, default=None
         The Query URI for the KQL database. Example: "https://guid.kusto.fabric.microsoft.com"
     dataset : str | List[str], default=None
         Filter to be applied to the DatasetName column.
@@ -136,6 +137,17 @@ def semantic_model_logs(
     pandas.DataFrame
         A pandas dataframe showing the semantic model logs based on the filters provided.
     """
+
+    from sempy_labs._kql_databases import list_kql_databases
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    if cluster_uri is None:
+        dfK = list_kql_databases(workspace=workspace)
+        dfK_filt = dfK[dfK['KQL Database Name'] == 'Monitoring KQL database']
+        if len(dfK_filt) == 0:
+            raise ValueError(f"{icons.red_dot} Workspace monitoring is not set up for the '{workspace_name}' workspace.")
+        cluster_uri = dfK_filt['Query Service URI'].iloc[0]
 
     timespan_format = timespan_format.lower()
     if timespan_format.startswith("h"):
