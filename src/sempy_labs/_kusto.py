@@ -96,7 +96,7 @@ def semantic_model_logs(
     duration_ms: Optional[int] = None,
     cpu_time_ms: Optional[int] = None,
     timespan: Optional[int] = 1,
-    timespan_format: Optional[str] = "hour",
+    timespan_literal: Optional[str] = "hour",
 ) -> pd.DataFrame:
     """
     Shows the semantic model logs based on `Workspace Monitoring <https://blog.fabric.microsoft.com/blog/announcing-public-preview-of-workspace-monitoring>`_.
@@ -129,8 +129,8 @@ def semantic_model_logs(
         Filter to be applied to the CPU Time (milliseconds) column.
     timespan : int, default=1,
         The timespan (use in conjunction with the timespan_format).
-    timespan_format : str, default="hour"
-        The timespan format. Valid options: "day", "hour", "minute".
+    timespan_literal : str, default="hour"
+        The timespan literal format. Valid options: "day", "hour", "minute".
 
     Returns
     -------
@@ -149,16 +149,16 @@ def semantic_model_logs(
             raise ValueError(f"{icons.red_dot} Workspace monitoring is not set up for the '{workspace_name}' workspace.")
         cluster_uri = dfK_filt['Query Service URI'].iloc[0]
 
-    timespan_format = timespan_format.lower()
-    if timespan_format.startswith("h"):
-        timespan_format = "h"
-    elif timespan_format.startswith("m"):
-        timespan_format = "m"
-    elif timespan_format.startswith("d"):
-        timespan_format = "d"
+    timespan_literal = timespan_literal.lower()
+    if timespan_literal.startswith("h"):
+        timespan_literal = "h"
+    elif timespan_literal.startswith("m"):
+        timespan_literal = "m"
+    elif timespan_literal.startswith("d"):
+        timespan_literal = "d"
     else:
         raise ValueError(
-            f"{icons.red_dot} The '{timespan_format} timespan_format is not supported. Only 'day, 'hour', and 'minute' are supported."
+            f"{icons.red_dot} The '{timespan_literal} timespan_format is not supported. Only 'day, 'hour', and 'minute' are supported."
         )
 
     if report is not None and (workspace is None or not isinstance(workspace, str)):
@@ -166,8 +166,7 @@ def semantic_model_logs(
             f"{icons.red_dot} A report or list of reports may only be specified if a single workspace is specified."
         )
 
-    query = "SemanticModelLogs"
-    query += f"\n| where Timestamp > ago({timespan}{timespan_format})"
+    query = f"SemanticModelLogs\n| where Timestamp > ago({timespan}{timespan_literal})"
 
     report_json_filter = (
         "tostring(parse_json(dynamic_to_json(ApplicationContext)).Sources[0].ReportId)"
