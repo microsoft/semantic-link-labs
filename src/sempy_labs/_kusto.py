@@ -95,7 +95,7 @@ def semantic_model_logs(
     duration_ms: Optional[int] = None,
     cpu_time_ms: Optional[int] = None,
     timespan: Optional[int] = 1,
-    timespan_format: Optional[str] = "hour"
+    timespan_format: Optional[str] = "hour",
 ) -> pd.DataFrame:
     """
     Shows the semantic model logs based on `Workspace Monitoring <https://blog.fabric.microsoft.com/blog/announcing-public-preview-of-workspace-monitoring>`_.
@@ -138,24 +138,48 @@ def semantic_model_logs(
     """
 
     timespan_format = timespan_format.lower()
-    if timespan_format.startswith('h'):
-        timespan_format = 'h'
-    elif timespan_format.startswith('m'):
-        timespan_format = 'm'
-    elif timespan_format.startswith('d'):
-        timespan_format = 'd'
+    if timespan_format.startswith("h"):
+        timespan_format = "h"
+    elif timespan_format.startswith("m"):
+        timespan_format = "m"
+    elif timespan_format.startswith("d"):
+        timespan_format = "d"
     else:
-        raise ValueError(f"{icons.red_dot} The '{timespan_format} timespan_format is not supported. Only 'day, 'hour', and 'minute' are supported.")
+        raise ValueError(
+            f"{icons.red_dot} The '{timespan_format} timespan_format is not supported. Only 'day, 'hour', and 'minute' are supported."
+        )
 
     if report is not None and (workspace is None or not isinstance(workspace, str)):
-        raise ValueError(f"{icons.red_dot} A report or list of reports may only be specified if a single workspace is specified.")
+        raise ValueError(
+            f"{icons.red_dot} A report or list of reports may only be specified if a single workspace is specified."
+        )
 
     query = "SemanticModelLogs"
     query += f"\n| where Timestamp > ago({timespan}{timespan_format})"
 
-    report_json_filter = "tostring(parse_json(dynamic_to_json(ApplicationContext)).Sources[0].ReportId)"
-    visual_json_filter = "tostring(parse_json(dynamic_to_json(ApplicationContext)).Sources[0].VisualId)"
-    return_columns = ['Timestamp', 'OperationName', 'OperationDetailName', 'ItemName', 'WorkspaceId', 'WorkspaceName', 'CapacityId', 'DurationMs',  'CpuTimeMs', 'EventText', 'Status', 'ReportId', 'VisualId', 'ApplicationName', 'ExecutingUser',]
+    report_json_filter = (
+        "tostring(parse_json(dynamic_to_json(ApplicationContext)).Sources[0].ReportId)"
+    )
+    visual_json_filter = (
+        "tostring(parse_json(dynamic_to_json(ApplicationContext)).Sources[0].VisualId)"
+    )
+    return_columns = [
+        "Timestamp",
+        "OperationName",
+        "OperationDetailName",
+        "ItemName",
+        "WorkspaceId",
+        "WorkspaceName",
+        "CapacityId",
+        "DurationMs",
+        "CpuTimeMs",
+        "EventText",
+        "Status",
+        "ReportId",
+        "VisualId",
+        "ApplicationName",
+        "ExecutingUser",
+    ]
 
     param_dict = {
         "dataset": "ItemName",
@@ -172,33 +196,37 @@ def semantic_model_logs(
         dfC = fabric.list_capacities()
         if isinstance(capacity, str):
             capacity = [capacity]
-        capacities = dfC[dfC['Display Name'].isin(capacity)]['Id'].tolist()
+        capacities = dfC[dfC["Display Name"].isin(capacity)]["Id"].tolist()
         if len(capacities) > 0:
-            comma_delimited_string = ', '.join(f'"{item}"' for item in capacities)
-            query += f'\nand CapacityId in ({comma_delimited_string})'
+            comma_delimited_string = ", ".join(f'"{item}"' for item in capacities)
+            query += f"\nand CapacityId in ({comma_delimited_string})"
 
     if report is not None:
         dfR = fabric.list_reports(workspace=workspace)
         if isinstance(report, str):
             report = [report]
-        reports = dfR[dfR['Name'].isin(report)]['Id'].tolist()
-        reports = reports + dfR[dfR['Id'].isin(report)]['Id'].tolist()
+        reports = dfR[dfR["Name"].isin(report)]["Id"].tolist()
+        reports = reports + dfR[dfR["Id"].isin(report)]["Id"].tolist()
         if len(reports) > 0:
-            comma_delimited_string = ', '.join(f'"{item}"' for item in reports)
-            query += f'\nand {report_json_filter} in ({comma_delimited_string})'
+            comma_delimited_string = ", ".join(f'"{item}"' for item in reports)
+            query += f"\nand {report_json_filter} in ({comma_delimited_string})"
 
     def _add_to_filter(parameter, filter_name, query):
         if parameter is not None:
             if isinstance(parameter, str):
                 parameter = [parameter]
-            comma_delimited_string = ', '.join(f'"{item}"' for item in parameter)
-            query += f'\nand {filter_name} in ({comma_delimited_string})'
+            comma_delimited_string = ", ".join(f'"{item}"' for item in parameter)
+            query += f"\nand {filter_name} in ({comma_delimited_string})"
         return query
 
     for param, filter_name in param_dict.items():
-        query = _add_to_filter(parameter=locals()[param], filter_name=filter_name, query=query)
+        query = _add_to_filter(
+            parameter=locals()[param], filter_name=filter_name, query=query
+        )
 
-    query += f"\n| extend ReportId = {report_json_filter}, VisualId = {visual_json_filter}"
+    query += (
+        f"\n| extend ReportId = {report_json_filter}, VisualId = {visual_json_filter}"
+    )
 
     # Add columns to return
     return_cols = ", ".join(return_columns)
