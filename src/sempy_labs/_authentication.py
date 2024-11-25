@@ -11,6 +11,7 @@ class ServicePrincipalTokenProvider(TokenProvider):
     """
 
     def __init__(self, credential: ClientSecretCredential):
+
         self.credential = credential
 
     @classmethod
@@ -53,7 +54,7 @@ class ServicePrincipalTokenProvider(TokenProvider):
         """
         Create the ServicePrincipalTokenProvider providing the information with the Service Principal information.
 
-        For more information on Azure Key Vault check `About Azure Key Vault <https://learn.microsoft.com/en-us/azure/key-vault/general/overview>`_
+        For more information on Azure Key Vault check `About Azure Key Vault <https://learn.microsoft.com/en-us/azure/key-vault/general/overview>`_.
 
         Parameters
         ----------
@@ -71,6 +72,7 @@ class ServicePrincipalTokenProvider(TokenProvider):
         sempy.fabric.TokenProvider
             Token provider to be used with FabricRestClient or PowerBIRestClient.
         """
+
         import notebookutils
 
         tenant_id = notebookutils.credentials.getSecret(

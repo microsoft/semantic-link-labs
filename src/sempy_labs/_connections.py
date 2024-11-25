@@ -8,7 +8,7 @@ from sempy_labs._helper_functions import (
 )
 from uuid import UUID
 import sempy_labs._icons as icons
-from sempy_labs._gateways import resolve_gateway_id
+from sempy_labs._gateways import _resolve_gateway_id
 
 
 def delete_connection(connection: str | UUID):
@@ -23,7 +23,7 @@ def delete_connection(connection: str | UUID):
         The connection name or ID.
     """
 
-    connection_id = resolve_connection_id(connection)
+    connection_id = _resolve_connection_id(connection)
 
     client = fabric.FabricRestClient()
     response = client.delete(f"/v1/connections/{connection_id}")
@@ -48,7 +48,7 @@ def delete_connection_role_assignment(connection: str | UUID, role_assignment_id
         The role assignment ID.
     """
 
-    connection_id = resolve_connection_id(connection)
+    connection_id = _resolve_connection_id(connection)
 
     client = fabric.FabricRestClient()
     response = client.delete(
@@ -63,7 +63,7 @@ def delete_connection_role_assignment(connection: str | UUID, role_assignment_id
     )
 
 
-def resolve_connection_id(connection: str | UUID) -> UUID:
+def _resolve_connection_id(connection: str | UUID) -> UUID:
 
     dfC = list_connections()
     if _is_valid_uuid(connection):
@@ -96,7 +96,7 @@ def list_connection_role_assignments(connection: str | UUID) -> pd.DataFrame:
         A pandas dataframe showing a list of connection role assignments.
     """
 
-    connection_id = resolve_connection_id(connection)
+    connection_id = _resolve_connection_id(connection)
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/connections/{connection_id}/roleAssignments")
@@ -277,7 +277,7 @@ def _list_supported_connection_types(
 
     url = f"/v1/connections/supportedConnectionTypes?showAllCreationMethods={show_all_creation_methods}&"
     if gateway is not None:
-        gateway_id = resolve_gateway_id(gateway)
+        gateway_id = _resolve_gateway_id(gateway)
         url += f"gatewayId={gateway_id}"
 
     df = pd.DataFrame(
@@ -434,7 +434,7 @@ def create_on_prem_connection(
         If True, skips the test connection.
     """
 
-    gateway_id = resolve_gateway_id(gateway)
+    gateway_id = _resolve_gateway_id(gateway)
 
     request_body = {
         "connectivityType": "OnPremisesGateway",
@@ -515,7 +515,7 @@ def create_vnet_connection(
         If True, skips the test connection.
     """
 
-    gateway_id = resolve_gateway_id(gateway)
+    gateway_id = _resolve_gateway_id(gateway)
 
     request_body = {
         "connectivityType": "VirtualNetworkGateway",

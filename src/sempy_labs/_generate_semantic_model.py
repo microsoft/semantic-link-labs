@@ -308,7 +308,6 @@ def deploy_semantic_model(
             dataset=target_dataset,
             bim_file=bim,
             workspace=target_workspace,
-            overwrite=overwrite,
         )
     # Update the semantic model if the model exists
     else:
