@@ -29,6 +29,7 @@ def run_report_bpa(
 ):
     """
     Displays an HTML visualization of the results of the Best Practice Analyzer scan for a report.
+    Note: As with all functions which rely on the ReportWrapper, this function requires the report to be in the 'PBIR' format.
 
     Parameters
     ----------
