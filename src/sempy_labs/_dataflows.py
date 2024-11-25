@@ -248,8 +248,8 @@ def _resolve_dataflow_name_and_id(
 
 
 def get_dataflow_definition(
-    name: str, workspace: Optional[str] = None, decode: bool = True 
-) -> dict | pd.DataFrame:
+    name: str, workspace: Optional[str] = None, decode: bool = True, type: Optional[str] = 'gen2'
+) -> pd.DataFrame:
     """
     Obtains the definition of a dataflow.
 
@@ -259,32 +259,40 @@ def get_dataflow_definition(
     ----------
     name : str
         The name of the dataflow.
-    workspace : str, default=None
-        The Fabric workspace name.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
-    decode : bool, default=True
-        decode : bool, default=True
-        If True, decodes the dataflow definition file into .json format.
-        If False, obtains the dataflow definition file a pandas DataFrame format.
+    workspace : str, optional
+        The Fabric workspace name. 
+        Defaults to None, which resolves to the workspace of the attached lakehouse
+        or if no lakehouse is attached, resolves to the workspace of the notebook.
+    decode : bool, optional
+        If True, decodes the dataflow definition file into JSON format. 
+        If False, obtains the dataflow definition file
+        as a pandas DataFrame. Defaults to True.
+    type : str, optional
+        The generation type of the dataflow. Defaults to 'gen2'.
+        Valid options include ['gen1', 'gen2'], ['1', '2'], or ['powerbi', 'fabric'].
 
     Returns
     -------
-    dict | pandas.DataFrame
-        A pandas dataframe showing the data pipelines within a workspace.
+    dict or pandas.DataFrame
+        A pandas DataFrame showing the data pipelines within a workspace or a dictionary with the dataflow definition.
     """
 
     workspace = fabric.resolve_workspace_name(workspace)
     workspace_id = fabric.resolve_workspace_id(workspace)
-    dataflow_name, item_id = _resolve_dataflow_name_and_id(
-        dataflow=name, workspace=workspace
-    )
+    dataflow_name, item_id = _resolve_dataflow_name_and_id(dataflow=name, workspace=workspace)
 
-    client = fabric.PowerBIRestClient()
-    response = client.get(
-        f"v1.0/myorg/groups/{workspace_id}/dataflows/{item_id}"
-    )
-
+    if type in ['gen1', '1', 'powerbi']:
+        client = fabric.PowerBIRestClient()
+        response = client.get(f"v1.0/myorg/groups/{workspace_id}/dataflows/{item_id}")
+    elif type in ['gen2', '2', 'fabric']:
+        # Placeholder for future API implementation
+        client = {}  
+        response = {}
+    else:
+        raise ValueError(
+            f"The dataflow type '{type}' is not a valid option."
+        )
+    
     result = lro(client, response).json()
 
     df = pd.json_normalize(result)
