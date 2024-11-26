@@ -255,7 +255,7 @@ def find_entity_property_pairs(data, result=None, keys_path=None):
 
 
 def _get_agg_type_mapping() -> dict:
-    """ 
+    """
     This function extracts a mapping dictionary like this:
     {
         "0": "Sum",

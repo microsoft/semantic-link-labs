@@ -112,7 +112,9 @@ def generate_direct_lake_semantic_model(
     """
 
     from sempy_labs.lakehouse import get_lakehouse_tables, get_lakehouse_columns
-    from sempy_labs.directlake._generate_shared_expression import generate_shared_expression
+    from sempy_labs.directlake._generate_shared_expression import (
+        generate_shared_expression,
+    )
     from sempy_labs.tom import connect_semantic_model
     from sempy_labs._generate_semantic_model import create_blank_semantic_model
     from sempy_labs._refresh_semantic_model import refresh_semantic_model
@@ -141,7 +143,9 @@ def generate_direct_lake_semantic_model(
             )
 
     dfLC = get_lakehouse_columns(lakehouse=lakehouse, workspace=lakehouse_workspace)
-    expr = generate_shared_expression(item_name=lakehouse, item_type='Lakehouse', workspace=lakehouse_workspace)
+    expr = generate_shared_expression(
+        item_name=lakehouse, item_type="Lakehouse", workspace=lakehouse_workspace
+    )
     dfD = fabric.list_datasets(workspace=workspace)
     dfD_filt = dfD[dfD["Dataset Name"] == dataset]
 

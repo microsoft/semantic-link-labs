@@ -55,7 +55,9 @@ def update_direct_lake_model_lakehouse_connection(
 
     icons.sll_tags.append("UpdateDLConnection")
 
-    shEx = generate_shared_expression(item_name=lakehouse, item_type='Lakehouse', workspace=lakehouse_workspace)
+    shEx = generate_shared_expression(
+        item_name=lakehouse, item_type="Lakehouse", workspace=lakehouse_workspace
+    )
 
     with connect_semantic_model(
         dataset=dataset, readonly=False, workspace=workspace

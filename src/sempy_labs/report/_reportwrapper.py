@@ -1894,7 +1894,9 @@ class ReportWrapper:
                 )
             )
         else:
-            raise ValueError(f"{icons.red_dot} Invalid parameters. If specifying a visual_name you must specify the page_name.")
+            raise ValueError(
+                f"{icons.red_dot} Invalid parameters. If specifying a visual_name you must specify the page_name."
+            )
 
         payload = self.rdef[self.rdef["path"] == file_path]["payload"].iloc[0]
         file = _decode_b64(payload)
@@ -1956,7 +1958,9 @@ class ReportWrapper:
                 )
             )
         else:
-            raise ValueError(f"{icons.red_dot} Invalid parameters. If specifying a visual_name you must specify the page_name.")
+            raise ValueError(
+                f"{icons.red_dot} Invalid parameters. If specifying a visual_name you must specify the page_name."
+            )
 
         payload = self.rdef[self.rdef["path"] == file_path]["payload"].iloc[0]
         file = _decode_b64(payload)
@@ -2017,7 +2021,9 @@ class ReportWrapper:
                 )
             )
         else:
-            raise ValueError(f"{icons.red_dot} Invalid parameters. If specifying a visual_name you must specify the page_name.")
+            raise ValueError(
+                f"{icons.red_dot} Invalid parameters. If specifying a visual_name you must specify the page_name."
+            )
 
         payload = self.rdef[self.rdef["path"] == file_path]["payload"].iloc[0]
         file = _decode_b64(payload)

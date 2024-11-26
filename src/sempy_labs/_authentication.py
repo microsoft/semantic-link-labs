@@ -15,22 +15,22 @@ class ServicePrincipalTokenProvider(TokenProvider):
         self.credential = credential
 
     @classmethod
-    def with_aad_application_key_authentication(
+    def from_aad_application_key_authentication(
         cls, tenant_id: str, client_id: str, client_secret: str
     ):
         """
         Create the ServicePrincipalTokenProvider with the Service Principal information.
 
-        ***USE THIS ONE ONLY FOR TEST PURPOSE. FOR PRODUCTION WE RECOMMEND CALLING ServicePrincipalTokenProvider.from_key_vault()***
+        ***USE THIS ONE ONLY FOR TEST PURPOSE. FOR PRODUCTION WE RECOMMEND CALLING ServicePrincipalTokenProvider.from_azure_key_vault()***
 
         Parameters
         ----------
         tenant_id : str
-            Fabric Tenant ID.
+            The Fabric Tenant ID.
         client_id : str
-            Service Principal App Client ID.
+            The Service Principal Application Client ID.
         client_secret : str
-            Service Principal Secret.
+            The Service Principal Client Secret.
 
         Returns
         -------
@@ -44,7 +44,7 @@ class ServicePrincipalTokenProvider(TokenProvider):
         return cls(credential)
 
     @classmethod
-    def with_azure_key_vault(
+    def from_azure_key_vault(
         cls,
         key_vault_uri: str,
         key_vault_tenant_id: str,
@@ -60,9 +60,9 @@ class ServicePrincipalTokenProvider(TokenProvider):
         ----------
         key_vault_uri : str
             Azure Key Vault URI.
-        key_vault_tenant_id : str,
+        key_vault_tenant_id : str
             Name of the secret in the Key Vault with the Fabric Tenant ID.
-        key_vault_client_id : str,
+        key_vault_client_id : str
             Name of the secret in the Key Vault with the Service Principal Client ID.
         key_vault_client_secret : str
             Name of the secret in the Key Vault with the Service Principal Client Secret.

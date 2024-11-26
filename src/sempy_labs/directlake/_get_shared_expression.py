@@ -22,8 +22,10 @@ def get_shared_expression(
     str
         Shows the expression which can be used to connect a Direct Lake semantic model to its SQL Endpoint.
     """
-    from sempy_labs.directlake._generate_shared_expression import generate_shared_expression
+    from sempy_labs.directlake._generate_shared_expression import (
+        generate_shared_expression,
+    )
 
     return generate_shared_expression(
-        item_name=lakehouse, item_type='Lakehouse', workspace=workspace
+        item_name=lakehouse, item_type="Lakehouse", workspace=workspace
     )

@@ -58,7 +58,9 @@ def model_auto_build(
     ) as tom:
 
         # DL Only
-        expr = generate_shared_expression(item_name=lakehouse, item_type='Lakehouse', workspace=lakehouse_workspace)
+        expr = generate_shared_expression(
+            item_name=lakehouse, item_type="Lakehouse", workspace=lakehouse_workspace
+        )
         tom.add_expression(name="DatbaseQuery", expression=expr)
 
         for sheet in sheets:
