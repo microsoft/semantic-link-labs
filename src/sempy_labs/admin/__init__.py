@@ -4,14 +4,10 @@ from sempy_labs.admin._basic_functions import (
     list_tenant_settings,
     list_capacities_delegated_tenant_settings,
     unassign_workspaces_from_capacity,
-    list_external_data_shares,
-    revoke_external_data_share,
     list_workspaces,
     list_datasets,
-    list_item_access_details,
     list_access_entities,
     list_workspace_access_details,
-    list_items,
     list_activity_events,
     list_modified_workspaces,
     list_git_connections,
@@ -28,6 +24,14 @@ from sempy_labs.admin._domains import (
     resolve_domain_id,
     unassign_domain_workspaces,
     unassign_all_domain_workspaces,
+)
+from sempy_labs.admin._items import (
+    list_item_access_details,
+    list_items,
+)
+from sempy_labs.admin._external_data_share import (
+    list_external_data_shares,
+    revoke_external_data_share,
 )
 
 __all__ = [

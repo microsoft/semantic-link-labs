@@ -10,7 +10,6 @@ from sempy_labs._helper_functions import (
 )
 import numpy as np
 import pandas as pd
-import time
 from dateutil.parser import parse as dtparser
 import urllib.parse
 
@@ -352,97 +351,6 @@ def list_tenant_settings() -> pd.DataFrame:
     return df
 
 
-def list_external_data_shares() -> pd.DataFrame:
-    """
-    Lists external data shares in the tenant. This function is for admins.
-
-    This is a wrapper function for the following API: `External Data Shares - List External Data Shares <https://learn.microsoft.com/rest/api/fabric/admin/external-data-shares/list-external-data-shares>`_.
-
-    Returns
-    -------
-    pandas.DataFrame
-        A pandas dataframe showing a list of external data shares in the tenant.
-    """
-    df = pd.DataFrame(
-        columns=[
-            "External Data Share Id",
-            "Paths",
-            "Creater Principal Id",
-            "Creater Principal Name",
-            "Creater Principal Type",
-            "Creater Principal UPN",
-            "Recipient UPN",
-            "Status",
-            "Expiration Time UTC",
-            "Workspace Id",
-            "Item Id",
-            "Invitation URL",
-        ]
-    )
-
-    client = fabric.FabricRestClient()
-    response = client.get("/v1/admin/items/externalDataShares")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    for i in response.json().get("value", []):
-        cp = i.get("creatorPrincipal", {})
-        new_data = {
-            "External Data Share Id": i.get("id"),
-            "Paths": [i.get("paths", [])],
-            "Creater Principal Id": cp.get("id"),
-            "Creater Principal Name": cp.get("displayName"),
-            "Creater Principal Type": cp.get("type"),
-            "Creater Principal UPN": cp.get("userDetails", {}).get("userPrincipalName"),
-            "Recipient UPN": i.get("recipient", {}).get("userPrincipalName"),
-            "Status": i.get("status"),
-            "Expiration Time UTC": i.get("expirationTimeUtc"),
-            "Workspace Id": i.get("workspaceId"),
-            "Item Id": i.get("itemId"),
-            "Invitation URL": i.get("invitationUrl"),
-        }
-
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    date_time_columns = ["Expiration Time UTC"]
-    df[date_time_columns] = pd.to_datetime(df[date_time_columns])
-
-    return df
-
-
-def revoke_external_data_share(
-    external_data_share_id: UUID, item_id: UUID, workspace: str | UUID
-):
-    """
-    Revokes the specified external data share. Note: This action cannot be undone.
-
-    This is a wrapper function for the following API: `External Data Shares - Revoke External Data Share <https://learn.microsoft.com/rest/api/fabric/admin/external-data-shares/revoke-external-data-share>`_.
-
-    Parameters
-    ----------
-    external_data_share_id : UUID
-        The external data share ID.
-    item_id : int, default=None
-        The Item ID
-    workspace : str
-        The Fabric workspace name or id.
-    """
-    (workspace, workspace_id) = _resolve_workspace_name_and_id(workspace)
-
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/admin/workspaces/{workspace_id}/items/{item_id}/externalDataShares/{external_data_share_id}/revoke"
-    )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    print(
-        f"{icons.green_dot} The '{external_data_share_id}' external data share for the '{item_id}' item within the '{workspace}' workspace has been revoked."
-    )
-
-
 def list_capacities_delegated_tenant_settings(
     return_dataframe: bool = True,
 ) -> pd.DataFrame | dict:
@@ -584,103 +492,6 @@ def list_modified_workspaces(
     df = pd.DataFrame(response.json()).rename(columns={"id": "Workspace Id"})
 
     return df
-
-
-def scan_workspaces(
-    data_source_details: bool = False,
-    dataset_schema: bool = False,
-    dataset_expressions: bool = False,
-    lineage: bool = False,
-    artifact_users: bool = False,
-    workspace: Optional[str | List[str] | UUID | List[UUID]] = None,
-) -> dict:
-    """
-    Get the inventory and details of the tenant.
-
-    This is a wrapper function for the following APIs:
-        `Admin - WorkspaceInfo PostWorkspaceInfo <https://learn.microsoft.com/en-gb/rest/api/power-bi/admin/workspace-info-post-workspace-info>`_.
-        `Admin - WorkspaceInfo GetScanStatus <https://learn.microsoft.com/en-gb/rest/api/power-bi/admin/workspace-info-get-scan-status>`_.
-        `Admin - WorkspaceInfo GetScanResult <https://learn.microsoft.com/en-gb/rest/api/power-bi/admin/workspace-info-get-scan-result>`_.
-
-    Parameters
-    ----------
-    data_source_details : bool, default=False
-        Whether to return dataset expressions (DAX and Mashup queries). If you set this parameter to true, you must fully enable metadata scanning in order for data to be returned. For more information, see Enable tenant settings for metadata scanning.
-    dataset_schema: bool = False
-        Whether to return dataset schema (tables, columns and measures). If you set this parameter to true, you must fully enable metadata scanning in order for data to be returned. For more information, see Enable tenant settings for metadata scanning.
-    dataset_expressions : bool, default=False
-        Whether to return data source details
-    lineage : bool, default=False
-        Whether to return lineage info (upstream dataflows, tiles, data source IDs)
-    artifact_users : bool, default=False
-        Whether to return user details for a Power BI item (such as a report or a dashboard)
-    workspace : str | List[str] | UUID | List[UUID], default=None
-        The required workspace name(s) or id(s) to be scanned
-
-    Returns
-    -------
-    dictionary
-        A json object with the scan result.
-    """
-    scan_result = {
-        "workspaces": [],
-        "datasourceInstances": [],
-        "misconfiguredDatasourceInstances": [],
-    }
-
-    client = fabric.FabricRestClient()
-
-    if workspace is None:
-        workspace = fabric.resolve_workspace_name()
-
-    if isinstance(workspace, str):
-        workspace = [workspace]
-
-    workspace_list = []
-
-    dfW = list_workspaces()
-    workspace_list = dfW[dfW["Name"].isin(workspace)]["Id"].tolist()
-    workspace_list = workspace_list + dfW[dfW["Id"].isin(workspace)]["Id"].tolist()
-
-    workspaces = np.array(workspace_list)
-    batch_size = 99
-    for i in range(0, len(workspaces), batch_size):
-        batch = workspaces[i : i + batch_size].tolist()
-        request_body = {"workspaces": batch}
-
-        response_clause = f"/v1.0/myorg/admin/workspaces/getInfo?lineage={lineage}&datasourceDetails={data_source_details}&datasetSchema={dataset_schema}&datasetExpressions={dataset_expressions}&getArtifactUsers={artifact_users}"
-        response = client.post(response_clause, json=request_body)
-
-        if response.status_code != 202:
-            raise FabricHTTPException(response)
-        scan_id = response.json()["id"]
-        scan_status = response.json().get("status")
-        while scan_status not in ["Succeeded", "Failed"]:
-            time.sleep(1)
-            response = client.get(f"/v1.0/myorg/admin/workspaces/scanStatus/{scan_id}")
-            scan_status = response.json().get("status")
-        if scan_status == "Failed":
-            raise FabricHTTPException(response)
-        response = client.get(f"/v1.0/myorg/admin/workspaces/scanResult/{scan_id}")
-        if response.status_code != 200:
-            raise FabricHTTPException(response)
-
-        responseJson = response.json()
-
-        if "workspaces" in responseJson:
-            scan_result["workspaces"].extend(responseJson["workspaces"])
-
-        if "datasourceInstances" in responseJson:
-            scan_result["datasourceInstances"].extend(
-                responseJson["datasourceInstances"]
-            )
-
-        if "misconfiguredDatasourceInstances" in responseJson:
-            scan_result["misconfiguredDatasourceInstances"].extend(
-                responseJson["misconfiguredDatasourceInstances"]
-            )
-
-    return scan_result
 
 
 def list_datasets(
