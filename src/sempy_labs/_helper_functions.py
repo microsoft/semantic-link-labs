@@ -1230,7 +1230,7 @@ def _show_chart(spec, title):
                         <div id="vis"></div>
                     </td>
                 </tr>
-            </table>    
+            </table>
             <script type="text/javascript">
                 var spec = {spec};
                 var opt = {{"renderer": "canvas", "actions": false}};
@@ -1275,8 +1275,8 @@ def _process_and_display_chart(df, title, widget):
                 }
             },
             "x": {
-                "field": "Start", 
-                "type": "quantitative", 
+                "field": "Start",
+                "type": "quantitative",
                 "title": "milliseconds",
                 "axis": {
                     "titleFontSize": 20
