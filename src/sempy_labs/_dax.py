@@ -20,6 +20,7 @@ from sempy_labs._clear_cache import clear_cache
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 import tqdm
 
+
 @log
 def evaluate_dax_impersonation(
     dataset: str,
@@ -76,11 +77,77 @@ def evaluate_dax_impersonation(
     return df
 
 
+def _get_dax_query_dependencies_all(
+    dataset: str,
+    dax_string: str,
+    workspace: Optional[str] = None,
+) -> pd.DataFrame:
+
+    from sempy_labs._model_dependencies import get_model_calc_dependencies
+
+    if workspace is None:
+        workspace = fabric.resolve_workspace_name(workspace)
+
+    # Escape quotes in dax
+    dax_string = dax_string.replace('"', '""')
+    final_query = f"""
+        EVALUATE
+        VAR source_query = "{dax_string}"
+        VAR all_dependencies = SELECTCOLUMNS(
+            INFO.CALCDEPENDENCY("QUERY", source_query),
+                "Referenced Object Type",[REFERENCED_OBJECT_TYPE],
+                "Referenced Table", [REFERENCED_TABLE],
+                "Referenced Object", [REFERENCED_OBJECT]
+            )
+        RETURN all_dependencies
+        """
+    dep = fabric.evaluate_dax(
+        dataset=dataset, workspace=workspace, dax_string=final_query
+    )
+
+    # Clean up column names and values (remove outside square brackets, underscorees in object type)
+    dep.columns = dep.columns.map(lambda x: x[1:-1])
+    dep["Referenced Object Type"] = (
+        dep["Referenced Object Type"].str.replace("_", " ").str.title()
+    )
+    dep
+
+    # Dataframe df will contain the output of all dependencies of the objects used in the query
+    df = dep.copy()
+
+    cd = get_model_calc_dependencies(dataset=dataset, workspace=workspace)
+
+    for _, r in dep.iterrows():
+        ot = r["Referenced Object Type"]
+        object_name = r["Referenced Object"]
+        table_name = r["Referenced Table"]
+        cd_filt = cd[
+            (cd["Object Type"] == ot)
+            & (cd["Object Name"] == object_name)
+            & (cd["Table Name"] == table_name)
+        ]
+
+        # Adds in the dependencies of each object used in the query (i.e. relationship etc.)
+        if len(cd_filt) > 0:
+            subset = cd_filt[
+                ["Referenced Object Type", "Referenced Table", "Referenced Object"]
+            ]
+            df = pd.concat([df, subset], ignore_index=True)
+
+    df.columns = df.columns.map(lambda x: x.replace("Referenced ", ""))
+    df = df[(~df["Object"].str.startswith("RowNumber-"))]
+    # Remove duplicates
+    df = df.drop_duplicates().reset_index(drop=True)
+
+    return df
+
+
 @log
 def get_dax_query_dependencies(
     dataset: str,
     dax_string: str,
     put_in_memory: bool = False,
+    show_vertipaq_stats: bool = True,
     workspace: Optional[str] = None,
 ) -> pd.DataFrame:
     """
@@ -94,6 +161,8 @@ def get_dax_query_dependencies(
         The DAX query.
     put_in_memory : bool, default=False
         If True, ensures that the dependent columns are put into memory in order to give realistic Vertipaq stats (i.e. Total Size etc.).
+    show_vertipaq_stats : bool, default=True
+        If True, shows Vertipaq statistics.
     workspace : str, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -109,6 +178,9 @@ def get_dax_query_dependencies(
 
     if workspace is None:
         workspace = fabric.resolve_workspace_name(workspace)
+
+    if put_in_memory:
+        show_vertipaq_stats = True
 
     # Escape quotes in dax
     dax_string = dax_string.replace('"', '""')
@@ -166,22 +238,25 @@ def get_dax_query_dependencies(
     ]
 
     # Get vertipaq stats, filter to just the objects in the df dataframe
-    df["Full Object"] = format_dax_object_name(df["Table"], df["Object"])
-    dfC = fabric.list_columns(dataset=dataset, workspace=workspace, extended=True)
-    dfC["Full Object"] = format_dax_object_name(dfC["Table Name"], dfC["Column Name"])
+    if show_vertipaq_stats:
+        df["Full Object"] = format_dax_object_name(df["Table"], df["Object"])
+        dfC = fabric.list_columns(dataset=dataset, workspace=workspace, extended=True)
+        dfC["Full Object"] = format_dax_object_name(
+            dfC["Table Name"], dfC["Column Name"]
+        )
 
-    dfC_filtered = dfC[dfC["Full Object"].isin(df["Full Object"].values)][
-        [
-            "Table Name",
-            "Column Name",
-            "Total Size",
-            "Data Size",
-            "Dictionary Size",
-            "Hierarchy Size",
-            "Is Resident",
-            "Full Object",
-        ]
-    ].reset_index(drop=True)
+        dfC_filtered = dfC[dfC["Full Object"].isin(df["Full Object"].values)][
+            [
+                "Table Name",
+                "Column Name",
+                "Total Size",
+                "Data Size",
+                "Dictionary Size",
+                "Hierarchy Size",
+                "Is Resident",
+                "Full Object",
+            ]
+        ].reset_index(drop=True)
 
     if put_in_memory:
         not_in_memory = dfC_filtered[dfC_filtered["Is Resident"] == False]
@@ -225,7 +300,8 @@ def get_dax_query_dependencies(
                 ]
             ].reset_index(drop=True)
 
-    dfC_filtered.drop(["Full Object"], axis=1, inplace=True)
+    if show_vertipaq_stats:
+        dfC_filtered.drop(["Full Object"], axis=1, inplace=True)
 
     return dfC_filtered
 
@@ -731,8 +807,6 @@ def run_benchmark(
         }
         print(f"{icons.in_progress} Saving semantic model metadata...")
         for name, (df, df_schema) in dfs.items():
-            df.columns = df.columns.str.replace(" ", "_")
-
             save_as_delta_table(
                 dataframe=df,
                 delta_table_name=f"SLL_{name}",
@@ -740,7 +814,9 @@ def run_benchmark(
                 schema=df_schema,
             )
 
-    #collect_metadata(dataset=dataset, workspace=workspace, run_id=run_id)
+        return dfC
+
+    dfC = collect_metadata(dataset=dataset, workspace=workspace, run_id=run_id)
 
     # Run and save trace data
     trace_result, query_result = dax_perf_test(
@@ -753,6 +829,8 @@ def run_benchmark(
     trace_schema = {
         "Capacity_Name": "string",
         "Capacity_Id": "string",
+        "SKU": "string",
+        "Region": "string",
         "Workspace_Name": "string",
         "Workspace_Id": "string",
         "Dataset_Name": "string",
@@ -765,12 +843,14 @@ def run_benchmark(
         "SE_CPU": "long",
         "SE_Cache": "long",
         "SE_Queries": "long",
-        "Column_Dependencies": "str",
+        "Column_Dependencies": "string",
         "Column_Dependencies_Size": "long",
+        "Measure_Dependencies": "string",
+        "Relationship_Dependencies": "string",
         "RunId": "long",
         "Timestamp": "timestamp",
     }
-    df = pd.DataFrame(columns=list(trace_schema.keys()))  # 'SE Duration'
+    df = pd.DataFrame(columns=list(trace_schema.keys()))
 
     for query_name in trace_result["Query Name"].unique().tolist():
         df_trace = trace_result[trace_result["Query Name"] == query_name]
@@ -813,17 +893,31 @@ def run_benchmark(
         )
 
         # Collect query dependencies
-        dep = get_dax_query_dependencies(
+        dep = _get_dax_query_dependencies_all(
             dataset=dataset,
             workspace=workspace,
             dax_string=query_text,
-            put_in_memory=False,
         )
-        total_size = dep["Total Size"].sum()
-        table_column_list = [
-            f"'{table}'[{column}]"
-            for table, column in zip(dep["Table Name"], dep["Column Name"])
+
+        # Column dependencies
+        filtered_dep = dep[dep["Object Type"].isin(["Column", "Calc Column"])][
+            ["Table", "Object"]
         ]
+        columns_used = [
+            f"'{table}'[{obj}]"
+            for table, obj in zip(filtered_dep["Table"], filtered_dep["Object"])
+        ]
+        dfC["Object"] = format_dax_object_name(dfC["Table_Name"], dfC["Column_Name"])
+        dfC_filt = dfC[dfC["Object"].isin(columns_used)]
+        total_size = dfC_filt["Total_Size"].sum()
+
+        # Measure dependencies
+        measures_used = dep[dep["Object Type"] == "Measure"]["Object"].tolist()
+
+        # Relationship dependencies
+        relationships_used = dep[dep["Object Type"] == "Relationship"][
+            "Object"
+        ].tolist()
 
         new_data = {
             "Capacity_Name": capacity_name,
@@ -842,8 +936,10 @@ def run_benchmark(
             "SE_CPU": se_cpu,
             "SE_Cache": se_cache,
             "SE_Queries": se_queries,
-            "Column_Dependencies": str(table_column_list),
+            "Column_Dependencies": str(columns_used),
             "Column_Dependencies_Size": total_size,
+            "Measure_Dependencies": str(measures_used),
+            "Relationship_Dependencies": str(relationships_used),
             "RunId": run_id,
             "Timestamp": time_stamp,
         }
@@ -853,13 +949,11 @@ def run_benchmark(
         else:
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    df['Query_Text'] = df['Query_Text'].astype(str)
+    df["Query_Text"] = df["Query_Text"].astype(str)
 
-    return df
-
-    #save_as_delta_table(
-    #    dataframe=df,
-    #    delta_table_name="SLL_PerfBenchmark",
-    #    write_mode="append",
-    #    schema=trace_schema,
-    #)
+    save_as_delta_table(
+        dataframe=df,
+        delta_table_name="SLL_PerfBenchmark",
+        write_mode="append",
+        schema=trace_schema,
+    )
