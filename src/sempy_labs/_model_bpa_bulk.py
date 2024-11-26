@@ -220,7 +220,7 @@ def create_model_bpa_semantic_model(
 
     from sempy_labs._helper_functions import resolve_lakehouse_name
     from sempy_labs.directlake import (
-        get_shared_expression,
+        generate_shared_expression,
         add_table_to_direct_lake_semantic_model,
     )
     from sempy_labs import create_blank_semantic_model, refresh_semantic_model
@@ -235,7 +235,7 @@ def create_model_bpa_semantic_model(
         )
 
     # Generate the shared expression based on the lakehouse and lakehouse workspace
-    expr = get_shared_expression(lakehouse=lakehouse, workspace=lakehouse_workspace)
+    expr = generate_shared_expression(item_name=lakehouse, item_type='Lakehouse', workspace=lakehouse_workspace)
 
     # Create blank model
     create_blank_semantic_model(

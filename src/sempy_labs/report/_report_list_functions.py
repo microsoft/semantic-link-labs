@@ -13,6 +13,7 @@ def list_unused_objects_in_reports(
 ) -> pd.DataFrame:
     """
     Shows a list of all columns in the semantic model which are not used in any related Power BI reports (including dependencies).
+    Note: As with all functions which rely on the ReportWrapper, this function requires the report to be in the 'PBIR' format.
 
     Parameters
     ----------
@@ -55,6 +56,7 @@ def _list_all_report_semantic_model_objects(
 ) -> pd.DataFrame:
     """
     Shows a unique list of all semantic model objects (columns, measures, hierarchies) which are used in all reports which leverage the semantic model.
+    Note: As with all functions which rely on the ReportWrapper, this function requires the report to be in the 'PBIR' format.
 
     Parameters
     ----------

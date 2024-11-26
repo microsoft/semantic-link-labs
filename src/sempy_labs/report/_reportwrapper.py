@@ -7,11 +7,10 @@ from sempy_labs._helper_functions import (
     _extract_json,
     _add_part,
     lro,
-    # _make_clickable,
+    _decode_b64,
 )
 from typing import Optional, List
 import pandas as pd
-import re
 import json
 import base64
 from uuid import UUID
@@ -24,6 +23,25 @@ import warnings
 
 
 class ReportWrapper:
+    """
+    Connects to a Power BI report and retrieves its definition.
+
+    The ReportWrapper and all functions which depend on it require the report to be in the `PBIR <https://powerbi.microsoft.com/blog/power-bi-enhanced-report-format-pbir-in-power-bi-desktop-developer-mode-preview>`_ format.
+
+    Parameters
+    ----------
+    report : str
+        The name of the report.
+    workspace : str
+        The name of the workspace in which the report resides.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe containing the report metadata definition files.
+    """
 
     _report: str
     _workspace: str
@@ -34,6 +52,25 @@ class ReportWrapper:
         report: str,
         workspace: Optional[str] = None,
     ):
+        """
+        Connects to a Power BI report and retrieves its definition.
+
+        The ReportWrapper and all functions which depend on it require the report to be in the `PBIR <https://powerbi.microsoft.com/blog/power-bi-enhanced-report-format-pbir-in-power-bi-desktop-developer-mode-preview>`_ format.
+
+        Parameters
+        ----------
+        report : str
+            The name of the report.
+        workspace : str
+            The name of the workspace in which the report resides.
+            Defaults to None which resolves to the workspace of the attached lakehouse
+            or if no lakehouse attached, resolves to the workspace of the notebook.
+
+        Returns
+        -------
+        pandas.DataFrame
+            A pandas dataframe containing the report metadata definition files.
+        """
 
         from sempy_labs.report import get_report_definition
 
@@ -84,6 +121,22 @@ class ReportWrapper:
                         for h in tom.all_hierarchies()
                     )
         return dataframe
+
+    def _update_single_file(self, file_name: str, new_payload):
+        """
+        Updates a single file within the PBIR structure
+        """
+
+        request_body = {"definition": {"parts": []}}
+        for _, r in self.rdef.iterrows():
+            path = r["path"]
+            payload = r["payload"]
+            if path == file_name:
+                _add_part(request_body, path=path, payload=new_payload)
+            else:
+                _add_part(request_body, path=path, payload=payload)
+
+        self.update_report(request_body)
 
     def update_report(self, request_body: dict):
 
@@ -692,6 +745,7 @@ class ReportWrapper:
         custom_visuals = rptJson.get("publicCustomVisuals", [])
         page_mapping, visual_mapping = helper.visual_page_mapping(self)
         helper.populate_custom_visual_display_names()
+        agg_type_map = helper._get_agg_type_mapping()
 
         def contains_key(data, keys_to_check):
             matches = parse("$..*").find(data)
@@ -738,21 +792,36 @@ class ReportWrapper:
 
                 # Title
                 matches = parse(
-                    "$.visual.visualContainerObjects.title[0].properties.text.expr.Literal.Value"
+                    "$.visual.visualContainerObjects.title[0].properties.text.expr"
                 ).find(visual_json)
-                title = matches[0].value[1:-1] if matches else ""
+                # title = matches[0].value[1:-1] if matches else ""
+                title = (
+                    helper._get_expression(matches[0].value, agg_type_map)
+                    if matches
+                    else ""
+                )
 
                 # SubTitle
                 matches = parse(
-                    "$.visual.visualContainerObjects.subTitle[0].properties.text.expr.Literal.Value"
+                    "$.visual.visualContainerObjects.subTitle[0].properties.text.expr"
                 ).find(visual_json)
-                sub_title = matches[0].value[1:-1] if matches else ""
+                # sub_title = matches[0].value[1:-1] if matches else ""
+                sub_title = (
+                    helper._get_expression(matches[0].value, agg_type_map)
+                    if matches
+                    else ""
+                )
 
                 # Alt Text
                 matches = parse(
-                    "$.visual.visualContainerObjects.general[0].properties.altText.expr.Literal.Value"
+                    "$.visual.visualContainerObjects.general[0].properties.altText.expr"
                 ).find(visual_json)
-                alt_text = matches[0].value[1:-1] if matches else ""
+                # alt_text = matches[0].value[1:-1] if matches else ""
+                alt_text = (
+                    helper._get_expression(matches[0].value, agg_type_map)
+                    if matches
+                    else ""
+                )
 
                 # Show items with no data
                 def find_show_all_with_jsonpath(obj):
@@ -1296,6 +1365,71 @@ class ReportWrapper:
 
         return df
 
+    def _list_annotations(self) -> pd.DataFrame:
+        """
+        Shows a list of annotations in the report.
+
+        Returns
+        -------
+        pandas.DataFrame
+            A pandas dataframe showing a list of report, page and visual annotations in the report.
+        """
+
+        df = pd.DataFrame(
+            columns=["Type", "Object Name", "Annotation Name", "Annotation Value"]
+        )
+
+        page_mapping, visual_mapping = helper.visual_page_mapping(self)
+        for _, r in self.rdef.iterrows():
+            payload = r["payload"]
+            path = r["path"]
+            if path == "definition/report.json":
+                file = _decode_b64(payload)
+                json_file = json.loads(file)
+                if "annotations" in json_file:
+                    for ann in json_file["annotations"]:
+                        new_data = {
+                            "Type": "Report",
+                            "Object Name": self._report,
+                            "Annotation Name": ann.get("name"),
+                            "Annotation Value": ann.get("value"),
+                        }
+                        df = pd.concat(
+                            [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                        )
+            elif path.endswith("/page.json"):
+                file = _decode_b64(payload)
+                json_file = json.loads(file)
+                if "annotations" in json_file:
+                    for ann in json_file["annotations"]:
+                        new_data = {
+                            "Type": "Page",
+                            "Object Name": json_file.get("displayName"),
+                            "Annotation Name": ann.get("name"),
+                            "Annotation Value": ann.get("value"),
+                        }
+                        df = pd.concat(
+                            [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                        )
+            elif path.endswith("/visual.json"):
+                file = _decode_b64(payload)
+                json_file = json.loads(file)
+                page_display = visual_mapping.get(path)[1]
+                visual_name = json_file.get("name")
+                if "annotations" in json_file:
+                    for ann in json_file["annotations"]:
+                        new_data = {
+                            "Type": "Visual",
+                            "Object Name": f"'{page_display}'[{visual_name}]",
+                            "Annotation Name": ann.get("name"),
+                            "Annotation Value": ann.get("value"),
+                        }
+                        df = pd.concat(
+                            [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                        )
+
+        return df
+
     # Automation functions
     def set_theme(self, theme_file_path: str):
         """
@@ -1414,40 +1548,39 @@ class ReportWrapper:
         """
 
         pages_file = "definition/pages/pages.json"
-        request_body = {"definition": {"parts": []}}
-
-        rd = self.rdef
-        page_id, page_display, file_path = helper.resolve_page_name(
+        page_id, page_display_name, file_path = helper.resolve_page_name(
             self, page_name=page_name
         )
-        for _, r in rd.iterrows():
-            path = r["path"]
-            file_payload = r["payload"]
-            if path != pages_file:
-                _add_part(request_body, path, file_payload)
 
-        pagePath = rd[rd["path"] == pages_file]
+        pagePath = self.rdef[self.rdef["path"] == pages_file]
         payload = pagePath["payload"].iloc[0]
-        pageFile = base64.b64decode(payload).decode("utf-8")
-        pageJson = json.loads(pageFile)
-        pageJson["activePageName"] = page_id
-        file_payload = _conv_b64(pageJson)
+        page_file = _decode_b64(payload)
+        json_file = json.loads(page_file)
+        json_file["activePageName"] = page_id
+        file_payload = _conv_b64(json_file)
 
-        _add_part(request_body, pages_file, file_payload)
+        self._update_single_file(file_name=pages_file, new_payload=file_payload)
 
-        self.update_report(request_body=request_body)
         print(
-            f"{icons.green_dot} The '{page_name}' page has been set as the active page in the '{self._report}' report within the '{self._workspace}' workspace."
+            f"{icons.green_dot} The '{page_display_name}' page has been set as the active page in the '{self._report}' report within the '{self._workspace}' workspace."
         )
 
     def set_page_type(self, page_name: str, page_type: str):
+        """
+        Changes the page type of a report page.
+
+        Parameters
+        ----------
+        page_name : str
+            Name or display name of the report page.
+        page_type : str
+            The page type. Valid page types: 'Tooltip', 'Letter', '4:3', '16:9'.
+        """
 
         if page_type not in helper.page_types:
             raise ValueError(
                 f"{icons.red_dot} Invalid page type. Valid options: {helper.page_types}."
             )
-
-        request_body = {"definition": {"parts": []}}
 
         letter_key = next(
             (
@@ -1461,30 +1594,24 @@ class ReportWrapper:
             width, height = letter_key
         else:
             raise ValueError(
-                "Invalid page_type parameter. Valid options: ['Tooltip', 'Letter', '4:3', '16:9']."
+                f"{icons.red_dot} Invalid page_type parameter. Valid options: ['Tooltip', 'Letter', '4:3', '16:9']."
             )
 
-        rd = self.rdef
-        page_id, page_display, file_path = helper.resolve_page_name(
+        page_id, page_display_name, file_path = helper.resolve_page_name(
             self, page_name=page_name
         )
-        rd_filt = rd[rd["path"] == file_path]
+        rd_filt = self.rdef[self.rdef["path"] == file_path]
         payload = rd_filt["payload"].iloc[0]
-        pageFile = base64.b64decode(payload).decode("utf-8")
-        pageJson = json.loads(pageFile)
-        pageJson["width"] = width
-        pageJson["height"] = height
+        page_file = _decode_b64(payload)
+        json_file = json.loads(page_file)
+        json_file["width"] = width
+        json_file["height"] = height
+        file_payload = _conv_b64(json_file)
 
-        file_payload = _conv_b64(pageJson)
-        _add_part(request_body, file_path, file_payload)
+        self._update_single_file(file_name=file_path, new_payload=file_payload)
 
-        for _, r in rd.iterrows():
-            if r["path"] != file_path:
-                _add_part(request_body, r["path"], r["payload"])
-
-        self.update_report(request_body=request_body)
         print(
-            f"The '{page_display}' page has been updated to the '{page_type}' page type."
+            f"{icons.green_dot} The '{page_display_name}' page has been updated to the '{page_type}' page type."
         )
 
     def remove_unnecessary_custom_visuals(self):
@@ -1632,31 +1759,27 @@ class ReportWrapper:
             If set to False, makes the report page visible.
         """
 
-        rd = self.rdef
-        page_id, page_display, file_path = helper.resolve_page_name(
+        page_id, page_display_name, file_path = helper.resolve_page_name(
             self, page_name=page_name
         )
         visibility = "visible" if hidden is False else "hidden"
 
-        request_body = {"definition": {"parts": []}}
+        rd_filt = self.rdef[self.rdef["path"] == file_path]
+        payload = rd_filt["payload"].iloc[0]
+        obj_file = _decode_b64(payload)
+        obj_json = json.loads(obj_file)
+        if hidden:
+            obj_json["visibility"] = "HiddenInViewMode"
+        else:
+            if "visibility" in obj_json:
+                del obj_json["visibility"]
+        new_payload = _conv_b64(obj_json)
 
-        for _, r in rd.iterrows():
-            path = r["path"]
-            payload = r["payload"]
-            if path == file_path:
-                obj_file = base64.b64decode(payload).decode("utf-8")
-                obj_json = json.loads(obj_file)
-                if hidden:
-                    obj_json["visibility"] = "HiddenInViewMode"
-                else:
-                    if "visibility" in obj_json:
-                        del obj_json["visibility"]
-                _add_part(request_body, path, _conv_b64(obj_json))
-            else:
-                _add_part(request_body, path, payload)
+        self._update_single_file(file_name=file_path, new_payload=new_payload)
 
-        self.update_report(request_body=request_body)
-        print(f"{icons.green_dot} The '{page_name}' page has been set to {visibility}.")
+        print(
+            f"{icons.green_dot} The '{page_display_name}' page has been set to {visibility}."
+        )
 
     def hide_tooltip_drillthrough_pages(self):
         """
@@ -1712,141 +1835,195 @@ class ReportWrapper:
             f"{icons.green_dot} Show items with data has been disabled for all visuals in the '{self._report}' report within the '{self._workspace}' workspace."
         )
 
-    def __get_annotation_value(self, object_name: str, object_type: str, name: str):
+    # Set Annotations
+    def __set_annotation(self, json_file: dict, name: str, value: str) -> dict:
 
-        object_types = ["Visual", "Page", "Report"]
-        object_type = object_type.capitalize()
-        if object_type not in object_types:
-            raise ValueError(
-                f"{icons.red_dot} Invalid object type. Valid options: {object_types}."
-            )
-
-        rd = self.rdef
-
-        if object_type == "Report":
-            rd_filt = rd[rd["path"] == "definition/report.json"]
-            obj_json = _extract_json(rd_filt)
-        elif object_type == "Page":
-            page_id, page_display, page_file = helper.resolve_page_name(
-                self, page_name=object_name
-            )
-            rd_filt = rd[rd["path"] == page_file]
-            payload = rd_filt["payload"].iloc[0]
-            obj_file = base64.b64decode(payload).decode("utf-8")
-            obj_json = json.loads(obj_file)
-        elif object_type == "Visual":
-            pattern = r"'([^']+)'\[([^]]+)\]"
-            match = re.search(pattern, object_name)
-            if match:
-                p_name = match.group(1)
-                v_name = match.group(2)
+        if "annotations" in json_file:
+            if any(
+                annotation["name"] == name for annotation in json_file["annotations"]
+            ):
+                for annotation in json_file["annotations"]:
+                    if annotation["name"] == name:
+                        annotation["value"] = value
+                        break
             else:
-                raise ValueError(
-                    "Invalid page/visual name within the 'object_name' parameter. Valid format: 'Page 1'[f8dvo24PdJ39fp6]"
-                )
-            valid_page_name, valid_display_name, visual_name, file_path = (
-                helper.resolve_visual_name(self, page_name=p_name, visual_name=v_name)
-            )
-            rd_filt = rd[rd["path"] == file_path]
-            payload = rd_filt["payload"].iloc[0]
-            obj_file = base64.b64decode(payload).decode("utf-8")
-            obj_json = json.loads(obj_file)
+                json_file["annotations"].append({"name": name, "value": value})
+        else:
+            json_file["annotations"] = []
+            json_file["annotations"].append({"name": name, "value": value})
 
-        value = obj_json.get("annotations", {}).get(name, "")
+        return json_file
 
-        return value
-
-    def __remove_annotation(self, object_name: str, object_type: str, name: str):
-
-        object_types = ["Visual", "Page", "Report"]
-        object_type = object_type.capitalize()
-        if object_type not in object_types:
-            raise ValueError(
-                f"{icons.red_dot} Invalid object type. Valid options: {object_types}."
-            )
-
-    def __set_annotation(
-        self, object_name: str, object_type: str, name: str, value: str
+    def _set_annotation(
+        self,
+        annotation_name: str,
+        annotation_value: str,
+        page_name: Optional[str] = None,
+        visual_name: Optional[str] = None,
     ):
+        """
+        Sets an annotation on the report/page/visual. If the annotation already exists, the annotation value is updated.
+        In order to set a report annotation, leave page_name=None, visual_name=None.
+        In order to set a page annotation, leave visual_annotation=None.
+        In order to set a visual annotation, set all parameters.
 
-        object_types = ["Visual", "Page", "Report"]
-        object_type = object_type.capitalize()
-        if object_type not in object_types:
-            raise ValueError(
-                f"{icons.red_dot} Invalid object type. Valid options: {object_types}."
-            )
+        Parameters
+        ----------
+        annotation_name : str
+            Name of the annotation.
+        annotation_value : str
+            Value of the annotation.
+        page_name : str, default=None
+            The page name or page display name.
+            Set this annotation when setting an annotation on a page or visual.
+        visual_name : str, default=None
+            The visual name.
+            Set this property when setting an annotation on a visual.
+        """
 
-        request_body = {"definition": {"parts": []}}
-        new_annotation = {"name": name, "value": value}
-
-        # Creates the annotation if it does not exist. Updates the annotation value if the annotation already exists
-        def update_annotation(payload):
-            objFile = base64.b64decode(payload).decode("utf-8")
-            objJson = json.loads(objFile)
-            if "annotations" not in objJson:
-                objJson["annotations"] = [new_annotation]
-            else:
-                names = []
-                for ann in objJson["annotations"]:
-                    names.append(ann["name"])
-                if name not in names:
-                    objJson["annotations"].append(new_annotation)
-                else:
-                    for ann in objJson["annotations"]:
-                        if ann["name"] == name:
-                            ann["value"] = value
-            return objJson
-
-        # Validate page and visual names
-        if object_type == "Page":
-            page_id, page_display, file_path = helper.resolve_page_name(
-                self, page_name=object_name
-            )
-        elif object_type == "Visual":
-            pattern = r"'(.*?)'|\[(.*?)\]"
-            matches = re.findall(pattern, object_name)
-            page_name = matches[0][0]
-            visual_id = matches[1][1]
+        if page_name is None and visual_name is None:
+            file_path = "definition/report.json"
+        elif page_name is not None and visual_name is None:
             page_id, page_display, file_path = helper.resolve_page_name(
                 self, page_name=page_name
             )
+        elif page_name is not None and visual_name is not None:
+            page_name, page_display_name, visual_name, file_path = (
+                helper.resolve_visual_name(
+                    self, page_name=page_name, visual_name=visual_name
+                )
+            )
+        else:
+            raise ValueError(f"{icons.red_dot} Invalid parameters. If specifying a visual_name you must specify the page_name.")
 
-        rd = self.rdef
-        for _, r in rd.iterrows():
-            path = r["path"]
-            payload = r["payload"]
-            if object_type == "Report" and path == "definition/report.json":
-                a = update_annotation(payload=payload)
-                _add_part(request_body, path, _conv_b64(a))
-            elif (
-                object_type == "Page"
-                and path == f"definition/pages/{page_id}/page.json"
-            ):
-                a = update_annotation(payload=payload)
-                _add_part(request_body, path, _conv_b64(a))
-            elif (
-                object_type == "Visual"
-                and path
-                == f"definition/pages/{page_id}/visuals/{visual_id}/visual.json"
-            ):
-                a = update_annotation(payload=payload)
-                _add_part(request_body, path, _conv_b64(a))
-            else:
-                _add_part(request_body, path, payload)
+        payload = self.rdef[self.rdef["path"] == file_path]["payload"].iloc[0]
+        file = _decode_b64(payload)
+        json_file = json.loads(file)
 
-        self.update_report(request_body=request_body)
-        if object_type == "Report":
-            print(
-                f"{icons.green_dot} The '{name}' annotation has been set on the report with the '{value}' value."
+        new_file = self.__set_annotation(
+            json_file, name=annotation_name, value=annotation_value
+        )
+        new_payload = _conv_b64(new_file)
+
+        self._update_single_file(file_name=file_path, new_payload=new_payload)
+
+    # Remove Annotations
+    def __remove_annotation(self, json_file: dict, name: str) -> dict:
+
+        if "annotations" in json_file:
+            json_file["annotations"] = [
+                annotation
+                for annotation in json_file["annotations"]
+                if annotation["name"] != name
+            ]
+
+        return json_file
+
+    def _remove_annotation(
+        self,
+        annotation_name: str,
+        page_name: Optional[str] = None,
+        visual_name: Optional[str] = None,
+    ):
+        """
+        Removes an annotation on the report/page/visual.
+        In order to remove a report annotation, leave page_name=None, visual_name=None.
+        In order to remove a page annotation, leave visual_annotation=None.
+        In order to remove a visual annotation, set all parameters.
+
+        Parameters
+        ----------
+        annotation_name : str
+            Name of the annotation.
+        page_name : str, default=None
+            The page name or page display name.
+            Set this annotation when setting an annotation on a page or visual.
+        visual_name : str, default=None
+            The visual name.
+            Set this property when setting an annotation on a visual.
+        """
+
+        if page_name is None and visual_name is None:
+            file_path = "definition/report.json"
+        elif page_name is not None and visual_name is None:
+            page_id, page_display, file_path = helper.resolve_page_name(
+                self, page_name=page_name
             )
-        elif object_type == "Page":
-            print(
-                f"{icons.green_dot} The '{name}' annotation has been set on the '{object_name}' page with the '{value}' value."
+        elif page_name is not None and visual_name is not None:
+            page_name, page_display_name, visual_name, file_path = (
+                helper.resolve_visual_name(
+                    self, page_name=page_name, visual_name=visual_name
+                )
             )
-        elif object_type == "Visual":
-            print(
-                f"{icons.green_dot} The '{name}' annotation has been set on the '{visual_id}' visual on the '{page_display}' page with the '{value}' value."
+        else:
+            raise ValueError(f"{icons.red_dot} Invalid parameters. If specifying a visual_name you must specify the page_name.")
+
+        payload = self.rdef[self.rdef["path"] == file_path]["payload"].iloc[0]
+        file = _decode_b64(payload)
+        json_file = json.loads(file)
+
+        new_file = self.__remove_annotation(json_file, name=annotation_name)
+        new_payload = _conv_b64(new_file)
+
+        self._update_single_file(file_name=file_path, new_payload=new_payload)
+
+    # Get Annotation Value
+    def __get_annotation_value(self, json_file: dict, name: str) -> str:
+
+        if "annotations" in json_file:
+            for ann in json_file["annotations"]:
+                if ann.get("name") == name:
+                    return ann.get("value")
+
+    def _get_annotation_value(
+        self,
+        annotation_name: str,
+        page_name: Optional[str] = None,
+        visual_name: Optional[str] = None,
+    ) -> str:
+        """
+        Retrieves the annotation value of an annotation on the report/page/visual.
+        In order to retrieve a report annotation value, leave page_name=None, visual_name=None.
+        In order to retrieve a page annotation value, leave visual_annotation=None.
+        In order to retrieve a visual annotation value, set all parameters.
+
+        Parameters
+        ----------
+        annotation_name : str
+            Name of the annotation.
+        page_name : str, default=None
+            The page name or page display name.
+            Set this annotation when setting an annotation on a page or visual.
+        visual_name : str, default=None
+            The visual name.
+            Set this property when setting an annotation on a visual.
+
+        Returns
+        -------
+        str
+            The annotation value.
+        """
+
+        if page_name is None and visual_name is None:
+            file_path = "definition/report.json"
+        elif page_name is not None and visual_name is None:
+            page_id, page_display, file_path = helper.resolve_page_name(
+                self, page_name=page_name
             )
+        elif page_name is not None and visual_name is not None:
+            page_name, page_display_name, visual_name, file_path = (
+                helper.resolve_visual_name(
+                    self, page_name=page_name, visual_name=visual_name
+                )
+            )
+        else:
+            raise ValueError(f"{icons.red_dot} Invalid parameters. If specifying a visual_name you must specify the page_name.")
+
+        payload = self.rdef[self.rdef["path"] == file_path]["payload"].iloc[0]
+        file = _decode_b64(payload)
+        json_file = json.loads(file)
+
+        return self.__get_annotation_value(json_file, name=annotation_name)
 
     def __adjust_settings(
         self, setting_type: str, setting_name: str, setting_value: bool

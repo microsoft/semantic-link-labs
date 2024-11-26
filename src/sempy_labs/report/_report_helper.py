@@ -252,3 +252,61 @@ def find_entity_property_pairs(data, result=None, keys_path=None):
             find_entity_property_pairs(item, result, keys_path)
 
     return result
+
+
+def _get_agg_type_mapping() -> dict:
+    """ 
+    This function extracts a mapping dictionary like this:
+    {
+        "0": "Sum",
+        "1": "Average",
+        "2": "Distinct count",
+    }
+    """
+
+    schema_url = "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/semanticQuery/1.2.0/schema.json"
+    response = requests.get(schema_url)
+    schema = response.json()
+    aggtypes_schema = schema.get("definitions", {}).get("QueryAggregateFunction", {})
+
+    agg_type_map = {}
+    agg_type_map = {
+        a.get("const"): a.get("description")
+        for a in aggtypes_schema.get("anyOf", [])
+        if "const" in a and "description" in a
+    }
+    agg_type_map["-1"] = "Unknown"
+
+    return agg_type_map
+
+
+def _get_expression(expr_json, agg_type_map):
+
+    expr_type = list(expr_json.keys())[0]
+    if expr_type == "Literal":
+        expr = expr_json.get("Literal", {}).get("Value")[1:-1]
+    elif expr_type == "Aggregation":
+        entity = (
+            expr_json.get("Aggregation", {})
+            .get("Expression", {})
+            .get("Column", {})
+            .get("Expression", {})
+            .get("SourceRef", {})
+            .get("Entity", "Unknown")
+        )
+        column = (
+            expr_json.get("Aggregation", {})
+            .get("Expression", {})
+            .get("Column", {})
+            .get("Property", "Unknown")
+        )
+        function_id = expr_json.get("Aggregation", {}).get("Function", "-1")
+        function = agg_type_map.get(function_id)
+        expr = f"{function}('{entity}'[{column}])"
+    elif expr_type == "Measure":
+        measure = expr_json.get("Measure", {}).get("Property", "Unknown")
+        expr = f"[{measure}]"
+    else:
+        expr = "Unknown"
+
+    return expr
