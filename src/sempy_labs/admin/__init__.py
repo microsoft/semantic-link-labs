@@ -10,7 +10,6 @@ from sempy_labs.admin._basic_functions import (
     list_workspace_access_details,
     list_activity_events,
     list_modified_workspaces,
-    list_git_connections,
     list_reports,
 )
 from sempy_labs.admin._domains import (
@@ -32,6 +31,9 @@ from sempy_labs.admin._items import (
 from sempy_labs.admin._external_data_share import (
     list_external_data_shares,
     revoke_external_data_share,
+)
+from sempy_labs.admin._git import (
+    list_git_connections,
 )
 
 __all__ = [
