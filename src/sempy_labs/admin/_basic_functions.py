@@ -6,18 +6,16 @@ from sempy.fabric.exceptions import FabricHTTPException
 from sempy_labs._helper_functions import (
     pagination,
     _is_valid_uuid,
+    _build_url,
 )
 import numpy as np
 import pandas as pd
 import time
-import urllib.parse
 from dateutil.parser import parse as dtparser
 from datetime import datetime
 
 
 def list_workspaces(
-    top: Optional[int] = None,
-    skip: Optional[int] = None,
     capacity: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
     workspace_state: Optional[str] = None,
@@ -31,10 +29,6 @@ def list_workspaces(
 
     Parameters
     ----------
-    top: int, default=None
-        Returns only the first N workspaces.
-    skip: int, default=None
-        Skip the first N workspaces.
     capacity : str | UUID, default=None
         Returns only the workspaces in the specified Capacity.
     workspace : str | UUID, default=None
@@ -55,6 +49,18 @@ def list_workspaces(
         )
         del kwargs["filter"]
 
+    if "top" in kwargs:
+        print(
+            "The 'top' parameter has been deprecated. Please remove this parameter from the function going forward."
+        )
+        del kwargs["top"]
+
+    if "skip" in kwargs:
+        print(
+            "The 'skip' parameter has been deprecated. Please remove this parameter from the function going forward."
+        )
+        del kwargs["skip"]
+
     client = fabric.FabricRestClient()
 
     df = pd.DataFrame(
@@ -68,7 +74,6 @@ def list_workspaces(
     )
 
     url = f"/v1/admin/workspaces"
-
     params = {}
 
     if capacity is not None:
@@ -83,10 +88,8 @@ def list_workspaces(
     if workspace_type is not None:
         params["type"] = workspace_type
 
-    url_parts = list(urllib.parse.urlparse(url))
-    url_parts[4] = urllib.parse.urlencode(params)
-    url = urllib.parse.urlunparse(url_parts)
-
+    url = _build_url(url,params)
+    
     response = client.get(path_or_url=url)
 
     if response.status_code != 200:
@@ -112,18 +115,10 @@ def list_workspaces(
             inplace=True,
         )
 
-        df["Id"] = df["Id"].str.lower()
         df["Capacity Id"] = df["Capacity Id"].str.lower()
 
         if workspace is not None and _is_valid_uuid(workspace):
             df = df[df["Id"] == workspace.lower()]
-
-    if skip is not None:
-        df = df.tail(-skip)
-        df.reset_index(drop=True, inplace=True)
-
-    if top is not None:
-        df = df.head(top)
 
     return df
 
@@ -215,18 +210,28 @@ def assign_workspaces_to_capacity(
         dfW = list_workspaces(capacity=source_capacity_id)
         workspaces = dfW["Id"].tolist()
     else:
-        if isinstance(workspace, str):
+        if isinstance(workspace, str) or isinstance(workspace, UUID):
             workspace = [workspace]
         if source_capacity is None:
             dfW = list_workspaces()
         else:
             dfW = list_workspaces(capacity=source_capacity_id)
-        workspaces = dfW[dfW["Name"].isin(workspace)]["Id"].tolist()
-        workspaces = workspaces + dfW[dfW["Id"].isin(workspace)]["Id"].tolist()
+        
+        # Extract names and IDs that are mapped in dfW
+        workspaces_names = dfW[dfW["Name"].isin(workspace)]["Name"].tolist()
+        workspaces_ids = dfW[dfW["Id"].isin(workspace)]["Id"].tolist()
+
+        # Combine IDs into the final workspaces list
+        workspaces = workspaces_ids + dfW[dfW["Name"].isin(workspace)]["Id"].tolist()
+
+        # Identify unmapped workspaces
+        unmapped_workspaces = [
+            item for item in workspace if item not in workspaces_names and item not in workspaces_ids
+        ]
 
     if len(workspace) != len(workspaces):
         raise ValueError(
-            f"{icons.red_dot} Some of the workspaces provided are not valid."
+            f"{icons.red_dot} The following workspaces are invalid: {unmapped_workspaces}."
         )
 
     target_capacity_id = _resolve_capacity_name_and_id(target_capacity)[1]
@@ -567,9 +572,7 @@ def list_modified_workspaces(
     if exclude_personal_workspaces is not None:
         params["excludePersonalWorkspaces"] = exclude_personal_workspaces
 
-    url_parts = list(urllib.parse.urlparse(url))
-    url_parts[4] = urllib.parse.urlencode(params)
-    url = urllib.parse.urlunparse(url_parts)
+    url = _build_url(url,params)
 
     response = client.get(url)
 
@@ -742,9 +745,7 @@ def list_datasets(
     if skip is not None:
         params["$skip"] = skip
 
-    url_parts = list(urllib.parse.urlparse(url))
-    url_parts[4] = urllib.parse.urlencode(params)
-    url = urllib.parse.urlunparse(url_parts)
+    url = _build_url(url,params)
 
     response = client.get(url)
 
@@ -872,9 +873,7 @@ def list_items(
     if type is not None:
         params["type"] = type
 
-    url_parts = list(urllib.parse.urlparse(url))
-    url_parts[4] = urllib.parse.urlencode(params)
-    url = urllib.parse.urlunparse(url_parts)
+    url = _build_url(url,params)
 
     response = client.get(url)
 
@@ -916,7 +915,7 @@ def list_items(
 
 def list_item_access_details(
     item: str | UUID = None,
-    type: Optional[str] = None,
+    type: str = None,
     workspace: Optional[str | UUID] = None,
     **kwargs,
 ) -> pd.DataFrame:
@@ -930,7 +929,7 @@ def list_item_access_details(
     item : str
         Name or id of the Fabric item.
     type : str, default=None
-        Type of Fabric item, default=None.
+        Type of Fabric item.
     workspace : str, default=None
         The Fabric workspace name or id.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -947,9 +946,9 @@ def list_item_access_details(
         )
         item = kwargs["item_name"]
         del kwargs["item_name"]
-
-    if item is None:
-        raise ValueError(f"{icons.red_dot} The parameter 'item' is mandatory.")
+    
+    if item is None or type is None:
+        raise ValueError(f"{icons.red_dot} The parameter 'item' and 'type' are mandatory.")
 
     client = fabric.FabricRestClient()
 
