@@ -835,7 +835,7 @@ def run_benchmark(
             "Dataset_Name": dataset,
             "Dataset_Id": dataset_id,
             "Query_Name": str(query_name),
-            "Query_Text": str(query_text),
+            "Query_Text": query_text,
             "Cache_Type": cache_type,
             "Duration": total_duration,
             "SE_Duration": se_duration,
@@ -855,9 +855,11 @@ def run_benchmark(
 
     df['Query_Text'] = df['Query_Text'].astype(str)
 
-    save_as_delta_table(
-        dataframe=df,
-        delta_table_name="SLL_PerfBenchmark",
-        write_mode="append",
-        schema=trace_schema,
-    )
+    return df
+
+    #save_as_delta_table(
+    #    dataframe=df,
+    #    delta_table_name="SLL_PerfBenchmark",
+    #    write_mode="append",
+    #    schema=trace_schema,
+    #)
