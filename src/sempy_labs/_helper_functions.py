@@ -16,9 +16,8 @@ from azure.core.credentials import TokenCredential, AccessToken
 import numpy as np
 from IPython.display import display, HTML
 
-def _build_url(
-    url : str, params : dict
-) -> str :
+
+def _build_url(url: str, params: dict) -> str:
     """
     Build the url with a list of parameters
     """
@@ -28,7 +27,7 @@ def _build_url(
 
     return url
 
- 
+
 def create_abfss_path(
     lakehouse_id: UUID, lakehouse_workspace_id: UUID, delta_table_name: str
 ) -> str:

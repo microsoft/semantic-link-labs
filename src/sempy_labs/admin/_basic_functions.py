@@ -88,8 +88,8 @@ def list_workspaces(
     if workspace_type is not None:
         params["type"] = workspace_type
 
-    url = _build_url(url,params)
-    
+    url = _build_url(url, params)
+
     response = client.get(path_or_url=url)
 
     if response.status_code != 200:
@@ -216,7 +216,7 @@ def assign_workspaces_to_capacity(
             dfW = list_workspaces()
         else:
             dfW = list_workspaces(capacity=source_capacity_id)
-        
+
         # Extract names and IDs that are mapped in dfW
         workspaces_names = dfW[dfW["Name"].isin(workspace)]["Name"].tolist()
         workspaces_ids = dfW[dfW["Id"].isin(workspace)]["Id"].tolist()
@@ -226,7 +226,9 @@ def assign_workspaces_to_capacity(
 
         # Identify unmapped workspaces
         unmapped_workspaces = [
-            item for item in workspace if item not in workspaces_names and item not in workspaces_ids
+            item
+            for item in workspace
+            if item not in workspaces_names and item not in workspaces_ids
         ]
 
     if len(workspace) != len(workspaces):
@@ -572,7 +574,7 @@ def list_modified_workspaces(
     if exclude_personal_workspaces is not None:
         params["excludePersonalWorkspaces"] = exclude_personal_workspaces
 
-    url = _build_url(url,params)
+    url = _build_url(url, params)
 
     response = client.get(url)
 
@@ -745,7 +747,7 @@ def list_datasets(
     if skip is not None:
         params["$skip"] = skip
 
-    url = _build_url(url,params)
+    url = _build_url(url, params)
 
     response = client.get(url)
 
@@ -873,7 +875,7 @@ def list_items(
     if type is not None:
         params["type"] = type
 
-    url = _build_url(url,params)
+    url = _build_url(url, params)
 
     response = client.get(url)
 
@@ -946,9 +948,11 @@ def list_item_access_details(
         )
         item = kwargs["item_name"]
         del kwargs["item_name"]
-    
+
     if item is None or type is None:
-        raise ValueError(f"{icons.red_dot} The parameter 'item' and 'type' are mandatory.")
+        raise ValueError(
+            f"{icons.red_dot} The parameter 'item' and 'type' are mandatory."
+        )
 
     client = fabric.FabricRestClient()
 
