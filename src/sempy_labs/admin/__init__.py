@@ -1,16 +1,16 @@
 from sempy_labs.admin._basic_functions import (
     assign_workspaces_to_capacity,
+    unassign_workspaces_from_capacity,
+    list_workspaces,
+    list_workspace_access_details,
+    list_modified_workspaces,
+    list_datasets,
+    list_reports,
     list_capacities,
     list_tenant_settings,
     list_capacities_delegated_tenant_settings,
-    unassign_workspaces_from_capacity,
-    list_workspaces,
-    list_datasets,
     list_access_entities,
-    list_workspace_access_details,
     list_activity_events,
-    list_modified_workspaces,
-    list_reports,
 )
 from sempy_labs.admin._domains import (
     list_domains,
