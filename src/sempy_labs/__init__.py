@@ -3,6 +3,7 @@ from sempy_labs._reflex import (
     create_activator,
     delete_activator,
     update_activator_definition,
+    get_activator_definition,
 )
 from sempy_labs._gateways import (
     list_gateway_members,
@@ -466,4 +467,5 @@ __all__ = [
     "create_activator",
     "delete_activator",
     "update_activator_definition",
+    "get_activator_definition",
 ]

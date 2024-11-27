@@ -6,8 +6,10 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     lro,
     _conv_b64,
+    _decode_b64,
 )
 from sempy.fabric.exceptions import FabricHTTPException
+import json
 
 
 def list_activators(workspace: Optional[str] = None) -> pd.DataFrame:
@@ -188,3 +190,53 @@ def update_activator_definition(
     print(
         f"{icons.green_dot} The '{activator}' activator has been updated within the '{workspace}' workspace."
     )
+
+
+def get_activator_definition(
+    activator: str, workspace: Optional[str] = None, decode: bool = True,
+) -> dict:
+    """
+    Gets the definition of an activator (reflex).
+
+    This is a wrapper function for the following API: `Items - Update Reflex Definition <https://learn.microsoft.com/rest/api/fabric/reflex/items/update-reflex-definition>`_.
+
+    Parameters
+    ----------
+    activator : str
+        The name of the activator/reflex.
+    definition : dict, default=None
+        The .json definition of an activator/reflex.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    decode : bool, default=True
+        If True, decodes the activator definition file into .json format.
+        If False, obtains the activator definition file in base64 format.
+
+    Returns
+    -------
+    dict
+        The activator definition.
+    """
+
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    item_id = fabric.resolve_item_id(
+        item_name=activator, type="Reflex", workspace=workspace
+    )
+    client = fabric.FabricRestClient()
+    response = client.post(
+        f"v1/workspaces/{workspace_id}/reflexes/{item_id}/getDefinition",
+    )
+
+    result = lro(client, response).json()
+    df_items = pd.json_normalize(result["definition"]["parts"])
+    df_items_filt = df_items[df_items["path"] == "ReflexEntities.json"]
+    payload = df_items_filt["payload"].iloc[0]
+
+    if decode:
+        result = json.loads(_decode_b64(payload))
+    else:
+        result = payload
+
+    return result
