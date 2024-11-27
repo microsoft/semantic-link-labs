@@ -34,6 +34,10 @@ Check out the video below for an introduction to Semantic Link, Semantic Link La
     * [Warm the cache of a Direct Lake semantic model after a refresh (using columns currently in memory)](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.directlake.html#sempy_labs.directlake.warm_direct_lake_cache_isresident)
     * [Warm the cache of a Direct Lake semantic model (via perspective)](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.directlake.html#sempy_labs.directlake.warm_direct_lake_cache_perspective)
     * [Visualize a refresh](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Semantic%20Model%20Refresh.ipynb)
+    * [Update the connection of a Direct Lake semantic model](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.directlake.html#sempy_labs.directlake.update_direct_lake_model_connection)
+    * [Dynamically generate a Direct Lake semantic model](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.directlake.html#sempy_labs.directlake.generate_direct_lake_semantic_model)
+    * [Check why a Direct Lake semantic model would fallback to DirectQuery](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.directlake.html#sempy_labs.directlake.check_fallback_reason)
+    * [View a measure dependency tree](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.measure_dependency_tree)
 * Reports
     * [Report Best Practice Analyzer (BPA)](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.report.html#sempy_labs.report.run_report_bpa)
     * [View report metadata](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Report%20Analysis.ipynb)
@@ -45,10 +49,13 @@ Check out the video below for an introduction to Semantic Link, Semantic Link La
 * Capacities
     * [Migrating a Power BI Premium capacity (P sku) to a Fabric capacity (F sku)](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Capacity%20Migration.ipynb)
     * [Migrating a Fabric Trial capacity (FT sku) to a Fabric capacity (F sku)](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Capacity%20Migration.ipynb)
-    * [Create](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.create_fabric_capacity)/[update](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.update_fabric_capacity)/[suspend](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.suspend_fabric_capacity)/[resume](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.resume_fabric_capacity) Fabric capacities.
+    * [Create](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.create_fabric_capacity)/[update](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.update_fabric_capacity)/[suspend](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.suspend_fabric_capacity)/[resume](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.resume_fabric_capacity) Fabric capacities
 * Lakehouses
     * [Optimize lakehouse tables](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.lakehouse.html#sempy_labs.lakehouse.optimize_lakehouse_tables)
     * [Vacuum lakehouse tables](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.lakehouse.html#sempy_labs.lakehouse.vacuum_lakehouse_tables)
+    * [Create](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.lakehouse.html#sempy_labs.lakehouse.create_shortcut_onelake), [delete](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.lakehouse.html#sempy_labs.lakehouse.delete_shortcut), and [view shortcuts](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.list_shortcuts)
+* Notebooks
+    * [Import a notebook from the web](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.import_notebook_from_web)    
 * APIs
     * Wrapper functions for [Power BI](https://learn.microsoft.com/rest/api/power-bi/), [Fabric](https://learn.microsoft.com/rest/api/fabric/articles/using-fabric-apis), and [Azure (Fabric Capacity)](https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities?view=rest-microsoftfabric-2023-11-01) APIs
 

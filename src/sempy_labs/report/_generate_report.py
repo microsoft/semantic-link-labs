@@ -179,7 +179,9 @@ def update_report_from_reportjson(
     )
 
 
-def get_report_definition(report: str, workspace: Optional[str] = None) -> pd.DataFrame:
+def get_report_definition(
+    report: str, workspace: Optional[str] = None, return_dataframe: bool = True
+) -> pd.DataFrame | dict:
     """
     Gets the collection of definition files of a report.
 
@@ -193,10 +195,12 @@ def get_report_definition(report: str, workspace: Optional[str] = None) -> pd.Da
         The Fabric workspace name in which the report resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    return_dataframe : bool, default=True
+        If True, returns a dataframe. If False, returns a json dictionary.
 
     Returns
     -------
-    pandas.DataFrame
+    pandas.DataFrame | dict
         The collection of report definition files within a pandas dataframe.
     """
 
@@ -209,9 +213,11 @@ def get_report_definition(report: str, workspace: Optional[str] = None) -> pd.Da
     )
 
     result = lro(client, response).json()
-    rdef = pd.json_normalize(result["definition"]["parts"])
 
-    return rdef
+    if return_dataframe:
+        return pd.json_normalize(result["definition"]["parts"])
+    else:
+        return result
 
 
 @log
