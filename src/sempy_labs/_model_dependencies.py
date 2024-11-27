@@ -193,13 +193,19 @@ def get_model_calc_dependencies(
     df["Done"] = (
         df["Referenced Object Type"].apply(lambda x: x not in objs).astype(bool)
     )
-    # Expand dependencies iteratively
+    processed_dependencies = set()
+
     while not df["Done"].all():
         incomplete_rows = df[df["Done"] == False]
         for _, row in incomplete_rows.iterrows():
             referenced_full_name = row["Referenced Full Object Name"]
+
+            # Skip already processed dependencies
+            if referenced_full_name in processed_dependencies:
+                df.loc[row.name, "Done"] = True
+                continue
+
             dep_filt = dep[dep["Full Object Name"] == referenced_full_name]
-            # Expand dependencies and update 'Done' status as needed
             new_rows = []
             for _, dependency in dep_filt.iterrows():
                 is_done = dependency["Referenced Object Type"] not in objs
@@ -218,9 +224,12 @@ def get_model_calc_dependencies(
                     "Parent Node": row["Referenced Object"],
                 }
                 new_rows.append(new_row)
+
+            # Add new rows and mark the current row as processed
             df = pd.concat([df, pd.DataFrame(new_rows)], ignore_index=True)
-            df.loc[df.index == row.name, "Done"] = True
-    # Finalize DataFrame and yield result
+            processed_dependencies.add(referenced_full_name)
+            df.loc[row.name, "Done"] = True
+
     df = df.drop(columns=["Done"])
 
     return df
