@@ -7,7 +7,7 @@ class ServicePrincipalTokenProvider(TokenProvider):
     """
     Implementation of the sempy.fabric.TokenProvider to be used with Service Principal.
 
-    For more information on Service Principal check `Application and service principal objects in Microsoft Entra ID <https://learn.microsoft.com/en-us/entra/identity-platform/app-objects-and-service-principals?tabs=browser#service-principal-object>`_
+    For more information on Service Principal see: `Application and service principal objects in Microsoft Entra ID <https://learn.microsoft.com/en-us/entra/identity-platform/app-objects-and-service-principals?tabs=browser#service-principal-object>`_
     """
 
     def __init__(self, credential: ClientSecretCredential):
@@ -19,7 +19,7 @@ class ServicePrincipalTokenProvider(TokenProvider):
         cls, tenant_id: str, client_id: str, client_secret: str
     ):
         """
-        Create the ServicePrincipalTokenProvider with the Service Principal information.
+        Generates the ServicePrincipalTokenProvider, providing the Service Principal information.
 
         ***USE THIS ONE ONLY FOR TEST PURPOSE. FOR PRODUCTION WE RECOMMEND CALLING ServicePrincipalTokenProvider.from_azure_key_vault()***
 
@@ -52,9 +52,9 @@ class ServicePrincipalTokenProvider(TokenProvider):
         key_vault_client_secret: str,
     ):
         """
-        Create the ServicePrincipalTokenProvider providing the information with the Service Principal information.
+        Generates the ServicePrincipalTokenProvider, providing the Azure Key Vault details.
 
-        For more information on Azure Key Vault check `About Azure Key Vault <https://learn.microsoft.com/en-us/azure/key-vault/general/overview>`_.
+        For more information on Azure Key Vault, `click here <https://learn.microsoft.com/en-us/azure/key-vault/general/overview>`_.
 
         Parameters
         ----------
