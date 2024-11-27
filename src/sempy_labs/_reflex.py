@@ -11,6 +11,23 @@ from sempy.fabric.exceptions import FabricHTTPException
 
 
 def list_activators(workspace: Optional[str] = None) -> pd.DataFrame:
+    """
+    Shows the activators (reflexes) within a workspace.
+
+    This is a wrapper function for the following API: `Items - List Reflexes <https://learn.microsoft.com/rest/api/fabric/reflex/items/list-reflexes>`_.
+
+    Parameters
+    ----------
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the activators (reflexes) within a workspace.
+    """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
@@ -35,6 +52,20 @@ def list_activators(workspace: Optional[str] = None) -> pd.DataFrame:
 
 
 def delete_activator(activator: str, workspace: Optional[str] = None):
+    """
+    Deletes an activator (reflex).
+
+    This is a wrapper function for the following API: `Items - Delete Reflex <https://learn.microsoft.com/rest/api/fabric/reflex/items/delete-reflex>`_.
+
+    Parameters
+    ----------
+    activator : str
+        The name of the activator/reflex.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
@@ -44,7 +75,25 @@ def delete_activator(activator: str, workspace: Optional[str] = None):
     print(f"{icons.green_dot} The '{activator}' activator within the '{workspace}' workspace has been deleted.")
 
 
-def create_activator(name: str, definition: Optional[str] = None, description: Optional[str] = None, workspace: Optional[str] = None):
+def create_activator(name: str, definition: Optional[dict] = None, description: Optional[str] = None, workspace: Optional[str] = None):
+    """
+    Creates an activator (reflex).
+
+    This is a wrapper function for the following API: `Items - Create Reflex <https://learn.microsoft.com/rest/api/fabric/reflex/items/create-reflex>`_.
+
+    Parameters
+    ----------
+    name : str
+        The name of the activator/reflex.
+    definition : dict, default=None
+        The .json definition of an activator/reflex.
+    description : str, default=None
+        The description of the activator/reflex.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
@@ -84,7 +133,23 @@ def create_activator(name: str, definition: Optional[str] = None, description: O
     )
 
 
-def update_activator_definition(activator: str, definition: str, workspace: Optional[str] = None):
+def update_activator_definition(activator: str, definition: dict, workspace: Optional[str] = None):
+    """
+    Updates the definition of an activator (reflex).
+
+    This is a wrapper function for the following API: `Items - Update Reflex Definition <https://learn.microsoft.com/rest/api/fabric/reflex/items/update-reflex-definition>`_.
+
+    Parameters
+    ----------
+    activator : str
+        The name of the activator/reflex.
+    definition : dict, default=None
+        The .json definition of an activator/reflex.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     item_id = fabric.resolve_item_id(item_name=activator, type='Reflex', workspace=workspace_id)
