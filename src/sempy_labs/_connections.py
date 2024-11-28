@@ -237,7 +237,7 @@ def list_item_connections(
     )
 
     client = fabric.FabricRestClient()
-    response = client.post(f"/v1/workspaces/{workspace_id}/items/{item_id}/connections")
+    response = client.get(f"/v1/workspaces/{workspace_id}/items/{item_id}/connections")
 
     df = pd.DataFrame(
         columns=[
