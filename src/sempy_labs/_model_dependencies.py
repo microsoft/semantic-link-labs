@@ -198,7 +198,8 @@ def get_model_calc_dependencies(
         incomplete_rows = df[df["Done"] == False]
         for _, row in incomplete_rows.iterrows():
             referenced_full_name = row["Referenced Full Object Name"]
-            dep_filt = dep[dep["Full Object Name"] == referenced_full_name]
+            referenced_object_type = row["Referenced Object Type"]
+            dep_filt = dep[(dep["Full Object Name"] == referenced_full_name) & (dep["Object Type"] == referenced_object_type)]
             # Expand dependencies and update 'Done' status as needed
             new_rows = []
             for _, dependency in dep_filt.iterrows():
