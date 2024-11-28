@@ -14,6 +14,7 @@ from sempy_labs._helper_functions import (
     save_as_delta_table,
     _resolve_workspace_capacity_name_id_sku,
     format_dax_object_name,
+    _conv_model_size,
 )
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from sempy_labs._clear_cache import clear_cache
@@ -668,7 +669,6 @@ def run_benchmark(
         workspace
     )
     dataset_id = resolve_dataset_id(dataset, workspace)
-
     cache_type = _validate_cache_type(cache_type)
 
     # Get RunId
@@ -692,14 +692,22 @@ def run_benchmark(
     time_stamp = datetime.datetime.now()
 
     def add_cols(df, run_id, time_stamp):
-        df.insert(0, "Workspace Name", workspace)
-        df.insert(1, "Dataset Name", dataset)
+        df.insert(0, "Capacity Name", capacity_name)
+        df.insert(1, "Capacity Id", capacity_id)
+        df.insert(2, "SKU", sku)
+        df.insert(3, "Region", region)
+        df.insert(4, "Workspace Name", workspace)
+        df.insert(5, "Workspace Id", workspace_id)
+        df.insert(6, "Dataset Name", dataset)
+        df.insert(7, "Dataset Id", dataset_id)
         df["RunId"] = run_id
         df["Timestamp"] = time_stamp
 
         return df
 
     def collect_metadata(dataset: str, run_id: int, workspace: Optional[str] = None):
+
+        from sempy_labs._list_functions import list_tables
 
         dfM = fabric.list_measures(dataset=dataset, workspace=workspace)[
             ["Table Name", "Measure Name", "Measure Expression"]
@@ -719,7 +727,7 @@ def run_benchmark(
             ]
         ]
         dfC = dfC[dfC["Type"] != "RowNumber"]
-        dfT = fabric.list_tables(dataset=dataset, workspace=workspace, extended=True)[
+        dfT = list_tables(dataset=dataset, workspace=workspace, extended=True)[
             ["Name", "Type", "Row Count"]
         ]
         dfT = dfT.rename(columns={"Name": "Table Name"})
@@ -741,15 +749,42 @@ def run_benchmark(
             ]
         ]
 
+        dfRLS = fabric.get_row_level_security_permissions(dataset=dataset, workspace=workspace)
+
+        total_size = dfC['Total Size'].sum()
+        total_size = _conv_model_size(db_total_size=total_size)
+        dfModel = pd.DataFrame({'Model Size': [total_size]})
+
         dfM = add_cols(dfM, run_id, time_stamp)
         dfC = add_cols(dfC, run_id, time_stamp)
         dfT = add_cols(dfT, run_id, time_stamp)
         dfR = add_cols(dfR, run_id, time_stamp)
         dfP = add_cols(dfP, run_id, time_stamp)
+        dfRLS = add_cols(dfRLS, run_id, time_stamp)
+        dfModel = add_cols(dfModel, run_id, time_stamp)
 
-        dfM_schema = {
+        dfModel_schema = {
+            "Capacity_Name": "string",
+            "Capacity_Id": "string",
+            "SKU": "string",
+            "Region": "string",
             "Workspace_Name": "string",
+            "Workspace_Id": "string",
             "Dataset_Name": "string",
+            "Dataset_Id": "string",
+            "Model_Size": "long",
+            "RunId": "long",
+            "Timestamp": "timestamp",
+        }
+        dfM_schema = {
+            "Capacity_Name": "string",
+            "Capacity_Id": "string",
+            "SKU": "string",
+            "Region": "string",
+            "Workspace_Name": "string",
+            "Workspace_Id": "string",
+            "Dataset_Name": "string",
+            "Dataset_Id": "string",
             "Table_Name": "string",
             "Measure_Name": "string",
             "Measure_Expression": "string",
@@ -757,8 +792,14 @@ def run_benchmark(
             "Timestamp": "timestamp",
         }
         dfC_schema = {
+            "Capacity_Name": "string",
+            "Capacity_Id": "string",
+            "SKU": "string",
+            "Region": "string",
             "Workspace_Name": "string",
+            "Workspace_Id": "string",
             "Dataset_Name": "string",
+            "Dataset_Id": "string",
             "Table_Name": "string",
             "Column_Name": "string",
             "Type": "string",
@@ -773,17 +814,30 @@ def run_benchmark(
             "Timestamp": "timestamp",
         }
         dfT_schema = {
+            "Capacity_Name": "string",
+            "Capacity_Id": "string",
+            "SKU": "string",
+            "Region": "string",
             "Workspace_Name": "string",
+            "Workspace_Id": "string",
             "Dataset_Name": "string",
+            "Dataset_Id": "string",
             "Table_Name": "string",
             "Type": "string",
             "Row_Count": "long",
+            "Table_Size": "long",
             "RunId": "long",
             "Timestamp": "timestamp",
         }
         dfP_schema = {
+            "Capacity_Name": "string",
+            "Capacity_Id": "string",
+            "SKU": "string",
+            "Region": "string",
             "Workspace_Name": "string",
+            "Workspace_Id": "string",
             "Dataset_Name": "string",
+            "Dataset_Id": "string",
             "Table_Name": "string",
             "Partition_Name": "string",
             "Mode": "string",
@@ -804,6 +858,8 @@ def run_benchmark(
             "Tables": [dfT, dfT_schema],
             "Relationships": [dfR, None],
             "Partitions": [dfP, dfP_schema],
+            "RowLevelSecurity": [dfRLS, None],
+            "Model": [dfModel, dfModel_schema],
         }
         print(f"{icons.in_progress} Saving semantic model metadata...")
         for name, (df, df_schema) in dfs.items():

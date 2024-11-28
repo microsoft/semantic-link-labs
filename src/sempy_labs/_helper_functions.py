@@ -1195,3 +1195,21 @@ def _is_valid_uuid(
         return True
     except ValueError:
         return False
+
+
+def _conv_model_size(db_total_size: int):
+
+    """
+    Converting to KB/MB/GB necessitates division by 1024 * 1000.
+    """
+
+    if db_total_size >= 1000000000:
+        y = db_total_size / (1024**3) * 1000000000
+    elif db_total_size >= 1000000:
+        y = db_total_size / (1024**2) * 1000000
+    elif db_total_size >= 1000:
+        y = db_total_size / (1024) * 1000
+    else:
+        y = db_total_size
+
+    return round(y)

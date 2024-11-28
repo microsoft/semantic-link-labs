@@ -14,6 +14,7 @@ from sempy_labs._helper_functions import (
     save_as_delta_table,
     resolve_workspace_capacity,
     _get_max_run_id,
+    _conv_model_size,
 )
 from sempy_labs._list_functions import list_relationships, list_tables
 from sempy_labs.lakehouse import lakehouse_attached, get_lakehouse_tables
@@ -396,19 +397,12 @@ def vertipaq_analyzer(
     export_Hier = dfH_filt.copy()
 
     # Model
-    # Converting to KB/MB/GB necessitates division by 1024 * 1000.
-    if db_total_size >= 1000000000:
-        y = db_total_size / (1024**3) * 1000000000
-    elif db_total_size >= 1000000:
-        y = db_total_size / (1024**2) * 1000000
-    elif db_total_size >= 1000:
-        y = db_total_size / (1024) * 1000
-    y = round(y)
+    model_size = _conv_model_size(db_total_size)
 
     dfModel = pd.DataFrame(
         {
             "Dataset Name": dataset,
-            "Total Size": y,
+            "Total Size": model_size,
             "Table Count": table_count,
             "Column Count": column_count,
             "Compatibility Level": compat_level,
