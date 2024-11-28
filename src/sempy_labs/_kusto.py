@@ -158,7 +158,7 @@ def semantic_model_logs(
         timespan_literal = "d"
     else:
         raise ValueError(
-            f"{icons.red_dot} The '{timespan_literal} timespan_format is not supported. Only 'day, 'hour', and 'minute' are supported."
+            f"{icons.red_dot} The '{timespan_literal} timespan_literal is not supported. Only 'day, 'hour', and 'minute' are supported."
         )
 
     if report is not None and (workspace is None or not isinstance(workspace, str)):
