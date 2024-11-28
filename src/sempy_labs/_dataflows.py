@@ -28,6 +28,8 @@ def list_dataflows(workspace: Optional[str] = None):
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    # Power BI Dataflow Gen1
     client = fabric.PowerBIRestClient()
     response = client.get(f"/v1.0/myorg/groups/{workspace_id}/dataflows")
     if response.status_code != 200:
@@ -43,14 +45,29 @@ def list_dataflows(workspace: Optional[str] = None):
             "Dataflow Name": v.get("name"),
             "Configured By": v.get("configuredBy"),
             "Users": [v.get("users")],
-            "Generation": v.get("generation"),
+            "Generation": 1,
         }
         df = pd.concat(
-            [df, pd.DataFrame(new_data, index=[0])],
+            [df, pd.DataFrame([new_data])],
             ignore_index=True,
         )
 
-    df["Generation"] = df["Generation"].astype(int)
+    # Fabric Dataflow Gen2
+    client = fabric.FabricRestClient()
+    response = client.get(f"/v1/workspaces/{workspace_id}/dataflows")
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    responses = pagination(client, response)
+
+    for r in responses:
+        for v in r.get("value", []):
+            new_data = {
+                "Dataflow Id": v.get("id"),
+                "Dataflow Name": v.get("displayName"),
+                "Generation": 2
+            }
+            df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
 
     return df
 
