@@ -1,3 +1,6 @@
+from sempy_labs._documentation import (
+    save_semantic_model_metadata,
+)
 from sempy_labs._external_data_shares import (
     list_external_data_shares_in_item,
     create_external_data_share,
@@ -377,4 +380,5 @@ __all__ = [
     "migrate_fabric_trial_capacity",
     "create_resource_group",
     "trace_dax",
+    "save_semantic_model_metadata",
 ]

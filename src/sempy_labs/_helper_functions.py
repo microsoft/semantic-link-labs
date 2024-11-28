@@ -434,11 +434,7 @@ def save_as_delta_table(
         TimestampType,
     )
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     if lakehouse is None:
         lakehouse_id = fabric.get_lakehouse_id()
@@ -501,9 +497,15 @@ def save_as_delta_table(
         ).save(filePath)
     else:
         spark_df.write.mode(write_mode).format("delta").save(filePath)
-    print(
-        f"{icons.green_dot} The dataframe has been saved as the '{delta_table_name}' table in the '{lakehouse}' lakehouse within the '{workspace}' workspace."
-    )
+
+    if write_mode == "append":
+        print(
+            f"{icons.green_dot} The dataframe has been appended to the '{delta_table_name}' table in the '{lakehouse}' lakehouse within the '{workspace}' workspace."
+        )
+    else:
+        print(
+            f"{icons.green_dot} The dataframe has been saved as the '{delta_table_name}' table in the '{lakehouse}' lakehouse within the '{workspace}' workspace."
+        )
 
 
 def language_validate(language: str):
@@ -1198,7 +1200,6 @@ def _is_valid_uuid(
 
 
 def _conv_model_size(db_total_size: int):
-
     """
     Converting to KB/MB/GB necessitates division by 1024 * 1000.
     """
