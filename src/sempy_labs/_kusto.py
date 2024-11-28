@@ -6,7 +6,11 @@ from sempy._utils._log import log
 import sempy_labs._icons as icons
 from typing import Optional, List
 from uuid import UUID
-from sempy_labs._helper_functions import resolve_workspace_name_and_id
+from sempy_labs._helper_functions import (
+    resolve_workspace_name_and_id,
+    create_abfss_path,
+    save_as_delta_table,
+)
 
 
 @log
@@ -144,10 +148,12 @@ def semantic_model_logs(
 
     if cluster_uri is None:
         dfK = list_kql_databases(workspace=workspace)
-        dfK_filt = dfK[dfK['KQL Database Name'] == 'Monitoring KQL database']
+        dfK_filt = dfK[dfK["KQL Database Name"] == "Monitoring KQL database"]
         if len(dfK_filt) == 0:
-            raise ValueError(f"{icons.red_dot} Workspace monitoring is not set up for the '{workspace_name}' workspace.")
-        cluster_uri = dfK_filt['Query Service URI'].iloc[0]
+            raise ValueError(
+                f"{icons.red_dot} Workspace monitoring is not set up for the '{workspace_name}' workspace."
+            )
+        cluster_uri = dfK_filt["Query Service URI"].iloc[0]
 
     timespan_literal = timespan_literal.lower()
     if timespan_literal.startswith("h"):
@@ -246,3 +252,82 @@ def semantic_model_logs(
     return query_kusto(
         cluster_uri=cluster_uri, query=query, database="Monitoring Eventhouse"
     )
+
+
+def _resolve_cluster_uri(workspace: Optional[str] = None) -> str:
+
+    from sempy_labs._kql_databases import list_kql_databases
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    dfK = list_kql_databases(workspace=workspace)
+    dfK_filt = dfK[dfK["KQL Database Name"] == "Monitoring KQL database"]
+    if len(dfK_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} Workspace monitoring is not set up for the '{workspace_name}' workspace."
+        )
+    cluster_uri = dfK_filt["Query Service URI"].iloc[0]
+
+    return cluster_uri
+
+
+def save_semantic_model_logs(
+    workspace: Optional[str] = None,
+    frequency: int = 1,
+    frequency_literal: str = "hour",
+):
+
+    from sempy_labs.lakehouse import get_lakehouse_tables
+    from pyspark.sql import SparkSession
+
+    delta_table_name = "SLL_SemanticModelLogs"
+    cluster_uri = _resolve_cluster_uri(workspace=workspace)
+
+    query = f"""
+        let StartDate = datetime_add('{frequency_literal}', -{frequency}, bin(now(), 1h));
+        let EndDate = bin(now(), 1h);
+        //let StartDate = datetime_add('day', -4, bin(now(), 1h));
+        //let EndDate = bin(now(), 1h);
+        SemanticModelLogs
+        | where Timestamp between (StartDate .. EndDate)
+        | extend ReportId = tostring(parse_json(dynamic_to_json(ApplicationContext)).Sources[0].ReportId)
+        | extend VisualId = tostring(parse_json(dynamic_to_json(ApplicationContext)).Sources[0].VisualId)
+        | extend UniqueId = hash(strcat((Timestamp), "_", OperationName, "_", OperationDetailName))
+    """
+
+    df = query_kusto(
+        cluster_uri=cluster_uri, database="Monitoring Eventhouse", query=query
+    )
+    if df.empty:
+        print(f"{icons.yellow_dot} No logs to capture in this time period.")
+        return
+
+    lakehouse_id = fabric.get_lakehouse_id()
+    lakehouse_workspace_id = fabric.get_workspace_id()
+    path = create_abfss_path(
+        lakehouse_id, lakehouse_workspace_id, delta_table_name=delta_table_name
+    )
+
+    dfLT = get_lakehouse_tables()
+    dfLT_filt = dfLT[dfLT["Table Name"] == delta_table_name]
+
+    if len(dfLT_filt) == 1:
+        spark = SparkSession.builder.getOrCreate()
+        existing_df = spark.read.format("delta").load(path)
+        df_spark = spark.createDataFrame(df)
+
+        # Filter out rows that already exist in the Delta table
+        incremental_df = df_spark.join(existing_df, "UniqueId", "left_anti")
+    else:
+        incremental_df = df_spark
+
+    incremental_df_pandas = incremental_df.toPandas()
+
+    # If the resulting DataFrame is not empty, save to Delta table
+    if not incremental_df_pandas.empty:
+        save_as_delta_table(
+            dataframe=incremental_df_pandas,  # Use the filtered DataFrame here
+            write_mode="append",
+            delta_table_name=delta_table_name,
+        )
+    else:
+        print(f"{icons.yellow_dot} No new logs to capture in this time period.")

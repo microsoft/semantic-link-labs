@@ -4528,17 +4528,19 @@ class TOMWrapper:
         import Microsoft.AnalysisServices.Tabular as TOM
 
         if self.is_direct_lake():
-            return 'Direct Lake'
+            return "Direct Lake"
 
         partitions = list(self.all_partitions())
         modes = {p.Mode for p in partitions}
 
         if all(mode == TOM.ModeType.Import for mode in modes):
-            return 'Import'
-        elif all(mode in {TOM.ModeType.DirectQuery, TOM.ModeType.Dual} for mode in modes):
-            return 'DirectQuery'
+            return "Import"
+        elif all(
+            mode in {TOM.ModeType.DirectQuery, TOM.ModeType.Dual} for mode in modes
+        ):
+            return "DirectQuery"
         else:
-            return 'Composite'
+            return "Composite"
         # TOM.ModeType.DirectQuery in modes and TOM.ModeType.Import in modes:
 
     def close(self):
