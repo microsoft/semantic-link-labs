@@ -226,7 +226,7 @@ def get_activator_definition(
     )
     client = fabric.FabricRestClient()
     response = client.post(
-        f"v1/workspaces/{workspace_id}/reflexes/{item_id}/getDefinition",
+        f"/v1/workspaces/{workspace_id}/reflexes/{item_id}/getDefinition",
     )
 
     result = lro(client, response).json()
