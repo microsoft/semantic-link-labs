@@ -248,7 +248,7 @@ def _resolve_dataflow_name_and_id(
 
 
 def get_dataflow_definition(
-    name: str, workspace: Optional[str] = None, decode: bool = True, type: Optional[str] = 'gen2'
+    name: str, workspace: Optional[str] = None, decode: bool = True,
 ) -> pd.DataFrame:
     """
     Obtains the definition of a dataflow.
@@ -264,38 +264,34 @@ def get_dataflow_definition(
         Defaults to None, which resolves to the workspace of the attached lakehouse
         or if no lakehouse is attached, resolves to the workspace of the notebook.
     decode : bool, optional
-        If True, decodes the dataflow definition file into JSON format. 
+        If True, decodes the dataflow definition file into JSON format.
         If False, obtains the dataflow definition file
         as a pandas DataFrame. Defaults to True.
-    type : str, optional
-        The generation type of the dataflow. Defaults to 'gen2'.
-        Valid options include ['gen1', 'gen2'], ['1', '2'], or ['powerbi', 'fabric'].
 
     Returns
     -------
     dict or pandas.DataFrame
-        A pandas DataFrame showing the data pipelines within a workspace or a dictionary with the dataflow definition.
+        A pandas DataFrame showing the dataflow within a workspace or a dictionary with the dataflow definition.
     """
 
     workspace = fabric.resolve_workspace_name(workspace)
     workspace_id = fabric.resolve_workspace_id(workspace)
+
     dataflow_name, item_id = _resolve_dataflow_name_and_id(dataflow=name, workspace=workspace)
 
-    if type in ['gen1', '1', 'powerbi']:
+    try:
+        # Fabric Dataflow Gen2
+        client = fabric.FabricRestClient()
+        response = client.post(
+            f"/v1/workspaces/{workspace_id}/items/{item_id}/getDefinition"
+        )
+    except:
+        # Power BI Dataflow Gen1
         client = fabric.PowerBIRestClient()
-        response = client.get(f"v1.0/myorg/groups/{workspace_id}/dataflows/{item_id}")
-    elif type in ['gen2', '2', 'fabric']:
-        # Placeholder for future API implementation
-        client = {}  
-        response = {}
-        raise ValueError(
-            f"The dataflow type '{type}' is not a valid option at this time and is a placeholder for future API implementation."
+        response = client.get(
+            f"v1.0/myorg/groups/{workspace_id}/dataflows/{item_id}"
         )
-    else:
-        raise ValueError(
-            f"The dataflow type '{type}' is not a valid option."
-        )
-    
+        
     result = lro(client, response).json()
 
     df = pd.json_normalize(result)
