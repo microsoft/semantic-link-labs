@@ -233,7 +233,7 @@ def assign_workspaces_to_capacity(
 
         if len(workspace) != len(workspaces):
             raise ValueError(
-                f"{icons.red_dot} The following workspaces are invalid: {unmapped_workspaces}."
+                f"{icons.red_dot} The following workspaces are invalid or not found in source capacity: {unmapped_workspaces}."
             )
 
     target_capacity_id = _resolve_capacity_name_and_id(target_capacity)[1]
