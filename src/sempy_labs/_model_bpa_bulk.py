@@ -150,7 +150,7 @@ def run_model_bpa_bulk(
 
                         if df.empty:
                             df = bpa_df
-                        if not bpa_df.empty:
+                        elif not bpa_df.empty:
                             df = pd.concat([df, bpa_df], ignore_index=True)
                         print(
                             f"{icons.green_dot} Collected Model BPA stats for the '{dataset_name}' semantic model within the '{wksp}' workspace."
