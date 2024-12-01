@@ -214,6 +214,7 @@ def assign_workspaces_to_capacity(
         if source_capacity is None:
             dfW = list_workspaces()
         else:
+            source_capacity_id = _resolve_capacity_name_and_id(source_capacity)[1]
             dfW = list_workspaces(capacity=source_capacity_id)
 
         # Extract names and IDs that are mapped in dfW
@@ -230,10 +231,10 @@ def assign_workspaces_to_capacity(
             if item not in workspaces_names and item not in workspaces_ids
         ]
 
-    if len(workspace) != len(workspaces):
-        raise ValueError(
-            f"{icons.red_dot} The following workspaces are invalid: {unmapped_workspaces}."
-        )
+        if len(workspace) != len(workspaces):
+            raise ValueError(
+                f"{icons.red_dot} The following workspaces are invalid or not found in source capacity: {unmapped_workspaces}."
+            )
 
     target_capacity_id = _resolve_capacity_name_and_id(target_capacity)[1]
 
