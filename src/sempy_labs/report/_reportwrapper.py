@@ -970,6 +970,7 @@ class ReportWrapper:
                 "Sparkline",
                 "Visual Calc",
                 "Format",
+                "Object Display Name",
             ]
         )
 
@@ -1038,23 +1039,26 @@ class ReportWrapper:
 
                 entity_property_pairs = find_entity_property_pairs(visual_json)
                 query_state = (
-                    visual_json.get("visual", {})
-                    .get("query", {})
-                    .get("queryState", {})
-                    .get("Values", {})
+                    visual_json.get("visual", {}).get("query", {}).get("queryState", {})
                 )
+
                 format_mapping = {}
-                for p in query_state.get("projections", []):
-                    query_ref = p.get("queryRef")
-                    fmt = p.get("format")
-                    if fmt is not None:
-                        format_mapping[query_ref] = fmt
+                obj_display_mapping = {}
+                for a, p in query_state.items():
+                    for proj in p.get("projections", []):
+                        query_ref = proj.get("queryRef")
+                        fmt = proj.get("format")
+                        obj_display_name = proj.get("displayName")
+                        if fmt is not None:
+                            format_mapping[query_ref] = fmt
+                        obj_display_mapping[query_ref] = obj_display_name
 
                 for object_name, properties in entity_property_pairs.items():
                     table_name = properties[0]
                     obj_full = f"{table_name}.{object_name}"
                     is_agg = properties[2]
                     format_value = format_mapping.get(obj_full)
+                    obj_display = obj_display_mapping.get(obj_full)
 
                     if is_agg:
                         for k, v in format_mapping.items():
@@ -1071,6 +1075,7 @@ class ReportWrapper:
                         "Sparkline": properties[4],
                         "Visual Calc": properties[3],
                         "Format": format_value,
+                        "Object Display Name": obj_display,
                     }
 
                     df = pd.concat(
