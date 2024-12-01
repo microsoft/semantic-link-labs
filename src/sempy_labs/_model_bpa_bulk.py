@@ -82,7 +82,7 @@ def run_model_bpa_bulk(
     if isinstance(workspace, str):
         workspace = [workspace]
 
-    dfW = fabric.list_workspaces()
+    dfW = fabric.list_workspaces("type ne 'AdminInsights'")
     if workspace is None:
         dfW_filt = dfW.copy()
     else:
