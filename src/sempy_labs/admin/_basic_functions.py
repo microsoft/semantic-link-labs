@@ -782,34 +782,18 @@ def list_activity_events(
     )
 
     resposeJson = {"activityEventEntities": []}
-
-    tic = "%27"
-    space = "%20"
     client = fabric.PowerBIRestClient()
 
-    params = {}
-    url = "/v1.0/myorg/admin/activityevents"
-
-    if start_dt is not None:
-        params["startDateTime"] = f"'{start_dt.isoformat(timespec='milliseconds')}'"
-
-    if end_dt is not None:
-        params["endDateTime"] = f"'{end_dt.isoformat(timespec='milliseconds')}'"
+    url = f"/v1.0/myorg/admin/activityevents?startDateTime='{start_time}'&endDateTime='{end_time}'"
 
     conditions = []
-
     if activity_filter is not None:
-        conditions.append(f"Activity{space}eq{space}{tic}{activity_filter}{tic}")
-
+        conditions.append(f"Activity eq '{activity_filter}'")
     if user_id_filter is not None:
-        conditions.append(f"UserId{space}eq{space}{tic}{user_id_filter}{tic}")
+        conditions.append(f"UserId eq '{user_id_filter}'")
 
     if conditions:
-        params["filder"] = f"{f'{space}and{space}'.join(conditions)}"
-
-    url_parts = list(urllib.parse.urlparse(url))
-    url_parts[4] = urllib.parse.urlencode(params)
-    url = urllib.parse.urlunparse(url_parts)
+        url += f"&$filter={f' and '.join(conditions)}"
 
     response = client.get(url)
 
@@ -853,11 +837,9 @@ def list_activity_events(
 
     if return_dataframe:
         df["Creation Time"] = pd.to_datetime(df["Creation Time"])
-        activity_events = df
+        return df
     else:
-        activity_events = resposeJson
-
-    return activity_events
+        return resposeJson
 
 
 def _resolve_capacity_name_and_id(
