@@ -235,7 +235,7 @@ def list_item_access_details(
 
     workspace_name, workspace_id = _resolve_workspace_name_and_id(
         workspace, token_provider=token_provider
-    )W
+    )
     item_name, item_id = _resolve_item_name_and_id(
         item=item,
         type=type,
