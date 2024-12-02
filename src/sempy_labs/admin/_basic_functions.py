@@ -781,9 +781,8 @@ def list_activity_events(
         ]
     )
 
-    resposeJson = {"activityEventEntities": []}
+    response_json = {"activityEventEntities": []}
     client = fabric.PowerBIRestClient()
-
     url = f"/v1.0/myorg/admin/activityevents?startDateTime='{start_time}'&endDateTime='{end_time}'"
 
     conditions = []
@@ -833,13 +832,15 @@ def list_activity_events(
                     ignore_index=True,
                 )
         else:
-            resposeJson["activityEventEntities"].extend(r.get("activityEventEntities"))
+            response_json["activityEventEntities"].extend(
+                r.get("activityEventEntities")
+            )
 
     if return_dataframe:
         df["Creation Time"] = pd.to_datetime(df["Creation Time"])
         return df
     else:
-        return resposeJson
+        return response_json
 
 
 def _resolve_capacity_name_and_id(
