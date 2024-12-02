@@ -181,9 +181,8 @@ def assign_workspaces_to_capacity(
     source_capacity: Optional[str | UUID] = None,
     target_capacity: Optional[str | UUID] = None,
     workspace: Optional[str | List[str] | UUID | List[UUID]] = None,
-    token_provider: Optional[str] = None,
 ):
-    f"""
+    """
     Assigns a workspace to a capacity. This function is the admin version.
 
     This is a wrapper function for the following API: `Admin - Capacities AssignWorkspacesToCapacity <https://learn.microsoft.com/rest/api/power-bi/admin/capacities-assign-workspaces-to-capacity>`_.
@@ -197,8 +196,6 @@ def assign_workspaces_to_capacity(
     workspace : str | List[str] | UUID | List[UUID], default=None
         The name or id of the workspace(s).
         Defaults to None which resolves to migrating all workspaces within the source capacity to the target capacity.
-    token_provider : str, default=None
-        {icons.token_provider_desc}
     """
     if target_capacity is None:
         raise ValueError(
@@ -213,18 +210,18 @@ def assign_workspaces_to_capacity(
     if workspace is None:
         source_capacity_id = _resolve_capacity_name_and_id(source_capacity)[1]
         dfW = list_workspaces(
-            capacity=source_capacity_id, token_provider=token_provider
+            capacity=source_capacity_id
         )
         workspaces = dfW["Id"].tolist()
     else:
         if isinstance(workspace, str) or isinstance(workspace, UUID):
             workspace = [workspace]
         if source_capacity is None:
-            dfW = list_workspaces(token_provider=token_provider)
+            dfW = list_workspaces()
         else:
             source_capacity_id = _resolve_capacity_name_and_id(source_capacity)[1]
             dfW = list_workspaces(
-                capacity=source_capacity_id, token_provider=token_provider
+                capacity=source_capacity_id
             )
 
         # Extract names and IDs that are mapped in dfW
@@ -261,7 +258,7 @@ def assign_workspaces_to_capacity(
             ]
         }
 
-        client = fabric.FabricRestClient(token_provider=token_provider)
+        client = fabric.FabricRestClient()
 
         response = client.post(
             "/v1.0/myorg/admin/capacities/AssignWorkspaces",
@@ -277,9 +274,8 @@ def assign_workspaces_to_capacity(
 
 def unassign_workspaces_from_capacity(
     workspaces: str | List[str] | UUID | List[UUID],
-    token_provider: Optional[str] = None,
 ):
-    f"""
+    """
     Unassigns workspace(s) from their capacity.
 
     This is a wrapper function for the following API: `Admin - Capacities UnassignWorkspacesFromCapacity <https://learn.microsoft.com/rest/api/power-bi/admin/capacities-unassign-workspaces-from-capacity>`_.
@@ -288,13 +284,11 @@ def unassign_workspaces_from_capacity(
     ----------
     workspaces : str | List[str] | UUID | List[UUID]
         The Fabric workspace name(s) or id(s).
-    token_provider : str, default=None
-        {icons.token_provider_desc}
     """
     if isinstance(workspaces, str):
         workspaces = [workspaces]
 
-    dfW = list_workspaces(token_provider=token_provider)
+    dfW = list_workspaces()
     workspacesIds = dfW[dfW["Name"].isin(workspaces)]["Id"].tolist()
     workspacesIds = workspacesIds + dfW[dfW["Id"].isin(workspaces)]["Id"].tolist()
 
@@ -305,7 +299,7 @@ def unassign_workspaces_from_capacity(
 
     payload = {"workspacesToUnassign": workspacesIds}
 
-    client = fabric.PowerBIRestClient(token_provider=token_provider)
+    client = fabric.PowerBIRestClient()
     response = client.post(
         "/v1.0/myorg/admin/capacities/UnassignWorkspaces",
         json=payload,
@@ -372,8 +366,9 @@ def list_tenant_settings(token_provider: Optional[str] = None) -> pd.DataFrame:
 
 def list_capacities_delegated_tenant_settings(
     return_dataframe: bool = True,
+    token_provider: Optional[str] = None,
 ) -> pd.DataFrame | dict:
-    """
+    f"""
     Returns list of tenant setting overrides that override at the capacities.
 
     This is a wrapper function for the following API: `Tenants - List Capacities Tenant Settings Overrides <https://learn.microsoft.com/rest/api/fabric/admin/tenants/list-capacities-tenant-settings-overrides>`_.
@@ -382,6 +377,8 @@ def list_capacities_delegated_tenant_settings(
     ----------
     return_dataframe : bool, default=True
         If True, returns a dataframe. If False, returns a dictionary.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -403,7 +400,7 @@ def list_capacities_delegated_tenant_settings(
         ]
     )
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get("/v1/admin/capacities/delegatedTenantSettingOverrides")
 
     if response.status_code != 200:
@@ -463,8 +460,9 @@ def list_modified_workspaces(
     modified_since: Optional[str] = None,
     exclude_inactive_workspaces: Optional[bool] = False,
     exclude_personal_workspaces: Optional[bool] = False,
+    token_provider: Optional[str] = None,
 ) -> pd.DataFrame:
-    """
+    f"""
     Gets a list of workspace IDs in the organization.
 
     This is a wrapper function for the following API: `Admin - WorkspaceInfo GetModifiedWorkspaces <https://learn.microsoft.com/rest/api/power-bi/admin/workspace-info-get-modified-workspaces>`_.
@@ -477,13 +475,15 @@ def list_modified_workspaces(
         Whether to exclude inactive workspaces.
     exclude_personal_workspaces : bool, default=False
         Whether to exclude personal workspaces.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
     pandas.DataFrame
         A pandas dataframe showing a list of workspace IDs in the organization.
     """
-    client = fabric.PowerBIRestClient()
+    client = fabric.PowerBIRestClient(token_provider=token_provider)
 
     params = {}
 
@@ -517,8 +517,9 @@ def list_datasets(
     top: Optional[int] = None,
     filter: Optional[str] = None,
     skip: Optional[int] = None,
+    token_provider: Optional[str] = None,
 ) -> pd.DataFrame:
-    """
+    f"""
     Shows a list of datasets for the organization.
 
     This is a wrapper function for the following API: `Admin - Datasets GetDatasetsAsAdmin <https://learn.microsoft.com/rest/api/power-bi/admin/datasets-get-datasets-as-admin>`_.
@@ -531,8 +532,8 @@ def list_datasets(
         Returns a subset of a results based on Odata filter query parameter condition.
     skip : int, default=None
         Skips the first n results.
-    token_provider : Optional[TokenProvider] = None,
-        Authentication provider used to be use in the request. Supports Service Principal.
+    token_provider : Optional[str] = None,
+        {icons.token_provider_desc}
 
     Returns
     -------
