@@ -391,7 +391,7 @@ def get_semantic_model_definition(
     dataset : str
         Name of the semantic model.
     format : str, default="TMSL"
-        The output format. Valid options are "TMSL" or "TMDL". "TMSL" returns the .bim file whereas "TMDL" returns the collection of TMDL files.
+        The output format. Valid options are "TMSL" or "TMDL". "TMSL" returns the .bim file whereas "TMDL" returns the collection of TMDL files. Can also enter 'bim' for the TMSL version.
     workspace : str, default=None
         The Fabric workspace name in which the semantic model resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -402,9 +402,8 @@ def get_semantic_model_definition(
 
     Returns
     -------
-    pandas.DataFrame | dict
+    pandas.DataFrame | dict | List
         A pandas dataframe with the semantic model definition or the file or files comprising the semantic model definition.
-
     """
 
     valid_formats = ['TMSL', 'TMDL']
