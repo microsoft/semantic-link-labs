@@ -19,9 +19,10 @@ def _resolve_item_id(
     item_name: str,
     type: Optional[str] = None,
     workspace: Optional[str | UUID] = None,
+    token_provider: Optional[str] = None,
 ) -> UUID:
 
-    dfI = list_items(workspace=workspace, type=type)
+    dfI = list_items(workspace=workspace, type=type, token_provider=token_provider)
     dfI_filt = dfI[dfI["Item Name"] == item_name]
 
     if len(dfI_filt) == 0:
@@ -36,6 +37,7 @@ def _resolve_item_name_and_id(
     item: str,
     type: Optional[str] = None,
     workspace: Optional[str | UUID] = None,
+    token_provider: Optional[str] = None,
     **kwargs,
 ) -> Tuple[str, UUID]:
     if "item_name" in kwargs:
@@ -45,7 +47,9 @@ def _resolve_item_name_and_id(
         item = item_name
         del kwargs["item_name"]
 
-    dfI = list_items(workspace=workspace, type=type, item=item)
+    dfI = list_items(
+        workspace=workspace, type=type, item=item, token_provider=token_provider
+    )
 
     if len(dfI) > 1:
         raise ValueError(
@@ -69,9 +73,10 @@ def list_items(
     state: Optional[str] = None,
     type: Optional[str] = None,
     item: Optional[str | UUID] = None,
+    token_provider: Optional[str] = None,
     **kwargs,
 ) -> pd.DataFrame:
-    """
+    f"""
     Shows a list of active Fabric and Power BI items.
 
     This is a wrapper function for the following API: `Items - List Items <https://learn.microsoft.com/rest/api/fabric/admin/items/list-items>`_.
@@ -90,6 +95,8 @@ def list_items(
         The item type.
     item : str | UUID, default=None
         Item id or name to filter the list.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -120,17 +127,21 @@ def list_items(
         ]
     )
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
 
     params = {}
 
     url = "/v1/admin/items"
 
     if capacity is not None:
-        params["capacityId"] = _resolve_capacity_name_and_id(capacity)[1]
+        params["capacityId"] = _resolve_capacity_name_and_id(
+            capacity, token_provider=token_provider
+        )[1]
 
     if workspace is not None:
-        params["workspaceId"] = _resolve_workspace_name_and_id(workspace)[1]
+        params["workspaceId"] = _resolve_workspace_name_and_id(
+            workspace, token_provider=token_provider
+        )[1]
 
     if state is not None:
         params["state"] = state
@@ -182,9 +193,10 @@ def list_item_access_details(
     item: str | UUID = None,
     type: str = None,
     workspace: Optional[str | UUID] = None,
+    token_provider: Optional[str] = None,
     **kwargs,
 ) -> pd.DataFrame:
-    """
+    f"""
     Returns a list of users (including groups and service principals) and lists their workspace roles.
 
     This is a wrapper function for the following API: `Items - List Item Access Details <https://learn.microsoft.com/rest/api/fabric/admin/items/list-item-access-details>`_.
@@ -199,6 +211,8 @@ def list_item_access_details(
         The Fabric workspace name or id.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -217,11 +231,16 @@ def list_item_access_details(
             f"{icons.red_dot} The parameter 'item' and 'type' are mandatory."
         )
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
 
-    workspace_name, workspace_id = _resolve_workspace_name_and_id(workspace)
+    workspace_name, workspace_id = _resolve_workspace_name_and_id(
+        workspace, token_provider=token_provider
+    )W
     item_name, item_id = _resolve_item_name_and_id(
-        item=item, type=type, workspace=workspace_name
+        item=item,
+        type=type,
+        workspace=workspace_name,
+        token_provider=token_provider,
     )
 
     df = pd.DataFrame(

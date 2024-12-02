@@ -5,13 +5,20 @@ from sempy_labs._helper_functions import (
 )
 import pandas as pd
 from sempy_labs.admin._basic_functions import list_workspaces
+from typing import Optional
+import sempy_labs._icons as icons
 
 
-def list_git_connections() -> pd.DataFrame:
-    """
+def list_git_connections(token_provider: Optional[str] = None) -> pd.DataFrame:
+    f"""
     Shows a list of Git connections.
 
     This is a wrapper function for the following API: `Workspaces - List Git Connections <https://learn.microsoft.com/rest/api/fabric/admin/workspaces/list-git-connections>`_.
+
+    Parameters
+    ----------
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -19,7 +26,7 @@ def list_git_connections() -> pd.DataFrame:
         A pandas dataframe showing a list of Git connections.
     """
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get("/v1/admin/workspaces/discoverGitConnections")
 
     df = pd.DataFrame(
@@ -56,7 +63,7 @@ def list_git_connections() -> pd.DataFrame:
 
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    dfW = list_workspaces()
+    dfW = list_workspaces(token_provider=token_provider)
     df = pd.merge(
         df, dfW[["Id", "Name"]], left_on="Workspace Id", right_on="Id", how="left"
     )

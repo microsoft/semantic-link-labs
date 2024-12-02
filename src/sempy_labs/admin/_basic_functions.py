@@ -77,7 +77,9 @@ def list_workspaces(
     params = {}
 
     if capacity is not None:
-        params["capacityId"] = _resolve_capacity_name_and_id(capacity)[1]
+        params["capacityId"] = _resolve_capacity_name_and_id(
+            capacity, token_provider=token_provider
+        )[1]
 
     if workspace is not None and not _is_valid_uuid(workspace):
         params["name"] = workspace
@@ -209,9 +211,7 @@ def assign_workspaces_to_capacity(
 
     if workspace is None:
         source_capacity_id = _resolve_capacity_name_and_id(source_capacity)[1]
-        dfW = list_workspaces(
-            capacity=source_capacity_id
-        )
+        dfW = list_workspaces(capacity=source_capacity_id)
         workspaces = dfW["Id"].tolist()
     else:
         if isinstance(workspace, str) or isinstance(workspace, UUID):
@@ -220,9 +220,7 @@ def assign_workspaces_to_capacity(
             dfW = list_workspaces()
         else:
             source_capacity_id = _resolve_capacity_name_and_id(source_capacity)[1]
-            dfW = list_workspaces(
-                capacity=source_capacity_id
-            )
+            dfW = list_workspaces(capacity=source_capacity_id)
 
         # Extract names and IDs that are mapped in dfW
         workspaces_names = dfW[dfW["Name"].isin(workspace)]["Name"].tolist()
@@ -564,7 +562,7 @@ def list_datasets(
         ]
     )
 
-    client = fabric.PowerBIRestClient()
+    client = fabric.PowerBIRestClient(token_provider=token_provider)
 
     params = {}
     url = "/v1.0/myorg/admin/datasets"
@@ -633,8 +631,9 @@ def list_datasets(
 
 def list_access_entities(
     user_email_address: str,
+    token_provider: Optional[str] = None,
 ) -> pd.DataFrame:
-    """
+    f"""
     Shows a list of permission details for Fabric and Power BI items the specified user can access.
 
     This is a wrapper function for the following API: `Users - List Access Entities <https://learn.microsoft.com/rest/api/fabric/admin/users/list-access-entities>`_.
@@ -643,6 +642,8 @@ def list_access_entities(
     ----------
     user_email_address : str
         The user's email address.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -658,7 +659,7 @@ def list_access_entities(
             "Additional Permissions",
         ]
     )
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
 
     response = client.get(f"/v1/admin/users/{user_email_address}/access")
 
@@ -684,9 +685,10 @@ def list_access_entities(
 
 
 def list_workspace_access_details(
-    workspace: Optional[Union[str, UUID]] = None
+    workspace: Optional[Union[str, UUID]] = None,
+    token_provider: Optional[str] = None,
 ) -> pd.DataFrame:
-    """
+    f"""
     Shows a list of users (including groups and Service Principals) that have access to the specified workspace.
 
     This is a wrapper function for the following API: `Workspaces - List Workspace Access Details <https://learn.microsoft.com/rest/api/fabric/admin/workspaces/list-workspace-access-details>`_.
@@ -697,13 +699,16 @@ def list_workspace_access_details(
         The Fabric workspace name or id.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     Returns
     -------
     pandas.DataFrame
         A pandas dataframe showing a list of users (including groups and Service Principals) that have access to the specified workspace.
     """
-    workspace_name, workspace_id = _resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = _resolve_workspace_name_and_id(
+        workspace, token_provider=token_provider
+    )
 
     df = pd.DataFrame(
         columns=[
@@ -713,10 +718,11 @@ def list_workspace_access_details(
             "Workspace Name",
             "Workspace Id",
             "Workspace Role",
+            s,
         ]
     )
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
 
     response = client.get(f"/v1/admin/workspaces/{workspace_id}/users")
     if response.status_code != 200:
@@ -742,8 +748,9 @@ def list_activity_events(
     activity_filter: Optional[str] = None,
     user_id_filter: Optional[str] = None,
     return_dataframe: Optional[bool] = True,
+    token_provider: Optional[str] = None,
 ) -> pd.DataFrame | dict:
-    """
+    f"""
     Shows a list of audit activity events for a tenant.
 
     This is a wrapper function for the following API: `Admin - Get Activity Events <https://learn.microsoft.com/rest/api/power-bi/admin/get-activity-events>`_.
@@ -760,6 +767,8 @@ def list_activity_events(
         Email address of the user.
     return_dataframe : bool, default=True
         If True the response is a pandas.DataFrame. If False returns the original Json. Default True
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -801,7 +810,7 @@ def list_activity_events(
     )
 
     response_json = {"activityEventEntities": []}
-    client = fabric.PowerBIRestClient()
+    client = fabric.PowerBIRestClient(token_provider=token_provider)
     url = f"/v1.0/myorg/admin/activityevents?startDateTime='{start_time}'&endDateTime='{end_time}'"
 
     conditions = []
@@ -864,9 +873,10 @@ def list_activity_events(
 
 def _resolve_capacity_name_and_id(
     capacity: str | UUID,
+    token_provider: Optional[str] = None,
 ) -> Tuple[str, UUID]:
 
-    dfC = list_capacities(capacity=capacity)
+    dfC = list_capacities(capacity=capacity, token_provider=token_provider)
     try:
         capacity_name = dfC["Capacity Name"].iloc[0]
         capacity_id = dfC["Capacity Id"].iloc[0]
@@ -876,7 +886,7 @@ def _resolve_capacity_name_and_id(
     return capacity_name, capacity_id
 
 
-def _list_capacities_meta() -> pd.DataFrame:
+def _list_capacities_meta(token_provider: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the a list of capacities and their properties. This function is the admin version.
 
@@ -888,7 +898,7 @@ def _list_capacities_meta() -> pd.DataFrame:
         A pandas dataframe showing the capacities and their properties
     """
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
 
     df = pd.DataFrame(
         columns=["Capacity Id", "Capacity Name", "Sku", "Region", "State", "Admins"]
@@ -918,9 +928,10 @@ def _list_capacities_meta() -> pd.DataFrame:
 
 def _resolve_workspace_name_and_id(
     workspace: str | UUID,
+    token_provider: Optional[str] = None,
 ) -> Tuple[str, UUID]:
 
-    dfW = list_workspaces(workspace=workspace)
+    dfW = list_workspaces(workspace=workspace, token_provider=token_provider)
     try:
         workspace_name = dfW["Name"].iloc[0]
         workspace_id = dfW["Id"].iloc[0]
@@ -931,12 +942,26 @@ def _resolve_workspace_name_and_id(
 
 
 def list_reports(
-    top: Optional[int] = None, skip: Optional[int] = None, filter: Optional[str] = None
+    top: Optional[int] = None,
+    skip: Optional[int] = None,
+    filter: Optional[str] = None,
+    token_provider: Optional[str] = None,
 ) -> pd.DataFrame:
-    """
+    f"""
     Shows a list of reports for the organization.
 
     This is a wrapper function for the following API: `Admin - Reports GetReportsAsAdmin <https://learn.microsoft.com/rest/api/power-bi/admin/reports-get-reports-as-admin>`_.
+
+    Parameters
+    ----------
+    top : int, default=None
+        Returns only the first n results.
+    skip : int, default=None
+        Skips the first n results.
+    filter : str, default=None
+        Returns a subset of a results based on Odata filter query parameter condition.
+    token_provider : Optional[str] = None,
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -974,7 +999,7 @@ def list_reports(
 
     url.rstrip("$").rstrip("?")
 
-    client = fabric.PowerBIRestClient()
+    client = fabric.PowerBIRestClient(token_provider=token_provider)
     response = client.get(url)
 
     if response.status_code != 200:
