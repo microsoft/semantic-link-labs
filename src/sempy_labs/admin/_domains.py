@@ -5,6 +5,7 @@ from sempy_labs._helper_functions import lro
 from sempy.fabric.exceptions import FabricHTTPException
 import pandas as pd
 from uuid import UUID
+from sempy_labs.admin._basic_functions import list_workspaces
 
 
 def resolve_domain_id(domain_name: str) -> UUID:
@@ -302,7 +303,7 @@ def assign_domain_workspaces(domain_name: str, workspace_names: str | List[str])
     if isinstance(workspace_names, str):
         workspace_names = [workspace_names]
 
-    dfW = fabric.list_workspaces()
+    dfW = list_workspaces()
 
     # Check for invalid capacities
     invalid_workspaces = [
@@ -379,7 +380,7 @@ def unassign_domain_workspaces(domain_name: str, workspace_names: str | List[str
     if isinstance(workspace_names, str):
         workspace_names = [workspace_names]
 
-    dfW = fabric.list_workspaces()
+    dfW = list_workspaces()
 
     # Check for invalid capacities
     invalid_workspaces = [
