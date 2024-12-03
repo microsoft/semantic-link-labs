@@ -8,14 +8,16 @@ from uuid import UUID
 from sempy_labs.admin._basic_functions import list_workspaces
 
 
-def resolve_domain_id(domain_name: str) -> UUID:
-    """
+def resolve_domain_id(domain_name: str, token_provider: Optional[str] = None) -> UUID:
+    f"""
     Obtains the domain Id for a given domain name.
 
     Parameters
     ----------
     domain_name : str
         The domain name
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -23,7 +25,7 @@ def resolve_domain_id(domain_name: str) -> UUID:
         The domain Id.
     """
 
-    dfL = list_domains()
+    dfL = list_domains(token_provider=token_provider)
     dfL_filt = dfL[dfL["Domain Name"] == domain_name]
     if len(dfL_filt) == 0:
         raise ValueError(f"{icons.red_dot} '{domain_name}' is not a valid domain name.")
@@ -31,8 +33,10 @@ def resolve_domain_id(domain_name: str) -> UUID:
     return dfL_filt["Domain ID"].iloc[0]
 
 
-def list_domains(non_empty_only: bool = False) -> pd.DataFrame:
-    """
+def list_domains(
+    non_empty_only: bool = False, token_provider: Optional[str] = None
+) -> pd.DataFrame:
+    f"""
     Shows a list of domains.
 
     This is a wrapper function for the following API: `Domains - List Domains <https://learn.microsoft.com/rest/api/fabric/admin/domains/list-domains>`_.
@@ -42,6 +46,8 @@ def list_domains(non_empty_only: bool = False) -> pd.DataFrame:
     non_empty_only : bool, default=False
         When True, only return domains that have at least one workspace containing an item.
         Defaults to False.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -59,7 +65,7 @@ def list_domains(non_empty_only: bool = False) -> pd.DataFrame:
         ]
     )
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     url = "/v1/admin/domains"
     if non_empty_only:
         url = f"{url}?nonEmptyOnly=True"
@@ -81,8 +87,10 @@ def list_domains(non_empty_only: bool = False) -> pd.DataFrame:
     return df
 
 
-def list_domain_workspaces(domain_name: str) -> pd.DataFrame:
-    """
+def list_domain_workspaces(
+    domain_name: str, token_provider: Optional[str] = None
+) -> pd.DataFrame:
+    f"""
     Shows a list of workspaces within the domain.
 
     This is a wrapper function for the following API: `Domains - List Domain Workspaces <https://learn.microsoft.com/rest/api/fabric/admin/domains/list-domain-workspaces>`_.
@@ -91,6 +99,8 @@ def list_domain_workspaces(domain_name: str) -> pd.DataFrame:
     ----------
     domain_name : str
         The domain name.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -98,11 +108,11 @@ def list_domain_workspaces(domain_name: str) -> pd.DataFrame:
         A pandas dataframe showing a list of workspaces within the domain.
     """
 
-    domain_id = resolve_domain_id(domain_name)
+    domain_id = resolve_domain_id(domain_name, token_provider=token_provider)
 
     df = pd.DataFrame(columns=["Workspace ID", "Workspace Name"])
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get(f"/v1/admin/domains/{domain_id}/workspaces")
 
     if response.status_code != 200:

@@ -11,7 +11,6 @@ from sempy_labs._helper_functions import (
 import numpy as np
 import pandas as pd
 from dateutil.parser import parse as dtparser
-import urllib.parse
 
 
 def list_workspaces(
@@ -19,9 +18,10 @@ def list_workspaces(
     workspace: Optional[str | UUID] = None,
     workspace_state: Optional[str] = None,
     workspace_type: Optional[str] = None,
+    token_provider: Optional[str] = None,
     **kwargs,
 ) -> pd.DataFrame:
-    """
+    f"""
     Lists workspaces for the organization. This function is the admin version of list_workspaces.
 
     This is a wrapper function for the following API: `Workspaces - List Workspaces - REST API (Admin) <https://learn.microsoft.com/en-us/rest/api/fabric/admin/workspaces/list-workspaces>`_.
@@ -36,7 +36,8 @@ def list_workspaces(
         Return only the workspace with the requested state. You can find the possible states in `Workspace States <https://learn.microsoft.com/en-us/rest/api/fabric/admin/workspaces/list-workspaces?tabs=HTTP#workspacestate>`_.
     workspace_type : str, default=None
         Return only the workspace of the specific type. You can find the possible types in `Workspace Types <https://learn.microsoft.com/en-us/rest/api/fabric/admin/workspaces/list-workspaces?tabs=HTTP#workspacetype>`_.
-
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     Returns
     -------
     pandas.DataFrame
@@ -60,7 +61,7 @@ def list_workspaces(
         )
         del kwargs["skip"]
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
 
     df = pd.DataFrame(
         columns=[
@@ -76,7 +77,9 @@ def list_workspaces(
     params = {}
 
     if capacity is not None:
-        params["capacityId"] = _resolve_capacity_name_and_id(capacity)[1]
+        params["capacityId"] = _resolve_capacity_name_and_id(
+            capacity, token_provider=token_provider
+        )[1]
 
     if workspace is not None and not _is_valid_uuid(workspace):
         params["name"] = workspace
@@ -124,8 +127,9 @@ def list_workspaces(
 
 def list_capacities(
     capacity: Optional[str | UUID] = None,
+    token_provider: Optional[str] = None,
 ) -> pd.DataFrame:
-    """
+    f"""
     Shows the a list of capacities and their properties. This function is the admin version.
 
     This is a wrapper function for the following API: `Admin - Get Capacities As Admin <https://learn.microsoft.com/rest/api/power-bi/admin/get-capacities-as-admin>`_.
@@ -134,13 +138,14 @@ def list_capacities(
     ----------
     capacity : str | UUID, default=None
         Capacity name or id to filter.
-
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     Returns
     -------
     pandas.DataFrame
         A pandas dataframe showing the capacities and their properties
     """
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
 
     df = pd.DataFrame(
         columns=["Capacity Id", "Capacity Name", "Sku", "Region", "State", "Admins"]
@@ -292,7 +297,7 @@ def unassign_workspaces_from_capacity(
 
     payload = {"workspacesToUnassign": workspacesIds}
 
-    client = fabric.PowerBIRestClient()
+    client = fabric.FabricRestClient()
     response = client.post(
         "/v1.0/myorg/admin/capacities/UnassignWorkspaces",
         json=payload,
@@ -306,18 +311,23 @@ def unassign_workspaces_from_capacity(
     )
 
 
-def list_tenant_settings() -> pd.DataFrame:
-    """
+def list_tenant_settings(token_provider: Optional[str] = None) -> pd.DataFrame:
+    f"""
     Lists all tenant settings.
 
     This is a wrapper function for the following API: `Tenants - List Tenant Settings <https://learn.microsoft.com/rest/api/fabric/admin/tenants/list-tenant-settings>`_.
+
+    Parameters
+    ----------
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
     pandas.DataFrame
         A pandas dataframe showing the tenant settings.
     """
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
 
     response = client.get("/v1/admin/tenantsettings")
 
@@ -354,8 +364,9 @@ def list_tenant_settings() -> pd.DataFrame:
 
 def list_capacities_delegated_tenant_settings(
     return_dataframe: bool = True,
+    token_provider: Optional[str] = None,
 ) -> pd.DataFrame | dict:
-    """
+    f"""
     Returns list of tenant setting overrides that override at the capacities.
 
     This is a wrapper function for the following API: `Tenants - List Capacities Tenant Settings Overrides <https://learn.microsoft.com/rest/api/fabric/admin/tenants/list-capacities-tenant-settings-overrides>`_.
@@ -364,6 +375,8 @@ def list_capacities_delegated_tenant_settings(
     ----------
     return_dataframe : bool, default=True
         If True, returns a dataframe. If False, returns a dictionary.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -385,7 +398,7 @@ def list_capacities_delegated_tenant_settings(
         ]
     )
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get("/v1/admin/capacities/delegatedTenantSettingOverrides")
 
     if response.status_code != 200:
@@ -445,8 +458,9 @@ def list_modified_workspaces(
     modified_since: Optional[str] = None,
     exclude_inactive_workspaces: Optional[bool] = False,
     exclude_personal_workspaces: Optional[bool] = False,
+    token_provider: Optional[str] = None,
 ) -> pd.DataFrame:
-    """
+    f"""
     Gets a list of workspace IDs in the organization.
 
     This is a wrapper function for the following API: `Admin - WorkspaceInfo GetModifiedWorkspaces <https://learn.microsoft.com/rest/api/power-bi/admin/workspace-info-get-modified-workspaces>`_.
@@ -459,13 +473,15 @@ def list_modified_workspaces(
         Whether to exclude inactive workspaces.
     exclude_personal_workspaces : bool, default=False
         Whether to exclude personal workspaces.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
     pandas.DataFrame
         A pandas dataframe showing a list of workspace IDs in the organization.
     """
-    client = fabric.PowerBIRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
 
     params = {}
 
@@ -499,8 +515,9 @@ def list_datasets(
     top: Optional[int] = None,
     filter: Optional[str] = None,
     skip: Optional[int] = None,
+    token_provider: Optional[str] = None,
 ) -> pd.DataFrame:
-    """
+    f"""
     Shows a list of datasets for the organization.
 
     This is a wrapper function for the following API: `Admin - Datasets GetDatasetsAsAdmin <https://learn.microsoft.com/rest/api/power-bi/admin/datasets-get-datasets-as-admin>`_.
@@ -513,8 +530,8 @@ def list_datasets(
         Returns a subset of a results based on Odata filter query parameter condition.
     skip : int, default=None
         Skips the first n results.
-    token_provider : Optional[TokenProvider] = None,
-        Authentication provider used to be use in the request. Supports Service Principal.
+    token_provider : Optional[str] = None,
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -545,7 +562,7 @@ def list_datasets(
         ]
     )
 
-    client = fabric.PowerBIRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
 
     params = {}
     url = "/v1.0/myorg/admin/datasets"
@@ -614,8 +631,9 @@ def list_datasets(
 
 def list_access_entities(
     user_email_address: str,
+    token_provider: Optional[str] = None,
 ) -> pd.DataFrame:
-    """
+    f"""
     Shows a list of permission details for Fabric and Power BI items the specified user can access.
 
     This is a wrapper function for the following API: `Users - List Access Entities <https://learn.microsoft.com/rest/api/fabric/admin/users/list-access-entities>`_.
@@ -624,6 +642,8 @@ def list_access_entities(
     ----------
     user_email_address : str
         The user's email address.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -639,7 +659,7 @@ def list_access_entities(
             "Additional Permissions",
         ]
     )
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
 
     response = client.get(f"/v1/admin/users/{user_email_address}/access")
 
@@ -665,9 +685,10 @@ def list_access_entities(
 
 
 def list_workspace_access_details(
-    workspace: Optional[Union[str, UUID]] = None
+    workspace: Optional[Union[str, UUID]] = None,
+    token_provider: Optional[str] = None,
 ) -> pd.DataFrame:
-    """
+    f"""
     Shows a list of users (including groups and Service Principals) that have access to the specified workspace.
 
     This is a wrapper function for the following API: `Workspaces - List Workspace Access Details <https://learn.microsoft.com/rest/api/fabric/admin/workspaces/list-workspace-access-details>`_.
@@ -678,13 +699,16 @@ def list_workspace_access_details(
         The Fabric workspace name or id.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     Returns
     -------
     pandas.DataFrame
         A pandas dataframe showing a list of users (including groups and Service Principals) that have access to the specified workspace.
     """
-    workspace_name, workspace_id = _resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = _resolve_workspace_name_and_id(
+        workspace, token_provider=token_provider
+    )
 
     df = pd.DataFrame(
         columns=[
@@ -697,7 +721,7 @@ def list_workspace_access_details(
         ]
     )
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
 
     response = client.get(f"/v1/admin/workspaces/{workspace_id}/users")
     if response.status_code != 200:
@@ -723,8 +747,9 @@ def list_activity_events(
     activity_filter: Optional[str] = None,
     user_id_filter: Optional[str] = None,
     return_dataframe: Optional[bool] = True,
+    token_provider: Optional[str] = None,
 ) -> pd.DataFrame | dict:
-    """
+    f"""
     Shows a list of audit activity events for a tenant.
 
     This is a wrapper function for the following API: `Admin - Get Activity Events <https://learn.microsoft.com/rest/api/power-bi/admin/get-activity-events>`_.
@@ -741,6 +766,8 @@ def list_activity_events(
         Email address of the user.
     return_dataframe : bool, default=True
         If True the response is a pandas.DataFrame. If False returns the original Json. Default True
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -782,7 +809,7 @@ def list_activity_events(
     )
 
     response_json = {"activityEventEntities": []}
-    client = fabric.PowerBIRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     url = f"/v1.0/myorg/admin/activityevents?startDateTime='{start_time}'&endDateTime='{end_time}'"
 
     conditions = []
@@ -845,9 +872,10 @@ def list_activity_events(
 
 def _resolve_capacity_name_and_id(
     capacity: str | UUID,
+    token_provider: Optional[str] = None,
 ) -> Tuple[str, UUID]:
 
-    dfC = list_capacities(capacity=capacity)
+    dfC = list_capacities(capacity=capacity, token_provider=token_provider)
     try:
         capacity_name = dfC["Capacity Name"].iloc[0]
         capacity_id = dfC["Capacity Id"].iloc[0]
@@ -857,7 +885,7 @@ def _resolve_capacity_name_and_id(
     return capacity_name, capacity_id
 
 
-def _list_capacities_meta() -> pd.DataFrame:
+def _list_capacities_meta(token_provider: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the a list of capacities and their properties. This function is the admin version.
 
@@ -869,7 +897,7 @@ def _list_capacities_meta() -> pd.DataFrame:
         A pandas dataframe showing the capacities and their properties
     """
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
 
     df = pd.DataFrame(
         columns=["Capacity Id", "Capacity Name", "Sku", "Region", "State", "Admins"]
@@ -899,9 +927,10 @@ def _list_capacities_meta() -> pd.DataFrame:
 
 def _resolve_workspace_name_and_id(
     workspace: str | UUID,
+    token_provider: Optional[str] = None,
 ) -> Tuple[str, UUID]:
 
-    dfW = list_workspaces(workspace=workspace)
+    dfW = list_workspaces(workspace=workspace, token_provider=token_provider)
     try:
         workspace_name = dfW["Name"].iloc[0]
         workspace_id = dfW["Id"].iloc[0]
@@ -912,12 +941,26 @@ def _resolve_workspace_name_and_id(
 
 
 def list_reports(
-    top: Optional[int] = None, skip: Optional[int] = None, filter: Optional[str] = None
+    top: Optional[int] = None,
+    skip: Optional[int] = None,
+    filter: Optional[str] = None,
+    token_provider: Optional[str] = None,
 ) -> pd.DataFrame:
-    """
+    f"""
     Shows a list of reports for the organization.
 
     This is a wrapper function for the following API: `Admin - Reports GetReportsAsAdmin <https://learn.microsoft.com/rest/api/power-bi/admin/reports-get-reports-as-admin>`_.
+
+    Parameters
+    ----------
+    top : int, default=None
+        Returns only the first n results.
+    skip : int, default=None
+        Skips the first n results.
+    filter : str, default=None
+        Returns a subset of a results based on Odata filter query parameter condition.
+    token_provider : Optional[str] = None,
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -955,7 +998,7 @@ def list_reports(
 
     url.rstrip("$").rstrip("?")
 
-    client = fabric.PowerBIRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get(url)
 
     if response.status_code != 200:
