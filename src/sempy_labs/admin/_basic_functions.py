@@ -297,7 +297,7 @@ def unassign_workspaces_from_capacity(
 
     payload = {"workspacesToUnassign": workspacesIds}
 
-    client = fabric.PowerBIRestClient()
+    client = fabric.FabricRestClient()
     response = client.post(
         "/v1.0/myorg/admin/capacities/UnassignWorkspaces",
         json=payload,
@@ -481,7 +481,7 @@ def list_modified_workspaces(
     pandas.DataFrame
         A pandas dataframe showing a list of workspace IDs in the organization.
     """
-    client = fabric.PowerBIRestClient(token_provider=token_provider)
+    client = fabric.FabricRestClient(token_provider=token_provider)
 
     params = {}
 
@@ -562,7 +562,7 @@ def list_datasets(
         ]
     )
 
-    client = fabric.PowerBIRestClient(token_provider=token_provider)
+    client = fabric.FabricRestClient(token_provider=token_provider)
 
     params = {}
     url = "/v1.0/myorg/admin/datasets"
@@ -810,7 +810,7 @@ def list_activity_events(
     )
 
     response_json = {"activityEventEntities": []}
-    client = fabric.PowerBIRestClient(token_provider=token_provider)
+    client = fabric.FabricRestClient(token_provider=token_provider)
     url = f"/v1.0/myorg/admin/activityevents?startDateTime='{start_time}'&endDateTime='{end_time}'"
 
     conditions = []
@@ -999,7 +999,7 @@ def list_reports(
 
     url.rstrip("$").rstrip("?")
 
-    client = fabric.PowerBIRestClient(token_provider=token_provider)
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get(url)
 
     if response.status_code != 200:
