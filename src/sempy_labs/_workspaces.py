@@ -153,7 +153,7 @@ def add_user_to_workspace(
     Parameters
     ----------
     email_address : str
-        The email address of the user.
+        The email address of the user. Also accepts the user identifier.
     role_name : str
         The `role <https://learn.microsoft.com/rest/api/power-bi/groups/add-group-user#groupuseraccessright>`_ of the user within the workspace.
     principal_type : str, default='User'
