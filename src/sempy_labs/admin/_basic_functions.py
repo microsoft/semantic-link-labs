@@ -718,7 +718,6 @@ def list_workspace_access_details(
             "Workspace Name",
             "Workspace Id",
             "Workspace Role",
-            s,
         ]
     )
 
