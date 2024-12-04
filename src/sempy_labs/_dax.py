@@ -159,7 +159,7 @@ def get_dax_query_dependencies(
     ]
     final_df = final_df.drop_duplicates().reset_index(drop=True)
     final_df = final_df.rename(columns={"Table": "Table Name", "Object": "Column Name"})
-    final_df.drop(columns=["Object Type"])
+    final_df.drop(columns=["Object Type"], inplace=True)
 
     if not show_vertipaq_stats:
         return final_df
