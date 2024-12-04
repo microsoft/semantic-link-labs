@@ -190,6 +190,7 @@ from sempy_labs._generate_semantic_model import (
     get_semantic_model_bim,
     get_semantic_model_size,
     update_semantic_model_from_bim,
+    get_semantic_model_definition,
 )
 from sempy_labs._list_functions import (
     list_reports_using_semantic_model,
@@ -456,4 +457,5 @@ __all__ = [
     "create_vnet_gateway",
     "update_vnet_gateway",
     "update_on_premises_gateway",
+    "get_semantic_model_definition",
 ]

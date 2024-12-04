@@ -126,7 +126,7 @@ def list_capacities(
     capacity: Optional[str | UUID] = None,
 ) -> pd.DataFrame:
     """
-    Shows the a list of capacities and their properties. This function is the admin version.
+    Shows the a list of capacities and their properties.
 
     This is a wrapper function for the following API: `Admin - Get Capacities As Admin <https://learn.microsoft.com/rest/api/power-bi/admin/get-capacities-as-admin>`_.
 
@@ -138,7 +138,7 @@ def list_capacities(
     Returns
     -------
     pandas.DataFrame
-        A pandas dataframe showing the capacities and their properties
+        A pandas dataframe showing the capacities and their properties.
     """
     client = fabric.FabricRestClient()
 

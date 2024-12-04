@@ -2,7 +2,7 @@ import sempy.fabric as fabric
 import pandas as pd
 import json
 import os
-from typing import Optional
+from typing import Optional, List
 from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
     resolve_workspace_name_and_id,
@@ -329,8 +329,6 @@ def get_semantic_model_bim(
     """
     Extracts the Model.bim file for a given semantic model.
 
-    This is a wrapper function for the following API: `Items - Get Semantic Model Definition <https://learn.microsoft.com/rest/api/fabric/semanticmodel/items/get-semantic-model-definition>`_.
-
     Parameters
     ----------
     dataset : str
@@ -352,20 +350,7 @@ def get_semantic_model_bim(
         The Model.bim file for the semantic model.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    fmt = "TMSL"
-    client = fabric.FabricRestClient()
-    dataset_id = resolve_dataset_id(dataset=dataset, workspace=workspace)
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/semanticModels/{dataset_id}/getDefinition?format={fmt}",
-    )
-    result = lro(client, response).json()
-    df_items = pd.json_normalize(result["definition"]["parts"])
-    df_items_filt = df_items[df_items["path"] == "model.bim"]
-    payload = df_items_filt["payload"].iloc[0]
-    bimFile = _decode_b64(payload)
-    bimJson = json.loads(bimFile)
+    bimJson = get_semantic_model_definition(dataset=dataset, workspace=workspace, format='TMSL', return_dataframe=False)
 
     if save_to_file_name is not None:
         if not lakehouse_attached():
@@ -384,10 +369,80 @@ def get_semantic_model_bim(
         with open(filePath, "w") as json_file:
             json.dump(bimJson, json_file, indent=4)
         print(
-            f"{icons.green_dot} The .bim file for the '{dataset}' semantic model has been saved to the '{lakehouse}' in this location: '{filePath}'.\n\n"
+            f"{icons.green_dot} The {fileExt} file for the '{dataset}' semantic model has been saved to the '{lakehouse}' in this location: '{filePath}'.\n\n"
         )
 
     return bimJson
+
+
+def get_semantic_model_definition(
+    dataset: str,
+    format: str = "TMSL",
+    workspace: Optional[str] = None,
+    return_dataframe: bool = True,
+) -> pd.DataFrame | dict | List:
+    """
+    Extracts the semantic model definition.
+
+    This is a wrapper function for the following API: `Items - Get Semantic Model Definition <https://learn.microsoft.com/rest/api/fabric/semanticmodel/items/get-semantic-model-definition>`_.
+
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    format : str, default="TMSL"
+        The output format. Valid options are "TMSL" or "TMDL". "TMSL" returns the .bim file whereas "TMDL" returns the collection of TMDL files. Can also enter 'bim' for the TMSL version.
+    workspace : str, default=None
+        The Fabric workspace name in which the semantic model resides.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    return_dataframe : bool, default=True
+        If True, returns a dataframe.
+        If False, returns the .bim file for TMSL format. Returns a list of the TMDL files (decoded) for TMDL format.
+
+    Returns
+    -------
+    pandas.DataFrame | dict | List
+        A pandas dataframe with the semantic model definition or the file or files comprising the semantic model definition.
+    """
+
+    valid_formats = ['TMSL', 'TMDL']
+
+    format = format.upper()
+    if format == 'BIM':
+        format = "TMSL"
+    if format not in valid_formats:
+        raise ValueError(f"{icons.red_dot} Invalid format. Valid options: {valid_formats}.")
+
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    client = fabric.FabricRestClient()
+    dataset_id = resolve_dataset_id(dataset=dataset, workspace=workspace)
+    response = client.post(
+        f"/v1/workspaces/{workspace_id}/semanticModels/{dataset_id}/getDefinition?format={format}",
+    )
+    result = lro(client, response).json()
+
+    files = result["definition"]["parts"]
+
+    if return_dataframe:
+        return pd.json_normalize(files)
+    elif format == 'TMSL':
+        payload = next(
+            (part["payload"] for part in files if part["path"] == "model.bim"),
+            None
+        )
+        return json.loads(_decode_b64(payload))
+    else:
+        decoded_parts = [
+            {
+                "file_name": part["path"],
+                "content": _decode_b64(part['payload'])
+            }
+            for part in files
+        ]
+
+        return decoded_parts
 
 
 def get_semantic_model_size(dataset: str, workspace: Optional[str] = None):
