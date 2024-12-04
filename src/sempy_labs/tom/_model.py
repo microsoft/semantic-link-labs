@@ -1634,7 +1634,7 @@ class TOMWrapper:
         prop = mapping.get(property)
         if prop is None:
             raise ValueError(
-                f"{icons.red_dot} Invalid property value. Please choose from the following: ['Name', 'Description', Display Folder]."
+                f"{icons.red_dot} Invalid property value. Please choose from the following: {list(mapping.keys())}."
             )
 
         if not any(c.Name == language for c in self.model.Cultures):
