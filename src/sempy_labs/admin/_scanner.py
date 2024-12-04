@@ -40,7 +40,7 @@ def scan_workspaces(
 
     Returns
     -------
-    dictionary
+    dict
         A json object with the scan result.
     """
     scan_result = {
