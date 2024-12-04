@@ -57,7 +57,7 @@ def translate_semantic_model(
         columns=["Object Type", "Name", "Description", "Display Folder"]
     )
 
-    final_df = pd.DataFrame(columns=['Value', 'Translation'])
+    final_df = pd.DataFrame(columns=["Value", "Translation"])
 
     with connect_semantic_model(
         dataset=dataset, readonly=False, workspace=workspace
@@ -68,7 +68,7 @@ def translate_semantic_model(
             oDescription = _clean_text(o.Description, exclude_characters)
             new_data = {
                 "Name": o.Name,
-                "TName": oName,             
+                "TName": oName,
                 "Object Type": "Table",
                 "Description": o.Description,
                 "TDescription": oDescription,
@@ -165,24 +165,29 @@ def translate_semantic_model(
             )
 
             df_panda = transDF.toPandas()
-            df_panda = df_panda[~df_panda[clm].isin([None, ''])][[clm, 'translation']]
+            df_panda = df_panda[~df_panda[clm].isin([None, ""])][[clm, "translation"]]
 
-            df_panda = df_panda.rename(columns={clm: 'value'})
+            df_panda = df_panda.rename(columns={clm: "value"})
             final_df = pd.concat([final_df, df_panda], ignore_index=True)
 
         def set_translation_if_exists(object, language, property, index):
 
-            if property == 'Name':
+            if property == "Name":
                 trans = object.Name
-            elif property == 'Description':
+            elif property == "Description":
                 trans = object.Description
-            elif property == 'Display Folder':
+            elif property == "Display Folder":
                 trans = object.DisplayFolder
 
-            df_filt = final_df[final_df['value'] == trans]
+            df_filt = final_df[final_df["value"] == trans]
             if not df_filt.empty:
-                translation_value = df_filt['translation'].str[index].iloc[0]
-                tom.set_translation(object=object, language=language, property=property, value=translation_value)
+                translation_value = df_filt["translation"].str[index].iloc[0]
+                tom.set_translation(
+                    object=object,
+                    language=language,
+                    property=property,
+                    value=translation_value,
+                )
 
         for language in languages:
             index = languages.index(language)
@@ -192,23 +197,49 @@ def translate_semantic_model(
             )
 
             for t in tom.model.Tables:
-                set_translation_if_exists(object=t, language=language, property='Name', index=index)
-                set_translation_if_exists(object=t, language=language, property='Description', index=index)
+                set_translation_if_exists(
+                    object=t, language=language, property="Name", index=index
+                )
+                set_translation_if_exists(
+                    object=t, language=language, property="Description", index=index
+                )
             for c in tom.all_columns():
-                set_translation_if_exists(object=c, language=language, property='Name', index=index)
-                set_translation_if_exists(object=c, language=language, property='Description', index=index)
-                set_translation_if_exists(object=c, language=language, property='Display Folder', index=index)
+                set_translation_if_exists(
+                    object=c, language=language, property="Name", index=index
+                )
+                set_translation_if_exists(
+                    object=c, language=language, property="Description", index=index
+                )
+                set_translation_if_exists(
+                    object=c, language=language, property="Display Folder", index=index
+                )
             for c in tom.all_measures():
-                set_translation_if_exists(object=c, language=language, property='Name', index=index)
-                set_translation_if_exists(object=c, language=language, property='Description', index=index)
-                set_translation_if_exists(object=c, language=language, property='Display Folder', index=index)
+                set_translation_if_exists(
+                    object=c, language=language, property="Name", index=index
+                )
+                set_translation_if_exists(
+                    object=c, language=language, property="Description", index=index
+                )
+                set_translation_if_exists(
+                    object=c, language=language, property="Display Folder", index=index
+                )
             for c in tom.all_hierarchies():
-                set_translation_if_exists(object=c, language=language, property='Name', index=index)
-                set_translation_if_exists(object=c, language=language, property='Description', index=index)
-                set_translation_if_exists(object=c, language=language, property='Display Folder', index=index)
+                set_translation_if_exists(
+                    object=c, language=language, property="Name", index=index
+                )
+                set_translation_if_exists(
+                    object=c, language=language, property="Description", index=index
+                )
+                set_translation_if_exists(
+                    object=c, language=language, property="Display Folder", index=index
+                )
             for c in tom.all_levels():
-                set_translation_if_exists(object=c, language=language, property='Name', index=index)
-                set_translation_if_exists(object=c, language=language, property='Description', index=index)
+                set_translation_if_exists(
+                    object=c, language=language, property="Name", index=index
+                )
+                set_translation_if_exists(
+                    object=c, language=language, property="Description", index=index
+                )
 
     result = pd.DataFrame(
         columns=[

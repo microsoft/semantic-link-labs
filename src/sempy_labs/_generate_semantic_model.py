@@ -350,7 +350,9 @@ def get_semantic_model_bim(
         The Model.bim file for the semantic model.
     """
 
-    bimJson = get_semantic_model_definition(dataset=dataset, workspace=workspace, format='TMSL', return_dataframe=False)
+    bimJson = get_semantic_model_definition(
+        dataset=dataset, workspace=workspace, format="TMSL", return_dataframe=False
+    )
 
     if save_to_file_name is not None:
         if not lakehouse_attached():
@@ -406,13 +408,15 @@ def get_semantic_model_definition(
         A pandas dataframe with the semantic model definition or the file or files comprising the semantic model definition.
     """
 
-    valid_formats = ['TMSL', 'TMDL']
+    valid_formats = ["TMSL", "TMDL"]
 
     format = format.upper()
-    if format == 'BIM':
+    if format == "BIM":
         format = "TMSL"
     if format not in valid_formats:
-        raise ValueError(f"{icons.red_dot} Invalid format. Valid options: {valid_formats}.")
+        raise ValueError(
+            f"{icons.red_dot} Invalid format. Valid options: {valid_formats}."
+        )
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
@@ -427,18 +431,14 @@ def get_semantic_model_definition(
 
     if return_dataframe:
         return pd.json_normalize(files)
-    elif format == 'TMSL':
+    elif format == "TMSL":
         payload = next(
-            (part["payload"] for part in files if part["path"] == "model.bim"),
-            None
+            (part["payload"] for part in files if part["path"] == "model.bim"), None
         )
         return json.loads(_decode_b64(payload))
     else:
         decoded_parts = [
-            {
-                "file_name": part["path"],
-                "content": _decode_b64(part['payload'])
-            }
+            {"file_name": part["path"], "content": _decode_b64(part["payload"])}
             for part in files
         ]
 

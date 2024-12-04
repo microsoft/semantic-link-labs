@@ -11,7 +11,6 @@ from sempy_labs._helper_functions import (
 import numpy as np
 import pandas as pd
 from dateutil.parser import parse as dtparser
-import urllib.parse
 
 
 def list_workspaces(
@@ -901,14 +900,20 @@ def _resolve_workspace_name_and_id(
     workspace: str | UUID,
 ) -> Tuple[str, UUID]:
 
-    dfW = list_workspaces(workspace=workspace)
-    try:
-        workspace_name = dfW["Name"].iloc[0]
-        workspace_id = dfW["Id"].iloc[0]
-    except Exception:
-        raise ValueError(f"{icons.red_dot} The '{workspace}' workspace was not found.")
+    if workspace is None:
+        workspace_id = fabric.get_workspace_id()
+        workspace_name = fabric.resolve_workspace_name(workspace_id)
+    else:
+        dfW = list_workspaces(workspace=workspace)
+        try:
+            workspace_name = dfW["Name"].iloc[0]
+            workspace_id = dfW["Id"].iloc[0]
+        except Exception:
+            raise ValueError(
+                f"{icons.red_dot} The '{workspace}' workspace was not found."
+            )
 
-    return workspace_name, workspace_id
+        return workspace_name, workspace_id
 
 
 def list_reports(
@@ -986,5 +991,45 @@ def list_reports(
 
     df["Created Date"] = pd.to_datetime(df["Created Date"], errors="coerce")
     df["Modified Date"] = pd.to_datetime(df["Modified Date"], errors="coerce")
+
+    return df
+
+
+def get_capacity_assignment_status(workspace: Optional[str | UUID] = None):
+
+    (workspace_name, workspace_id) = _resolve_workspace_name_and_id(workspace)
+
+    df = pd.DataFrame(
+        columns=[
+            "Status",
+            "Activity Id",
+            "Start Time",
+            "End Time",
+            "Capacity Id",
+            "Capacity Name",
+        ]
+    )
+
+    client = fabric.FabricRestClient()
+    response = client.get(f"/v1.0/myorg/groups/{workspace_id}/CapacityAssignmentStatus")
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    v = response.json()
+    capacity_id = v.get("capacityId")
+
+    (capacity_name, capacity_id) = _resolve_capacity_name_and_id(capacity=capacity_id)
+
+    new_data = {
+        "Status": v.get("status"),
+        "Activity Id": v.get("activityId"),
+        "Start Time": v.get("startTime"),
+        "End Time": v.get("endTime"),
+        "Capacity Id": capacity_id,
+        "Capacity Name": capacity_name,
+    }
+
+    df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
 
     return df
