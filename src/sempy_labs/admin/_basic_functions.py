@@ -905,15 +905,15 @@ def _resolve_workspace_name_and_id(
         workspace_name = fabric.resolve_workspace_name(workspace_id)
     else:
         dfW = list_workspaces(workspace=workspace)
-        try:
+        if not dfW.empty:
             workspace_name = dfW["Name"].iloc[0]
             workspace_id = dfW["Id"].iloc[0]
-        except Exception:
+        else:
             raise ValueError(
                 f"{icons.red_dot} The '{workspace}' workspace was not found."
             )
 
-        return workspace_name, workspace_id
+    return workspace_name, workspace_id
 
 
 def list_reports(
@@ -996,6 +996,23 @@ def list_reports(
 
 
 def get_capacity_assignment_status(workspace: Optional[str | UUID] = None):
+    """
+    Gets the status of the assignment-to-capacity operation for the specified workspace.
+
+    This is a wrapper function for the following API: `Capacities - Groups CapacityAssignmentStatus <https://learn.microsoft.com/rest/api/power-bi/capacities/groups-capacity-assignment-status>`_.
+
+    Parameters
+    ----------
+    workspace : str | UUID, default=None
+        The Fabric workspace name or id.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the status of the assignment-to-capacity operation for the specified workspace.
+    """
 
     (workspace_name, workspace_id) = _resolve_workspace_name_and_id(workspace)
 
