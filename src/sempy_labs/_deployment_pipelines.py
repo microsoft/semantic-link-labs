@@ -49,7 +49,9 @@ def list_deployment_pipelines(token_provider: Optional[str] = None) -> pd.DataFr
     return df
 
 
-def list_deployment_pipeline_stages(deployment_pipeline: str, token_provider: Optional[str] = None) -> pd.DataFrame:
+def list_deployment_pipeline_stages(
+    deployment_pipeline: str, token_provider: Optional[str] = None
+) -> pd.DataFrame:
     f"""
     Shows the specified deployment pipeline stages.
 
@@ -113,7 +115,9 @@ def list_deployment_pipeline_stages(deployment_pipeline: str, token_provider: Op
 
 
 def list_deployment_pipeline_stage_items(
-    deployment_pipeline: str, stage_name: str, token_provider: Optional[str] = None,
+    deployment_pipeline: str,
+    stage_name: str,
+    token_provider: Optional[str] = None,
 ) -> pd.DataFrame:
     f"""
     Shows the supported items from the workspace assigned to the specified stage of the specified deployment pipeline.
@@ -151,7 +155,9 @@ def list_deployment_pipeline_stage_items(
     deployment_pipeline_id = resolve_deployment_pipeline_id(
         deployment_pipeline=deployment_pipeline, token_provider=token_provider
     )
-    dfPS = list_deployment_pipeline_stages(deployment_pipeline=deployment_pipeline, token_provider=token_provider)
+    dfPS = list_deployment_pipeline_stages(
+        deployment_pipeline=deployment_pipeline, token_provider=token_provider
+    )
     dfPS_filt = dfPS[dfPS["Deployment Pipeline Stage Name"] == stage_name]
 
     if len(dfPS_filt) == 0:

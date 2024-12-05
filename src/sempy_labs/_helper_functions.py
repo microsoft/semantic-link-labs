@@ -935,7 +935,9 @@ def pagination(client, response):
     return responses
 
 
-def resolve_deployment_pipeline_id(deployment_pipeline: str, token_provider: Optional[str] = None) -> UUID:
+def resolve_deployment_pipeline_id(
+    deployment_pipeline: str, token_provider: Optional[str] = None
+) -> UUID:
     f"""
     Obtains the Id for a given deployment pipeline.
 
