@@ -5,13 +5,19 @@ from sempy_labs._helper_functions import (
 )
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
+from typing import Optional
 
 
-def list_deployment_pipelines() -> pd.DataFrame:
-    """
+def list_deployment_pipelines(token_provider: Optional[str] = None) -> pd.DataFrame:
+    f"""
     Shows a list of deployment pipelines the user can access.
 
     This is a wrapper function for the following API: `Deployment Pipelines - List Deployment Pipelines <https://learn.microsoft.com/rest/api/fabric/core/deployment-pipelines/list-deployment-pipelines>`_.
+
+    Parameters
+    ----------
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -23,7 +29,7 @@ def list_deployment_pipelines() -> pd.DataFrame:
         columns=["Deployment Pipeline Id", "Deployment Pipeline Name", "Description"]
     )
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get("/v1/deploymentPipelines")
 
     if response.status_code != 200:
@@ -43,8 +49,8 @@ def list_deployment_pipelines() -> pd.DataFrame:
     return df
 
 
-def list_deployment_pipeline_stages(deployment_pipeline: str) -> pd.DataFrame:
-    """
+def list_deployment_pipeline_stages(deployment_pipeline: str, token_provider: Optional[str] = None) -> pd.DataFrame:
+    f"""
     Shows the specified deployment pipeline stages.
 
     This is a wrapper function for the following API: `Deployment Pipelines - List Deployment Pipeline Stages <https://learn.microsoft.com/rest/api/fabric/core/deployment-pipelines/list-deployment-pipeline-stages>`_.
@@ -53,6 +59,8 @@ def list_deployment_pipeline_stages(deployment_pipeline: str) -> pd.DataFrame:
     ----------
     deployment_pipeline : str
         The deployment pipeline name.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -75,9 +83,9 @@ def list_deployment_pipeline_stages(deployment_pipeline: str) -> pd.DataFrame:
     )
 
     deployment_pipeline_id = resolve_deployment_pipeline_id(
-        deployment_pipeline=deployment_pipeline
+        deployment_pipeline=deployment_pipeline, token_provider=token_provider
     )
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get(f"/v1/deploymentPipelines/{deployment_pipeline_id}/stages")
 
     if response.status_code != 200:
@@ -105,9 +113,9 @@ def list_deployment_pipeline_stages(deployment_pipeline: str) -> pd.DataFrame:
 
 
 def list_deployment_pipeline_stage_items(
-    deployment_pipeline: str, stage_name: str
+    deployment_pipeline: str, stage_name: str, token_provider: Optional[str] = None,
 ) -> pd.DataFrame:
-    """
+    f"""
     Shows the supported items from the workspace assigned to the specified stage of the specified deployment pipeline.
 
     This is a wrapper function for the following API: `Deployment Pipelines - List Deployment Pipeline Stage Items <https://learn.microsoft.com/rest/api/fabric/core/deployment-pipelines/list-deployment-pipeline-stage-items>`_.
@@ -118,6 +126,8 @@ def list_deployment_pipeline_stage_items(
         The deployment pipeline name.
     stage_name : str
         The deployment pipeline stage name.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -139,9 +149,9 @@ def list_deployment_pipeline_stage_items(
     )
 
     deployment_pipeline_id = resolve_deployment_pipeline_id(
-        deployment_pipeline=deployment_pipeline
+        deployment_pipeline=deployment_pipeline, token_provider=token_provider
     )
-    dfPS = list_deployment_pipeline_stages(deployment_pipeline=deployment_pipeline)
+    dfPS = list_deployment_pipeline_stages(deployment_pipeline=deployment_pipeline, token_provider=token_provider)
     dfPS_filt = dfPS[dfPS["Deployment Pipeline Stage Name"] == stage_name]
 
     if len(dfPS_filt) == 0:
@@ -150,7 +160,7 @@ def list_deployment_pipeline_stage_items(
         )
     stage_id = dfPS_filt["Deployment Pipeline Stage ID"].iloc[0]
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get(
         f"/v1/deploymentPipelines/{deployment_pipeline_id}/stages/{stage_id}/items"
     )

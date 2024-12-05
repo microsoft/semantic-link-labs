@@ -935,14 +935,16 @@ def pagination(client, response):
     return responses
 
 
-def resolve_deployment_pipeline_id(deployment_pipeline: str) -> UUID:
-    """
+def resolve_deployment_pipeline_id(deployment_pipeline: str, token_provider: Optional[str] = None) -> UUID:
+    f"""
     Obtains the Id for a given deployment pipeline.
 
     Parameters
     ----------
     deployment_pipeline : str
         The deployment pipeline name
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -952,15 +954,13 @@ def resolve_deployment_pipeline_id(deployment_pipeline: str) -> UUID:
 
     from sempy_labs._deployment_pipelines import list_deployment_pipelines
 
-    dfP = list_deployment_pipelines()
+    dfP = list_deployment_pipelines(token_provider=token_provider)
     dfP_filt = dfP[dfP["Deployment Pipeline Name"] == deployment_pipeline]
     if len(dfP_filt) == 0:
         raise ValueError(
             f"{icons.red_dot} The '{deployment_pipeline}' deployment pipeline is not valid."
         )
-    deployment_pipeline_id = dfP_filt["Deployment Pipeline Id"].iloc[0]
-
-    return deployment_pipeline_id
+    return dfP_filt["Deployment Pipeline Id"].iloc[0]
 
 
 class FabricTokenCredential(TokenCredential):
