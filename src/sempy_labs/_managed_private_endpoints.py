@@ -17,8 +17,9 @@ def create_managed_private_endpoint(
     target_subresource_type: str,
     request_message: Optional[str] = None,
     workspace: Optional[str] = None,
+    token_provider: Optional[str] = None,
 ):
-    """
+    f"""
     Creates a managed private endpoint.
 
     This is a wrapper function for the following API: `Managed Private Endpoints - Create Workspace Managed Private Endpoint <https://learn.microsoft.com/rest/api/fabric/core/managed-private-endpoints/create-workspace-managed-private-endpoint>`.
@@ -37,6 +38,8 @@ def create_managed_private_endpoint(
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -54,7 +57,7 @@ def create_managed_private_endpoint(
             )
         request_body["requestMessage"] = request_message
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.post(
         f"/v1/workspaces/{workspace_id}/managedPrivateEndpoints", json=request_body
     )
@@ -66,7 +69,9 @@ def create_managed_private_endpoint(
     )
 
 
-def list_managed_private_endpoints(workspace: Optional[str] = None) -> pd.DataFrame:
+def list_managed_private_endpoints(
+    workspace: Optional[str] = None, token_provider: Optional[str] = None
+) -> pd.DataFrame:
     """
     Shows the managed private endpoints within a workspace.
 
@@ -78,6 +83,8 @@ def list_managed_private_endpoints(workspace: Optional[str] = None) -> pd.DataFr
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -99,7 +106,7 @@ def list_managed_private_endpoints(workspace: Optional[str] = None) -> pd.DataFr
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get(f"/v1/workspaces/{workspace_id}/managedPrivateEndpoints")
     if response.status_code != 200:
         raise FabricHTTPException(response)
@@ -124,9 +131,11 @@ def list_managed_private_endpoints(workspace: Optional[str] = None) -> pd.DataFr
 
 
 def delete_managed_private_endpoint(
-    managed_private_endpoint: str, workspace: Optional[str] = None
+    managed_private_endpoint: str,
+    workspace: Optional[str] = None,
+    token_provider: Optional[str] = None,
 ):
-    """
+    f"""
     Deletes a Fabric managed private endpoint.
 
     This is a wrapper function for the following API: `Managed Private Endpoints - Delete Workspace Managed Private Endpoint <https://learn.microsoft.com/rest/api/fabric/core/managed-private-endpoints/delete-workspace-managed-private-endpoint>`.
@@ -139,11 +148,15 @@ def delete_managed_private_endpoint(
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    df = list_managed_private_endpoints(workspace=workspace)
+    df = list_managed_private_endpoints(
+        workspace=workspace, token_provider=token_provider
+    )
     df_filt = df[df["Managed Private Endpoint Name"] == managed_private_endpoint]
 
     if len(df_filt) == 0:
@@ -153,7 +166,7 @@ def delete_managed_private_endpoint(
 
     item_id = df_filt["Managed Private Endpoint Id"].iloc[0]
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.delete(
         f"/v1/workspaces/{workspace_id}/managedPrivateEndpoints/{item_id}"
     )
