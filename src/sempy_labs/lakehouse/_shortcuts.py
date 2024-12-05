@@ -16,8 +16,9 @@ def create_shortcut_onelake(
     destination_lakehouse: str,
     destination_workspace: Optional[str] = None,
     shortcut_name: Optional[str] = None,
+    token_provider: Optional[str] = None,
 ):
-    """
+    f"""
     Creates a `shortcut <https://learn.microsoft.com/fabric/onelake/onelake-shortcuts>`_ to a delta table in OneLake.
 
     This is a wrapper function for the following API: `OneLake Shortcuts - Create Shortcut <https://learn.microsoft.com/rest/api/fabric/core/onelake-shortcuts/create-shortcut>`_.
@@ -38,6 +39,8 @@ def create_shortcut_onelake(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     shortcut_name : str, default=None
         The name of the shortcut 'table' to be created. This defaults to the 'table_name' parameter value.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
     sourceWorkspaceId = fabric.resolve_workspace_id(source_workspace)
@@ -54,7 +57,7 @@ def create_shortcut_onelake(
     if shortcut_name is None:
         shortcut_name = table_name
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     tablePath = f"Tables/{table_name}"
 
     request_body = {
@@ -166,9 +169,12 @@ def create_shortcut(
 
 
 def delete_shortcut(
-    shortcut_name: str, lakehouse: Optional[str] = None, workspace: Optional[str] = None
+    shortcut_name: str,
+    lakehouse: Optional[str] = None,
+    workspace: Optional[str] = None,
+    token_provider: Optional[str] = None,
 ):
-    """
+    f"""
     Deletes a shortcut.
 
     This is a wrapper function for the following API: `OneLake Shortcuts - Delete Shortcut <https://learn.microsoft.com/rest/api/fabric/core/onelake-shortcuts/delete-shortcut>`_.
@@ -184,6 +190,8 @@ def delete_shortcut(
         The name of the Fabric workspace in which lakehouse resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -194,7 +202,7 @@ def delete_shortcut(
     else:
         lakehouse_id = resolve_lakehouse_id(lakehouse, workspace)
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.delete(
         f"/v1/workspaces/{workspace_id}/items/{lakehouse_id}/shortcuts/Tables/{shortcut_name}"
     )
