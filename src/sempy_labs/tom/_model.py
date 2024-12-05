@@ -4515,6 +4515,36 @@ class TOMWrapper:
             TOM.ValueFilterBehaviorType, value_filter_behavior
         )
 
+    def add_role_member(self, role_name: str, member: str | List[str]):
+        """
+        Adds a external model role member (AzureAD) to a role.
+
+        Parameters
+        ----------
+        role_name : str
+            The role name.
+        member : str | List[str]
+            The email address(es) of the member(s) to add.
+        """
+
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        if isinstance(member, str):
+            member = [member]
+
+        role = self.model.Roles[role_name]
+        current_members = [m.MemberName for m in role.Members]
+
+        for m in member:
+            if m not in current_members:
+                rm = TOM.ExternalModelRoleMember()
+                rm.IdentityProvider = "AzureAD"
+                rm.MemberName = m
+                role.Members.Add(rm)
+                print(f"{icons.green_dot} '{m}' has been added as a member of the '{role_name}' role.")
+            else:
+                print(f"{icons.yellow_dot} '{m}' is already a member in the '{role_name}' role.")
+
     def close(self):
 
         if not self._readonly and self.model is not None:
