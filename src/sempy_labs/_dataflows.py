@@ -10,8 +10,10 @@ from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
-def list_dataflows(workspace: Optional[str] = None):
-    """
+def list_dataflows(
+    workspace: Optional[str] = None, token_provider: Optional[str] = None
+):
+    f"""
     Shows a list of all dataflows which exist within a workspace.
 
     Parameters
@@ -20,6 +22,8 @@ def list_dataflows(workspace: Optional[str] = None):
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -28,7 +32,7 @@ def list_dataflows(workspace: Optional[str] = None):
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-    client = fabric.PowerBIRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get(f"/v1.0/myorg/groups/{workspace_id}/dataflows")
     if response.status_code != 200:
         raise FabricHTTPException(response)
@@ -137,9 +141,11 @@ def list_dataflow_storage_accounts() -> pd.DataFrame:
 
 
 def list_upstream_dataflows(
-    dataflow: str | UUID, workspace: Optional[str] = None
+    dataflow: str | UUID,
+    workspace: Optional[str] = None,
+    token_provider: Optional[str] = None,
 ) -> pd.DataFrame:
-    """
+    f"""
     Shows a list of upstream dataflows for the specified dataflow.
 
     This is a wrapper function for the following API: `Dataflows - Get Upstream Dataflows In Group <https://learn.microsoft.com/rest/api/power-bi/dataflows/get-upstream-dataflows-in-group>`_.
@@ -152,6 +158,8 @@ def list_upstream_dataflows(
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -159,12 +167,13 @@ def list_upstream_dataflows(
         A pandas dataframe showing a list of upstream dataflows for the specified dataflow.
     """
 
-    workspace_name = fabric.resolve_workspace_name(workspace)
-    workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataflow_name, dataflow_id) = _resolve_dataflow_name_and_id(
-        dataflow=dataflow, workspace=workspace
+        dataflow=dataflow,
+        workspace=workspace,
+        token_provider=token_provider,
     )
-    client = fabric.PowerBIRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
 
     df = pd.DataFrame(
         columns=[
@@ -194,7 +203,9 @@ def list_upstream_dataflows(
             tgt_workspace_id = v.get("groupId")
             tgt_workspace_name = fabric.resolve_workspace_name(tgt_workspace_id)
             (tgt_dataflow_name, _) = _resolve_dataflow_name_and_id(
-                dataflow=tgt_dataflow_id, workspace=tgt_workspace_name
+                dataflow=tgt_dataflow_id,
+                workspace=tgt_workspace_name,
+                token_provider=token_provider,
             )
 
             df.loc[len(df)] = {
@@ -222,13 +233,13 @@ def list_upstream_dataflows(
 
 
 def _resolve_dataflow_name_and_id(
-    dataflow: str | UUID, workspace: Optional[str] = None
+    dataflow: str | UUID,
+    workspace: Optional[str] = None,
+    token_provider: Optional[str] = None,
 ) -> Tuple[str, UUID]:
 
-    if workspace is None:
-        workspace = fabric.resolve_workspace_name(workspace)
-
-    dfD = list_dataflows(workspace=workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    dfD = list_dataflows(workspace=workspace, token_provider=token_provider)
 
     if _is_valid_uuid(dataflow):
         dfD_filt = dfD[dfD["Dataflow Id"] == dataflow]
