@@ -13,9 +13,12 @@ from sempy.fabric.exceptions import FabricHTTPException
 
 
 def get_notebook_definition(
-    notebook_name: str, workspace: Optional[str] = None, decode: bool = True
+    notebook_name: str,
+    workspace: Optional[str] = None,
+    decode: bool = True,
+    token_provider: Optional[str] = None,
 ) -> str:
-    """
+    f"""
     Obtains the notebook definition.
 
     This is a wrapper function for the following API: `Items - Get Notebook Definition <https://learn.microsoft.com/rest/api/fabric/notebook/items/get-notebook-definition>`_.
@@ -31,6 +34,8 @@ def get_notebook_definition(
     decode : bool, default=True
         If True, decodes the notebook definition file into .ipynb format.
         If False, obtains the notebook definition file in base64 format.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -42,7 +47,7 @@ def get_notebook_definition(
     item_id = fabric.resolve_item_id(
         item_name=notebook_name, type="Notebook", workspace=workspace
     )
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.post(
         f"v1/workspaces/{workspace_id}/notebooks/{item_id}/getDefinition",
     )
@@ -66,8 +71,9 @@ def import_notebook_from_web(
     description: Optional[str] = None,
     workspace: Optional[str] = None,
     overwrite: bool = False,
+    token_provider: Optional[str] = None,
 ):
-    """
+    f"""
     Creates a new notebook within a workspace based on a Jupyter notebook hosted in the web.
 
     Note: When specifying a notebook from GitHub, please use the raw file path. Note that if the non-raw file path is specified, the url will be
@@ -88,6 +94,8 @@ def import_notebook_from_web(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     overwrite : bool, default=False
         If set to True, overwrites the existing notebook in the workspace if it exists.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
     if workspace is None:
@@ -113,10 +121,14 @@ def import_notebook_from_web(
             notebook_content=response.content,
             workspace=workspace,
             description=description,
+            token_provider=token_provider,
         )
     elif len(dfI_filt) > 0 and overwrite:
         update_notebook_definition(
-            name=notebook_name, notebook_content=response.content, workspace=workspace
+            name=notebook_name,
+            notebook_content=response.content,
+            workspace=workspace,
+            token_provider=token_provider,
         )
     else:
         raise ValueError(
@@ -129,8 +141,9 @@ def create_notebook(
     notebook_content: str,
     description: Optional[str] = None,
     workspace: Optional[str] = None,
+    token_provider: Optional[str] = None,
 ):
-    """
+    f"""
     Creates a new notebook with a definition within a workspace.
 
     Parameters
@@ -146,10 +159,12 @@ def create_notebook(
         The name of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     notebook_payload = base64.b64encode(notebook_content)
 
     request_body = {
@@ -178,9 +193,12 @@ def create_notebook(
 
 
 def update_notebook_definition(
-    name: str, notebook_content: str, workspace: Optional[str] = None
+    name: str,
+    notebook_content: str,
+    workspace: Optional[str] = None,
+    token_provider: Optional[str] = None,
 ):
-    """
+    f"""
     Updates an existing notebook with a new definition.
 
     Parameters
@@ -193,10 +211,12 @@ def update_notebook_definition(
         The name of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     notebook_payload = base64.b64encode(notebook_content)
     notebook_id = fabric.resolve_item_id(
         item_name=name, type="Notebook", workspace=workspace
