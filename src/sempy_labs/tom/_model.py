@@ -3304,10 +3304,10 @@ class TOMWrapper:
 
         def create_pattern(tableList, b):
             patterns = [
-                r"(?<!" + re.escape(table) + r"\[)(?<!" + re.escape(table) + r"'\[)"
+                r"(?<!" + re.escape(table) + r")(?<!" + re.escape(table) + r"')\["
                 for table in tableList
             ]
-            combined_pattern = "".join(patterns) + re.escape(b)
+            combined_pattern = "".join(patterns) + re.escape(b) + r"\]"
             return combined_pattern
 
         for obj in self.depends_on(object=object, dependencies=dependencies):
