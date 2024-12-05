@@ -10,8 +10,11 @@ from sempy_labs._helper_functions import (
 from sempy.fabric.exceptions import FabricHTTPException
 
 
-def list_kql_querysets(workspace: Optional[str] = None) -> pd.DataFrame:
-    """
+def list_kql_querysets(
+    workspace: Optional[str] = None,
+    token_provider: Optional[str] = None,
+) -> pd.DataFrame:
+    f"""
     Shows the KQL querysets within a workspace.
 
     This is a wrapper function for the following API: `Items - List KQL Querysets <https://learn.microsoft.com/rest/api/fabric/kqlqueryset/items/list-kql-querysets>`_.
@@ -22,6 +25,8 @@ def list_kql_querysets(workspace: Optional[str] = None) -> pd.DataFrame:
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -39,7 +44,7 @@ def list_kql_querysets(workspace: Optional[str] = None) -> pd.DataFrame:
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get(f"/v1/workspaces/{workspace_id}/kqlQuerysets")
     if response.status_code != 200:
         raise FabricHTTPException(response)
@@ -59,9 +64,12 @@ def list_kql_querysets(workspace: Optional[str] = None) -> pd.DataFrame:
 
 
 def create_kql_queryset(
-    name: str, description: Optional[str] = None, workspace: Optional[str] = None
+    name: str,
+    description: Optional[str] = None,
+    workspace: Optional[str] = None,
+    token_provider: Optional[str] = None,
 ):
-    """
+    f"""
     Creates a KQL queryset.
 
     This is a wrapper function for the following API: `Items - Create KQL Queryset <https://learn.microsoft.com/rest/api/fabric/kqlqueryset/items/create-kql-queryset>`_.
@@ -76,6 +84,8 @@ def create_kql_queryset(
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -85,7 +95,7 @@ def create_kql_queryset(
     if description:
         request_body["description"] = description
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.post(
         f"/v1/workspaces/{workspace_id}/kqlQuerysets", json=request_body
     )
@@ -97,8 +107,12 @@ def create_kql_queryset(
     )
 
 
-def delete_kql_queryset(name: str, workspace: Optional[str] = None):
-    """
+def delete_kql_queryset(
+    name: str,
+    workspace: Optional[str] = None,
+    token_provider: Optional[str] = None,
+):
+    f"""
     Deletes a KQL queryset.
 
     This is a wrapper function for the following API: `Items - Delete KQL Queryset <https://learn.microsoft.com/rest/api/fabric/kqlqueryset/items/delete-kql-queryset>`_.
@@ -111,6 +125,8 @@ def delete_kql_queryset(name: str, workspace: Optional[str] = None):
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -118,7 +134,7 @@ def delete_kql_queryset(name: str, workspace: Optional[str] = None):
         item_name=name, type="KQLQueryset", workspace=workspace
     )
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.delete(
         f"/v1/workspaces/{workspace_id}/kqlQuerysets/{kql_database_id}"
     )
