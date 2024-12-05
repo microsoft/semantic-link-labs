@@ -112,16 +112,12 @@ def run_model_bpa(
             f"{icons.yellow_dot} The '{language}' language code is not in our predefined language list. Please file an issue and let us know which language code you are using: https://github.com/microsoft/semantic-link-labs/issues/new?assignees=&labels=&projects=&template=bug_report.md&title=."
         )
 
-    if extended:
-        icons.sll_tags.append("ModelBPAExtended")
-        with connect_semantic_model(
-            dataset=dataset, workspace=workspace, readonly=False
-        ) as tom:
-            tom.set_vertipaq_annotations()
-
     with connect_semantic_model(
         dataset=dataset, workspace=workspace, readonly=True
     ) as tom:
+
+        if extended:
+            tom.set_vertipaq_annotations()
 
         # Do not run BPA for models with no tables
         if tom.model.Tables.Count == 0:
