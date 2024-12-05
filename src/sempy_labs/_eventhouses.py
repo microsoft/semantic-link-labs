@@ -11,9 +11,12 @@ from sempy.fabric.exceptions import FabricHTTPException
 
 
 def create_eventhouse(
-    name: str, description: Optional[str] = None, workspace: Optional[str] = None
+    name: str,
+    description: Optional[str] = None,
+    workspace: Optional[str] = None,
+    token_provider: Optional[str] = None,
 ):
-    """
+    f"""
     Creates a Fabric eventhouse.
 
     This is a wrapper function for the following API: `Items - Create Eventhouse <https://learn.microsoft.com/rest/api/fabric/environment/items/create-eventhouse>`_.
@@ -28,6 +31,8 @@ def create_eventhouse(
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -37,7 +42,7 @@ def create_eventhouse(
     if description:
         request_body["description"] = description
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.post(
         f"/v1/workspaces/{workspace_id}/eventhouses", json=request_body
     )
@@ -49,8 +54,11 @@ def create_eventhouse(
     )
 
 
-def list_eventhouses(workspace: Optional[str] = None) -> pd.DataFrame:
-    """
+def list_eventhouses(
+    workspace: Optional[str] = None,
+    token_provider: Optional[str] = None,
+) -> pd.DataFrame:
+    f"""
     Shows the eventhouses within a workspace.
 
     This is a wrapper function for the following API: `Items - List Eventhouses <https://learn.microsoft.com/rest/api/fabric/environment/items/list-eventhouses>`_.
@@ -61,6 +69,8 @@ def list_eventhouses(workspace: Optional[str] = None) -> pd.DataFrame:
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -72,7 +82,7 @@ def list_eventhouses(workspace: Optional[str] = None) -> pd.DataFrame:
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get(f"/v1/workspaces/{workspace_id}/eventhouses")
     if response.status_code != 200:
         raise FabricHTTPException(response)
@@ -91,8 +101,10 @@ def list_eventhouses(workspace: Optional[str] = None) -> pd.DataFrame:
     return df
 
 
-def delete_eventhouse(name: str, workspace: Optional[str] = None):
-    """
+def delete_eventhouse(
+    name: str, workspace: Optional[str] = None, token_provider: Optional[str] = None
+):
+    f"""
     Deletes a Fabric eventhouse.
 
     This is a wrapper function for the following API: `Items - Delete Eventhouse <https://learn.microsoft.com/rest/api/fabric/environment/items/delete-eventhouse>`_.
@@ -105,6 +117,8 @@ def delete_eventhouse(name: str, workspace: Optional[str] = None):
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -113,7 +127,7 @@ def delete_eventhouse(name: str, workspace: Optional[str] = None):
         item_name=name, type="Eventhouse", workspace=workspace
     )
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.delete(f"/v1/workspaces/{workspace_id}/eventhouses/{item_id}")
 
     if response.status_code != 200:
