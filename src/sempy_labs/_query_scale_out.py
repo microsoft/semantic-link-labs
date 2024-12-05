@@ -9,8 +9,10 @@ import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 
 
-def qso_sync(dataset: str, workspace: Optional[str] = None):
-    """
+def qso_sync(
+    dataset: str, workspace: Optional[str] = None, token_provider: Optional[str] = None
+):
+    f"""
     Triggers a query scale-out sync of read-only replicas for the specified dataset from the specified workspace.
 
     This is a wrapper function for the following API: `Datasets - Trigger Query Scale Out Sync In Group <https://learn.microsoft.com/rest/api/power-bi/datasets/trigger-query-scale-out-sync-in-group>`_.
@@ -23,12 +25,14 @@ def qso_sync(dataset: str, workspace: Optional[str] = None):
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
     dataset_id = resolve_dataset_id(dataset, workspace)
 
-    client = fabric.PowerBIRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.post(
         f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/queryScaleOut/sync"
     )
@@ -41,9 +45,11 @@ def qso_sync(dataset: str, workspace: Optional[str] = None):
 
 
 def qso_sync_status(
-    dataset: str, workspace: Optional[str] = None
+    dataset: str,
+    workspace: Optional[str] = None,
+    token_provider: Optional[str] = None,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """
+    f"""
     Returns the query scale-out sync status for the specified dataset from the specified workspace.
 
     This is a wrapper function for the following API: `Datasets - Get Query Scale Out Sync Status In Group <https://learn.microsoft.com/rest/api/power-bi/datasets/get-query-scale-out-sync-status-in-group>`_.
@@ -56,6 +62,8 @@ def qso_sync_status(
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -84,7 +92,7 @@ def qso_sync_status(
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
     dataset_id = resolve_dataset_id(dataset, workspace)
 
-    client = fabric.PowerBIRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get(
         f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/queryScaleOut/syncStatus"
     )
@@ -316,9 +324,11 @@ def set_semantic_model_storage_format(
 
 
 def list_qso_settings(
-    dataset: Optional[str] = None, workspace: Optional[str] = None
+    dataset: Optional[str] = None,
+    workspace: Optional[str] = None,
+    token_provider: Optional[str] = None,
 ) -> pd.DataFrame:
-    """
+    f"""
     Shows the query scale out settings for a semantic model (or all semantic models within a workspace).
 
     Parameters
@@ -329,6 +339,8 @@ def list_qso_settings(
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -350,7 +362,7 @@ def list_qso_settings(
             "QSO Max Read Only Replicas",
         ]
     )
-    client = fabric.PowerBIRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get(f"/v1.0/myorg/groups/{workspace_id}/datasets")
 
     for v in response.json().get("value", []):
@@ -382,9 +394,11 @@ def list_qso_settings(
 
 
 def set_workspace_default_storage_format(
-    storage_format: str, workspace: Optional[str] = None
+    storage_format: str,
+    workspace: Optional[str] = None,
+    token_provider: Optional[str] = None,
 ):
-    """
+    f"""
     Sets the default storage format for semantic models within a workspace.
 
     Parameters
@@ -395,6 +409,8 @@ def set_workspace_default_storage_format(
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
     # https://learn.microsoft.com/en-us/rest/api/power-bi/groups/update-group#defaultdatasetstorageformat
@@ -427,7 +443,7 @@ def set_workspace_default_storage_format(
         "defaultDatasetStorageFormat": storage_format,
     }
 
-    client = fabric.PowerBIRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.patch(f"/v1.0/myorg/groups/{workspace_id}", json=request_body)
 
     if response.status_code != 200:
