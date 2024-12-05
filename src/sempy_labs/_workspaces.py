@@ -10,8 +10,12 @@ from sempy_labs._helper_functions import (
 from sempy.fabric.exceptions import FabricHTTPException
 
 
-def delete_user_from_workspace(email_address: str, workspace: Optional[str] = None):
-    """
+def delete_user_from_workspace(
+    email_address: str,
+    workspace: Optional[str] = None,
+    token_provider: Optional[str] = None,
+):
+    f"""
     Removes a user from a workspace.
 
     This is a wrapper function for the following API: `Groups - Delete User In Group <https://learn.microsoft.com/rest/api/power-bi/groups/delete-user-in-group>`_.
@@ -24,11 +28,13 @@ def delete_user_from_workspace(email_address: str, workspace: Optional[str] = No
         The name of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    client = fabric.PowerBIRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.delete(f"/v1.0/myorg/groups/{workspace_id}/users/{email_address}")
 
     if response.status_code != 200:
@@ -43,8 +49,9 @@ def update_workspace_user(
     role_name: str,
     principal_type: Optional[str] = "User",
     workspace: Optional[str] = None,
+    token_provider: Optional[str] = None,
 ):
-    """
+    f"""
     Updates a user's role within a workspace.
 
     This is a wrapper function for the following API: `Groups - Update Group User <https://learn.microsoft.com/rest/api/power-bi/groups/update-group-user>`_.
@@ -61,6 +68,8 @@ def update_workspace_user(
         The name of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -85,7 +94,7 @@ def update_workspace_user(
         "identifier": email_address,
     }
 
-    client = fabric.PowerBIRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.put(f"/v1.0/myorg/groups/{workspace_id}/users", json=request_body)
 
     if response.status_code != 200:
@@ -95,8 +104,10 @@ def update_workspace_user(
     )
 
 
-def list_workspace_users(workspace: Optional[str] = None) -> pd.DataFrame:
-    """
+def list_workspace_users(
+    workspace: Optional[str] = None, token_provider: Optional[str] = None
+) -> pd.DataFrame:
+    f"""
     A list of all the users of a workspace and their roles.
 
     This is a wrapper function for the following API: `Workspaces - List Workspace Role Assignments <https://learn.microsoft.com/rest/api/fabric/core/workspaces/list-workspace-role-assignments>`_.
@@ -107,6 +118,8 @@ def list_workspace_users(workspace: Optional[str] = None) -> pd.DataFrame:
         The name of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -117,7 +130,7 @@ def list_workspace_users(workspace: Optional[str] = None) -> pd.DataFrame:
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     df = pd.DataFrame(columns=["User Name", "Email Address", "Role", "Type", "User ID"])
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get(f"/v1/workspaces/{workspace_id}/roleAssignments")
     if response.status_code != 200:
         raise FabricHTTPException(response)
@@ -144,8 +157,9 @@ def add_user_to_workspace(
     role_name: str,
     principal_type: Optional[str] = "User",
     workspace: Optional[str] = None,
+    token_provider: Optional[str] = None,
 ):
-    """
+    f"""
     Adds a user to a workspace.
 
     This is a wrapper function for the following API: `Groups - Add Group User <https://learn.microsoft.com/rest/api/power-bi/groups/add-group-user>`_.
@@ -162,6 +176,8 @@ def add_user_to_workspace(
         The name of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -180,7 +196,7 @@ def add_user_to_workspace(
             f"{icons.red_dot} Invalid princpal type. Valid options: {principal_types}."
         )
 
-    client = fabric.PowerBIRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
 
     request_body = {
         "emailAddress": email_address,
@@ -200,8 +216,12 @@ def add_user_to_workspace(
     )
 
 
-def assign_workspace_to_capacity(capacity_name: str, workspace: Optional[str] = None):
-    """
+def assign_workspace_to_capacity(
+    capacity_name: str,
+    workspace: Optional[str] = None,
+    token_provider: Optional[str] = None,
+):
+    f"""
     Assigns a workspace to a capacity.
 
     This is a wrapper function for the following API: `Workspaces - Assign To Capacity <https://learn.microsoft.com/rest/api/fabric/core/workspaces/assign-to-capacity>`_.
@@ -214,6 +234,8 @@ def assign_workspace_to_capacity(capacity_name: str, workspace: Optional[str] = 
         The name of the Fabric workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -221,7 +243,7 @@ def assign_workspace_to_capacity(capacity_name: str, workspace: Optional[str] = 
 
     request_body = {"capacityId": capacity_id}
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.post(
         f"/v1/workspaces/{workspace_id}/assignToCapacity",
         json=request_body,
@@ -234,8 +256,10 @@ def assign_workspace_to_capacity(capacity_name: str, workspace: Optional[str] = 
     )
 
 
-def unassign_workspace_from_capacity(workspace: Optional[str] = None):
-    """
+def unassign_workspace_from_capacity(
+    workspace: Optional[str] = None, token_provider: Optional[str] = None
+):
+    f"""
     Unassigns a workspace from its assigned capacity.
 
     This is a wrapper function for the following API: `Workspaces - Unassign From Capacity <https://learn.microsoft.com/rest/api/fabric/core/workspaces/unassign-from-capacity>`_.
@@ -246,11 +270,13 @@ def unassign_workspace_from_capacity(workspace: Optional[str] = None):
         The name of the Fabric workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.post(f"/v1/workspaces/{workspace_id}/unassignFromCapacity")
 
     if response.status_code not in [200, 202]:
@@ -260,8 +286,10 @@ def unassign_workspace_from_capacity(workspace: Optional[str] = None):
     )
 
 
-def list_workspace_role_assignments(workspace: Optional[str] = None) -> pd.DataFrame:
-    """
+def list_workspace_role_assignments(
+    workspace: Optional[str] = None, token_provider: Optional[str] = None
+) -> pd.DataFrame:
+    f"""
     Shows the members of a given workspace.
 
     This is a wrapper function for the following API: `Workspaces - List Workspace Role Assignments <https://learn.microsoft.com/rest/api/fabric/core/workspaces/list-workspace-role-assignments>`_.
@@ -272,6 +300,8 @@ def list_workspace_role_assignments(workspace: Optional[str] = None) -> pd.DataF
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -283,7 +313,7 @@ def list_workspace_role_assignments(workspace: Optional[str] = None) -> pd.DataF
 
     df = pd.DataFrame(columns=["User Name", "User Email", "Role Name", "Type"])
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get(f"/v1/workspaces/{workspace_id}/roleAssignments")
     if response.status_code != 200:
         raise FabricHTTPException(response)
