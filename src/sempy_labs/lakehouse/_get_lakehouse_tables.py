@@ -27,8 +27,9 @@ def get_lakehouse_tables(
     extended: bool = False,
     count_rows: bool = False,
     export: bool = False,
+    token_provider: Optional[str] = None,
 ) -> pd.DataFrame:
-    """
+    f"""
     Shows the tables of a lakehouse and their respective properties. Option to include additional properties relevant to Direct Lake guardrails.
 
     This is a wrapper function for the following API: `Tables - List Tables <https://learn.microsoft.com/rest/api/fabric/lakehouse/tables/list-tables>`_ plus extended capabilities.
@@ -48,6 +49,8 @@ def get_lakehouse_tables(
         Obtains a row count for each lakehouse table.
     export : bool, default=False
         Exports the resulting dataframe to a delta table in the lakehouse.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -87,7 +90,7 @@ def get_lakehouse_tables(
             "Count rows runs a spark query and cross-workspace spark queries are currently not supported."
         )
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get(
         f"/v1/workspaces/{workspace_id}/lakehouses/{lakehouse_id}/tables"
     )
