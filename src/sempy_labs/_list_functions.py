@@ -586,8 +586,10 @@ def list_columns(
     return dfC
 
 
-def list_dashboards(workspace: Optional[str] = None) -> pd.DataFrame:
-    """
+def list_dashboards(
+    workspace: Optional[str] = None, token_provider: Optional[str] = None
+) -> pd.DataFrame:
+    f"""
     Shows a list of the dashboards within a workspace.
 
     Parameters
@@ -596,6 +598,8 @@ def list_dashboards(workspace: Optional[str] = None) -> pd.DataFrame:
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -616,13 +620,9 @@ def list_dashboards(workspace: Optional[str] = None) -> pd.DataFrame:
         ]
     )
 
-    if workspace == "None":
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resovle_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    client = fabric.PowerBIRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get(f"/v1.0/myorg/groups/{workspace_id}/dashboards")
     if response.status_code != 200:
         raise FabricHTTPException(response)
@@ -645,8 +645,10 @@ def list_dashboards(workspace: Optional[str] = None) -> pd.DataFrame:
     return df
 
 
-def list_lakehouses(workspace: Optional[str] = None) -> pd.DataFrame:
-    """
+def list_lakehouses(
+    workspace: Optional[str] = None, token_provider: Optional[str] = None
+) -> pd.DataFrame:
+    f"""
     Shows the lakehouses within a workspace.
 
     Parameters
@@ -655,6 +657,8 @@ def list_lakehouses(workspace: Optional[str] = None) -> pd.DataFrame:
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -677,7 +681,7 @@ def list_lakehouses(workspace: Optional[str] = None) -> pd.DataFrame:
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get(f"/v1/workspaces/{workspace_id}/lakehouses")
 
     if response.status_code != 200:
@@ -1165,9 +1169,11 @@ def list_semantic_model_objects(
 
 
 def list_shortcuts(
-    lakehouse: Optional[str] = None, workspace: Optional[str] = None
+    lakehouse: Optional[str] = None,
+    workspace: Optional[str] = None,
+    token_provider: Optional[str] = None,
 ) -> pd.DataFrame:
-    """
+    f"""
     Shows all shortcuts which exist in a Fabric lakehouse and their properties.
 
     Parameters
@@ -1179,6 +1185,8 @@ def list_shortcuts(
         The name of the Fabric workspace in which lakehouse resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -1193,7 +1201,7 @@ def list_shortcuts(
     else:
         lakehouse_id = resolve_lakehouse_id(lakehouse, workspace)
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
 
     df = pd.DataFrame(
         columns=[
@@ -1274,9 +1282,14 @@ def list_shortcuts(
     return df
 
 
-def list_capacities() -> pd.DataFrame:
+def list_capacities(token_provider: Optional[str] = None) -> pd.DataFrame:
     """
     Shows the capacities and their properties.
+
+    Parameters
+    ----------
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -1288,7 +1301,7 @@ def list_capacities() -> pd.DataFrame:
         columns=["Id", "Display Name", "Sku", "Region", "State", "Admins"]
     )
 
-    client = fabric.PowerBIRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get("/v1.0/myorg/capacities")
     if response.status_code != 200:
         raise FabricHTTPException(response)
