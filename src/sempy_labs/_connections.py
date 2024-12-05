@@ -5,14 +5,15 @@ from typing import Optional
 from sempy_labs._helper_functions import (
     pagination,
     _is_valid_uuid,
+    resolve_workspace_name_and_id,
 )
 from uuid import UUID
 import sempy_labs._icons as icons
 from sempy_labs._gateways import _resolve_gateway_id
 
 
-def delete_connection(connection: str | UUID):
-    """
+def delete_connection(connection: str | UUID, token_provider: Optional[str] = None):
+    f"""
     Delete a connection.
 
     This is a wrapper function for the following API: `Connections - Delete Connection <https://learn.microsoft.com/rest/api/fabric/core/connections/delete-connection>`_.
@@ -21,11 +22,13 @@ def delete_connection(connection: str | UUID):
     ----------
     connection : str | UUID
         The connection name or ID.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
     connection_id = _resolve_connection_id(connection)
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.delete(f"/v1/connections/{connection_id}")
 
     if response.status_code != 200:
@@ -34,8 +37,8 @@ def delete_connection(connection: str | UUID):
     print(f"{icons.green_dot} The '{connection}' connection has been deleted.")
 
 
-def delete_connection_role_assignment(connection: str | UUID, role_assignment_id: UUID):
-    """
+def delete_connection_role_assignment(connection: str | UUID, role_assignment_id: UUID, token_provider: Optional[str] = None):
+    f"""
     Delete the specified role assignment for the connection.
 
     This is a wrapper function for the following API: `Connections - Delete Connection Role Assignment <https://learn.microsoft.com/rest/api/fabric/core/connections/delete-connection-role-assignment>`_.
@@ -46,11 +49,13 @@ def delete_connection_role_assignment(connection: str | UUID, role_assignment_id
         The connection name or ID.
     role_assignment_id : UUID
         The role assignment ID.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
     connection_id = _resolve_connection_id(connection)
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.delete(
         f"/v1/connections/{connection_id}/roleAssignments/{role_assignment_id}"
     )
@@ -63,15 +68,15 @@ def delete_connection_role_assignment(connection: str | UUID, role_assignment_id
     )
 
 
-def _resolve_connection_id(connection: str | UUID) -> UUID:
+def _resolve_connection_id(connection: str | UUID, token_provider: Optional[str] = None) -> UUID:
 
-    dfC = list_connections()
+    dfC = list_connections(token_provider=token_provider)
     if _is_valid_uuid(connection):
         dfC_filt = dfC[dfC["Connection Id"] == connection]
     else:
         dfC_filt = dfC[dfC["Connection Name"] == connection]
 
-    if len(dfC_filt) == 0:
+    if dfC_filt.empty:
         raise ValueError(
             f"{icons.red_dot} The '{connection}' is not a valid connection."
         )
@@ -79,8 +84,8 @@ def _resolve_connection_id(connection: str | UUID) -> UUID:
     return dfC_filt["Connection Id"].iloc[0]
 
 
-def list_connection_role_assignments(connection: str | UUID) -> pd.DataFrame:
-    """
+def list_connection_role_assignments(connection: str | UUID, token_provider: Optional[str] = None) -> pd.DataFrame:
+    f"""
     Returns a list of connection role assignments.
 
     This is a wrapper function for the following API: `Connections - List Connection Role Assignments <https://learn.microsoft.com/rest/api/fabric/core/connections/list-connection-role-assignments>`_.
@@ -89,6 +94,8 @@ def list_connection_role_assignments(connection: str | UUID) -> pd.DataFrame:
     ----------
     connection : str | UUID
         The connection name or ID.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -98,7 +105,7 @@ def list_connection_role_assignments(connection: str | UUID) -> pd.DataFrame:
 
     connection_id = _resolve_connection_id(connection)
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get(f"/v1/connections/{connection_id}/roleAssignments")
 
     df = pd.DataFrame(
@@ -129,9 +136,16 @@ def list_connection_role_assignments(connection: str | UUID) -> pd.DataFrame:
     return df
 
 
-def list_connections() -> pd.DataFrame:
-    """
+def list_connections(token_provider: Optional[str] = None) -> pd.DataFrame:
+    f"""
     Lists all available connections.
+
+    Parameters
+    ----------
+    connection : str | UUID
+        The connection name or ID.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -139,7 +153,7 @@ def list_connections() -> pd.DataFrame:
         A pandas dataframe showing all available connections.
     """
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get("/v1/connections")
 
     if response.status_code != 200:
@@ -205,9 +219,9 @@ def list_connections() -> pd.DataFrame:
 
 
 def list_item_connections(
-    item_name: str, item_type: str, workspace: Optional[str] = None
+    item_name: str, item_type: str, workspace: Optional[str] = None, token_provider: Optional[str] = None
 ) -> pd.DataFrame:
-    """
+    f"""
     Shows the list of connections that the specified item is connected to.
 
     This is a wrapper function for the following API: `Items - List Item Connections <https://learn.microsoft.com/rest/api/fabric/core/items/list-item-connections>`_.
@@ -222,6 +236,8 @@ def list_item_connections(
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -229,14 +245,13 @@ def list_item_connections(
         A pandas dataframe showing the list of connections that the specified item is connected to.
     """
 
-    workspace = fabric.resolve_workspace_name(workspace)
-    workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
     item_type = item_type[0].upper() + item_type[1:]
     item_id = fabric.resolve_item_id(
         item_name=item_name, type=item_type, workspace=workspace
     )
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get(f"/v1/workspaces/{workspace_id}/items/{item_id}/connections")
 
     df = pd.DataFrame(
@@ -272,7 +287,7 @@ def list_item_connections(
 
 
 def _list_supported_connection_types(
-    gateway: Optional[str | UUID] = None, show_all_creation_methods: bool = False
+    gateway: Optional[str | UUID] = None, show_all_creation_methods: bool = False, token_provider: Optional[str] = None
 ) -> pd.DataFrame:
 
     url = f"/v1/connections/supportedConnectionTypes?showAllCreationMethods={show_all_creation_methods}&"
@@ -291,7 +306,7 @@ def _list_supported_connection_types(
     )
 
     url = url.rstrip("&")
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get(url)
     if response.status_code != 200:
         raise FabricHTTPException(response)
@@ -330,8 +345,9 @@ def create_cloud_connection(
     privacy_level: str,
     connection_encryption: str = "NotEncrypted",
     skip_test_connection: bool = False,
+    token_provider: Optional[str] = None
 ):
-    """
+    f"""
     Creates a shared cloud connection.
 
     This is a wrapper function for the following API: `Connections - Create Connection <https://learn.microsoft.com/rest/api/fabric/core/connections/create-connection>`_.
@@ -354,6 +370,8 @@ def create_cloud_connection(
         The connection encrpytion.
     skip_test_connection: bool, default=False
         If True, skips the test connection.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
     request_body = {
@@ -388,7 +406,7 @@ def create_cloud_connection(
         },
     }
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.post("/v1/connections", json=request_body)
 
     if response.status_code != 201:
@@ -406,8 +424,9 @@ def create_on_prem_connection(
     privacy_level: str,
     connection_encryption: str = "NotEncrypted",
     skip_test_connection: bool = False,
+    token_provider: Optional[str] = None,
 ):
-    """
+    f"""
     Creates an on-premises connection.
 
     This is a wrapper function for the following API: `Connections - Create Connection <https://learn.microsoft.com/rest/api/fabric/core/connections/create-connection>`_.
@@ -432,6 +451,8 @@ def create_on_prem_connection(
         The connection encrpytion.
     skip_test_connection: bool, default=False
         If True, skips the test connection.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
     gateway_id = _resolve_gateway_id(gateway)
@@ -468,7 +489,7 @@ def create_on_prem_connection(
         },
     }
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.post("/v1/connections", json=request_body)
 
     if response.status_code != 201:
@@ -487,8 +508,9 @@ def create_vnet_connection(
     privacy_level: str,
     connection_encryption: Optional[str] = "NotEncrypted",
     skip_test_connection: bool = False,
+    token_provider: Optional[str] = None,
 ):
-    """
+    f"""
     Creates a virtual network gateway connection.
 
     This is a wrapper function for the following API: `Connections - Create Connection <https://learn.microsoft.com/rest/api/fabric/core/connections/create-connection>`_.
@@ -513,6 +535,8 @@ def create_vnet_connection(
         The connection encrpytion.
     skip_test_connection: bool, default=False
         If True, skips the test connection.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
     gateway_id = _resolve_gateway_id(gateway)
@@ -550,7 +574,7 @@ def create_vnet_connection(
         },
     }
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.post("/v1/connections", json=request_body)
 
     if response.status_code != 201:
