@@ -10,8 +10,10 @@ from sempy_labs._helper_functions import (
 from sempy.fabric.exceptions import FabricHTTPException
 
 
-def list_kql_databases(workspace: Optional[str] = None) -> pd.DataFrame:
-    """
+def list_kql_databases(
+    workspace: Optional[str] = None, token_provider: Optional[str] = None
+) -> pd.DataFrame:
+    f"""
     Shows the KQL databases within a workspace.
 
     This is a wrapper function for the following API: `Items - List KQL Databases <https://learn.microsoft.com/rest/api/fabric/kqldatabase/items/list-kql-databases>`_.
@@ -22,6 +24,8 @@ def list_kql_databases(workspace: Optional[str] = None) -> pd.DataFrame:
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -43,7 +47,7 @@ def list_kql_databases(workspace: Optional[str] = None) -> pd.DataFrame:
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get(f"/v1/workspaces/{workspace_id}/kqlDatabases")
     if response.status_code != 200:
         raise FabricHTTPException(response)
@@ -69,9 +73,12 @@ def list_kql_databases(workspace: Optional[str] = None) -> pd.DataFrame:
 
 
 def create_kql_database(
-    name: str, description: Optional[str] = None, workspace: Optional[str] = None
+    name: str,
+    description: Optional[str] = None,
+    workspace: Optional[str] = None,
+    token_provider: Optional[str] = None,
 ):
-    """
+    f"""
     Creates a KQL database.
 
     This is a wrapper function for the following API: `Items - Create KQL Database <https://learn.microsoft.com/rest/api/fabric/kqldatabase/items/create-kql-database>`_.
@@ -86,6 +93,8 @@ def create_kql_database(
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -95,7 +104,7 @@ def create_kql_database(
     if description:
         request_body["description"] = description
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.post(
         f"/v1/workspaces/{workspace_id}/kqlDatabases", json=request_body
     )
@@ -107,8 +116,12 @@ def create_kql_database(
     )
 
 
-def delete_kql_database(name: str, workspace: Optional[str] = None):
-    """
+def delete_kql_database(
+    name: str,
+    workspace: Optional[str] = None,
+    token_provider: Optional[str] = None,
+):
+    f"""
     Deletes a KQL database.
 
     This is a wrapper function for the following API: `Items - Delete KQL Database <https://learn.microsoft.com/rest/api/fabric/kqldatabase/items/delete-kql-database>`_.
@@ -121,6 +134,8 @@ def delete_kql_database(name: str, workspace: Optional[str] = None):
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -128,7 +143,7 @@ def delete_kql_database(name: str, workspace: Optional[str] = None):
         item_name=name, type="KQLDatabase", workspace=workspace
     )
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.delete(
         f"/v1/workspaces/{workspace_id}/kqlDatabases/{kql_database_id}"
     )
