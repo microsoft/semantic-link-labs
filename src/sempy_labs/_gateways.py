@@ -11,11 +11,16 @@ from uuid import UUID
 import sempy_labs._icons as icons
 
 
-def list_gateways() -> pd.DataFrame:
-    """
+def list_gateways(token_provider: Optional[str] = None) -> pd.DataFrame:
+    f"""
     Returns a list of all gateways the user has permission for, including on-premises, on-premises (personal mode), and virtual network gateways.
 
     This is a wrapper function for the following API: `Gateways - List Gateways <https://learn.microsoft.com/rest/api/fabric/core/gateways/list-gateways>`_.
+
+    Parameters
+    ----------
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -23,7 +28,7 @@ def list_gateways() -> pd.DataFrame:
         A pandas dataframe showing a list of all gateways the user has permission for, including on-premises, on-premises (personal mode), and virtual network gateways.
     """
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get("/v1/gateways")
 
     if response.status_code != 200:
@@ -71,22 +76,24 @@ def list_gateways() -> pd.DataFrame:
     return df
 
 
-def _resolve_gateway_id(gateway: str | UUID) -> UUID:
+def _resolve_gateway_id(
+    gateway: str | UUID, token_provider: Optional[str] = None
+) -> UUID:
 
-    dfG = list_gateways()
+    dfG = list_gateways(token_provider=token_provider)
     if _is_valid_uuid(gateway):
         dfG_filt = dfG[dfG["Gateway Id"] == gateway]
     else:
         dfG_filt = dfG[dfG["Gateway Name"] == gateway]
 
-    if len(dfG_filt) == 0:
+    if dfG_filt.empty:
         raise ValueError(f"{icons.red_dot} The '{gateway}' does not exist.")
 
     return dfG_filt["Gateway Id"].iloc[0]
 
 
-def delete_gateway(gateway: str | UUID):
-    """
+def delete_gateway(gateway: str | UUID, token_provider: Optional[str] = None):
+    f"""
     Deletes a gateway.
 
     This is a wrapper function for the following API: `Gateways - Delete Gateway <https://learn.microsoft.com/rest/api/fabric/core/gateways/delete-gateway>`_.
@@ -95,10 +102,12 @@ def delete_gateway(gateway: str | UUID):
     ----------
     gateway : str | UUID
         The gateway name or ID.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
-    gateway_id = _resolve_gateway_id(gateway)
-    client = fabric.FabricRestClient()
+    gateway_id = _resolve_gateway_id(gateway, token_provider=token_provider)
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.delete(f"/v1/gateways/{gateway_id}")
 
     if response.status_code != 200:
@@ -107,8 +116,10 @@ def delete_gateway(gateway: str | UUID):
     print(f"{icons.green_dot} The '{gateway}' gateway has been deleted.")
 
 
-def list_gateway_role_assigments(gateway: str | UUID) -> pd.DataFrame:
-    """
+def list_gateway_role_assigments(
+    gateway: str | UUID, token_provider: Optional[str] = None
+) -> pd.DataFrame:
+    f"""
     Returns a list of gateway role assignments.
 
     This is a wrapper function for the following API: `Gateways - List Gateway Role Assignments <https://learn.microsoft.com/rest/api/fabric/core/gateways/list-gateway-role-assignments>`_.
@@ -117,6 +128,8 @@ def list_gateway_role_assigments(gateway: str | UUID) -> pd.DataFrame:
     ----------
     gateway : str | UUID
         The gateway name or ID.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -124,8 +137,8 @@ def list_gateway_role_assigments(gateway: str | UUID) -> pd.DataFrame:
         A pandas dataframe showing a list of gateway role assignments.
     """
 
-    gateway_id = _resolve_gateway_id(gateway)
-    client = fabric.FabricRestClient()
+    gateway_id = _resolve_gateway_id(gateway, token_provider=token_provider)
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get(f"/v1/gateways/{gateway_id}/roleAssignments")
 
     if response.status_code != 200:
@@ -149,8 +162,10 @@ def list_gateway_role_assigments(gateway: str | UUID) -> pd.DataFrame:
     return df
 
 
-def delete_gateway_role_assignment(gateway: str | UUID, role_assignement_id: UUID):
-    """
+def delete_gateway_role_assignment(
+    gateway: str | UUID, role_assignement_id: UUID, token_provider: Optional[str] = None
+):
+    f"""
     Delete the specified role assignment for the gateway.
 
     This is a wrapper function for the following API: `Gateways - Delete Gateway Role Assignment <https://learn.microsoft.com/rest/api/fabric/core/gateways/delete-gateway-role-assignment>`_.
@@ -161,10 +176,12 @@ def delete_gateway_role_assignment(gateway: str | UUID, role_assignement_id: UUI
         The gateway name or ID.
     role_assignement_id : UUID
         The role assignment ID.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
-    gateway_id = _resolve_gateway_id(gateway)
-    client = fabric.FabricRestClient()
+    gateway_id = _resolve_gateway_id(gateway, token_provider=token_provider)
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.delete(
         f"/v1/gateways/{gateway_id}/roleAssignments/{role_assignement_id}"
     )
@@ -177,16 +194,20 @@ def delete_gateway_role_assignment(gateway: str | UUID, role_assignement_id: UUI
     )
 
 
-def _resolve_gateway_member_id(gateway: str | UUID, gateway_member: str | UUID) -> UUID:
+def _resolve_gateway_member_id(
+    gateway: str | UUID,
+    gateway_member: str | UUID,
+    token_provider: Optional[str] = None,
+) -> UUID:
 
-    gateway_id = _resolve_gateway_id(gateway)
-    dfM = list_gateway_members(gateway=gateway_id)
+    gateway_id = _resolve_gateway_id(gateway, token_provider=token_provider)
+    dfM = list_gateway_members(gateway=gateway_id, token_provider=token_provider)
 
     if _is_valid_uuid(gateway_member):
         dfM_filt = dfM[dfM["Member Id"] == gateway_member]
     else:
         dfM_filt = dfM[dfM["Member Name"] == gateway_member]
-    if len(dfM_filt) == 0:
+    if dfM_filt.empty:
         raise ValueError(
             f"{icons.red_dot} The '{gateway_member}' gateway member does not exist within the '{gateway}' gateway."
         )
@@ -194,8 +215,12 @@ def _resolve_gateway_member_id(gateway: str | UUID, gateway_member: str | UUID) 
     return dfM_filt["Member Id"].iloc[0]
 
 
-def delete_gateway_member(gateway: str | UUID, gateway_member: str | UUID):
-    """
+def delete_gateway_member(
+    gateway: str | UUID,
+    gateway_member: str | UUID,
+    token_provider: Optional[str] = None,
+):
+    f"""
     Delete gateway member of an on-premises gateway.
 
     This is a wrapper function for the following API: `Gateways - Delete Gateway Member <https://learn.microsoft.com/rest/api/fabric/core/gateways/delete-gateway-member>`_.
@@ -206,14 +231,16 @@ def delete_gateway_member(gateway: str | UUID, gateway_member: str | UUID):
         The gateway name or ID.
     gateway_member : str | UUID
         The gateway member name or ID.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
-    gateway_id = _resolve_gateway_id(gateway)
+    gateway_id = _resolve_gateway_id(gateway, token_provider=token_provider)
     member_id = _resolve_gateway_member_id(
-        gateway=gateway_id, gateway_member=gateway_member
+        gateway=gateway_id, gateway_member=gateway_member, token_provider=token_provider
     )
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.delete(f"/v1/gateways/{gateway_id}/members/{member_id}")
 
     if response.status_code != 200:
@@ -224,8 +251,10 @@ def delete_gateway_member(gateway: str | UUID, gateway_member: str | UUID):
     )
 
 
-def list_gateway_members(gateway: str | UUID) -> pd.DataFrame:
-    """
+def list_gateway_members(
+    gateway: str | UUID, token_provider: Optional[str] = None
+) -> pd.DataFrame:
+    f"""
     Lists gateway members of an on-premises gateway.
 
     This is a wrapper function for the following API: `Gateways - List Gateway Members <https://learn.microsoft.com/rest/api/fabric/core/gateways/list-gateway-members>`_.
@@ -234,6 +263,8 @@ def list_gateway_members(gateway: str | UUID) -> pd.DataFrame:
     ----------
     gateway : str | UUID
         The gateway name or ID.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -241,8 +272,8 @@ def list_gateway_members(gateway: str | UUID) -> pd.DataFrame:
         A pandas dataframe showing a list of gateway members of an on-premises gateway.
     """
 
-    gateway_id = _resolve_gateway_id(gateway)
-    client = fabric.FabricRestClient()
+    gateway_id = _resolve_gateway_id(gateway, token_provider=token_provider)
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get(f"/v1/gateways/{gateway_id}/members")
 
     if response.status_code != 200:
@@ -286,8 +317,9 @@ def create_vnet_gateway(
     resource_group: str,
     virtual_network: str,
     subnet: str,
+    token_provider: Optional[str] = None,
 ):
-    """
+    f"""
     Creates a virtual network gateway.
 
     This is a wrapper function for the following API: `Gateways - Create Gateway <https://learn.microsoft.com/rest/api/fabric/core/gateways/create-gateway>`_.
@@ -310,9 +342,11 @@ def create_vnet_gateway(
         The name of the virtual network.
     subnet : str
         The name of the subnet.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
 
     capacity_id = resolve_capacity_id(capacity)
     payload = {
@@ -343,8 +377,9 @@ def update_on_premises_gateway(
     allow_cloud_connection_refresh: Optional[bool] = None,
     allow_custom_connectors: Optional[bool] = None,
     load_balancing_setting: Optional[str] = None,
+    token_provider: Optional[str] = None,
 ):
-    """
+    f"""
     Updates an on-premises gateway.
 
     This is a wrapper function for the following API: `Gateways - Update Gateway <https://learn.microsoft.com/rest/api/fabric/core/gateways/update-gateway>`_.
@@ -359,9 +394,11 @@ def update_on_premises_gateway(
         Whether to allow custom connectors to be used with this on-premises gateway. True - Allow, False - Do not allow.
     load_balancing_setting : str, default=None
         The `load balancing setting <https://learn.microsoft.com/rest/api/fabric/core/gateways/update-gateway?tabs=HTTP#loadbalancingsetting>`_ of the on-premises gateway.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
-    gateway_id = _resolve_gateway_id(gateway)
+    gateway_id = _resolve_gateway_id(gateway, token_provider=token_provider)
 
     payload = {}
 
@@ -379,7 +416,7 @@ def update_on_premises_gateway(
 
     payload["type"] = "OnPremises"
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.patch(f"/v1/gateways/{gateway_id}", json=payload)
 
     if response.status_code != 200:
@@ -393,8 +430,9 @@ def update_vnet_gateway(
     capacity: str | UUID,
     inactivity_minutes_before_sleep: Optional[int] = None,
     number_of_member_gateways: Optional[int] = None,
+    token_provider: Optional[str] = None,
 ):
-    """
+    f"""
     Updates a virtual network gateway.
 
     This is a wrapper function for the following API: `Gateways - Update Gateway <https://learn.microsoft.com/rest/api/fabric/core/gateways/update-gateway>`_.
@@ -409,9 +447,11 @@ def update_vnet_gateway(
         The minutes of inactivity before the virtual network gateway goes into auto-sleep. Must be one of the following values: 30, 60, 90, 120, 150, 240, 360, 480, 720, 1440.
     number_of_member_gateways : int, default=None
         The number of member gateways. A number between 1 and 7.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
-    gateway_id = _resolve_gateway_id(gateway)
+    gateway_id = _resolve_gateway_id(gateway, token_provider=token_provider)
 
     payload = {}
 
@@ -430,7 +470,7 @@ def update_vnet_gateway(
 
     payload["type"] = "VirtualNetwork"
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.patch(f"/v1/gateways/{gateway_id}", json=payload)
 
     if response.status_code != 200:

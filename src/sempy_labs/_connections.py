@@ -26,7 +26,7 @@ def delete_connection(connection: str | UUID, token_provider: Optional[str] = No
         {icons.token_provider_desc}
     """
 
-    connection_id = _resolve_connection_id(connection)
+    connection_id = _resolve_connection_id(connection, token_provider=token_provider)
 
     client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.delete(f"/v1/connections/{connection_id}")
@@ -37,7 +37,11 @@ def delete_connection(connection: str | UUID, token_provider: Optional[str] = No
     print(f"{icons.green_dot} The '{connection}' connection has been deleted.")
 
 
-def delete_connection_role_assignment(connection: str | UUID, role_assignment_id: UUID, token_provider: Optional[str] = None):
+def delete_connection_role_assignment(
+    connection: str | UUID,
+    role_assignment_id: UUID,
+    token_provider: Optional[str] = None,
+):
     f"""
     Delete the specified role assignment for the connection.
 
@@ -53,7 +57,7 @@ def delete_connection_role_assignment(connection: str | UUID, role_assignment_id
         {icons.token_provider_desc}
     """
 
-    connection_id = _resolve_connection_id(connection)
+    connection_id = _resolve_connection_id(connection, token_provider=token_provider)
 
     client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.delete(
@@ -68,7 +72,9 @@ def delete_connection_role_assignment(connection: str | UUID, role_assignment_id
     )
 
 
-def _resolve_connection_id(connection: str | UUID, token_provider: Optional[str] = None) -> UUID:
+def _resolve_connection_id(
+    connection: str | UUID, token_provider: Optional[str] = None
+) -> UUID:
 
     dfC = list_connections(token_provider=token_provider)
     if _is_valid_uuid(connection):
@@ -84,7 +90,9 @@ def _resolve_connection_id(connection: str | UUID, token_provider: Optional[str]
     return dfC_filt["Connection Id"].iloc[0]
 
 
-def list_connection_role_assignments(connection: str | UUID, token_provider: Optional[str] = None) -> pd.DataFrame:
+def list_connection_role_assignments(
+    connection: str | UUID, token_provider: Optional[str] = None
+) -> pd.DataFrame:
     f"""
     Returns a list of connection role assignments.
 
@@ -103,7 +111,7 @@ def list_connection_role_assignments(connection: str | UUID, token_provider: Opt
         A pandas dataframe showing a list of connection role assignments.
     """
 
-    connection_id = _resolve_connection_id(connection)
+    connection_id = _resolve_connection_id(connection, token_provider=token_provider)
 
     client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get(f"/v1/connections/{connection_id}/roleAssignments")
@@ -219,7 +227,10 @@ def list_connections(token_provider: Optional[str] = None) -> pd.DataFrame:
 
 
 def list_item_connections(
-    item_name: str, item_type: str, workspace: Optional[str] = None, token_provider: Optional[str] = None
+    item_name: str,
+    item_type: str,
+    workspace: Optional[str] = None,
+    token_provider: Optional[str] = None,
 ) -> pd.DataFrame:
     f"""
     Shows the list of connections that the specified item is connected to.
@@ -287,12 +298,14 @@ def list_item_connections(
 
 
 def _list_supported_connection_types(
-    gateway: Optional[str | UUID] = None, show_all_creation_methods: bool = False, token_provider: Optional[str] = None
+    gateway: Optional[str | UUID] = None,
+    show_all_creation_methods: bool = False,
+    token_provider: Optional[str] = None,
 ) -> pd.DataFrame:
 
     url = f"/v1/connections/supportedConnectionTypes?showAllCreationMethods={show_all_creation_methods}&"
     if gateway is not None:
-        gateway_id = _resolve_gateway_id(gateway)
+        gateway_id = _resolve_gateway_id(gateway, token_provider=token_provider)
         url += f"gatewayId={gateway_id}"
 
     df = pd.DataFrame(
@@ -345,7 +358,7 @@ def create_cloud_connection(
     privacy_level: str,
     connection_encryption: str = "NotEncrypted",
     skip_test_connection: bool = False,
-    token_provider: Optional[str] = None
+    token_provider: Optional[str] = None,
 ):
     f"""
     Creates a shared cloud connection.
@@ -455,7 +468,7 @@ def create_on_prem_connection(
         {icons.token_provider_desc}
     """
 
-    gateway_id = _resolve_gateway_id(gateway)
+    gateway_id = _resolve_gateway_id(gateway, token_provider=token_provider)
 
     request_body = {
         "connectivityType": "OnPremisesGateway",
@@ -539,7 +552,7 @@ def create_vnet_connection(
         {icons.token_provider_desc}
     """
 
-    gateway_id = _resolve_gateway_id(gateway)
+    gateway_id = _resolve_gateway_id(gateway, token_provider=token_provider)
 
     request_body = {
         "connectivityType": "VirtualNetworkGateway",
