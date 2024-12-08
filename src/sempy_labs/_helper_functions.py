@@ -121,13 +121,7 @@ def resolve_report_id(report: str, workspace: Optional[str] = None) -> UUID:
         The ID of the Power BI report.
     """
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-
-    obj = fabric.resolve_item_id(item_name=report, type="Report", workspace=workspace)
-
-    return obj
+    return fabric.resolve_item_id(item_name=report, type="Report", workspace=workspace)
 
 
 def resolve_report_name(report_id: UUID, workspace: Optional[str] = None) -> str:
@@ -149,15 +143,9 @@ def resolve_report_name(report_id: UUID, workspace: Optional[str] = None) -> str
         The name of the Power BI report.
     """
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-
-    obj = fabric.resolve_item_name(
+    return fabric.resolve_item_name(
         item_id=report_id, type="Report", workspace=workspace
     )
-
-    return obj
 
 
 def resolve_dataset_id(dataset: str, workspace: Optional[str] = None) -> UUID:
@@ -179,15 +167,9 @@ def resolve_dataset_id(dataset: str, workspace: Optional[str] = None) -> UUID:
         The ID of the semantic model.
     """
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-
-    obj = fabric.resolve_item_id(
+    return fabric.resolve_item_id(
         item_name=dataset, type="SemanticModel", workspace=workspace
     )
-
-    return obj
 
 
 def resolve_dataset_name(dataset_id: UUID, workspace: Optional[str] = None) -> str:
@@ -209,15 +191,9 @@ def resolve_dataset_name(dataset_id: UUID, workspace: Optional[str] = None) -> s
         The name of the semantic model.
     """
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-
-    obj = fabric.resolve_item_name(
+    return fabric.resolve_item_name(
         item_id=dataset_id, type="SemanticModel", workspace=workspace
     )
-
-    return obj
 
 
 def resolve_lakehouse_name(
@@ -242,18 +218,12 @@ def resolve_lakehouse_name(
         The name of the Fabric lakehouse.
     """
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-
     if lakehouse_id is None:
         lakehouse_id = fabric.get_lakehouse_id()
 
-    obj = fabric.resolve_item_name(
+    return fabric.resolve_item_name(
         item_id=lakehouse_id, type="Lakehouse", workspace=workspace
     )
-
-    return obj
 
 
 def resolve_lakehouse_id(lakehouse: str, workspace: Optional[str] = None) -> UUID:
@@ -275,15 +245,9 @@ def resolve_lakehouse_id(lakehouse: str, workspace: Optional[str] = None) -> UUI
         The ID of the Fabric lakehouse.
     """
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-
-    obj = fabric.resolve_item_id(
+    return fabric.resolve_item_id(
         item_name=lakehouse, type="Lakehouse", workspace=workspace
     )
-
-    return obj
 
 
 def get_direct_lake_sql_endpoint(dataset: str, workspace: Optional[str] = None) -> UUID:
@@ -447,11 +411,7 @@ def save_as_delta_table(
         TimestampType,
     )
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     if lakehouse is None:
         lakehouse_id = fabric.get_lakehouse_id()
@@ -623,8 +583,6 @@ def is_default_semantic_model(dataset: str, workspace: Optional[str] = None) -> 
         A True/False value indicating whether the semantic model is a default semantic model.
     """
 
-    workspace = fabric.resolve_workspace_name(workspace)
-
     dfI = fabric.list_items(workspace=workspace)
     filtered_df = dfI.groupby("Display Name").filter(
         lambda x: set(["Warehouse", "SemanticModel"]).issubset(set(x["Type"]))
@@ -662,9 +620,7 @@ def resolve_item_type(item_id: UUID, workspace: Optional[str] = None) -> str:
         raise ValueError(
             f"Invalid 'item_id' parameter. The '{item_id}' item was not found in the '{workspace}' workspace."
         )
-    item_type = dfI_filt["Type"].iloc[0]
-
-    return item_type
+    return dfI_filt["Type"].iloc[0]
 
 
 def resolve_dataset_from_report(
@@ -1012,7 +968,6 @@ def resolve_warehouse_id(warehouse: str, workspace: Optional[str]) -> UUID:
         The warehouse Id.
     """
 
-    workspace = fabric.resolve_workspace_name(workspace)
     return fabric.resolve_item_id(
         item_name=warehouse, type="Warehouse", workspace=workspace
     )
@@ -1089,7 +1044,6 @@ def resolve_environment_id(environment: str, workspace: Optional[str] = None) ->
         The environment Id.
     """
 
-    workspace = fabric.resolve_workspace_name(workspace)
     return fabric.resolve_item_id(
         item_name=environment, type="Environment", workspace=workspace
     )
@@ -1139,7 +1093,6 @@ def resolve_notebook_id(notebook: str, workspace: Optional[str] = None) -> UUID:
         The notebook Id.
     """
 
-    workspace = fabric.resolve_workspace_name(workspace)
     return fabric.resolve_item_id(
         item_name=notebook, type="Notebook", workspace=workspace
     )
@@ -1168,9 +1121,6 @@ def _make_list_unique(my_list):
 
 
 def _get_partition_map(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
-
-    if workspace is None:
-        workspace = fabric.resolve_workspace_name()
 
     partitions = fabric.evaluate_dax(
         dataset=dataset,
