@@ -183,9 +183,9 @@ def get_model_calc_dependencies(
                     "Parent Node": row["Referenced Object"],
                 }
                 new_rows.append(new_row)
-            new_rows = pd.DataFrame(new_rows)
-            new_rows = new_rows.dropna(axis=1, how="all") # Drop empty columns
-            df = pd.concat([df, new_rows], ignore_index=True)
+            new_rows_df = pd.DataFrame(new_rows)
+            new_rows_df = new_rows_df.dropna(axis=1, how="all")  # Drop empty columns
+            df = pd.concat([df, new_rows_df], ignore_index=True)
             df.loc[df.index == row.name, "Done"] = True
     # Finalize DataFrame and yield result
     df = df.drop(columns=["Done"])
