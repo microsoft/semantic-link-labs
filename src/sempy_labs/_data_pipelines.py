@@ -170,3 +170,53 @@ def get_data_pipeline_definition(
     payload = content["payload"].iloc[0]
 
     return _decode_b64(payload)
+
+
+def update_data_pipeline_definition(
+    name: str, pipeline_content: str, workspace: Optional[str] = None
+):
+    """
+    Updates an existing data pipeline with a new definition.
+
+    Parameters
+    ----------
+    name : str
+        The name of the data pipeline.
+    pipeline_content : str
+        The data pipeline content (not in Base64 format).
+    workspace : str, default=None
+        The name of the workspace.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    client = fabric.FabricRestClient()
+    pipeline_payload = base64.b64encode(pipeline_content.encode('utf-8')).decode('utf-8')
+    pipeline_id = fabric.resolve_item_id(
+        item_name=name, type="DataPipeline", workspace=workspace
+    )
+
+    request_body = {
+        "definition": {
+            "parts": [
+                {
+                    "path": "pipeline-content.json",
+                    "payload": pipeline_payload,
+                    "payloadType": "InlineBase64"
+                }
+            ]
+        }
+    }
+
+
+    response = client.post(
+        f"v1/workspaces/{workspace_id}/items/{pipeline_id}/updateDefinition",
+        json=request_body,
+    )
+
+    lro(client, response, return_status_code=True)
+
+    print(
+        f"{icons.green_dot} The '{name}' pipeline was updated within the '{workspace}' workspace."
+    )
