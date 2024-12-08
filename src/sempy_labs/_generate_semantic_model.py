@@ -117,9 +117,9 @@ def create_blank_semantic_model(
 
 
 def create_semantic_model_from_bim(
-    dataset: str, bim_file: dict, workspace: Optional[str] = None
+    dataset: str, bim_file: dict, workspace: Optional[str] = None, token_provider: Optional[str] = None
 ):
-    """
+    f"""
     Creates a new semantic model based on a Model.bim file.
 
     This is a wrapper function for the following API: `Items - Create Semantic Model <https://learn.microsoft.com/rest/api/fabric/semanticmodel/items/create-semantic-model>`_.
@@ -134,6 +134,8 @@ def create_semantic_model_from_bim(
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -146,7 +148,7 @@ def create_semantic_model_from_bim(
             f"{icons.red_dot} The '{dataset}' semantic model already exists as a semantic model in the '{workspace}' workspace."
         )
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     defPBIDataset = {"version": "1.0", "settings": {}}
 
     payloadPBIDefinition = _conv_b64(defPBIDataset)
@@ -183,9 +185,9 @@ def create_semantic_model_from_bim(
 
 
 def update_semantic_model_from_bim(
-    dataset: str, bim_file: dict, workspace: Optional[str] = None
+    dataset: str, bim_file: dict, workspace: Optional[str] = None, token_provider: Optional[str] = None,
 ):
-    """
+    f"""
     Updates a semantic model definition based on a Model.bim file.
 
     This is a wrapper function for the following API: `Items - Update Semantic Model Definition <https://learn.microsoft.com/rest/api/fabric/semanticmodel/items/update-semantic-model-definition>`_.
@@ -200,6 +202,8 @@ def update_semantic_model_from_bim(
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -212,7 +216,7 @@ def update_semantic_model_from_bim(
         )
     dataset_id = dfD_filt["Dataset Id"].iloc[0]
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     defPBIDataset = {"version": "1.0", "settings": {}}
 
     payloadPBIDefinition = _conv_b64(defPBIDataset)
@@ -308,7 +312,6 @@ def deploy_semantic_model(
             dataset=target_dataset,
             bim_file=bim,
             workspace=target_workspace,
-            overwrite=overwrite,
         )
     # Update the semantic model if the model exists
     else:
@@ -325,8 +328,9 @@ def get_semantic_model_bim(
     workspace: Optional[str] = None,
     save_to_file_name: Optional[str] = None,
     lakehouse_workspace: Optional[str] = None,
+    token_provider: Optional[str] = None,
 ) -> dict:
-    """
+    f"""
     Extracts the Model.bim file for a given semantic model.
 
     This is a wrapper function for the following API: `Items - Get Semantic Model Definition <https://learn.microsoft.com/rest/api/fabric/semanticmodel/items/get-semantic-model-definition>`_.
@@ -345,6 +349,8 @@ def get_semantic_model_bim(
         The Fabric workspace name in which the lakehouse attached to the workspace resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : str, default=None
+        {icons.token_provider_desc}
 
     Returns
     -------
@@ -355,7 +361,7 @@ def get_semantic_model_bim(
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     fmt = "TMSL"
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
     dataset_id = resolve_dataset_id(dataset=dataset, workspace=workspace)
     response = client.post(
         f"/v1/workspaces/{workspace_id}/semanticModels/{dataset_id}/getDefinition?format={fmt}",
