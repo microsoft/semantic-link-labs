@@ -844,3 +844,43 @@ def list_reservations(
     ]
 
     df[int_cols] = df[int_cols].astype(int)
+
+
+def buy_reservation(
+    reservation_order_id: str,
+    name: str,
+    sku: str,
+    region: str,
+    billing_scope_id: str,
+    term: str,
+    billing_plan: str,
+    quantity: int,
+):
+
+    # https://learn.microsoft.com/en-us/rest/api/reserved-vm-instances/reservation-order/purchase?view=rest-reserved-vm-instances-2022-11-01&tabs=HTTP
+
+    url = f"https://management.azure.com/providers/Microsoft.Capacity/reservationOrders/{reservation_order_id}?api-version=2022-11-01"
+
+    payload = {
+        "sku": {
+            "name": sku,
+        },
+        "location": region,
+        "properties": {
+            "reservedResourceType": "VirtualMachines",
+            "billingScopeId": billing_scope_id,
+            "term": term,
+            "billingPlan": billing_plan,
+            "quantity": quantity,
+            "displayName": name,
+            "appliedScopes": None,
+            "appliedScopeType": "Shared",
+            "reservedResourceProperties": {"instanceFlexibility": "On"},
+            "renew": False,
+        },
+    }
+
+    response = requests.put(url, headers=headers, json=payload)
+
+    if response.status_code not in [200, 202]:
+        raise FabricHTTPException(response)
