@@ -30,26 +30,24 @@ def get_measure_dependencies(
     """
 
     workspace = fabric.resolve_workspace_name(workspace)
-
     dep = fabric.evaluate_dax(
         dataset=dataset,
         workspace=workspace,
         dax_string="""
         SELECT
-         [TABLE] AS [Table Name]
-        ,[OBJECT] AS [Object Name]
-        ,[OBJECT_TYPE] AS [Object Type]
-        ,[REFERENCED_TABLE] AS [Referenced Table]
-        ,[REFERENCED_OBJECT] AS [Referenced Object]
-        ,[REFERENCED_OBJECT_TYPE] AS [Referenced Object Type]
+            [TABLE] AS [Table Name],
+            [OBJECT] AS [Object Name],
+            [OBJECT_TYPE] AS [Object Type],
+            [REFERENCED_TABLE] AS [Referenced Table],
+            [REFERENCED_OBJECT] AS [Referenced Object],
+            [REFERENCED_OBJECT_TYPE] AS [Referenced Object Type]
         FROM $SYSTEM.DISCOVER_CALC_DEPENDENCY
         WHERE [OBJECT_TYPE] = 'MEASURE'
         """,
     )
-
+    # Format data columns
     dep["Object Type"] = dep["Object Type"].str.capitalize()
     dep["Referenced Object Type"] = dep["Referenced Object Type"].str.capitalize()
-
     dep["Full Object Name"] = format_dax_object_name(
         dep["Table Name"], dep["Object Name"]
     )
@@ -57,82 +55,44 @@ def get_measure_dependencies(
         dep["Referenced Table"], dep["Referenced Object"]
     )
     dep["Parent Node"] = dep["Object Name"]
-
-    df = dep
-
-    df["Done"] = df.apply(
-        lambda row: False if row["Referenced Object Type"] == "Measure" else True,
-        axis=1,
-    )
-
-    while any(df["Done"] == False):
-        for i, r in df.iterrows():
-            rObjFull = r["Referenced Full Object Name"]
-            rObj = r["Referenced Object"]
-            if r["Done"] == False:
-                dep_filt = dep[dep["Full Object Name"] == rObjFull]
-
-                for index, dependency in dep_filt.iterrows():
-                    d = True
-                    if dependency.iloc[5] == "Measure":
-                        d = False
-                        df = pd.concat(
-                            [
-                                df,
-                                pd.DataFrame(
-                                    [
-                                        {
-                                            "Table Name": r["Table Name"],
-                                            "Object Name": r["Object Name"],
-                                            "Object Type": r["Object Type"],
-                                            "Referenced Object": dependency.iloc[4],
-                                            "Referenced Table": dependency.iloc[3],
-                                            "Referenced Object Type": dependency.iloc[
-                                                5
-                                            ],
-                                            "Done": d,
-                                            "Full Object Name": r["Full Object Name"],
-                                            "Referenced Full Object Name": dependency.iloc[
-                                                7
-                                            ],
-                                            "Parent Node": rObj,
-                                        }
-                                    ]
-                                ),
-                            ],
-                            ignore_index=True,
-                        )
-                    else:
-                        df = pd.concat(
-                            [
-                                df,
-                                pd.DataFrame(
-                                    [
-                                        {
-                                            "Table Name": r["Table Name"],
-                                            "Object Name": r["Object Name"],
-                                            "Object Type": r["Object Type"],
-                                            "Referenced Object": dependency.iloc[4],
-                                            "Referenced Table": dependency.iloc[3],
-                                            "Referenced Object Type": dependency.iloc[
-                                                5
-                                            ],
-                                            "Done": d,
-                                            "Full Object Name": r["Full Object Name"],
-                                            "Referenced Full Object Name": dependency.iloc[
-                                                7
-                                            ],
-                                            "Parent Node": rObj,
-                                        }
-                                    ]
-                                ),
-                            ],
-                            ignore_index=True,
-                        )
-
-            df.loc[i, "Done"] = True
-
-    df = df.drop(["Done", "Full Object Name", "Referenced Full Object Name"], axis=1)
+    # Initialize dependency DataFrame with 'Done' status
+    df = dep.copy()
+    df["Done"] = df["Referenced Object Type"].apply(
+        lambda x: x != "Measure"
+    ).astype(bool)
+    # Expand dependencies iteratively
+    while not df["Done"].all():
+        incomplete_rows = df[df["Done"] == False]
+        for _, row in incomplete_rows.iterrows():
+            referenced_full_name = row["Referenced Full Object Name"]
+            referenced_object_type = row["Referenced Object Type"]
+            dep_filt = dep[
+                (dep["Full Object Name"] == referenced_full_name)
+                & (dep["Object Type"] == referenced_object_type)
+            ]
+            # Expand dependencies and update 'Done' status as needed
+            new_rows = []
+            for _, dependency in dep_filt.iterrows():
+                is_done = dependency["Referenced Object Type"] != "Measure"
+                new_row = {
+                    "Table Name": row["Table Name"],
+                    "Object Name": row["Object Name"],
+                    "Object Type": row["Object Type"],
+                    "Referenced Table": dependency["Referenced Table"],
+                    "Referenced Object": dependency["Referenced Object"],
+                    "Referenced Object Type": dependency["Referenced Object Type"],
+                    "Done": is_done,
+                    "Full Object Name": row["Full Object Name"],
+                    "Referenced Full Object Name": dependency[
+                        "Referenced Full Object Name"
+                    ],
+                    "Parent Node": row["Referenced Object"],
+                }
+                new_rows.append(new_row)
+            df = pd.concat([df, pd.DataFrame(new_rows)], ignore_index=True)
+            df.loc[df.index == row.name, "Done"] = True
+    # Finalize DataFrame and yield result
+    df = df.drop(columns=["Done", "Full Object Name", "Referenced Full Object Name"])
 
     return df
 
@@ -211,6 +171,7 @@ def get_model_calc_dependencies(
                     "Table Name": row["Table Name"],
                     "Object Name": row["Object Name"],
                     "Object Type": row["Object Type"],
+                    "Expression": row["Expression"],
                     "Referenced Table": dependency["Referenced Table"],
                     "Referenced Object": dependency["Referenced Object"],
                     "Referenced Object Type": dependency["Referenced Object Type"],
@@ -222,7 +183,9 @@ def get_model_calc_dependencies(
                     "Parent Node": row["Referenced Object"],
                 }
                 new_rows.append(new_row)
-            df = pd.concat([df, pd.DataFrame(new_rows)], ignore_index=True)
+            new_rows = pd.DataFrame(new_rows)
+            new_rows = new_rows.dropna(axis=1, how="all") # Drop empty columns
+            df = pd.concat([df, new_rows], ignore_index=True)
             df.loc[df.index == row.name, "Done"] = True
     # Finalize DataFrame and yield result
     df = df.drop(columns=["Done"])
