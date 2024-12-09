@@ -60,6 +60,7 @@ from sempy_labs._data_pipelines import (
     create_data_pipeline,
     delete_data_pipeline,
     get_data_pipeline_definition,
+    update_data_pipeline_definition,
 )
 from sempy_labs._eventhouses import (
     create_eventhouse,
