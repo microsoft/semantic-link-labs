@@ -173,7 +173,7 @@ def get_data_pipeline_definition(
 
 
 def update_data_pipeline_definition(
-    name: str, pipeline_content: str, workspace: Optional[str] = None
+    name: str, pipeline_content: dict, workspace: Optional[str] = None
 ):
     """
     Updates an existing data pipeline with a new definition.
@@ -182,7 +182,7 @@ def update_data_pipeline_definition(
     ----------
     name : str
         The name of the data pipeline.
-    pipeline_content : str
+    pipeline_content : dict
         The data pipeline content (not in Base64 format).
     workspace : str, default=None
         The name of the workspace.
@@ -192,7 +192,7 @@ def update_data_pipeline_definition(
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
     client = fabric.FabricRestClient()
-    pipeline_payload = base64.b64encode(pipeline_content.encode('utf-8')).decode('utf-8')
+    pipeline_payload = base64.b64encode(json.dumps(pipeline_content).encode('utf-8')).decode('utf-8')
     pipeline_id = fabric.resolve_item_id(
         item_name=name, type="DataPipeline", workspace=workspace
     )
