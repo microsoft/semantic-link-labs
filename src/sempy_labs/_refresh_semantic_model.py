@@ -169,7 +169,8 @@ def refresh_semantic_model(
                     right_on="PartitionID",
                     how="left",
                 )
-                _process_and_display_chart(df, title=title, widget=widget)
+                if not df.empty:
+                    _process_and_display_chart(df, title=title, widget=widget)
                 if stop:
                     df.drop(["Object Name", "PartitionID"], axis=1, inplace=True)
                     df.rename(columns={"TableName": "Table Name"}, inplace=True)
