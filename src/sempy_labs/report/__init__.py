@@ -1,3 +1,6 @@
+from sempy_labs.report._save_report import (
+    save_report_as_pbip,
+)
 from sempy_labs.report._reportwrapper import (
     ReportWrapper,
 )
@@ -44,4 +47,5 @@ __all__ = [
     "run_report_bpa",
     "get_report_datasources",
     "download_report",
+    "save_report_as_pbip",
 ]
