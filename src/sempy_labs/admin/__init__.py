@@ -1,3 +1,6 @@
+from sempy_labs.admin._scanner import (
+    scan_workspaces,
+)
 from sempy_labs.admin._basic_functions import (
     assign_workspaces_to_capacity,
     unassign_workspaces_from_capacity,
@@ -66,4 +69,5 @@ __all__ = [
     "list_git_connections",
     "list_reports",
     "get_capacity_assignment_status",
+    "scan_workspaces",
 ]
