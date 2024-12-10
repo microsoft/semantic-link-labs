@@ -616,11 +616,7 @@ def list_dashboards(workspace: Optional[str] = None) -> pd.DataFrame:
         ]
     )
 
-    if workspace == "None":
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resovle_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.PowerBIRestClient()
     response = client.get(f"/v1.0/myorg/groups/{workspace_id}/dashboards")
@@ -635,8 +631,8 @@ def list_dashboards(workspace: Optional[str] = None) -> pd.DataFrame:
             "Web URL": v.get("webUrl"),
             "Embed URL": v.get("embedUrl"),
             "Data Classification": v.get("dataClassification"),
-            "Users": [v.get("users")],
-            "Subscriptions": [v.get("subscriptions")],
+            "Users": v.get("users"),
+            "Subscriptions": v.get("subscriptions"),
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
