@@ -104,7 +104,7 @@ def save_report_as_pbip(
                 file_content = {
                     "version": "1.0",
                     "datasetReference": {
-                        "byPath": {"path": f"../{dataset_name}.SemanticModel"},
+                        "byPath": {"path": f"../{report_name}.SemanticModel"},
                         "byConnection": None,
                     },
                 }
