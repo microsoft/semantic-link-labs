@@ -4541,9 +4541,13 @@ class TOMWrapper:
                 rm.IdentityProvider = "AzureAD"
                 rm.MemberName = m
                 role.Members.Add(rm)
-                print(f"{icons.green_dot} '{m}' has been added as a member of the '{role_name}' role.")
+                print(
+                    f"{icons.green_dot} '{m}' has been added as a member of the '{role_name}' role."
+                )
             else:
-                print(f"{icons.yellow_dot} '{m}' is already a member in the '{role_name}' role.")
+                print(
+                    f"{icons.yellow_dot} '{m}' is already a member in the '{role_name}' role."
+                )
 
     def close(self):
 
