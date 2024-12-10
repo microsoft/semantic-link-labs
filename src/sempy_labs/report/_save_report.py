@@ -8,6 +8,7 @@ from sempy_labs.report._generate_report import get_report_definition
 from sempy_labs._generate_semantic_model import get_semantic_model_definition
 from sempy_labs._helper_functions import _is_valid_uuid
 from uuid import UUID
+from sempy_labs.lakehouse import lakehouse_attached
 
 
 def save_report_as_pbip(
@@ -17,7 +18,7 @@ def save_report_as_pbip(
     live_connect: bool = True,
 ):
     """
-    Saves a report as a .pbip file.
+    Saves a report as a .pbip file to the default lakehouse attached to the notebook.
 
     Parameters
     ----------
@@ -38,6 +39,11 @@ def save_report_as_pbip(
     if thin_or_thick not in ["thin", "thick"]:
         raise ValueError(
             f"{icons.red_dot} The parameter 'thin_or_thick' must be either 'thin or 'thick'."
+        )
+
+    if not lakehouse_attached():
+        raise ValueError(
+            f"{icons.red_dot} A lakehouse must be attached to the notebook. Please attach a lakehouse to the notebook."
         )
 
     save_location = "/lakehouse/default/Files"
