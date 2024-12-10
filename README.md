@@ -38,6 +38,7 @@ Check out the video below for an introduction to Semantic Link, Semantic Link La
     * [Dynamically generate a Direct Lake semantic model](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.directlake.html#sempy_labs.directlake.generate_direct_lake_semantic_model)
     * [Check why a Direct Lake semantic model would fallback to DirectQuery](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.directlake.html#sempy_labs.directlake.check_fallback_reason)
     * [View a measure dependency tree](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.measure_dependency_tree)
+    * [View unique columns touched in a single (or multiple) DAX query(ies)](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.get_dax_query_dependencies)
 * Reports
     * [Report Best Practice Analyzer (BPA)](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.report.html#sempy_labs.report.run_report_bpa)
     * [View report metadata](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Report%20Analysis.ipynb)
