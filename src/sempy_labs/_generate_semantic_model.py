@@ -117,7 +117,10 @@ def create_blank_semantic_model(
 
 
 def create_semantic_model_from_bim(
-    dataset: str, bim_file: dict, workspace: Optional[str] = None, token_provider: Optional[str] = None
+    dataset: str,
+    bim_file: dict,
+    workspace: Optional[str] = None,
+    token_provider: Optional[str] = None,
 ):
     f"""
     Creates a new semantic model based on a Model.bim file.
@@ -185,7 +188,10 @@ def create_semantic_model_from_bim(
 
 
 def update_semantic_model_from_bim(
-    dataset: str, bim_file: dict, workspace: Optional[str] = None, token_provider: Optional[str] = None,
+    dataset: str,
+    bim_file: dict,
+    workspace: Optional[str] = None,
+    token_provider: Optional[str] = None,
 ):
     f"""
     Updates a semantic model definition based on a Model.bim file.
