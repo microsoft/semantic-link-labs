@@ -157,7 +157,7 @@ def restore_semantic_model(
     fabric.execute_tmsl(script=tmsl, workspace=workspace)
 
     print(
-        f"{icons.green_dot} The '{dataset}' semantic model has been restored to the '{workspace}' workspace based on teh '{file_path}' backup file."
+        f"{icons.green_dot} The '{dataset}' semantic model has been restored to the '{workspace}' workspace based on the '{file_path}' backup file."
     )
 
 
@@ -277,10 +277,8 @@ def list_backups(workspace: Optional[str] = None) -> pd.DataFrame:
             f"{icons.red_dot} A storage account is not associated with the '{workspace}' workspace."
         )
     storage_account = v[0]["resourceName"]
-
     df = list_storage_account_files(storage_account=storage_account)
-    colName = "Storage Account Name"
-    df.insert(0, colName, df.pop(colName))
+    df["Storage Account Name"] = storage_account
 
     return df
 
@@ -290,7 +288,7 @@ def list_storage_account_files(
     storage_account: str, container: str = "power-bi-backup"
 ) -> pd.DataFrame:
     """
-    Shows a list of files within an ADLS Gen2 storage account.
+    Shows a list of files within an ADLS Gen2 storage account, including subfolders.
 
     Parameters
     ----------
@@ -319,18 +317,24 @@ def list_storage_account_files(
     onelake = _get_adls_client(storage_account)
     fs = onelake.get_file_system_client(container)
 
-    for x in list(fs.get_paths()):
-        if not x.is_directory:
-            new_data = {
-                "File Path": x.name,
-                "File Size": x.content_length,
-                "Creation Time": x.creation_time,
-                "Last Modified": x.last_modified,
-                "Expiry Time": x.expiry_time,
-                "Encryption Scope": x.encryption_scope,
-            }
+    def traverse_dirs(path, df):
+        for x in list(fs.get_paths(path)):
+            if x.is_directory:
+                df = traverse_dirs(x.name, df)
+            else:
+                new_data = {
+                    "File Path": x.name,
+                    "File Size": x.content_length,
+                    "Creation Time": x.creation_time,
+                    "Last Modified": x.last_modified,
+                    "Expiry Time": x.expiry_time,
+                    "Encryption Scope": x.encryption_scope,
+                }
 
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+                df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+        return df
+
+    df = traverse_dirs("", df)
 
     df["File Size"] = df["File Size"].astype(int)
 
