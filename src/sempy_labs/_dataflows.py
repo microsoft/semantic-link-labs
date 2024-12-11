@@ -42,7 +42,7 @@ def list_dataflows(workspace: Optional[str] = None):
             "Dataflow Id": v.get("objectId"),
             "Dataflow Name": v.get("name"),
             "Configured By": v.get("configuredBy"),
-            "Users": [v.get("users")],
+            "Users": v.get("users"),
             "Generation": v.get("generation"),
         }
         df = pd.concat(

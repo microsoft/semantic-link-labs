@@ -203,14 +203,7 @@ def update_semantic_model_from_bim(
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    dfD = fabric.list_datasets(workspace=workspace, mode="rest")
-    dfD_filt = dfD[dfD["Dataset Name"] == dataset]
-    if len(dfD_filt) == 0:
-        raise ValueError(
-            f"{icons.red_dot} The '{dataset}' semantic model within the '{workspace}' workspace does not exist."
-        )
-    dataset_id = dfD_filt["Dataset Id"].iloc[0]
+    dataset_id = resolve_dataset_id(dataset=dataset, workspace=workspace)
 
     client = fabric.FabricRestClient()
     defPBIDataset = {"version": "1.0", "settings": {}}
@@ -303,12 +296,11 @@ def deploy_semantic_model(
     bim = get_semantic_model_bim(dataset=source_dataset, workspace=source_workspace)
 
     # Create the semantic model if the model does not exist
-    if len(dfD_filt) == 0:
+    if dfD_filt.empty:
         create_semantic_model_from_bim(
             dataset=target_dataset,
             bim_file=bim,
             workspace=target_workspace,
-            overwrite=overwrite,
         )
     # Update the semantic model if the model exists
     else:
