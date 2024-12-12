@@ -1186,20 +1186,20 @@ def _make_list_unique(my_list):
 
 def _get_partition_map(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
 
-    if workspace is None:
-        workspace = fabric.resolve_workspace_name()
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
     partitions = fabric.evaluate_dax(
-        dataset=dataset,
-        workspace=workspace,
+        dataset=dataset_id,
+        workspace=workspace_id,
         dax_string="""
     select [ID] AS [PartitionID], [TableID], [Name] AS [PartitionName] from $system.tmschema_partitions
     """,
     )
 
     tables = fabric.evaluate_dax(
-        dataset=dataset,
-        workspace=workspace,
+        dataset=dataset_id,
+        workspace=workspace_id,
         dax_string="""
     select [ID] AS [TableID], [Name] AS [TableName] from $system.tmschema_tables
     """,

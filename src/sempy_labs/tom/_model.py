@@ -30,25 +30,31 @@ class TOMWrapper:
     """
     Convenience wrapper around the TOM object model for a semantic model. Always use the connect_semantic_model function to make sure the TOM object is initialized correctly.
 
-    `XMLA read/write endpoints <https://learn.microsoft.com/power-bi/enterprise/service-premium-connect-tools#to-enable-read-write-for-a-premium-capacity>`_ must
-     be enabled if setting the readonly parameter to False.
+    `XMLA read/write endpoints <https://learn.microsoft.com/power-bi/enterprise/service-premium-connect-tools#to-enable-read-write-for-a-premium-capacity>`_ must be enabled if setting the readonly parameter to False.
     """
 
     _dataset_id: UUID
-    _workspace: str
+    _dataset_name: str
+    _workspace_id: UUID
+    _workspace_name: str
     _readonly: bool
     _tables_added: List[str]
     _table_map = dict
     _column_map = dict
 
-    def __init__(self, dataset_id, workspace, readonly):
+    def __init__(self, dataset, workspace, readonly):
+
+        (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+        (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
         self._dataset_id = dataset_id
-        self._workspace = workspace
+        self._dataset_name = dataset_name
+        self._workspace_name = workspace_name
+        self._workspace_id = workspace_id
         self._readonly = readonly
         self._tables_added = []
 
         self._tom_server = fabric.create_tom_server(
-            readonly=readonly, workspace=workspace
+            readonly=readonly, workspace=workspace_id
         )
         self.model = self._tom_server.Databases[dataset_id].Model
 
@@ -2163,7 +2169,9 @@ class TOMWrapper:
             )
             """
             df = fabric.evaluate_dax(
-                dataset=self._dataset, workspace=self._workspace, dax_string=dax_query
+                dataset=self._dataset_id,
+                workspace=self._workspace_id,
+                dax_string=dax_query,
             )
             value = df["[1]"].iloc[0]
             if value != "1":
@@ -2427,7 +2435,7 @@ class TOMWrapper:
             )
         except Exception:
             raise ValueError(
-                f"{icons.red_dot} The '{measure_name}' measure does not exist in the '{self._dataset}' semantic model within the '{self._workspace}'."
+                f"{icons.red_dot} The '{measure_name}' measure does not exist in the '{self._dataset_name}' semantic model within the '{self._workspace_name}'."
             )
 
         graphics = [
@@ -2470,7 +2478,7 @@ class TOMWrapper:
                 )
             except Exception:
                 raise ValueError(
-                    f"{icons.red_dot} The '{target}' measure does not exist in the '{self._dataset}' semantic model within the '{self._workspace}'."
+                    f"{icons.red_dot} The '{target}' measure does not exist in the '{self._dataset_name}' semantic model within the '{self._workspace_name}'."
                 )
 
         if measure_target:
@@ -2796,7 +2804,7 @@ class TOMWrapper:
                     success = True
             if not success:
                 raise ValueError(
-                    f"{icons.red_dot} The '{obj}' object was not found in the '{self._dataset}' semantic model."
+                    f"{icons.red_dot} The '{obj}' object was not found in the '{self._dataset_name}' semantic model."
                 )
             else:
                 i += 1
@@ -2884,19 +2892,19 @@ class TOMWrapper:
         from sempy_labs._list_functions import list_tables
 
         dfT = list_tables(
-            dataset=self._dataset, workspace=self._workspace, extended=True
+            dataset=self._dataset_id, workspace=self._workspace_id, extended=True
         )
         dfC = fabric.list_columns(
-            dataset=self._dataset, workspace=self._workspace, extended=True
+            dataset=self._dataset_id, workspace=self._workspace_id, extended=True
         )
         dfP = fabric.list_partitions(
-            dataset=self._dataset, workspace=self._workspace, extended=True
+            dataset=self._dataset_id, workspace=self._workspace_id, extended=True
         )
         dfH = fabric.list_hierarchies(
-            dataset=self._dataset, workspace=self._workspace, extended=True
+            dataset=self._dataset_id, workspace=self._workspace_id, extended=True
         )
         dfR = list_relationships(
-            dataset=self._dataset, workspace=self._workspace, extended=True
+            dataset=self._dataset_id, workspace=self._workspace_id, extended=True
         )
 
         for t in self.model.Tables:
@@ -3341,7 +3349,9 @@ class TOMWrapper:
         usingView = False
 
         if self.is_direct_lake():
-            df = check_fallback_reason(dataset=self._dataset, workspace=self._workspace)
+            df = check_fallback_reason(
+                dataset=self._dataset_id, workspace=self._workspace_id
+            )
             df_filt = df[df["FallbackReasonID"] == 2]
 
             if len(df_filt) > 0:
@@ -3388,7 +3398,7 @@ class TOMWrapper:
 
         if rp is None:
             print(
-                f"{icons.yellow_dot} The '{table_name}' table in the '{self._dataset}' semantic model within the '{self._workspace}' workspace does not have an incremental refresh policy."
+                f"{icons.yellow_dot} The '{table_name}' table in the '{self._dataset_name}' semantic model within the '{self._workspace_name}' workspace does not have an incremental refresh policy."
             )
         else:
             print(f"Table Name: {table_name}")
@@ -3887,14 +3897,14 @@ class TOMWrapper:
 
         if table_name is None:
             raise ValueError(
-                f"{icons.red_dot} The '{measure_name}' is not a valid measure in the '{self._dataset}' semantic model within the '{self._workspace}' workspace."
+                f"{icons.red_dot} The '{measure_name}' is not a valid measure in the '{self._dataset_name}' semantic model within the '{self._workspace_name}' workspace."
             )
 
         table_name = matching_measures[0]
         # Validate date table
         if not self.is_date_table(date_table):
             raise ValueError(
-                f"{icons.red_dot} The '{date_table}' table is not a valid date table in the '{self._dataset}' wemantic model within the '{self._workspace}' workspace."
+                f"{icons.red_dot} The '{date_table}' table is not a valid date table in the '{self._dataset_name}' wemantic model within the '{self._workspace_name}' workspace."
             )
 
         # Extract date key from date table
@@ -3906,7 +3916,7 @@ class TOMWrapper:
 
         if not matching_columns:
             raise ValueError(
-                f"{icons.red_dot} The '{date_table}' table does not have a date key column in the '{self._dataset}' semantic model within the '{self._workspace}' workspace."
+                f"{icons.red_dot} The '{date_table}' table does not have a date key column in the '{self._dataset_name}' semantic model within the '{self._workspace_name}' workspace."
             )
 
         date_key = matching_columns[0]
@@ -4386,7 +4396,6 @@ class TOMWrapper:
         if isinstance(measure_name, str):
             measure_name = [measure_name]
 
-        workspace_id = fabric.resolve_workspace_id(self._workspace)
         client = fabric.FabricRestClient()
 
         if len(measure_name) > max_batch_size:
@@ -4405,7 +4414,7 @@ class TOMWrapper:
                         "modelItems": [],
                     },
                 },
-                "workspaceId": workspace_id,
+                "workspaceId": self._workspace_id,
                 "artifactInfo": {"artifactType": "SemanticModel"},
             }
             for m_name in measure_list:
@@ -4416,7 +4425,7 @@ class TOMWrapper:
                 )
                 if t_name is None:
                     raise ValueError(
-                        f"{icons.red_dot} The '{m_name}' measure does not exist in the '{self._dataset}' semantic model within the '{self._workspace}' workspace."
+                        f"{icons.red_dot} The '{m_name}' measure does not exist in the '{self._dataset_name}' semantic model within the '{self._workspace_name}' workspace."
                     )
 
                 new_item = {
@@ -4609,9 +4618,9 @@ class TOMWrapper:
 
             if len(self._tables_added) > 0:
                 refresh_semantic_model(
-                    dataset=self._dataset,
+                    dataset=self._dataset_id,
                     tables=self._tables_added,
-                    workspace=self._workspace,
+                    workspace=self._workspace_id,
                 )
             self.model = None
 
@@ -4646,10 +4655,7 @@ def connect_semantic_model(
     # initialize .NET to make sure System and Microsoft.AnalysisServices.Tabular is defined
     sempy.fabric._client._utils._init_analysis_services()
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
-
-    tw = TOMWrapper(dataset_id=dataset_id, workspace=workspace_id, readonly=readonly)
+    tw = TOMWrapper(dataset=dataset, workspace=workspace, readonly=readonly)
     try:
         yield tw
     finally:
