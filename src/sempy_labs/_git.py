@@ -277,7 +277,7 @@ def commit_to_git(
     workspace, workspace_id = resolve_workspace_name_and_id(workspace)
 
     gs = get_git_status(workspace=workspace)
-    if len(gs.index) > 0:
+    if not gs.empty:
         workspace_head = gs["Workspace Head"].iloc[0]
 
         if item_ids is None:
@@ -318,7 +318,7 @@ def commit_to_git(
             )
     else:
         print(
-            f"{icons.green_dot} Git already up to date: no modified items found within the '{workspace}' workspace."
+            f"{icons.info} Git already up to date: no modified items found within the '{workspace}' workspace."
         )
 
 
