@@ -3,7 +3,7 @@ from unittest.mock import patch
 from sempy_labs.tom import connect_semantic_model
 
 
-@patch("sempy.fabric.resolve_workspace_name_and_id")
+@patch("sempy_labs._helper_functions.resolve_workspace_name_and_id")
 @patch("sempy.fabric.create_tom_server")
 def test_tom_wrapper(create_tom_server, resolve_workspace_name_and_id):
 
