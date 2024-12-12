@@ -7,6 +7,8 @@ from sempy_labs._helper_functions import (
     format_dax_object_name,
     generate_guid,
     _make_list_unique,
+    resolve_dataset_name_and_id,
+    resolve_workspace_name_and_id,
 )
 from sempy_labs._list_functions import list_relationships
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
@@ -17,6 +19,7 @@ from sempy._utils._log import log
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 import ast
+from uuid import UUID
 
 if TYPE_CHECKING:
     import Microsoft.AnalysisServices.Tabular
@@ -31,15 +34,15 @@ class TOMWrapper:
      be enabled if setting the readonly parameter to False.
     """
 
-    _dataset: str
+    _dataset_id: UUID
     _workspace: str
     _readonly: bool
     _tables_added: List[str]
     _table_map = dict
     _column_map = dict
 
-    def __init__(self, dataset, workspace, readonly):
-        self._dataset = dataset
+    def __init__(self, dataset_id, workspace, readonly):
+        self._dataset_id = dataset_id
         self._workspace = workspace
         self._readonly = readonly
         self._tables_added = []
@@ -47,7 +50,7 @@ class TOMWrapper:
         self._tom_server = fabric.create_tom_server(
             readonly=readonly, workspace=workspace
         )
-        self.model = self._tom_server.Databases.GetByName(dataset).Model
+        self.model = self._tom_server.Databases[dataset_id].Model
 
         self._table_map = {}
         self._column_map = {}
@@ -4541,9 +4544,13 @@ class TOMWrapper:
                 rm.IdentityProvider = "AzureAD"
                 rm.MemberName = m
                 role.Members.Add(rm)
-                print(f"{icons.green_dot} '{m}' has been added as a member of the '{role_name}' role.")
+                print(
+                    f"{icons.green_dot} '{m}' has been added as a member of the '{role_name}' role."
+                )
             else:
-                print(f"{icons.yellow_dot} '{m}' is already a member in the '{role_name}' role.")
+                print(
+                    f"{icons.yellow_dot} '{m}' is already a member in the '{role_name}' role."
+                )
 
     def close(self):
 
@@ -4614,15 +4621,15 @@ class TOMWrapper:
 @log
 @contextmanager
 def connect_semantic_model(
-    dataset: str, readonly: bool = True, workspace: Optional[str] = None
+    dataset: str | UUID, readonly: bool = True, workspace: Optional[str] = None
 ) -> Iterator[TOMWrapper]:
     """
     Connects to the Tabular Object Model (TOM) within a semantic model.
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
+    dataset : str | UUID
+        Name or ID of the semantic model.
     readonly: bool, default=True
         Whether the connection is read-only or read/write. Setting this to False enables read/write which saves the changes made back to the server.
     workspace : str, default=None
@@ -4639,11 +4646,10 @@ def connect_semantic_model(
     # initialize .NET to make sure System and Microsoft.AnalysisServices.Tabular is defined
     sempy.fabric._client._utils._init_analysis_services()
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    tw = TOMWrapper(dataset=dataset, workspace=workspace, readonly=readonly)
+    tw = TOMWrapper(dataset_id=dataset_id, workspace=workspace_id, readonly=readonly)
     try:
         yield tw
     finally:

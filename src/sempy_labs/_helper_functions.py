@@ -160,14 +160,34 @@ def resolve_report_name(report_id: UUID, workspace: Optional[str] = None) -> str
     return obj
 
 
-def resolve_dataset_id(dataset: str, workspace: Optional[str] = None) -> UUID:
+def resolve_dataset_name_and_id(
+    dataset: str | UUID, workspace: Optional[str] = None
+) -> Tuple[str, UUID]:
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    if _is_valid_uuid(dataset):
+        dataset_id = dataset
+        dataset_name = fabric.resolve_item_name(
+            item_id=dataset_id, type="SemanticModel", workspace=workspace_id
+        )
+    else:
+        dataset_name = dataset
+        dataset_id = fabric.resolve_item_id(
+            item_name=dataset, type="SemanticModel", workspace=workspace_id
+        )
+
+    return dataset_name, dataset_id
+
+
+def resolve_dataset_id(dataset: str | UUID, workspace: Optional[str] = None) -> UUID:
     """
     Obtains the ID of the semantic model.
 
     Parameters
     ----------
-    dataset : str
-        The name of the semantic model.
+    dataset : str | UUID
+        The name or ID of the semantic model.
     workspace : str, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -179,15 +199,14 @@ def resolve_dataset_id(dataset: str, workspace: Optional[str] = None) -> UUID:
         The ID of the semantic model.
     """
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
+    if _is_valid_uuid(dataset):
+        dataset_id = dataset
+    else:
+        dataset_id = fabric.resolve_item_id(
+            item_name=dataset, type="SemanticModel", workspace=workspace
+        )
 
-    obj = fabric.resolve_item_id(
-        item_name=dataset, type="SemanticModel", workspace=workspace
-    )
-
-    return obj
+    return dataset_id
 
 
 def resolve_dataset_name(dataset_id: UUID, workspace: Optional[str] = None) -> str:
