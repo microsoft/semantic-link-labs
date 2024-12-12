@@ -15,7 +15,7 @@ def test_tom_wrapper(create_tom_server, resolve_workspace_name_and_id):
 
     db = TOM.Database()
     db.Name = "my_dataset"
-    db.ID = "my_dataset"
+    db.ID = "my_dataset" 
     db.Model = TOM.Model()
     tom_server.Databases.Add(db)
 
