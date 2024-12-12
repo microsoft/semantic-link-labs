@@ -3,9 +3,9 @@ from unittest.mock import patch
 from sempy_labs.tom import connect_semantic_model
 
 
-@patch("sempy.fabric.resolve_workspace_name")
+@patch("sempy.fabric.resolve_workspace_name_and_id")
 @patch("sempy.fabric.create_tom_server")
-def test_tom_wrapper(create_tom_server, resolve_workspace_name):
+def test_tom_wrapper(create_tom_server, resolve_workspace_name_and_id):
 
     sempy.fabric._client._utils._init_analysis_services()
     import Microsoft.AnalysisServices.Tabular as TOM
@@ -21,7 +21,7 @@ def test_tom_wrapper(create_tom_server, resolve_workspace_name):
 
     create_tom_server.return_value = tom_server
 
-    resolve_workspace_name.return_value = "my_workspace"
+    resolve_workspace_name_and_id.return_value = ("my_workspace", "my_workspace_id")
 
     # invoke the wrapper
     with connect_semantic_model("my_dataset") as tom:
