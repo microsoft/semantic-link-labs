@@ -62,10 +62,11 @@ def _list_workspaces(filter: Optional[str] = None, token_provider: Optional[str]
     df = pd.DataFrame(columns=["Id", "Name", "Capacity Id", "Default Dataset Storage Format"])
 
     for v in response.json().get("value", []):
+        capacity_id = v.get('capacityId')
         new_data = {
             "Id": v.get("id"),
             "Name": v.get("name"),
-            "Capacity Id": v.get('capacityId').lower() if v.get('capacityId') else None,
+            "Capacity Id": capacity_id.lower() if capacity_id else None,
             "Default Dataset Storage Format": v.get('defaultDatasetStorageFormat'),
         }
 
