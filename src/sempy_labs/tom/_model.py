@@ -4649,7 +4649,7 @@ def connect_semantic_model(
     Returns
     -------
     typing.Iterator[TOMWrapper]
-        A connection to the semantic model's Tabular Object Model.
+        A connection to the semantic model's Tabular Object Model. 
     """
 
     # initialize .NET to make sure System and Microsoft.AnalysisServices.Tabular is defined
