@@ -50,7 +50,7 @@ def _list_items(
 def _list_workspaces(token_provider: Optional[str] = None) -> pd.DataFrame:
 
     client = fabric.FabricRestClient(token_provider=token_provider)
-    response = client.get(f"/v1/workspaces")
+    response = client.get("/v1/workspaces")
 
     if response.status_code != 200:
         raise FabricHTTPException(response)
@@ -73,14 +73,16 @@ def _list_workspaces(token_provider: Optional[str] = None) -> pd.DataFrame:
 
 
 def _get_item(
-    item_id: UUID, workspace: str | UUID, token_provider: Optional[str] = None
+    item_id: UUID,
+    workspace: Optional[str | UUID] = None,
+    token_provider: Optional[str] = None,
 ):
 
     (workspace_name, workspace_id) = _resolve_workspace_name_and_id(
         workspace=workspace, token_provider=token_provider
     )
     client = fabric.FabricRestClient(token_provider=token_provider)
-    response = client.get(f"/v1/workspaces/{workspace_id}/{item_id}")
+    response = client.get(f"/v1/workspaces/{workspace_id}/items/{item_id}")
 
     if response.status_code != 200:
         raise FabricHTTPException(response)
@@ -162,9 +164,34 @@ def _resolve_workspace_name_and_id(
     return workspace_name, workspace_id
 
 
-def _list_datasets(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
+def _list_datasets(
+    workspace: Optional[str | UUID] = None, token_provider: Optional[str] = None
+) -> pd.DataFrame:
 
-    print("hi")
+    (workspace_name, workspace_id) = _resolve_workspace_name_and_id(
+        workspace=workspace, token_provider=token_provider
+    )
+
+    client = fabric.FabricRestClient(token_provider=token_provider)
+    response = client.get(f"/v1.0/myorg/groups/{workspace_id}/datasets")
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    df = pd.DataFrame(
+        columns=["Dataset Id", "Dataset Name", "Web Url", "Configured By"]
+    )
+
+    for v in response.json().get("value", []):
+        new_data = {
+            "Dataset Id": v.get("id"),
+            "Dataset Name": v.get("name"),
+            "Web Url": v.get("webUrl"),
+            "Configured By": v.get("configuredBy"),
+        }
+        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    return df
 
 
 def _list_reports(
@@ -177,6 +204,9 @@ def _list_reports(
 
     client = fabric.FabricRestClient(token_provider=token_provider)
     response = client.get(f"/v1.0/myorg/groups/{workspace_id}/reports")
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
 
     df = pd.DataFrame(
         columns=[
