@@ -1,10 +1,15 @@
 import sempy.fabric as fabric
 import pandas as pd
-from sempy_labs._helper_functions import format_dax_object_name
+from sempy_labs._helper_functions import (
+    format_dax_object_name,
+    resolve_dataset_name_and_id,
+    resolve_workspace_name_and_id,
+)
 import sempy_labs._icons as icons
 from typing import Any, Dict, Optional
 from anytree import Node, RenderTree
 from sempy._utils._log import log
+from uuid import UUID
 
 
 @log
@@ -139,15 +144,15 @@ def get_measure_dependencies(
 
 @log
 def get_model_calc_dependencies(
-    dataset: str, workspace: Optional[str] = None
+    dataset: str | UUID, workspace: Optional[str] = None
 ) -> pd.DataFrame:
     """
     Shows all dependencies for all objects in a semantic model.
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
+    dataset : str | UUID
+        Name or ID of the semantic model.
     workspace : str, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -159,10 +164,11 @@ def get_model_calc_dependencies(
         Shows all dependencies for all objects in the semantic model.
     """
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
     dep = fabric.evaluate_dax(
-        dataset=dataset,
-        workspace=workspace,
+        dataset=dataset_id,
+        workspace=workspace_id,
         dax_string="""
         SELECT
             [TABLE] AS [Table Name],

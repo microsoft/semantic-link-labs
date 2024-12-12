@@ -10,9 +10,10 @@ from sempy_labs._helper_functions import (
     create_relationship_name,
     save_as_delta_table,
     resolve_workspace_capacity,
-    resolve_dataset_id,
+    resolve_dataset_name_and_id,
     get_language_codes,
     _get_max_run_id,
+    resolve_workspace_name_and_id,
 )
 from sempy_labs.lakehouse import get_lakehouse_tables, lakehouse_attached
 from sempy_labs.tom import connect_semantic_model
@@ -23,11 +24,12 @@ import sempy_labs._icons as icons
 from pyspark.sql.functions import col, flatten
 from pyspark.sql.types import StructType, StructField, StringType
 import os
+from uuid import UUID
 
 
 @log
 def run_model_bpa(
-    dataset: str,
+    dataset: str | UUID,
     rules: Optional[pd.DataFrame] = None,
     workspace: Optional[str] = None,
     export: bool = False,
@@ -41,8 +43,8 @@ def run_model_bpa(
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
+    dataset : str | UUID
+        Name or ID of the semantic model.
     rules : pandas.DataFrame, default=None
         A pandas dataframe containing rules to be evaluated.
     workspace : str, default=None
@@ -105,7 +107,10 @@ def run_model_bpa(
         if language is not None:
             language = map_language(language, language_list)
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(
+        dataset, workspace=workspace_id
+    )
 
     if language is not None and language not in language_list:
         print(
@@ -113,7 +118,7 @@ def run_model_bpa(
         )
 
     with connect_semantic_model(
-        dataset=dataset, workspace=workspace, readonly=True
+        dataset=dataset_id, workspace=workspace_id, readonly=True
     ) as tom:
 
         if extended:
@@ -122,7 +127,7 @@ def run_model_bpa(
         # Do not run BPA for models with no tables
         if tom.model.Tables.Count == 0:
             print(
-                f"{icons.warning} The '{dataset}' semantic model within the '{workspace}' workspace has no tables and therefore there are no valid BPA results."
+                f"{icons.warning} The '{dataset_name}' semantic model within the '{workspace_name}' workspace has no tables and therefore there are no valid BPA results."
             )
             finalDF = pd.DataFrame(
                 columns=[
@@ -136,7 +141,9 @@ def run_model_bpa(
                 ]
             )
         else:
-            dep = get_model_calc_dependencies(dataset=dataset, workspace=workspace)
+            dep = get_model_calc_dependencies(
+                dataset=dataset_id, workspace=workspace_id
+            )
 
             def translate_using_po(rule_file):
                 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -382,20 +389,19 @@ def run_model_bpa(
             runId = max_run_id + 1
 
         now = datetime.datetime.now()
-        dfD = fabric.list_datasets(workspace=workspace, mode="rest")
-        dfD_filt = dfD[dfD["Dataset Name"] == dataset]
+        dfD = fabric.list_datasets(workspace=workspace_id, mode="rest")
+        dfD_filt = dfD[dfD["Dataset Id"] == dataset_id]
         configured_by = dfD_filt["Configured By"].iloc[0]
-        capacity_id, capacity_name = resolve_workspace_capacity(workspace=workspace)
+        capacity_id, capacity_name = resolve_workspace_capacity(workspace=workspace_id)
         dfExport["Capacity Name"] = capacity_name
         dfExport["Capacity Id"] = capacity_id
-        dfExport["Workspace Name"] = workspace
-        dfExport["Workspace Id"] = fabric.resolve_workspace_id(workspace)
-        dfExport["Dataset Name"] = dataset
-        dfExport["Dataset Id"] = resolve_dataset_id(dataset, workspace)
+        dfExport["Workspace Name"] = workspace_name
+        dfExport["Workspace Id"] = workspace_id
+        dfExport["Dataset Name"] = dataset_name
+        dfExport["Dataset Id"] = dataset_id
         dfExport["Configured By"] = configured_by
         dfExport["Timestamp"] = now
         dfExport["RunId"] = runId
-        dfExport["Configured By"] = configured_by
         dfExport["RunId"] = dfExport["RunId"].astype("int")
 
         dfExport = dfExport[list(icons.bpa_schema.keys())]
