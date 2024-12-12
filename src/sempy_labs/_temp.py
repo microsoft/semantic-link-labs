@@ -47,27 +47,29 @@ def _list_items(
     return df
 
 
-def _list_workspaces(token_provider: Optional[str] = None) -> pd.DataFrame:
+def _list_workspaces(filter: Optional[str] = None, token_provider: Optional[str] = None) -> pd.DataFrame:
 
     client = fabric.FabricRestClient(token_provider=token_provider)
-    response = client.get("/v1/workspaces")
+    url = "/v1.0/myorg/groups"
+    if filter is not None:
+        url += f"?$filter={filter}"
+
+    response = client.get(url)
 
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    df = pd.DataFrame(columns=["Id", "Name", "Type", "Description"])
+    df = pd.DataFrame(columns=["Id", "Name", "Capacity Id", "Default Dataset Storage Format"])
 
-    responses = pagination(client, response)
-    for r in responses:
-        for v in r.get("value", []):
-            new_data = {
-                "Id": v.get("id"),
-                "Name": v.get("displayName"),
-                "Type": v.get("type"),
-                "Description": v.get("description"),
-            }
+    for v in response.json().get("value", []):
+        new_data = {
+            "Id": v.get("id"),
+            "Name": v.get("name"),
+            "Capacity Id": v.get('capacityId').lower() if v.get('capacityId') else None,
+            "Default Dataset Storage Format": v.get('defaultDatasetStorageFormat'),
+        }
 
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
 
