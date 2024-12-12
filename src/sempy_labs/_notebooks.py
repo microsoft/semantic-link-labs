@@ -12,6 +12,8 @@ from sempy_labs._helper_functions import (
 from sempy.fabric.exceptions import FabricHTTPException
 import os
 
+_notebook_prefix = "notebook-content."
+
 
 def _get_notebook_definition_base(
     notebook_name: str, workspace: Optional[str] = None
@@ -37,7 +39,7 @@ def _get_notebook_type(notebook_name: str, workspace: Optional[str] = None) -> s
         notebook_name=notebook_name, workspace=workspace
     )
 
-    file_path = df_items[df_items["path"].str.startswith("notebook-content")][
+    file_path = df_items[df_items["path"].str.startswith(_notebook_prefix)][
         "path"
     ].iloc[0]
 
@@ -75,7 +77,7 @@ def get_notebook_definition(
     df_items = _get_notebook_definition_base(
         notebook_name=notebook_name, workspace=workspace
     )
-    df_items_filt = df_items[df_items["path"] == "notebook-content.py"]
+    df_items_filt = df_items[df_items["path"].str.startswith(_notebook_prefix)]
     payload = df_items_filt["payload"].iloc[0]
 
     if decode:
@@ -187,7 +189,7 @@ def create_notebook(
             "format": "ipynb",
             "parts": [
                 {
-                    "path": f"notebook-content.{type}",
+                    "path": f"{_notebook_prefix}{type}",
                     "payload": notebook_payload,
                     "payloadType": "InlineBase64",
                 }
@@ -238,7 +240,7 @@ def update_notebook_definition(
         "definition": {
             "parts": [
                 {
-                    "path": f"notebook-content.{type}",
+                    "path": f"{_notebook_prefix}{type}",
                     "payload": notebook_payload,
                     "payloadType": "InlineBase64",
                 }
