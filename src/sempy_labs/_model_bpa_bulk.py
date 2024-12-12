@@ -119,16 +119,16 @@ def run_model_bpa_bulk(
             dfD_filt = dfD[~dfD["Dataset Name"].isin(skip_models)]
 
             if len(dfD_filt) > 0:
-                for i2, r2 in dfD_filt.iterrows():
+                for _, r2 in dfD_filt.iterrows():
+                    dataset_id = r2["Dataset Id"]
                     dataset_name = r2["Dataset Name"]
                     config_by = r2["Configured By"]
-                    dataset_id = r2["Dataset Id"]
                     print(
                         f"{icons.in_progress} Collecting Model BPA stats for the '{dataset_name}' semantic model within the '{wksp}' workspace."
                     )
                     try:
                         bpa_df = run_model_bpa(
-                            dataset=dataset_name,
+                            dataset=dataset_id,
                             workspace=wksp,
                             language=language,
                             return_dataframe=True,

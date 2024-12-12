@@ -10,19 +10,21 @@ from sempy_labs._helper_functions import (
     resolve_dataset_id,
     resolve_lakehouse_name,
     _convert_data_type,
+    resolve_dataset_name_and_id,
+    resolve_workspace_name_and_id,
 )
 
 
 def check_fallback_reason(
-    dataset: str, workspace: Optional[str] = None
+    dataset: str | UUID, workspace: Optional[str] = None
 ) -> pd.DataFrame:
     """
     Shows the reason a table in a Direct Lake semantic model would fallback to DirectQuery.
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
+    dataset : str | UUID
+        Name or ID of the semantic model.
     workspace : str, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -35,19 +37,22 @@ def check_fallback_reason(
     """
     from sempy_labs.tom import connect_semantic_model
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(
+        dataset, workspace=workspace_id
+    )
 
     with connect_semantic_model(
-        dataset=dataset, workspace=workspace, readonly=True
+        dataset=dataset_id, workspace=workspace_id, readonly=True
     ) as tom:
         if not tom.is_direct_lake():
             raise ValueError(
-                f"{icons.red_dot} The '{dataset}' semantic model is not in Direct Lake. This function is only applicable to Direct Lake semantic models."
+                f"{icons.red_dot} The '{dataset_name}' semantic model is not in Direct Lake. This function is only applicable to Direct Lake semantic models."
             )
 
     df = fabric.evaluate_dax(
-        dataset=dataset,
-        workspace=workspace,
+        dataset=dataset_id,
+        workspace=workspace_id,
         dax_string="""
             SELECT [TableName] AS [Table Name],[FallbackReason] AS [FallbackReasonID]
             FROM $SYSTEM.TMSCHEMA_DELTA_TABLE_METADATA_STORAGES

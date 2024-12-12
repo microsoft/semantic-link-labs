@@ -5,6 +5,7 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _get_partition_map,
     _process_and_display_chart,
+    resolve_dataset_name_and_id,
 )
 from typing import Any, List, Optional, Union
 from sempy._utils._log import log
@@ -14,11 +15,12 @@ import pandas as pd
 import warnings
 import ipywidgets as widgets
 import json
+from uuid import UUID
 
 
 @log
 def refresh_semantic_model(
-    dataset: str,
+    dataset: str | UUID,
     tables: Optional[Union[str, List[str]]] = None,
     partitions: Optional[Union[str, List[str]]] = None,
     refresh_type: str = "full",
@@ -34,8 +36,8 @@ def refresh_semantic_model(
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
+    dataset : str | UUID
+        Name or ID of the semantic model.
     tables : str, List[str], default=None
         A string or a list of tables to refresh.
     partitions: str, List[str], default=None
@@ -65,7 +67,8 @@ def refresh_semantic_model(
         If 'visualize' is set to True, returns a pandas dataframe showing the SSAS trace output used to generate the visualization.
     """
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
     if isinstance(tables, str):
         tables = [tables]
@@ -118,11 +121,11 @@ def refresh_semantic_model(
         def extract_failure_error():
             error_messages = []
             combined_messages = ""
-            final_message = f"{icons.red_dot} The refresh of the '{dataset}' semantic model within the '{workspace}' workspace has failed."
+            final_message = f"{icons.red_dot} The refresh of the '{dataset_name}' semantic model within the '{workspace_name}' workspace has failed."
             for _, r in fabric.get_refresh_execution_details(
                 refresh_request_id=request_id,
-                dataset=dataset,
-                workspace=workspace,
+                dataset=dataset_id,
+                workspace=workspace_id,
             ).messages.iterrows():
                 error_messages.append(f"{r['Type']}: {r['Message']}")
 
@@ -135,8 +138,8 @@ def refresh_semantic_model(
         # Function to perform dataset refresh
         def refresh_dataset():
             return fabric.refresh_dataset(
-                dataset=dataset,
-                workspace=workspace,
+                dataset=dataset_id,
+                workspace=workspace_id,
                 refresh_type=refresh_type,
                 retry_count=retry_count,
                 apply_refresh_policy=apply_refresh_policy,
@@ -147,7 +150,9 @@ def refresh_semantic_model(
 
         def check_refresh_status(request_id):
             request_details = fabric.get_refresh_execution_details(
-                dataset=dataset, refresh_request_id=request_id, workspace=workspace
+                dataset=dataset_id,
+                refresh_request_id=request_id,
+                workspace=workspace_id,
             )
             return request_details.status
 
@@ -169,7 +174,8 @@ def refresh_semantic_model(
                     right_on="PartitionID",
                     how="left",
                 )
-                _process_and_display_chart(df, title=title, widget=widget)
+                if not df.empty:
+                    _process_and_display_chart(df, title=title, widget=widget)
                 if stop:
                     df.drop(["Object Name", "PartitionID"], axis=1, inplace=True)
                     df.rename(columns={"TableName": "Table Name"}, inplace=True)
@@ -180,7 +186,7 @@ def refresh_semantic_model(
         if not visualize:
             request_id = refresh_dataset()
         print(
-            f"{icons.in_progress} Refresh of the '{dataset}' semantic model within the '{workspace}' workspace is in progress..."
+            f"{icons.in_progress} Refresh of the '{dataset_name}' semantic model within the '{workspace_name}' workspace is in progress..."
         )
 
         # Monitor refresh progress and handle tracing if visualize is enabled
@@ -189,7 +195,7 @@ def refresh_semantic_model(
             widget = widgets.Output()
 
             with fabric.create_trace_connection(
-                dataset=dataset, workspace=workspace
+                dataset=dataset_id, workspace=workspace_id
             ) as trace_connection:
                 with trace_connection.create_trace(icons.refresh_event_schema) as trace:
                     trace.start()
@@ -204,7 +210,7 @@ def refresh_semantic_model(
                             raise ValueError(extract_failure_error())
                         elif status == "Cancelled":
                             print(
-                                f"{icons.yellow_dot} The refresh of the '{dataset}' semantic model within the '{workspace}' workspace has been cancelled."
+                                f"{icons.yellow_dot} The refresh of the '{dataset_name}' semantic model within the '{workspace_name}' workspace has been cancelled."
                             )
                             return
 
@@ -231,7 +237,7 @@ def refresh_semantic_model(
                     )
 
                     print(
-                        f"{icons.green_dot} Refresh '{refresh_type}' of the '{dataset}' semantic model within the '{workspace}' workspace is complete."
+                        f"{icons.green_dot} Refresh '{refresh_type}' of the '{dataset_name}' semantic model within the '{workspace_name}' workspace is complete."
                     )
                     return final_df
 
@@ -245,14 +251,14 @@ def refresh_semantic_model(
                     raise ValueError(extract_failure_error())
                 elif status == "Cancelled":
                     print(
-                        f"{icons.yellow_dot} The refresh of the '{dataset}' semantic model within the '{workspace}' workspace has been cancelled."
+                        f"{icons.yellow_dot} The refresh of the '{dataset_name}' semantic model within the '{workspace_name}' workspace has been cancelled."
                     )
                     return
 
                 time.sleep(3)
 
             print(
-                f"{icons.green_dot} Refresh '{refresh_type}' of the '{dataset}' semantic model within the '{workspace}' workspace is complete."
+                f"{icons.green_dot} Refresh '{refresh_type}' of the '{dataset_name}' semantic model within the '{workspace_name}' workspace is complete."
             )
 
     final_output = refresh_and_trace_dataset(

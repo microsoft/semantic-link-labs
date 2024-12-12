@@ -7,23 +7,25 @@ from sempy_labs._helper_functions import (
     pagination,
     resolve_item_type,
     format_dax_object_name,
+    resolve_dataset_name_and_id,
 )
 import pandas as pd
 from typing import Optional
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
+from uuid import UUID
 
 
 def get_object_level_security(
-    dataset: str, workspace: Optional[str] = None
+    dataset: str | UUID, workspace: Optional[str] = None
 ) -> pd.DataFrame:
     """
     Shows the object level security for the semantic model.
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
+    dataset : str | UUID
+        Name or ID of the semantic model.
     workspace : str, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -37,12 +39,13 @@ def get_object_level_security(
 
     from sempy_labs.tom import connect_semantic_model
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
     df = pd.DataFrame(columns=["Role Name", "Object Type", "Table Name", "Object Name"])
 
     with connect_semantic_model(
-        dataset=dataset, readonly=True, workspace=workspace
+        dataset=dataset_id, readonly=True, workspace=workspace_id
     ) as tom:
 
         for r in tom.model.Roles:
@@ -82,15 +85,15 @@ def get_object_level_security(
 
 
 def list_tables(
-    dataset: str, workspace: Optional[str] = None, extended: bool = False
+    dataset: str | UUID, workspace: Optional[str] = None, extended: bool = False
 ) -> pd.DataFrame:
     """
     Shows a semantic model's tables and their properties.
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
+    dataset : str | UUID
+        Name or ID of the semantic model.
     workspace : str, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -106,7 +109,8 @@ def list_tables(
 
     from sempy_labs.tom import connect_semantic_model
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
     df = pd.DataFrame(
         columns=[
@@ -121,20 +125,20 @@ def list_tables(
     )
 
     with connect_semantic_model(
-        dataset=dataset, workspace=workspace, readonly=True
+        dataset=dataset_id, workspace=workspace_id, readonly=True
     ) as tom:
         if extended:
             dict_df = fabric.evaluate_dax(
-                dataset=dataset,
-                workspace=workspace,
+                dataset=dataset_id,
+                workspace=workspace_id,
                 dax_string="""
                 EVALUATE SELECTCOLUMNS(FILTER(INFO.STORAGETABLECOLUMNS(), [COLUMN_TYPE] = "BASIC_DATA"),[DIMENSION_NAME],[DICTIONARY_SIZE])
                 """,
             )
             dict_sum = dict_df.groupby("[DIMENSION_NAME]")["[DICTIONARY_SIZE]"].sum()
             data = fabric.evaluate_dax(
-                dataset=dataset,
-                workspace=workspace,
+                dataset=dataset_id,
+                workspace=workspace_id,
                 dax_string="""EVALUATE SELECTCOLUMNS(INFO.STORAGETABLECOLUMNSEGMENTS(),[TABLE_ID],[DIMENSION_NAME],[USED_SIZE])""",
             )
             data_sum = (
@@ -162,8 +166,8 @@ def list_tables(
                 .sum()
             )
             rc = fabric.evaluate_dax(
-                dataset=dataset,
-                workspace=workspace,
+                dataset=dataset_id,
+                workspace=workspace_id,
                 dax_string="""
                 SELECT [DIMENSION_NAME],[ROWS_COUNT] FROM $SYSTEM.DISCOVER_STORAGE_TABLES
                 WHERE RIGHT ( LEFT ( TABLE_ID, 2 ), 1 ) <> '$'
@@ -850,15 +854,15 @@ def update_item(
 
 
 def list_relationships(
-    dataset: str, workspace: Optional[str] = None, extended: bool = False
+    dataset: str | UUID, workspace: Optional[str] = None, extended: bool = False
 ) -> pd.DataFrame:
     """
     Shows a semantic model's relationships and their properties.
 
     Parameters
     ----------
-    dataset: str
-        Name of the semantic model.
+    dataset: str | UUID
+        Name or UUID of the semantic model.
     workspace : str, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -872,17 +876,18 @@ def list_relationships(
         A pandas dataframe showing the object level security for the semantic model.
     """
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    dfR = fabric.list_relationships(dataset=dataset, workspace=workspace)
+    dfR = fabric.list_relationships(dataset=dataset_id, workspace=workspace_id)
     dfR["From Object"] = format_dax_object_name(dfR["From Table"], dfR["From Column"])
     dfR["To Object"] = format_dax_object_name(dfR["To Table"], dfR["To Column"])
 
     if extended:
         # Used to map the Relationship IDs
         rel = fabric.evaluate_dax(
-            dataset=dataset,
-            workspace=workspace,
+            dataset=dataset_id,
+            workspace=workspace_id,
             dax_string="""
                 SELECT
                 [ID] AS [RelationshipID]
@@ -893,8 +898,8 @@ def list_relationships(
 
         # USED_SIZE shows the Relationship Size where TABLE_ID starts with R$
         cs = fabric.evaluate_dax(
-            dataset=dataset,
-            workspace=workspace,
+            dataset=dataset_id,
+            workspace=workspace_id,
             dax_string="""
                 SELECT
                 [TABLE_ID]
