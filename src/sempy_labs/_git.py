@@ -322,7 +322,6 @@ def commit_to_git(
         )
 
 
-
 def update_from_git(
     remote_commit_hash: str,
     conflict_resolution_policy: str,

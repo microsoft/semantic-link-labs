@@ -1575,3 +1575,29 @@ def list_semantic_model_object_report_usage(
     final_df.reset_index(drop=True, inplace=True)
 
     return final_df
+
+
+def list_server_properties(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
+
+    tom_server = fabric.create_tom_server(readonly=True, workspace=workspace)
+
+    rows = [
+        {
+            "Name": sp.Name,
+            "Value": sp.Value,
+            "Default Value": sp.DefaultValue,
+            "Is Read Only": sp.IsReadOnly,
+            "Requires Restart": sp.RequiresRestart,
+            "Units": sp.Units,
+            "Category": sp.Category,
+        }
+        for sp in tom_server.ServerProperties
+    ]
+
+    tom_server.Dispose()
+    df = pd.DataFrame(rows)
+
+    bool_cols = ["Is Read Only", "Requires Restart"]
+    df[bool_cols] = df[bool_cols].astype(bool)
+
+    return df
