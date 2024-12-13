@@ -1578,6 +1578,21 @@ def list_semantic_model_object_report_usage(
 
 
 def list_server_properties(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
+    """
+    Lists the `properties <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.serverproperty?view=analysisservices-dotnet>`_ of the Analysis Services instance.
+
+    Parameters
+    ----------
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of the server properties.
+    """
 
     tom_server = fabric.create_tom_server(readonly=True, workspace=workspace)
 
