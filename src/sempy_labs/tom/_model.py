@@ -20,6 +20,7 @@ import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 import ast
 from uuid import UUID
+from sempy.fabric._token_provider import TokenProvider
 
 if TYPE_CHECKING:
     import Microsoft.AnalysisServices.Tabular
@@ -42,7 +43,7 @@ class TOMWrapper:
     _table_map = dict
     _column_map = dict
 
-    def __init__(self, dataset, workspace, readonly):
+    def __init__(self, dataset, workspace, readonly, token_provider):
 
         (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
         (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
@@ -52,10 +53,38 @@ class TOMWrapper:
         self._workspace_id = workspace_id
         self._readonly = readonly
         self._tables_added = []
+        self._token_provider = token_provider
 
-        self._tom_server = fabric.create_tom_server(
-            readonly=readonly, workspace=workspace_id
-        )
+        # Token provider logid
+        if self._token_provider is None:
+            self._tom_server = fabric.create_tom_server(
+                readonly=readonly, workspace=workspace_id
+            )
+        else:
+            from sempy.fabric._client._utils import _build_adomd_connection_string
+            import Microsoft.AnalysisServices.Tabular as TOM
+            from Microsoft.AnalysisServices import AccessToken
+            from sempy.fabric._token_provider import (
+                create_on_access_token_expired_callback,
+                ConstantTokenProvider,
+            )
+            from System import Func
+
+            token = token_provider(audience="pbi")
+            self._tom_server = TOM.Server()
+            get_access_token = create_on_access_token_expired_callback(
+                ConstantTokenProvider(token)
+            )
+            self._tom_server.AccessToken = get_access_token(None)
+            self._tom_server.OnAccessTokenExpired = Func[AccessToken, AccessToken](
+                get_access_token
+            )
+            workspace_url = f"powerbi://api.powerbi.com/v1.0/myorg/{workspace}"
+            connection_str = _build_adomd_connection_string(
+                workspace_url, readonly=readonly
+            )
+            self._tom_server.Connect(connection_str)
+
         self.model = self._tom_server.Databases[dataset_id].Model
 
         self._table_map = {}
@@ -4630,7 +4659,10 @@ class TOMWrapper:
 @log
 @contextmanager
 def connect_semantic_model(
-    dataset: str | UUID, readonly: bool = True, workspace: Optional[str] = None
+    dataset: str | UUID,
+    readonly: bool = True,
+    workspace: Optional[str] = None,
+    token_provider: Optional[TokenProvider] = None,
 ) -> Iterator[TOMWrapper]:
     """
     Connects to the Tabular Object Model (TOM) within a semantic model.
@@ -4645,6 +4677,7 @@ def connect_semantic_model(
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    token_provider : TokenProvider, default=None
 
     Returns
     -------
@@ -4655,7 +4688,12 @@ def connect_semantic_model(
     # initialize .NET to make sure System and Microsoft.AnalysisServices.Tabular is defined
     sempy.fabric._client._utils._init_analysis_services()
 
-    tw = TOMWrapper(dataset=dataset, workspace=workspace, readonly=readonly)
+    tw = TOMWrapper(
+        dataset=dataset,
+        workspace=workspace,
+        readonly=readonly,
+        token_provider=token_provider,
+    )
     try:
         yield tw
     finally:
