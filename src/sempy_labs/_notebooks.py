@@ -143,9 +143,10 @@ def import_notebook_from_web(
             description=description,
         )
     elif len(dfI_filt) > 0 and overwrite:
-        update_notebook_definition(
-            name=notebook_name, notebook_content=response.content, workspace=workspace
-        )
+        print(f"{icons.info} Overwrite of notebooks is currently not supported.")
+        # update_notebook_definition(
+        #    name=notebook_name, notebook_content=response.content, workspace=workspace
+        # )
     else:
         raise ValueError(
             f"{icons.red_dot} The '{notebook_name}' already exists within the '{workspace}' workspace and 'overwrite' is set to False."
@@ -189,7 +190,7 @@ def create_notebook(
             "format": "ipynb",
             "parts": [
                 {
-                    "path": f"{_notebook_prefix}{type}",
+                    "path": f"{_notebook_prefix}.{type}",
                     "payload": notebook_payload,
                     "payloadType": "InlineBase64",
                 }
@@ -236,11 +237,10 @@ def update_notebook_definition(
     type = _get_notebook_type(notebook_name=name, workspace=workspace_id)
 
     request_body = {
-        "displayName": name,
         "definition": {
             "parts": [
                 {
-                    "path": f"{_notebook_prefix}{type}",
+                    "path": f"{_notebook_prefix}.{type}",
                     "payload": notebook_payload,
                     "payloadType": "InlineBase64",
                 }
