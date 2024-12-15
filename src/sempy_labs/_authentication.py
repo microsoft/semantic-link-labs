@@ -108,3 +108,16 @@ class ServicePrincipalTokenProvider(TokenProvider):
             return self.credential.get_token("https://management.azure.com/.default").token
         else:
             raise NotImplementedError
+
+
+def _get_headers(token_provider: str, audience: Literal["pbi", "storage", "azure"] = "azure"):
+    """
+    Generates headers for an API request.
+    """
+
+    token = token_provider(audience=audience)
+
+    return {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
