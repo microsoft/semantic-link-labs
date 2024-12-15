@@ -91,7 +91,7 @@ class ServicePrincipalTokenProvider(TokenProvider):
 
         return cls(credential)
 
-    def __call__(self, audience: Literal["pbi", "storage"] = "pbi") -> str:
+    def __call__(self, audience: Literal["pbi", "storage", "azure"] = "pbi") -> str:
         """
         Parameters
         ----------
@@ -104,5 +104,7 @@ class ServicePrincipalTokenProvider(TokenProvider):
             ).token
         elif audience == "storage":
             return self.credential.get_token("https://storage.azure.com/.default").token
+        elif audience == "azure":
+            return self.credential.get_token("https://management.azure.com/.default").token
         else:
             raise NotImplementedError
