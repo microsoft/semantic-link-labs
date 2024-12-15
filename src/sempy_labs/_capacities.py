@@ -277,7 +277,7 @@ def suspend_fabric_capacity(
             key_vault_client_secret=kwargs["key_vault_client_secret"],
         )
         print(
-            f"{icons.info} Please use the 'token_provider' parameter instead of the key vault parameters within this function."
+            f"{icons.info} Please use the 'token_provider' parameter instead of the key vault parameters within this function as the key vault parameters have been deprecated."
         )
 
     headers = _get_headers(token_provider, audience="azure")
