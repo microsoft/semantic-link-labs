@@ -4678,7 +4678,7 @@ def connect_semantic_model(
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     token_provider : TokenProvider, default=None
-
+        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
     Returns
     -------
     typing.Iterator[TOMWrapper]
