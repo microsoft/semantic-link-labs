@@ -105,12 +105,16 @@ class ServicePrincipalTokenProvider(TokenProvider):
         elif audience == "storage":
             return self.credential.get_token("https://storage.azure.com/.default").token
         elif audience == "azure":
-            return self.credential.get_token("https://management.azure.com/.default").token
+            return self.credential.get_token(
+                "https://management.azure.com/.default"
+            ).token
         else:
             raise NotImplementedError
 
 
-def _get_headers(token_provider: str, audience: Literal["pbi", "storage", "azure"] = "azure"):
+def _get_headers(
+    token_provider: str, audience: Literal["pbi", "storage", "azure"] = "azure"
+):
     """
     Generates headers for an API request.
     """

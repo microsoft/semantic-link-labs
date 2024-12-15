@@ -6,6 +6,8 @@ from sempy.fabric.exceptions import FabricHTTPException
 import requests
 from sempy_labs._helper_functions import _get_azure_token_credentials
 import pandas as pd
+from sempy_labs._authentication import _get_headers
+from sempy.fabric._token_provider import TokenProvider
 
 
 def _add_sll_tag(payload, tags):
@@ -688,3 +690,93 @@ def create_resource_group(
     print(
         f"{icons.green_dot} The '{resource_group}' resource group has been created within the '{region}' region within the '{azure_subscription_id}' Azure subscription."
     )
+
+
+def list_skus_for_capacity(
+    capacity: str,
+    azure_subscription_id: str,
+    resource_group: str,
+    token_provider: TokenProvider,
+    ) -> pd.DataFrame:
+    """
+    Lists eligible SKUs for a Microsoft Fabric resource.
+
+    This is a wrapper function for the following API: `Fabric Capacities - List Skus For Capacity <https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities/list-skus-for-capacity?view=rest-microsoftfabric-2023-11-01>`_.
+
+    Parameters
+    ----------
+    capacity : str
+        The capacity name.
+    azure_subscription_id : str
+        The Azure subscription ID.
+    resource_group : str
+        The name of the resource group.
+    token_provider : TokenProvider
+        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of eligible SKUs for a Microsoft Fabric resource.
+    """
+
+    df = pd.DataFrame(columns=['Resource Type', 'Sku', 'Sku Tier'])
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity}/skus?api-version=2023-11-01"
+    headers = _get_headers(token_provider=token_provider, audience="azure")
+
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    for v in response.json().get('value', []):
+        sku = v.get('sku', {})
+        new_data = {
+            "Resource Type": v.get('resourceType'),
+            "Sku": sku.get('name'),
+            "Sku Tier": sku.get('tier'),
+        }
+
+        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    return df
+
+
+def list_skus(
+    azure_subscription_id: str,
+    token_provider: TokenProvider,
+        ) -> pd.DataFrame:
+    """
+    Lists eligible SKUs for Microsoft Fabric resource provider.
+
+    This is a wrapper function for the following API: `Fabric Capacities - List Skus For Capacity <https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities/list-skus?view=rest-microsoftfabric-2023-11-01>`_.
+
+    Parameters
+    ----------
+    azure_subscription_id : str
+        The Azure subscription ID.
+    token_provider : TokenProvider
+        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of eligible SKUs for Microsoft Fabric resource provider.
+    """
+
+    df = pd.DataFrame(columns=['Sku', 'Locations'])
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/providers/Microsoft.Fabric/skus?api-version=2023-11-01"
+    headers = _get_headers(token_provider=token_provider, audience="azure")
+
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    for v in response.json().get('value', []):
+        new_data = {
+            "Sku": v.get('name'),
+            "Locations": v.get('locations', []),
+        }
+
+        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    return df
