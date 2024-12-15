@@ -6,7 +6,7 @@ from sempy.fabric.exceptions import FabricHTTPException
 import requests
 from sempy_labs._helper_functions import _get_azure_token_credentials
 import pandas as pd
-from sempy_labs._authentication import _get_headers
+from sempy_labs._authentication import _get_headers, ServicePrincipalTokenProvider
 from sempy.fabric._token_provider import TokenProvider
 
 
@@ -249,10 +249,8 @@ def suspend_fabric_capacity(
     capacity_name: str,
     azure_subscription_id: str,
     resource_group: str,
-    key_vault_uri: str,
-    key_vault_tenant_id: str,
-    key_vault_client_id: str,
-    key_vault_client_secret: str,
+    token_provider: Optional[TokenProvider] = None,
+    **kwargs,
 ):
     """
     This function suspends a Fabric capacity.
@@ -267,23 +265,22 @@ def suspend_fabric_capacity(
         The Azure subscription ID.
     resource_group : str
         The name of the Azure resource group.
-    key_vault_uri : str
-        The name of the `Azure key vault <https://azure.microsoft.com/products/key-vault>`_ URI. Example: "https://<Key Vault Name>.vault.azure.net/"
-    key_vault_tenant_id : str
-        The name of the Azure key vault secret storing the Tenant ID.
-    key_vault_client_id : str
-        The name of the Azure key vault secret storing the Client ID.
-    key_vault_client_secret : str
-        The name of the Azure key vault secret storing the Client Secret.
+    token_provider : TokenProvider, default=None
+        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
     """
-    # https://learn.microsoft.com/en-us/rest/api/microsoftfabric/fabric-capacities/suspend?view=rest-microsoftfabric-2023-11-01&tabs=HTTP
 
-    azure_token, credential, headers = _get_azure_token_credentials(
-        key_vault_uri=key_vault_uri,
-        key_vault_tenant_id=key_vault_tenant_id,
-        key_vault_client_id=key_vault_client_id,
-        key_vault_client_secret=key_vault_client_secret,
-    )
+    if token_provider is None:
+        token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
+            key_vault_uri=kwargs["key_vault_uri"],
+            key_vault_tenant_id=kwargs["key_vault_tenant_id"],
+            key_vault_client_id=kwargs["key_vault_client_id"],
+            key_vault_client_secret=kwargs["key_vault_client_secret"],
+        )
+        print(
+            f"{icons.info} Please use the 'token_provider' parameter instead of the key vault parameters within this function."
+        )
+
+    headers = _get_headers(token_provider, audience="azure")
 
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}/suspend?api-version={icons.azure_api_version}"
 
@@ -697,7 +694,7 @@ def list_skus_for_capacity(
     azure_subscription_id: str,
     resource_group: str,
     token_provider: TokenProvider,
-    ) -> pd.DataFrame:
+) -> pd.DataFrame:
     """
     Lists eligible SKUs for a Microsoft Fabric resource.
 
@@ -720,7 +717,7 @@ def list_skus_for_capacity(
         A pandas dataframe showing a list of eligible SKUs for a Microsoft Fabric resource.
     """
 
-    df = pd.DataFrame(columns=['Resource Type', 'Sku', 'Sku Tier'])
+    df = pd.DataFrame(columns=["Resource Type", "Sku", "Sku Tier"])
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity}/skus?api-version=2023-11-01"
     headers = _get_headers(token_provider=token_provider, audience="azure")
 
@@ -728,12 +725,12 @@ def list_skus_for_capacity(
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    for v in response.json().get('value', []):
-        sku = v.get('sku', {})
+    for v in response.json().get("value", []):
+        sku = v.get("sku", {})
         new_data = {
-            "Resource Type": v.get('resourceType'),
-            "Sku": sku.get('name'),
-            "Sku Tier": sku.get('tier'),
+            "Resource Type": v.get("resourceType"),
+            "Sku": sku.get("name"),
+            "Sku Tier": sku.get("tier"),
         }
 
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
@@ -744,7 +741,7 @@ def list_skus_for_capacity(
 def list_skus(
     azure_subscription_id: str,
     token_provider: TokenProvider,
-        ) -> pd.DataFrame:
+) -> pd.DataFrame:
     """
     Lists eligible SKUs for Microsoft Fabric resource provider.
 
@@ -763,7 +760,7 @@ def list_skus(
         A pandas dataframe showing a list of eligible SKUs for Microsoft Fabric resource provider.
     """
 
-    df = pd.DataFrame(columns=['Sku', 'Locations'])
+    df = pd.DataFrame(columns=["Sku", "Locations"])
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/providers/Microsoft.Fabric/skus?api-version=2023-11-01"
     headers = _get_headers(token_provider=token_provider, audience="azure")
 
@@ -771,10 +768,10 @@ def list_skus(
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    for v in response.json().get('value', []):
+    for v in response.json().get("value", []):
         new_data = {
-            "Sku": v.get('name'),
-            "Locations": v.get('locations', []),
+            "Sku": v.get("name"),
+            "Locations": v.get("locations", []),
         }
 
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
