@@ -91,7 +91,9 @@ class ServicePrincipalTokenProvider(TokenProvider):
 
         return cls(credential)
 
-    def __call__(self, audience: Literal["pbi", "storage", "azure"] = "pbi") -> str:
+    def __call__(
+        self, audience: Literal["pbi", "storage", "azure", "graph"] = "pbi"
+    ) -> str:
         """
         Parameters
         ----------
@@ -108,12 +110,16 @@ class ServicePrincipalTokenProvider(TokenProvider):
             return self.credential.get_token(
                 "https://management.azure.com/.default"
             ).token
+        elif audience == "graph":
+            return self.credential.get_token(
+                "https://graph.microsoft.com/.default"
+            ).token
         else:
             raise NotImplementedError
 
 
 def _get_headers(
-    token_provider: str, audience: Literal["pbi", "storage", "azure"] = "azure"
+    token_provider: str, audience: Literal["pbi", "storage", "azure", "graph"] = "azure"
 ):
     """
     Generates headers for an API request.
@@ -121,7 +127,11 @@ def _get_headers(
 
     token = token_provider(audience=audience)
 
-    return {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-    }
+    headers = {"Authorization": f"Bearer {token}"}
+
+    if audience == "graph":
+        headers["ConsistencyLevel"] = "eventual"
+    else:
+        headers["Content-Type"] = "application/json"
+
+    return headers
