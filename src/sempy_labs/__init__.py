@@ -205,6 +205,7 @@ from sempy_labs._list_functions import (
     list_lakehouses,
     list_sql_endpoints,
     update_item,
+    list_server_properties,
 )
 from sempy_labs._helper_functions import (
     convert_to_friendly_case,
@@ -460,4 +461,5 @@ __all__ = [
     "update_on_premises_gateway",
     "get_semantic_model_definition",
     "get_tenant_id",
+    "list_server_properties",
 ]
