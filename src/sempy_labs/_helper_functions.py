@@ -1379,7 +1379,7 @@ def _is_valid_uuid(
         return False
 
 
-def _get_x_id(name: str):
+def _get_fabric_context_setting(name: str):
 
     from synapse.ml.internal_utils.session_utils import get_fabric_context
 
@@ -1388,4 +1388,4 @@ def _get_x_id(name: str):
 
 def get_tenant_id():
 
-    _get_x_id(name='trident.tenant.id')
+    _get_fabric_context_setting(name='trident.tenant.id')
