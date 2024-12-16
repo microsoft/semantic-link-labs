@@ -116,6 +116,8 @@ from sempy_labs._capacities import (
     delete_embedded_capacity,
     delete_premium_capacity,
     create_resource_group,
+    list_skus,
+    list_skus_for_capacity,
 )
 from sempy_labs._spark import (
     get_spark_settings,
@@ -458,4 +460,6 @@ __all__ = [
     "update_vnet_gateway",
     "update_on_premises_gateway",
     "get_semantic_model_definition",
+    "list_skus",
+    "list_skus_for_capacity",
 ]
