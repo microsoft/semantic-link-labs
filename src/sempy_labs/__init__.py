@@ -230,6 +230,7 @@ from sempy_labs._helper_functions import (
     get_capacity_id,
     get_capacity_name,
     resolve_capacity_name,
+    get_tenant_id,
 )
 from sempy_labs._model_bpa_bulk import (
     run_model_bpa_bulk,
@@ -458,4 +459,5 @@ __all__ = [
     "update_vnet_gateway",
     "update_on_premises_gateway",
     "get_semantic_model_definition",
+    "get_tenant_id",
 ]
