@@ -780,13 +780,19 @@ def get_capacity_id(workspace: Optional[str] = None) -> UUID:
         The capacity Id.
     """
 
-    workspace = fabric.resolve_workspace_name(workspace)
-    filter_condition = urllib.parse.quote(workspace)
-    dfW = fabric.list_workspaces(filter=f"name eq '{filter_condition}'")
-    if len(dfW) == 0:
-        raise ValueError(f"{icons.red_dot} The '{workspace}' does not exist'.")
+    if workspace is None:
+        capacity_id = _get_x_id(name="trident.capacity.id")
+    else:
 
-    return dfW["Capacity Id"].iloc[0]
+        workspace = fabric.resolve_workspace_name(workspace)
+        filter_condition = urllib.parse.quote(workspace)
+        dfW = fabric.list_workspaces(filter=f"name eq '{filter_condition}'")
+        if len(dfW) == 0:
+            raise ValueError(f"{icons.red_dot} The '{workspace}' does not exist'.")
+
+        capacity_id = dfW["Capacity Id"].iloc[0]
+
+    return capacity_id
 
 
 def get_capacity_name(workspace: Optional[str] = None) -> str:
@@ -1371,3 +1377,15 @@ def _is_valid_uuid(
         return True
     except ValueError:
         return False
+
+
+def _get_fabric_context_setting(name: str):
+
+    from synapse.ml.internal_utils.session_utils import get_fabric_context
+
+    return get_fabric_context().get(name)
+
+
+def get_tenant_id():
+
+    _get_fabric_context_setting(name="trident.tenant.id")

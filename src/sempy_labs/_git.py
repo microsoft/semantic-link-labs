@@ -277,43 +277,48 @@ def commit_to_git(
     workspace, workspace_id = resolve_workspace_name_and_id(workspace)
 
     gs = get_git_status(workspace=workspace)
-    workspace_head = gs["Workspace Head"].iloc[0]
+    if not gs.empty:
+        workspace_head = gs["Workspace Head"].iloc[0]
 
-    if item_ids is None:
-        commit_mode = "All"
-    else:
-        commit_mode = "Selective"
+        if item_ids is None:
+            commit_mode = "All"
+        else:
+            commit_mode = "Selective"
 
-    if isinstance(item_ids, str):
-        item_ids = [item_ids]
+        if isinstance(item_ids, str):
+            item_ids = [item_ids]
 
-    request_body = {
-        "mode": commit_mode,
-        "workspaceHead": workspace_head,
-        "comment": comment,
-    }
+        request_body = {
+            "mode": commit_mode,
+            "workspaceHead": workspace_head,
+            "comment": comment,
+        }
 
-    if item_ids is not None:
-        request_body["items"] = [{"objectId": item_id} for item_id in item_ids]
+        if item_ids is not None:
+            request_body["items"] = [{"objectId": item_id} for item_id in item_ids]
 
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/git/commitToGit",
-        json=request_body,
-    )
-
-    if response.status_code not in [200, 202]:
-        raise FabricHTTPException(response)
-
-    lro(client, response)
-
-    if commit_mode == "All":
-        print(
-            f"{icons.green_dot} All items within the '{workspace}' workspace have been committed to Git."
+        client = fabric.FabricRestClient()
+        response = client.post(
+            f"/v1/workspaces/{workspace_id}/git/commitToGit",
+            json=request_body,
         )
+
+        if response.status_code not in [200, 202]:
+            raise FabricHTTPException(response)
+
+        lro(client=client, response=response, return_status_code=True)
+
+        if commit_mode == "All":
+            print(
+                f"{icons.green_dot} All items within the '{workspace}' workspace have been committed to Git."
+            )
+        else:
+            print(
+                f"{icons.green_dot} The {item_ids} items within the '{workspace}' workspace have been committed to Git."
+            )
     else:
         print(
-            f"{icons.green_dot} The {item_ids} items ithin the '{workspace}' workspace have been committed to Git."
+            f"{icons.info} Git already up to date: no modified items found within the '{workspace}' workspace."
         )
 
 

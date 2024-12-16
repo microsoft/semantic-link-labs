@@ -8,6 +8,7 @@ from sempy_labs._gateways import (
     create_vnet_gateway,
     update_vnet_gateway,
     update_on_premises_gateway,
+    bind_semantic_model_to_gateway,
 )
 
 from sempy_labs._authentication import (
@@ -205,6 +206,8 @@ from sempy_labs._list_functions import (
     list_lakehouses,
     list_sql_endpoints,
     update_item,
+    list_server_properties,
+    list_semantic_model_errors,
 )
 from sempy_labs._helper_functions import (
     convert_to_friendly_case,
@@ -230,6 +233,7 @@ from sempy_labs._helper_functions import (
     get_capacity_id,
     get_capacity_name,
     resolve_capacity_name,
+    get_tenant_id,
 )
 from sempy_labs._model_bpa_bulk import (
     run_model_bpa_bulk,
@@ -458,4 +462,8 @@ __all__ = [
     "update_vnet_gateway",
     "update_on_premises_gateway",
     "get_semantic_model_definition",
+    "get_tenant_id",
+    "list_server_properties",
+    "bind_semantic_model_to_gateway",
+    "list_semantic_model_errors",
 ]

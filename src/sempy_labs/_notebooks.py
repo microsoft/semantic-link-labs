@@ -10,6 +10,42 @@ from sempy_labs._helper_functions import (
     _decode_b64,
 )
 from sempy.fabric.exceptions import FabricHTTPException
+import os
+
+_notebook_prefix = "notebook-content."
+
+
+def _get_notebook_definition_base(
+    notebook_name: str, workspace: Optional[str] = None
+) -> pd.DataFrame:
+
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    item_id = fabric.resolve_item_id(
+        item_name=notebook_name, type="Notebook", workspace=workspace
+    )
+    client = fabric.FabricRestClient()
+    response = client.post(
+        f"v1/workspaces/{workspace_id}/notebooks/{item_id}/getDefinition",
+    )
+
+    result = lro(client, response).json()
+
+    return pd.json_normalize(result["definition"]["parts"])
+
+
+def _get_notebook_type(notebook_name: str, workspace: Optional[str] = None) -> str:
+
+    df_items = _get_notebook_definition_base(
+        notebook_name=notebook_name, workspace=workspace
+    )
+
+    file_path = df_items[df_items["path"].str.startswith(_notebook_prefix)][
+        "path"
+    ].iloc[0]
+
+    _, file_extension = os.path.splitext(file_path)
+
+    return file_extension[1:]
 
 
 def get_notebook_definition(
@@ -38,18 +74,10 @@ def get_notebook_definition(
         The notebook definition.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-    item_id = fabric.resolve_item_id(
-        item_name=notebook_name, type="Notebook", workspace=workspace
+    df_items = _get_notebook_definition_base(
+        notebook_name=notebook_name, workspace=workspace
     )
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"v1/workspaces/{workspace_id}/notebooks/{item_id}/getDefinition",
-    )
-
-    result = lro(client, response).json()
-    df_items = pd.json_normalize(result["definition"]["parts"])
-    df_items_filt = df_items[df_items["path"] == "notebook-content.py"]
+    df_items_filt = df_items[df_items["path"].str.startswith(_notebook_prefix)]
     payload = df_items_filt["payload"].iloc[0]
 
     if decode:
@@ -115,9 +143,10 @@ def import_notebook_from_web(
             description=description,
         )
     elif len(dfI_filt) > 0 and overwrite:
-        update_notebook_definition(
-            name=notebook_name, notebook_content=response.content, workspace=workspace
-        )
+        print(f"{icons.info} Overwrite of notebooks is currently not supported.")
+        # update_notebook_definition(
+        #    name=notebook_name, notebook_content=response.content, workspace=workspace
+        # )
     else:
         raise ValueError(
             f"{icons.red_dot} The '{notebook_name}' already exists within the '{workspace}' workspace and 'overwrite' is set to False."
@@ -127,6 +156,7 @@ def import_notebook_from_web(
 def create_notebook(
     name: str,
     notebook_content: str,
+    type: str = "py",
     description: Optional[str] = None,
     workspace: Optional[str] = None,
 ):
@@ -139,6 +169,8 @@ def create_notebook(
         The name of the notebook to be created.
     notebook_content : str
         The Jupyter notebook content (not in Base64 format).
+    type : str, default="py"
+        The notebook type.
     description : str, default=None
         The description of the notebook.
         Defaults to None which does not place a description.
@@ -158,7 +190,7 @@ def create_notebook(
             "format": "ipynb",
             "parts": [
                 {
-                    "path": "notebook-content.py",
+                    "path": f"{_notebook_prefix}.{type}",
                     "payload": notebook_payload,
                     "payloadType": "InlineBase64",
                 }
@@ -202,13 +234,13 @@ def update_notebook_definition(
         item_name=name, type="Notebook", workspace=workspace
     )
 
+    type = _get_notebook_type(notebook_name=name, workspace=workspace_id)
+
     request_body = {
-        "displayName": name,
         "definition": {
-            "format": "ipynb",
             "parts": [
                 {
-                    "path": "notebook-content.py",
+                    "path": f"{_notebook_prefix}.{type}",
                     "payload": notebook_payload,
                     "payloadType": "InlineBase64",
                 }

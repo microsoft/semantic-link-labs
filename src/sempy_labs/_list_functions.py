@@ -1575,3 +1575,148 @@ def list_semantic_model_object_report_usage(
     final_df.reset_index(drop=True, inplace=True)
 
     return final_df
+
+
+def list_server_properties(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
+    """
+    Lists the `properties <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.serverproperty?view=analysisservices-dotnet>`_ of the Analysis Services instance.
+
+    Parameters
+    ----------
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of the server properties.
+    """
+
+    tom_server = fabric.create_tom_server(readonly=True, workspace=workspace)
+
+    rows = [
+        {
+            "Name": sp.Name,
+            "Value": sp.Value,
+            "Default Value": sp.DefaultValue,
+            "Is Read Only": sp.IsReadOnly,
+            "Requires Restart": sp.RequiresRestart,
+            "Units": sp.Units,
+            "Category": sp.Category,
+        }
+        for sp in tom_server.ServerProperties
+    ]
+
+    tom_server.Dispose()
+    df = pd.DataFrame(rows)
+
+    bool_cols = ["Is Read Only", "Requires Restart"]
+    df[bool_cols] = df[bool_cols].astype(bool)
+
+    return df
+
+
+def list_semantic_model_errors(
+    dataset: str | UUID, workspace: Optional[str | UUID]
+) -> pd.DataFrame:
+    """
+    Shows a list of a semantic model's errors and their error messages (if they exist).
+
+    Parameters
+    ----------
+    dataset : str | UUID
+        Name or ID of the semantic model.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of the errors and error messages for a given semantic model.
+    """
+
+    from sempy_labs.tom import connect_semantic_model
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(
+        dataset, workspace=workspace_id
+    )
+
+    error_rows = []
+
+    with connect_semantic_model(
+        dataset=dataset_id, workspace=workspace_id, readonly=True
+    ) as tom:
+        # Define mappings of TOM objects to object types and attributes
+        error_checks = [
+            ("Column", tom.all_columns, lambda o: o.ErrorMessage),
+            ("Partition", tom.all_partitions, lambda o: o.ErrorMessage),
+            (
+                "Partition - Data Coverage Expression",
+                tom.all_partitions,
+                lambda o: (
+                    o.DataCoverageDefinition.ErrorMessage
+                    if o.DataCoverageDefinition
+                    else ""
+                ),
+            ),
+            ("Row Level Security", tom.all_rls, lambda o: o.ErrorMessage),
+            ("Calculation Item", tom.all_calculation_items, lambda o: o.ErrorMessage),
+            ("Measure", tom.all_measures, lambda o: o.ErrorMessage),
+            (
+                "Measure - Detail Rows Expression",
+                tom.all_measures,
+                lambda o: (
+                    o.DetailRowsDefinition.ErrorMessage
+                    if o.DetailRowsDefinition
+                    else ""
+                ),
+            ),
+            (
+                "Measure - Format String Expression",
+                tom.all_measures,
+                lambda o: (
+                    o.FormatStringDefinition.ErrorMessage
+                    if o.FormatStringDefinition
+                    else ""
+                ),
+            ),
+            (
+                "Calculation Group - Multiple or Empty Selection Expression",
+                tom.all_calculation_groups,
+                lambda o: (
+                    o.CalculationGroup.MultipleOrEmptySelectionExpression.ErrorMessage
+                    if o.CalculationGroup.MultipleOrEmptySelectionExpression
+                    else ""
+                ),
+            ),
+            (
+                "Calculation Group - No Selection Expression",
+                tom.all_calculation_groups,
+                lambda o: (
+                    o.CalculationGroup.NoSelectionExpression.ErrorMessage
+                    if o.CalculationGroup.NoSelectionExpression
+                    else ""
+                ),
+            ),
+        ]
+
+        # Iterate over all error checks
+        for object_type, getter, error_extractor in error_checks:
+            for obj in getter():
+                error_message = error_extractor(obj)
+                if error_message:  # Only add rows if there's an error message
+                    error_rows.append(
+                        {
+                            "Object Type": object_type,
+                            "Table Name": obj.Parent.Name,
+                            "Object Name": obj.Name,
+                            "Error Message": error_message,
+                        }
+                    )
+
+    return pd.DataFrame(error_rows)
