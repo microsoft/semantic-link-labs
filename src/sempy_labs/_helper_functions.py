@@ -781,7 +781,7 @@ def get_capacity_id(workspace: Optional[str] = None) -> UUID:
     """
 
     if workspace is None:
-        capacity_id = _get_x_id(name='trident.capacity.id')
+        capacity_id = _get_x_id(name="trident.capacity.id")
     else:
 
         workspace = fabric.resolve_workspace_name(workspace)
@@ -1388,4 +1388,4 @@ def _get_fabric_context_setting(name: str):
 
 def get_tenant_id():
 
-    _get_fabric_context_setting(name='trident.tenant.id')
+    _get_fabric_context_setting(name="trident.tenant.id")
