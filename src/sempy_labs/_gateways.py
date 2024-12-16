@@ -441,7 +441,9 @@ def update_vnet_gateway(
     print(f"{icons.green_dot} The '{gateway}' has been updated accordingly.")
 
 
-def bind_semantic_model_to_gateway(dataset: str | UUID, gateway: str | UUID, workspace: Optional[str | UUID] = None):
+def bind_semantic_model_to_gateway(
+    dataset: str | UUID, gateway: str | UUID, workspace: Optional[str | UUID] = None
+):
     """
     Binds the specified dataset from the specified workspace to the specified gateway.
 
@@ -470,9 +472,14 @@ def bind_semantic_model_to_gateway(dataset: str | UUID, gateway: str | UUID, wor
     }
 
     client = fabric.FabricRestClient()
-    response = client.post(f'/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/Default.BindToGateway', json=payload)
+    response = client.post(
+        f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/Default.BindToGateway",
+        json=payload,
+    )
 
     if response.status_code != 200:
         raise FabricHTTPException(response)
-    
-    print(f"{icons.green_dot} The '{dataset_name}' semantic model within the '{workspace_name}' workspace has been binded to the '{gateway_id}' gateway.")
+
+    print(
+        f"{icons.green_dot} The '{dataset_name}' semantic model within the '{workspace_name}' workspace has been binded to the '{gateway_id}' gateway."
+    )

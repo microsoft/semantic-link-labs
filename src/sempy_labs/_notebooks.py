@@ -145,7 +145,7 @@ def import_notebook_from_web(
     elif len(dfI_filt) > 0 and overwrite:
         print(f"{icons.info} Overwrite of notebooks is currently not supported.")
         # update_notebook_definition(
-        #    name=notebook_name, notebook_content=response.content, workspace=workspace 
+        #    name=notebook_name, notebook_content=response.content, workspace=workspace
         # )
     else:
         raise ValueError(
