@@ -205,6 +205,7 @@ from sempy_labs._list_functions import (
     list_lakehouses,
     list_sql_endpoints,
     update_item,
+    list_semantic_model_errors,
 )
 from sempy_labs._helper_functions import (
     convert_to_friendly_case,
@@ -458,4 +459,5 @@ __all__ = [
     "update_vnet_gateway",
     "update_on_premises_gateway",
     "get_semantic_model_definition",
+    "list_semantic_model_errors",
 ]
