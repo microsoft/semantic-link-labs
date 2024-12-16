@@ -1576,7 +1576,10 @@ def list_semantic_model_object_report_usage(
 
     return final_df
 
-def list_semantic_model_errors(dataset: str | UUID, workspace: Optional[str | UUID]) -> pd.DataFrame:
+
+def list_semantic_model_errors(
+    dataset: str | UUID, workspace: Optional[str | UUID]
+) -> pd.DataFrame:
     """
     Shows a list of a semantic model's errors and their error messages (if they exist).
 
@@ -1604,35 +1607,61 @@ def list_semantic_model_errors(dataset: str | UUID, workspace: Optional[str | UU
 
     error_rows = []
 
-    # Helper function to add a new error row
-    def add_error_row(object_type, table_name, object_name, error_message):
-        error_rows.append({
-            "Object Type": object_type,
-            "Table Name": table_name,
-            "Object Name": object_name,
-            "Error Message": error_message,
-        })
-
-    with connect_semantic_model(dataset=dataset_id, workspace=workspace_id, readonly=True) as tom:
+    with connect_semantic_model(
+        dataset=dataset_id, workspace=workspace_id, readonly=True
+    ) as tom:
         # Define mappings of TOM objects to object types and attributes
         error_checks = [
             ("Column", tom.all_columns, lambda o: o.ErrorMessage),
             ("Partition", tom.all_partitions, lambda o: o.ErrorMessage),
-            ("Partition - Data Coverage Expression", 
-                tom.all_partitions, lambda o: o.DataCoverageDefinition.ErrorMessage if o.DataCoverageDefinition else ""),
+            (
+                "Partition - Data Coverage Expression",
+                tom.all_partitions,
+                lambda o: (
+                    o.DataCoverageDefinition.ErrorMessage
+                    if o.DataCoverageDefinition
+                    else ""
+                ),
+            ),
             ("Row Level Security", tom.all_rls, lambda o: o.ErrorMessage),
             ("Calculation Item", tom.all_calculation_items, lambda o: o.ErrorMessage),
             ("Measure", tom.all_measures, lambda o: o.ErrorMessage),
-            ("Measure - Detail Rows Expression", 
-                tom.all_measures, lambda o: o.DetailRowsDefinition.ErrorMessage if o.DetailRowsDefinition else ""),
-            ("Measure - Format String Expression", 
-                tom.all_measures, lambda o: o.FormatStringDefinition.ErrorMessage if o.FormatStringDefinition else ""),
-            ("Calculation Group - Multiple or Empty Selection Expression", 
-                tom.all_calculation_groups, lambda o: o.CalculationGroup.MultipleOrEmptySelectionExpression.ErrorMessage 
-                if o.CalculationGroup.MultipleOrEmptySelectionExpression else ""),
-            ("Calculation Group - No Selection Expression", 
-                tom.all_calculation_groups, lambda o: o.CalculationGroup.NoSelectionExpression.ErrorMessage 
-                if o.CalculationGroup.NoSelectionExpression else "")
+            (
+                "Measure - Detail Rows Expression",
+                tom.all_measures,
+                lambda o: (
+                    o.DetailRowsDefinition.ErrorMessage
+                    if o.DetailRowsDefinition
+                    else ""
+                ),
+            ),
+            (
+                "Measure - Format String Expression",
+                tom.all_measures,
+                lambda o: (
+                    o.FormatStringDefinition.ErrorMessage
+                    if o.FormatStringDefinition
+                    else ""
+                ),
+            ),
+            (
+                "Calculation Group - Multiple or Empty Selection Expression",
+                tom.all_calculation_groups,
+                lambda o: (
+                    o.CalculationGroup.MultipleOrEmptySelectionExpression.ErrorMessage
+                    if o.CalculationGroup.MultipleOrEmptySelectionExpression
+                    else ""
+                ),
+            ),
+            (
+                "Calculation Group - No Selection Expression",
+                tom.all_calculation_groups,
+                lambda o: (
+                    o.CalculationGroup.NoSelectionExpression.ErrorMessage
+                    if o.CalculationGroup.NoSelectionExpression
+                    else ""
+                ),
+            ),
         ]
 
         # Iterate over all error checks
@@ -1640,7 +1669,13 @@ def list_semantic_model_errors(dataset: str | UUID, workspace: Optional[str | UU
             for obj in getter():
                 error_message = error_extractor(obj)
                 if error_message:  # Only add rows if there's an error message
-                    add_error_row(object_type, obj.Parent.Name, obj.Name, error_message)
+                    error_rows.append(
+                        {
+                            "Object Type": object_type,
+                            "Table Name": obj.Parent.Name,
+                            "Object Name": obj.Name,
+                            "Error Message": error_message,
+                        }
+                    )
 
-    # Create the DataFrame from collected rows
     return pd.DataFrame(error_rows)
