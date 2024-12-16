@@ -483,3 +483,4 @@ def bind_semantic_model_to_gateway(
     print(
         f"{icons.green_dot} The '{dataset_name}' semantic model within the '{workspace_name}' workspace has been binded to the '{gateway_id}' gateway."
     )
+
