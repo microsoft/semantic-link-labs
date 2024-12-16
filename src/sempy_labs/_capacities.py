@@ -4,7 +4,6 @@ from sempy._utils._log import log
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 import requests
-from sempy_labs._helper_functions import _get_azure_token_credentials
 import pandas as pd
 from sempy_labs._authentication import _get_headers, ServicePrincipalTokenProvider
 from sempy.fabric._token_provider import TokenProvider
@@ -26,15 +25,13 @@ def _add_sll_tag(payload, tags):
 def create_fabric_capacity(
     capacity_name: str,
     azure_subscription_id: str,
-    key_vault_uri: str,
-    key_vault_tenant_id: str,
-    key_vault_client_id: str,
-    key_vault_client_secret: str,
     resource_group: str,
     region: str,
     sku: str,
     admin_members: str | List[str],
+    token_provider: Optional[TokenProvider] = None,
     tags: Optional[dict] = None,
+    **kwargs,
 ):
     """
     This function creates a new Fabric capacity within an Azure subscription.
@@ -47,14 +44,6 @@ def create_fabric_capacity(
         Name of the Fabric capacity.
     azure_subscription_id : str
         The Azure subscription ID.
-    key_vault_uri : str
-        The name of the `Azure key vault <https://azure.microsoft.com/products/key-vault>`_ URI. Example: "https://<Key Vault Name>.vault.azure.net/"
-    key_vault_tenant_id : str
-        The name of the Azure key vault secret storing the Tenant ID.
-    key_vault_client_id : str
-        The name of the Azure key vault secret storing the Client ID.
-    key_vault_client_secret : str
-        The name of the Azure key vault secret storing the Client Secret.
     resource_group : str
         The name of the Azure resource group.
     region : str
@@ -63,6 +52,8 @@ def create_fabric_capacity(
         The `sku size <https://azure.microsoft.com/pricing/details/microsoft-fabric/>`_ of the Fabric capacity.
     admin_members : str | List[str]
         The email address(es) of the admin(s) of the Fabric capacity.
+    token_provider : TokenProvider, default=None
+        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
     tags: dict, default=None
         Tag(s) to add to the capacity. Example: {'tagName': 'tagValue'}.
     """
@@ -145,14 +136,21 @@ def create_fabric_capacity(
             f"{icons.red_dot} Invalid region. Valid options: {valid_regions}."
         )
 
-    azure_token, credential, headers = _get_azure_token_credentials(
-        key_vault_uri=key_vault_uri,
-        key_vault_tenant_id=key_vault_tenant_id,
-        key_vault_client_id=key_vault_client_id,
-        key_vault_client_secret=key_vault_client_secret,
-    )
+    if token_provider is None:
+        token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
+            key_vault_uri=kwargs["key_vault_uri"],
+            key_vault_tenant_id=kwargs["key_vault_tenant_id"],
+            key_vault_client_id=kwargs["key_vault_client_id"],
+            key_vault_client_secret=kwargs["key_vault_client_secret"],
+        )
+        print(
+            f"{icons.info} Please use the 'token_provider' parameter instead of the key vault parameters within this function as the key vault parameters have been deprecated."
+        )
+    headers = _get_headers(token_provider, audience="azure")
 
-    resource_client = ResourceManagementClient(credential, azure_subscription_id)
+    resource_client = ResourceManagementClient(
+        token_provider.credential, azure_subscription_id
+    )
 
     if resource_group is None:
         for i in resource_client.resources.list(
@@ -296,10 +294,8 @@ def resume_fabric_capacity(
     capacity_name: str,
     azure_subscription_id: str,
     resource_group: str,
-    key_vault_uri: str,
-    key_vault_tenant_id: str,
-    key_vault_client_id: str,
-    key_vault_client_secret: str,
+    token_provider: Optional[TokenProvider] = None,
+    **kwargs,
 ):
     """
     This function resumes a Fabric capacity.
@@ -314,24 +310,22 @@ def resume_fabric_capacity(
         The Azure subscription ID.
     resource_group : str
         The name of the Azure resource group.
-    key_vault_uri : str
-        The name of the `Azure key vault <https://azure.microsoft.com/products/key-vault>`_ URI. Example: "https://<Key Vault Name>.vault.azure.net/"
-    key_vault_tenant_id : str
-        The name of the Azure key vault secret storing the Tenant ID.
-    key_vault_client_id : str
-        The name of the Azure key vault secret storing the Client ID.
-    key_vault_client_secret : str
-        The name of the Azure key vault secret storing the Client Secret.
+    token_provider : TokenProvider, default=None
+        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
     """
 
-    # https://learn.microsoft.com/en-us/rest/api/microsoftfabric/fabric-capacities/resume?view=rest-microsoftfabric-2023-11-01&tabs=HTTP
+    if token_provider is None:
+        token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
+            key_vault_uri=kwargs["key_vault_uri"],
+            key_vault_tenant_id=kwargs["key_vault_tenant_id"],
+            key_vault_client_id=kwargs["key_vault_client_id"],
+            key_vault_client_secret=kwargs["key_vault_client_secret"],
+        )
+        print(
+            f"{icons.info} Please use the 'token_provider' parameter instead of the key vault parameters within this function as the key vault parameters have been deprecated."
+        )
 
-    azure_token, credential, headers = _get_azure_token_credentials(
-        key_vault_uri=key_vault_uri,
-        key_vault_tenant_id=key_vault_tenant_id,
-        key_vault_client_id=key_vault_client_id,
-        key_vault_client_secret=key_vault_client_secret,
-    )
+    headers = _get_headers(token_provider, audience="azure")
 
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}/resume?api-version={icons.azure_api_version}"
 
@@ -347,10 +341,8 @@ def delete_embedded_capacity(
     capacity_name: str,
     azure_subscription_id: str,
     resource_group: str,
-    key_vault_uri: str,
-    key_vault_tenant_id: str,
-    key_vault_client_id: str,
-    key_vault_client_secret: str,
+    token_provider: Optional[TokenProvider] = None,
+    **kwargs,
 ):
     """
     This function deletes a Power BI Embedded capacity.
@@ -363,24 +355,22 @@ def delete_embedded_capacity(
         The Azure subscription ID.
     resource_group : str
         The name of the Azure resource group.
-    key_vault_uri : str
-        The name of the `Azure key vault <https://azure.microsoft.com/products/key-vault>`_ URI. Example: "https://<Key Vault Name>.vault.azure.net/"
-    key_vault_tenant_id : str
-        The name of the Azure key vault secret storing the Tenant ID.
-    key_vault_client_id : str
-        The name of the Azure key vault secret storing the Client ID.
-    key_vault_client_secret : str
-        The name of the Azure key vault secret storing the Client Secret.
+    token_provider : TokenProvider, default=None
+        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
     """
 
-    # https://learn.microsoft.com/en-us/rest/api/power-bi-embedded/capacities/delete?view=rest-power-bi-embedded-2021-01-01&tabs=HTTP
+    if token_provider is None:
+        token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
+            key_vault_uri=kwargs["key_vault_uri"],
+            key_vault_tenant_id=kwargs["key_vault_tenant_id"],
+            key_vault_client_id=kwargs["key_vault_client_id"],
+            key_vault_client_secret=kwargs["key_vault_client_secret"],
+        )
+        print(
+            f"{icons.info} Please use the 'token_provider' parameter instead of the key vault parameters within this function as the key vault parameters have been deprecated."
+        )
 
-    azure_token, credential, headers = _get_azure_token_credentials(
-        key_vault_uri=key_vault_uri,
-        key_vault_tenant_id=key_vault_tenant_id,
-        key_vault_client_id=key_vault_client_id,
-        key_vault_client_secret=key_vault_client_secret,
-    )
+    headers = _get_headers(token_provider, audience="azure")
 
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.PowerBIDedicated/capacities/{capacity_name}?api-version={icons.azure_api_version}"
 
@@ -424,10 +414,8 @@ def delete_fabric_capacity(
     capacity_name: str,
     azure_subscription_id: str,
     resource_group: str,
-    key_vault_uri: str,
-    key_vault_tenant_id: str,
-    key_vault_client_id: str,
-    key_vault_client_secret: str,
+    token_provider: Optional[TokenProvider] = None,
+    **kwargs,
 ):
     """
     This function deletes a Fabric capacity.
@@ -442,24 +430,22 @@ def delete_fabric_capacity(
         The Azure subscription ID.
     resource_group : str
         The name of the Azure resource group.
-    key_vault_uri : str
-        The name of the `Azure key vault <https://azure.microsoft.com/products/key-vault>`_ URI. Example: "https://<Key Vault Name>.vault.azure.net/"
-    key_vault_tenant_id : str
-        The name of the Azure key vault secret storing the Tenant ID.
-    key_vault_client_id : str
-        The name of the Azure key vault secret storing the Client ID.
-    key_vault_client_secret : str
-        The name of the Azure key vault secret storing the Client Secret.
+    token_provider : TokenProvider, default=None
+        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
     """
 
-    # https://learn.microsoft.com/en-us/rest/api/microsoftfabric/fabric-capacities/delete?view=rest-microsoftfabric-2023-11-01&tabs=HTTP
+    if token_provider is None:
+        token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
+            key_vault_uri=kwargs["key_vault_uri"],
+            key_vault_tenant_id=kwargs["key_vault_tenant_id"],
+            key_vault_client_id=kwargs["key_vault_client_id"],
+            key_vault_client_secret=kwargs["key_vault_client_secret"],
+        )
+        print(
+            f"{icons.info} Please use the 'token_provider' parameter instead of the key vault parameters within this function as the key vault parameters have been deprecated."
+        )
 
-    azure_token, credential, headers = _get_azure_token_credentials(
-        key_vault_uri=key_vault_uri,
-        key_vault_tenant_id=key_vault_tenant_id,
-        key_vault_client_id=key_vault_client_id,
-        key_vault_client_secret=key_vault_client_secret,
-    )
+    headers = _get_headers(token_provider, audience="azure")
 
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}?api-version={icons.azure_api_version}"
 
@@ -475,13 +461,11 @@ def update_fabric_capacity(
     capacity_name: str,
     azure_subscription_id: str,
     resource_group: str,
-    key_vault_uri: str,
-    key_vault_tenant_id: str,
-    key_vault_client_id: str,
-    key_vault_client_secret: str,
+    token_provider: Optional[TokenProvider] = None,
     sku: Optional[str] = None,
     admin_members: Optional[str | List[str]] = None,
     tags: Optional[dict] = None,
+    **kwargs,
 ):
     """
     This function updates a Fabric capacity's properties.
@@ -496,14 +480,8 @@ def update_fabric_capacity(
         The Azure subscription ID.
     resource_group : str
         The name of the Azure resource group.
-    key_vault_uri : str
-        The name of the `Azure key vault <https://azure.microsoft.com/products/key-vault>`_ URI. Example: "https://<Key Vault Name>.vault.azure.net/"
-    key_vault_tenant_id : str
-        The name of the Azure key vault secret storing the Tenant ID.
-    key_vault_client_id : str
-        The name of the Azure key vault secret storing the Client ID.
-    key_vault_client_secret : str
-        The name of the Azure key vault secret storing the Client Secret.
+    token_provider : TokenProvider, default=None
+        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
     sku : str, default=None
          The `sku size <https://azure.microsoft.com/pricing/details/microsoft-fabric/>`_ of the Fabric capacity.
     admin_members : str | List[str], default=None
@@ -512,21 +490,18 @@ def update_fabric_capacity(
         Tag(s) to add to the capacity. Example: {'tagName': 'tagValue'}.
     """
 
-    # https://learn.microsoft.com/en-us/rest/api/microsoftfabric/fabric-capacities/update?view=rest-microsoftfabric-2023-11-01&tabs=HTTP
-
-    if isinstance(admin_members, str):
-        admin_members = [admin_members]
-    if tags is not None and not isinstance(tags, dict):
-        raise ValueError(
-            f"{icons.red_dot} If specified, the 'tags' parameter must be a dictionary."
+    if token_provider is None:
+        token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
+            key_vault_uri=kwargs["key_vault_uri"],
+            key_vault_tenant_id=kwargs["key_vault_tenant_id"],
+            key_vault_client_id=kwargs["key_vault_client_id"],
+            key_vault_client_secret=kwargs["key_vault_client_secret"],
+        )
+        print(
+            f"{icons.info} Please use the 'token_provider' parameter instead of the key vault parameters within this function as the key vault parameters have been deprecated."
         )
 
-    azure_token, credential, headers = _get_azure_token_credentials(
-        key_vault_uri=key_vault_uri,
-        key_vault_tenant_id=key_vault_tenant_id,
-        key_vault_client_id=key_vault_client_id,
-        key_vault_client_secret=key_vault_client_secret,
-    )
+    headers = _get_headers(token_provider, audience="azure")
 
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}?api-version={icons.azure_api_version}"
 
@@ -578,10 +553,8 @@ def check_fabric_capacity_name_availablility(
     capacity_name: str,
     azure_subscription_id: str,
     region: str,
-    key_vault_uri: str,
-    key_vault_tenant_id: str,
-    key_vault_client_id: str,
-    key_vault_client_secret: str,
+    token_provider: Optional[TokenProvider] = None,
+    **kwargs,
 ) -> bool:
     """
     This function updates a Fabric capacity's properties.
@@ -596,34 +569,33 @@ def check_fabric_capacity_name_availablility(
         The Azure subscription ID.
     region : str
         The region name.
-    key_vault_uri : str
-        The name of the `Azure key vault <https://azure.microsoft.com/products/key-vault>`_ URI. Example: "https://<Key Vault Name>.vault.azure.net/"
-    key_vault_tenant_id : str
-        The name of the Azure key vault secret storing the Tenant ID.
-    key_vault_client_id : str
-        The name of the Azure key vault secret storing the Client ID.
-    key_vault_client_secret : str
-        The name of the Azure key vault secret storing the Client Secret.
+    token_provider : TokenProvider, default=None
+        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
     bool
         An indication as to whether the Fabric capacity name is available or not.
     """
-    # https://learn.microsoft.com/en-us/rest/api/microsoftfabric/fabric-capacities/check-name-availability?view=rest-microsoftfabric-2023-11-01&tabs=HTTP
 
-    azure_token, credential, headers = _get_azure_token_credentials(
-        key_vault_uri=key_vault_uri,
-        key_vault_tenant_id=key_vault_tenant_id,
-        key_vault_client_id=key_vault_client_id,
-        key_vault_client_secret=key_vault_client_secret,
-    )
+    if token_provider is None:
+        token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
+            key_vault_uri=kwargs["key_vault_uri"],
+            key_vault_tenant_id=kwargs["key_vault_tenant_id"],
+            key_vault_client_id=kwargs["key_vault_client_id"],
+            key_vault_client_secret=kwargs["key_vault_client_secret"],
+        )
+        print(
+            f"{icons.info} Please use the 'token_provider' parameter instead of the key vault parameters within this function as the key vault parameters have been deprecated."
+        )
+
+    headers = _get_headers(token_provider, audience="azure")
 
     payload = {"name": capacity_name, "type": "Microsoft.Fabric/capacities"}
 
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/providers/Microsoft.Fabric/locations/{region}/checkNameAvailability?api-version={icons.azure_api_version}"
 
-    response = requests.post(url, headers=headers, data=payload)
+    response = requests.post(url, headers=headers, json=payload)
 
     if response.status_code != 202:
         raise FabricHTTPException(response)
@@ -633,12 +605,10 @@ def check_fabric_capacity_name_availablility(
 
 def create_resource_group(
     azure_subscription_id: str,
-    key_vault_uri: str,
-    key_vault_tenant_id: str,
-    key_vault_client_id: str,
-    key_vault_client_secret: str,
     resource_group: str,
     region: str,
+    token_provider: Optional[TokenProvider] = None,
+    **kwargs,
 ):
     """
     This function creates a resource group in a region within an Azure subscription.
@@ -649,30 +619,30 @@ def create_resource_group(
     ----------
     azure_subscription_id : str
         The Azure subscription ID.
-    key_vault_uri : str
-        The name of the `Azure key vault <https://azure.microsoft.com/products/key-vault>`_ URI. Example: "https://<Key Vault Name>.vault.azure.net/"
-    key_vault_tenant_id : str
-        The name of the Azure key vault secret storing the Tenant ID.
-    key_vault_client_id : str
-        The name of the Azure key vault secret storing the Client ID.
-    key_vault_client_secret : str
-        The name of the Azure key vault secret storing the Client Secret.
     resource_group : str
         The name of the Azure resource group to be created.
     region : str
         The name of the region in which the resource group will be created.
+    token_provider : TokenProvider, default=None
+        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
     """
 
     from azure.mgmt.resource import ResourceManagementClient
 
-    azure_token, credential, headers = _get_azure_token_credentials(
-        key_vault_uri=key_vault_uri,
-        key_vault_tenant_id=key_vault_tenant_id,
-        key_vault_client_id=key_vault_client_id,
-        key_vault_client_secret=key_vault_client_secret,
-    )
+    if token_provider is None:
+        token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
+            key_vault_uri=kwargs["key_vault_uri"],
+            key_vault_tenant_id=kwargs["key_vault_tenant_id"],
+            key_vault_client_id=kwargs["key_vault_client_id"],
+            key_vault_client_secret=kwargs["key_vault_client_secret"],
+        )
+        print(
+            f"{icons.info} Please use the 'token_provider' parameter instead of the key vault parameters within this function as the key vault parameters have been deprecated."
+        )
 
-    resource_client = ResourceManagementClient(credential, azure_subscription_id)
+    resource_client = ResourceManagementClient(
+        token_provider.credential, azure_subscription_id
+    )
 
     if resource_client.resource_groups.check_existence(resource_group):
         print(
