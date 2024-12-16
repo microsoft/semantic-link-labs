@@ -4,16 +4,37 @@ from sempy._utils._log import log
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 from sempy_labs._workspaces import assign_workspace_to_capacity
+from sempy_labs._dataflows import list_dataflow_storage_accounts
+from sempy_labs._dataflows import assign_workspace_to_dataflow_storage
+from sempy_labs._query_scale_out import set_semantic_model_storage_format
+from sempy_labs._clear_cache import (
+    backup_semantic_model,
+    restore_semantic_model,
+    list_backups
+)
+
 from sempy_labs.admin._basic_functions import (
     assign_workspaces_to_capacity,
     _list_capacities_meta,
     list_capacities,
+    list_workspaces,
+    list_datasets,
+    
+)
+from sempy_labs.admin._items import(
+    list_items,
 )
 from sempy_labs._helper_functions import (
     resolve_capacity_id,
     convert_to_alphanumeric_lowercase,
 )
 from sempy_labs._capacities import create_fabric_capacity
+from sempy_labs._refresh_semantic_model import refresh_semantic_model
+
+import pandas as pd
+
+import time
+
 
 
 def migrate_settings(source_capacity: str, target_capacity: str):
@@ -144,6 +165,8 @@ def migrate_capacities(
     key_vault_client_secret: str,
     resource_group: str | dict,
     capacities: Optional[str | List[str]] = None,
+    target_region: Optional[str | List[str]] = None, #None will use region from source capacity
+    storage_account_name: Optional[str] = None, #Used for backup/restore
     use_existing_rg_for_A_sku: bool = True,
     p_sku_only: bool = True,
 ):
@@ -175,6 +198,13 @@ def migrate_capacities(
         If set to True, only migrates P skus. If set to False, migrates both P and A skus.
     """
 
+    #If storage account is provided then check it has been attached previously.
+    if storage_account_name is not None:
+        df_dataflow_storage_accounts = list_dataflow_storage_accounts()
+        df_dataflow_storage_accounts_filt = df_dataflow_storage_accounts[df_dataflow_storage_accounts["Dataflow Storage Account Name"] == storage_account_name]
+        if df_dataflow_storage_accounts_filt.empty:
+            print(f"{icons.info} Dataflow has not been previously attached to a workspace or tenant.")
+            return  # Exit the function if the DataFrame is empty
     if isinstance(capacities, str):
         capacities = [capacities]
 
@@ -203,9 +233,30 @@ def migrate_capacities(
         print(f"{icons.info} There are no valid capacities to migrate.")
         return
 
+
     for _, r in dfC_filt.iterrows():
         cap_name = r["Capacity Name"]
+        cap_id = r["Capacity Id"]
         region = r["Region"]
+        
+        if target_region is None or region == target_region:
+            cross_region = 0
+        else:
+            region = target_region
+            cross_region = 1
+        
+        # Check for non-Power BI items
+        power_bi_items = [
+            "Dashboard", "Datamart", "PaginatedReport", "Report", "SemanticModel"
+        ]
+        df_items = list_items(capacity=cap_id)
+        df_items
+        # Check for non-PBI Items
+        nonpbi_df = df_items[~df_items['Type'].isin(power_bi_items)]
+        if not nonpbi_df.empty and cross_region == 1:
+            print(f"{icons.info} {cap_name} contains Fabric Items and cannot be migrated to a different region.")
+            continue  # Move to the next iteration of the loop
+
         sku_size = r["Sku"]
         admins = r["Admins"]
         tgt_capacity = f"{convert_to_alphanumeric_lowercase(cap_name)}{icons.migrate_capacity_suffix}"
@@ -242,13 +293,199 @@ def migrate_capacities(
                     sku=icons.sku_mapping.get(sku_size),
                     admin_members=admins,
                 )
+
+            #Moved Migrate settings as XMLA Read/Write needs to be enabled before backup/restore of Semantic models.
+            migrate_settings(source_capacity=cap_name, target_capacity=tgt_capacity)
+
+            #Check for large semantic models or Fabric Items
+            if cross_region ==1:
+                _xregion_migration_backup_semantic_models(capacity=cap_name,
+                                                                workspace=None, 
+                                                                storage_account_name=storage_account_name)
+
             # Migrate workspaces to new capacity
             assign_workspaces_to_capacity(
                 source_capacity=cap_name, target_capacity=tgt_capacity, workspace=None
             )
+            if cross_region ==1:
+                print(f"{icons.info} Once migration has completed. Please execute:")
+                print_function = f"_xregion_migration_restore_semantic_models(capacity='{tgt_capacity}')"
+                top_border = "╔" + "═" * (len(print_function) + 2) + "╗"
+                bottom_border = "╚" + "═" * (len(print_function) + 2) + "╝"
+                print(top_border)
+                print(f"║ {print_function} ║")
+                print(bottom_border)
 
-            # Migrate settings to new capacity
-            migrate_settings(source_capacity=cap_name, target_capacity=tgt_capacity)
+
+@log
+def _xregion_migration_backup_semantic_models(
+    capacity: str,
+    workspace: Optional[str | List[str]] = None,
+    storage_account_name: Optional[str] = None, # Used for backup/restore
+    backup_suffix: Optional[str] = '_SLL'
+):
+    """
+    This function backs up large semantic models in a specified capacity and workspace.
+
+    Parameters
+    ----------
+    capacity : str
+        Name of the capacity.
+    workspace : Optional[str | List[str]]
+        Name(s) of the workspace(s). If None, all workspaces in the specified capacity will be considered.
+    storage_account_name : Optional[str]
+        Name of the storage account used for backup and restore operations.
+    backup_suffix : Optional[str]
+        Suffix used for backup files. Default is '_SLL'.
+    """
+    # Convert workspace to list if it's a single string
+    if isinstance(workspace, str):
+        workspace = [workspace]
+
+    # List all capacities and filter by the specified capacity name
+    dfC = list_capacities()
+    dfC_filt = dfC[dfC["Capacity Name"] == capacity]
+    capacity_id = dfC_filt["Capacity Id"].iloc[0]
+
+    # If no specific workspace is provided, list all workspaces in the specified capacity
+    if workspace is None:
+        dfW = list_workspaces()
+        dfW = dfW[dfW["Capacity Id"].str.upper() == capacity_id.upper()]
+        workspaces = dfW
+    else:
+        # Filter workspaces by the provided names
+        dfW = list_workspaces()
+        workspaces = dfW[dfW["Name"].isin(workspace)]["Id"]
+    
+    df_semantic_models = list_datasets()
+    # Large models only.
+    df_large_semantic_models = df_semantic_models[(df_semantic_models['Target Storage Mode'] == 'PremiumFiles')]
+    
+    # Iterate over each workspace
+    for _, row in workspaces.iterrows():
+        workspace_id = row["Id"]
+        
+        # List all datasets and filter for large semantic models
+        df_large_semantic_models_by_workspace = df_large_semantic_models[
+            (df_large_semantic_models['Workspace Id'] == workspace_id)
+        ]
+
+        # Check if there are any large semantic models
+        if df_large_semantic_models_by_workspace.empty:
+            print("No large semantic models")
+        else:
+            # Assign workspace to dataflow storage
+            dataflow_client = fabric.PowerBIRestClient()
+            dataflow_response = dataflow_client.get(
+                f"/v1.0/myorg/groups/{workspace_id}"
+                )
+            # Extract the JSON content from the Response object
+            dataflow_response_json = dataflow_response.json()
+
+            # Extract the dataflowStorageId
+            dataflow_storage_id = dataflow_response_json.get("dataflowStorageId")
+            
+            if dataflow_storage_id is None:
+                assign_workspace_to_dataflow_storage(dataflow_storage_account=storage_account_name, workspace=workspace_id)
+
+            # Backup, clear data, and set storage format for each semantic model
+            for _, row in df_large_semantic_models_by_workspace.iterrows():
+                semantic_model_name = row['Dataset Name']
+                backup_semantic_model(
+                    dataset=semantic_model_name,
+                    file_path=f'{semantic_model_name}{backup_suffix}.abf', 
+                    allow_overwrite=True,
+                    apply_compression=True,
+                    workspace=workspace_id
+                )
+                refresh_semantic_model(dataset=semantic_model_name, refresh_type='clearValues', workspace=workspace_id)
+                set_semantic_model_storage_format(dataset=semantic_model_name, storage_format='Small', workspace=workspace_id)
+    
+
+@log
+def _xregion_migration_restore_semantic_models(
+    capacity: str,
+    workspace: Optional[str | List[str]] = None,
+    backup_suffix: Optional[str] = '_SLL',
+):
+    """
+    This function restores large semantic models in a specified capacity and workspace.
+
+    Parameters
+    ----------
+    capacity : str
+        Name of the capacity.
+    workspace : Optional[str | List[str]]
+        Name(s) of the workspace(s). If None, all workspaces in the specified capacity will be considered.
+    backup_suffix : Optional[str]
+        Suffix used for backup files. Default is '_SLL'.
+    """
+    # Convert workspace to list if it's a single string
+    if isinstance(workspace, str):
+        workspace = [workspace]
+
+    # List all capacities and filter by the specified capacity name
+    dfC = list_capacities()
+    dfC_filt = dfC[dfC["Capacity Name"] == capacity]
+    capacity_id = dfC_filt["Capacity Id"].iloc[0]
+
+    # If no specific workspace is provided, list all workspaces in the specified capacity
+    if workspace is None:
+        dfW = list_workspaces()
+        dfW = dfW[dfW["Capacity Id"].str.upper() == capacity_id.upper()]
+        workspaces = dfW
+    else:
+        # Filter workspaces by the provided names
+        dfW = list_workspaces()
+        workspaces = dfW[dfW["Name"].isin(workspace)]["Id"]
+    
+    df_semantic_models = list_datasets()
+
+    # Iterate over each workspace
+    for _, row in workspaces.iterrows():
+        workspace_id = row["Id"]
+
+        # List all datasets and filter for large semantic models
+        df_semantic_models_by_workspace = df_semantic_models[
+            (df_semantic_models['Workspace Id'] == workspace_id)
+        ]
+        # Assign workspace to dataflow storage
+        dataflow_client = fabric.PowerBIRestClient()
+        dataflow_response = dataflow_client.get(
+            f"/v1.0/myorg/groups/{workspace_id}"
+            )
+        # Extract the JSON content from the Response object
+        dataflow_response_json = dataflow_response.json()
+
+        # Extract the dataflowStorageId
+        dataflow_storage_id = dataflow_response_json.get("dataflowStorageId")
+        
+        if dataflow_storage_id is None:
+                print(f"{icons.info} No storage account linked to workspace - {workspace_id}. No backup required.")
+                continue
+        
+        df_backups = list_backups(workspace=workspace_id)
+        df_backups_sll = df_backups[df_backups['File Path'].str.contains('_SLL')]
+        # Check if there are any large semantic models
+        if df_backups_sll.empty:
+            print(f"{icons.info} No back ups present, no semantic models to be restored.")
+        else:
+            
+            # Backup, clear data, and set storage format for each semantic model
+            for _, row in df_semantic_models_by_workspace.iterrows():
+                semantic_model_name = row['Dataset Name']
+                backup_name = f"{semantic_model_name}{backup_suffix}.abf"    
+
+                if df_backups_sll['File Path'].str.contains(backup_name).any():
+                    set_semantic_model_storage_format(dataset=semantic_model_name, storage_format='Large', workspace=workspace_id)
+                    time.sleep(15)
+                    restore_semantic_model(
+                        dataset=semantic_model_name,
+                        file_path=f'{backup_name}',
+                        allow_overwrite=True,
+                        workspace=workspace_id
+                    )
+                
 
 
 @log
