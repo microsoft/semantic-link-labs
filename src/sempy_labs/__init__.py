@@ -207,6 +207,7 @@ from sempy_labs._list_functions import (
     list_sql_endpoints,
     update_item,
     list_server_properties,
+    list_semantic_model_errors,
 )
 from sempy_labs._helper_functions import (
     convert_to_friendly_case,
@@ -464,4 +465,5 @@ __all__ = [
     "get_tenant_id",
     "list_server_properties",
     "bind_semantic_model_to_gateway",
+    "list_semantic_model_errors",
 ]
