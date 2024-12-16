@@ -91,11 +91,13 @@ class ServicePrincipalTokenProvider(TokenProvider):
 
         return cls(credential)
 
-    def __call__(self, audience: Literal["pbi", "storage"] = "pbi") -> str:
+    def __call__(
+        self, audience: Literal["pbi", "storage", "azure", "graph"] = "pbi"
+    ) -> str:
         """
         Parameters
         ----------
-        audience : Literal["pbi", "storage"] = "pbi") -> str
+        audience : Literal["pbi", "storage", "azure", "graph"] = "pbi") -> str
             Literal if it's for PBI/Fabric API call or OneLake/Storage Account call.
         """
         if audience == "pbi":
@@ -104,5 +106,32 @@ class ServicePrincipalTokenProvider(TokenProvider):
             ).token
         elif audience == "storage":
             return self.credential.get_token("https://storage.azure.com/.default").token
+        elif audience == "azure":
+            return self.credential.get_token(
+                "https://management.azure.com/.default"
+            ).token
+        elif audience == "graph":
+            return self.credential.get_token(
+                "https://graph.microsoft.com/.default"
+            ).token
         else:
             raise NotImplementedError
+
+
+def _get_headers(
+    token_provider: str, audience: Literal["pbi", "storage", "azure", "graph"] = "azure"
+):
+    """
+    Generates headers for an API request.
+    """
+
+    token = token_provider(audience=audience)
+
+    headers = {"Authorization": f"Bearer {token}"}
+
+    if audience == "graph":
+        headers["ConsistencyLevel"] = "eventual"
+    else:
+        headers["Content-Type"] = "application/json"
+
+    return headers
