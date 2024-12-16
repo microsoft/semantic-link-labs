@@ -8,6 +8,7 @@ from sempy_labs._gateways import (
     create_vnet_gateway,
     update_vnet_gateway,
     update_on_premises_gateway,
+    bind_semantic_model_to_gateway,
 )
 
 from sempy_labs._authentication import (
@@ -462,4 +463,5 @@ __all__ = [
     "get_semantic_model_definition",
     "get_tenant_id",
     "list_server_properties",
+    "bind_semantic_model_to_gateway",
 ]
