@@ -6,6 +6,8 @@ from sempy_labs._helper_functions import (
     pagination,
     _is_valid_uuid,
     resolve_capacity_id,
+    resolve_workspace_name_and_id,
+    resolve_dataset_name_and_id,
 )
 from uuid import UUID
 import sempy_labs._icons as icons
@@ -437,3 +439,40 @@ def update_vnet_gateway(
         raise FabricHTTPException(response)
 
     print(f"{icons.green_dot} The '{gateway}' has been updated accordingly.")
+
+
+def bind_semantic_model_to_gateway(dataset: str | UUID, gateway: str | UUID, workspace: Optional[str | UUID] = None):
+    """
+    Binds the specified dataset from the specified workspace to the specified gateway.
+
+    This is a wrapper function for the following API: `Datasets - Bind To Gateway In Group <https://learn.microsoft.com/rest/api/power-bi/datasets/bind-to-gateway-in-group>`_.
+
+    Parameters
+    ----------
+    dataset : str | UUID
+        The name or ID of the semantic model.
+    gateway : str | UUID
+        The name or ID of the gateway.
+    workspace : str | UUID, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(
+        dataset, workspace=workspace_id
+    )
+
+    gateway_id = _resolve_gateway_id(gateway)
+    payload = {
+        "gatewayObjectId": gateway_id,
+    }
+
+    client = fabric.FabricRestClient()
+    response = client.post(f'/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/Default.BindToGateway', json=payload)
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+    
+    print(f"{icons.green_dot} The '{dataset_name}' semantic model within the '{workspace_name}' workspace has been binded to the '{gateway_id}' gateway.")
