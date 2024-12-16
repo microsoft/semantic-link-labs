@@ -16,12 +16,12 @@ def scan_workspaces(
     workspace: Optional[str | List[str] | UUID | List[UUID]] = None,
 ) -> dict:
     """
-    Get the inventory and details of the tenant.
+    Gets the scan result for the specified scan.
 
     This is a wrapper function for the following APIs:
-        `Admin - WorkspaceInfo PostWorkspaceInfo <https://learn.microsoft.com/en-gb/rest/api/power-bi/admin/workspace-info-post-workspace-info>`_.
-        `Admin - WorkspaceInfo GetScanStatus <https://learn.microsoft.com/en-gb/rest/api/power-bi/admin/workspace-info-get-scan-status>`_.
-        `Admin - WorkspaceInfo GetScanResult <https://learn.microsoft.com/en-gb/rest/api/power-bi/admin/workspace-info-get-scan-result>`_.
+        `Admin - WorkspaceInfo PostWorkspaceInfo <https://learn.microsoft.com/rest/api/power-bi/admin/workspace-info-post-workspace-info>`_.
+        `Admin - WorkspaceInfo GetScanStatus <https://learn.microsoft.com/rest/api/power-bi/admin/workspace-info-get-scan-status>`_.
+        `Admin - WorkspaceInfo GetScanResult <https://learn.microsoft.com/rest/api/power-bi/admin/workspace-info-get-scan-result>`_.
 
     Parameters
     ----------
