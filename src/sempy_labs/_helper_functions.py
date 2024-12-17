@@ -783,7 +783,6 @@ def get_capacity_id(workspace: Optional[str] = None) -> UUID:
     if workspace is None:
         capacity_id = _get_fabric_context_setting(name="trident.capacity.id")
     else:
-
         workspace = fabric.resolve_workspace_name(workspace)
         filter_condition = urllib.parse.quote(workspace)
         dfW = fabric.list_workspaces(filter=f"name eq '{filter_condition}'")
