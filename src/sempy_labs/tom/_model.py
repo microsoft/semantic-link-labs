@@ -4529,7 +4529,7 @@ class TOMWrapper:
 
     def add_role_member(self, role_name: str, member: str | List[str]):
         """
-        Adds a external model role member (AzureAD) to a role.
+        Adds an external model role member (AzureAD) to a role.
 
         Parameters
         ----------
@@ -4559,6 +4559,35 @@ class TOMWrapper:
             else:
                 print(
                     f"{icons.yellow_dot} '{m}' is already a member in the '{role_name}' role."
+                )
+
+    def remove_role_member(self, role_name: str, member: str | List[str]):
+        """
+        Removes an external model role member (AzureAD) from a role.
+
+        Parameters
+        ----------
+        role_name : str
+            The role name.
+        member : str | List[str]
+            The email address(es) of the member(s) to remove.
+        """
+
+        if isinstance(member, str):
+            member = [member]
+
+        role = self.model.Roles[role_name]
+        current_members = {m.MemberName: m.Name for m in role.Members}
+        for m in member:
+            name = current_members.get(m)
+            if name is not None:
+                role.Members.Remove(role.Members[name])
+                print(
+                    f"{icons.green_dot} '{m}' has been removed from the '{role_name}' role."
+                )
+            else:
+                print(
+                    f"{icons.yellow_dot} '{m}' is not a member of the '{role_name}' role."
                 )
 
     def close(self):
