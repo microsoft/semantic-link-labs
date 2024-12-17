@@ -43,7 +43,7 @@ def create_shortcut_onelake(
 
     (source_workspace_name, source_workspace_id) = resolve_workspace_name_and_id(source_workspace)
     source_lakehouse_id = resolve_lakehouse_id(source_lakehouse, source_workspace_id)
-    source_lakehouse_name = fabric.resolve_item_name(item_id=source_lakehouse_id, type='Lakehouse', workspace=destination_workspace_id)
+    source_lakehouse_name = fabric.resolve_item_name(item_id=source_lakehouse_id, type='Lakehouse', workspace=source_workspace_id)
 
     if destination_workspace is None:
         destination_workspace_name = source_workspace_name
