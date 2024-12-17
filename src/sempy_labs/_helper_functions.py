@@ -732,14 +732,14 @@ def _add_part(target_dict, path, payload):
     target_dict["definition"]["parts"].append(part)
 
 
-def resolve_workspace_capacity(workspace: Optional[str] = None) -> Tuple[UUID, str]:
+def resolve_workspace_capacity(workspace: Optional[str | UUID] = None) -> Tuple[UUID, str]:
     """
     Obtains the capacity Id and capacity name for a given workspace.
 
     Parameters
     ----------
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or UUID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -749,8 +749,8 @@ def resolve_workspace_capacity(workspace: Optional[str] = None) -> Tuple[UUID, s
         capacity Id; capacity came.
     """
 
-    workspace = fabric.resolve_workspace_name(workspace)
-    filter_condition = urllib.parse.quote(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    filter_condition = urllib.parse.quote(workspace_name)
     dfW = fabric.list_workspaces(filter=f"name eq '{filter_condition}'")
     capacity_id = dfW["Capacity Id"].iloc[0]
     dfC = fabric.list_capacities()

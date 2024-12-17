@@ -7,7 +7,6 @@ import sempy_labs._icons as icons
 from sempy._utils._log import log
 from sempy_labs._helper_functions import (
     retry,
-    resolve_dataset_id,
     resolve_lakehouse_name,
     _convert_data_type,
     resolve_dataset_name_and_id,
@@ -203,17 +202,17 @@ def generate_direct_lake_semantic_model(
 
 
 def get_direct_lake_source(
-    dataset: str, workspace: Optional[str] = None
+    dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> Tuple[str, str, UUID, UUID]:
     """
     Obtains the source information for a direct lake semantic model.
 
     Parameters
     ----------
-    dataset : str
-        The name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    dataset : str | UUID
+        The name or ID of the semantic model.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -225,8 +224,8 @@ def get_direct_lake_source(
         If the semantic model is not a Direct Lake semantic model, it will return None, None, None.
     """
 
-    workspace = fabric.resolve_workspace_name(workspace)
-    dataset_id = resolve_dataset_id(dataset, workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
     client = fabric.PowerBIRestClient()
     request_body = {
         "artifacts": [

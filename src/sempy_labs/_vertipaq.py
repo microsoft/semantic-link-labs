@@ -10,10 +10,11 @@ from pyspark.sql import SparkSession
 from sempy_labs._helper_functions import (
     format_dax_object_name,
     resolve_lakehouse_name,
-    resolve_dataset_id,
     save_as_delta_table,
     resolve_workspace_capacity,
     _get_max_run_id,
+    resolve_workspace_name_and_id,
+    resolve_dataset_name_and_id
 )
 from sempy_labs._list_functions import list_relationships, list_tables
 from sempy_labs.lakehouse import lakehouse_attached, get_lakehouse_tables
@@ -22,12 +23,13 @@ from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from pathlib import Path
+from uuid import UUID
 
 
 @log
 def vertipaq_analyzer(
-    dataset: str,
-    workspace: Optional[str] = None,
+    dataset: str | UUID,
+    workspace: Optional[str | UUID] = None,
     export: Optional[str] = None,
     read_stats_from_data: bool = False,
     **kwargs,
@@ -37,10 +39,10 @@ def vertipaq_analyzer(
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name in which the semantic model exists.
+    dataset : str | UUID
+        Name or ID of the semantic model.
+    workspace : str| UUID, default=None
+        The Fabric workspace name or ID in which the semantic model exists.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     export : str, default=None
@@ -68,7 +70,8 @@ def vertipaq_analyzer(
         "ignore", message="createDataFrame attempted Arrow optimization*"
     )
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
     vertipaq_map = {
         "Model": {
@@ -135,7 +138,7 @@ def vertipaq_analyzer(
     }
 
     with connect_semantic_model(
-        dataset=dataset, workspace=workspace, readonly=True
+        dataset=dataset_id, workspace=workspace_id, readonly=True
     ) as tom:
         compat_level = tom.model.Model.Database.CompatibilityLevel
         is_direct_lake = tom.is_direct_lake()
@@ -144,24 +147,24 @@ def vertipaq_analyzer(
         column_count = len(list(tom.all_columns()))
         if table_count == 0:
             print(
-                f"{icons.warning} The '{dataset}' semantic model within the '{workspace}' workspace has no tables. Vertipaq Analyzer can only be run if the semantic model has tables."
+                f"{icons.warning} The '{dataset_name}' semantic model within the '{workspace_name}' workspace has no tables. Vertipaq Analyzer can only be run if the semantic model has tables."
             )
             return
 
-    dfT = list_tables(dataset=dataset, extended=True, workspace=workspace)
+    dfT = list_tables(dataset=dataset_id, extended=True, workspace=workspace_id)
 
     dfT.rename(columns={"Name": "Table Name"}, inplace=True)
     columns_to_keep = list(vertipaq_map["Tables"].keys())
     dfT = dfT[dfT.columns.intersection(columns_to_keep)]
 
-    dfC = fabric.list_columns(dataset=dataset, extended=True, workspace=workspace)
+    dfC = fabric.list_columns(dataset=dataset_id, extended=True, workspace=workspace_id)
     dfC["Column Object"] = format_dax_object_name(dfC["Table Name"], dfC["Column Name"])
     dfC.rename(columns={"Column Cardinality": "Cardinality"}, inplace=True)
-    dfH = fabric.list_hierarchies(dataset=dataset, extended=True, workspace=workspace)
-    dfR = list_relationships(dataset=dataset, extended=True, workspace=workspace)
-    dfP = fabric.list_partitions(dataset=dataset, extended=True, workspace=workspace)
+    dfH = fabric.list_hierarchies(dataset=dataset_id, extended=True, workspace=workspace_id)
+    dfR = list_relationships(dataset=dataset_id, extended=True, workspace=workspace_id)
+    dfP = fabric.list_partitions(dataset=dataset_id, extended=True, workspace=workspace_id)
     artifact_type, lakehouse_name, lakehouse_id, lakehouse_workspace_id = (
-        get_direct_lake_source(dataset=dataset, workspace=workspace)
+        get_direct_lake_source(dataset=dataset_id, workspace=workspace_id)
     )
 
     dfR["Missing Rows"] = 0
@@ -308,7 +311,7 @@ def vertipaq_analyzer(
                     query = f"evaluate\nsummarizecolumns(\n\"1\",calculate(countrows('{fromTable}'),userelationship({fromObject},{toObject}),isblank({toObject}))\n)"
 
                 result = fabric.evaluate_dax(
-                    dataset=dataset, dax_string=query, workspace=workspace
+                    dataset=dataset_id, dax_string=query, workspace=workspace_id
                 )
 
                 try:
@@ -407,7 +410,7 @@ def vertipaq_analyzer(
 
     dfModel = pd.DataFrame(
         {
-            "Dataset Name": dataset,
+            "Dataset Name": dataset_name,
             "Total Size": y,
             "Table Count": table_count,
             "Column Count": column_count,
@@ -532,19 +535,19 @@ def vertipaq_analyzer(
             f"{icons.in_progress} Saving Vertipaq Analyzer to delta tables in the lakehouse...\n"
         )
         now = datetime.datetime.now()
-        dfD = fabric.list_datasets(workspace=workspace, mode="rest")
-        dfD_filt = dfD[dfD["Dataset Name"] == dataset]
+        dfD = fabric.list_datasets(workspace=workspace_id, mode="rest")
+        dfD_filt = dfD[dfD["Dataset Id"] == dataset_id]
         configured_by = dfD_filt["Configured By"].iloc[0]
-        capacity_id, capacity_name = resolve_workspace_capacity(workspace=workspace)
+        capacity_id, capacity_name = resolve_workspace_capacity(workspace=workspace_id)
 
         for key_name, (obj, df) in dfMap.items():
             df["Capacity Name"] = capacity_name
             df["Capacity Id"] = capacity_id
             df["Configured By"] = configured_by
-            df["Workspace Name"] = workspace
-            df["Workspace Id"] = fabric.resolve_workspace_id(workspace)
-            df["Dataset Name"] = dataset
-            df["Dataset Id"] = resolve_dataset_id(dataset, workspace)
+            df["Workspace Name"] = workspace_name
+            df["Workspace Id"] = workspace_id
+            df["Dataset Name"] = dataset_name
+            df["Dataset Id"] = dataset_id
             df["RunId"] = runId
             df["Timestamp"] = now
 
@@ -605,7 +608,7 @@ def vertipaq_analyzer(
             "dfH_filt": dfH_filt,
         }
 
-        zipFileName = f"{workspace}.{dataset}.zip"
+        zipFileName = f"{workspace_name}.{dataset_name}.zip"
 
         folderPath = "/lakehouse/default/Files"
         subFolderPath = os.path.join(folderPath, "VertipaqAnalyzer")
@@ -631,7 +634,7 @@ def vertipaq_analyzer(
             if os.path.exists(filePath):
                 os.remove(filePath)
         print(
-            f"{icons.green_dot} The Vertipaq Analyzer info for the '{dataset}' semantic model in the '{workspace}' workspace has been saved "
+            f"{icons.green_dot} The Vertipaq Analyzer info for the '{dataset_name}' semantic model in the '{workspace_name}' workspace has been saved "
             f"to the 'Vertipaq Analyzer/{zipFileName}' in the default lakehouse attached to this notebook."
         )
 
