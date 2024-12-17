@@ -4583,7 +4583,7 @@ class TOMWrapper:
             if name is not None:
                 role.Members.Remove(role.Members[name])
                 print(
-                    f"{icons.green_dot} '{m}' has been removed from the '{role_name}' role."
+                    f"{icons.green_dot} The '{m}' member has been removed from the '{role_name}' role."
                 )
             else:
                 print(
