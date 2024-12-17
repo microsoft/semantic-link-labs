@@ -17,7 +17,7 @@ from uuid import UUID
 
 
 def get_object_level_security(
-    dataset: str | UUID, workspace: Optional[str] = None
+    dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
     Shows the object level security for the semantic model.
@@ -26,8 +26,8 @@ def get_object_level_security(
     ----------
     dataset : str | UUID
         Name or ID of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -85,7 +85,7 @@ def get_object_level_security(
 
 
 def list_tables(
-    dataset: str | UUID, workspace: Optional[str] = None, extended: bool = False
+    dataset: str | UUID, workspace: Optional[str | UUID] = None, extended: bool = False
 ) -> pd.DataFrame:
     """
     Shows a semantic model's tables and their properties.
@@ -94,8 +94,8 @@ def list_tables(
     ----------
     dataset : str | UUID
         Name or ID of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     extended : bool, default=False
@@ -258,16 +258,16 @@ def list_tables(
     return df
 
 
-def list_annotations(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
+def list_annotations(dataset: str | UUID, workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows a semantic model's annotations and their properties.
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    dataset : str | UUID
+        Name or ID of the semantic model.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -279,7 +279,8 @@ def list_annotations(dataset: str, workspace: Optional[str] = None) -> pd.DataFr
 
     from sempy_labs.tom import connect_semantic_model
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
     df = pd.DataFrame(
         columns=[
@@ -292,7 +293,7 @@ def list_annotations(dataset: str, workspace: Optional[str] = None) -> pd.DataFr
     )
 
     with connect_semantic_model(
-        dataset=dataset, readonly=True, workspace=workspace
+        dataset=dataset_id, readonly=True, workspace=workspace_id
     ) as tom:
 
         mName = tom.model.Name
@@ -489,8 +490,8 @@ def list_annotations(dataset: str, workspace: Optional[str] = None) -> pd.DataFr
 
 
 def list_columns(
-    dataset: str,
-    workspace: Optional[str] = None,
+    dataset: str | UUID,
+    workspace: Optional[str | UUID] = None,
     lakehouse: Optional[str] = None,
     lakehouse_workspace: Optional[str] = None,
 ) -> pd.DataFrame:
@@ -499,10 +500,10 @@ def list_columns(
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    dataset : str | UUID
+        Name or ID of the semantic model.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     lakehouse : str, default=None
@@ -523,20 +524,21 @@ def list_columns(
     )
     from pyspark.sql import SparkSession
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
+    dfP = fabric.list_partitions(dataset=dataset_id, workspace=workspace_id)
 
     isDirectLake = any(r["Mode"] == "DirectLake" for i, r in dfP.iterrows())
 
-    dfC = fabric.list_columns(dataset=dataset, workspace=workspace)
+    dfC = fabric.list_columns(dataset=dataset_id, workspace=workspace_id)
 
     if isDirectLake:
         dfC["Column Cardinality"] = None
         sql_statements = []
         (lakeID, lakeName) = get_direct_lake_lakehouse(
-            dataset=dataset,
-            workspace=workspace,
+            dataset=dataset_id,
+            workspace=workspace_id,
             lakehouse=lakehouse,
             lakehouse_workspace=lakehouse_workspace,
         )
@@ -590,14 +592,14 @@ def list_columns(
     return dfC
 
 
-def list_dashboards(workspace: Optional[str] = None) -> pd.DataFrame:
+def list_dashboards(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows a list of the dashboards within a workspace.
 
     Parameters
     ----------
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -620,7 +622,7 @@ def list_dashboards(workspace: Optional[str] = None) -> pd.DataFrame:
         ]
     )
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.PowerBIRestClient()
     response = client.get(f"/v1.0/myorg/groups/{workspace_id}/dashboards")
@@ -645,14 +647,14 @@ def list_dashboards(workspace: Optional[str] = None) -> pd.DataFrame:
     return df
 
 
-def list_lakehouses(workspace: Optional[str] = None) -> pd.DataFrame:
+def list_lakehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the lakehouses within a workspace.
 
     Parameters
     ----------
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -675,7 +677,7 @@ def list_lakehouses(workspace: Optional[str] = None) -> pd.DataFrame:
         ]
     )
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/lakehouses")
@@ -705,14 +707,14 @@ def list_lakehouses(workspace: Optional[str] = None) -> pd.DataFrame:
     return df
 
 
-def list_sql_endpoints(workspace: Optional[str] = None) -> pd.DataFrame:
+def list_sql_endpoints(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the SQL endpoints within a workspace.
 
     Parameters
     ----------
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -724,7 +726,7 @@ def list_sql_endpoints(workspace: Optional[str] = None) -> pd.DataFrame:
 
     df = pd.DataFrame(columns=["SQL Endpoint Id", "SQL Endpoint Name", "Description"])
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/sqlEndpoints")
@@ -746,14 +748,14 @@ def list_sql_endpoints(workspace: Optional[str] = None) -> pd.DataFrame:
     return df
 
 
-def list_datamarts(workspace: Optional[str] = None) -> pd.DataFrame:
+def list_datamarts(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the datamarts within a workspace.
 
     Parameters
     ----------
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -765,7 +767,7 @@ def list_datamarts(workspace: Optional[str] = None) -> pd.DataFrame:
 
     df = pd.DataFrame(columns=["Datamart Name", "Datamart ID", "Description"])
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/datamarts")
@@ -791,7 +793,7 @@ def update_item(
     current_name: str,
     new_name: str,
     description: Optional[str] = None,
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
 ):
     """
     Updates the name/description of a Fabric item.
@@ -806,13 +808,13 @@ def update_item(
         The new name of the item.
     description : str, default=None
         A description of the item.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     item_type = item_type.replace(" ", "").capitalize()
 
     if item_type not in icons.itemTypes.keys():
@@ -822,12 +824,12 @@ def update_item(
 
     itemType = icons.itemTypes[item_type]
 
-    dfI = fabric.list_items(workspace=workspace, type=item_type)
+    dfI = fabric.list_items(workspace=workspace_id, type=item_type)
     dfI_filt = dfI[(dfI["Display Name"] == current_name)]
 
     if len(dfI_filt) == 0:
         raise ValueError(
-            f"{icons.red_dot} The '{current_name}' {item_type} does not exist within the '{workspace}' workspace."
+            f"{icons.red_dot} The '{current_name}' {item_type} does not exist within the '{workspace_name}' workspace."
         )
 
     itemId = dfI_filt["Id"].iloc[0]
@@ -845,16 +847,16 @@ def update_item(
         raise FabricHTTPException(response)
     if description is None:
         print(
-            f"{icons.green_dot} The '{current_name}' {item_type} within the '{workspace}' workspace has been updated to be named '{new_name}'"
+            f"{icons.green_dot} The '{current_name}' {item_type} within the '{workspace_name}' workspace has been updated to be named '{new_name}'"
         )
     else:
         print(
-            f"{icons.green_dot} The '{current_name}' {item_type} within the '{workspace}' workspace has been updated to be named '{new_name}' and have a description of '{description}'"
+            f"{icons.green_dot} The '{current_name}' {item_type} within the '{workspace_name}' workspace has been updated to be named '{new_name}' and have a description of '{description}'"
         )
 
 
 def list_relationships(
-    dataset: str | UUID, workspace: Optional[str] = None, extended: bool = False
+    dataset: str | UUID, workspace: Optional[str | UUID] = None, extended: bool = False
 ) -> pd.DataFrame:
     """
     Shows a semantic model's relationships and their properties.
@@ -863,8 +865,8 @@ def list_relationships(
     ----------
     dataset: str | UUID
         Name or UUID of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     extended : bool, default=False
@@ -937,16 +939,16 @@ def list_relationships(
     return dfR
 
 
-def list_kpis(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
+def list_kpis(dataset: str | UUID, workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows a semantic model's KPIs and their properties.
 
     Parameters
     ----------
-    dataset: str
-        Name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    dataset: str | UUID
+        Name or ID of the semantic model.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -958,8 +960,11 @@ def list_kpis(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
 
     from sempy_labs.tom import connect_semantic_model
 
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+
     with connect_semantic_model(
-        dataset=dataset, workspace=workspace, readonly=True
+        dataset=dataset_id, workspace=workspace_id, readonly=True
     ) as tom:
 
         df = pd.DataFrame(
@@ -1002,17 +1007,17 @@ def list_kpis(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
 
 
 def list_semantic_model_objects(
-    dataset: str, workspace: Optional[str] = None
+    dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
     Shows a list of semantic model objects.
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    dataset : str | UUID
+        Name or ID of the semantic model.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -1166,7 +1171,7 @@ def list_semantic_model_objects(
 
 
 def list_shortcuts(
-    lakehouse: Optional[str] = None, workspace: Optional[str] = None
+    lakehouse: Optional[str] = None, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
     Shows all shortcuts which exist in a Fabric lakehouse and their properties.
@@ -1176,8 +1181,8 @@ def list_shortcuts(
     lakehouse : str, default=None
         The Fabric lakehouse name.
         Defaults to None which resolves to the lakehouse attached to the notebook.
-    workspace : str, default=None
-        The name of the Fabric workspace in which lakehouse resides.
+    workspace : str | UUID, default=None
+        The name or ID of the Fabric workspace in which lakehouse resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -1187,12 +1192,12 @@ def list_shortcuts(
         A pandas dataframe showing all the shortcuts which exist in the specified lakehouse.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     if lakehouse is None:
         lakehouse_id = fabric.get_lakehouse_id()
     else:
-        lakehouse_id = resolve_lakehouse_id(lakehouse, workspace)
+        lakehouse_id = resolve_lakehouse_id(lakehouse, workspace_id)
 
     client = fabric.FabricRestClient()
 
@@ -1309,17 +1314,17 @@ def list_capacities() -> pd.DataFrame:
 
 
 def list_reports_using_semantic_model(
-    dataset: str, workspace: Optional[str] = None
+    dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
     Shows a list of all the reports (in all workspaces) which use a given semantic model.
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    dataset : str | UUID
+        Name or ID of the semantic model.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -1338,8 +1343,9 @@ def list_reports_using_semantic_model(
         ]
     )
 
-    workspace = fabric.resolve_workspace_name(workspace)
-    dataset_id = resolve_dataset_id(dataset, workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+
     client = fabric.PowerBIRestClient()
     response = client.get(
         f"metadata/relations/downstream/dataset/{dataset_id}?apiVersion=3"
@@ -1366,7 +1372,7 @@ def list_reports_using_semantic_model(
 
 
 def list_report_semantic_model_objects(
-    dataset: str, workspace: Optional[str] = None, extended: bool = False
+    dataset: str | UUID, workspace: Optional[str | UUID] = None, extended: bool = False
 ) -> pd.DataFrame:
     """
     Shows a list of semantic model objects (i.e. columns, measures, hierarchies) used in all reports which feed data from
@@ -1376,10 +1382,10 @@ def list_report_semantic_model_objects(
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    dataset : str | UUID
+        Name or ID of the semantic model.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     extended: bool, default=False
@@ -1408,8 +1414,11 @@ def list_report_semantic_model_objects(
         ]
     )
 
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+
     # Collect all reports which use the semantic model
-    dfR = list_reports_using_semantic_model(dataset=dataset, workspace=workspace)
+    dfR = list_reports_using_semantic_model(dataset=dataset_id, workspace=workspace_id)
 
     if len(dfR) == 0:
         return dfRO
@@ -1433,7 +1442,7 @@ def list_report_semantic_model_objects(
     # Collect all semantic model objects
     if extended:
         with connect_semantic_model(
-            dataset=dataset, readonly=True, workspace=workspace
+            dataset=dataset_id, readonly=True, workspace=workspace_id
         ) as tom:
             for index, row in dfRO.iterrows():
                 object_type = row["Object Type"]
@@ -1458,8 +1467,8 @@ def list_report_semantic_model_objects(
 
 
 def list_semantic_model_object_report_usage(
-    dataset: str,
-    workspace: Optional[str] = None,
+    dataset: str | UUID,
+    workspace: Optional[str | UUID] = None,
     include_dependencies: bool = False,
     extended: bool = False,
 ) -> pd.DataFrame:
@@ -1470,10 +1479,10 @@ def list_semantic_model_object_report_usage(
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    dataset : str | UUID
+        Name or ID of the semantic model.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     include_dependencies : bool, default=False
@@ -1491,9 +1500,10 @@ def list_semantic_model_object_report_usage(
     from sempy_labs._model_dependencies import get_model_calc_dependencies
     from sempy_labs._helper_functions import format_dax_object_name
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    dfR = list_report_semantic_model_objects(dataset=dataset, workspace=workspace)
+    dfR = list_report_semantic_model_objects(dataset=dataset_id, workspace=workspace_id)
     usage_column_name = "Report Usage Count"
 
     if not include_dependencies:
@@ -1504,7 +1514,7 @@ def list_semantic_model_object_report_usage(
         )
     else:
         df = pd.DataFrame(columns=["Table Name", "Object Name", "Object Type"])
-        dep = get_model_calc_dependencies(dataset=dataset, workspace=workspace)
+        dep = get_model_calc_dependencies(dataset=dataset_id, workspace=workspace_id)
 
         for i, r in dfR.iterrows():
             object_type = r["Object Type"]
@@ -1544,7 +1554,7 @@ def list_semantic_model_object_report_usage(
         final_df["Object"] = format_dax_object_name(
             final_df["Table Name"], final_df["Object Name"]
         )
-        dfC = fabric.list_columns(dataset=dataset, workspace=workspace, extended=True)
+        dfC = fabric.list_columns(dataset=dataset_id, workspace=workspace_id, extended=True)
         dfC["Object"] = format_dax_object_name(dfC["Table Name"], dfC["Column Name"])
         final_df = pd.merge(
             final_df,

@@ -1,7 +1,6 @@
 import sempy.fabric as fabric
 import time
 from sempy_labs._helper_functions import (
-    resolve_dataset_id,
     resolve_workspace_name_and_id,
     _get_partition_map,
     _process_and_display_chart,
@@ -278,38 +277,37 @@ def refresh_semantic_model(
 
 @log
 def cancel_dataset_refresh(
-    dataset: str, request_id: Optional[str] = None, workspace: Optional[str] = None
+    dataset: str | UUID, request_id: Optional[str] = None, workspace: Optional[str | UUID] = None
 ):
     """
     Cancels the refresh of a semantic model which was executed via the `Enhanced Refresh API <https://learn.microsoft.com/power-bi/connect-data/asynchronous-refresh>`_
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
+    dataset : str | UUID
+        Name or ID of the semantic model.
     request_id : str, default=None
         The request id of a semantic model refresh.
         Defaults to finding the latest active refresh of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    rr = fabric.list_refresh_requests(dataset=dataset, workspace=workspace)
+    rr = fabric.list_refresh_requests(dataset=dataset_id, workspace=workspace_id)
     rr_filt = rr[rr["Status"] == "Unknown"]
 
     if request_id is None:
         if len(rr_filt) == 0:
             raise ValueError(
-                f"{icons.red_dot} There are no active Enhanced API refreshes of the '{dataset}' semantic model within the '{workspace}' workspace."
+                f"{icons.red_dot} There are no active Enhanced API refreshes of the '{dataset_name}' semantic model within the '{workspace_name}' workspace."
             )
 
         request_id = rr_filt["Request Id"].iloc[0]
-
-    dataset_id = resolve_dataset_id(dataset=dataset, workspace=workspace)
 
     client = fabric.PowerBIRestClient()
 
@@ -320,12 +318,12 @@ def cancel_dataset_refresh(
     if response.status_code != 200:
         raise FabricHTTPException(response)
     print(
-        f"{icons.green_dot} The '{request_id}' refresh request for the '{dataset}' semantic model within the '{workspace}' workspace has been cancelled."
+        f"{icons.green_dot} The '{request_id}' refresh request for the '{dataset_name}' semantic model within the '{workspace_name}' workspace has been cancelled."
     )
 
 
 def get_semantic_model_refresh_history(
-    dataset: str, request_id: Optional[str] = None, workspace: Optional[str] = None
+    dataset: str | UUID, request_id: Optional[str] = None, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
     Obtains the semantic model refresh history (refreshes executed via the Enhanced Refresh API).
@@ -334,13 +332,13 @@ def get_semantic_model_refresh_history(
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
+    dataset : str | UUID
+        Name or ID of the semantic model.
     request_id : str, default=None
         The request id of a semantic model refresh.
         Defaults to None which resolves to showing all refresh requests for the given semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -350,8 +348,8 @@ def get_semantic_model_refresh_history(
         A pandas dataframe showing the semantic model refresh history.
     """
 
-    workspace_name = fabric.resolve_workspace_name(workspace)
-    workspace_id = fabric.resolve_workspace_id(workspace_name)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
     df = pd.DataFrame(
         columns=[
             "Request Id",
@@ -363,9 +361,6 @@ def get_semantic_model_refresh_history(
         ]
     )
 
-    dataset_id = fabric.resolve_item_id(
-        item_name=dataset, workspace=workspace_id, type="SemanticModel"
-    )
     client = fabric.PowerBIRestClient()
     response = client.get(
         f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/refreshes"

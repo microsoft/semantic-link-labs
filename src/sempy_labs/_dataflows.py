@@ -10,14 +10,14 @@ from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
-def list_dataflows(workspace: Optional[str] = None):
+def list_dataflows(workspace: Optional[str | UUID] = None):
     """
     Shows a list of all dataflows which exist within a workspace.
 
     Parameters
     ----------
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -27,7 +27,7 @@ def list_dataflows(workspace: Optional[str] = None):
         A pandas dataframe showing the dataflows which exist within a workspace.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     client = fabric.PowerBIRestClient()
     response = client.get(f"/v1.0/myorg/groups/{workspace_id}/dataflows")
     if response.status_code != 200:
@@ -57,7 +57,7 @@ def list_dataflows(workspace: Optional[str] = None):
 
 
 def assign_workspace_to_dataflow_storage(
-    dataflow_storage_account: str, workspace: Optional[str] = None
+    dataflow_storage_account: str, workspace: Optional[str | UUID] = None
 ):
     """
     Assigns a dataflow storage account to a workspace.
@@ -68,13 +68,13 @@ def assign_workspace_to_dataflow_storage(
     ----------
     dataflow_storage_account : str
         The name of the dataflow storage account.
-    workspace : str, default=None
-        The name of the workspace.
+    workspace : str | UUID, default=None
+        The name or ID of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     df = list_dataflow_storage_accounts()
     df_filt = df[df["Dataflow Storage Account Name"] == dataflow_storage_account]
@@ -96,7 +96,7 @@ def assign_workspace_to_dataflow_storage(
     if response.status_code != 200:
         raise FabricHTTPException(response)
     print(
-        f"{icons.green_dot} The '{dataflow_storage_account}' dataflow storage account has been assigned to the '{workspace}' workspacce."
+        f"{icons.green_dot} The '{dataflow_storage_account}' dataflow storage account has been assigned to the '{workspace_name}' workspacce."
     )
 
 
@@ -138,7 +138,7 @@ def list_dataflow_storage_accounts() -> pd.DataFrame:
 
 
 def list_upstream_dataflows(
-    dataflow: str | UUID, workspace: Optional[str] = None
+    dataflow: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
     Shows a list of upstream dataflows for the specified dataflow.
@@ -149,8 +149,8 @@ def list_upstream_dataflows(
     ----------
     dataflow : str | UUID
         Name or UUID of the dataflow.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -160,10 +160,9 @@ def list_upstream_dataflows(
         A pandas dataframe showing a list of upstream dataflows for the specified dataflow.
     """
 
-    workspace_name = fabric.resolve_workspace_name(workspace)
-    workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataflow_name, dataflow_id) = _resolve_dataflow_name_and_id(
-        dataflow=dataflow, workspace=workspace
+        dataflow=dataflow, workspace=workspace_id
     )
     client = fabric.PowerBIRestClient()
 
@@ -195,7 +194,7 @@ def list_upstream_dataflows(
             tgt_workspace_id = v.get("groupId")
             tgt_workspace_name = fabric.resolve_workspace_name(tgt_workspace_id)
             (tgt_dataflow_name, _) = _resolve_dataflow_name_and_id(
-                dataflow=tgt_dataflow_id, workspace=tgt_workspace_name
+                dataflow=tgt_dataflow_id, workspace=tgt_workspace_id
             )
 
             df.loc[len(df)] = {
@@ -223,13 +222,12 @@ def list_upstream_dataflows(
 
 
 def _resolve_dataflow_name_and_id(
-    dataflow: str | UUID, workspace: Optional[str] = None
+    dataflow: str | UUID, workspace: Optional[str | UUID] = None
 ) -> Tuple[str, UUID]:
 
-    if workspace is None:
-        workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    dfD = list_dataflows(workspace=workspace)
+    dfD = list_dataflows(workspace=workspace_id)
 
     if _is_valid_uuid(dataflow):
         dfD_filt = dfD[dfD["Dataflow Id"] == dataflow]
@@ -238,7 +236,7 @@ def _resolve_dataflow_name_and_id(
 
     if len(dfD_filt) == 0:
         raise ValueError(
-            f"{icons.red_dot} The '{dataflow}' dataflow does not exist within the '{workspace}' workspace."
+            f"{icons.red_dot} The '{dataflow}' dataflow does not exist within the '{workspace_name}' workspace."
         )
 
     dataflow_id = dfD_filt["Dataflow Id"].iloc[0]

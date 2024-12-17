@@ -102,7 +102,7 @@ def create_relationship_name(
     )
 
 
-def resolve_report_id(report: str, workspace: Optional[str] = None) -> UUID:
+def resolve_report_id(report: str, workspace: Optional[str | UUID] = None) -> UUID:
     """
     Obtains the ID of the Power BI report.
 
@@ -110,8 +110,8 @@ def resolve_report_id(report: str, workspace: Optional[str] = None) -> UUID:
     ----------
     report : str
         The name of the Power BI report.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -121,16 +121,10 @@ def resolve_report_id(report: str, workspace: Optional[str] = None) -> UUID:
         The ID of the Power BI report.
     """
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-
-    obj = fabric.resolve_item_id(item_name=report, type="Report", workspace=workspace)
-
-    return obj
+    return fabric.resolve_item_id(item_name=report, type="Report", workspace=workspace)
 
 
-def resolve_report_name(report_id: UUID, workspace: Optional[str] = None) -> str:
+def resolve_report_name(report_id: UUID, workspace: Optional[str | UUID] = None) -> str:
     """
     Obtains the name of the Power BI report.
 
@@ -139,7 +133,7 @@ def resolve_report_name(report_id: UUID, workspace: Optional[str] = None) -> str
     report_id : UUID
         The name of the Power BI report.
     workspace : str, default=None
-        The Fabric workspace name.
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -149,15 +143,9 @@ def resolve_report_name(report_id: UUID, workspace: Optional[str] = None) -> str
         The name of the Power BI report.
     """
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-
-    obj = fabric.resolve_item_name(
+    return fabric.resolve_item_name(
         item_id=report_id, type="Report", workspace=workspace
     )
-
-    return obj
 
 
 def resolve_dataset_name_and_id(
@@ -180,7 +168,7 @@ def resolve_dataset_name_and_id(
     return dataset_name, dataset_id
 
 
-def resolve_dataset_id(dataset: str | UUID, workspace: Optional[str] = None) -> UUID:
+def resolve_dataset_id(dataset: str | UUID, workspace: Optional[str | UUID] = None) -> UUID:
     """
     Obtains the ID of the semantic model.
 
@@ -188,7 +176,7 @@ def resolve_dataset_id(dataset: str | UUID, workspace: Optional[str] = None) -> 
     ----------
     dataset : str | UUID
         The name or ID of the semantic model.
-    workspace : str, default=None
+    workspace : str | UUID, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -209,7 +197,7 @@ def resolve_dataset_id(dataset: str | UUID, workspace: Optional[str] = None) -> 
     return dataset_id
 
 
-def resolve_dataset_name(dataset_id: UUID, workspace: Optional[str] = None) -> str:
+def resolve_dataset_name(dataset_id: UUID, workspace: Optional[str | UUID] = None) -> str:
     """
     Obtains the name of the semantic model.
 
@@ -217,7 +205,7 @@ def resolve_dataset_name(dataset_id: UUID, workspace: Optional[str] = None) -> s
     ----------
     dataset_id : UUID
         The name of the semantic model.
-    workspace : str, default=None
+    workspace : str | UUID, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -228,19 +216,13 @@ def resolve_dataset_name(dataset_id: UUID, workspace: Optional[str] = None) -> s
         The name of the semantic model.
     """
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-
-    obj = fabric.resolve_item_name(
+    return fabric.resolve_item_name(
         item_id=dataset_id, type="SemanticModel", workspace=workspace
     )
 
-    return obj
-
 
 def resolve_lakehouse_name(
-    lakehouse_id: Optional[UUID] = None, workspace: Optional[str] = None
+    lakehouse_id: Optional[UUID] = None, workspace: Optional[str | UUID] = None
 ) -> str:
     """
     Obtains the name of the Fabric lakehouse.
@@ -250,8 +232,8 @@ def resolve_lakehouse_name(
     lakehouse_id : UUID, default=None
         The name of the Fabric lakehouse.
         Defaults to None which resolves to the lakehouse attached to the notebook.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -261,21 +243,15 @@ def resolve_lakehouse_name(
         The name of the Fabric lakehouse.
     """
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-
     if lakehouse_id is None:
         lakehouse_id = fabric.get_lakehouse_id()
 
-    obj = fabric.resolve_item_name(
+    return fabric.resolve_item_name(
         item_id=lakehouse_id, type="Lakehouse", workspace=workspace
     )
 
-    return obj
 
-
-def resolve_lakehouse_id(lakehouse: str, workspace: Optional[str] = None) -> UUID:
+def resolve_lakehouse_id(lakehouse: str, workspace: Optional[str | UUID] = None) -> UUID:
     """
     Obtains the ID of the Fabric lakehouse.
 
@@ -283,8 +259,8 @@ def resolve_lakehouse_id(lakehouse: str, workspace: Optional[str] = None) -> UUI
     ----------
     lakehouse : str
         The name of the Fabric lakehouse.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -294,15 +270,9 @@ def resolve_lakehouse_id(lakehouse: str, workspace: Optional[str] = None) -> UUI
         The ID of the Fabric lakehouse.
     """
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-
-    obj = fabric.resolve_item_id(
+    return fabric.resolve_item_id(
         item_name=lakehouse, type="Lakehouse", workspace=workspace
     )
-
-    return obj
 
 
 def get_direct_lake_sql_endpoint(dataset: str, workspace: Optional[str] = None) -> UUID:
@@ -326,9 +296,8 @@ def get_direct_lake_sql_endpoint(dataset: str, workspace: Optional[str] = None) 
 
     from sempy_labs.tom import connect_semantic_model
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
     # dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
     # dfP_filt = dfP[dfP["Mode"] == "DirectLake"]
@@ -339,7 +308,7 @@ def get_direct_lake_sql_endpoint(dataset: str, workspace: Optional[str] = None) 
     #    )
 
     with connect_semantic_model(
-        dataset=dataset, readonly=True, workspace=workspace
+        dataset=dataset_id, readonly=True, workspace=workspace_id
     ) as tom:
         sqlEndpointId = None
         for e in tom.model.Expressions:
@@ -349,7 +318,7 @@ def get_direct_lake_sql_endpoint(dataset: str, workspace: Optional[str] = None) 
                 sqlEndpointId = matches[1]
 
         if sqlEndpointId is None:
-            raise ValueError("SQL Endpoint not found.")
+            raise ValueError(f"{icons.red_dot} SQL Endpoint not found.")
 
         return sqlEndpointId
 
@@ -426,7 +395,7 @@ def save_as_delta_table(
     merge_schema: bool = False,
     schema: Optional[dict] = None,
     lakehouse: Optional[str] = None,
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
 ):
     """
     Saves a pandas dataframe as a delta table in a Fabric lakehouse.
@@ -446,8 +415,8 @@ def save_as_delta_table(
     lakehouse : str, default=None
         The Fabric lakehouse used by the Direct Lake semantic model.
         Defaults to None which resolves to the lakehouse attached to the notebook.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
@@ -466,19 +435,15 @@ def save_as_delta_table(
         TimestampType,
     )
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     if lakehouse is None:
         lakehouse_id = fabric.get_lakehouse_id()
         lakehouse = resolve_lakehouse_name(
-            lakehouse_id=lakehouse_id, workspace=workspace
+            lakehouse_id=lakehouse_id, workspace=workspace_id
         )
     else:
-        lakehouse_id = resolve_lakehouse_id(lakehouse, workspace)
+        lakehouse_id = resolve_lakehouse_id(lakehouse, workspace_id)
 
     writeModes = ["append", "overwrite"]
     write_mode = write_mode.lower()
@@ -534,7 +499,7 @@ def save_as_delta_table(
     else:
         spark_df.write.mode(write_mode).format("delta").save(filePath)
     print(
-        f"{icons.green_dot} The dataframe has been saved as the '{delta_table_name}' table in the '{lakehouse}' lakehouse within the '{workspace}' workspace."
+        f"{icons.green_dot} The dataframe has been saved as the '{delta_table_name}' table in the '{lakehouse}' lakehouse within the '{workspace_name}' workspace."
     )
 
 
@@ -574,14 +539,14 @@ def language_validate(language: str):
     return lang
 
 
-def resolve_workspace_name_and_id(workspace: Optional[str] = None) -> Tuple[str, str]:
+def resolve_workspace_name_and_id(workspace: Optional[str | UUID] = None) -> Tuple[str, str]:
     """
     Obtains the name and ID of the Fabric workspace.
 
     Parameters
     ----------
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -593,11 +558,12 @@ def resolve_workspace_name_and_id(workspace: Optional[str] = None) -> Tuple[str,
 
     if workspace is None:
         workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
+        workspace_name = fabric.resolve_workspace_name(workspace_id)
     else:
         workspace_id = fabric.resolve_workspace_id(workspace)
+        workspace_name = workspace
 
-    return str(workspace), str(workspace_id)
+    return str(workspace_name), str(workspace_id)
 
 
 def _extract_json(dataframe: pd.DataFrame) -> dict:
@@ -623,7 +589,7 @@ def _decode_b64(file, format: Optional[str] = "utf-8"):
     return result
 
 
-def is_default_semantic_model(dataset: str, workspace: Optional[str] = None) -> bool:
+def is_default_semantic_model(dataset: str, workspace: Optional[str | UUID] = None) -> bool:
     """
     Identifies whether a semantic model is a default semantic model.
 
@@ -631,8 +597,8 @@ def is_default_semantic_model(dataset: str, workspace: Optional[str] = None) -> 
     ----------
     dataset : str
         The name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -642,9 +608,9 @@ def is_default_semantic_model(dataset: str, workspace: Optional[str] = None) -> 
         A True/False value indicating whether the semantic model is a default semantic model.
     """
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    dfI = fabric.list_items(workspace=workspace)
+    dfI = fabric.list_items(workspace=workspace_id)
     filtered_df = dfI.groupby("Display Name").filter(
         lambda x: set(["Warehouse", "SemanticModel"]).issubset(set(x["Type"]))
         or set(["Lakehouse", "SemanticModel"]).issubset(set(x["Type"]))
@@ -654,7 +620,7 @@ def is_default_semantic_model(dataset: str, workspace: Optional[str] = None) -> 
     return dataset in default_semantic_models
 
 
-def resolve_item_type(item_id: UUID, workspace: Optional[str] = None) -> str:
+def resolve_item_type(item_id: UUID, workspace: Optional[str | UUID] = None) -> str:
     """
     Obtains the item type for a given Fabric Item Id within a Fabric workspace.
 
@@ -662,8 +628,8 @@ def resolve_item_type(item_id: UUID, workspace: Optional[str] = None) -> str:
     ----------
     item_id : UUID
         The item/artifact Id.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -673,21 +639,19 @@ def resolve_item_type(item_id: UUID, workspace: Optional[str] = None) -> str:
         The item type for the item Id.
     """
 
-    workspace = fabric.resolve_workspace_name(workspace)
-    dfI = fabric.list_items(workspace=workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    dfI = fabric.list_items(workspace=workspace_id)
     dfI_filt = dfI[dfI["Id"] == item_id]
 
-    if len(dfI_filt) == 0:
+    if dfI_filt.empty:
         raise ValueError(
-            f"Invalid 'item_id' parameter. The '{item_id}' item was not found in the '{workspace}' workspace."
+            f"Invalid 'item_id' parameter. The '{item_id}' item was not found in the '{workspace_name}' workspace."
         )
-    item_type = dfI_filt["Type"].iloc[0]
-
-    return item_type
+    return dfI_filt["Type"].iloc[0]
 
 
 def resolve_dataset_from_report(
-    report: str, workspace: Optional[str] = None
+    report: str, workspace: Optional[str | UUID] = None
 ) -> Tuple[UUID, str, UUID, str]:
     """
     Obtains the basic semantic model properties from which the report's data is sourced.
@@ -696,8 +660,8 @@ def resolve_dataset_from_report(
     ----------
     report : str
         The name of the Power BI report.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -707,13 +671,13 @@ def resolve_dataset_from_report(
         The semantic model UUID, semantic model name, semantic model workspace UUID, semantic model workspace name
     """
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    dfR = fabric.list_reports(workspace=workspace)
+    dfR = fabric.list_reports(workspace=workspace_id)
     dfR_filt = dfR[dfR["Name"] == report]
     if len(dfR_filt) == 0:
         raise ValueError(
-            f"{icons.red_dot} The '{report}' report does not exist within the '{workspace}' workspace."
+            f"{icons.red_dot} The '{report}' report does not exist within the '{workspace_name}' workspace."
         )
     dataset_id = dfR_filt["Dataset Id"].iloc[0]
     dataset_workspace_id = dfR_filt["Dataset Workspace Id"].iloc[0]
@@ -763,14 +727,14 @@ def resolve_workspace_capacity(workspace: Optional[str | UUID] = None) -> Tuple[
     return capacity_id, capacity_name
 
 
-def get_capacity_id(workspace: Optional[str] = None) -> UUID:
+def get_capacity_id(workspace: Optional[str | UUID] = None) -> UUID:
     """
     Obtains the Capacity Id for a given workspace.
 
     Parameters
     ----------
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -781,28 +745,27 @@ def get_capacity_id(workspace: Optional[str] = None) -> UUID:
     """
 
     if workspace is None:
-        capacity_id = _get_x_id(name="trident.capacity.id")
+        capacity_id = _get_fabric_context_setting(name="trident.capacity.id")
     else:
-
-        workspace = fabric.resolve_workspace_name(workspace)
-        filter_condition = urllib.parse.quote(workspace)
+        (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+        filter_condition = urllib.parse.quote(workspace_name)
         dfW = fabric.list_workspaces(filter=f"name eq '{filter_condition}'")
         if len(dfW) == 0:
-            raise ValueError(f"{icons.red_dot} The '{workspace}' does not exist'.")
+            raise ValueError(f"{icons.red_dot} The '{workspace_name}' does not exist'.")
 
         capacity_id = dfW["Capacity Id"].iloc[0]
 
     return capacity_id
 
 
-def get_capacity_name(workspace: Optional[str] = None) -> str:
+def get_capacity_name(workspace: Optional[str | UUID] = None) -> str:
     """
     Obtains the capacity name for a given workspace.
 
     Parameters
     ----------
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -1020,7 +983,7 @@ def _get_adls_client(account_name):
     return service_client
 
 
-def resolve_warehouse_id(warehouse: str, workspace: Optional[str]) -> UUID:
+def resolve_warehouse_id(warehouse: str, workspace: Optional[str | UUID]) -> UUID:
     """
     Obtains the Id for a given warehouse.
 
@@ -1028,6 +991,10 @@ def resolve_warehouse_id(warehouse: str, workspace: Optional[str]) -> UUID:
     ----------
     warehouse : str
         The warehouse name
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID in which the semantic model resides.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
 
     Returns
     -------
@@ -1035,7 +1002,6 @@ def resolve_warehouse_id(warehouse: str, workspace: Optional[str]) -> UUID:
         The warehouse Id.
     """
 
-    workspace = fabric.resolve_workspace_name(workspace)
     return fabric.resolve_item_id(
         item_name=warehouse, type="Warehouse", workspace=workspace
     )
@@ -1097,7 +1063,7 @@ def convert_to_alphanumeric_lowercase(input_string):
     return cleaned_string
 
 
-def resolve_environment_id(environment: str, workspace: Optional[str] = None) -> UUID:
+def resolve_environment_id(environment: str, workspace: Optional[str | UUID] = None) -> UUID:
     """
     Obtains the environment Id for a given environment.
 
@@ -1105,6 +1071,10 @@ def resolve_environment_id(environment: str, workspace: Optional[str] = None) ->
     ----------
     environment: str
         Name of the environment.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID in which the semantic model resides.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
 
     Returns
     -------
@@ -1112,7 +1082,6 @@ def resolve_environment_id(environment: str, workspace: Optional[str] = None) ->
         The environment Id.
     """
 
-    workspace = fabric.resolve_workspace_name(workspace)
     return fabric.resolve_item_id(
         item_name=environment, type="Environment", workspace=workspace
     )
@@ -1147,7 +1116,7 @@ def convert_to_friendly_case(text: str) -> str:
     return text
 
 
-def resolve_notebook_id(notebook: str, workspace: Optional[str] = None) -> UUID:
+def resolve_notebook_id(notebook: str, workspace: Optional[str | UUID] = None) -> UUID:
     """
     Obtains the notebook Id for a given notebook.
 
@@ -1155,6 +1124,10 @@ def resolve_notebook_id(notebook: str, workspace: Optional[str] = None) -> UUID:
     ----------
     notebook: str
         Name of the notebook.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID in which the semantic model resides.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
 
     Returns
     -------
@@ -1162,7 +1135,6 @@ def resolve_notebook_id(notebook: str, workspace: Optional[str] = None) -> UUID:
         The notebook Id.
     """
 
-    workspace = fabric.resolve_workspace_name(workspace)
     return fabric.resolve_item_id(
         item_name=notebook, type="Notebook", workspace=workspace
     )
@@ -1190,7 +1162,7 @@ def _make_list_unique(my_list):
     return list(set(my_list))
 
 
-def _get_partition_map(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
+def _get_partition_map(dataset: str, workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)

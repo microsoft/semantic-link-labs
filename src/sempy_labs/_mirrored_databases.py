@@ -10,9 +10,10 @@ from sempy_labs._helper_functions import (
 from sempy.fabric.exceptions import FabricHTTPException
 import sempy_labs._icons as icons
 import base64
+from uuid import UUID
 
 
-def list_mirrored_databases(workspace: Optional[str] = None) -> pd.DataFrame:
+def list_mirrored_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the mirrored databases within a workspace.
 
@@ -20,8 +21,8 @@ def list_mirrored_databases(workspace: Optional[str] = None) -> pd.DataFrame:
 
     Parameters
     ----------
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -44,7 +45,7 @@ def list_mirrored_databases(workspace: Optional[str] = None) -> pd.DataFrame:
         ]
     )
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/mirroredDatabases")
@@ -72,7 +73,7 @@ def list_mirrored_databases(workspace: Optional[str] = None) -> pd.DataFrame:
 
 
 def create_mirrored_database(
-    name: str, description: Optional[str] = None, workspace: Optional[str] = None
+    name: str, description: Optional[str] = None, workspace: Optional[str | UUID] = None
 ):
     """
     Creates a Fabric mirrored database.
@@ -85,13 +86,13 @@ def create_mirrored_database(
         Name of the mirrored database.
     description : str, default=None
         A description of the mirrored database.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     request_body = {"displayName": name}
 
@@ -107,11 +108,11 @@ def create_mirrored_database(
         raise FabricHTTPException(response)
 
     print(
-        f"{icons.green_dot} The '{name}' mirrored database has been created within the '{workspace}' workspace."
+        f"{icons.green_dot} The '{name}' mirrored database has been created within the '{workspace_name}' workspace."
     )
 
 
-def delete_mirrored_database(mirrored_database: str, workspace: Optional[str] = None):
+def delete_mirrored_database(mirrored_database: str, workspace: Optional[str | UUID] = None):
     """
     Deletes a mirrored database.
 
@@ -121,16 +122,16 @@ def delete_mirrored_database(mirrored_database: str, workspace: Optional[str] = 
     ----------
     mirrored_database: str
         Name of the mirrored database.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     item_id = fabric.resolve_item_id(
-        item_name=mirrored_database, type="MirroredDatabase", workspace=workspace
+        item_name=mirrored_database, type="MirroredDatabase", workspace=workspace_id
     )
 
     client = fabric.FabricRestClient()
@@ -142,12 +143,12 @@ def delete_mirrored_database(mirrored_database: str, workspace: Optional[str] = 
         raise FabricHTTPException(response)
 
     print(
-        f"{icons.green_dot} The '{mirrored_database}' mirrored database within the '{workspace}' workspace has been deleted."
+        f"{icons.green_dot} The '{mirrored_database}' mirrored database within the '{workspace_name}' workspace has been deleted."
     )
 
 
 def get_mirroring_status(
-    mirrored_database: str, workspace: Optional[str] = None
+    mirrored_database: str, workspace: Optional[str | UUID] = None
 ) -> str:
     """
     Get the status of the mirrored database.
@@ -158,8 +159,8 @@ def get_mirroring_status(
     ----------
     mirrored_database: str
         Name of the mirrored database.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -169,10 +170,10 @@ def get_mirroring_status(
         The status of a mirrored database.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     item_id = fabric.resolve_item_id(
-        item_name=mirrored_database, type="MirroredDatabase", workspace=workspace
+        item_name=mirrored_database, type="MirroredDatabase", workspace=workspace_id
     )
 
     client = fabric.FabricRestClient()
@@ -187,7 +188,7 @@ def get_mirroring_status(
 
 
 def get_tables_mirroring_status(
-    mirrored_database: str, workspace: Optional[str] = None
+    mirrored_database: str, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
     Gets the mirroring status of the tables.
@@ -198,8 +199,8 @@ def get_tables_mirroring_status(
     ----------
     mirrored_database: str
         Name of the mirrored database.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -209,10 +210,10 @@ def get_tables_mirroring_status(
         A pandas dataframe showing the mirroring status of the tables.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     item_id = fabric.resolve_item_id(
-        item_name=mirrored_database, type="MirroredDatabase", workspace=workspace
+        item_name=mirrored_database, type="MirroredDatabase", workspace=workspace_id
     )
 
     client = fabric.FabricRestClient()
@@ -257,7 +258,7 @@ def get_tables_mirroring_status(
     return df
 
 
-def start_mirroring(mirrored_database: str, workspace: Optional[str] = None):
+def start_mirroring(mirrored_database: str, workspace: Optional[str | UUID] = None):
     """
     Starts the mirroring for a database.
 
@@ -267,16 +268,16 @@ def start_mirroring(mirrored_database: str, workspace: Optional[str] = None):
     ----------
     mirrored_database: str
         Name of the mirrored database.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     item_id = fabric.resolve_item_id(
-        item_name=mirrored_database, type="MirroredDatabase", workspace=workspace
+        item_name=mirrored_database, type="MirroredDatabase", workspace=workspace_id
     )
 
     client = fabric.FabricRestClient()
@@ -288,11 +289,11 @@ def start_mirroring(mirrored_database: str, workspace: Optional[str] = None):
         raise FabricHTTPException(response)
 
     print(
-        f"{icons.green_dot} Mirroring has started for the '{mirrored_database}' database within the '{workspace}' workspace."
+        f"{icons.green_dot} Mirroring has started for the '{mirrored_database}' database within the '{workspace_name}' workspace."
     )
 
 
-def stop_mirroring(mirrored_database: str, workspace: Optional[str] = None):
+def stop_mirroring(mirrored_database: str, workspace: Optional[str | UUID] = None):
     """
     Stops the mirroring for a database.
 
@@ -302,16 +303,16 @@ def stop_mirroring(mirrored_database: str, workspace: Optional[str] = None):
     ----------
     mirrored_database: str
         Name of the mirrored database.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     item_id = fabric.resolve_item_id(
-        item_name=mirrored_database, type="MirroredDatabase", workspace=workspace
+        item_name=mirrored_database, type="MirroredDatabase", workspace=workspace_id
     )
 
     client = fabric.FabricRestClient()
@@ -323,12 +324,12 @@ def stop_mirroring(mirrored_database: str, workspace: Optional[str] = None):
         raise FabricHTTPException(response)
 
     print(
-        f"{icons.green_dot} Mirroring has stopped for the '{mirrored_database}' database within the '{workspace}' workspace."
+        f"{icons.green_dot} Mirroring has stopped for the '{mirrored_database}' database within the '{workspace_name}' workspace."
     )
 
 
 def get_mirrored_database_definition(
-    mirrored_database: str, workspace: Optional[str] = None, decode: bool = True
+    mirrored_database: str, workspace: Optional[str | UUID] = None, decode: bool = True
 ) -> str:
     """
     Obtains the mirrored database definition.
@@ -339,8 +340,8 @@ def get_mirrored_database_definition(
     ----------
     mirrored_database : str
         The name of the mirrored database.
-    workspace : str, default=None
-        The name of the workspace.
+    workspace : str | UUID, default=None
+        The name or ID of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     decode : bool, default=True
@@ -353,9 +354,9 @@ def get_mirrored_database_definition(
         The mirrored database definition.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     item_id = fabric.resolve_item_id(
-        item_name=mirrored_database, type="MirroredDatabase", workspace=workspace
+        item_name=mirrored_database, type="MirroredDatabase", workspace=workspace_id
     )
     client = fabric.FabricRestClient()
     response = client.post(
@@ -378,7 +379,7 @@ def get_mirrored_database_definition(
 def update_mirrored_database_definition(
     mirrored_database: str,
     mirrored_database_content: dict,
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
 ):
     """
     Updates an existing notebook with a new definition.
@@ -389,17 +390,17 @@ def update_mirrored_database_definition(
         The name of the mirrored database to be created.
     mirrored_database_content : dict
         The mirrored database definition (not in Base64 format).
-    workspace : str, default=None
-        The name of the workspace.
+    workspace : str | UUID, default=None
+        The name or ID of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     client = fabric.FabricRestClient()
     payload = base64.b64encode(mirrored_database_content)
     item_id = fabric.resolve_item_id(
-        item_name=mirrored_database, type="MirroredDatabase", workspace=workspace
+        item_name=mirrored_database, type="MirroredDatabase", workspace=workspace_id
     )
 
     request_body = {
@@ -424,5 +425,5 @@ def update_mirrored_database_definition(
     lro(client, response, return_status_code=True)
 
     print(
-        f"{icons.green_dot} The '{mirrored_database}' mirrored database was updated within the '{workspace}' workspace."
+        f"{icons.green_dot} The '{mirrored_database}' mirrored database was updated within the '{workspace_name}' workspace."
     )

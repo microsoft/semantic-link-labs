@@ -6,9 +6,10 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
 )
 from sempy.fabric.exceptions import FabricHTTPException
+from uuid import UUID
 
 
-def list_custom_pools(workspace: Optional[str] = None) -> pd.DataFrame:
+def list_custom_pools(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Lists all `custom pools <https://learn.microsoft.com/fabric/data-engineering/create-custom-spark-pools>`_ within a workspace.
 
@@ -16,7 +17,7 @@ def list_custom_pools(workspace: Optional[str] = None) -> pd.DataFrame:
 
     Parameters
     ----------
-    workspace : str, default=None
+    workspace : str | UUID, default=None
         The name of the Fabric workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -27,7 +28,7 @@ def list_custom_pools(workspace: Optional[str] = None) -> pd.DataFrame:
         A pandas dataframe showing all the custom pools within the Fabric workspace.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     df = pd.DataFrame(
         columns=[
@@ -95,7 +96,7 @@ def create_custom_pool(
     node_family: str = "MemoryOptimized",
     auto_scale_enabled: bool = True,
     dynamic_executor_allocation_enabled: bool = True,
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
 ):
     """
     Creates a `custom pool <https://learn.microsoft.com/fabric/data-engineering/create-custom-spark-pools>`_ within a workspace.
@@ -122,13 +123,13 @@ def create_custom_pool(
         The status of `auto scale <https://learn.microsoft.com/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool?tabs=HTTP#autoscaleproperties>`_.
     dynamic_executor_allocation_enabled : bool, default=True
         The status of the `dynamic executor allocation <https://learn.microsoft.com/en-us/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool?tabs=HTTP#dynamicexecutorallocationproperties>`_.
-    workspace : str, default=None
-        The name of the Fabric workspace.
+    workspace : str | UUID, default=None
+        The name or ID of the Fabric workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     request_body = {
         "name": pool_name,
@@ -154,7 +155,7 @@ def create_custom_pool(
     if response.status_code != 201:
         raise FabricHTTPException(response)
     print(
-        f"{icons.green_dot} The '{pool_name}' spark pool has been created within the '{workspace}' workspace."
+        f"{icons.green_dot} The '{pool_name}' spark pool has been created within the '{workspace_name}' workspace."
     )
 
 
@@ -168,7 +169,7 @@ def update_custom_pool(
     node_family: Optional[str] = None,
     auto_scale_enabled: Optional[bool] = None,
     dynamic_executor_allocation_enabled: Optional[bool] = None,
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
 ):
     """
     Updates the properties of a `custom pool <https://learn.microsoft.com/fabric/data-engineering/create-custom-spark-pools>`_ within a workspace.
@@ -203,20 +204,20 @@ def update_custom_pool(
     dynamic_executor_allocation_enabled : bool, default=None
         The status of the `dynamic executor allocation <https://learn.microsoft.com/en-us/rest/api/fabric/spark/custom-pools/create-workspace-custom-pool?tabs=HTTP#dynamicexecutorallocationproperties>`_.
         Defaults to None which keeps the existing property setting.
-    workspace : str, default=None
-        The name of the Fabric workspace.
+    workspace : str | UUID, default=None
+        The name or ID of the Fabric workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     df = list_custom_pools(workspace=workspace)
     df_pool = df[df["Custom Pool Name"] == pool_name]
 
     if len(df_pool) == 0:
         raise ValueError(
-            f"{icons.red_dot} The '{pool_name}' custom pool does not exist within the '{workspace}'. Please choose a valid custom pool."
+            f"{icons.red_dot} The '{pool_name}' custom pool does not exist within the '{workspace_name}'. Please choose a valid custom pool."
         )
 
     if node_family is None:
@@ -262,11 +263,11 @@ def update_custom_pool(
     if response.status_code != 200:
         raise FabricHTTPException(response)
     print(
-        f"{icons.green_dot} The '{pool_name}' spark pool within the '{workspace}' workspace has been updated."
+        f"{icons.green_dot} The '{pool_name}' spark pool within the '{workspace_name}' workspace has been updated."
     )
 
 
-def delete_custom_pool(pool_name: str, workspace: Optional[str] = None):
+def delete_custom_pool(pool_name: str, workspace: Optional[str | UUID] = None):
     """
     Deletes a `custom pool <https://learn.microsoft.com/fabric/data-engineering/create-custom-spark-pools>`_ within a workspace.
 
@@ -276,35 +277,35 @@ def delete_custom_pool(pool_name: str, workspace: Optional[str] = None):
     ----------
     pool_name : str
         The custom pool name.
-    workspace : str, default=None
-        The name of the Fabric workspace.
+    workspace : str | UUID, default=None
+        The name or ID of the Fabric workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    dfL = list_custom_pools(workspace=workspace)
+    dfL = list_custom_pools(workspace=workspace_id)
     dfL_filt = dfL[dfL["Custom Pool Name"] == pool_name]
 
     if len(dfL_filt) == 0:
         raise ValueError(
-            f"{icons.red_dot} The '{pool_name}' custom pool does not exist within the '{workspace}' workspace."
+            f"{icons.red_dot} The '{pool_name}' custom pool does not exist within the '{workspace_name}' workspace."
         )
-    poolId = dfL_filt["Custom Pool ID"].iloc[0]
+    pool_id = dfL_filt["Custom Pool ID"].iloc[0]
 
     client = fabric.FabricRestClient()
-    response = client.delete(f"/v1/workspaces/{workspace_id}/spark/pools/{poolId}")
+    response = client.delete(f"/v1/workspaces/{workspace_id}/spark/pools/{pool_id}")
 
     if response.status_code != 200:
         raise FabricHTTPException(response)
     print(
-        f"{icons.green_dot} The '{pool_name}' spark pool has been deleted from the '{workspace}' workspace."
+        f"{icons.green_dot} The '{pool_name}' spark pool has been deleted from the '{workspace_name}' workspace."
     )
 
 
 def get_spark_settings(
-    workspace: Optional[str] = None, return_dataframe: bool = True
+    workspace: Optional[str | UUID] = None, return_dataframe: bool = True
 ) -> pd.DataFrame | dict:
     """
     Shows the spark settings for a workspace.
@@ -313,8 +314,8 @@ def get_spark_settings(
 
     Parameters
     ----------
-    workspace : str, default=None
-        The name of the Fabric workspace.
+    workspace : str | UUID, default=None
+        The name or ID of the Fabric workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     return_dataframe : bool, default=True
@@ -326,7 +327,7 @@ def get_spark_settings(
         A pandas dataframe showing the spark settings for a workspace.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     df = pd.DataFrame(
         columns=[
@@ -393,7 +394,7 @@ def update_spark_settings(
     max_executors: Optional[int] = None,
     environment_name: Optional[str] = None,
     runtime_version: Optional[str] = None,
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
 ):
     """
     Updates the spark settings for a workspace.
@@ -426,13 +427,13 @@ def update_spark_settings(
     runtime_version : str, default=None
         The `runtime version <https://learn.microsoft.com/rest/api/fabric/spark/workspace-settings/update-spark-settings?tabs=HTTP#environmentproperties>`_.
         Defaults to None which keeps the existing property setting.
-    workspace : str, default=None
-        The name of the Fabric workspace.
+    workspace : str | UUID, default=None
+        The name or ID of the Fabric workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     request_body = get_spark_settings(workspace=workspace, return_dataframe=False)
 
@@ -463,5 +464,5 @@ def update_spark_settings(
     if response.status_code != 200:
         raise FabricHTTPException(response)
     print(
-        f"{icons.green_dot} The spark settings within the '{workspace}' workspace have been updated accordingly."
+        f"{icons.green_dot} The spark settings within the '{workspace_name}' workspace have been updated accordingly."
     )

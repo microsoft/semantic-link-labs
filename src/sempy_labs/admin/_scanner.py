@@ -5,8 +5,10 @@ from sempy.fabric.exceptions import FabricHTTPException
 import numpy as np
 import time
 from sempy_labs.admin._basic_functions import list_workspaces
+from sempy._utils._log import log
 
 
+@log
 def scan_workspaces(
     data_source_details: bool = False,
     dataset_schema: bool = False,

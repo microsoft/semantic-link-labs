@@ -1,22 +1,23 @@
 import sempy.fabric as fabric
 import pandas as pd
 from sempy_labs._helper_functions import (
-    resolve_dataset_id,
     resolve_workspace_name_and_id,
     format_dax_object_name,
+    resolve_dataset_name_and_id,
 )
 from sempy_labs._model_dependencies import get_model_calc_dependencies
 from typing import Optional, List
 from sempy._utils._log import log
 from tqdm.auto import tqdm
+from uuid import UUID
 
 
 @log
 def evaluate_dax_impersonation(
-    dataset: str,
+    dataset: str | UUID,
     dax_query: str,
     user_name: Optional[str] = None,
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
 ):
     """
     Runs a DAX query against a semantic model using the `REST API <https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/execute-queries-in-group>`_.
@@ -27,13 +28,13 @@ def evaluate_dax_impersonation(
     Parameters
     ----------
     dataset : str
-        Name of the semantic model.
+        Name or ID of the semantic model.
     dax_query : str
         The DAX query.
     user_name : str
         The user name (i.e. hello@goodbye.com).
     workspace : str, default=None
-        The Fabric workspace name.
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -43,8 +44,8 @@ def evaluate_dax_impersonation(
         A pandas dataframe holding the result of the DAX query.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-    dataset_id = resolve_dataset_id(dataset=dataset, workspace=workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
     request_body = {
         "queries": [{"query": dax_query}],
@@ -66,11 +67,11 @@ def evaluate_dax_impersonation(
 
 @log
 def get_dax_query_dependencies(
-    dataset: str,
+    dataset: str | UUID,
     dax_string: str | List[str],
     put_in_memory: bool = False,
     show_vertipaq_stats: bool = True,
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
 ) -> pd.DataFrame:
     """
     Obtains the columns on which a DAX query depends, including model dependencies. Shows Vertipaq statistics (i.e. Total Size, Data Size, Dictionary Size, Hierarchy Size) for easy prioritizing.
@@ -78,7 +79,7 @@ def get_dax_query_dependencies(
     Parameters
     ----------
     dataset : str
-        Name of the semantic model.
+        Name or ID of the semantic model.
     dax_string : str | List[str]
         The DAX query or list of DAX queries.
     put_in_memory : bool, default=False
@@ -86,7 +87,7 @@ def get_dax_query_dependencies(
     show_vertipaq_stats : bool, default=True
         If True, shows vertipaq stats (i.e. Total Size, Data Size, Dictionary Size, Hierarchy Size)
     workspace : str, default=None
-        The Fabric workspace name.
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -96,15 +97,15 @@ def get_dax_query_dependencies(
         A pandas dataframe showing the dependent columns of a given DAX query including model dependencies.
     """
 
-    if workspace is None:
-        workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
     if isinstance(dax_string, str):
         dax_string = [dax_string]
 
     final_df = pd.DataFrame(columns=["Object Type", "Table", "Object"])
 
-    cd = get_model_calc_dependencies(dataset=dataset, workspace=workspace)
+    cd = get_model_calc_dependencies(dataset=dataset_id, workspace=workspace_id)
 
     for dax in dax_string:
         # Escape quotes in dax
@@ -121,7 +122,7 @@ def get_dax_query_dependencies(
             RETURN all_dependencies
             """
         dep = fabric.evaluate_dax(
-            dataset=dataset, workspace=workspace, dax_string=final_query
+            dataset=dataset_id, workspace=workspace_id, dax_string=final_query
         )
 
         # Clean up column names and values (remove outside square brackets, underscorees in object type)
@@ -168,7 +169,7 @@ def get_dax_query_dependencies(
     final_df["Full Object"] = format_dax_object_name(
         final_df["Table Name"], final_df["Column Name"]
     )
-    dfC = fabric.list_columns(dataset=dataset, workspace=workspace, extended=True)
+    dfC = fabric.list_columns(dataset=dataset_id, workspace=workspace_id, extended=True)
     dfC["Full Object"] = format_dax_object_name(dfC["Table Name"], dfC["Column Name"])
 
     dfC_filtered = dfC[dfC["Full Object"].isin(final_df["Full Object"].values)][
@@ -202,12 +203,12 @@ def get_dax_query_dependencies(
                 )
                 dax = f"""EVALUATE TOPN(1,SUMMARIZECOLUMNS({css}))"""
                 fabric.evaluate_dax(
-                    dataset=dataset, dax_string=dax, workspace=workspace
+                    dataset=dataset_id, dax_string=dax, workspace=workspace_id
                 )
 
             # Get column stats again
             dfC = fabric.list_columns(
-                dataset=dataset, workspace=workspace, extended=True
+                dataset=dataset_id, workspace=workspace_id, extended=True
             )
             dfC["Full Object"] = format_dax_object_name(
                 dfC["Table Name"], dfC["Column Name"]
@@ -233,19 +234,19 @@ def get_dax_query_dependencies(
 
 @log
 def get_dax_query_memory_size(
-    dataset: str, dax_string: str, workspace: Optional[str] = None
+    dataset: str | UUID, dax_string: str, workspace: Optional[str | UUID] = None
 ) -> int:
     """
     Obtains the total size, in bytes, used by all columns that a DAX query depends on.
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
+    dataset : str | UUID
+        Name or ID of the semantic model.
     dax_string : str
         The DAX query.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -255,11 +256,11 @@ def get_dax_query_memory_size(
         The total size, in bytes, used by all columns that the DAX query depends on.
     """
 
-    if workspace is None:
-        workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
     df = get_dax_query_dependencies(
-        dataset=dataset, workspace=workspace, dax_string=dax_string, put_in_memory=True
+        dataset=dataset_id, workspace=workspace_id, dax_string=dax_string, put_in_memory=True
     )
 
     return df["Total Size"].sum()

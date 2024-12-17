@@ -3,11 +3,10 @@ import pandas as pd
 from typing import Optional, Union, List
 from sempy._utils._log import log
 import struct
-import uuid
 from itertools import chain, repeat
 from sempy.fabric.exceptions import FabricHTTPException
 from sempy_labs._helper_functions import resolve_warehouse_id, resolve_lakehouse_id
-
+from uuid import UUID
 
 def _bytes2mswin_bstr(value: bytes) -> bytes:
     """Convert a sequence of bytes into a (MS-Windows) BSTR (as bytes).
@@ -32,7 +31,7 @@ class ConnectBase:
     def __init__(
         self,
         name: str,
-        workspace: Optional[Union[str, uuid.UUID]] = None,
+        workspace: Optional[Union[str, UUID]] = None,
         timeout: Optional[int] = None,
         endpoint_type: str = "warehouse",
     ):
@@ -139,7 +138,7 @@ class ConnectWarehouse(ConnectBase):
     def __init__(
         self,
         warehouse: str,
-        workspace: Optional[Union[str, uuid.UUID]] = None,
+        workspace: Optional[Union[str, UUID]] = None,
         timeout: Optional[int] = None,
     ):
         super().__init__(
@@ -154,7 +153,7 @@ class ConnectLakehouse(ConnectBase):
     def __init__(
         self,
         lakehouse: str,
-        workspace: Optional[Union[str, uuid.UUID]] = None,
+        workspace: Optional[Union[str, UUID]] = None,
         timeout: Optional[int] = None,
     ):
         super().__init__(

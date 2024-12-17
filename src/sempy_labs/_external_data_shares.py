@@ -8,6 +8,7 @@ from sempy_labs._helper_functions import (
     pagination,
 )
 from sempy.fabric.exceptions import FabricHTTPException
+from uuid import UUID
 
 
 def create_external_data_share(
@@ -15,7 +16,7 @@ def create_external_data_share(
     item_type: str,
     paths: str | List[str],
     recipient: str,
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
 ):
     """
     Creates an external data share for a given path or list of paths in the specified item.
@@ -32,17 +33,15 @@ def create_external_data_share(
         The path or list of paths that are to be externally shared. Currently, only a single path is supported.
     recipient : str
         The email address of the recipient.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    # https://learn.microsoft.com/en-us/rest/api/fabric/core/external-data-shares/create-external-data-share?tabs=HTTP
-
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     item_id = fabric.resolve_item_id(
-        item_name=item_name, type=item_type, workspace=workspace
+        item_name=item_name, type=item_type, workspace=workspace_id
     )
 
     if isinstance(paths, str):
@@ -60,7 +59,7 @@ def create_external_data_share(
         raise FabricHTTPException(response)
 
     print(
-        f"{icons.green_dot} An external data share was created for the '{item_name}' {item_type} within the '{workspace}' workspace for the {paths} paths."
+        f"{icons.green_dot} An external data share was created for the '{item_name}' {item_type} within the '{workspace_name}' workspace for the {paths} paths."
     )
 
 
@@ -68,7 +67,7 @@ def revoke_external_data_share(
     external_data_share_id: UUID,
     item_name: str,
     item_type: str,
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
 ):
     """
     Revokes the specified external data share. Note: This action cannot be undone.
@@ -83,15 +82,15 @@ def revoke_external_data_share(
         The item name.
     item_type : str
         The `item type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     item_id = fabric.resolve_item_id(
-        item_name=item_name, type=item_type, workspace=workspace
+        item_name=item_name, type=item_type, workspace=workspace_id
     )
 
     client = fabric.FabricRestClient()
@@ -103,12 +102,12 @@ def revoke_external_data_share(
         raise FabricHTTPException(response)
 
     print(
-        f"{icons.green_dot} The '{external_data_share_id}' external data share for the '{item_name}' {item_type} within the '{workspace}' workspace has been revoked."
+        f"{icons.green_dot} The '{external_data_share_id}' external data share for the '{item_name}' {item_type} within the '{workspace_name}' workspace has been revoked."
     )
 
 
 def list_external_data_shares_in_item(
-    item_name: str, item_type: str, workspace: Optional[str] = None
+    item_name: str, item_type: str, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
     Returns a list of the external data shares that exist for the specified item.
@@ -121,8 +120,8 @@ def list_external_data_shares_in_item(
         The item name.
     item_type : str
         The `item type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -132,9 +131,9 @@ def list_external_data_shares_in_item(
         A pandas dataframe showing a list of the external data shares that exist for the specified item.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     item_id = fabric.resolve_item_id(
-        item_name=item_name, type=item_type, workspace=workspace
+        item_name=item_name, type=item_type, workspace=workspace_id
     )
 
     client = fabric.FabricRestClient()

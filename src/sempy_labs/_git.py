@@ -7,6 +7,7 @@ from sempy_labs._helper_functions import (
     lro,
 )
 from sempy.fabric.exceptions import FabricHTTPException
+from uuid import UUID
 
 
 def connect_workspace_to_git(
@@ -16,7 +17,7 @@ def connect_workspace_to_git(
     branch_name: str,
     directory_name: str,
     git_provider_type: str = "AzureDevOps",
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
 ):
     """
     Connects a workspace to a git repository.
@@ -37,13 +38,13 @@ def connect_workspace_to_git(
         The directory name.
     git_provider_type : str, default="AzureDevOps"
         A `Git provider type <https://learn.microsoft.com/rest/api/fabric/core/git/connect?tabs=HTTP#gitprovidertype>`_.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    workspace, workspace_id = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     request_body = {
         "gitProviderDetails": {
@@ -64,11 +65,11 @@ def connect_workspace_to_git(
         raise FabricHTTPException(response)
 
     print(
-        f"{icons.green_dot} The '{workspace}' workspace has been connected to the '{project_name}' Git project within the '{repository_name}' repository."
+        f"{icons.green_dot} The '{workspace_name}' workspace has been connected to the '{project_name}' Git project within the '{repository_name}' repository."
     )
 
 
-def disconnect_workspace_from_git(workspace: Optional[str] = None):
+def disconnect_workspace_from_git(workspace: Optional[str | UUID] = None):
     """
     Disconnects a workpsace from a git repository.
 
@@ -76,13 +77,13 @@ def disconnect_workspace_from_git(workspace: Optional[str] = None):
 
     Parameters
     ----------
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    workspace, workspace_id = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
     response = client.post(f"/v1/workspaces/{workspace_id}/git/disconnect")
@@ -90,11 +91,11 @@ def disconnect_workspace_from_git(workspace: Optional[str] = None):
         raise FabricHTTPException(response)
 
     print(
-        f"{icons.green_dot} The '{workspace}' workspace has been disconnected from Git."
+        f"{icons.green_dot} The '{workspace_name}' workspace has been disconnected from Git."
     )
 
 
-def get_git_status(workspace: Optional[str] = None) -> pd.DataFrame:
+def get_git_status(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Obtains the Git status of items in the workspace, that can be committed to Git.
 
@@ -102,8 +103,8 @@ def get_git_status(workspace: Optional[str] = None) -> pd.DataFrame:
 
     Parameters
     ----------
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -113,7 +114,7 @@ def get_git_status(workspace: Optional[str] = None) -> pd.DataFrame:
         A pandas dataframe showing the Git status of items in the workspace.
     """
 
-    workspace, workspace_id = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     df = pd.DataFrame(
         columns=[
@@ -157,7 +158,7 @@ def get_git_status(workspace: Optional[str] = None) -> pd.DataFrame:
     return df
 
 
-def get_git_connection(workspace: Optional[str] = None) -> pd.DataFrame:
+def get_git_connection(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Obtains the Git status of items in the workspace, that can be committed to Git.
 
@@ -165,8 +166,8 @@ def get_git_connection(workspace: Optional[str] = None) -> pd.DataFrame:
 
     Parameters
     ----------
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -176,7 +177,7 @@ def get_git_connection(workspace: Optional[str] = None) -> pd.DataFrame:
         A pandas dataframe showing the Git status of items in the workspace.
     """
 
-    workspace, workspace_id = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     df = pd.DataFrame(
         columns=[
@@ -217,7 +218,7 @@ def get_git_connection(workspace: Optional[str] = None) -> pd.DataFrame:
     return df
 
 
-def initialize_git_connection(workspace: Optional[str] = None) -> str:
+def initialize_git_connection(workspace: Optional[str | UUID] = None) -> str:
     """
     Initializes a connection for a workspace that is connected to Git.
 
@@ -225,8 +226,8 @@ def initialize_git_connection(workspace: Optional[str] = None) -> str:
 
     Parameters
     ----------
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -236,7 +237,7 @@ def initialize_git_connection(workspace: Optional[str] = None) -> str:
         Remote full SHA commit hash.
     """
 
-    workspace, workspace_id = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
     response = client.post(f"/v1/workspaces/{workspace_id}/git/initializeConnection")
@@ -247,14 +248,14 @@ def initialize_git_connection(workspace: Optional[str] = None) -> str:
     lro(client, response)
 
     print(
-        f"{icons.green_dot} The '{workspace}' workspace git connection has been initialized."
+        f"{icons.green_dot} The '{workspace_name}' workspace git connection has been initialized."
     )
 
     return response.json().get("remoteCommitHash")
 
 
 def commit_to_git(
-    comment: str, item_ids: str | List[str] = None, workspace: Optional[str] = None
+    comment: str, item_ids: str | List[str] = None, workspace: Optional[str | UUID] = None
 ):
     """
     Commits all or a selection of items within a workspace to Git.
@@ -268,15 +269,15 @@ def commit_to_git(
     item_ids : str | List[str], default=None
         A list of item Ids to commit to Git.
         Defaults to None which commits all items to Git.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    workspace, workspace_id = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    gs = get_git_status(workspace=workspace)
+    gs = get_git_status(workspace=workspace_id)
     if not gs.empty:
         workspace_head = gs["Workspace Head"].iloc[0]
 
@@ -310,15 +311,15 @@ def commit_to_git(
 
         if commit_mode == "All":
             print(
-                f"{icons.green_dot} All items within the '{workspace}' workspace have been committed to Git."
+                f"{icons.green_dot} All items within the '{workspace_name}' workspace have been committed to Git."
             )
         else:
             print(
-                f"{icons.green_dot} The {item_ids} items within the '{workspace}' workspace have been committed to Git."
+                f"{icons.green_dot} The {item_ids} items within the '{workspace_name}' workspace have been committed to Git."
             )
     else:
         print(
-            f"{icons.info} Git already up to date: no modified items found within the '{workspace}' workspace."
+            f"{icons.info} Git already up to date: no modified items found within the '{workspace_name}' workspace."
         )
 
 
@@ -327,7 +328,7 @@ def update_from_git(
     conflict_resolution_policy: str,
     workspace_head: Optional[str] = None,
     allow_override: bool = False,
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
 ):
     """
     Updates the workspace with commits pushed to the connected branch.
@@ -345,13 +346,13 @@ def update_from_git(
         In other cases, the system will validate that the given value is aligned with the head known to the system.
     allow_override : bool, default=False
         User consent to override incoming items during the update from Git process. When incoming items are present and the allow override items is not specified or is provided as false, the update operation will not start. Default value is false.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    workspace, workspace_id = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     conflict_resolution_policies = ["PreferWorkspace", "PreferRemote"]
     if "remote" in [policy.lower() for policy in conflict_resolution_policies]:
@@ -388,5 +389,5 @@ def update_from_git(
     lro(client, response, return_status_code=True)
 
     print(
-        f"{icons.green_dot} The '{workspace}' workspace has been updated with commits pushed to the connected branch."
+        f"{icons.green_dot} The '{workspace_name}' workspace has been updated with commits pushed to the connected branch."
     )

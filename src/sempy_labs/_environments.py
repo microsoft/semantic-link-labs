@@ -8,10 +8,10 @@ from sempy_labs._helper_functions import (
     pagination,
 )
 from sempy.fabric.exceptions import FabricHTTPException
-
+from uuid import UUID
 
 def create_environment(
-    environment: str, description: Optional[str] = None, workspace: Optional[str] = None
+    environment: str, description: Optional[str] = None, workspace: Optional[str | UUID] = None
 ):
     """
     Creates a Fabric environment.
@@ -24,13 +24,13 @@ def create_environment(
         Name of the environment.
     description : str, default=None
         A description of the environment.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     request_body = {"displayName": environment}
 
@@ -45,11 +45,11 @@ def create_environment(
     lro(client, response, status_codes=[201, 202])
 
     print(
-        f"{icons.green_dot} The '{environment}' environment has been created within the '{workspace}' workspace."
+        f"{icons.green_dot} The '{environment}' environment has been created within the '{workspace_name}' workspace."
     )
 
 
-def list_environments(workspace: Optional[str] = None) -> pd.DataFrame:
+def list_environments(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the environments within a workspace.
 
@@ -57,8 +57,8 @@ def list_environments(workspace: Optional[str] = None) -> pd.DataFrame:
 
     Parameters
     ----------
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -70,7 +70,7 @@ def list_environments(workspace: Optional[str] = None) -> pd.DataFrame:
 
     df = pd.DataFrame(columns=["Environment Name", "Environment Id", "Description"])
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/environments")
@@ -91,7 +91,7 @@ def list_environments(workspace: Optional[str] = None) -> pd.DataFrame:
     return df
 
 
-def delete_environment(environment: str, workspace: Optional[str] = None):
+def delete_environment(environment: str, workspace: Optional[str | UUID] = None):
     """
     Deletes a Fabric environment.
 
@@ -101,17 +101,17 @@ def delete_environment(environment: str, workspace: Optional[str] = None):
     ----------
     environment: str
         Name of the environment.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
     from sempy_labs._helper_functions import resolve_environment_id
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     environment_id = resolve_environment_id(
-        environment=environment, workspace=workspace
+        environment=environment, workspace=workspace_id
     )
 
     client = fabric.FabricRestClient()
@@ -123,11 +123,11 @@ def delete_environment(environment: str, workspace: Optional[str] = None):
         raise FabricHTTPException(response)
 
     print(
-        f"{icons.green_dot} The '{environment}' environment within the '{workspace}' workspace has been deleted."
+        f"{icons.green_dot} The '{environment}' environment within the '{workspace_name}' workspace has been deleted."
     )
 
 
-def publish_environment(environment: str, workspace: Optional[str] = None):
+def publish_environment(environment: str, workspace: Optional[str | UUID] = None):
     """
     Publishes a Fabric environment.
 
@@ -135,8 +135,8 @@ def publish_environment(environment: str, workspace: Optional[str] = None):
     ----------
     environment: str
         Name of the environment.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
@@ -145,9 +145,9 @@ def publish_environment(environment: str, workspace: Optional[str] = None):
 
     from sempy_labs._helper_functions import resolve_environment_id
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     environment_id = resolve_environment_id(
-        environment=environment, workspace=workspace
+        environment=environment, workspace=workspace_id
     )
 
     client = fabric.FabricRestClient()
@@ -158,5 +158,5 @@ def publish_environment(environment: str, workspace: Optional[str] = None):
     lro(client, response)
 
     print(
-        f"{icons.green_dot} The '{environment}' environment within the '{workspace}' workspace has been published."
+        f"{icons.green_dot} The '{environment}' environment within the '{workspace_name}' workspace has been published."
     )

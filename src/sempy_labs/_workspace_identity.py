@@ -6,9 +6,10 @@ from sempy_labs._helper_functions import (
 from typing import Optional
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
+from uuid import UUID
 
 
-def provision_workspace_identity(workspace: Optional[str] = None):
+def provision_workspace_identity(workspace: Optional[str | UUID] = None):
     """
     Provisions a workspace identity for a workspace.
 
@@ -16,13 +17,13 @@ def provision_workspace_identity(workspace: Optional[str] = None):
 
     Parameters
     ----------
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    workspace, workspace_id = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
     response = client.post(f"/v1/workspaces/{workspace_id}/provisionIdentity")
@@ -33,11 +34,11 @@ def provision_workspace_identity(workspace: Optional[str] = None):
     lro(client, response)
 
     print(
-        f"{icons.green_dot} A workspace identity has been provisioned for the '{workspace}' workspace."
+        f"{icons.green_dot} A workspace identity has been provisioned for the '{workspace_name}' workspace."
     )
 
 
-def deprovision_workspace_identity(workspace: Optional[str] = None):
+def deprovision_workspace_identity(workspace: Optional[str | UUID] = None):
     """
     Deprovisions a workspace identity for a workspace.
 
@@ -45,13 +46,13 @@ def deprovision_workspace_identity(workspace: Optional[str] = None):
 
     Parameters
     ----------
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    workspace, workspace_id = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
     response = client.post(f"/v1/workspaces/{workspace_id}/deprovisionIdentity")
@@ -62,5 +63,5 @@ def deprovision_workspace_identity(workspace: Optional[str] = None):
     lro(client, response)
 
     print(
-        f"{icons.green_dot} The workspace identity has been deprovisioned from the '{workspace}' workspace."
+        f"{icons.green_dot} The workspace identity has been deprovisioned from the '{workspace_name}' workspace."
     )
