@@ -37,20 +37,21 @@ def list_dataflows(workspace: Optional[str] = None):
         columns=["Dataflow Id", "Dataflow Name", "Configured By", "Users", "Generation"]
     )
 
+    data = []  # Collect rows here
+
     for v in response.json().get("value", []):
         new_data = {
             "Dataflow Id": v.get("objectId"),
             "Dataflow Name": v.get("name"),
             "Configured By": v.get("configuredBy"),
-            "Users": v.get("users"),
+            "Users": v.get("users", []),
             "Generation": v.get("generation"),
         }
-        df = pd.concat(
-            [df, pd.DataFrame(new_data, index=[0])],
-            ignore_index=True,
-        )
+        data.append(new_data)
 
-    df["Generation"] = df["Generation"].astype(int)
+    if data:
+        df = pd.DataFrame(data)
+        df["Generation"] = df["Generation"].astype(int)
 
     return df
 
