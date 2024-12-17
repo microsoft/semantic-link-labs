@@ -7,13 +7,14 @@ from sempy_labs._helper_functions import (
 )
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from sempy.fabric.exceptions import FabricHTTPException
+from uuid import UUID
 
 
 def download_report(
     report: str,
     file_name: Optional[str] = None,
     download_type: str = "LiveConnect",
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
 ):
     """
     Downloads the specified report from the specified workspace to a Power BI .pbix file.
@@ -29,8 +30,8 @@ def download_report(
         Defaults to None which resolves to the name of the report.
     download_type : str, default="LiveConnect"
         The type of download. Valid values are "LiveConnect" and "IncludeModel".
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
@@ -40,10 +41,11 @@ def download_report(
             f"{icons.red_dot} A lakehouse must be attached to the notebook."
         )
 
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     lakehouse_id = fabric.get_lakehouse_id()
-    workspace_name = fabric.resolve_workspace_name()
+    lakehouse_workspace = fabric.resolve_workspace_name()
     lakehouse_name = resolve_lakehouse_name(
-        lakehouse_id=lakehouse_id, workspace=workspace_name
+        lakehouse_id=lakehouse_id, workspace=lakehouse_workspace
     )
 
     download_types = ["LiveConnect", "IncludeModel"]
@@ -53,9 +55,8 @@ def download_report(
         )
 
     file_name = file_name or report
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
     report_id = fabric.resolve_item_id(
-        item_name=report, type="Report", workspace=workspace
+        item_name=report, type="Report", workspace=workspace_id
     )
 
     client = fabric.PowerBIRestClient()
@@ -71,5 +72,5 @@ def download_report(
         file.write(response.content)
 
     print(
-        f"{icons.green_dot} The '{report}' report within the '{workspace}' workspace has been exported as the '{file_name}' file in the '{lakehouse_name}' lakehouse within the '{workspace_name} workspace."
+        f"{icons.green_dot} The '{report}' report within the '{workspace_name}' workspace has been exported as the '{file_name}' file in the '{lakehouse_name}' lakehouse within the '{lakehouse_workspace}' workspace."
     )

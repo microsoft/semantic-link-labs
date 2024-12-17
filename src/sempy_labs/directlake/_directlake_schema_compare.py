@@ -2,6 +2,8 @@ import sempy.fabric as fabric
 import pandas as pd
 from sempy_labs._helper_functions import (
     format_dax_object_name,
+    resolve_workspace_name_and_id,
+    resolve_dataset_name_and_id,
 )
 from IPython.display import display
 from sempy_labs.lakehouse import get_lakehouse_columns
@@ -9,12 +11,13 @@ from sempy_labs.directlake._dl_helper import get_direct_lake_source
 from typing import Optional
 import sempy_labs._icons as icons
 from sempy._utils._log import log
+from uuid import UUID
 
 
 @log
 def direct_lake_schema_compare(
-    dataset: str,
-    workspace: Optional[str] = None,
+    dataset: str | UUID,
+    workspace: Optional[str | UUID] = None,
     **kwargs,
 ):
     """
@@ -22,10 +25,10 @@ def direct_lake_schema_compare(
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    dataset : str | UUID
+        Name or ID of the semantic model.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
@@ -41,10 +44,11 @@ def direct_lake_schema_compare(
         )
         del kwargs["lakehouse_workspace"]
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
     artifact_type, lakehouse_name, lakehouse_id, lakehouse_workspace_id = (
-        get_direct_lake_source(dataset=dataset, workspace=workspace)
+        get_direct_lake_source(dataset=dataset_id, workspace=workspace_id)
     )
     lakehouse_workspace = fabric.resolve_workspace_name(lakehouse_workspace_id)
 
@@ -53,15 +57,15 @@ def direct_lake_schema_compare(
             f"{icons.red_dot} This function is only valid for Direct Lake semantic models which source from Fabric lakehouses (not warehouses)."
         )
 
-    dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
+    dfP = fabric.list_partitions(dataset=dataset_id, workspace=workspace_id)
 
     if not any(r["Mode"] == "DirectLake" for i, r in dfP.iterrows()):
         raise ValueError(
-            f"{icons.red_dot} The '{dataset}' semantic model is not in Direct Lake mode."
+            f"{icons.red_dot} The '{dataset_name}' semantic model within the '{workspace_name}' workspace is not in Direct Lake mode."
         )
 
-    dfT = fabric.list_tables(dataset=dataset, workspace=workspace)
-    dfC = fabric.list_columns(dataset=dataset, workspace=workspace)
+    dfT = fabric.list_tables(dataset=dataset_id, workspace=workspace_id)
+    dfC = fabric.list_columns(dataset=dataset_id, workspace=workspace_id)
     lc = get_lakehouse_columns(lakehouse_name, lakehouse_workspace)
 
     dfT.rename(columns={"Type": "Table Type"}, inplace=True)
@@ -92,7 +96,7 @@ def direct_lake_schema_compare(
         )
     else:
         print(
-            f"{icons.yellow_dot} The following tables exist in the '{dataset}' semantic model within the '{workspace}' workspace"
+            f"{icons.yellow_dot} The following tables exist in the '{dataset_name}' semantic model within the '{workspace_name}' workspace"
             f" but do not exist in the '{lakehouse_name}' lakehouse within the '{lakehouse_workspace}' workspace."
         )
         display(missingtbls)
@@ -102,7 +106,7 @@ def direct_lake_schema_compare(
         )
     else:
         print(
-            f"{icons.yellow_dot} The following columns exist in the '{dataset}' semantic model within the '{workspace}' workspace "
+            f"{icons.yellow_dot} The following columns exist in the '{dataset_name}' semantic model within the '{workspace_name}' workspace "
             f"but do not exist in the '{lakehouse_name}' lakehouse within the '{lakehouse_workspace}' workspace."
         )
         display(missingcols)

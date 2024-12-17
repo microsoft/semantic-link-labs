@@ -5,6 +5,7 @@ from typing import Optional
 from sempy_labs._helper_functions import (
     pagination,
     _is_valid_uuid,
+    resolve_workspace_name_and_id,
 )
 from uuid import UUID
 import sempy_labs._icons as icons
@@ -205,7 +206,7 @@ def list_connections() -> pd.DataFrame:
 
 
 def list_item_connections(
-    item_name: str, item_type: str, workspace: Optional[str] = None
+    item_name: str, item_type: str, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
     Shows the list of connections that the specified item is connected to.
@@ -218,8 +219,8 @@ def list_item_connections(
         The item name.
     item_type : str
         The `item type <https://learn.microsoft.com/rest/api/fabric/core/items/update-item?tabs=HTTP#itemtype>`_.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -229,11 +230,10 @@ def list_item_connections(
         A pandas dataframe showing the list of connections that the specified item is connected to.
     """
 
-    workspace = fabric.resolve_workspace_name(workspace)
-    workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     item_type = item_type[0].upper() + item_type[1:]
     item_id = fabric.resolve_item_id(
-        item_name=item_name, type=item_type, workspace=workspace
+        item_name=item_name, type=item_type, workspace=workspace_id
     )
 
     client = fabric.FabricRestClient()

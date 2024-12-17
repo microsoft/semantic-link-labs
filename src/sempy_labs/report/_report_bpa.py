@@ -11,18 +11,20 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
     resolve_workspace_capacity,
     _get_max_run_id,
+    resolve_workspace_name_and_id,
 )
 from sempy_labs.lakehouse import get_lakehouse_tables, lakehouse_attached
 import sempy_labs._icons as icons
 from IPython.display import display, HTML
 import sempy_labs.report._report_helper as helper
+from uuid import UUID
 
 
 @log
 def run_report_bpa(
     report: str,
     rules: Optional[pd.DataFrame] = None,
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
     # language: Optional[str] = None,
     export: bool = False,
     return_dataframe: bool = False,
@@ -37,8 +39,8 @@ def run_report_bpa(
         Name of the report.
     rules : pandas.DataFrame, default=None
         A pandas dataframe containing rules to be evaluated.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     export : bool, default=False
@@ -52,7 +54,9 @@ def run_report_bpa(
         A pandas dataframe in HTML format showing report objects which violated the best practice analyzer rules.
     """
 
-    rpt = ReportWrapper(report=report, workspace=workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    rpt = ReportWrapper(report=report, workspace=workspace_id)
 
     dfCV = rpt.list_custom_visuals()
     dfP = rpt.list_pages()
@@ -145,7 +149,7 @@ def run_report_bpa(
             df_output["Description"] = row["Description"]
             df_output["URL"] = row["URL"]
             df_output["Report URL"] = helper.get_web_url(
-                report=report, workspace=workspace
+                report=report, workspace=workspace_id
             )
 
             page_mapping_dict = dfP.set_index("Page Display Name")["Page URL"].to_dict()
@@ -219,13 +223,13 @@ def run_report_bpa(
             runId = max_run_id + 1
 
         export_df = finalDF.copy()
-        capacity_id, capacity_name = resolve_workspace_capacity(workspace=workspace)
+        capacity_id, capacity_name = resolve_workspace_capacity(workspace=workspace_id)
         export_df["Capacity Name"] = capacity_name
         export_df["Capacity Id"] = capacity_id
-        export_df["Workspace Name"] = workspace
-        export_df["Workspace Id"] = fabric.resolve_workspace_id(workspace)
+        export_df["Workspace Name"] = workspace_name
+        export_df["Workspace Id"] = workspace_id
         export_df["Report Name"] = report
-        export_df["Report Id"] = resolve_report_id(report, workspace)
+        export_df["Report Id"] = resolve_report_id(report, workspace_id)
         export_df["RunId"] = runId
         export_df["Timestamp"] = now
         export_df["RunId"] = export_df["RunId"].astype(int)

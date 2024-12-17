@@ -3,46 +3,49 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_id,
     resolve_lakehouse_name,
     get_direct_lake_sql_endpoint,
+    resolve_workspace_name_and_id,
+    resolve_dataset_name_and_id,
 )
 from typing import Optional, Tuple
 from uuid import UUID
 
 
 def get_direct_lake_lakehouse(
-    dataset: str,
-    workspace: Optional[str] = None,
+    dataset: str | UUID,
+    workspace: Optional[str | UUID] = None,
     lakehouse: Optional[str] = None,
-    lakehouse_workspace: Optional[str] = None,
+    lakehouse_workspace: Optional[str | UUID] = None,
 ) -> Tuple[str, UUID]:
     """
     Identifies the lakehouse used by a Direct Lake semantic model.
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    dataset : str | UUID
+        Name or ID of the semantic model.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     lakehouse : str, default=None
         The Fabric lakehouse used by the Direct Lake semantic model.
         Defaults to None which resolves to the lakehouse attached to the notebook.
-    lakehouse_workspace : str, default=None
-        The Fabric workspace used by the lakehouse.
+    lakehouse_workspace : str | UUID, default=None
+        The Fabric workspace name or ID used by the lakehouse.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
     Returns
     -------
-    str, uuid.UUID
+    str, UUID
         The lakehouse name and lakehouse ID.
     """
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
     if lakehouse_workspace is None:
-        lakehouse_workspace = workspace
+        lakehouse_workspace = workspace_name
 
     if lakehouse is None:
         lakehouse_id = fabric.get_lakehouse_id()
@@ -56,7 +59,7 @@ def get_direct_lake_lakehouse(
     #        f"{icons.red_dot} The '{dataset}' semantic model within the '{workspace}' workspace is not in Direct Lake mode."
     #    )
 
-    sqlEndpointId = get_direct_lake_sql_endpoint(dataset, workspace)
+    sqlEndpointId = get_direct_lake_sql_endpoint(dataset_id, workspace_id)
 
     dfI = fabric.list_items(workspace=lakehouse_workspace, type="SQLEndpoint")
     dfI_filt = dfI[dfI["Id"] == sqlEndpointId]

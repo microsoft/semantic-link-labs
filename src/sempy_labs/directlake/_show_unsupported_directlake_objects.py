@@ -1,13 +1,17 @@
 import sempy.fabric as fabric
 import pandas as pd
-from sempy_labs._helper_functions import format_dax_object_name
+from sempy_labs._helper_functions import (
+    format_dax_object_name,
+    resolve_dataset_name_and_id,
+    resolve_workspace_name_and_id,
+)
 from typing import Optional, Tuple
 from sempy._utils._log import log
-
+from uuid import UUID
 
 @log
 def show_unsupported_direct_lake_objects(
-    dataset: str, workspace: Optional[str] = None
+    dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Returns a list of a semantic model's objects which are not supported by Direct Lake based on
@@ -15,10 +19,10 @@ def show_unsupported_direct_lake_objects(
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    dataset : str | UUID
+        Name or ID of the semantic model.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -30,11 +34,12 @@ def show_unsupported_direct_lake_objects(
 
     pd.options.mode.chained_assignment = None
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    dfT = fabric.list_tables(dataset=dataset, workspace=workspace)
-    dfC = fabric.list_columns(dataset=dataset, workspace=workspace)
-    dfR = fabric.list_relationships(dataset=dataset, workspace=workspace)
+    dfT = fabric.list_tables(dataset=dataset_id, workspace=workspace_id)
+    dfC = fabric.list_columns(dataset=dataset_id, workspace=workspace_id)
+    dfR = fabric.list_relationships(dataset=dataset_id, workspace=workspace_id)
 
     # Calc tables
     dfT_filt = dfT[dfT["Type"] == "Calculated Table"]

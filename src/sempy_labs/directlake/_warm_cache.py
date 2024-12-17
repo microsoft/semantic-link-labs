@@ -3,34 +3,39 @@ import pandas as pd
 from tqdm.auto import tqdm
 import numpy as np
 import time
-from sempy_labs._helper_functions import format_dax_object_name
+from sempy_labs._helper_functions import (
+    format_dax_object_name,
+    resolve_dataset_name_and_id,
+    resolve_workspace_name_and_id,
+)
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
 from sempy_labs._model_dependencies import get_measure_dependencies
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
+from uuid import UUID
 
 
 @log
 def warm_direct_lake_cache_perspective(
-    dataset: str,
+    dataset: str | UUID,
     perspective: str,
     add_dependencies: bool = False,
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
 ) -> pd.DataFrame:
     """
     Warms the cache of a Direct Lake semantic model by running a simple DAX query against the columns in a perspective.
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
+    dataset : str | UUID
+        Name or ID of the semantic model.
     perspective : str
         Name of the perspective which contains objects to be used for warming the cache.
     add_dependencies : bool, default=False
         Includes object dependencies in the cache warming process.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -40,15 +45,16 @@ def warm_direct_lake_cache_perspective(
         Returns a pandas dataframe showing the columns that have been put into memory.
     """
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
-    if not any(r["Mode"] == "DirectLake" for i, r in dfP.iterrows()):
+    dfP = fabric.list_partitions(dataset=dataset_id, workspace=workspace_id)
+    if not any(r["Mode"] == "DirectLake" for _, r in dfP.iterrows()):
         raise ValueError(
-            f"{icons.red_dot} The '{dataset}' semantic model in the '{workspace}' workspace is not in Direct Lake mode. This function is specifically for semantic models in Direct Lake mode."
+            f"{icons.red_dot} The '{dataset_name}' semantic model in the '{workspace_name}' workspace is not in Direct Lake mode. This function is specifically for semantic models in Direct Lake mode."
         )
 
-    dfPersp = fabric.list_perspectives(dataset=dataset, workspace=workspace)
+    dfPersp = fabric.list_perspectives(dataset=dataset_id, workspace=workspace_id)
     dfPersp["DAX Object Name"] = format_dax_object_name(
         dfPersp["Table Name"], dfPersp["Object Name"]
     )
@@ -65,7 +71,7 @@ def warm_direct_lake_cache_perspective(
 
     if add_dependencies:
         # Measure dependencies
-        md = get_measure_dependencies(dataset, workspace)
+        md = get_measure_dependencies(dataset_id, workspace_id)
         md["Referenced Full Object"] = format_dax_object_name(
             md["Referenced Table"], md["Referenced Object"]
         )
@@ -78,7 +84,7 @@ def warm_direct_lake_cache_perspective(
 
         # Hierarchy dependencies
         dfPersp_h = dfPersp_filt[(dfPersp_filt["Object Type"] == "Hierarchy")]
-        dfH = fabric.list_hierarchies(dataset=dataset, workspace=workspace)
+        dfH = fabric.list_hierarchies(dataset=dataset_id, workspace=workspace_id)
         dfH["Hierarchy Object"] = format_dax_object_name(
             dfH["Table Name"], dfH["Hierarchy Name"]
         )
@@ -92,7 +98,7 @@ def warm_direct_lake_cache_perspective(
 
         # Relationship dependencies
         unique_table_names = dfPersp_filt["Table Name"].unique()
-        dfR = fabric.list_relationships(dataset=dataset, workspace=workspace)
+        dfR = fabric.list_relationships(dataset=dataset_id, workspace=workspace_id)
         dfR["From Object"] = format_dax_object_name(
             dfR["From Table"], dfR["From Column"]
         )
@@ -129,7 +135,7 @@ def warm_direct_lake_cache_perspective(
         bar.set_description(f"Warming the '{tableName}' table...")
         css = ",".join(map(str, filtered_list))
         dax = """EVALUATE TOPN(1,SUMMARIZECOLUMNS(""" + css + "))" ""
-        fabric.evaluate_dax(dataset=dataset, dax_string=dax, workspace=workspace)
+        fabric.evaluate_dax(dataset=dataset_id, dax_string=dax, workspace=workspace_id)
 
     print(f"{icons.green_dot} The following columns have been put into memory:")
 
@@ -144,17 +150,17 @@ def warm_direct_lake_cache_perspective(
 
 @log
 def warm_direct_lake_cache_isresident(
-    dataset: str, workspace: Optional[str] = None
+    dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
     Performs a refresh on the semantic model and puts the columns which were in memory prior to the refresh back into memory.
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    dataset : str | UUID
+        Name or ID of the semantic model.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -164,16 +170,17 @@ def warm_direct_lake_cache_isresident(
         Returns a pandas dataframe showing the columns that have been put into memory.
     """
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
-    if not any(r["Mode"] == "DirectLake" for i, r in dfP.iterrows()):
+    dfP = fabric.list_partitions(dataset=dataset_id, workspace=workspace_id)
+    if not any(r["Mode"] == "DirectLake" for _, r in dfP.iterrows()):
         raise ValueError(
-            f"{icons.red_dot} The '{dataset}' semantic model in the '{workspace}' workspace is not in Direct Lake mode. This function is specifically for semantic models in Direct Lake mode."
+            f"{icons.red_dot} The '{dataset_name}' semantic model in the '{workspace_name}' workspace is not in Direct Lake mode. This function is specifically for semantic models in Direct Lake mode."
         )
 
     # Identify columns which are currently in memory (Is Resident = True)
-    dfC = fabric.list_columns(dataset=dataset, workspace=workspace, extended=True)
+    dfC = fabric.list_columns(dataset=dataset_id, workspace=workspace_id, extended=True)
     dfC["DAX Object Name"] = format_dax_object_name(
         dfC["Table Name"], dfC["Column Name"]
     )
@@ -181,11 +188,11 @@ def warm_direct_lake_cache_isresident(
 
     if len(dfC_filtered) == 0:
         raise ValueError(
-            f"{icons.yellow_dot} At present, no columns are in memory in the '{dataset}' semantic model in the '{workspace}' workspace."
+            f"{icons.yellow_dot} At present, no columns are in memory in the '{dataset_name}' semantic model in the '{workspace_name}' workspace."
         )
 
     # Refresh/frame dataset
-    refresh_semantic_model(dataset=dataset, refresh_type="full", workspace=workspace)
+    refresh_semantic_model(dataset=dataset_id, refresh_type="full", workspace=workspace_id)
     time.sleep(2)
 
     # Run basic query to get columns into memory; completed one table at a time (so as not to overload the capacity)
@@ -198,7 +205,7 @@ def warm_direct_lake_cache_isresident(
             .tolist()
         )
         dax = f"""EVALUATE TOPN(1,SUMMARIZECOLUMNS({css}))"""
-        fabric.evaluate_dax(dataset=dataset, dax_string=dax, workspace=workspace)
+        fabric.evaluate_dax(dataset=dataset_id, dax_string=dax, workspace=workspace_id)
 
     print(
         f"{icons.green_dot} The following columns have been put into memory. Temperature indicates the column temperature prior to the semantic model refresh."

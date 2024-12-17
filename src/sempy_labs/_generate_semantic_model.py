@@ -14,12 +14,13 @@ from sempy_labs._helper_functions import (
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 import sempy_labs._icons as icons
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
+from uuid import UUID
 
 
 def create_blank_semantic_model(
     dataset: str,
     compatibility_level: int = 1605,
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
     overwrite: bool = True,
 ):
     """
@@ -31,21 +32,21 @@ def create_blank_semantic_model(
         Name of the semantic model.
     compatibility_level : int, default=1605
         The compatibility level of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     overwrite : bool, default=False
         If set to True, overwrites the existing semantic model in the workspace if it exists.
     """
 
-    workspace = fabric.resolve_workspace_name(workspace)
-    dfD = fabric.list_datasets(workspace=workspace, mode="rest")
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    dfD = fabric.list_datasets(workspace=workspace_id, mode="rest")
     dfD_filt = dfD[dfD["Dataset Name"] == dataset]
 
     if len(dfD_filt) > 0 and not overwrite:
         raise ValueError(
-            f"{icons.warning} The '{dataset}' semantic model already exists within the '{workspace}' workspace. The 'overwrite' parameter is set to False so the blank new semantic model was not created."
+            f"{icons.warning} The '{dataset}' semantic model already exists within the '{workspace_name}' workspace. The 'overwrite' parameter is set to False so the blank new semantic model was not created."
         )
 
     min_compat = 1500
@@ -109,10 +110,10 @@ def create_blank_semantic_model(
         }}
         """
 
-    fabric.execute_tmsl(script=tmsl, workspace=workspace)
+    fabric.execute_tmsl(script=tmsl, workspace=workspace_id)
 
     return print(
-        f"{icons.green_dot} The '{dataset}' semantic model was created within the '{workspace}' workspace."
+        f"{icons.green_dot} The '{dataset}' semantic model was created within the '{workspace_name}' workspace."
     )
 
 

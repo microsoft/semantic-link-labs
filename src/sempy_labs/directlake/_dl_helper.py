@@ -80,9 +80,9 @@ def check_fallback_reason(
 def generate_direct_lake_semantic_model(
     dataset: str,
     lakehouse_tables: Union[str, List[str]],
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
     lakehouse: Optional[str] = None,
-    lakehouse_workspace: Optional[str] = None,
+    lakehouse_workspace: Optional[str | UUID] = None,
     schema: str = "dbo",
     overwrite: bool = False,
     refresh: bool = True,
@@ -96,15 +96,15 @@ def generate_direct_lake_semantic_model(
         Name of the semantic model to be created.
     lakehouse_tables : str | List[str]
         The table(s) within the Fabric lakehouse to add to the semantic model. All columns from these tables will be added to the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name in which the semantic model will reside.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID in which the semantic model will reside.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     lakehouse : str, default=None
         The lakehouse which stores the delta tables which will feed the Direct Lake semantic model.
         Defaults to None which resolves to the attached lakehouse.
-    lakehouse_workspace : str, default=None
-        The Fabric workspace in which the lakehouse resides.
+    lakehouse_workspace : str | UUID, default=None
+        The Fabric workspace name or ID in which the lakehouse resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     schema : str, default="dbo"
@@ -126,7 +126,7 @@ def generate_direct_lake_semantic_model(
     if isinstance(lakehouse_tables, str):
         lakehouse_tables = [lakehouse_tables]
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     if lakehouse_workspace is None:
         lakehouse_workspace = workspace
     if lakehouse is None:
@@ -143,23 +143,23 @@ def generate_direct_lake_semantic_model(
     for t in lakehouse_tables:
         if t not in dfLT["Table Name"].values:
             raise ValueError(
-                f"{icons.red_dot} The '{t}' table does not exist as a delta table in the '{lakehouse}' within the '{workspace}' workspace."
+                f"{icons.red_dot} The '{t}' table does not exist as a delta table in the '{lakehouse}' within the '{workspace_name}' workspace."
             )
 
     dfLC = get_lakehouse_columns(lakehouse=lakehouse, workspace=lakehouse_workspace)
     expr = generate_shared_expression(
         item_name=lakehouse, item_type="Lakehouse", workspace=lakehouse_workspace
     )
-    dfD = fabric.list_datasets(workspace=workspace)
+    dfD = fabric.list_datasets(workspace=workspace_id)
     dfD_filt = dfD[dfD["Dataset Name"] == dataset]
 
     if len(dfD_filt) > 0 and not overwrite:
         raise ValueError(
-            f"{icons.red_dot} The '{dataset}' semantic model within the '{workspace}' workspace already exists. Overwrite is set to False so the new semantic model has not been created."
+            f"{icons.red_dot} The '{dataset}' semantic model within the '{workspace_name}' workspace already exists. Overwrite is set to False so the new semantic model has not been created."
         )
 
     create_blank_semantic_model(
-        dataset=dataset, workspace=workspace, overwrite=overwrite
+        dataset=dataset, workspace=workspace_id, overwrite=overwrite
     )
 
     @retry(
@@ -168,7 +168,7 @@ def generate_direct_lake_semantic_model(
     )
     def dyn_connect():
         with connect_semantic_model(
-            dataset=dataset, readonly=True, workspace=workspace
+            dataset=dataset, readonly=True, workspace=workspace_id
         ) as tom:
 
             tom.model
@@ -177,7 +177,7 @@ def generate_direct_lake_semantic_model(
 
     expression_name = "DatabaseQuery"
     with connect_semantic_model(
-        dataset=dataset, workspace=workspace, readonly=False
+        dataset=dataset, workspace=workspace_id, readonly=False
     ) as tom:
         if not any(e.Name == expression_name for e in tom.model.Expressions):
             tom.add_expression(name=expression_name, expression=expr)
@@ -198,7 +198,7 @@ def generate_direct_lake_semantic_model(
                 )
 
     if refresh:
-        refresh_semantic_model(dataset=dataset, workspace=workspace)
+        refresh_semantic_model(dataset=dataset, workspace=workspace_id)
 
 
 def get_direct_lake_source(

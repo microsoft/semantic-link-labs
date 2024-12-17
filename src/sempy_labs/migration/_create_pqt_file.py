@@ -1,5 +1,4 @@
 import sempy
-import sempy.fabric as fabric
 import json
 import os
 import shutil
@@ -7,12 +6,16 @@ from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from sempy._utils._log import log
 from typing import Optional
 import sempy_labs._icons as icons
-
+from uuid import UUID
+from sempy_labs._helper_functions import (
+    resolve_dataset_name_and_id,
+    resolve_workspace_name_and_id,
+)
 
 @log
 def create_pqt_file(
-    dataset: str,
-    workspace: Optional[str] = None,
+    dataset: str | UUID,
+    workspace: Optional[str | UUID] = None,
     file_name: str = "PowerQueryTemplate",
 ):
     """
@@ -24,10 +27,10 @@ def create_pqt_file(
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    dataset : str | UUID
+        Name or ID of the semantic model.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     file_name : str, default='PowerQueryTemplate'
@@ -43,19 +46,20 @@ def create_pqt_file(
             f"{icons.red_dot} In order to run the 'create_pqt_file' function, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
         )
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
     folderPath = "/lakehouse/default/Files"
     subFolderPath = os.path.join(folderPath, "pqtnewfolder")
 
     with connect_semantic_model(
-        dataset=dataset, workspace=workspace, readonly=True
+        dataset=dataset_id, workspace=workspace_id, readonly=True
     ) as tom:
         if not any(
             p.SourceType == TOM.PartitionSourceType.M for p in tom.all_partitions()
         ) and not any(t.RefreshPolicy for t in tom.model.Tables):
             print(
-                f"{icons.info} The '{dataset}' semantic model within the '{workspace}' workspace has no Power Query logic."
+                f"{icons.info} The '{dataset_name}' semantic model within the '{workspace_name}' workspace has no Power Query logic."
             )
             return
 
@@ -220,7 +224,7 @@ def create_pqt_file(
             shutil.rmtree(subFolderPath, ignore_errors=True)
 
             print(
-                f"{icons.green_dot} '{file_name}.pqt' has been created based on the '{dataset}' semantic model in the '{workspace}' workspace within the Files section of your lakehouse."
+                f"{icons.green_dot} '{file_name}.pqt' has been created based on the '{dataset_name}' semantic model in the '{workspace_name}' workspace within the Files section of your lakehouse."
             )
 
         a = 0
