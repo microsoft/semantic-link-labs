@@ -3,13 +3,16 @@ from typing import Optional
 import pandas as pd
 from sempy_labs._helper_functions import (
     format_dax_object_name,
+    resolve_workspace_name_and_id,
+    resolve_dataset_name_and_id,
 )
 from sempy_labs.report._reportwrapper import ReportWrapper
 from sempy_labs._list_functions import list_reports_using_semantic_model
+from uuid import UUID
 
 
 def list_unused_objects_in_reports(
-    dataset: str, workspace: Optional[str] = None
+    dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
     Shows a list of all columns in the semantic model which are not used in any related Power BI reports (including dependencies).
@@ -17,10 +20,10 @@ def list_unused_objects_in_reports(
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    dataset : str | UUID
+        Name or ID of the semantic model.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -32,7 +35,10 @@ def list_unused_objects_in_reports(
 
     # TODO: what about relationships/RLS?
 
-    dfR = _list_all_report_semantic_model_objects(dataset=dataset, workspace=workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+
+    dfR = _list_all_report_semantic_model_objects(dataset=dataset_id, workspace=workspace_id)
     dfR_filt = (
         dfR[dfR["Object Type"] == "Column"][["Table Name", "Object Name"]]
         .drop_duplicates()
@@ -42,7 +48,7 @@ def list_unused_objects_in_reports(
         dfR_filt["Table Name"], dfR_filt["Object Name"]
     )
 
-    dfC = fabric.list_columns(dataset=dataset, workspace=workspace)
+    dfC = fabric.list_columns(dataset=dataset_id, workspace=workspace_id)
     dfC["Column Object"] = format_dax_object_name(dfC["Table Name"], dfC["Column Name"])
 
     df = dfC[~(dfC["Column Object"].isin(dfR_filt["Column Object"].values))]
@@ -52,7 +58,7 @@ def list_unused_objects_in_reports(
 
 
 def _list_all_report_semantic_model_objects(
-    dataset: str, workspace: Optional[str] = None
+    dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
     Shows a unique list of all semantic model objects (columns, measures, hierarchies) which are used in all reports which leverage the semantic model.
@@ -60,10 +66,10 @@ def _list_all_report_semantic_model_objects(
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    dataset : str | UUID
+        Name or ID of the semantic model.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -73,7 +79,10 @@ def _list_all_report_semantic_model_objects(
         A pandas dataframe.
     """
 
-    dfR = list_reports_using_semantic_model(dataset=dataset, workspace=workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+
+    dfR = list_reports_using_semantic_model(dataset=dataset_id, workspace=workspace_id)
     dfs = []
 
     for _, r in dfR.iterrows():

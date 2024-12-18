@@ -1,8 +1,9 @@
 from typing import Optional
+from uuid import UUID
 
 
 def get_shared_expression(
-    lakehouse: Optional[str] = None, workspace: Optional[str] = None
+    lakehouse: Optional[str] = None, workspace: Optional[str | UUID] = None
 ) -> str:
     """
     Dynamically generates the M expression used by a Direct Lake model for a given lakehouse.
@@ -12,8 +13,8 @@ def get_shared_expression(
     lakehouse : str, default=None
         The Fabric lakehouse used by the Direct Lake semantic model.
         Defaults to None which resolves to the lakehouse attached to the notebook.
-    workspace : str, default=None
-        The Fabric workspace used by the lakehouse.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID used by the lakehouse.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 

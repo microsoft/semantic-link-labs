@@ -8,6 +8,7 @@ from sempy_labs._helper_functions import (
     _add_part,
     lro,
     _decode_b64,
+    resolve_workspace_name_and_id,
 )
 from typing import Optional, List
 import pandas as pd
@@ -32,8 +33,8 @@ class ReportWrapper:
     ----------
     report : str
         The name of the report.
-    workspace : str
-        The name of the workspace in which the report resides.
+    workspace : str | UUID
+        The name or ID of the workspace in which the report resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -50,7 +51,7 @@ class ReportWrapper:
     def __init__(
         self,
         report: str,
-        workspace: Optional[str] = None,
+        workspace: Optional[str | UUID] = None,
     ):
         """
         Connects to a Power BI report and retrieves its definition.
@@ -61,8 +62,8 @@ class ReportWrapper:
         ----------
         report : str
             The name of the report.
-        workspace : str
-            The name of the workspace in which the report resides.
+        workspace : str | UUID
+            The name or ID of the workspace in which the report resides.
             Defaults to None which resolves to the workspace of the attached lakehouse
             or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -77,11 +78,10 @@ class ReportWrapper:
         warnings.simplefilter(action="ignore", category=FutureWarning)
 
         self._report = report
-        self._workspace = workspace
-        self._workspace_id = fabric.resolve_workspace_id(workspace)
-        self._report_id = resolve_report_id(report, workspace)
+        (self._workspace_name, self._workspace_id) = resolve_workspace_name_and_id(workspace)
+        self._report_id = resolve_report_id(report, self._workspace_id)
         self.rdef = get_report_definition(
-            report=self._report, workspace=self._workspace
+            report=self._report, workspace=self._workspace_id
         )
 
         if len(self.rdef[self.rdef["path"] == "definition/report.json"]) == 0:
@@ -95,12 +95,12 @@ class ReportWrapper:
 
         from sempy_labs.tom import connect_semantic_model
 
-        dataset_id, dataset_name, dataset_workspace_id, dataset_workspace = (
-            resolve_dataset_from_report(report=self._report, workspace=self._workspace)
+        dataset_id, dataset_name, dataset_workspace_id, dataset_workspace_name = (
+            resolve_dataset_from_report(report=self._report, workspace=self._workspace_id)
         )
 
         with connect_semantic_model(
-            dataset=dataset_name, readonly=True, workspace=dataset_workspace
+            dataset=dataset_id, readonly=True, workspace=dataset_workspace_id
         ) as tom:
             for index, row in dataframe.iterrows():
                 obj_type = row["Object Type"]
@@ -218,7 +218,7 @@ class ReportWrapper:
         theme_collection = rptJson.get("themeCollection", {})
         if theme_type not in theme_collection:
             raise ValueError(
-                f"{icons.red_dot} The {self._report} report within the '{self._workspace} workspace has no custom theme."
+                f"{icons.red_dot} The {self._report} report within the '{self._workspace_name} workspace has no custom theme."
             )
         ct = theme_collection.get(theme_type)
         theme_name = ct["name"]
@@ -413,7 +413,7 @@ class ReportWrapper:
                             )
 
         df["Page URL"] = df["Page Name"].apply(
-            lambda page_name: f"{helper.get_web_url(report=self._report, workspace=self._workspace)}/{page_name}"
+            lambda page_name: f"{helper.get_web_url(report=self._report, workspace=self._workspace_id)}/{page_name}"
         )
 
         bool_cols = ["Hidden", "Locked", "Used"]
@@ -691,7 +691,7 @@ class ReportWrapper:
         df[bool_cols] = df[bool_cols].astype(bool)
 
         df["Page URL"] = df["Page Name"].apply(
-            lambda page_name: f"{helper.get_web_url(report=self._report, workspace=self._workspace)}/{page_name}"
+            lambda page_name: f"{helper.get_web_url(report=self._report, workspace=self._workspace_id)}/{page_name}"
         )
 
         return df
@@ -1170,9 +1170,9 @@ class ReportWrapper:
         )
 
         if extended:
-            dataset_id, dataset_name, dataset_workspace_id, dataset_workspace = (
+            dataset_id, dataset_name, dataset_workspace_id, dataset_workspace_name = (
                 resolve_dataset_from_report(
-                    report=self._report, workspace=self._workspace
+                    report=self._report, workspace=self._workspace_id
                 )
             )
 
@@ -1195,7 +1195,7 @@ class ReportWrapper:
                 return object_validators.get(row["Object Type"], lambda: False)()
 
             with connect_semantic_model(
-                dataset=dataset_name, readonly=True, workspace=dataset_workspace
+                dataset=dataset_id, readonly=True, workspace=dataset_workspace_id
             ) as tom:
                 df["Valid Semantic Model Object"] = df.apply(
                     lambda row: check_validity(tom, row), axis=1
@@ -1214,11 +1214,11 @@ class ReportWrapper:
             .drop_duplicates()
             .reset_index(drop=True)
         )
-        dataset_id, dataset_name, dataset_workspace_id, dataset_workspace = (
-            resolve_dataset_from_report(report=self._report, workspace=self._workspace)
+        dataset_id, dataset_name, dataset_workspace_id, dataset_workspace_name = (
+            resolve_dataset_from_report(report=self._report, workspace=self._workspace_id)
         )
         dep = get_measure_dependencies(
-            dataset=dataset_name, workspace=dataset_workspace
+            dataset=dataset_id, workspace=dataset_workspace_id
         )
         rpt_measures = df[df["Object Type"] == "Measure"]["Object Name"].values
         new_rows = dep[dep["Object Name"].isin(rpt_measures)][
@@ -1232,7 +1232,7 @@ class ReportWrapper:
         )
 
         result_df["Dataset Name"] = dataset_name
-        result_df["Dataset Workspace Name"] = dataset_workspace
+        result_df["Dataset Workspace Name"] = dataset_workspace_name
         colName = "Dataset Name"
         result_df.insert(0, colName, result_df.pop(colName))
         colName = "Dataset Workspace Name"
@@ -1539,7 +1539,7 @@ class ReportWrapper:
 
         self.update_report(request_body=request_body)
         print(
-            f"{icons.green_dot} The '{theme_name}' theme has been set as the theme for the '{self._report}' report within the '{self._workspace}' workspace."
+            f"{icons.green_dot} The '{theme_name}' theme has been set as the theme for the '{self._report}' report within the '{self._workspace_name}' workspace."
         )
 
     def set_active_page(self, page_name: str):
@@ -1567,7 +1567,7 @@ class ReportWrapper:
         self._update_single_file(file_name=pages_file, new_payload=file_payload)
 
         print(
-            f"{icons.green_dot} The '{page_display_name}' page has been set as the active page in the '{self._report}' report within the '{self._workspace}' workspace."
+            f"{icons.green_dot} The '{page_display_name}' page has been set as the active page in the '{self._report}' report within the '{self._workspace_name}' workspace."
         )
 
     def set_page_type(self, page_name: str, page_type: str):
@@ -1640,7 +1640,7 @@ class ReportWrapper:
                 cv_remove_display.append(cv_display)
         if len(cv_remove) == 0:
             print(
-                f"{icons.green_dot} There are no unnecessary custom visuals in the '{self._report}' report within the '{self._workspace}' workspace."
+                f"{icons.green_dot} There are no unnecessary custom visuals in the '{self._report}' report within the '{self._workspace_name}' workspace."
             )
             return
 
@@ -1662,7 +1662,7 @@ class ReportWrapper:
 
         self.update_report(request_body=request_body)
         print(
-            f"{icons.green_dot} The {cv_remove_display} custom visuals have been removed from the '{self._report}' report within the '{self._workspace}' workspace."
+            f"{icons.green_dot} The {cv_remove_display} custom visuals have been removed from the '{self._report}' report within the '{self._workspace_name}' workspace."
         )
 
     def migrate_report_level_measures(self, measures: Optional[str | List[str]] = None):
@@ -1681,12 +1681,12 @@ class ReportWrapper:
         rlm = self.list_report_level_measures()
         if len(rlm) == 0:
             print(
-                f"{icons.green_dot} The '{self._report}' report within the '{self._workspace}' workspace has no report-level measures."
+                f"{icons.green_dot} The '{self._report}' report within the '{self._workspace_name}' workspace has no report-level measures."
             )
             return
 
-        dataset_id, dataset_name, dataset_workspace_id, dataset_workspace = (
-            resolve_dataset_from_report(report=self._report, workspace=self._workspace)
+        dataset_id, dataset_name, dataset_workspace_id, dataset_workspace_name = (
+            resolve_dataset_from_report(report=self._report, workspace=self._workspace_id)
         )
 
         if isinstance(measures, str):
@@ -1703,7 +1703,7 @@ class ReportWrapper:
 
         mCount = 0
         with connect_semantic_model(
-            dataset=dataset_name, readonly=False, workspace=dataset_workspace
+            dataset=dataset_id, readonly=False, workspace=dataset_workspace_id
         ) as tom:
             for _, r in rlm.iterrows():
                 tableName = r["Table Name"]
@@ -1748,7 +1748,7 @@ class ReportWrapper:
 
         self.update_report(request_body=request_body)
         print(
-            f"{icons.green_dot} The report-level measures have been migrated to the '{dataset_name}' semantic model within the '{dataset_workspace}' workspace."
+            f"{icons.green_dot} The report-level measures have been migrated to the '{dataset_name}' semantic model within the '{dataset_workspace_name}' workspace."
         )
 
     def set_page_visibility(self, page_name: str, hidden: bool):
@@ -1798,7 +1798,7 @@ class ReportWrapper:
 
         if len(dfP_filt) == 0:
             print(
-                f"{icons.green_dot} There are no Tooltip or Drillthrough pages in the '{self._report}' report within the '{self._workspace}' workspace."
+                f"{icons.green_dot} There are no Tooltip or Drillthrough pages in the '{self._report}' report within the '{self._workspace_name}' workspace."
             )
             return
 
@@ -1837,7 +1837,7 @@ class ReportWrapper:
 
         self.update_report(request_body=request_body)
         print(
-            f"{icons.green_dot} Show items with data has been disabled for all visuals in the '{self._report}' report within the '{self._workspace}' workspace."
+            f"{icons.green_dot} Show items with data has been disabled for all visuals in the '{self._report}' report within the '{self._workspace_name}' workspace."
         )
 
     # Set Annotations

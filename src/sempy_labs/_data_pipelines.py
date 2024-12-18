@@ -9,9 +9,10 @@ from sempy_labs._helper_functions import (
     _decode_b64,
 )
 from sempy.fabric.exceptions import FabricHTTPException
+from uuid import UUID
 
 
-def list_data_pipelines(workspace: Optional[str] = None) -> pd.DataFrame:
+def list_data_pipelines(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the data pipelines within a workspace.
 
@@ -19,8 +20,8 @@ def list_data_pipelines(workspace: Optional[str] = None) -> pd.DataFrame:
 
     Parameters
     ----------
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -32,7 +33,7 @@ def list_data_pipelines(workspace: Optional[str] = None) -> pd.DataFrame:
 
     df = pd.DataFrame(columns=["Data Pipeline Name", "Data Pipeline ID", "Description"])
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/dataPipelines")
@@ -54,7 +55,7 @@ def list_data_pipelines(workspace: Optional[str] = None) -> pd.DataFrame:
 
 
 def create_data_pipeline(
-    name: str, description: Optional[str] = None, workspace: Optional[str] = None
+    name: str, description: Optional[str] = None, workspace: Optional[str | UUID] = None
 ):
     """
     Creates a Fabric data pipeline.
@@ -67,13 +68,13 @@ def create_data_pipeline(
         Name of the data pipeline.
     description : str, default=None
         A description of the environment.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     request_body = {"displayName": name}
 
@@ -88,11 +89,11 @@ def create_data_pipeline(
     lro(client, response, status_codes=[201, 202])
 
     print(
-        f"{icons.green_dot} The '{name}' data pipeline has been created within the '{workspace}' workspace."
+        f"{icons.green_dot} The '{name}' data pipeline has been created within the '{workspace_name}' workspace."
     )
 
 
-def delete_data_pipeline(name: str, workspace: Optional[str] = None):
+def delete_data_pipeline(name: str, workspace: Optional[str | UUID] = None):
     """
     Deletes a Fabric data pipeline.
 
@@ -102,16 +103,16 @@ def delete_data_pipeline(name: str, workspace: Optional[str] = None):
     ----------
     name: str
         Name of the data pipeline.
-    workspace : str, default=None
+    workspace : str | UUID, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     item_id = fabric.resolve_item_id(
-        item_name=name, type="DataPipeline", workspace=workspace
+        item_name=name, type="DataPipeline", workspace=workspace_id
     )
 
     client = fabric.FabricRestClient()
@@ -121,12 +122,12 @@ def delete_data_pipeline(name: str, workspace: Optional[str] = None):
         raise FabricHTTPException(response)
 
     print(
-        f"{icons.green_dot} The '{name}' data pipeline within the '{workspace}' workspace has been deleted."
+        f"{icons.green_dot} The '{name}' data pipeline within the '{workspace_name}' workspace has been deleted."
     )
 
 
 def get_data_pipeline_definition(
-    name: str, workspace: Optional[str] = None, decode: bool = True
+    name: str, workspace: Optional[str | UUID] = None, decode: bool = True
 ) -> dict | pd.DataFrame:
     """
     Obtains the definition of a data pipeline.
@@ -135,8 +136,8 @@ def get_data_pipeline_definition(
     ----------
     name : str
         The name of the data pipeline.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     decode : bool, default=True
@@ -150,10 +151,9 @@ def get_data_pipeline_definition(
         A pandas dataframe showing the data pipelines within a workspace.
     """
 
-    workspace = fabric.resolve_workspace_name(workspace)
-    workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     item_id = fabric.resolve_item_id(
-        item_name=name, type="DataPipeline", workspace=workspace
+        item_name=name, type="DataPipeline", workspace=workspace_id
     )
 
     client = fabric.FabricRestClient()

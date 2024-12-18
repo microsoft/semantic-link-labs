@@ -11,17 +11,18 @@ from sempy_labs._helper_functions import (
 )
 from sempy.fabric.exceptions import FabricHTTPException
 import os
+from uuid import UUID
 
 _notebook_prefix = "notebook-content."
 
 
 def _get_notebook_definition_base(
-    notebook_name: str, workspace: Optional[str] = None
+    notebook_name: str, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     item_id = fabric.resolve_item_id(
-        item_name=notebook_name, type="Notebook", workspace=workspace
+        item_name=notebook_name, type="Notebook", workspace=workspace_id
     )
     client = fabric.FabricRestClient()
     response = client.post(
@@ -33,7 +34,7 @@ def _get_notebook_definition_base(
     return pd.json_normalize(result["definition"]["parts"])
 
 
-def _get_notebook_type(notebook_name: str, workspace: Optional[str] = None) -> str:
+def _get_notebook_type(notebook_name: str, workspace: Optional[str | UUID] = None) -> str:
 
     df_items = _get_notebook_definition_base(
         notebook_name=notebook_name, workspace=workspace
@@ -49,7 +50,7 @@ def _get_notebook_type(notebook_name: str, workspace: Optional[str] = None) -> s
 
 
 def get_notebook_definition(
-    notebook_name: str, workspace: Optional[str] = None, decode: bool = True
+    notebook_name: str, workspace: Optional[str | UUID] = None, decode: bool = True
 ) -> str:
     """
     Obtains the notebook definition.
@@ -60,8 +61,8 @@ def get_notebook_definition(
     ----------
     notebook_name : str
         The name of the notebook.
-    workspace : str, default=None
-        The name of the workspace.
+    workspace : str | UUID, default=None
+        The name or ID of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     decode : bool, default=True
@@ -92,7 +93,7 @@ def import_notebook_from_web(
     notebook_name: str,
     url: str,
     description: Optional[str] = None,
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
     overwrite: bool = False,
 ):
     """
@@ -110,16 +111,15 @@ def import_notebook_from_web(
     description : str, default=None
         The description of the notebook.
         Defaults to None which does not place a description.
-    workspace : str, default=None
-        The name of the workspace.
+    workspace : str | UUID, default=None
+        The name or ID of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     overwrite : bool, default=False
         If set to True, overwrites the existing notebook in the workspace if it exists.
     """
 
-    if workspace is None:
-        workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     # Fix links to go to the raw github file
     starting_text = "https://github.com/"
@@ -139,7 +139,7 @@ def import_notebook_from_web(
         create_notebook(
             name=notebook_name,
             notebook_content=response.content,
-            workspace=workspace,
+            workspace=workspace_id,
             description=description,
         )
     elif len(dfI_filt) > 0 and overwrite:
@@ -149,7 +149,7 @@ def import_notebook_from_web(
         # )
     else:
         raise ValueError(
-            f"{icons.red_dot} The '{notebook_name}' already exists within the '{workspace}' workspace and 'overwrite' is set to False."
+            f"{icons.red_dot} The '{notebook_name}' already exists within the '{workspace_name}' workspace and 'overwrite' is set to False."
         )
 
 
@@ -158,7 +158,7 @@ def create_notebook(
     notebook_content: str,
     type: str = "py",
     description: Optional[str] = None,
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
 ):
     """
     Creates a new notebook with a definition within a workspace.
@@ -174,13 +174,13 @@ def create_notebook(
     description : str, default=None
         The description of the notebook.
         Defaults to None which does not place a description.
-    workspace : str, default=None
-        The name of the workspace.
+    workspace : str | UUID, default=None
+        The name or ID of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     client = fabric.FabricRestClient()
     notebook_payload = base64.b64encode(notebook_content)
 
@@ -205,12 +205,12 @@ def create_notebook(
     lro(client, response, status_codes=[201, 202])
 
     print(
-        f"{icons.green_dot} The '{name}' notebook was created within the '{workspace}' workspace."
+        f"{icons.green_dot} The '{name}' notebook was created within the '{workspace_name}' workspace."
     )
 
 
 def update_notebook_definition(
-    name: str, notebook_content: str, workspace: Optional[str] = None
+    name: str, notebook_content: str, workspace: Optional[str | UUID] = None
 ):
     """
     Updates an existing notebook with a new definition.
@@ -221,17 +221,17 @@ def update_notebook_definition(
         The name of the notebook to be updated.
     notebook_content : str
         The Jupyter notebook content (not in Base64 format).
-    workspace : str, default=None
-        The name of the workspace.
+    workspace : str | UUID, default=None
+        The name or ID of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     client = fabric.FabricRestClient()
     notebook_payload = base64.b64encode(notebook_content)
     notebook_id = fabric.resolve_item_id(
-        item_name=name, type="Notebook", workspace=workspace
+        item_name=name, type="Notebook", workspace=workspace_id
     )
 
     type = _get_notebook_type(notebook_name=name, workspace=workspace_id)
@@ -256,5 +256,5 @@ def update_notebook_definition(
     lro(client, response, return_status_code=True)
 
     print(
-        f"{icons.green_dot} The '{name}' notebook was updated within the '{workspace}' workspace."
+        f"{icons.green_dot} The '{name}' notebook was updated within the '{workspace_name}' workspace."
     )

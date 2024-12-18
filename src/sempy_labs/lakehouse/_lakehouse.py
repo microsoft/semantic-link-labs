@@ -1,8 +1,12 @@
 import sempy.fabric as fabric
 from tqdm.auto import tqdm
-from sempy_labs._helper_functions import resolve_lakehouse_name
+from sempy_labs._helper_functions import (
+    resolve_lakehouse_name,
+    resolve_workspace_name_and_id,
+)
 from typing import List, Optional, Union
 from sempy._utils._log import log
+from uuid import UUID
 
 
 def lakehouse_attached() -> bool:
@@ -29,7 +33,7 @@ def lakehouse_attached() -> bool:
 def optimize_lakehouse_tables(
     tables: Optional[Union[str, List[str]]] = None,
     lakehouse: Optional[str] = None,
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
 ):
     """
     Runs the `OPTIMIZE <https://docs.delta.io/latest/optimizations-oss.html>`_ function over the specified lakehouse tables.
@@ -42,8 +46,8 @@ def optimize_lakehouse_tables(
     lakehouse : str, default=None
         The Fabric lakehouse.
         Defaults to None which resolves to the lakehouse attached to the notebook.
-    workspace : str, default=None
-        The Fabric workspace used by the lakehouse.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID used by the lakehouse.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
@@ -52,13 +56,13 @@ def optimize_lakehouse_tables(
     from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
     from delta import DeltaTable
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     if lakehouse is None:
         lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse = resolve_lakehouse_name(lakehouse_id, workspace)
+        lakehouse = resolve_lakehouse_name(lakehouse_id, workspace_id)
 
-    lakeTables = get_lakehouse_tables(lakehouse=lakehouse, workspace=workspace)
+    lakeTables = get_lakehouse_tables(lakehouse=lakehouse, workspace=workspace_id)
     lakeTablesDelta = lakeTables[lakeTables["Format"] == "delta"]
 
     if isinstance(tables, str):
@@ -83,7 +87,7 @@ def optimize_lakehouse_tables(
 def vacuum_lakehouse_tables(
     tables: Optional[Union[str, List[str]]] = None,
     lakehouse: Optional[str] = None,
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
     retain_n_hours: Optional[int] = None,
 ):
     """
@@ -96,8 +100,8 @@ def vacuum_lakehouse_tables(
     lakehouse : str, default=None
         The Fabric lakehouse.
         Defaults to None which resolves to the lakehouse attached to the notebook.
-    workspace : str, default=None
-        The Fabric workspace used by the lakehouse.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID used by the lakehouse.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     retain_n_hours : int, default=None
@@ -111,13 +115,13 @@ def vacuum_lakehouse_tables(
     from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
     from delta import DeltaTable
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     if lakehouse is None:
         lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse = resolve_lakehouse_name(lakehouse_id, workspace)
+        lakehouse = resolve_lakehouse_name(lakehouse_id, workspace_id)
 
-    lakeTables = get_lakehouse_tables(lakehouse=lakehouse, workspace=workspace)
+    lakeTables = get_lakehouse_tables(lakehouse=lakehouse, workspace=workspace_id)
     lakeTablesDelta = lakeTables[lakeTables["Format"] == "delta"]
 
     if isinstance(tables, str):

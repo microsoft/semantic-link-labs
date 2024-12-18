@@ -8,13 +8,14 @@ import pandas as pd
 from typing import Optional
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
+from uuid import UUID
 
 
 def create_warehouse(
     warehouse: str,
     description: Optional[str] = None,
     case_insensitive_collation: bool = False,
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
 ):
     """
     Creates a Fabric warehouse.
@@ -29,13 +30,13 @@ def create_warehouse(
         A description of the warehouse.
     case_insensitive_collation: bool, default=False
         If True, creates the warehouse with case-insensitive collation.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     request_body = {"displayName": warehouse}
 
@@ -55,11 +56,11 @@ def create_warehouse(
     lro(client, response, status_codes=[201, 202])
 
     print(
-        f"{icons.green_dot} The '{warehouse}' warehouse has been created within the '{workspace}' workspace."
+        f"{icons.green_dot} The '{warehouse}' warehouse has been created within the '{workspace_name}' workspace."
     )
 
 
-def list_warehouses(workspace: Optional[str] = None) -> pd.DataFrame:
+def list_warehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the warehouses within a workspace.
 
@@ -67,8 +68,8 @@ def list_warehouses(workspace: Optional[str] = None) -> pd.DataFrame:
 
     Parameters
     ----------
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -89,7 +90,7 @@ def list_warehouses(workspace: Optional[str] = None) -> pd.DataFrame:
         ]
     )
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/warehouses")
@@ -115,7 +116,7 @@ def list_warehouses(workspace: Optional[str] = None) -> pd.DataFrame:
     return df
 
 
-def delete_warehouse(name: str, workspace: Optional[str] = None):
+def delete_warehouse(name: str, workspace: Optional[str | UUID] = None):
     """
     Deletes a Fabric warehouse.
 
@@ -125,16 +126,16 @@ def delete_warehouse(name: str, workspace: Optional[str] = None):
     ----------
     name: str
         Name of the warehouse.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     item_id = fabric.resolve_item_id(
-        item_name=name, type="Warehouse", workspace=workspace
+        item_name=name, type="Warehouse", workspace=workspace_id
     )
 
     client = fabric.FabricRestClient()
@@ -144,12 +145,12 @@ def delete_warehouse(name: str, workspace: Optional[str] = None):
         raise FabricHTTPException(response)
 
     print(
-        f"{icons.green_dot} The '{name}' warehouse within the '{workspace}' workspace has been deleted."
+        f"{icons.green_dot} The '{name}' warehouse within the '{workspace_name}' workspace has been deleted."
     )
 
 
 def get_warehouse_tables(
-    warehouse: str, workspace: Optional[str] = None
+    warehouse: str, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
     Shows a list of the tables in the Fabric warehouse. This function is based on INFORMATION_SCHEMA.TABLES.
@@ -158,8 +159,8 @@ def get_warehouse_tables(
     ----------
     warehouse : str
         Name of the Fabric warehouse.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -184,7 +185,7 @@ def get_warehouse_tables(
 
 
 def get_warehouse_columns(
-    warehouse: str, workspace: Optional[str] = None
+    warehouse: str, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
     Shows a list of the columns in each table within the Fabric warehouse. This function is based on INFORMATION_SCHEMA.COLUMNS.
@@ -193,8 +194,8 @@ def get_warehouse_columns(
     ----------
     warehouse : str
         Name of the Fabric warehouse.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 

@@ -5,6 +5,10 @@ import re
 import base64
 import json
 import requests
+from uuid import UUID
+from sempy_labs._helper_functions import (
+    resolve_workspace_name_and_id,
+)
 
 
 vis_type_mapping = {
@@ -66,16 +70,16 @@ page_type_mapping = {
 page_types = ["Tooltip", "Letter", "4:3", "16:9"]
 
 
-def get_web_url(report: str, workspace: Optional[str] = None):
+def get_web_url(report: str, workspace: Optional[str | UUID] = None):
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    dfR = fabric.list_reports(workspace=workspace)
+    dfR = fabric.list_reports(workspace=workspace_id)
     dfR_filt = dfR[dfR["Name"] == report]
 
     if len(dfR_filt) == 0:
         raise ValueError(
-            f"{icons.red_dot} The '{report}' report does not exist within the '{workspace}' workspace."
+            f"{icons.red_dot} The '{report}' report does not exist within the '{workspace_name}' workspace."
         )
     web_url = dfR_filt["Web Url"].iloc[0]
 

@@ -18,12 +18,13 @@ from typing import Optional
 import sempy_labs._icons as icons
 from sempy._utils._log import log
 from sempy.fabric.exceptions import FabricHTTPException
+from uuid import UUID
 
 
 @log
 def get_lakehouse_tables(
     lakehouse: Optional[str] = None,
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
     extended: bool = False,
     count_rows: bool = False,
     export: bool = False,
@@ -38,8 +39,8 @@ def get_lakehouse_tables(
     lakehouse : str, default=None
         The Fabric lakehouse.
         Defaults to None which resolves to the lakehouse attached to the notebook.
-    workspace : str, default=None
-        The Fabric workspace used by the lakehouse.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID used by the lakehouse.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     extended : bool, default=False
@@ -66,13 +67,13 @@ def get_lakehouse_tables(
         ]
     )
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     if lakehouse is None:
         lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse = resolve_lakehouse_name(lakehouse_id, workspace)
+        lakehouse = resolve_lakehouse_name(lakehouse_id, workspace_id)
     else:
-        lakehouse_id = resolve_lakehouse_id(lakehouse, workspace)
+        lakehouse_id = resolve_lakehouse_id(lakehouse, workspace_id)
 
     if count_rows:  # Setting countrows defaults to extended=True
         extended = True
@@ -104,7 +105,7 @@ def get_lakehouse_tables(
     for r in responses:
         for i in r.get("data", []):
             new_data = {
-                "Workspace Name": workspace,
+                "Workspace Name": workspace_name,
                 "Lakehouse Name": lakehouse,
                 "Table Name": i.get("name"),
                 "Format": i.get("format"),
@@ -117,7 +118,7 @@ def get_lakehouse_tables(
         df = pd.concat(dfs, ignore_index=True)
 
     if extended:
-        sku_value = get_sku_size(workspace)
+        sku_value = get_sku_size(workspace_id)
         guardrail = get_directlake_guardrails_for_sku(sku_value)
         spark = SparkSession.builder.getOrCreate()
         df["Files"] = None
@@ -182,7 +183,7 @@ def get_lakehouse_tables(
 
         lakehouse_id = fabric.get_lakehouse_id()
         lakehouse = resolve_lakehouse_name(
-            lakehouse_id=lakehouse_id, workspace=workspace
+            lakehouse_id=lakehouse_id, workspace=workspace_id
         )
         lakeTName = "lakehouse_table_details"
         lakeT_filt = df[df["Table Name"] == lakeTName]

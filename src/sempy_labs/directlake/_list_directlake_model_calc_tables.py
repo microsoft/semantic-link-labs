@@ -5,21 +5,26 @@ from sempy_labs.tom import connect_semantic_model
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
+from uuid import UUID
+from sempy_labs._helper_functions import (
+    resolve_dataset_name_and_id,
+    resolve_workspace_name_and_id,
+)
 
 
 @log
 def list_direct_lake_model_calc_tables(
-    dataset: str, workspace: Optional[str] = None
+    dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
     Shows the calculated tables and their respective DAX expression for a Direct Lake model (which has been migrated from import/DirectQuery).
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    dataset : str | UUID
+        Name or ID of the semantic model.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -29,12 +34,13 @@ def list_direct_lake_model_calc_tables(
         A pandas dataframe showing the calculated tables which were migrated to Direct Lake and whose DAX expressions are stored as model annotations.
     """
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
     df = pd.DataFrame(columns=["Table Name", "Source Expression"])
 
     with connect_semantic_model(
-        dataset=dataset, readonly=True, workspace=workspace
+        dataset=dataset_id, readonly=True, workspace=workspace_id
     ) as tom:
 
         is_direct_lake = tom.is_direct_lake()
@@ -44,8 +50,8 @@ def list_direct_lake_model_calc_tables(
                 f"{icons.red_dot} The '{dataset}' semantic model is not in Direct Lake mode."
             )
         else:
-            dfA = fabric.list_annotations(dataset=dataset, workspace=workspace)
-            dfT = list_tables(dataset, workspace)
+            dfA = fabric.list_annotations(dataset=dataset_id, workspace=workspace_id)
+            dfT = list_tables(dataset_id, workspace_id)
             dfA_filt = dfA[
                 (dfA["Object Type"] == "Model")
                 & (dfA["Annotation Name"].isin(dfT["Name"]))

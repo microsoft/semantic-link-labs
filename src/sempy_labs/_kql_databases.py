@@ -8,9 +8,10 @@ from sempy_labs._helper_functions import (
     pagination,
 )
 from sempy.fabric.exceptions import FabricHTTPException
+from uuid import UUID
 
 
-def list_kql_databases(workspace: Optional[str] = None) -> pd.DataFrame:
+def list_kql_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the KQL databases within a workspace.
 
@@ -18,8 +19,8 @@ def list_kql_databases(workspace: Optional[str] = None) -> pd.DataFrame:
 
     Parameters
     ----------
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -41,7 +42,7 @@ def list_kql_databases(workspace: Optional[str] = None) -> pd.DataFrame:
         ]
     )
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/kqlDatabases")
@@ -69,7 +70,7 @@ def list_kql_databases(workspace: Optional[str] = None) -> pd.DataFrame:
 
 
 def create_kql_database(
-    name: str, description: Optional[str] = None, workspace: Optional[str] = None
+    name: str, description: Optional[str] = None, workspace: Optional[str | UUID] = None
 ):
     """
     Creates a KQL database.
@@ -82,13 +83,13 @@ def create_kql_database(
         Name of the KQL database.
     description : str, default=None
         A description of the environment.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     request_body = {"displayName": name}
 
@@ -103,11 +104,11 @@ def create_kql_database(
     lro(client, response, status_codes=[201, 202])
 
     print(
-        f"{icons.green_dot} The '{name}' KQL database has been created within the '{workspace}' workspace."
+        f"{icons.green_dot} The '{name}' KQL database has been created within the '{workspace_name}' workspace."
     )
 
 
-def delete_kql_database(name: str, workspace: Optional[str] = None):
+def delete_kql_database(name: str, workspace: Optional[str | UUID] = None):
     """
     Deletes a KQL database.
 
@@ -117,15 +118,15 @@ def delete_kql_database(name: str, workspace: Optional[str] = None):
     ----------
     name: str
         Name of the KQL database.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     kql_database_id = fabric.resolve_item_id(
-        item_name=name, type="KQLDatabase", workspace=workspace
+        item_name=name, type="KQLDatabase", workspace=workspace_id
     )
 
     client = fabric.FabricRestClient()
@@ -136,5 +137,5 @@ def delete_kql_database(name: str, workspace: Optional[str] = None):
     if response.status_code != 200:
         raise FabricHTTPException(response)
     print(
-        f"{icons.green_dot} The '{name}' KQL database within the '{workspace}' workspace has been deleted."
+        f"{icons.green_dot} The '{name}' KQL database within the '{workspace_name}' workspace has been deleted."
     )

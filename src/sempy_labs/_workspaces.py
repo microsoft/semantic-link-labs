@@ -8,9 +8,10 @@ from sempy_labs._helper_functions import (
     resolve_capacity_id,
 )
 from sempy.fabric.exceptions import FabricHTTPException
+from uuid import UUID
 
 
-def delete_user_from_workspace(email_address: str, workspace: Optional[str] = None):
+def delete_user_from_workspace(email_address: str, workspace: Optional[str | UUID] = None):
     """
     Removes a user from a workspace.
 
@@ -20,13 +21,13 @@ def delete_user_from_workspace(email_address: str, workspace: Optional[str] = No
     ----------
     email_address : str
         The email address of the user.
-    workspace : str, default=None
-        The name of the workspace.
+    workspace : str | UUID, default=None
+        The name or ID of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.PowerBIRestClient()
     response = client.delete(f"/v1.0/myorg/groups/{workspace_id}/users/{email_address}")
@@ -34,7 +35,7 @@ def delete_user_from_workspace(email_address: str, workspace: Optional[str] = No
     if response.status_code != 200:
         raise FabricHTTPException(response)
     print(
-        f"{icons.green_dot} The '{email_address}' user has been removed from accessing the '{workspace}' workspace."
+        f"{icons.green_dot} The '{email_address}' user has been removed from accessing the '{workspace_name}' workspace."
     )
 
 
@@ -42,7 +43,7 @@ def update_workspace_user(
     email_address: str,
     role_name: str,
     principal_type: Optional[str] = "User",
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
 ):
     """
     Updates a user's role within a workspace.
@@ -57,13 +58,13 @@ def update_workspace_user(
         The `role <https://learn.microsoft.com/rest/api/power-bi/groups/add-group-user#groupuseraccessright>`_ of the user within the workspace.
     principal_type : str, default='User'
         The `principal type <https://learn.microsoft.com/rest/api/power-bi/groups/add-group-user#principaltype>`_.
-    workspace : str, default=None
-        The name of the workspace.
+    workspace : str | UUID, default=None
+        The name or ID of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     role_names = icons.workspace_roles
     role_name = role_name.capitalize()
@@ -91,11 +92,11 @@ def update_workspace_user(
     if response.status_code != 200:
         raise FabricHTTPException(response)
     print(
-        f"{icons.green_dot} The '{email_address}' user has been updated to a '{role_name}' within the '{workspace}' workspace."
+        f"{icons.green_dot} The '{email_address}' user has been updated to a '{role_name}' within the '{workspace_name}' workspace."
     )
 
 
-def list_workspace_users(workspace: Optional[str] = None) -> pd.DataFrame:
+def list_workspace_users(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     A list of all the users of a workspace and their roles.
 
@@ -103,8 +104,8 @@ def list_workspace_users(workspace: Optional[str] = None) -> pd.DataFrame:
 
     Parameters
     ----------
-    workspace : str, default=None
-        The name of the workspace.
+    workspace : str | UUID, default=None
+        The name or ID of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -114,7 +115,7 @@ def list_workspace_users(workspace: Optional[str] = None) -> pd.DataFrame:
         A pandas dataframe the users of a workspace and their properties.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     df = pd.DataFrame(columns=["User Name", "Email Address", "Role", "Type", "User ID"])
     client = fabric.FabricRestClient()
@@ -143,7 +144,7 @@ def add_user_to_workspace(
     email_address: str,
     role_name: str,
     principal_type: Optional[str] = "User",
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
 ):
     """
     Adds a user to a workspace.
@@ -158,13 +159,13 @@ def add_user_to_workspace(
         The `role <https://learn.microsoft.com/rest/api/power-bi/groups/add-group-user#groupuseraccessright>`_ of the user within the workspace.
     principal_type : str, default='User'
         The `principal type <https://learn.microsoft.com/rest/api/power-bi/groups/add-group-user#principaltype>`_.
-    workspace : str, default=None
-        The name of the workspace.
+    workspace : str | UUID, default=None
+        The name or ID of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     role_names = icons.workspace_roles
     role_name = role_name.capitalize()
@@ -196,11 +197,11 @@ def add_user_to_workspace(
     if response.status_code != 200:
         raise FabricHTTPException(response)
     print(
-        f"{icons.green_dot} The '{email_address}' user has been added as a{plural} '{role_name}' within the '{workspace}' workspace."
+        f"{icons.green_dot} The '{email_address}' user has been added as a{plural} '{role_name}' within the '{workspace_name}' workspace."
     )
 
 
-def assign_workspace_to_capacity(capacity_name: str, workspace: Optional[str] = None):
+def assign_workspace_to_capacity(capacity_name: str, workspace: Optional[str | UUID] = None):
     """
     Assigns a workspace to a capacity.
 
@@ -210,13 +211,13 @@ def assign_workspace_to_capacity(capacity_name: str, workspace: Optional[str] = 
     ----------
     capacity_name : str
         The name of the capacity.
-    workspace : str, default=None
-        The name of the Fabric workspace.
+    workspace : str | UUID, default=None
+        The name or ID of the Fabric workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     capacity_id = resolve_capacity_id(capacity_name=capacity_name)
 
     request_body = {"capacityId": capacity_id}
@@ -230,11 +231,11 @@ def assign_workspace_to_capacity(capacity_name: str, workspace: Optional[str] = 
     if response.status_code not in [200, 202]:
         raise FabricHTTPException(response)
     print(
-        f"{icons.green_dot} The '{workspace}' workspace has been assigned to the '{capacity_name}' capacity."
+        f"{icons.green_dot} The '{workspace_name}' workspace has been assigned to the '{capacity_name}' capacity."
     )
 
 
-def unassign_workspace_from_capacity(workspace: Optional[str] = None):
+def unassign_workspace_from_capacity(workspace: Optional[str | UUID] = None):
     """
     Unassigns a workspace from its assigned capacity.
 
@@ -242,13 +243,13 @@ def unassign_workspace_from_capacity(workspace: Optional[str] = None):
 
     Parameters
     ----------
-    workspace : str, default=None
-        The name of the Fabric workspace.
+    workspace : str | UUID, default=None
+        The name or ID of the Fabric workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
     response = client.post(f"/v1/workspaces/{workspace_id}/unassignFromCapacity")
@@ -256,11 +257,11 @@ def unassign_workspace_from_capacity(workspace: Optional[str] = None):
     if response.status_code not in [200, 202]:
         raise FabricHTTPException(response)
     print(
-        f"{icons.green_dot} The '{workspace}' workspace has been unassigned from its capacity."
+        f"{icons.green_dot} The '{workspace_name}' workspace has been unassigned from its capacity."
     )
 
 
-def list_workspace_role_assignments(workspace: Optional[str] = None) -> pd.DataFrame:
+def list_workspace_role_assignments(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the members of a given workspace.
 
@@ -268,8 +269,8 @@ def list_workspace_role_assignments(workspace: Optional[str] = None) -> pd.DataF
 
     Parameters
     ----------
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -279,7 +280,7 @@ def list_workspace_role_assignments(workspace: Optional[str] = None) -> pd.DataF
         A pandas dataframe showing the members of a given workspace and their roles.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     df = pd.DataFrame(columns=["User Name", "User Email", "Role Name", "Type"])
 

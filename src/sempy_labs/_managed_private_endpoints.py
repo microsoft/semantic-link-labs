@@ -16,7 +16,7 @@ def create_managed_private_endpoint(
     target_private_link_resource_id: UUID,
     target_subresource_type: str,
     request_message: Optional[str] = None,
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
 ):
     """
     Creates a managed private endpoint.
@@ -33,13 +33,13 @@ def create_managed_private_endpoint(
         Sub-resource pointing to Private-link resoure.
     request_message : str, default=None
         Message to approve private endpoint request. Should not be more than 140 characters.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     request_body = {
         "name": name,
@@ -62,11 +62,11 @@ def create_managed_private_endpoint(
     lro(client, response, status_codes=[201, 202])
 
     print(
-        f"{icons.green_dot} The '{name}' managed private endpoint has been created within the '{workspace}' workspace."
+        f"{icons.green_dot} The '{name}' managed private endpoint has been created within the '{workspace_name}' workspace."
     )
 
 
-def list_managed_private_endpoints(workspace: Optional[str] = None) -> pd.DataFrame:
+def list_managed_private_endpoints(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the managed private endpoints within a workspace.
 
@@ -74,8 +74,8 @@ def list_managed_private_endpoints(workspace: Optional[str] = None) -> pd.DataFr
 
     Parameters
     ----------
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -97,7 +97,7 @@ def list_managed_private_endpoints(workspace: Optional[str] = None) -> pd.DataFr
         ]
     )
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/managedPrivateEndpoints")
@@ -124,7 +124,7 @@ def list_managed_private_endpoints(workspace: Optional[str] = None) -> pd.DataFr
 
 
 def delete_managed_private_endpoint(
-    managed_private_endpoint: str, workspace: Optional[str] = None
+    managed_private_endpoint: str, workspace: Optional[str | UUID] = None
 ):
     """
     Deletes a Fabric managed private endpoint.
@@ -135,20 +135,20 @@ def delete_managed_private_endpoint(
     ----------
     managed_private_endpoint: str
         Name of the managed private endpoint.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    df = list_managed_private_endpoints(workspace=workspace)
+    df = list_managed_private_endpoints(workspace=workspace_id)
     df_filt = df[df["Managed Private Endpoint Name"] == managed_private_endpoint]
 
     if len(df_filt) == 0:
         raise ValueError(
-            f"{icons.red_dot} The '{managed_private_endpoint}' managed private endpoint does not exist within the '{workspace}' workspace."
+            f"{icons.red_dot} The '{managed_private_endpoint}' managed private endpoint does not exist within the '{workspace_name}' workspace."
         )
 
     item_id = df_filt["Managed Private Endpoint Id"].iloc[0]
@@ -162,5 +162,5 @@ def delete_managed_private_endpoint(
         raise FabricHTTPException(response)
 
     print(
-        f"{icons.green_dot} The '{managed_private_endpoint}' managed private endpoint within the '{workspace}' workspace has been deleted."
+        f"{icons.green_dot} The '{managed_private_endpoint}' managed private endpoint within the '{workspace_name}' workspace has been deleted."
     )

@@ -7,14 +7,15 @@ from sempy_labs._helper_functions import (
 from typing import Optional
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
+from uuid import UUID
 
 
 def create_shortcut_onelake(
     table_name: str,
     source_lakehouse: str,
-    source_workspace: str,
+    source_workspace: str | UUID,
     destination_lakehouse: str,
-    destination_workspace: Optional[str] = None,
+    destination_workspace: Optional[str | UUID] = None,
     shortcut_name: Optional[str] = None,
 ):
     """
@@ -28,28 +29,34 @@ def create_shortcut_onelake(
         The table name for which a shortcut will be created.
     source_lakehouse : str
         The Fabric lakehouse in which the table resides.
-    source_workspace : str
-        The name of the Fabric workspace in which the source lakehouse exists.
+    source_workspace : str | UUID
+        The name or ID of the Fabric workspace in which the source lakehouse exists.
     destination_lakehouse : str
         The Fabric lakehouse in which the shortcut will be created.
-    destination_workspace : str, default=None
-        The name of the Fabric workspace in which the shortcut will be created.
+    destination_workspace : str | UUID, default=None
+        The name or ID of the Fabric workspace in which the shortcut will be created.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     shortcut_name : str, default=None
         The name of the shortcut 'table' to be created. This defaults to the 'table_name' parameter value.
     """
 
-    sourceWorkspaceId = fabric.resolve_workspace_id(source_workspace)
-    sourceLakehouseId = resolve_lakehouse_id(source_lakehouse, source_workspace)
+    (source_workspace_name, source_workspace_id) = resolve_workspace_name_and_id(source_workspace)
+    source_lakehouse_id = resolve_lakehouse_id(source_lakehouse, source_workspace_id)
+    source_lakehouse_name = fabric.resolve_item_name(item_id=source_lakehouse_id, type='Lakehouse', workspace=source_workspace_id)
 
     if destination_workspace is None:
-        destination_workspace = source_workspace
+        destination_workspace_name = source_workspace_name
+        destination_workspace_id = source_workspace_id
+    else:
+        destination_workspace_name = destination_workspace
+        destination_workspace_id = fabric.resolve_workspace_id(destination_workspace_name)
 
-    destinationWorkspaceId = fabric.resolve_workspace_id(destination_workspace)
-    destinationLakehouseId = resolve_lakehouse_id(
+    destination_workspace_id = fabric.resolve_workspace_id(destination_workspace)
+    destination_lakehouse_id = resolve_lakehouse_id(
         destination_lakehouse, destination_workspace
     )
+    destination_lakehouse_name = fabric.resolve_item_name(item_id=destination_lakehouse_id, type='Lakehouse', workspace=destination_workspace_id)
 
     if shortcut_name is None:
         shortcut_name = table_name
@@ -62,8 +69,8 @@ def create_shortcut_onelake(
         "name": shortcut_name.replace(" ", ""),
         "target": {
             "oneLake": {
-                "workspaceId": sourceWorkspaceId,
-                "itemId": sourceLakehouseId,
+                "workspaceId": source_workspace_id,
+                "itemId": source_lakehouse_id,
                 "path": tablePath,
             }
         },
@@ -71,13 +78,13 @@ def create_shortcut_onelake(
 
     try:
         response = client.post(
-            f"/v1/workspaces/{destinationWorkspaceId}/items/{destinationLakehouseId}/shortcuts",
+            f"/v1/workspaces/{destination_workspace_id}/items/{destination_lakehouse_id}/shortcuts",
             json=request_body,
         )
         if response.status_code == 201:
             print(
-                f"{icons.green_dot} The shortcut '{shortcut_name}' was created in the '{destination_lakehouse}' lakehouse within"
-                f" the '{destination_workspace} workspace. It is based on the '{table_name}' table in the '{source_lakehouse}' lakehouse within the '{source_workspace}' workspace."
+                f"{icons.green_dot} The shortcut '{shortcut_name}' was created in the '{destination_lakehouse_name}' lakehouse within"
+                f" the '{destination_workspace_name} workspace. It is based on the '{table_name}' table in the '{source_lakehouse_name}' lakehouse within the '{source_workspace_name}' workspace."
             )
         else:
             print(response.status_code)
@@ -166,7 +173,7 @@ def create_shortcut(
 
 
 def delete_shortcut(
-    shortcut_name: str, lakehouse: Optional[str] = None, workspace: Optional[str] = None
+    shortcut_name: str, lakehouse: Optional[str] = None, workspace: Optional[str | UUID] = None
 ):
     """
     Deletes a shortcut.
@@ -180,19 +187,19 @@ def delete_shortcut(
     lakehouse : str, default=None
         The Fabric lakehouse name in which the shortcut resides.
         Defaults to None which resolves to the lakehouse attached to the notebook.
-    workspace : str, default=None
-        The name of the Fabric workspace in which lakehouse resides.
+    workspace : str | UUID, default=None
+        The name or ID of the Fabric workspace in which lakehouse resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     if lakehouse is None:
         lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse = resolve_lakehouse_name(lakehouse_id, workspace)
+        lakehouse = resolve_lakehouse_name(lakehouse_id, workspace_id)
     else:
-        lakehouse_id = resolve_lakehouse_id(lakehouse, workspace)
+        lakehouse_id = resolve_lakehouse_id(lakehouse, workspace_id)
 
     client = fabric.FabricRestClient()
     response = client.delete(
@@ -202,5 +209,5 @@ def delete_shortcut(
     if response.status_code != 200:
         raise FabricHTTPException(response)
     print(
-        f"{icons.green_dot} The '{shortcut_name}' shortcut in the '{lakehouse}' within the '{workspace}' workspace has been deleted."
+        f"{icons.green_dot} The '{shortcut_name}' shortcut in the '{lakehouse}' within the '{workspace_name}' workspace has been deleted."
     )

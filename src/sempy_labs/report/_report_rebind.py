@@ -1,20 +1,21 @@
 import sempy.fabric as fabric
 from sempy_labs._helper_functions import (
     resolve_dataset_id,
+    resolve_workspace_name_and_id,
     resolve_report_id,
 )
 from typing import Optional, List
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
-
+from uuid import UUID
 
 @log
 def report_rebind(
     report: str | List[str],
     dataset: str,
-    report_workspace: Optional[str] = None,
-    dataset_workspace: Optional[str] = None,
+    report_workspace: Optional[str | UUID] = None,
+    dataset_workspace: Optional[str | UUID] = None,
 ):
     """
     Rebinds a report to a semantic model.
@@ -27,23 +28,20 @@ def report_rebind(
         Name(s) of the Power BI report(s).
     dataset : str
         Name of the semantic model.
-    report_workspace : str, default=None
-        The name of the Fabric workspace in which the report resides.
+    report_workspace : str | UUID, default=None
+        The name or ID of the Fabric workspace in which the report resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    dataset_workspace : str, default=None
-        The name of the Fabric workspace in which the semantic model resides.
+    dataset_workspace : str | UUID, default=None
+        The name or ID of the Fabric workspace in which the semantic model resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    if report_workspace is None:
-        report_workspace_id = fabric.get_workspace_id()
-        report_workspace = fabric.resolve_workspace_name(report_workspace_id)
-    else:
-        report_workspace_id = fabric.resolve_workspace_id(report_workspace)
+    (report_workspace_name, report_workspace_id) = resolve_workspace_name_and_id(report_workspace)
+
     if dataset_workspace is None:
-        dataset_workspace = report_workspace
+        dataset_workspace = report_workspace_name
 
     client = fabric.PowerBIRestClient()
 
@@ -51,14 +49,14 @@ def report_rebind(
         report = [report]
 
     for rpt in report:
-        reportId = resolve_report_id(report=rpt, workspace=report_workspace)
-        datasetId = resolve_dataset_id(dataset=dataset, workspace=dataset_workspace)
+        report_id = resolve_report_id(report=rpt, workspace=report_workspace_id)
+        dataset_id = resolve_dataset_id(dataset=dataset, workspace=dataset_workspace)
 
         # Prepare API
-        request_body = {"datasetId": datasetId}
+        request_body = {"datasetId": dataset_id}
 
         response = client.post(
-            f"/v1.0/myorg/groups/{report_workspace_id}/reports/{reportId}/Rebind",
+            f"/v1.0/myorg/groups/{report_workspace_id}/reports/{report_id}/Rebind",
             json=request_body,
         )
 

@@ -3,16 +3,21 @@ import sempy.fabric as fabric
 from sempy_labs.lakehouse import get_lakehouse_columns
 from sempy_labs.directlake._dl_helper import get_direct_lake_source
 from sempy_labs.tom import connect_semantic_model
-from sempy_labs._helper_functions import _convert_data_type
+from sempy_labs._helper_functions import (
+    _convert_data_type,
+    resolve_workspace_name_and_id,
+    resolve_dataset_name_and_id,
+)
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
+from uuid import UUID
 
 
 @log
 def direct_lake_schema_sync(
-    dataset: str,
-    workspace: Optional[str] = None,
+    dataset: str | UUID,
+    workspace: Optional[str | UUID] = None,
     add_to_model: bool = False,
     **kwargs,
 ):
@@ -21,10 +26,10 @@ def direct_lake_schema_sync(
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    dataset : str | UUID
+        Name or ID of the semantic model.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     add_to_model : bool, default=False
@@ -45,10 +50,11 @@ def direct_lake_schema_sync(
         )
         del kwargs["lakehouse_workspace"]
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
     artifact_type, lakehouse_name, lakehouse_id, lakehouse_workspace_id = (
-        get_direct_lake_source(dataset=dataset, workspace=workspace)
+        get_direct_lake_source(dataset=dataset_id, workspace=workspace_id)
     )
 
     if artifact_type == "Warehouse":
@@ -60,7 +66,7 @@ def direct_lake_schema_sync(
     lc = get_lakehouse_columns(lakehouse_name, lakehouse_workspace)
 
     with connect_semantic_model(
-        dataset=dataset, readonly=False, workspace=workspace
+        dataset=dataset_id, readonly=False, workspace=workspace_id
     ) as tom:
 
         for i, r in lc.iterrows():
@@ -86,7 +92,7 @@ def direct_lake_schema_sync(
                     for c in tom.all_columns()
                 ):
                     print(
-                        f"{icons.yellow_dot} The '{lakeCName}' column exists in the '{lakeTName}' lakehouse table but not in the '{dataset}' semantic model within the '{workspace}' workspace."
+                        f"{icons.yellow_dot} The '{lakeCName}' column exists in the '{lakeTName}' lakehouse table but not in the '{dataset_name}' semantic model within the '{workspace_name}' workspace."
                     )
                     if add_to_model:
                         dt = _convert_data_type(dType)
@@ -97,5 +103,5 @@ def direct_lake_schema_sync(
                             data_type=dt,
                         )
                         print(
-                            f"{icons.green_dot} The '{lakeCName}' column in the '{lakeTName}' lakehouse table was added to the '{dataset}' semantic model within the '{workspace}' workspace."
+                            f"{icons.green_dot} The '{lakeCName}' column in the '{lakeTName}' lakehouse table was added to the '{dataset_name}' semantic model within the '{workspace_name}' workspace."
                         )

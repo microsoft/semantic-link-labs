@@ -8,10 +8,11 @@ from sempy_labs._helper_functions import (
     pagination,
 )
 from sempy.fabric.exceptions import FabricHTTPException
+from uuid import UUID
 
 
 def create_eventhouse(
-    name: str, description: Optional[str] = None, workspace: Optional[str] = None
+    name: str, description: Optional[str] = None, workspace: Optional[str | UUID] = None
 ):
     """
     Creates a Fabric eventhouse.
@@ -24,13 +25,13 @@ def create_eventhouse(
         Name of the eventhouse.
     description : str, default=None
         A description of the environment.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     request_body = {"displayName": name}
 
@@ -45,11 +46,11 @@ def create_eventhouse(
     lro(client, response, status_codes=[201, 202])
 
     print(
-        f"{icons.green_dot} The '{name}' eventhouse has been created within the '{workspace}' workspace."
+        f"{icons.green_dot} The '{name}' eventhouse has been created within the '{workspace_name}' workspace."
     )
 
 
-def list_eventhouses(workspace: Optional[str] = None) -> pd.DataFrame:
+def list_eventhouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the eventhouses within a workspace.
 
@@ -57,8 +58,8 @@ def list_eventhouses(workspace: Optional[str] = None) -> pd.DataFrame:
 
     Parameters
     ----------
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -70,7 +71,7 @@ def list_eventhouses(workspace: Optional[str] = None) -> pd.DataFrame:
 
     df = pd.DataFrame(columns=["Eventhouse Name", "Eventhouse Id", "Description"])
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/eventhouses")
@@ -91,7 +92,7 @@ def list_eventhouses(workspace: Optional[str] = None) -> pd.DataFrame:
     return df
 
 
-def delete_eventhouse(name: str, workspace: Optional[str] = None):
+def delete_eventhouse(name: str, workspace: Optional[str | UUID] = None):
     """
     Deletes a Fabric eventhouse.
 
@@ -101,16 +102,16 @@ def delete_eventhouse(name: str, workspace: Optional[str] = None):
     ----------
     name: str
         Name of the eventhouse.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     item_id = fabric.resolve_item_id(
-        item_name=name, type="Eventhouse", workspace=workspace
+        item_name=name, type="Eventhouse", workspace=workspace_id
     )
 
     client = fabric.FabricRestClient()
@@ -120,5 +121,5 @@ def delete_eventhouse(name: str, workspace: Optional[str] = None):
         raise FabricHTTPException(response)
 
     print(
-        f"{icons.green_dot} The '{name}' eventhouse within the '{workspace}' workspace has been deleted."
+        f"{icons.green_dot} The '{name}' eventhouse within the '{workspace_name}' workspace has been deleted."
     )

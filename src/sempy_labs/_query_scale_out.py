@@ -3,13 +3,15 @@ import pandas as pd
 from sempy_labs._helper_functions import (
     resolve_dataset_id,
     resolve_workspace_name_and_id,
+    resolve_dataset_name_and_id,
 )
 from typing import Optional, Tuple
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
+from uuid import UUID
 
 
-def qso_sync(dataset: str, workspace: Optional[str] = None):
+def qso_sync(dataset: str | UUID, workspace: Optional[str | UUID] = None):
     """
     Triggers a query scale-out sync of read-only replicas for the specified dataset from the specified workspace.
 
@@ -17,16 +19,16 @@ def qso_sync(dataset: str, workspace: Optional[str] = None):
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    dataset : str | UUID
+        Name or ID of the semantic model.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-    dataset_id = resolve_dataset_id(dataset, workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
     client = fabric.PowerBIRestClient()
     response = client.post(
@@ -36,12 +38,12 @@ def qso_sync(dataset: str, workspace: Optional[str] = None):
     if response.status_code != 200:
         raise FabricHTTPException(response)
     print(
-        f"{icons.green_dot} QSO sync initiated for the '{dataset}' semantic model within the '{workspace}' workspace."
+        f"{icons.green_dot} QSO sync initiated for the '{dataset_name}' semantic model within the '{workspace_name}' workspace."
     )
 
 
 def qso_sync_status(
-    dataset: str, workspace: Optional[str] = None
+    dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Returns the query scale-out sync status for the specified dataset from the specified workspace.
@@ -50,10 +52,10 @@ def qso_sync_status(
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    dataset : str | UUID
+        Name or ID of the semantic model.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -81,8 +83,8 @@ def qso_sync_status(
         columns=["Replica ID", "Replica Type", "Replica Version", "Replica Timestamp"]
     )
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-    dataset_id = resolve_dataset_id(dataset, workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
     client = fabric.PowerBIRestClient()
     response = client.get(
@@ -139,7 +141,7 @@ def qso_sync_status(
         return df, dfRep
 
 
-def disable_qso(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
+def disable_qso(dataset: str | UUID, workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Sets the max read-only replicas to 0, disabling query scale out.
 
@@ -147,10 +149,10 @@ def disable_qso(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    dataset : str | UUID
+        Name or ID of the semantic model.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -160,8 +162,8 @@ def disable_qso(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
         A pandas dataframe showing the current query scale out settings.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-    dataset_id = resolve_dataset_id(dataset, workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
     request_body = {"queryScaleOutSettings": {"maxReadOnlyReplicas": "0"}}
 
@@ -172,20 +174,20 @@ def disable_qso(dataset: str, workspace: Optional[str] = None) -> pd.DataFrame:
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    df = list_qso_settings(dataset=dataset, workspace=workspace)
+    df = list_qso_settings(dataset=dataset_id, workspace=workspace_id)
 
     print(
-        f"{icons.green_dot} Query scale out has been disabled for the '{dataset}' semantic model within the '{workspace}' workspace."
+        f"{icons.green_dot} Query scale out has been disabled for the '{dataset_name}' semantic model within the '{workspace_name}' workspace."
     )
 
     return df
 
 
 def set_qso(
-    dataset: str,
+    dataset: str | UUID,
     auto_sync: bool = True,
     max_read_only_replicas: int = -1,
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
 ) -> pd.DataFrame:
     """
     Sets the query scale out settings for a semantic model.
@@ -194,14 +196,14 @@ def set_qso(
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
+    dataset : str | UUID
+        Name or ID of the semantic model.
     auto_sync : bool, default=True
         Whether the semantic model automatically syncs read-only replicas.
     max_read_only_replicas : int, default=-1
         To enable semantic model scale-out, set max_read_only_replicas to -1, or any non-0 value. A value of -1 allows Power BI to create as many read-only replicas as your Power BI capacity supports. You can also explicitly set the replica count to a value lower than that of the capacity maximum. Setting max_read_only_replicas to -1 is recommended.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -213,16 +215,16 @@ def set_qso(
 
     from sempy_labs._helper_functions import is_default_semantic_model
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-    dataset_id = resolve_dataset_id(dataset, workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    if is_default_semantic_model(dataset=dataset, workspace=workspace):
+    if is_default_semantic_model(dataset=dataset_id, workspace=workspace_id):
         raise ValueError(
             f"{icons.red_dot} The 'set_qso' function does not run against default semantic models."
         )
 
     if max_read_only_replicas == 0:
-        disable_qso(dataset=dataset, workspace=workspace)
+        disable_qso(dataset=dataset_id, workspace=workspace_id)
         return
 
     request_body = {
@@ -232,12 +234,12 @@ def set_qso(
         }
     }
 
-    dfL = list_qso_settings(dataset=dataset, workspace=workspace)
+    dfL = list_qso_settings(dataset=dataset_id, workspace=workspace_id)
     storage_mode = dfL["Storage Mode"].iloc[0]
 
     if storage_mode == "Small":
         set_semantic_model_storage_format(
-            dataset=dataset, storage_format="Large", workspace=workspace
+            dataset=dataset_id, storage_format="Large", workspace=workspace_id
         )
 
     client = fabric.PowerBIRestClient()
@@ -248,34 +250,34 @@ def set_qso(
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
-    df = list_qso_settings(dataset=dataset, workspace=workspace)
+    df = list_qso_settings(dataset=dataset_id, workspace=workspace_id)
     print(
-        f"{icons.green_dot} Query scale out has been set on the '{dataset}' semantic model within the '{workspace}' workspace."
+        f"{icons.green_dot} Query scale out has been set on the '{dataset_name}' semantic model within the '{workspace_name}' workspace."
     )
 
     return df
 
 
 def set_semantic_model_storage_format(
-    dataset: str, storage_format: str, workspace: Optional[str] = None
+    dataset: str | UUID, storage_format: str, workspace: Optional[str | UUID] = None
 ):
     """
     Sets the semantic model storage format.
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
+    dataset : str | UUID
+        Name or ID of the semantic model.
     storage_format : str
         The storage format for the semantic model. Valid options: 'Large', 'Small'.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-    dataset_id = resolve_dataset_id(dataset, workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
     storage_format = storage_format.capitalize()
 
@@ -295,12 +297,12 @@ def set_semantic_model_storage_format(
             f"{icons.red_dot} Invalid storage format value. Valid options: {storageFormats}."
         )
 
-    dfL = list_qso_settings(dataset=dataset, workspace=workspace)
+    dfL = list_qso_settings(dataset=dataset_id, workspace=workspace_id)
     current_storage_format = dfL["Storage Mode"].iloc[0]
 
     if current_storage_format == storage_format:
         print(
-            f"{icons.info} The '{dataset}' semantic model within the '{workspace}' workspace is already set to '{storage_format.lower()}' storage format."
+            f"{icons.info} The '{dataset_name}' semantic model within the '{workspace_name}' workspace is already set to '{storage_format.lower()}' storage format."
         )
         return
 
@@ -311,22 +313,22 @@ def set_semantic_model_storage_format(
     if response.status_code != 200:
         raise FabricHTTPException(response)
     print(
-        f"{icons.green_dot} The semantic model storage format for the '{dataset}' semantic model within the '{workspace}' workspace has been set to '{storage_format}'."
+        f"{icons.green_dot} The semantic model storage format for the '{dataset_name}' semantic model within the '{workspace_name}' workspace has been set to '{storage_format}'."
     )
 
 
 def list_qso_settings(
-    dataset: Optional[str] = None, workspace: Optional[str] = None
+    dataset: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
     Shows the query scale out settings for a semantic model (or all semantic models within a workspace).
 
     Parameters
     ----------
-    dataset : str, default=None
-        Name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    dataset : str | UUID, default=None
+        Name or ID of the semantic model.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -336,10 +338,10 @@ def list_qso_settings(
         A pandas dataframe showing the query scale out settings.
     """
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     if dataset is not None:
-        dataset_id = resolve_dataset_id(dataset, workspace)
+        (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
     df = pd.DataFrame(
         columns=[
@@ -382,7 +384,7 @@ def list_qso_settings(
 
 
 def set_workspace_default_storage_format(
-    storage_format: str, workspace: Optional[str] = None
+    storage_format: str, workspace: Optional[str | UUID] = None
 ):
     """
     Sets the default storage format for semantic models within a workspace.
@@ -391,8 +393,8 @@ def set_workspace_default_storage_format(
     ----------
     storage_format : str
         The storage format for the semantic model. Valid options: 'Large', 'Small'.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
@@ -408,22 +410,22 @@ def set_workspace_default_storage_format(
             f"{icons.red_dot} Invalid storage format. Please choose from these options: {storageFormats}."
         )
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     # Check current storage format
-    dfW = fabric.list_workspaces(filter=f"name eq '{workspace}'")
+    dfW = fabric.list_workspaces(filter=f"name eq '{workspace_name}'")
     if len(dfW) == 0:
         raise ValueError()
     current_storage_format = dfW["Default Dataset Storage Format"].iloc[0]
 
     if current_storage_format == storage_format:
         print(
-            f"{icons.info} The '{workspace}' is already set to a default storage format of '{current_storage_format}'."
+            f"{icons.info} The '{workspace_name}' is already set to a default storage format of '{current_storage_format}'."
         )
         return
 
     request_body = {
-        "name": workspace,
+        "name": workspace_name,
         "defaultDatasetStorageFormat": storage_format,
     }
 
@@ -434,5 +436,5 @@ def set_workspace_default_storage_format(
         raise FabricHTTPException(response)
 
     print(
-        f"{icons.green_dot} The default storage format for the '{workspace}' workspace has been updated to '{storage_format}."
+        f"{icons.green_dot} The default storage format for the '{workspace_name}' workspace has been updated to '{storage_format}."
     )

@@ -2,11 +2,15 @@ import sempy.fabric as fabric
 from typing import Optional
 from sempy.fabric.exceptions import FabricHTTPException
 import pandas as pd
+from uuid import UUID
+from sempy_labs._helper_functions import (
+    resolve_workspace_name_and_id,
+)
 
 
 def get_report_datasources(
     report: str,
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
 ) -> pd.DataFrame:
     """
     Returns a list of data sources for the specified paginated report (RDL) from the specified workspace.
@@ -15,8 +19,8 @@ def get_report_datasources(
     ----------
     report : str | List[str]
         Name(s) of the Power BI report(s).
-    workspace : str, default=None
-        The name of the Fabric workspace in which the report resides.
+    workspace : str | UUID, default=None
+        The name or ID of the Fabric workspace in which the report resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -38,14 +42,10 @@ def get_report_datasources(
         ]
     )
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-    else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     report_id = fabric.resolve_item_id(
-        item_name=report, type="PaginatedReport", workspace=workspace
+        item_name=report, type="PaginatedReport", workspace=workspace_id
     )
 
     client = fabric.PowerBIRestClient()

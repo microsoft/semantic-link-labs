@@ -14,17 +14,17 @@ from uuid import UUID
 
 @log
 def get_measure_dependencies(
-    dataset: str, workspace: Optional[str] = None
+    dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
     Shows all dependencies for all measures in a semantic model.
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    dataset : str | UUID
+        Name or ID of the semantic model.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -33,8 +33,6 @@ def get_measure_dependencies(
     pandas.DataFrame
         Shows all dependencies for all measures in the semantic model.
     """
-
-    workspace = fabric.resolve_workspace_name(workspace)
 
     dep = fabric.evaluate_dax(
         dataset=dataset,
@@ -164,11 +162,9 @@ def get_model_calc_dependencies(
         Shows all dependencies for all objects in the semantic model.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
     dep = fabric.evaluate_dax(
-        dataset=dataset_id,
-        workspace=workspace_id,
+        dataset=dataset,
+        workspace=workspace,
         dax_string="""
         SELECT
             [TABLE] AS [Table Name],
@@ -238,39 +234,36 @@ def get_model_calc_dependencies(
 
 @log
 def measure_dependency_tree(
-    dataset: str, measure_name: str, workspace: Optional[str] = None
+    dataset: str | UUID, measure_name: str, workspace: Optional[str | UUID] = None
 ):
     """
     Prints a measure dependency tree of all dependent objects for a measure in a semantic model.
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
+    dataset : str | UUID
+        Name or ID of the semantic model.
     measure_name : str
         Name of the measure.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-
     """
 
-    workspace = fabric.resolve_workspace_name(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    dfM = fabric.list_measures(dataset=dataset, workspace=workspace)
+    dfM = fabric.list_measures(dataset=dataset_id, workspace=workspace_id)
     dfM_filt = dfM[dfM["Measure Name"] == measure_name]
 
     if len(dfM_filt) == 0:
         print(
-            f"{icons.red_dot} The '{measure_name}' measure does not exist in the '{dataset}' semantic model in the '{workspace}' workspace."
+            f"{icons.red_dot} The '{measure_name}' measure does not exist in the '{dataset_name}' semantic model in the '{workspace_name}' workspace."
         )
         return
 
-    md = get_measure_dependencies(dataset, workspace)
+    md = get_measure_dependencies(dataset_id, workspace_id)
     df_filt = md[md["Object Name"] == measure_name]
 
     # Create a dictionary to hold references to nodes

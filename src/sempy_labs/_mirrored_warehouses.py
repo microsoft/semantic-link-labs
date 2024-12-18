@@ -6,9 +6,10 @@ from sempy_labs._helper_functions import (
     pagination,
 )
 from sempy.fabric.exceptions import FabricHTTPException
+from uuid import UUID
 
 
-def list_mirrored_warehouses(workspace: Optional[str] = None) -> pd.DataFrame:
+def list_mirrored_warehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the mirrored warehouses within a workspace.
 
@@ -16,8 +17,8 @@ def list_mirrored_warehouses(workspace: Optional[str] = None) -> pd.DataFrame:
 
     Parameters
     ----------
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -31,7 +32,7 @@ def list_mirrored_warehouses(workspace: Optional[str] = None) -> pd.DataFrame:
         columns=["Mirrored Warehouse Name", "Mirrored Warehouse Id", "Description"]
     )
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
     response = client.get(f"/v1/workspaces/{workspace_id}/mirroredWarehouses")
