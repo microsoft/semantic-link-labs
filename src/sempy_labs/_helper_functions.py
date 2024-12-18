@@ -148,8 +148,28 @@ def resolve_report_name(report_id: UUID, workspace: Optional[str | UUID] = None)
     )
 
 
+def resolve_item_name_and_id(item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None) -> Tuple[str, UUID]:
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    if _is_valid_uuid(item):
+        item_id = item
+        item_name = fabric.resolve_item_name(
+            item_id=item_id, type=type, workspace=workspace_id
+        )
+    else:
+        if type is None:
+            raise ValueError(f"{icons.warning} Must specify a 'type' if specifying a name as the 'item'.")
+        item_name = item
+        item_id = fabric.resolve_item_id(
+            item_name=item, type=type, workspace=workspace_id
+        )
+
+    return item_name, item_id
+
+
 def resolve_dataset_name_and_id(
-    dataset: str | UUID, workspace: Optional[str] = None
+    dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> Tuple[str, UUID]:
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
