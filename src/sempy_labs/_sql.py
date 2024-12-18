@@ -8,6 +8,7 @@ from sempy.fabric.exceptions import FabricHTTPException
 from sempy_labs._helper_functions import resolve_warehouse_id, resolve_lakehouse_id
 from uuid import UUID
 
+
 def _bytes2mswin_bstr(value: bytes) -> bytes:
     """Convert a sequence of bytes into a (MS-Windows) BSTR (as bytes).
 

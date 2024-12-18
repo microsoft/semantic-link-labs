@@ -10,8 +10,11 @@ from sempy_labs._helper_functions import (
 from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
+
 def create_environment(
-    environment: str, description: Optional[str] = None, workspace: Optional[str | UUID] = None
+    environment: str,
+    description: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
 ):
     """
     Creates a Fabric environment.

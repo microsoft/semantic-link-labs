@@ -78,7 +78,9 @@ class ReportWrapper:
         warnings.simplefilter(action="ignore", category=FutureWarning)
 
         self._report = report
-        (self._workspace_name, self._workspace_id) = resolve_workspace_name_and_id(workspace)
+        (self._workspace_name, self._workspace_id) = resolve_workspace_name_and_id(
+            workspace
+        )
         self._report_id = resolve_report_id(report, self._workspace_id)
         self.rdef = get_report_definition(
             report=self._report, workspace=self._workspace_id
@@ -96,7 +98,9 @@ class ReportWrapper:
         from sempy_labs.tom import connect_semantic_model
 
         dataset_id, dataset_name, dataset_workspace_id, dataset_workspace_name = (
-            resolve_dataset_from_report(report=self._report, workspace=self._workspace_id)
+            resolve_dataset_from_report(
+                report=self._report, workspace=self._workspace_id
+            )
         )
 
         with connect_semantic_model(
@@ -1215,7 +1219,9 @@ class ReportWrapper:
             .reset_index(drop=True)
         )
         dataset_id, dataset_name, dataset_workspace_id, dataset_workspace_name = (
-            resolve_dataset_from_report(report=self._report, workspace=self._workspace_id)
+            resolve_dataset_from_report(
+                report=self._report, workspace=self._workspace_id
+            )
         )
         dep = get_measure_dependencies(
             dataset=dataset_id, workspace=dataset_workspace_id
@@ -1686,7 +1692,9 @@ class ReportWrapper:
             return
 
         dataset_id, dataset_name, dataset_workspace_id, dataset_workspace_name = (
-            resolve_dataset_from_report(report=self._report, workspace=self._workspace_id)
+            resolve_dataset_from_report(
+                report=self._report, workspace=self._workspace_id
+            )
         )
 
         if isinstance(measures, str):

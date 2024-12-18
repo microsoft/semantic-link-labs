@@ -9,6 +9,7 @@ from typing import Optional, Tuple
 from sempy._utils._log import log
 from uuid import UUID
 
+
 @log
 def show_unsupported_direct_lake_objects(
     dataset: str | UUID, workspace: Optional[str | UUID] = None

@@ -260,7 +260,10 @@ def get_dax_query_memory_size(
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
     df = get_dax_query_dependencies(
-        dataset=dataset_id, workspace=workspace_id, dax_string=dax_string, put_in_memory=True
+        dataset=dataset_id,
+        workspace=workspace_id,
+        dax_string=dax_string,
+        put_in_memory=True,
     )
 
     return df["Total Size"].sum()

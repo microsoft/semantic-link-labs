@@ -54,7 +54,9 @@ def get_sku_size(workspace: Optional[str | UUID] = None) -> str:
     dfW = fabric.list_workspaces(filter=f"name eq '{workspace_name}'")
 
     if len(dfW) == 0:
-        raise ValueError(f"{icons.red_dot} The '{workspace_name}' is not a valid workspace.")
+        raise ValueError(
+            f"{icons.red_dot} The '{workspace_name}' is not a valid workspace."
+        )
 
     capacity_id = dfW["Capacity Id"].iloc[0]
     dfC = fabric.list_capacities()
