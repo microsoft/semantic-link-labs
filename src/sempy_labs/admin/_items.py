@@ -65,7 +65,7 @@ def _resolve_item_name_and_id(
 
 def list_items(
     capacity: Optional[str | UUID] = None,
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
     state: Optional[str] = None,
     type: Optional[str] = None,
     item: Optional[str | UUID] = None,
@@ -78,9 +78,9 @@ def list_items(
 
     Parameters
     ----------
-    capacity : str | UUID, default=None
+    capacity : str | uuid.UUID, default=None
         The capacity name or id.
-    workspace : str, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -195,7 +195,7 @@ def list_item_access_details(
         Name or id of the Fabric item.
     type : str, default=None
         Type of Fabric item.
-    workspace : str, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or id.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

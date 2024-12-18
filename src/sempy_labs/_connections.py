@@ -20,7 +20,7 @@ def delete_connection(connection: str | UUID):
 
     Parameters
     ----------
-    connection : str | UUID
+    connection : str | uuid.UUID
         The connection name or ID.
     """
 
@@ -43,9 +43,9 @@ def delete_connection_role_assignment(connection: str | UUID, role_assignment_id
 
     Parameters
     ----------
-    connection : str | UUID
+    connection : str | uuid.UUID
         The connection name or ID.
-    role_assignment_id : UUID
+    role_assignment_id : uuid.UUID
         The role assignment ID.
     """
 
@@ -88,7 +88,7 @@ def list_connection_role_assignments(connection: str | UUID) -> pd.DataFrame:
 
     Parameters
     ----------
-    connection : str | UUID
+    connection : str | uuid.UUID
         The connection name or ID.
 
     Returns
@@ -219,7 +219,7 @@ def list_item_connections(
         The item name.
     item_type : str
         The `item type <https://learn.microsoft.com/rest/api/fabric/core/items/update-item?tabs=HTTP#itemtype>`_.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -416,7 +416,7 @@ def create_on_prem_connection(
     ----------
     name : str
         The name of the connection.
-    gateway : str | UUID
+    gateway : str | uuid.UUID
         The name or Id of the gateway.
     server_name : str
         The name of the server.
@@ -497,7 +497,7 @@ def create_vnet_connection(
     ----------
     name : str
         The name of the connection.
-    gateway : str | UUID
+    gateway : str | uuid.UUID
         The name or Id of the gateway.
     server_name : str
         The name of the server.

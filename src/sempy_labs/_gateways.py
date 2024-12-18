@@ -95,7 +95,7 @@ def delete_gateway(gateway: str | UUID):
 
     Parameters
     ----------
-    gateway : str | UUID
+    gateway : str | uuid.UUID
         The gateway name or ID.
     """
 
@@ -117,7 +117,7 @@ def list_gateway_role_assigments(gateway: str | UUID) -> pd.DataFrame:
 
     Parameters
     ----------
-    gateway : str | UUID
+    gateway : str | uuid.UUID
         The gateway name or ID.
 
     Returns
@@ -159,9 +159,9 @@ def delete_gateway_role_assignment(gateway: str | UUID, role_assignement_id: UUI
 
     Parameters
     ----------
-    gateway : str | UUID
+    gateway : str | uuid.UUID
         The gateway name or ID.
-    role_assignement_id : UUID
+    role_assignement_id : uuid.UUID
         The role assignment ID.
     """
 
@@ -204,9 +204,9 @@ def delete_gateway_member(gateway: str | UUID, gateway_member: str | UUID):
 
     Parameters
     ----------
-    gateway : str | UUID
+    gateway : str | uuid.UUID
         The gateway name or ID.
-    gateway_member : str | UUID
+    gateway_member : str | uuid.UUID
         The gateway member name or ID.
     """
 
@@ -234,7 +234,7 @@ def list_gateway_members(gateway: str | UUID) -> pd.DataFrame:
 
     Parameters
     ----------
-    gateway : str | UUID
+    gateway : str | uuid.UUID
         The gateway name or ID.
 
     Returns
@@ -298,7 +298,7 @@ def create_vnet_gateway(
     ----------
     name : str
         The gateway name.
-    capacity : str | UUID
+    capacity : str | uuid.UUID
         The capacity name or Id.
     inactivity_minutes_before_sleep : int
         The minutes of inactivity before the virtual network gateway goes into auto-sleep. Must be one of the following values: 30, 60, 90, 120, 150, 240, 360, 480, 720, 1440.
@@ -353,7 +353,7 @@ def update_on_premises_gateway(
 
     Parameters
     ----------
-    gateway : str | UUID
+    gateway : str | uuid.UUID
         The gateway name or ID.
     allow_cloud_connection_refresh : bool, default=None
         Whether to allow cloud connections to refresh through this on-premises gateway. True - Allow, False - Do not allow.
@@ -403,9 +403,9 @@ def update_vnet_gateway(
 
     Parameters
     ----------
-    gateway : str | UUID
+    gateway : str | uuid.UUID
         The gateway name or ID.
-    capacity: str | UUID
+    capacity: str | uuid.UUID
         The capacity name or ID.
     inactivity_minutes_before_sleep : int, default=None
         The minutes of inactivity before the virtual network gateway goes into auto-sleep. Must be one of the following values: 30, 60, 90, 120, 150, 240, 360, 480, 720, 1440.
@@ -451,11 +451,11 @@ def bind_semantic_model_to_gateway(
 
     Parameters
     ----------
-    dataset : str | UUID
+    dataset : str | uuid.UUID
         The name or ID of the semantic model.
-    gateway : str | UUID
+    gateway : str | uuid.UUID
         The name or ID of the gateway.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

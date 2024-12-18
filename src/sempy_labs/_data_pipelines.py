@@ -20,7 +20,7 @@ def list_data_pipelines(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
     Parameters
     ----------
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -68,7 +68,7 @@ def create_data_pipeline(
         Name of the data pipeline.
     description : str, default=None
         A description of the environment.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -103,7 +103,7 @@ def delete_data_pipeline(name: str, workspace: Optional[str | UUID] = None):
     ----------
     name: str
         Name of the data pipeline.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -136,7 +136,7 @@ def get_data_pipeline_definition(
     ----------
     name : str
         The name of the data pipeline.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

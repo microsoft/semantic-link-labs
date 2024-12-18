@@ -27,13 +27,13 @@ def evaluate_dax_impersonation(
 
     Parameters
     ----------
-    dataset : str
+    dataset : str | uuid.UUID
         Name or ID of the semantic model.
     dax_query : str
         The DAX query.
     user_name : str
         The user name (i.e. hello@goodbye.com).
-    workspace : str, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -78,7 +78,7 @@ def get_dax_query_dependencies(
 
     Parameters
     ----------
-    dataset : str
+    dataset : str | uuid.UUID
         Name or ID of the semantic model.
     dax_string : str | List[str]
         The DAX query or list of DAX queries.
@@ -86,7 +86,7 @@ def get_dax_query_dependencies(
         If True, ensures that the dependent columns are put into memory in order to give realistic Vertipaq stats (i.e. Total Size etc.).
     show_vertipaq_stats : bool, default=True
         If True, shows vertipaq stats (i.e. Total Size, Data Size, Dictionary Size, Hierarchy Size)
-    workspace : str, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -231,11 +231,11 @@ def get_dax_query_memory_size(
 
     Parameters
     ----------
-    dataset : str | UUID
+    dataset : str | uuid.UUID
         Name or ID of the semantic model.
     dax_string : str
         The DAX query.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

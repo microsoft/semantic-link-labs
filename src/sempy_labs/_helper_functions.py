@@ -110,7 +110,7 @@ def resolve_report_id(report: str, workspace: Optional[str | UUID] = None) -> UU
     ----------
     report : str
         The name of the Power BI report.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -130,9 +130,9 @@ def resolve_report_name(report_id: UUID, workspace: Optional[str | UUID] = None)
 
     Parameters
     ----------
-    report_id : UUID
+    report_id : uuid.UUID
         The name of the Power BI report.
-    workspace : str, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -200,9 +200,9 @@ def resolve_dataset_id(
 
     Parameters
     ----------
-    dataset : str | UUID
+    dataset : str | uuid.UUID
         The name or ID of the semantic model.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -231,9 +231,9 @@ def resolve_dataset_name(
 
     Parameters
     ----------
-    dataset_id : UUID
+    dataset_id : uuid.UUID
         The name of the semantic model.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -257,10 +257,10 @@ def resolve_lakehouse_name(
 
     Parameters
     ----------
-    lakehouse_id : UUID, default=None
+    lakehouse_id : uuid.UUID, default=None
         The name of the Fabric lakehouse.
         Defaults to None which resolves to the lakehouse attached to the notebook.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -289,14 +289,14 @@ def resolve_lakehouse_id(
     ----------
     lakehouse : str
         The name of the Fabric lakehouse.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
     Returns
     -------
-    UUID
+    uuid.UUID
         The ID of the Fabric lakehouse.
     """
 
@@ -305,16 +305,16 @@ def resolve_lakehouse_id(
     )
 
 
-def get_direct_lake_sql_endpoint(dataset: str, workspace: Optional[str] = None) -> UUID:
+def get_direct_lake_sql_endpoint(dataset: str | UUID, workspace: Optional[str] = None) -> UUID:
     """
     Obtains the SQL Endpoint ID of the semantic model.
 
     Parameters
     ----------
-    dataset : str
-        The name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    dataset : str | uuid.UUID
+        The name or ID of the semantic model.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -445,7 +445,7 @@ def save_as_delta_table(
     lakehouse : str, default=None
         The Fabric lakehouse used by the Direct Lake semantic model.
         Defaults to None which resolves to the lakehouse attached to the notebook.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -577,7 +577,7 @@ def resolve_workspace_name_and_id(
 
     Parameters
     ----------
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -634,7 +634,7 @@ def is_default_semantic_model(
     ----------
     dataset : str
         The name of the semantic model.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -663,9 +663,9 @@ def resolve_item_type(item_id: UUID, workspace: Optional[str | UUID] = None) -> 
 
     Parameters
     ----------
-    item_id : UUID
+    item_id : uuid.UUID
         The item/artifact Id.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -697,7 +697,7 @@ def resolve_dataset_from_report(
     ----------
     report : str
         The name of the Power BI report.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -741,7 +741,7 @@ def resolve_workspace_capacity(
 
     Parameters
     ----------
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or UUID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -772,7 +772,7 @@ def get_capacity_id(workspace: Optional[str | UUID] = None) -> UUID:
 
     Parameters
     ----------
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -803,7 +803,7 @@ def get_capacity_name(workspace: Optional[str | UUID] = None) -> str:
 
     Parameters
     ----------
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -831,7 +831,7 @@ def resolve_capacity_name(capacity_id: Optional[UUID] = None) -> str:
 
     Parameters
     ----------
-    capacity_id : UUID, default=None
+    capacity_id : uuid.UUID, default=None
         The capacity Id.
         Defaults to None which resolves to the capacity name of the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the capacity name of the workspace of the notebook.
@@ -1030,7 +1030,7 @@ def resolve_warehouse_id(warehouse: str, workspace: Optional[str | UUID]) -> UUI
     ----------
     warehouse : str
         The warehouse name
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID in which the semantic model resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -1112,7 +1112,7 @@ def resolve_environment_id(
     ----------
     environment: str
         Name of the environment.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID in which the semantic model resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -1165,7 +1165,7 @@ def resolve_notebook_id(notebook: str, workspace: Optional[str | UUID] = None) -
     ----------
     notebook: str
         Name of the notebook.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID in which the semantic model resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

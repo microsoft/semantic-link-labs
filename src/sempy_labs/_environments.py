@@ -27,7 +27,7 @@ def create_environment(
         Name of the environment.
     description : str, default=None
         A description of the environment.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -60,7 +60,7 @@ def list_environments(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
     Parameters
     ----------
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -104,7 +104,7 @@ def delete_environment(environment: str, workspace: Optional[str | UUID] = None)
     ----------
     environment: str
         Name of the environment.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -138,7 +138,7 @@ def publish_environment(environment: str, workspace: Optional[str | UUID] = None
     ----------
     environment: str
         Name of the environment.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

@@ -20,9 +20,9 @@ def clear_cache(dataset: str | UUID, workspace: Optional[str | UUID] = None):
 
     Parameters
     ----------
-    dataset : str | UUID
+    dataset : str | uuid.UUID
         Name or ID of the semantic model.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -63,7 +63,7 @@ def backup_semantic_model(
 
     Parameters
     ----------
-    dataset : str | UUID
+    dataset : str | uuid.UUID
         Name or ID of the semantic model.
     file_path : str
         The ADLS Gen2 storage account location in which to backup the semantic model. Always saves within the 'power-bi-backup/<workspace name>' folder.
@@ -74,7 +74,7 @@ def backup_semantic_model(
         If True, overwrites backup files of the same name. If False, the file you are saving cannot have the same name as a file that already exists in the same location.
     apply_compression : bool, default=True
         If True, compresses the backup file. Compressed backup files save disk space, but require slightly higher CPU utilization.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -118,7 +118,7 @@ def restore_semantic_model(
 
     Parameters
     ----------
-    dataset : str | UUID
+    dataset : str | uuid.UUID
         Name or ID of the semantic model.
     file_path : str
         The location in which to backup the semantic model. Must end in '.abf'.
@@ -130,7 +130,7 @@ def restore_semantic_model(
         If True, ignores incompatibilities between Azure Analysis Services and Power BI Premium.
     force_restore: bool, default=False
         If True, restores the semantic model with the existing semantic model unloaded and offline.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -253,8 +253,8 @@ def list_backups(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
     Parameters
     ----------
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 

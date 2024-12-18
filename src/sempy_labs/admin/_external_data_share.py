@@ -75,11 +75,11 @@ def revoke_external_data_share(
 
     Parameters
     ----------
-    external_data_share_id : UUID
+    external_data_share_id : uuid.UUID
         The external data share ID.
-    item_id : int, default=None
+    item_id : uuid.UUID, default=None
         The Item ID
-    workspace : str
+    workspace : str | uuid.UUID
         The Fabric workspace name or id.
     """
     (workspace, workspace_id) = _resolve_workspace_name_and_id(workspace)

@@ -16,7 +16,7 @@ def list_dataflows(workspace: Optional[str | UUID] = None):
 
     Parameters
     ----------
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -68,7 +68,7 @@ def assign_workspace_to_dataflow_storage(
     ----------
     dataflow_storage_account : str
         The name of the dataflow storage account.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The name or ID of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -147,9 +147,9 @@ def list_upstream_dataflows(
 
     Parameters
     ----------
-    dataflow : str | UUID
+    dataflow : str | uuid.UUID
         Name or UUID of the dataflow.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

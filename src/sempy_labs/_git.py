@@ -38,7 +38,7 @@ def connect_workspace_to_git(
         The directory name.
     git_provider_type : str, default="AzureDevOps"
         A `Git provider type <https://learn.microsoft.com/rest/api/fabric/core/git/connect?tabs=HTTP#gitprovidertype>`_.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -77,7 +77,7 @@ def disconnect_workspace_from_git(workspace: Optional[str | UUID] = None):
 
     Parameters
     ----------
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -103,7 +103,7 @@ def get_git_status(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
     Parameters
     ----------
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -166,7 +166,7 @@ def get_git_connection(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
     Parameters
     ----------
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -226,7 +226,7 @@ def initialize_git_connection(workspace: Optional[str | UUID] = None) -> str:
 
     Parameters
     ----------
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -256,7 +256,7 @@ def initialize_git_connection(workspace: Optional[str | UUID] = None) -> str:
 
 def commit_to_git(
     comment: str,
-    item_ids: str | List[str] = None,
+    item_ids: UUID | List[UUID] = None,
     workspace: Optional[str | UUID] = None,
 ):
     """
@@ -268,10 +268,10 @@ def commit_to_git(
     ----------
     comment : str
         The Git commit comment.
-    item_ids : str | List[str], default=None
+    item_ids : uuid.UUID | List[uuid.UUID], default=None
         A list of item Ids to commit to Git.
         Defaults to None which commits all items to Git.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -348,7 +348,7 @@ def update_from_git(
         In other cases, the system will validate that the given value is aligned with the head known to the system.
     allow_override : bool, default=False
         User consent to override incoming items during the update from Git process. When incoming items are present and the allow override items is not specified or is provided as false, the update operation will not start. Default value is false.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

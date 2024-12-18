@@ -37,7 +37,7 @@ def scan_workspaces(
         Whether to return lineage info (upstream dataflows, tiles, data source IDs)
     artifact_users : bool, default=False
         Whether to return user details for a Power BI item (such as a report or a dashboard)
-    workspace : str | List[str] | UUID | List[UUID], default=None
+    workspace : str | List[str] | uuid.UUID | List[uuid.UUID], default=None
         The required workspace name(s) or id(s) to be scanned
 
     Returns

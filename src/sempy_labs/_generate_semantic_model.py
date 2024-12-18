@@ -32,7 +32,7 @@ def create_blank_semantic_model(
         Name of the semantic model.
     compatibility_level : int, default=1605
         The compatibility level of the semantic model.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -131,7 +131,7 @@ def create_semantic_model_from_bim(
         Name of the semantic model.
     bim_file : dict
         The model.bim file.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -193,11 +193,11 @@ def update_semantic_model_from_bim(
 
     Parameters
     ----------
-    dataset : str | UUID
+    dataset : str | uuid.UUID
         Name or ID of the semantic model.
     bim_file : dict
         The model.bim file.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -257,13 +257,13 @@ def deploy_semantic_model(
     ----------
     source_dataset : str
         Name of the semantic model to deploy.
-    source_workspace : str | UUID, default=None
+    source_workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     target_dataset: str
         Name of the new semantic model to be created.
-    target_workspace : str | UUID, default=None
+    target_workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID in which the new semantic model will be deployed.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -334,9 +334,9 @@ def get_semantic_model_bim(
 
     Parameters
     ----------
-    dataset : str | UUID
+    dataset : str | uuid.UUID
         Name or ID of the semantic model.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID in which the semantic model resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -399,11 +399,11 @@ def get_semantic_model_definition(
 
     Parameters
     ----------
-    dataset : str | UUID
+    dataset : str | uuid.UUID
         Name or ID of the semantic model.
     format : str, default="TMSL"
         The output format. Valid options are "TMSL" or "TMDL". "TMSL" returns the .bim file whereas "TMDL" returns the collection of TMDL files. Can also enter 'bim' for the TMSL version.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID in which the semantic model resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -462,9 +462,9 @@ def get_semantic_model_size(
 
     Parameters
     ----------
-    dataset : str | UUID
+    dataset : str | uuid.UUID
         Name or ID of the semantic model.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID in which the semantic model resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

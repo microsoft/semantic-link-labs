@@ -27,9 +27,9 @@ def list_workspaces(
 
     Parameters
     ----------
-    capacity : str | UUID, default=None
+    capacity : str | uuid.UUID, default=None
         Returns only the workspaces in the specified Capacity.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         Returns the workspace with the specific name.
     workspace_state : str, default=None
         Return only the workspace with the requested state. You can find the possible states in `Workspace States <https://learn.microsoft.com/en-us/rest/api/fabric/admin/workspaces/list-workspaces?tabs=HTTP#workspacestate>`_.
@@ -131,7 +131,7 @@ def list_capacities(
 
     Parameters
     ----------
-    capacity : str | UUID, default=None
+    capacity : str | uuid.UUID, default=None
         Capacity name or id to filter.
 
     Returns
@@ -185,11 +185,11 @@ def assign_workspaces_to_capacity(
 
     Parameters
     ----------
-    source_capacity : str | UUID, default=None
+    source_capacity : str | uuid.UUID, default=None
         The name of the source capacity. If the Workspace is not specified, this is parameter mandatory.
-    target_capacity : str | UUID, default=None
+    target_capacity : str | uuid.UUID, default=None
         The name of the target capacity.
-    workspace : str | List[str] | UUID | List[UUID], default=None
+    workspace : str | List[str] | uuid.UUID | List[uuid.UUID], default=None
         The name or id of the workspace(s).
         Defaults to None which resolves to migrating all workspaces within the source capacity to the target capacity.
     """
@@ -274,7 +274,7 @@ def unassign_workspaces_from_capacity(
 
     Parameters
     ----------
-    workspaces : str | List[str] | UUID | List[UUID]
+    workspaces : str | List[str] | uuid.UUID | List[uuid.UUID]
         The Fabric workspace name(s) or id(s).
     """
     if isinstance(workspaces, str):
@@ -512,8 +512,6 @@ def list_datasets(
         Returns a subset of a results based on Odata filter query parameter condition.
     skip : int, default=None
         Skips the first n results.
-    token_provider : Optional[TokenProvider] = None,
-        Authentication provider used to be use in the request. Supports Service Principal.
 
     Returns
     -------
@@ -673,7 +671,7 @@ def list_workspace_access_details(
 
     Parameters
     ----------
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or id.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -721,7 +719,7 @@ def list_activity_events(
     end_time: str,
     activity_filter: Optional[str] = None,
     user_id_filter: Optional[str] = None,
-    return_dataframe: Optional[bool] = True,
+    return_dataframe: bool = True,
 ) -> pd.DataFrame | dict:
     """
     Shows a list of audit activity events for a tenant.
@@ -1037,7 +1035,7 @@ def get_capacity_assignment_status(workspace: Optional[str | UUID] = None):
 
     Parameters
     ----------
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or id.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

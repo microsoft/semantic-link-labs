@@ -8,7 +8,6 @@ from sempy_labs._helper_functions import (
     pagination,
 )
 from sempy.fabric.exceptions import FabricHTTPException
-from uuid import UUID
 
 
 def create_external_data_share(
@@ -33,7 +32,7 @@ def create_external_data_share(
         The path or list of paths that are to be externally shared. Currently, only a single path is supported.
     recipient : str
         The email address of the recipient.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -76,13 +75,13 @@ def revoke_external_data_share(
 
     Parameters
     ----------
-    external_data_share_id : UUID
+    external_data_share_id : uuid.UUID
         The external data share ID.
     item_name : str
         The item name.
     item_type : str
         The `item type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -120,7 +119,7 @@ def list_external_data_shares_in_item(
         The item name.
     item_type : str
         The `item type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
