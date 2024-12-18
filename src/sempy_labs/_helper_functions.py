@@ -567,9 +567,12 @@ def resolve_workspace_name_and_id(
     if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace_name = fabric.resolve_workspace_name(workspace_id)
+    elif _is_valid_uuid(workspace):
+        workspace_id = workspace
+        workspace_name = fabric.resolve_workspace_name(workspace_id)
     else:
-        workspace_id = fabric.resolve_workspace_id(workspace)
         workspace_name = workspace
+        workspace_id = fabric.resolve_workspace_id(workspace_name)
 
     return str(workspace_name), str(workspace_id)
 

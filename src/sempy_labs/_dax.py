@@ -204,7 +204,7 @@ def get_dax_query_dependencies(
                 dfC["Table Name"], dfC["Column Name"]
             )
 
-            dfC_filtered = dfC[dfC["Full Object"].isin(df["Full Object"].values)][
+            dfC_filtered = dfC[dfC["Full Object"].isin(final_df["Full Object"].values)][
                 [
                     "Table Name",
                     "Column Name",
