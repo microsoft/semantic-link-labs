@@ -26,7 +26,7 @@ def refresh_semantic_model(
     retry_count: int = 0,
     apply_refresh_policy: bool = True,
     max_parallelism: int = 10,
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
     visualize: bool = False,
     commit_mode: str = "transactional",
 ) -> pd.DataFrame | None:
@@ -35,7 +35,7 @@ def refresh_semantic_model(
 
     Parameters
     ----------
-    dataset : str | UUID
+    dataset : str | uuid.UUID
         Name or ID of the semantic model.
     tables : str, List[str], default=None
         A string or a list of tables to refresh.
@@ -51,8 +51,8 @@ def refresh_semantic_model(
         Determines the maximum number of threads that can run the processing commands in parallel.
         This value aligns with the MaxParallelism property that can be set in the TMSL Sequence command or by using other methods.
         Defaults to 10.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     visualize : bool, default=False
@@ -286,12 +286,12 @@ def cancel_dataset_refresh(
 
     Parameters
     ----------
-    dataset : str | UUID
+    dataset : str | uuid.UUID
         Name or ID of the semantic model.
     request_id : str, default=None
         The request id of a semantic model refresh.
         Defaults to finding the latest active refresh of the semantic model.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -336,12 +336,12 @@ def get_semantic_model_refresh_history(
 
     Parameters
     ----------
-    dataset : str | UUID
+    dataset : str | uuid.UUID
         Name or ID of the semantic model.
     request_id : str, default=None
         The request id of a semantic model refresh.
         Defaults to None which resolves to showing all refresh requests for the given semantic model.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

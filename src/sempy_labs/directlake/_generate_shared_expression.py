@@ -26,7 +26,7 @@ def generate_shared_expression(
         Defaults to None which resolves to the lakehouse attached to the notebook.
     item_type : str, default="Lakehouse"
         The Fabric item name. Valid options: 'Lakehouse', 'Warehouse'.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID used by the item.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

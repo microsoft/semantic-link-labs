@@ -5,8 +5,6 @@ from sempy._utils._log import log
 import sempy_labs._icons as icons
 from sempy_labs._helper_functions import (
     get_language_codes,
-    resolve_dataset_name_and_id,
-    resolve_workspace_name_and_id,
 )
 from uuid import UUID
 
@@ -23,13 +21,13 @@ def translate_semantic_model(
 
     Parameters
     ----------
-    dataset : str | UUID
+    dataset : str | uuid.UUID
         Name or ID of the semantic model.
     languages : str, List[str]
         The language code(s) in which to translate the semantic model.
     exclude_characters : str
         A string specifying characters which will be replaced by a space in the translation text when sent to the translation service.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

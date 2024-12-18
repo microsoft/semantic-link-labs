@@ -21,7 +21,7 @@ def list_mirrored_databases(workspace: Optional[str | UUID] = None) -> pd.DataFr
 
     Parameters
     ----------
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -86,7 +86,7 @@ def create_mirrored_database(
         Name of the mirrored database.
     description : str, default=None
         A description of the mirrored database.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -124,7 +124,7 @@ def delete_mirrored_database(
     ----------
     mirrored_database: str
         Name of the mirrored database.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -161,7 +161,7 @@ def get_mirroring_status(
     ----------
     mirrored_database: str
         Name of the mirrored database.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -201,7 +201,7 @@ def get_tables_mirroring_status(
     ----------
     mirrored_database: str
         Name of the mirrored database.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -270,7 +270,7 @@ def start_mirroring(mirrored_database: str, workspace: Optional[str | UUID] = No
     ----------
     mirrored_database: str
         Name of the mirrored database.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -305,7 +305,7 @@ def stop_mirroring(mirrored_database: str, workspace: Optional[str | UUID] = Non
     ----------
     mirrored_database: str
         Name of the mirrored database.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -342,7 +342,7 @@ def get_mirrored_database_definition(
     ----------
     mirrored_database : str
         The name of the mirrored database.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The name or ID of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -392,7 +392,7 @@ def update_mirrored_database_definition(
         The name of the mirrored database to be created.
     mirrored_database_content : dict
         The mirrored database definition (not in Base64 format).
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The name or ID of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

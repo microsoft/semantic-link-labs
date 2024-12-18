@@ -15,17 +15,17 @@ from sempy_labs._helper_functions import (
 
 
 def check_fallback_reason(
-    dataset: str | UUID, workspace: Optional[str] = None
+    dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
     Shows the reason a table in a Direct Lake semantic model would fallback to DirectQuery.
 
     Parameters
     ----------
-    dataset : str | UUID
+    dataset : str | uuid.UUID
         Name or ID of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -96,14 +96,14 @@ def generate_direct_lake_semantic_model(
         Name of the semantic model to be created.
     lakehouse_tables : str | List[str]
         The table(s) within the Fabric lakehouse to add to the semantic model. All columns from these tables will be added to the semantic model.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID in which the semantic model will reside.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     lakehouse : str, default=None
         The lakehouse which stores the delta tables which will feed the Direct Lake semantic model.
         Defaults to None which resolves to the attached lakehouse.
-    lakehouse_workspace : str | UUID, default=None
+    lakehouse_workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID in which the lakehouse resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -209,9 +209,9 @@ def get_direct_lake_source(
 
     Parameters
     ----------
-    dataset : str | UUID
+    dataset : str | uuid.UUID
         The name or ID of the semantic model.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

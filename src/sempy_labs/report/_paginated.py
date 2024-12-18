@@ -19,7 +19,7 @@ def get_report_datasources(
     ----------
     report : str | List[str]
         Name(s) of the Power BI report(s).
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The name or ID of the Fabric workspace in which the report resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

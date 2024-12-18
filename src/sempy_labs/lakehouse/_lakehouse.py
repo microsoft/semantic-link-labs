@@ -46,7 +46,7 @@ def optimize_lakehouse_tables(
     lakehouse : str, default=None
         The Fabric lakehouse.
         Defaults to None which resolves to the lakehouse attached to the notebook.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID used by the lakehouse.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -100,7 +100,7 @@ def vacuum_lakehouse_tables(
     lakehouse : str, default=None
         The Fabric lakehouse.
         Defaults to None which resolves to the lakehouse attached to the notebook.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID used by the lakehouse.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

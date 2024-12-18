@@ -30,7 +30,7 @@ def download_report(
         Defaults to None which resolves to the name of the report.
     download_type : str, default="LiveConnect"
         The type of download. Valid values are "LiveConnect" and "IncludeModel".
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

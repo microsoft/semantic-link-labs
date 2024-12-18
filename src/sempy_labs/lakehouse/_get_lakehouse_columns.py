@@ -24,7 +24,7 @@ def get_lakehouse_columns(
     lakehouse : str, default=None
         The Fabric lakehouse.
         Defaults to None which resolves to the lakehouse attached to the notebook.
-    lakehouse_workspace : str | UUID, default=None
+    lakehouse_workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID used by the lakehouse.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

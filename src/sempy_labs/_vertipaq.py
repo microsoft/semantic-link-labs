@@ -39,9 +39,9 @@ def vertipaq_analyzer(
 
     Parameters
     ----------
-    dataset : str | UUID
+    dataset : str | uuid.UUID
         Name or ID of the semantic model.
-    workspace : str| UUID, default=None
+    workspace : str| uuid.UUID, default=None
         The Fabric workspace name or ID in which the semantic model exists.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -51,10 +51,6 @@ def vertipaq_analyzer(
         Default value: None.
     read_stats_from_data : bool, default=False
         Setting this parameter to true has the function get Column Cardinality and Missing Rows using DAX (Direct Lake semantic models achieve this using a Spark query to the lakehouse).
-
-    Returns
-    -------
-
     """
 
     from sempy_labs.tom import connect_semantic_model

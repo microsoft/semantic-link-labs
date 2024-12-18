@@ -39,7 +39,7 @@ def run_report_bpa(
         Name of the report.
     rules : pandas.DataFrame, default=None
         A pandas dataframe containing rules to be evaluated.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

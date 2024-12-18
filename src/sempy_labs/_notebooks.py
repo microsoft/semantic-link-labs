@@ -63,7 +63,7 @@ def get_notebook_definition(
     ----------
     notebook_name : str
         The name of the notebook.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The name or ID of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -113,7 +113,7 @@ def import_notebook_from_web(
     description : str, default=None
         The description of the notebook.
         Defaults to None which does not place a description.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The name or ID of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -176,7 +176,7 @@ def create_notebook(
     description : str, default=None
         The description of the notebook.
         Defaults to None which does not place a description.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The name or ID of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -223,7 +223,7 @@ def update_notebook_definition(
         The name of the notebook to be updated.
     notebook_content : str
         The Jupyter notebook content (not in Base64 format).
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The name or ID of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

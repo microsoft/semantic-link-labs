@@ -5,7 +5,11 @@ from sempy._utils._log import log
 import struct
 from itertools import chain, repeat
 from sempy.fabric.exceptions import FabricHTTPException
-from sempy_labs._helper_functions import resolve_warehouse_id, resolve_lakehouse_id
+from sempy_labs._helper_functions import (
+    resolve_warehouse_id,
+    resolve_lakehouse_id,
+    resolve_workspace_name_and_id
+)
 from uuid import UUID
 
 
@@ -39,14 +43,13 @@ class ConnectBase:
         from sempy.fabric._token_provider import SynapseTokenProvider
         import pyodbc
 
-        workspace = fabric.resolve_workspace_name(workspace)
-        workspace_id = fabric.resolve_workspace_id(workspace)
+        (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
         # Resolve the appropriate ID (warehouse or lakehouse)
         if endpoint_type == "warehouse":
-            resource_id = resolve_warehouse_id(warehouse=name, workspace=workspace)
+            resource_id = resolve_warehouse_id(warehouse=name, workspace=workspace_id)
         else:
-            resource_id = resolve_lakehouse_id(lakehouse=name, workspace=workspace)
+            resource_id = resolve_lakehouse_id(lakehouse=name, workspace=workspace_id)
 
         # Get the TDS endpoint
         client = fabric.FabricRestClient()

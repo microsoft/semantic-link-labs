@@ -27,13 +27,13 @@ def create_managed_private_endpoint(
     ----------
     name: str
         Name of the managed private endpoint.
-    target_private_link_resource_id: UUID
+    target_private_link_resource_id: uuid.UUID
         Resource Id of data source for which private endpoint needs to be created.
     target_subresource_type : str
         Sub-resource pointing to Private-link resoure.
     request_message : str, default=None
         Message to approve private endpoint request. Should not be more than 140 characters.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -76,7 +76,7 @@ def list_managed_private_endpoints(
 
     Parameters
     ----------
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -137,7 +137,7 @@ def delete_managed_private_endpoint(
     ----------
     managed_private_endpoint: str
         Name of the managed private endpoint.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

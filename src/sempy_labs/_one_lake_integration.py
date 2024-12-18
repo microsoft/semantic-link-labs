@@ -13,7 +13,7 @@ from uuid import UUID
 @log
 def export_model_to_onelake(
     dataset: str | UUID,
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
     destination_lakehouse: Optional[str] = None,
     destination_workspace: Optional[str] = None,
 ):
@@ -22,10 +22,10 @@ def export_model_to_onelake(
 
     Parameters
     ----------
-    dataset : str
-        Name of the semantic model.
-    workspace : str, default=None
-        The Fabric workspace name.
+    dataset : str | uuid.UUID
+        Name or ID of the semantic model.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     destination_lakehouse : str, default=None

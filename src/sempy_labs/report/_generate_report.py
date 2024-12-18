@@ -31,13 +31,13 @@ def create_report_from_reportjson(
     ----------
     report : str
         Name of the report.
-    dataset : str | UUID
+    dataset : str | uuid.UUID
         Name or ID of the semantic model to connect to the report.
     report_json : dict
         The report.json file to be used to create the report.
     theme_json : dict, default=None
         The theme.json file to be used for the theme of the report.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -127,7 +127,7 @@ def update_report_from_reportjson(
         Name of the report.
     report_json : dict
         The report.json file to be used to update the report.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID in which the report resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -184,7 +184,7 @@ def get_report_definition(
     ----------
     report : str
         Name of the report.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID in which the report resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -230,7 +230,7 @@ def create_model_bpa_report(
     dataset : str, default='ModelBPA'
         Name of the semantic model which feeds this report.
         Defaults to 'ModelBPA'
-    dataset_workspace : str | UUID, default=None
+    dataset_workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID in which the semantic model resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

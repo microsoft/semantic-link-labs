@@ -33,7 +33,7 @@ class ReportWrapper:
     ----------
     report : str
         The name of the report.
-    workspace : str | UUID
+    workspace : str | uuid.UUID
         The name or ID of the workspace in which the report resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

@@ -38,7 +38,7 @@ def get_sku_size(workspace: Optional[str | UUID] = None) -> str:
 
     Parameters
     ----------
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -51,7 +51,7 @@ def get_sku_size(workspace: Optional[str | UUID] = None) -> str:
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    dfW = fabric.list_workspaces(filter=f"name eq '{workspace_name}'")
+    dfW = fabric.list_workspaces(filter=f"id eq '{workspace_id}'")
 
     if len(dfW) == 0:
         raise ValueError(

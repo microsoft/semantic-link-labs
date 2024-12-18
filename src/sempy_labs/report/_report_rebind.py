@@ -29,11 +29,11 @@ def report_rebind(
         Name(s) of the Power BI report(s).
     dataset : str
         Name of the semantic model.
-    report_workspace : str | UUID, default=None
+    report_workspace : str | uuid.UUID, default=None
         The name or ID of the Fabric workspace in which the report resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    dataset_workspace : str | UUID, default=None
+    dataset_workspace : str | uuid.UUID, default=None
         The name or ID of the Fabric workspace in which the semantic model resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

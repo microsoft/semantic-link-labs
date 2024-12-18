@@ -30,7 +30,7 @@ def create_warehouse(
         A description of the warehouse.
     case_insensitive_collation: bool, default=False
         If True, creates the warehouse with case-insensitive collation.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -68,7 +68,7 @@ def list_warehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
     Parameters
     ----------
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -126,7 +126,7 @@ def delete_warehouse(name: str, workspace: Optional[str | UUID] = None):
     ----------
     name: str
         Name of the warehouse.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -159,7 +159,7 @@ def get_warehouse_tables(
     ----------
     warehouse : str
         Name of the Fabric warehouse.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -194,7 +194,7 @@ def get_warehouse_columns(
     ----------
     warehouse : str
         Name of the Fabric warehouse.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

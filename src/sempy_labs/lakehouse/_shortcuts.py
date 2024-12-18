@@ -29,11 +29,11 @@ def create_shortcut_onelake(
         The table name for which a shortcut will be created.
     source_lakehouse : str
         The Fabric lakehouse in which the table resides.
-    source_workspace : str | UUID
+    source_workspace : str | uuid.UUID
         The name or ID of the Fabric workspace in which the source lakehouse exists.
     destination_lakehouse : str
         The Fabric lakehouse in which the shortcut will be created.
-    destination_workspace : str | UUID, default=None
+    destination_workspace : str | uuid.UUID, default=None
         The name or ID of the Fabric workspace in which the shortcut will be created.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

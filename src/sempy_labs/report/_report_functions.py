@@ -40,7 +40,7 @@ def get_report_json(
     ----------
     report : str
         Name of the Power BI report.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID in which the report exists.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -98,7 +98,7 @@ def report_dependency_tree(workspace: Optional[str | UUID] = None):
 
     Parameters
     ----------
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -177,7 +177,7 @@ def export_report(
         The name (GUID) of a visual. If you specify this parameter you must also specify the page_name parameter.
     report_filter : str, default=None
         A report filter to be applied when exporting the report. Syntax is user-friendly. See above for examples.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -408,7 +408,7 @@ def clone_report(
         Name of the Power BI report.
     cloned_report : str
         Name of the new Power BI report.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -479,7 +479,7 @@ def launch_report(report: str, workspace: Optional[str | UUID] = None):
     ----------
     report : str
         Name of the Power BI report.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -507,7 +507,7 @@ def list_report_pages(report: str, workspace: Optional[str | UUID] = None):
     ----------
     report : str
         Name of the Power BI report.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -569,7 +569,7 @@ def list_report_visuals(report: str, workspace: Optional[str | UUID] = None):
     ----------
     report : str
         Name of the Power BI report.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -622,7 +622,7 @@ def list_report_bookmarks(report: str, workspace: Optional[str | UUID] = None):
     ----------
     report : str
         Name of the Power BI report.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -715,7 +715,7 @@ def translate_report_titles(
         Name of the Power BI report.
     languages : str, List[str]
         The language code(s) in which to translate the report titles.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
