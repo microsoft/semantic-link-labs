@@ -8,8 +8,8 @@ from sempy_labs._helper_functions import (
 from sempy_labs._model_dependencies import get_model_calc_dependencies
 from typing import Optional, List
 from sempy._utils._log import log
-from tqdm.auto import tqdm
 from uuid import UUID
+from sempy_labs.directlake._warm_cache import _put_columns_into_memory
 
 
 @log
@@ -189,23 +189,8 @@ def get_dax_query_dependencies(
         not_in_memory = dfC_filtered[dfC_filtered["Is Resident"] == False]
 
         if len(not_in_memory) > 0:
-            tbls = not_in_memory["Table Name"].unique()
-
-            # Run basic query to get columns into memory; completed one table at a time (so as not to overload the capacity)
-            for table_name in (bar := tqdm(tbls)):
-                bar.set_description(f"Warming the '{table_name}' table...")
-                css = ", ".join(
-                    not_in_memory[not_in_memory["Table Name"] == table_name][
-                        "Full Object"
-                    ]
-                    .astype(str)
-                    .tolist()
-                )
-                dax = f"""EVALUATE TOPN(1,SUMMARIZECOLUMNS({css}))"""
-                fabric.evaluate_dax(
-                    dataset=dataset_id, dax_string=dax, workspace=workspace_id
-                )
-
+            _put_columns_into_memory(dataset=dataset, workspace=workspace, col_df=dfC_filtered, return_dataframe=False)
+           
             # Get column stats again
             dfC = fabric.list_columns(
                 dataset=dataset_id, workspace=workspace_id, extended=True
