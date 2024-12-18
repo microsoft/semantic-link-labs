@@ -255,7 +255,9 @@ def initialize_git_connection(workspace: Optional[str | UUID] = None) -> str:
 
 
 def commit_to_git(
-    comment: str, item_ids: str | List[str] = None, workspace: Optional[str | UUID] = None
+    comment: str,
+    item_ids: str | List[str] = None,
+    workspace: Optional[str | UUID] = None,
 ):
     """
     Commits all or a selection of items within a workspace to Git.

@@ -148,8 +148,32 @@ def resolve_report_name(report_id: UUID, workspace: Optional[str | UUID] = None)
     )
 
 
+def resolve_item_name_and_id(
+    item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None
+) -> Tuple[str, UUID]:
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    if _is_valid_uuid(item):
+        item_id = item
+        item_name = fabric.resolve_item_name(
+            item_id=item_id, type=type, workspace=workspace_id
+        )
+    else:
+        if type is None:
+            raise ValueError(
+                f"{icons.warning} Must specify a 'type' if specifying a name as the 'item'."
+            )
+        item_name = item
+        item_id = fabric.resolve_item_id(
+            item_name=item, type=type, workspace=workspace_id
+        )
+
+    return item_name, item_id
+
+
 def resolve_dataset_name_and_id(
-    dataset: str | UUID, workspace: Optional[str] = None
+    dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> Tuple[str, UUID]:
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -168,7 +192,9 @@ def resolve_dataset_name_and_id(
     return dataset_name, dataset_id
 
 
-def resolve_dataset_id(dataset: str | UUID, workspace: Optional[str | UUID] = None) -> UUID:
+def resolve_dataset_id(
+    dataset: str | UUID, workspace: Optional[str | UUID] = None
+) -> UUID:
     """
     Obtains the ID of the semantic model.
 
@@ -197,7 +223,9 @@ def resolve_dataset_id(dataset: str | UUID, workspace: Optional[str | UUID] = No
     return dataset_id
 
 
-def resolve_dataset_name(dataset_id: UUID, workspace: Optional[str | UUID] = None) -> str:
+def resolve_dataset_name(
+    dataset_id: UUID, workspace: Optional[str | UUID] = None
+) -> str:
     """
     Obtains the name of the semantic model.
 
@@ -251,7 +279,9 @@ def resolve_lakehouse_name(
     )
 
 
-def resolve_lakehouse_id(lakehouse: str, workspace: Optional[str | UUID] = None) -> UUID:
+def resolve_lakehouse_id(
+    lakehouse: str, workspace: Optional[str | UUID] = None
+) -> UUID:
     """
     Obtains the ID of the Fabric lakehouse.
 
@@ -539,7 +569,9 @@ def language_validate(language: str):
     return lang
 
 
-def resolve_workspace_name_and_id(workspace: Optional[str | UUID] = None) -> Tuple[str, str]:
+def resolve_workspace_name_and_id(
+    workspace: Optional[str | UUID] = None,
+) -> Tuple[str, str]:
     """
     Obtains the name and ID of the Fabric workspace.
 
@@ -589,7 +621,9 @@ def _decode_b64(file, format: Optional[str] = "utf-8"):
     return result
 
 
-def is_default_semantic_model(dataset: str, workspace: Optional[str | UUID] = None) -> bool:
+def is_default_semantic_model(
+    dataset: str, workspace: Optional[str | UUID] = None
+) -> bool:
     """
     Identifies whether a semantic model is a default semantic model.
 
@@ -696,7 +730,9 @@ def _add_part(target_dict, path, payload):
     target_dict["definition"]["parts"].append(part)
 
 
-def resolve_workspace_capacity(workspace: Optional[str | UUID] = None) -> Tuple[UUID, str]:
+def resolve_workspace_capacity(
+    workspace: Optional[str | UUID] = None,
+) -> Tuple[UUID, str]:
     """
     Obtains the capacity Id and capacity name for a given workspace.
 
@@ -1063,7 +1099,9 @@ def convert_to_alphanumeric_lowercase(input_string):
     return cleaned_string
 
 
-def resolve_environment_id(environment: str, workspace: Optional[str | UUID] = None) -> UUID:
+def resolve_environment_id(
+    environment: str, workspace: Optional[str | UUID] = None
+) -> UUID:
     """
     Obtains the environment Id for a given environment.
 
@@ -1162,7 +1200,9 @@ def _make_list_unique(my_list):
     return list(set(my_list))
 
 
-def _get_partition_map(dataset: str, workspace: Optional[str | UUID] = None) -> pd.DataFrame:
+def _get_partition_map(
+    dataset: str, workspace: Optional[str | UUID] = None
+) -> pd.DataFrame:
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)

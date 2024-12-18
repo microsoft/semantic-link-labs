@@ -192,7 +192,9 @@ def warm_direct_lake_cache_isresident(
         )
 
     # Refresh/frame dataset
-    refresh_semantic_model(dataset=dataset_id, refresh_type="full", workspace=workspace_id)
+    refresh_semantic_model(
+        dataset=dataset_id, refresh_type="full", workspace=workspace_id
+    )
     time.sleep(2)
 
     # Run basic query to get columns into memory; completed one table at a time (so as not to overload the capacity)

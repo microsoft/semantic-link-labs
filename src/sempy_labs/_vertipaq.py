@@ -14,7 +14,7 @@ from sempy_labs._helper_functions import (
     resolve_workspace_capacity,
     _get_max_run_id,
     resolve_workspace_name_and_id,
-    resolve_dataset_name_and_id
+    resolve_dataset_name_and_id,
 )
 from sempy_labs._list_functions import list_relationships, list_tables
 from sempy_labs.lakehouse import lakehouse_attached, get_lakehouse_tables
@@ -160,9 +160,13 @@ def vertipaq_analyzer(
     dfC = fabric.list_columns(dataset=dataset_id, extended=True, workspace=workspace_id)
     dfC["Column Object"] = format_dax_object_name(dfC["Table Name"], dfC["Column Name"])
     dfC.rename(columns={"Column Cardinality": "Cardinality"}, inplace=True)
-    dfH = fabric.list_hierarchies(dataset=dataset_id, extended=True, workspace=workspace_id)
+    dfH = fabric.list_hierarchies(
+        dataset=dataset_id, extended=True, workspace=workspace_id
+    )
     dfR = list_relationships(dataset=dataset_id, extended=True, workspace=workspace_id)
-    dfP = fabric.list_partitions(dataset=dataset_id, extended=True, workspace=workspace_id)
+    dfP = fabric.list_partitions(
+        dataset=dataset_id, extended=True, workspace=workspace_id
+    )
     artifact_type, lakehouse_name, lakehouse_id, lakehouse_workspace_id = (
         get_direct_lake_source(dataset=dataset_id, workspace=workspace_id)
     )

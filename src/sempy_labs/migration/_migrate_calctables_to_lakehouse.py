@@ -16,6 +16,7 @@ from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 
+
 @log
 def migrate_calc_tables_to_lakehouse(
     dataset: str,

@@ -141,7 +141,9 @@ def qso_sync_status(
         return df, dfRep
 
 
-def disable_qso(dataset: str | UUID, workspace: Optional[str | UUID] = None) -> pd.DataFrame:
+def disable_qso(
+    dataset: str | UUID, workspace: Optional[str | UUID] = None
+) -> pd.DataFrame:
     """
     Sets the max read-only replicas to 0, disabling query scale out.
 

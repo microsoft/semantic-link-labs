@@ -112,7 +112,9 @@ def create_mirrored_database(
     )
 
 
-def delete_mirrored_database(mirrored_database: str, workspace: Optional[str | UUID] = None):
+def delete_mirrored_database(
+    mirrored_database: str, workspace: Optional[str | UUID] = None
+):
     """
     Deletes a mirrored database.
 

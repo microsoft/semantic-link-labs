@@ -277,7 +277,9 @@ def refresh_semantic_model(
 
 @log
 def cancel_dataset_refresh(
-    dataset: str | UUID, request_id: Optional[str] = None, workspace: Optional[str | UUID] = None
+    dataset: str | UUID,
+    request_id: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
 ):
     """
     Cancels the refresh of a semantic model which was executed via the `Enhanced Refresh API <https://learn.microsoft.com/power-bi/connect-data/asynchronous-refresh>`_
@@ -323,7 +325,9 @@ def cancel_dataset_refresh(
 
 
 def get_semantic_model_refresh_history(
-    dataset: str | UUID, request_id: Optional[str] = None, workspace: Optional[str | UUID] = None
+    dataset: str | UUID,
+    request_id: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
 ) -> pd.DataFrame:
     """
     Obtains the semantic model refresh history (refreshes executed via the Enhanced Refresh API).

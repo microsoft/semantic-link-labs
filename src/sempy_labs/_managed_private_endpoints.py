@@ -66,7 +66,9 @@ def create_managed_private_endpoint(
     )
 
 
-def list_managed_private_endpoints(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
+def list_managed_private_endpoints(
+    workspace: Optional[str | UUID] = None,
+) -> pd.DataFrame:
     """
     Shows the managed private endpoints within a workspace.
 

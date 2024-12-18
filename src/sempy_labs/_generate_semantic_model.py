@@ -273,18 +273,25 @@ def deploy_semantic_model(
         If set to True, overwrites the existing semantic model in the workspace if it exists.
     """
 
-    (source_workspace_name, source_workspace_id) = resolve_workspace_name_and_id(source_workspace)
+    (source_workspace_name, source_workspace_id) = resolve_workspace_name_and_id(
+        source_workspace
+    )
 
     if target_workspace is None:
         target_workspace_name = source_workspace_name
         target_workspace_id = fabric.resolve_workspace_id(target_workspace_name)
     else:
-        (target_workspace_name, target_workspace_id) = resolve_workspace_name_and_id(target_workspace)
+        (target_workspace_name, target_workspace_id) = resolve_workspace_name_and_id(
+            target_workspace
+        )
 
     if target_dataset is None:
         target_dataset = source_dataset
 
-    if target_dataset == source_dataset and target_workspace_name == source_workspace_name:
+    if (
+        target_dataset == source_dataset
+        and target_workspace_name == source_workspace_name
+    ):
         raise ValueError(
             f"{icons.red_dot} The 'dataset' and 'new_dataset' parameters have the same value. And, the 'workspace' and 'new_dataset_workspace' "
             f"parameters have the same value. At least one of these must be different. Please update the parameters."
@@ -350,7 +357,10 @@ def get_semantic_model_bim(
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
     bimJson = get_semantic_model_definition(
-        dataset=dataset_id, workspace=workspace_id, format="TMSL", return_dataframe=False
+        dataset=dataset_id,
+        workspace=workspace_id,
+        format="TMSL",
+        return_dataframe=False,
     )
 
     if save_to_file_name is not None:
@@ -444,7 +454,9 @@ def get_semantic_model_definition(
         return decoded_parts
 
 
-def get_semantic_model_size(dataset: str | UUID, workspace: Optional[str | UUID] = None):
+def get_semantic_model_size(
+    dataset: str | UUID, workspace: Optional[str | UUID] = None
+):
     """
     Gets size of the semantic model in bytes.
 
