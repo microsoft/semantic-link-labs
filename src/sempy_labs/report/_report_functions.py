@@ -702,7 +702,9 @@ def list_report_bookmarks(report: str, workspace: Optional[str | UUID] = None):
 
 @log
 def translate_report_titles(
-    report: str, languages: Union[str, List[str]], workspace: Optional[str | UUID] = None
+    report: str,
+    languages: Union[str, List[str]],
+    workspace: Optional[str | UUID] = None,
 ):
     """
     Dynamically generates new Power BI reports which have report titles translated into the specified language(s).

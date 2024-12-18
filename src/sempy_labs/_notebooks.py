@@ -34,7 +34,9 @@ def _get_notebook_definition_base(
     return pd.json_normalize(result["definition"]["parts"])
 
 
-def _get_notebook_type(notebook_name: str, workspace: Optional[str | UUID] = None) -> str:
+def _get_notebook_type(
+    notebook_name: str, workspace: Optional[str | UUID] = None
+) -> str:
 
     df_items = _get_notebook_definition_base(
         notebook_name=notebook_name, workspace=workspace

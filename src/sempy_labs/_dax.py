@@ -189,8 +189,13 @@ def get_dax_query_dependencies(
         not_in_memory = dfC_filtered[dfC_filtered["Is Resident"] == False]
 
         if len(not_in_memory) > 0:
-            _put_columns_into_memory(dataset=dataset, workspace=workspace, col_df=dfC_filtered, return_dataframe=False)
-           
+            _put_columns_into_memory(
+                dataset=dataset,
+                workspace=workspace,
+                col_df=dfC_filtered,
+                return_dataframe=False,
+            )
+
             # Get column stats again
             dfC = fabric.list_columns(
                 dataset=dataset_id, workspace=workspace_id, extended=True
@@ -245,7 +250,10 @@ def get_dax_query_memory_size(
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
     df = get_dax_query_dependencies(
-        dataset=dataset_id, workspace=workspace_id, dax_string=dax_string, put_in_memory=True
+        dataset=dataset_id,
+        workspace=workspace_id,
+        dax_string=dax_string,
+        put_in_memory=True,
     )
 
     return df["Total Size"].sum()

@@ -46,7 +46,7 @@ def create_report_from_reportjson(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    dfI = fabric.list_items(workspace=workspace, type='Report')
+    dfI = fabric.list_items(workspace=workspace, type="Report")
     dfI_rpt = dfI[dfI["Display Name"] == report]
 
     if not dfI_rpt.empty:
@@ -238,7 +238,9 @@ def create_model_bpa_report(
     """
     # from sempy_labs._helper_functions import resolve_dataset_id
 
-    (dataset_workspace_name, dataset_workspace_id) = resolve_workspace_name_and_id(dataset_workspace)
+    (dataset_workspace_name, dataset_workspace_id) = resolve_workspace_name_and_id(
+        dataset_workspace
+    )
 
     dfI = fabric.list_items(workspace=dataset_workspace_id, type="SemanticModel")
     dfI_filt = dfI[dfI["Display Name"] == dataset]

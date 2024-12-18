@@ -258,7 +258,9 @@ def list_tables(
     return df
 
 
-def list_annotations(dataset: str | UUID, workspace: Optional[str | UUID] = None) -> pd.DataFrame:
+def list_annotations(
+    dataset: str | UUID, workspace: Optional[str | UUID] = None
+) -> pd.DataFrame:
     """
     Shows a semantic model's annotations and their properties.
 
@@ -939,7 +941,9 @@ def list_relationships(
     return dfR
 
 
-def list_kpis(dataset: str | UUID, workspace: Optional[str | UUID] = None) -> pd.DataFrame:
+def list_kpis(
+    dataset: str | UUID, workspace: Optional[str | UUID] = None
+) -> pd.DataFrame:
     """
     Shows a semantic model's KPIs and their properties.
 
@@ -1554,7 +1558,9 @@ def list_semantic_model_object_report_usage(
         final_df["Object"] = format_dax_object_name(
             final_df["Table Name"], final_df["Object Name"]
         )
-        dfC = fabric.list_columns(dataset=dataset_id, workspace=workspace_id, extended=True)
+        dfC = fabric.list_columns(
+            dataset=dataset_id, workspace=workspace_id, extended=True
+        )
         dfC["Object"] = format_dax_object_name(dfC["Table Name"], dfC["Column Name"])
         final_df = pd.merge(
             final_df,

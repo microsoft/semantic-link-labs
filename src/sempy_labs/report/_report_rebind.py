@@ -10,6 +10,7 @@ import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
+
 @log
 def report_rebind(
     report: str | List[str],
@@ -38,7 +39,9 @@ def report_rebind(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (report_workspace_name, report_workspace_id) = resolve_workspace_name_and_id(report_workspace)
+    (report_workspace_name, report_workspace_id) = resolve_workspace_name_and_id(
+        report_workspace
+    )
 
     if dataset_workspace is None:
         dataset_workspace = report_workspace_name

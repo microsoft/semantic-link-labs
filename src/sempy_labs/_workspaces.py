@@ -11,7 +11,9 @@ from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
-def delete_user_from_workspace(email_address: str, workspace: Optional[str | UUID] = None):
+def delete_user_from_workspace(
+    email_address: str, workspace: Optional[str | UUID] = None
+):
     """
     Removes a user from a workspace.
 
@@ -201,7 +203,9 @@ def add_user_to_workspace(
     )
 
 
-def assign_workspace_to_capacity(capacity_name: str, workspace: Optional[str | UUID] = None):
+def assign_workspace_to_capacity(
+    capacity_name: str, workspace: Optional[str | UUID] = None
+):
     """
     Assigns a workspace to a capacity.
 
@@ -261,7 +265,9 @@ def unassign_workspace_from_capacity(workspace: Optional[str | UUID] = None):
     )
 
 
-def list_workspace_role_assignments(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
+def list_workspace_role_assignments(
+    workspace: Optional[str | UUID] = None,
+) -> pd.DataFrame:
     """
     Shows the members of a given workspace.
 
