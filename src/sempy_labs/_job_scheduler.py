@@ -57,7 +57,8 @@ def list_item_job_instances(
             "Job Type",
             "Invoke Type",
             "Status",
-            "Root Activity Id" "Start Time UTC",
+            "Root Activity Id",
+            "Start Time UTC",
             "End Time UTC",
             "Failure Reason",
         ]
