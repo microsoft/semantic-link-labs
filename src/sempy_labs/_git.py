@@ -37,7 +37,7 @@ def connect_workspace_to_azure_dev_ops(
         The directory name.
     git_provider_type : str, default="AzureDevOps"
         A `Git provider type <https://learn.microsoft.com/rest/api/fabric/core/git/connect?tabs=HTTP#gitprovidertype>`_.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -74,11 +74,11 @@ def connect_workspace_to_github(
     branch_name: str,
     directory_name: str,
     connection_id: UUID,
-    source: str = 'ConfiguredConnection',
+    source: str = "ConfiguredConnection",
     workspace: Optional[str | UUID] = None,
 ):
     """
-    Connects a workspace to a git repository.
+    Connects a workspace to a GitHub git repository.
 
     This is a wrapper function for the following API: `Git - Connect <https://learn.microsoft.com/rest/api/fabric/core/git/connect>`_.
 
@@ -115,7 +115,7 @@ def connect_workspace_to_github(
         "myGitCredentials": {
             "source": source,
             "connectionId": connection_id,
-        }
+        },
     }
 
     client = fabric.FabricRestClient()
