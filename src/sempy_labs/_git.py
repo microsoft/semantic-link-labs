@@ -34,9 +34,7 @@ def connect_workspace_to_azure_dev_ops(
     branch_name : str
         The branch name.
     directory_name : str
-        The directory name. 
-    git_provider_type : str, default="AzureDevOps"
-        A `Git provider type <https://learn.microsoft.com/rest/api/fabric/core/git/connect?tabs=HTTP#gitprovidertype>`_.
+        The directory name.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
