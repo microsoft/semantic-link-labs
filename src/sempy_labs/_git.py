@@ -10,17 +10,16 @@ from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
-def connect_workspace_to_git(
+def connect_workspace_to_azure_dev_ops(
     organization_name: str,
     project_name: str,
     repository_name: str,
     branch_name: str,
     directory_name: str,
-    git_provider_type: str = "AzureDevOps",
     workspace: Optional[str | UUID] = None,
 ):
     """
-    Connects a workspace to a git repository.
+    Connects a workspace to an Azure DevOps git repository.
 
     This is a wrapper function for the following API: `Git - Connect <https://learn.microsoft.com/rest/api/fabric/core/git/connect>`_.
 
@@ -36,8 +35,6 @@ def connect_workspace_to_git(
         The branch name.
     directory_name : str
         The directory name.
-    git_provider_type : str, default="AzureDevOps"
-        A `Git provider type <https://learn.microsoft.com/rest/api/fabric/core/git/connect?tabs=HTTP#gitprovidertype>`_.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -50,7 +47,7 @@ def connect_workspace_to_git(
         "gitProviderDetails": {
             "organizationName": organization_name,
             "projectName": project_name,
-            "gitProviderType": git_provider_type,
+            "gitProviderType": "AzureDevOps",
             "repositoryName": repository_name,
             "branchName": branch_name,
             "directoryName": directory_name,
@@ -65,7 +62,69 @@ def connect_workspace_to_git(
         raise FabricHTTPException(response)
 
     print(
-        f"{icons.green_dot} The '{workspace_name}' workspace has been connected to the '{project_name}' Git project within the '{repository_name}' repository."
+        f"{icons.green_dot} The '{workspace_name}' workspace has been connected to the '{project_name}' Git project in Azure DevOps within the '{repository_name}' repository."
+    )
+
+
+def connect_workspace_to_github(
+    owner_name: str,
+    repository_name: str,
+    branch_name: str,
+    directory_name: str,
+    connection_id: UUID,
+    source: str = "ConfiguredConnection",
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Connects a workspace to a GitHub git repository.
+
+    This is a wrapper function for the following API: `Git - Connect <https://learn.microsoft.com/rest/api/fabric/core/git/connect>`_.
+
+    Parameters
+    ----------
+    owner_name : str
+        The owner name.
+    repository_name : str
+        The repository name.
+    branch_name : str
+        The branch name.
+    directory_name : str
+        The directory name.
+    source : str, default="ConfiguredConnection"
+        The Git credentials source.
+    connection_id : uuid.UUID
+        The object ID of the connection.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    request_body = {
+        "gitProviderDetails": {
+            "ownerName": owner_name,
+            "gitProviderType": "GitHub",
+            "repositoryName": repository_name,
+            "branchName": branch_name,
+            "directoryName": directory_name,
+        },
+        "myGitCredentials": {
+            "source": source,
+            "connectionId": connection_id,
+        },
+    }
+
+    client = fabric.FabricRestClient()
+    response = client.post(
+        f"/v1/workspaces/{workspace_id}/git/connect", json=request_body
+    )
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    print(
+        f"{icons.green_dot} The '{workspace_name}' workspace has been connected to the '{repository_name}' GitHub repository."
     )
 
 
