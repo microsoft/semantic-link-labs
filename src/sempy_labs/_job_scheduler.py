@@ -5,9 +5,11 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_item_name_and_id,
     pagination,
+    lro,
 )
 from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
+import sempy_labs._icons as icons
 
 
 def list_item_job_instances(
@@ -176,3 +178,25 @@ def list_item_schedules(
     df["Enabled"] = df["Enabled"].astype(bool)
 
     return df
+
+
+def run_on_demand_item_job(
+    item: str | UUID,
+    type: Optional[str] = None,
+    job_type: str = "DefaultJob",
+    workspace: Optional[str | UUID] = None,
+):
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (item_name, item_id) = resolve_item_name_and_id(
+        item=item, type=type, workspace=workspace
+    )
+
+    client = fabric.FabricRestClient()
+    response = client.get(
+        f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/instances?jobType={job_type}"
+    )
+
+    lro(client, response, return_status_code=True)
+
+    print(f"{icons.green_dot} The '{item_name}' {type.lower()} has been executed.")
