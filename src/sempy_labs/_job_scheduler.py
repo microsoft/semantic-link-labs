@@ -51,7 +51,9 @@ def list_item_job_instances(
     df = pd.DataFrame(
         columns=[
             "Job Instance Id",
+            "Item Name",
             "Item Id",
+            "Item Type",
             "Job Type",
             "Invoke Type",
             "Status",
@@ -71,7 +73,9 @@ def list_item_job_instances(
         for v in r.get("value", []):
             new_data = {
                 "Job Instance Id": v.get("id"),
+                "Item Name": item_name,
                 "Item Id": v.get("itemId"),
+                "Item Type": type,
                 "Job Type": v.get("jobType"),
                 "Invoke Type": v.get("invokeType"),
                 "Status": v.get("status"),
