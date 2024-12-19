@@ -91,3 +91,88 @@ def list_item_job_instances(
         df = pd.concat(dfs, ignore_index=True)
 
     return df
+
+
+def list_item_schedules(
+    item: str | UUID,
+    type: Optional[str] = None,
+    job_type: str = "DefaultJob",
+    workspace: Optional[str | UUID] = None,
+) -> pd.DataFrame:
+    """
+    Get scheduling settings for one specific item.
+
+    This is a wrapper function for the following API: `Job Scheduler - List Item Schedules <https://learn.microsoft.com/rest/api/fabric/core/job-scheduler/list-item-schedules>`_.
+
+    Parameters
+    ----------
+    item : str | uuid.UUID
+        The item name or ID
+    type : str, default=None
+        The item type. If specifying the item name as the item, the item type is required.
+    job_type : str, default="DefaultJob"
+        The job type.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Shows a list of scheduling settings for one specific item.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (item_name, item_id) = resolve_item_name_and_id(
+        item=item, type=type, workspace=workspace
+    )
+
+    df = pd.DataFrame(
+        columns=[
+            "Job Schedule Id",
+            "Enabled",
+            "Created Date Time",
+            "Start Date Time",
+            "End Date Time",
+            "Local Time Zone Id",
+            "Type",
+            "Interval",
+            "Weekdays",
+            "Times",
+            "Owner Id",
+            "Owner Type",
+        ]
+    )
+
+    client = fabric.FabricRestClient()
+    response = client.get(
+        f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/{job_type}/schedules"
+    )
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    for v in response.json().get("value", []):
+        config = v.get("configuration", {})
+        own = v.get("owner", {})
+        new_data = {
+            "Job Schedule Id": v.get("id"),
+            "Enabled": v.get("enabled"),
+            "Created Date Time": v.get("createdDateTime"),
+            "Start Date Time": config.get("startDateTime"),
+            "End Date Time": config.get("endDateTime"),
+            "Local Time Zone Id": config.get("localTimeZoneId"),
+            "Type": config.get("type"),
+            "Interval": config.get("interval"),
+            "Weekdays": config.get("weekdays"),
+            "Times": config.get("times"),
+            "Owner Id": own.get("id"),
+            "Owner Type": own.get("type"),
+        }
+
+        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    df["Enabled"] = df["Enabled"].astype(bool)
+
+    return df

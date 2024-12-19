@@ -1,4 +1,7 @@
-from sempy_labs._job_scheduler import list_item_job_instances
+from sempy_labs._job_scheduler import (
+    list_item_job_instances,
+    list_item_schedules,
+)
 from sempy_labs._gateways import (
     list_gateway_members,
     list_gateway_role_assigments,
@@ -470,4 +473,5 @@ __all__ = [
     "bind_semantic_model_to_gateway",
     "list_semantic_model_errors",
     "list_item_job_instances",
+    "list_item_schedules",
 ]
