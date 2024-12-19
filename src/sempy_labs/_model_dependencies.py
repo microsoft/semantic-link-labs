@@ -142,7 +142,8 @@ def get_measure_dependencies(
 
 @log
 def get_model_calc_dependencies(
-    dataset: str | UUID, workspace: Optional[str] = None
+    dataset: str | UUID,
+    workspace: Optional[str] = None,
 ) -> pd.DataFrame:
     """
     Shows all dependencies for all objects in a semantic model.
@@ -189,12 +190,24 @@ def get_model_calc_dependencies(
         dep["Referenced Table"], dep["Referenced Object"]
     )
     dep["Parent Node"] = dep["Object Name"]
+
     # Initialize dependency DataFrame with 'Done' status
     df = dep.copy()
     objs = {"Measure", "Calc Column", "Calculation Item", "Calc Table"}
     df["Done"] = (
         df["Referenced Object Type"].apply(lambda x: x not in objs).astype(bool)
     )
+
+    # Set to track visited dependencies to prevent circular references
+    visited = set(
+        zip(
+            df["Full Object Name"],
+            df["Referenced Full Object Name"],
+            df["Object Type"],
+            df["Referenced Object Type"],
+        )
+    )
+
     # Expand dependencies iteratively
     while not df["Done"].all():
         incomplete_rows = df[df["Done"] == False]
@@ -208,11 +221,24 @@ def get_model_calc_dependencies(
             # Expand dependencies and update 'Done' status as needed
             new_rows = []
             for _, dependency in dep_filt.iterrows():
+                # Check if the dependency has already been visited
+                dependency_pair = (
+                    row["Full Object Name"],
+                    dependency["Referenced Full Object Name"],
+                    row["Object Type"],
+                    dependency["Referenced Object Type"],
+                )
+                if dependency_pair in visited:
+                    continue  # Skip already visited dependencies
+
+                visited.add(dependency_pair)  # Mark as visited
+
                 is_done = dependency["Referenced Object Type"] not in objs
                 new_row = {
                     "Table Name": row["Table Name"],
                     "Object Name": row["Object Name"],
                     "Object Type": row["Object Type"],
+                    "Expression": row["Expression"],
                     "Referenced Table": dependency["Referenced Table"],
                     "Referenced Object": dependency["Referenced Object"],
                     "Referenced Object Type": dependency["Referenced Object Type"],
@@ -224,7 +250,14 @@ def get_model_calc_dependencies(
                     "Parent Node": row["Referenced Object"],
                 }
                 new_rows.append(new_row)
-            df = pd.concat([df, pd.DataFrame(new_rows)], ignore_index=True)
+
+            if new_rows:
+                new_rows_df = pd.DataFrame(new_rows)
+                new_rows_df = new_rows_df.dropna(
+                    axis=1, how="all"
+                )  # Drop empty columns
+                df = pd.concat([df, new_rows_df], ignore_index=True)
+
             df.loc[df.index == row.name, "Done"] = True
     # Finalize DataFrame and yield result
     df = df.drop(columns=["Done"])

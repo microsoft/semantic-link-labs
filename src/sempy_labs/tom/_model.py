@@ -3287,6 +3287,10 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
+        dependencies = dependencies[
+            dependencies["Object Name"] == dependencies["Parent Node"]
+        ]
+
         for obj in self.depends_on(object=object, dependencies=dependencies):
             if obj.ObjectType == TOM.ObjectType.Measure:
                 if (f"{obj.Parent.Name}[{obj.Name}]" in object.Expression) or (
@@ -3313,12 +3317,16 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
+        dependencies = dependencies[
+            dependencies["Object Name"] == dependencies["Parent Node"]
+        ]
+
         def create_pattern(tableList, b):
             patterns = [
-                r"(?<!" + re.escape(table) + r"\[)(?<!" + re.escape(table) + r"'\[)"
+                r"(?<!" + re.escape(table) + r")(?<!'" + re.escape(table) + r"')"
                 for table in tableList
             ]
-            combined_pattern = "".join(patterns) + re.escape(b)
+            combined_pattern = "".join(patterns) + re.escape(f"[{b}]")
             return combined_pattern
 
         for obj in self.depends_on(object=object, dependencies=dependencies):
