@@ -163,7 +163,8 @@ from sempy_labs._git import (
     commit_to_git,
     initialize_git_connection,
     update_from_git,
-    connect_workspace_to_git,
+    connect_workspace_to_azure_dev_ops,
+    connect_workspace_to_github,
     disconnect_workspace_from_git,
 )
 from sempy_labs._dataflows import (
@@ -371,7 +372,8 @@ __all__ = [
     "commit_to_git",
     "initialize_git_connection",
     "update_from_git",
-    "connect_workspace_to_git",
+    "connect_workspace_to_azure_dev_ops",
+    "connect_workspace_to_github",
     "disconnect_workspace_from_git",
     "create_environment",
     "delete_environment",
