@@ -485,7 +485,7 @@ def create_vnet_connection(
     user_name: str,
     password: str,
     privacy_level: str,
-    connection_encryption: Optional[str] = "NotEncrypted",
+    connection_encryption: str = "NotEncrypted",
     skip_test_connection: bool = False,
 ):
     """

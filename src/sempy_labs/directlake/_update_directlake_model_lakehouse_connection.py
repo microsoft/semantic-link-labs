@@ -83,7 +83,7 @@ def update_direct_lake_model_connection(
     dataset: str | UUID,
     workspace: Optional[str | UUID] = None,
     source: Optional[str] = None,
-    source_type: Optional[str] = "Lakehouse",
+    source_type: str = "Lakehouse",
     source_workspace: Optional[str | UUID] = None,
 ):
     """

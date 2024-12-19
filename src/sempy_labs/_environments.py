@@ -134,6 +134,8 @@ def publish_environment(environment: str, workspace: Optional[str | UUID] = None
     """
     Publishes a Fabric environment.
 
+    This is a wrapper function for the following API: `Spark Libraries - Publish Environment <https://learn.microsoft.com/rest/api/fabric/environment/spark-libraries/publish-environment>`_.
+
     Parameters
     ----------
     environment: str
@@ -143,8 +145,6 @@ def publish_environment(environment: str, workspace: Optional[str | UUID] = None
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
-
-    # https://learn.microsoft.com/en-us/rest/api/fabric/environment/spark-libraries/publish-environment?tabs=HTTP
 
     from sempy_labs._helper_functions import resolve_environment_id
 
