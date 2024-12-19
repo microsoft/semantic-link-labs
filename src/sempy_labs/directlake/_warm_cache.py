@@ -28,13 +28,13 @@ def warm_direct_lake_cache_perspective(
 
     Parameters
     ----------
-    dataset : str | UUID
+    dataset : str | uuid.UUID
         Name or ID of the semantic model.
     perspective : str
         Name of the perspective which contains objects to be used for warming the cache.
     add_dependencies : bool, default=False
         Includes object dependencies in the cache warming process.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -138,9 +138,9 @@ def warm_direct_lake_cache_isresident(
 
     Parameters
     ----------
-    dataset : str | UUID
+    dataset : str | uuid.UUID
         Name or ID of the semantic model.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

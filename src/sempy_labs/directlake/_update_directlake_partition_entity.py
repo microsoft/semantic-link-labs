@@ -24,13 +24,13 @@ def update_direct_lake_partition_entity(
 
     Parameters
     ----------
-    dataset : str | UUID
+    dataset : str | uuid.UUID
         Name or ID of the semantic model.
     table_name : str, List[str]
         Name of the table(s) in the semantic model.
     entity_name : str, List[str]
         Name of the lakehouse table to be mapped to the semantic model table.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID in which the semantic model exists.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -94,7 +94,7 @@ def add_table_to_direct_lake_semantic_model(
 
     Parameters
     ----------
-    dataset : str | UUID
+    dataset : str | uuid.UUID
         Name or ID of the semantic model.
     table_name : str, List[str]
         Name of the table in the semantic model.
@@ -102,13 +102,10 @@ def add_table_to_direct_lake_semantic_model(
         The name of the Fabric lakehouse table.
     refresh : bool, default=True
         Refreshes the table after it is added to the semantic model.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The name or ID of the Fabric workspace in which the semantic model resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
     """
 
     sempy.fabric._client._utils._init_analysis_services()

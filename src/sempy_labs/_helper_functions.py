@@ -306,7 +306,7 @@ def resolve_lakehouse_id(
 
 
 def get_direct_lake_sql_endpoint(
-    dataset: str | UUID, workspace: Optional[str] = None
+    dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> UUID:
     """
     Obtains the SQL Endpoint ID of the semantic model.
