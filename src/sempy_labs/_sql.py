@@ -8,7 +8,7 @@ from sempy.fabric.exceptions import FabricHTTPException
 from sempy_labs._helper_functions import (
     resolve_warehouse_id,
     resolve_lakehouse_id,
-    resolve_workspace_name_and_id
+    resolve_workspace_name_and_id,
 )
 from uuid import UUID
 
