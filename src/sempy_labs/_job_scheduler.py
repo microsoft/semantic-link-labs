@@ -74,6 +74,7 @@ def list_item_job_instances(
     dfs = []
     for r in responses:
         for v in r.get("value", []):
+            fail = v.get("failureReason", {})
             new_data = {
                 "Job Instance Id": v.get("id"),
                 "Item Name": item_name,
@@ -85,7 +86,7 @@ def list_item_job_instances(
                 "Root Activity Id": v.get("rootActivityId"),
                 "Start Time UTC": v.get("startTimeUtc"),
                 "End Time UTC": v.get("endTimeUtc"),
-                "Failure Reason": v.get("failureReason"),
+                "Error Message": fail.get('message') if fail is not None else "",
             }
             dfs.append(pd.DataFrame(new_data, index=[0]))
 
