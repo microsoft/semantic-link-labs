@@ -41,6 +41,10 @@ class ServicePrincipalTokenProvider(TokenProvider):
             tenant_id=tenant_id, client_id=client_id, client_secret=client_secret
         )
 
+        cls.tenant_id = tenant_id
+        cls.client_id = client_id
+        cls.client_secret = client_secret
+
         return cls(credential)
 
     @classmethod
@@ -88,6 +92,10 @@ class ServicePrincipalTokenProvider(TokenProvider):
         credential = ClientSecretCredential(
             tenant_id=tenant_id, client_id=client_id, client_secret=client_secret
         )
+
+        cls.tenant_id = tenant_id
+        cls.client_id = client_id
+        cls.client_secret = client_secret
 
         return cls(credential)
 
