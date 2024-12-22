@@ -167,7 +167,7 @@ def save_semantic_model_metadata(
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     if run_id is None:
-        run_id = _get_run_id(table_name='SLL_Measures')
+        run_id = _get_run_id(table_name="SLL_Measures")
 
     if time_stamp is None:
         time_stamp = datetime.datetime.now()
@@ -408,21 +408,26 @@ def save_semantic_model_metadata(
 def save_semantic_model_metadata_bulk(workspace: Optional[str | List[str]] = None):
 
     time_stamp = datetime.datetime.now()
-    run_id = _get_run_id(table_name='SLL_Measures')
+    run_id = _get_run_id(table_name="SLL_Measures")
     if isinstance(workspace, str):
         workspace = [workspace]
 
     dfW = fabric.list_workspaces()
     if workspace is None:
-        workspaces = dfW['Name'].tolist()
+        workspaces = dfW["Name"].tolist()
     else:
-        workspaces = dfW[dfW['Name'].isin(workspace)]['Name'].tolist()
+        workspaces = dfW[dfW["Name"].isin(workspace)]["Name"].tolist()
 
     for w in workspaces:
-        dfD = fabric.list_datasets(workspace=w, mode='rest')
+        dfD = fabric.list_datasets(workspace=w, mode="rest")
         for _, r in dfD.iterrows():
-            d_name = r['Dataset Name']
-            save_semantic_model_metadata(dataset=d_name, workspace=workspace, run_id=run_id, time_stamp=time_stamp)
+            d_name = r["Dataset Name"]
+            save_semantic_model_metadata(
+                dataset=d_name,
+                workspace=workspace,
+                run_id=run_id,
+                time_stamp=time_stamp,
+            )
 
 
 def _get_run_id(table_name: str) -> int:
@@ -444,8 +449,6 @@ def _get_run_id(table_name: str) -> int:
             item_id=lakehouse_id, type="Lakehouse", workspace=None
         )
 
-        run_id = (
-            _get_max_run_id(lakehouse=lakehouse_name, table_name=table_name) + 1
-        )
+        run_id = _get_max_run_id(lakehouse=lakehouse_name, table_name=table_name) + 1
 
     return run_id

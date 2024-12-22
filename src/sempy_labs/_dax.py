@@ -349,6 +349,7 @@ def trace_dax(
     clear_cache_before_each_query: bool = False,
     trace_vertipaq_se: bool = False,
     trace_direct_query: bool = False,
+    enable_execution_metrics: bool = False,
     workspace: Optional[str] = None,
 ) -> Tuple[pd.DataFrame, dict]:
     """
@@ -374,6 +375,8 @@ def trace_dax(
         If True, adds the following events to the trace: VertiPaq SE Query Begin, VertiPaq SE Query End, VertiPaq SE Query Cache Match
     trace_direct_query : bool, default=False
         If True, adds the following events to the trace: Direct Query Begin, Direct Query End
+    enable_execution_metrics : bool, default=False
+        If True, adds the `Execution Metrics <https://powerbi.microsoft.com/blog/new-executionmetrics-event-in-azure-log-analytics-for-power-bi-semantic-models/>`_ to the trace.
     workspace : str, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -416,6 +419,9 @@ def trace_dax(
     if trace_direct_query:
         event_schema["DirectQueryBegin"] = dq_cols
         event_schema["DirectQueryEnd"] = dq_cols
+
+    if enable_execution_metrics:
+        event_schema["ExecutionMetrics"] = ["EventClass", "TextData", "ApplicationName"]
 
     query_results = {}
 
