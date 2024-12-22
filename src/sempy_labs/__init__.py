@@ -118,6 +118,9 @@ from sempy_labs._capacities import (
     create_resource_group,
     list_skus,
     list_skus_for_capacity,
+    list_subscriptions,
+    list_tenants,
+    get_subscription,
 )
 from sempy_labs._spark import (
     get_spark_settings,
@@ -462,4 +465,7 @@ __all__ = [
     "get_semantic_model_definition",
     "list_skus",
     "list_skus_for_capacity",
+    "list_subscriptions",
+    "list_tenants",
+    "get_subscription",
 ]

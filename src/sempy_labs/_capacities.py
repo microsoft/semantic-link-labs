@@ -1,5 +1,5 @@
 import sempy.fabric as fabric
-from typing import Optional, List
+from typing import Optional, List, Tuple
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
@@ -7,6 +7,8 @@ import requests
 import pandas as pd
 from sempy_labs._authentication import _get_headers, ServicePrincipalTokenProvider
 from sempy.fabric._token_provider import TokenProvider
+from uuid import UUID
+from sempy_labs._helper_functions import _is_valid_uuid
 
 
 def _add_sll_tag(payload, tags):
@@ -742,6 +744,205 @@ def list_skus(
         new_data = {
             "Sku": v.get("name"),
             "Locations": v.get("locations", []),
+        }
+
+        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    return df
+
+
+def list_subscriptions(token_provider: TokenProvider) -> pd.DataFrame:
+    """
+    Gets all subscriptions for a tenant.
+
+    This is a wrapper function for the following API: `Subscriptions - List <https://learn.microsoft.com/rest/api/resources/subscriptions/list?view=rest-resources-2022-12-01>`_.
+
+    Parameters
+    ----------
+    token_provider : TokenProvider
+        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of all subscriptions for a tenant.
+    """
+
+    df = pd.DataFrame(
+        columns=[
+            "Subscription Id",
+            "Subscription Name",
+            "Tenant Id",
+            "State",
+            "Location Placement Id",
+            "Quota Id",
+            "Spending Limit",
+            "Authorization Source",
+            "Managed By Tenants",
+            "Tags",
+        ]
+    )
+    url = "https://management.azure.com/subscriptions?api-version=2022-12-01"
+    headers = _get_headers(token_provider=token_provider, audience="azure")
+
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    for v in response.json().get("value", []):
+        policy = v.get("subscriptionPolicies", {})
+        tenants = v.get("managedByTenants")
+        new_data = {
+            "Subscription Id": v.get("subscriptionId"),
+            "Subscription Name": v.get("displayName"),
+            "Tenant Id": v.get("tenantId"),
+            "State": v.get("state"),
+            "Location Placement Id": policy.get("locationPlacementId"),
+            "Quota Id": policy.get("quotaId"),
+            "Spending Limit": policy.get("spendingLimit"),
+            "Authorization Source": v.get("authorizationSource"),
+            "Managed by Tenants": tenants if tenants is not None else [],
+            "Tags": v.get("tags", {}),
+        }
+
+        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    return df
+
+
+def get_subscription(
+    azure_subscription_id: str, token_provider: TokenProvider
+) -> pd.DataFrame:
+    """
+    Gets details about a specified subscription.
+
+    This is a wrapper function for the following API: `Subscriptions - Get <https://learn.microsoft.com/rest/api/resources/subscriptions/get?view=rest-resources-2022-12-01>`_.
+
+    Parameters
+    ----------
+    azure_subscription_id : str
+        The Azure subscription ID.
+    token_provider : TokenProvider
+        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing details of a specific subscription.
+    """
+
+    df = pd.DataFrame(
+        columns=[
+            "Subscription Id",
+            "Subscription Name",
+            "Tenant Id",
+            "State",
+            "Location Placement Id",
+            "Quota Id",
+            "Spending Limit",
+            "Authorization Source",
+            "Managed By Tenants",
+            "Tags",
+        ]
+    )
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}?api-version=2022-12-01"
+    headers = _get_headers(token_provider=token_provider, audience="azure")
+
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    v = response.json()
+    policy = v.get("subscriptionPolicies", {})
+    tenants = v.get("managedByTenants")
+    new_data = {
+        "Subscription Id": v.get("subscriptionId"),
+        "Subscription Name": v.get("displayName"),
+        "Tenant Id": v.get("tenantId"),
+        "State": v.get("state"),
+        "Location Placement Id": policy.get("locationPlacementId"),
+        "Quota Id": policy.get("quotaId"),
+        "Spending Limit": policy.get("spendingLimit"),
+        "Authorization Source": v.get("authorizationSource"),
+        "Managed by Tenants": tenants if tenants is not None else [],
+        "Tags": v.get("tags", {}),
+    }
+
+    df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    return df
+
+
+def _resolve_subscription_name_and_id(
+    azure_subscription: str | UUID, token_provider: TokenProvider
+) -> Tuple[str, UUID]:
+
+    if _is_valid_uuid(azure_subscription):
+        subscription_id = azure_subscription
+        df = get_subscription(
+            azure_subscription_id=subscription_id, token_provider=token_provider
+        )
+        if df.empty:
+            raise ValueError()
+        subscription_name = df["Subscription Name"].iloc[0]
+    else:
+        subscription_name = azure_subscription
+        df = list_subscriptions()
+        df_filt = df[df["Subscription Name"] == subscription_name]
+        if df_filt.empty:
+            raise ValueError()
+        subscription_id = df_filt["Subscription Id"].iloc[0]
+
+    return subscription_name, subscription_id
+
+
+def list_tenants(token_provider: TokenProvider) -> pd.DataFrame:
+    """
+    Gets the tenants for your account.
+
+    This is a wrapper function for the following API: `Tenants - List <https://learn.microsoft.com/rest/api/resources/tenants/list?view=rest-resources-2022-12-01>`_.
+
+    Parameters
+    ----------
+    token_provider : TokenProvider
+        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of all tenants for your account.
+    """
+
+    df = pd.DataFrame(
+        columns=[
+            "Tenant Id",
+            "Tenant Name",
+            "Country Code",
+            "Domains",
+            "Tenant Category",
+            "Default Domain",
+            "Tenant Type",
+            "Tenant Branding Logo Url",
+        ]
+    )
+    url = "https://management.azure.com/tenants?api-version=2022-12-01"
+    headers = _get_headers(token_provider=token_provider, audience="azure")
+
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    for v in response.json().get("value", []):
+        d = v.get("domains")
+        new_data = {
+            "Tenant Id": v.get("tenantId"),
+            "Tenant Name": v.get("displayName"),
+            "Country Code": v.get("countryCode"),
+            "Domains": d if d is not None else [],
+            "Tenant Category": v.get("tenantCategory"),
+            "Default Domain": v.get("defaultDomain"),
+            "Tenant Type": v.get("tenantType"),
+            "Tenant Branding Logo Url": v.get("tenantBrandingLogoUrl"),
         }
 
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
