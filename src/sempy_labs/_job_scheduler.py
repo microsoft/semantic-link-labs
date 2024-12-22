@@ -25,7 +25,7 @@ def list_item_job_instances(
     item : str | uuid.UUID
         The item name or ID
     type : str, default=None
-        The item type. If specifying the item name as the item, the item type is required.
+        The item `type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_. If specifying the item name as the item, the item type is required.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID used by the lakehouse.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -86,7 +86,7 @@ def list_item_job_instances(
                 "Root Activity Id": v.get("rootActivityId"),
                 "Start Time UTC": v.get("startTimeUtc"),
                 "End Time UTC": v.get("endTimeUtc"),
-                "Error Message": fail.get('message') if fail is not None else "",
+                "Error Message": fail.get("message") if fail is not None else "",
             }
             dfs.append(pd.DataFrame(new_data, index=[0]))
 
@@ -112,7 +112,7 @@ def list_item_schedules(
     item : str | uuid.UUID
         The item name or ID
     type : str, default=None
-        The item type. If specifying the item name as the item, the item type is required.
+        The item `type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_. If specifying the item name as the item, the item type is required.
     job_type : str, default="DefaultJob"
         The job type.
     workspace : str | uuid.UUID, default=None
@@ -187,6 +187,24 @@ def run_on_demand_item_job(
     job_type: str = "DefaultJob",
     workspace: Optional[str | UUID] = None,
 ):
+    """
+    Run on-demand item job instance.
+
+    This is a wrapper function for the following API: `Job Scheduler - Run On Demand Item Job <https://learn.microsoft.com/rest/api/fabric/core/job-scheduler/run-on-demand-item-job>`_.
+
+    Parameters
+    ----------
+    item : str | uuid.UUID
+        The item name or ID
+    type : str, default=None
+        The item `type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_. If specifying the item name as the item, the item type is required.
+    job_type : str, default="DefaultJob"
+        The job type.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (item_name, item_id) = resolve_item_name_and_id(
@@ -194,7 +212,7 @@ def run_on_demand_item_job(
     )
 
     client = fabric.FabricRestClient()
-    response = client.get(
+    response = client.post(
         f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/instances?jobType={job_type}"
     )
 
