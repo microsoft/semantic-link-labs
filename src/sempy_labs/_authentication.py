@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Optional
 from sempy.fabric._token_provider import TokenProvider
 from azure.identity import ClientSecretCredential
 
@@ -100,13 +100,17 @@ class ServicePrincipalTokenProvider(TokenProvider):
         return cls(credential)
 
     def __call__(
-        self, audience: Literal["pbi", "storage", "azure", "graph"] = "pbi"
+        self,
+        audience: Literal["pbi", "storage", "azure", "graph", "asazure"] = "pbi",
+        region: Optional[str] = None,
     ) -> str:
         """
         Parameters
         ----------
         audience : Literal["pbi", "storage"] = "pbi") -> str
             Literal if it's for PBI/Fabric API call or OneLake/Storage Account call.
+        region : str, default=None
+            The region of the Azure Analysis Services. For example: 'westus2'.
         """
         if audience == "pbi":
             return self.credential.get_token(
@@ -122,12 +126,17 @@ class ServicePrincipalTokenProvider(TokenProvider):
             return self.credential.get_token(
                 "https://graph.microsoft.com/.default"
             ).token
+        elif audience == "asazure":
+            return self.credential.get_token(
+                f"https://{region}.asazure.windows.net/.default"
+            )
         else:
             raise NotImplementedError
 
 
 def _get_headers(
-    token_provider: str, audience: Literal["pbi", "storage", "azure", "graph"] = "azure"
+    token_provider: str,
+    audience: Literal["pbi", "storage", "azure", "graph"] = "azure",
 ):
     """
     Generates headers for an API request.
