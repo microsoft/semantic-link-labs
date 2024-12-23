@@ -8,11 +8,13 @@ from sempy_labs._helper_functions import (
     _conv_b64,
     resolve_report_id,
     resolve_dataset_name_and_id,
+    resolve_item_name_and_id,
     lro,
 )
 import sempy_labs._icons as icons
 from sempy._utils._log import log
 from uuid import UUID
+from sempy.fabric.exceptions import FabricHTTPException
 
 
 def create_report_from_reportjson(
@@ -371,3 +373,41 @@ def _create_report(
             report_workspace=report_workspace,
             dataset_workspace=dataset_workspace,
         )
+
+
+def _get_report(
+    report: str | UUID, workspace: Optional[str | UUID] = None
+) -> pd.DataFrame:
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (report_name, report_id) = resolve_item_name_and_id(
+        item=report, type="Report", workspace=workspace
+    )
+
+    client = fabric.FabricRestClient()
+    response = client.get(f"/v1.0/myorg/groups/{workspace_id}/reports/{report_id}")
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    result = response.json()
+
+    new_data = {
+        "Id": result.get("id"),
+        "Report Type": result.get("reportType"),
+        "Name": result.get("name"),
+        "Web Url": result.get("webUrl"),
+        "Embed Url": result.get("embedUrl"),
+        "Is From Pbix": result.get("isFromPbix"),
+        "Is Owned By Me": result.get("isOwnedByMe"),
+        "Dataset Id": result.get("datasetId"),
+        "Dataset Workspace Id": result.get("datasetWorkspaceId"),
+        "Users": result.get("users") if result.get("users") is not None else [],
+        "Subscriptions": (
+            result.get("subscriptions")
+            if result.get("subscriptions") is not None
+            else []
+        ),
+    }
+
+    return pd.DataFrame([new_data])
