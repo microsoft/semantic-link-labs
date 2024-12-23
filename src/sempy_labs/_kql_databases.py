@@ -8,6 +8,7 @@ from sempy_labs._helper_functions import (
     pagination,
 )
 from sempy.fabric.exceptions import FabricHTTPException
+from uuid import UUID
 
 
 def list_kql_databases(workspace: Optional[str] = None) -> pd.DataFrame:
@@ -138,3 +139,17 @@ def delete_kql_database(name: str, workspace: Optional[str] = None):
     print(
         f"{icons.green_dot} The '{name}' KQL database within the '{workspace}' workspace has been deleted."
     )
+
+
+def _resolve_cluster_uri(workspace: Optional[str | UUID] = None) -> str:
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    dfK = list_kql_databases(workspace=workspace_id)
+    dfK_filt = dfK[dfK["KQL Database Name"] == "Monitoring KQL database"]
+    if len(dfK_filt) == 0:
+        raise ValueError(
+            f"{icons.red_dot} Workspace monitoring is not set up for the '{workspace_name}' workspace."
+        )
+    cluster_uri = dfK_filt["Query Service URI"].iloc[0]
+
+    return cluster_uri

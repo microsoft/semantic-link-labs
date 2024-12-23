@@ -11,6 +11,7 @@ from sempy_labs._helper_functions import (
     create_abfss_path,
     save_as_delta_table,
 )
+from sempy_labs._kql_databases import _resolve_cluster_uri
 
 
 @log
@@ -90,7 +91,7 @@ def query_kusto(cluster_uri: str, query: str, database: str) -> pd.DataFrame:
 def semantic_model_logs(
     cluster_uri: Optional[str] = None,
     dataset: Optional[str | List[str]] = None,
-    workspace: Optional[str | List[str]] = None,
+    workspace: Optional[str | UUID] = None,
     report: Optional[str | UUID | List[str] | List[UUID]] = None,
     capacity: Optional[str | List[str]] = None,
     operation_name: Optional[str | List[str]] = None,
@@ -113,7 +114,7 @@ def semantic_model_logs(
         The Query URI for the KQL database. Example: "https://guid.kusto.fabric.microsoft.com"
     dataset : str | List[str], default=None
         Filter to be applied to the DatasetName column.
-    workspace : str | List[str], default=None
+    workspace : str | UUID, default=None
         Filter to be applied to the WorkspaceName column.
     report : str | UUID | List[str] | List[UUID], default=None
         Filters the output to a report or list of reports. Must specify a single workspace if specifying a report or list of reports.
@@ -147,7 +148,7 @@ def semantic_model_logs(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     if cluster_uri is None:
-        dfK = list_kql_databases(workspace=workspace)
+        dfK = list_kql_databases(workspace=workspace_id)
         dfK_filt = dfK[dfK["KQL Database Name"] == "Monitoring KQL database"]
         if len(dfK_filt) == 0:
             raise ValueError(
@@ -200,7 +201,7 @@ def semantic_model_logs(
 
     param_dict = {
         "dataset": "ItemName",
-        "workspace": "WorkspaceName",
+        "workspace_name": "WorkspaceName",
         "operation_name": "OperationName",
         "operation_detail_name": "OperationDetailName",
         "application_name": "ApplicationName",
@@ -254,24 +255,8 @@ def semantic_model_logs(
     )
 
 
-def _resolve_cluster_uri(workspace: Optional[str] = None) -> str:
-
-    from sempy_labs._kql_databases import list_kql_databases
-
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    dfK = list_kql_databases(workspace=workspace)
-    dfK_filt = dfK[dfK["KQL Database Name"] == "Monitoring KQL database"]
-    if len(dfK_filt) == 0:
-        raise ValueError(
-            f"{icons.red_dot} Workspace monitoring is not set up for the '{workspace_name}' workspace."
-        )
-    cluster_uri = dfK_filt["Query Service URI"].iloc[0]
-
-    return cluster_uri
-
-
 def save_semantic_model_logs(
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
     frequency: int = 1,
     frequency_literal: str = "hour",
 ):
