@@ -11,6 +11,7 @@ import datetime
 from typing import Optional, Tuple, List
 from uuid import UUID
 import sempy_labs._icons as icons
+from azure.core.credentials import TokenCredential, AccessToken
 import urllib.parse
 import numpy as np
 from IPython.display import display, HTML
@@ -981,15 +982,34 @@ def resolve_deployment_pipeline_id(deployment_pipeline: str) -> UUID:
     return deployment_pipeline_id
 
 
+class FabricTokenCredential(TokenCredential):
+
+    def get_token(
+        self,
+        scopes: str,
+        claims: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+        enable_cae: bool = False,
+        **kwargs: any,
+    ) -> AccessToken:
+
+        import notebookutils
+
+        token = notebookutils.credentials.getToken(scopes)
+        access_token = AccessToken(token, 0)
+
+        return access_token
+
+
 def _get_adls_client(account_name):
 
-    import notebookutils
     from azure.storage.filedatalake import DataLakeServiceClient
 
     account_url = f"https://{account_name}.dfs.core.windows.net"
-    token = notebookutils.credentials.getToken(audience="storage")
 
-    service_client = DataLakeServiceClient(account_url, credential=token)
+    service_client = DataLakeServiceClient(
+        account_url, credential=FabricTokenCredential()
+    )
 
     return service_client
 
