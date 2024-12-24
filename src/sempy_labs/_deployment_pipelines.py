@@ -148,7 +148,7 @@ def list_deployment_pipeline_stage_items(
         raise ValueError(
             f"{icons.red_dot} The '{stage_name}' stage does not exist within the '{deployment_pipeline}' deployment pipeline."
         )
-    stage_id = dfPS_filt["Deployment Pipeline Stage ID"].iloc[0]
+    stage_id = dfPS_filt["Deployment Pipeline Stage Id"].iloc[0]
 
     client = fabric.FabricRestClient()
     response = client.get(
