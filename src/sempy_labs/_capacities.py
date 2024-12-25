@@ -948,3 +948,222 @@ def list_tenants(token_provider: TokenProvider) -> pd.DataFrame:
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
+
+
+def create_or_update_resource_group(
+    azure_subscription_id: str,
+    resource_group: str,
+    region: str,
+    token_provider: TokenProvider,
+):
+    """
+    Creates or updates a resource group.
+
+    This is a wrapper function for the following API: `Resource Groups - Create Or Update <https://learn.microsoft.com/rest/api/resources/resource-groups/create-or-update>`_.
+
+    Parameters
+    ----------
+    azure_subscription_id : str
+        The Azure subscription Id.
+    resource_group : str
+        The name of the resource group.
+    region : str
+        The name of the region.
+    token_provider : TokenProvider
+        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
+    """
+
+    headers = _get_headers(token_provider, audience="azure")
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourcegroups/{resource_group}?api-version=2021-04-01"
+
+    payload = {
+        "location": region,
+    }
+
+    response = requests.put(url, headers=headers, json=payload)
+    if response.status_code not in [200, 201]:
+        raise FabricHTTPException(response)
+
+    print(
+        f"{icons.green_dot} The '{resource_group}' resource group has been created/updated."
+    )
+
+
+def create_storage_account(
+    azure_subscription_id: str,
+    resource_group: str,
+    storage_account: str,
+    region: str,
+    token_provider: TokenProvider,
+):
+    """
+    Asynchronously creates a new storage account with the specified parameters. If an account is already created and a subsequent create request is issued with different properties, the account properties will be updated. If an account is already created and a subsequent create or update request is issued with the exact same set of properties, the request will succeed.
+
+    This is a wrapper function for the following API: `Storage Accounts - Create <https://learn.microsoft.com/rest/api/storagerp/storage-accounts/create`_.
+
+    Parameters
+    ----------
+    azure_subscription_id : str
+        The Azure subscription Id.
+    resource_group : str
+        The name of the resource group.
+    storage_account : str
+        The name of the storage account to be created.
+    region : str
+        The name of the region.
+    token_provider : TokenProvider
+        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
+    """
+
+    headers = _get_headers(token_provider, audience="azure")
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Storage/storageAccounts/{storage_account}?api-version=2018-02-01"
+
+    payload = {
+        "sku": {"name": "Standard_GRS"},
+        "kind": "StorageV2",
+        "location": region,
+    }
+
+    response = requests.put(url, headers=headers, json=payload)
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    print(
+        f"{icons.green_dot} The '{storage_account}' storage account has been created."
+    )
+
+
+def list_storage_accounts(
+    azure_subscription_id: str,
+    token_provider: TokenProvider,
+    resource_group: Optional[str] = None,
+) -> pd.DataFrame:
+    """
+    Lists all the storage accounts available under the subscription (or resource group). Note that storage keys are not returned; use the ListKeys operation for this.
+
+    This is a wrapper function for the following APIs: `Storage Accounts - List <https://learn.microsoft.com/rest/api/storagerp/storage-accounts/list>`_, `Storage Accounts - List By Resource Group <https://learn.microsoft.com/rest/api/storagerp/storage-accounts/list-by-resource-group>`_.
+
+    Parameters
+    ----------
+    azure_subscription_id : str
+        The Azure subscription Id.
+    token_provider : TokenProvider
+        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
+    resource_group : str, default=None
+        If set to None, retrieves all storage accounts for the subscription. If not None, shows the storage accounts within that resource group.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of all storage accounts within the subscription (or resource group).
+    """
+
+    headers = _get_headers(token_provider, audience="azure")
+
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}"
+
+    if resource_group is not None:
+        url += f"/resourceGroups/{resource_group}"
+
+    url += "/providers/Microsoft.Storage/storageAccounts?api-version=2023-05-01"
+
+    df = pd.DataFrame(
+        columns=[
+            "Storage Account Id",
+            "Storage Account Name",
+            "Kind",
+            "Location",
+            "Sku Name",
+            "Sku Tier",
+            "Is HNS Enabled",
+            "Creation Time",
+            "Web Endpoint",
+            "DFS Endpoint",
+            "Blob Endpoint",
+            "File Endpoint",
+            "Queue Endpoint",
+            "Table Endpoint",
+            "Primary Location",
+            "Provisioning State",
+            "Secondary Location",
+            "Status of Primary",
+            "Status of Secondary",
+            "Supports HTTPS Traffic Only",
+            "Tags",
+        ]
+    )
+    response = requests.get(url, headers=headers)
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    for v in response.json().get("value", []):
+        p = v.get("properties", {})
+        new_data = {
+            "Storage Account Id": v.get("id"),
+            "Storage Account Name": v.get("name"),
+            "Kind": v.get("kind"),
+            "Location": v.get("location"),
+            "Sku Name": v.get("sku", {}).get("name"),
+            "Sku Tier": v.get("sku", {}).get("tier"),
+            "Is HNS Enabled": p.get("isHnsEnabled"),
+            "Creation Time": p.get("creationTime"),
+            "Web Endpoint": p.get("primaryEndpoints", {}).get("web"),
+            "DFS Endpoint": p.get("primaryEndpoints", {}).get("dfs"),
+            "Blob Endpoint": p.get("primaryEndpoints", {}).get("blob"),
+            "File Endpoint": p.get("primaryEndpoints", {}).get("file"),
+            "Queue Endpoint": p.get("primaryEndpoints", {}).get("queue"),
+            "Table Endpoint": p.get("primaryEndpoints", {}).get("table"),
+            "Primary Location": p.get("primaryLocation"),
+            "Provisioning State": p.get("provisioningState"),
+            "Secondary Location": p.get("secondaryLocation"),
+            "Status of Primary": p.get("statusOfPrimary"),
+            "Status of Secondary": p.get("statusOfSecondary"),
+            "Supports HTTPS Traffic Only": p.get("supportsHttpsTrafficOnly"),
+            "Tags": v.get("tags"),
+        }
+
+        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    bool_cols = ["Is HNS Enabled", "Supports HTTPS Traffic Only"]
+    df[bool_cols] = df[bool_cols].astype(bool)
+
+    return df
+
+
+def check_resource_group_existence(
+    azure_subscription_id: str, resource_group: str, token_provider: TokenProvider
+) -> bool:
+    """
+    Checks whether a resource group exists.
+
+    This is a wrapper function for the following API: `Resource Groups - Check Existence <https://learn.microsoft.com/rest/api/resources/resource-groups/check-existence>`_.
+
+    Parameters
+    ----------
+    azure_subscription_id : str
+        The Azure subscription Id.
+    resource_group : str
+        The name of the resource group.
+    token_provider : TokenProvider
+        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
+
+    Returns
+    -------
+    bool
+        True/False indicating if the resource group exists or not.
+    """
+
+    headers = _get_headers(token_provider, audience="azure")
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}?api-version=2021-04-01"
+
+    response = requests.get(url, headers=headers)
+
+    if response.status_code not in [200, 204]:
+        raise FabricHTTPException(response)
+
+    if response.status_code == 200:
+        return True
+    elif response.status_code == 404:
+        return False
