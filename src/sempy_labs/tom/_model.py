@@ -45,21 +45,58 @@ class TOMWrapper:
 
     def __init__(self, dataset, workspace, readonly, token_provider):
 
-        (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-        (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
-        self._dataset_id = dataset_id
-        self._dataset_name = dataset_name
-        self._workspace_name = workspace_name
-        self._workspace_id = workspace_id
+        self._is_azure_as = False
+        prefix = "asazure"
+        prefix_full = f"{prefix}://"
+        read_write = ":rw"
+
+        # Azure AS workspace logic
+        if workspace.startswith(prefix_full):
+            # Set read or read/write accordingly
+            if readonly is False and not workspace.endswith(read_write):
+                workspace += read_write
+            elif readonly is True and workspace.endswith(read_write):
+                workspace = workspace[: -len(read_write)]
+            self._workspace_name = workspace
+            self._workspace_id
+            self._dataset_id = dataset
+            self._dataset_name = dataset
+            self._is_azure_as = True
+            if token_provider is None:
+                raise ValueError(
+                    f"{icons.red_dot} A token provider must be provided when connecting to an Azure AS workspace."
+                )
+        else:
+            (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+            (dataset_name, dataset_id) = resolve_dataset_name_and_id(
+                dataset, workspace_id
+            )
+            self._dataset_id = dataset_id
+            self._dataset_name = dataset_name
+            self._workspace_name = workspace_name
+            self._workspace_id = workspace_id
         self._readonly = readonly
         self._tables_added = []
         self._token_provider = token_provider
 
-        # Token provider logid
+        # No token provider (standard authentication)
         if self._token_provider is None:
             self._tom_server = fabric.create_tom_server(
                 readonly=readonly, workspace=workspace_id
             )
+        # Service Principal Authentication for Azure AS via token provider
+        elif self._is_azure_as:
+            import Microsoft.AnalysisServices.Tabular as TOM
+
+            # Extract region from the workspace
+            match = re.search(rf"{prefix_full}(.*?).{prefix}", self._workspace_name)
+            if match:
+                region = match.group(1)
+            token = token_provider(audience="asazure", region=region)
+            connection_str = f'Provider=MSOLAP;Data Source={self._workspace_name};Password="{token.token}";Persist Security Info=True;Impersonation Level=Impersonate'
+            self._tom_server = TOM.Server()
+            self._tom_server.Connect(connection_str)
+        # Service Principal Authentication for Power BI via token provider
         else:
             from sempy.fabric._client._utils import _build_adomd_connection_string
             import Microsoft.AnalysisServices.Tabular as TOM
@@ -85,7 +122,10 @@ class TOMWrapper:
             )
             self._tom_server.Connect(connection_str)
 
-        self.model = self._tom_server.Databases[dataset_id].Model
+        if self._is_azure_as:
+            self.model = self._tom_server.Databases.GetByName(self._dataset_name).Model
+        else:
+            self.model = self._tom_server.Databases[dataset_id].Model
 
         self._table_map = {}
         self._column_map = {}
