@@ -4701,7 +4701,7 @@ class TOMWrapper:
 def connect_semantic_model(
     dataset: str | UUID,
     readonly: bool = True,
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
     token_provider: Optional[TokenProvider] = None,
 ) -> Iterator[TOMWrapper]:
     """
@@ -4709,16 +4709,16 @@ def connect_semantic_model(
 
     Parameters
     ----------
-    dataset : str | UUID
+    dataset : str | uuid.UUID
         Name or ID of the semantic model.
     readonly: bool, default=True
         Whether the connection is read-only or read/write. Setting this to False enables read/write which saves the changes made back to the server.
-    workspace : str, default=None
-        The Fabric workspace name.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID. Also supports entering the Azure Analysis Services server name. If connecting to Azure Analysis Services, you must include a token_provider.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     token_provider : TokenProvider, default=None
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
+        The token provider for authentication, created by using the ServicePrincipalTokenProvider class. Required when connecting to Azure Analysis Services.
     Returns
     -------
     typing.Iterator[TOMWrapper]
