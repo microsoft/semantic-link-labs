@@ -9,6 +9,7 @@ def _ms_graph_base(
     api_name,
     token_provider: TokenProvider,
     status_success_code: int = 200,
+    call_type: str = "get",
     payload: Optional[str] = None,
     return_json: bool = True,
 ):
@@ -20,9 +21,19 @@ def _ms_graph_base(
     url = f"https://graph.microsoft.com/v1.0/{api_name}"
 
     if payload:
-        response = requests.get(url, headers=headers, json=payload)
+        if call_type == "post":
+            response = requests.post(url, headers=headers, json=payload)
+        elif call_type == "get":
+            response = requests.get(url, headers=headers, json=payload)
+        elif call_type == "put":
+            response = requests.put(url, headers=headers, json=payload)
     else:
-        response = requests.get(url, headers=headers)
+        if call_type == "post":
+            response = requests.post(url, headers=headers)
+        elif call_type == "get":
+            response = requests.get(url, headers=headers)
+        elif call_type == "put":
+            response = requests.put(url, headers=headers)
 
     if response.status_code not in status_success_codes:
         raise FabricHTTPException(response)

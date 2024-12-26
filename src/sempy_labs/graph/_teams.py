@@ -20,7 +20,7 @@ def list_teams(token_provider: TokenProvider) -> pd.DataFrame:
         A pandas dataframe showing a list of teams and their properties.
     """
 
-    result = _ms_graph_base("teams", token_provider)
+    result = _ms_graph_base(api_name="teams", token_provider=token_provider)
 
     df = pd.DataFrame(
         columns=[

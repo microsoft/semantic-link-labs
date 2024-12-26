@@ -52,7 +52,7 @@ def list_groups(token_provider: TokenProvider) -> pd.DataFrame:
         A pandas dataframe showing a list of groups and their properties.
     """
 
-    result = _ms_graph_base("groups", token_provider)
+    result = _ms_graph_base(api_name="groups", token_provider=token_provider)
 
     df = pd.DataFrame(
         columns=[
@@ -116,7 +116,9 @@ def _get_group(group_id: UUID, token_provider: TokenProvider) -> pd.DataFrame:
         A pandas dataframe showing a list of groups and their properties.
     """
 
-    result = _ms_graph_base(f"groups/{group_id}", token_provider)
+    result = _ms_graph_base(
+        api_name=f"groups/{group_id}", token_provider=token_provider
+    )
 
     df = pd.DataFrame(
         columns=[
@@ -183,12 +185,11 @@ def list_group_members(
         A pandas dataframe showing a list of the members of a group.
     """
 
-    if _is_valid_uuid(group):
-        group_id = group
-    else:
-        group_id = resolve_group_id(group, token_provider)
+    group_id = resolve_group_id(group, token_provider)
 
-    result = _ms_graph_base(f"groups/{group_id}/members", token_provider)
+    result = _ms_graph_base(
+        api_name=f"groups/{group_id}/members", token_provider=token_provider
+    )
 
     df = pd.DataFrame(
         columns=[
@@ -250,7 +251,9 @@ def list_group_owners(group: str | UUID, token_provider: TokenProvider) -> pd.Da
     else:
         group_id = resolve_group_id(group, token_provider)
 
-    result = _ms_graph_base(f"groups/{group_id}/members", token_provider)
+    result = _ms_graph_base(
+        api_name=f"groups/{group_id}/members", token_provider=token_provider
+    )
 
     df = pd.DataFrame(
         columns=[
@@ -302,10 +305,8 @@ def _base_add_to_group(
     if isinstance(object, str):
         object = [object]
 
-    if _is_valid_uuid(group):
-        group_id = group
-    else:
-        group_id = resolve_group_id(group, token_provider)
+    group_id = resolve_group_id(group, token_provider)
+    url = f"groups/{group_id}/{object_type}/$ref"
 
     for m in object:
         if _is_valid_uuid(m):
@@ -319,8 +320,6 @@ def _base_add_to_group(
         else:
             object_list.append(f"https://graph.microsoft.com/v1.0/users/{member_id}")
 
-    url = f"groups/{group_id}/{object_type}/$ref"
-
     # Must submit one request for each owner. Members can be sent in a single request.
     if object_type == "members":
         payload = {"members@odata.bind": object_list}
@@ -330,6 +329,7 @@ def _base_add_to_group(
             payload=payload,
             status_success_code=204,
             return_json=False,
+            call_type="post",
         )
     else:
         for o in object_list:
@@ -340,6 +340,7 @@ def _base_add_to_group(
                 payload=payload,
                 status_success_code=204,
                 return_json=False,
+                call_type="post",
             )
 
     print(
@@ -395,3 +396,30 @@ def add_group_owners(
     _base_add_to_group(
         group=group, object=user, token_provider=token_provider, object_type="owners"
     )
+
+
+def renew_group(group: str | UUID, token_provider: TokenProvider):
+    """
+    Renews the group.
+
+    This is a wrapper function for the following API: `Renew group <https://learn.microsoft.com/graph/api/group-post-renew>`_.
+
+    Parameters
+    ----------
+    group : str | uuid.UUID
+        The group name or ID.
+    token_provider : TokenProvider
+        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
+    """
+
+    group_id = resolve_group_id(group, token_provider)
+
+    _ms_graph_base(
+        api_name=f"groups/{group_id}/renew",
+        token_provider=token_provider,
+        status_success_code=204,
+        return_json=False,
+        call_type="post",
+    )
+
+    print(f"{icons.green_dot} The '{group}' group has been renewed.")

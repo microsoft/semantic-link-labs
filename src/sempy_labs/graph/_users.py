@@ -29,7 +29,7 @@ def resolve_user_id(user: str | UUID, token_provider: TokenProvider) -> UUID:
     if _is_valid_uuid(user):
         return user
     else:
-        result = _ms_graph_base(f"users/{user}", token_provider)
+        result = _ms_graph_base(api_name=f"users/{user}", token_provider=token_provider)
         return result.get("id")
 
 
@@ -52,7 +52,7 @@ def get_user(user: str | UUID, token_provider: TokenProvider) -> pd.DataFrame:
         A pandas dataframe showing properties of a given user.
     """
 
-    result = _ms_graph_base(f"users/{user}", token_provider)
+    result = _ms_graph_base(api_name=f"users/{user}", token_provider=token_provider)
 
     new_data = {
         "User Id": result.get("id"),
@@ -87,7 +87,7 @@ def list_users(token_provider: TokenProvider) -> pd.DataFrame:
         A pandas dataframe showing a list of users and their properties.
     """
 
-    result = _ms_graph_base("users", token_provider)
+    result = _ms_graph_base(api_name="users", token_provider=token_provider)
 
     df = pd.DataFrame(
         columns=[
@@ -190,6 +190,7 @@ def send_mail(
         status_success_code=202,
         return_json=False,
         payload=payload,
+        call_type="post",
     )
 
     print(f"{icons.green_dot} The email has been sent to {to_recipients}.")
