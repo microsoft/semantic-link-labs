@@ -5,6 +5,7 @@ from sempy_labs.graph._groups import (
     add_group_members,
     add_group_owners,
     resolve_group_id,
+    renew_group,
 )
 from sempy_labs.graph._users import (
     resolve_user_id,
@@ -22,6 +23,7 @@ __all__ = [
     "list_group_members",
     "add_group_members",
     "add_group_owners",
+    "renew_group",
     "resolve_group_id",
     "resolve_user_id",
     "get_user",
