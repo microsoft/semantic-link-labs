@@ -11,12 +11,6 @@ from sempy_labs._gateways import (
     update_on_premises_gateway,
     bind_semantic_model_to_gateway,
 )
-from sempy_labs._ms_graph import (
-    list_groups,
-    list_users,
-    get_user,
-    resolve_user_id,
-)
 from sempy_labs._authentication import (
     ServicePrincipalTokenProvider,
 )
@@ -475,8 +469,4 @@ __all__ = [
     "bind_semantic_model_to_gateway",
     "list_semantic_model_errors",
     "list_item_job_instances",
-    "list_groups",
-    "list_users",
-    "get_user",
-    "resolve_user_id",
 ]
