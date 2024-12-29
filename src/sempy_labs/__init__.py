@@ -141,6 +141,8 @@ from sempy_labs._connections import (
 from sempy_labs._dax import (
     evaluate_dax_impersonation,
     trace_dax,
+    dax_perf_test,
+    run_benchmark,
 )
 from sempy_labs._generate_semantic_model import (
     create_blank_semantic_model,
@@ -381,4 +383,6 @@ __all__ = [
     "create_resource_group",
     "trace_dax",
     "save_semantic_model_metadata",
+    "dax_perf_test",
+    "run_benchmark",
 ]
