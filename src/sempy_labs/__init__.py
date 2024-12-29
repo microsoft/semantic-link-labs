@@ -1,9 +1,6 @@
 from sempy_labs._reflex import (
     list_activators,
-    create_activator,
     delete_activator,
-    update_activator_definition,
-    get_activator_definition,
 )
 from sempy_labs._gateways import (
     list_gateway_members,
@@ -464,8 +461,5 @@ __all__ = [
     "update_vnet_gateway",
     "update_on_premises_gateway",
     "list_activators",
-    "create_activator",
     "delete_activator",
-    "update_activator_definition",
-    "get_activator_definition",
 ]

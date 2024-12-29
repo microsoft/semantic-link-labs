@@ -4,12 +4,14 @@ import sempy_labs._icons as icons
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
+    resolve_item_name_and_id,
     lro,
     _conv_b64,
     _decode_b64,
 )
 from sempy.fabric.exceptions import FabricHTTPException
 import json
+from uuid import UUID
 
 
 def list_activators(workspace: Optional[str] = None) -> pd.DataFrame:
@@ -34,7 +36,7 @@ def list_activators(workspace: Optional[str] = None) -> pd.DataFrame:
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     client = fabric.FabricRestClient()
-    response = client.post(f"/v1/workspaces/{workspace_id}/reflexes")
+    response = client.get(f"/v1/workspaces/{workspace_id}/reflexes")
 
     if response.status_code != 200:
         raise FabricHTTPException(response)
@@ -53,7 +55,7 @@ def list_activators(workspace: Optional[str] = None) -> pd.DataFrame:
     return df
 
 
-def delete_activator(activator: str, workspace: Optional[str] = None):
+def delete_activator(activator: str | UUID, workspace: Optional[str] = None):
     """
     Deletes an activator (reflex).
 
@@ -61,8 +63,8 @@ def delete_activator(activator: str, workspace: Optional[str] = None):
 
     Parameters
     ----------
-    activator : str
-        The name of the activator/reflex.
+    activator : str | uuid.UUID
+        The name or ID of the activator/reflex.
     workspace : str, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -70,18 +72,15 @@ def delete_activator(activator: str, workspace: Optional[str] = None):
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    item_id = fabric.resolve_item_id(
-        item_name=activator, type="Reflex", workspace=workspace_id
-    )
+    (item_name, item_id) = resolve_item_name_and_id(item=activator, type='Reflex', workspace=workspace_id)
     fabric.delete_item(item_id=item_id, workspace=workspace_id)
 
     print(
-        f"{icons.green_dot} The '{activator}' activator within the '{workspace}' workspace has been deleted."
+        f"{icons.green_dot} The '{item_name}' activator within the '{workspace_name}' workspace has been deleted."
     )
 
 
-def create_activator(
+def _create_activator(
     name: str,
     definition: Optional[dict] = None,
     description: Optional[str] = None,
@@ -135,14 +134,14 @@ def create_activator(
     client = fabric.FabricRestClient()
     response = client.post(f"/v1/workspaces/{workspace_id}/reflexes", json=payload)
 
-    lro(client, response, status_codes=[201, 202])
+    lro(client, response, status_codes=[201, 202], return_status_code=True)
 
     print(
-        f"{icons.green_dot} The '{name}' activator has been created within the '{workspace}' workspace."
+        f"{icons.green_dot} The '{name}' activator has been created within the '{workspace_name}' workspace."
     )
 
 
-def update_activator_definition(
+def _update_activator_definition(
     activator: str, definition: dict, workspace: Optional[str] = None
 ):
     """
@@ -163,9 +162,7 @@ def update_activator_definition(
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    item_id = fabric.resolve_item_id(
-        item_name=activator, type="Reflex", workspace=workspace_id
-    )
+    (item_name, item_id) = resolve_item_name_and_id(item=activator, type='Reflex', workspace=workspace_id)
     reflex_payload = _conv_b64(definition)
 
     client = fabric.FabricRestClient()
@@ -188,11 +185,11 @@ def update_activator_definition(
     lro(client, response, status_codes=[200, 202], return_status_code=True)
 
     print(
-        f"{icons.green_dot} The '{activator}' activator has been updated within the '{workspace}' workspace."
+        f"{icons.green_dot} The '{item_name}' activator has been updated within the '{workspace_name}' workspace."
     )
 
 
-def get_activator_definition(
+def _get_activator_definition(
     activator: str, workspace: Optional[str] = None, decode: bool = True,
 ) -> dict:
     """
@@ -221,9 +218,7 @@ def get_activator_definition(
     """
 
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
-    item_id = fabric.resolve_item_id(
-        item_name=activator, type="Reflex", workspace=workspace
-    )
+    (item_name, item_id) = resolve_item_name_and_id(item=activator, type='Reflex', workspace=workspace_id)
     client = fabric.FabricRestClient()
     response = client.post(
         f"/v1/workspaces/{workspace_id}/reflexes/{item_id}/getDefinition",
