@@ -150,6 +150,4 @@ def _resolve_cluster_uri(workspace: Optional[str | UUID] = None) -> str:
         raise ValueError(
             f"{icons.red_dot} Workspace monitoring is not set up for the '{workspace_name}' workspace."
         )
-    cluster_uri = dfK_filt["Query Service URI"].iloc[0]
-
-    return cluster_uri
+    return dfK_filt["Query Service URI"].iloc[0]

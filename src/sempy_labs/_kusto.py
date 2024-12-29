@@ -88,6 +88,7 @@ def query_kusto(cluster_uri: str, query: str, database: str) -> pd.DataFrame:
     return df
 
 
+@log
 def semantic_model_logs(
     cluster_uri: Optional[str] = None,
     dataset: Optional[str | List[str]] = None,
@@ -111,12 +112,13 @@ def semantic_model_logs(
     Parameters
     ----------
     cluster_uri : str, default=None
-        The Query URI for the KQL database. Example: "https://guid.kusto.fabric.microsoft.com"
+        The Query URI for the KQL database. Example: "https://guid.kusto.fabric.microsoft.com".
+        Defaults to None which resolves to the cluster_uri of the workspace monitoring KQL database.
     dataset : str | List[str], default=None
         Filter to be applied to the DatasetName column.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         Filter to be applied to the WorkspaceName column.
-    report : str | UUID | List[str] | List[UUID], default=None
+    report : uuid.UUID | List[uuid.UUID], default=None
         Filters the output to a report or list of reports. Must specify a single workspace if specifying a report or list of reports.
     capacity : str | List[str], default=None
         Filters the output to a capacity or list of capacities.
@@ -143,18 +145,10 @@ def semantic_model_logs(
         A pandas dataframe showing the semantic model logs based on the filters provided.
     """
 
-    from sempy_labs._kql_databases import list_kql_databases
-
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     if cluster_uri is None:
-        dfK = list_kql_databases(workspace=workspace_id)
-        dfK_filt = dfK[dfK["KQL Database Name"] == "Monitoring KQL database"]
-        if len(dfK_filt) == 0:
-            raise ValueError(
-                f"{icons.red_dot} Workspace monitoring is not set up for the '{workspace_name}' workspace."
-            )
-        cluster_uri = dfK_filt["Query Service URI"].iloc[0]
+        cluster_uri = _resolve_cluster_uri(workspace=workspace_id)
 
     timespan_literal = timespan_literal.lower()
     if timespan_literal.startswith("h"):
@@ -175,12 +169,10 @@ def semantic_model_logs(
 
     query = f"SemanticModelLogs\n| where Timestamp > ago({timespan}{timespan_literal})"
 
-    report_json_filter = (
-        "tostring(parse_json(dynamic_to_json(ApplicationContext)).Sources[0].ReportId)"
-    )
-    visual_json_filter = (
-        "tostring(parse_json(dynamic_to_json(ApplicationContext)).Sources[0].VisualId)"
-    )
+    filter_prefix = "tostring(parse_json(dynamic_to_json(ApplicationContext)).Sources[0]"
+    report_json_filter = f"{filter_prefix}.ReportId)"
+    visual_json_filter = f"{filter_prefix}.VisualId)"
+
     return_columns = [
         "Timestamp",
         "OperationName",
@@ -220,13 +212,13 @@ def semantic_model_logs(
             query += f"\nand CapacityId in ({comma_delimited_string})"
 
     if report is not None:
-        dfR = fabric.list_reports(workspace=workspace)
+        # dfR = fabric.list_reports(workspace=workspace)
         if isinstance(report, str):
             report = [report]
-        reports = dfR[dfR["Name"].isin(report)]["Id"].tolist()
-        reports = reports + dfR[dfR["Id"].isin(report)]["Id"].tolist()
-        if len(reports) > 0:
-            comma_delimited_string = ", ".join(f'"{item}"' for item in reports)
+        # reports = dfR[dfR["Name"].isin(report)]["Id"].tolist()
+        # reports = reports + dfR[dfR["Id"].isin(report)]["Id"].tolist()
+        if len(report) > 0:
+            comma_delimited_string = ", ".join(f'"{item}"' for item in report)
             query += f"\nand {report_json_filter} in ({comma_delimited_string})"
 
     def _add_to_filter(parameter, filter_name, query):
@@ -255,6 +247,7 @@ def semantic_model_logs(
     )
 
 
+@log
 def save_semantic_model_logs(
     workspace: Optional[str | UUID] = None,
     frequency: int = 1,
