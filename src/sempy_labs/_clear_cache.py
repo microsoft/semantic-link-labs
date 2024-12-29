@@ -105,7 +105,7 @@ def backup_semantic_model(
 
 @log
 def restore_semantic_model(
-    dataset: str | UUID,
+    dataset: str,
     file_path: str,
     allow_overwrite: bool = True,
     ignore_incompatibilities: bool = True,
@@ -118,8 +118,8 @@ def restore_semantic_model(
 
     Parameters
     ----------
-    dataset : str | uuid.UUID
-        Name or ID of the semantic model.
+    dataset : str
+        Name of the semantic model.
     file_path : str
         The location in which to backup the semantic model. Must end in '.abf'.
         Example 1: file_path = 'MyModel.abf'
@@ -142,11 +142,10 @@ def restore_semantic_model(
         )
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
     tmsl = {
         "restore": {
-            "database": dataset_name,
+            "database": dataset,
             "file": file_path,
             "allowOverwrite": allow_overwrite,
             "security": "copyAll",
@@ -160,7 +159,7 @@ def restore_semantic_model(
     fabric.execute_tmsl(script=tmsl, workspace=workspace_id)
 
     print(
-        f"{icons.green_dot} The '{dataset_name}' semantic model has been restored to the '{workspace_name}' workspace based on the '{file_path}' backup file."
+        f"{icons.green_dot} The '{dataset}' semantic model has been restored to the '{workspace_name}' workspace based on the '{file_path}' backup file."
     )
 
 
