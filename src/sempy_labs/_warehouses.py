@@ -150,15 +150,15 @@ def delete_warehouse(name: str, workspace: Optional[str | UUID] = None):
 
 
 def get_warehouse_tables(
-    warehouse: str, workspace: Optional[str | UUID] = None
+    warehouse: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
     Shows a list of the tables in the Fabric warehouse. This function is based on INFORMATION_SCHEMA.TABLES.
 
     Parameters
     ----------
-    warehouse : str
-        Name of the Fabric warehouse.
+    warehouse : str | uuid.UUID
+        Name or ID of the Fabric warehouse.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -185,15 +185,15 @@ def get_warehouse_tables(
 
 
 def get_warehouse_columns(
-    warehouse: str, workspace: Optional[str | UUID] = None
+    warehouse: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
     Shows a list of the columns in each table within the Fabric warehouse. This function is based on INFORMATION_SCHEMA.COLUMNS.
 
     Parameters
     ----------
-    warehouse : str
-        Name of the Fabric warehouse.
+    warehouse : str | uuid.UUID
+        Name or ID of the Fabric warehouse.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse

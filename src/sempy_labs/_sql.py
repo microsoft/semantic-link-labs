@@ -6,8 +6,8 @@ import struct
 from itertools import chain, repeat
 from sempy.fabric.exceptions import FabricHTTPException
 from sempy_labs._helper_functions import (
-    resolve_warehouse_id,
-    resolve_lakehouse_id,
+    resolve_lakehouse_name_and_id,
+    resolve_item_name_and_id,
     resolve_workspace_name_and_id,
 )
 from uuid import UUID
@@ -35,7 +35,7 @@ def _bytes2mswin_bstr(value: bytes) -> bytes:
 class ConnectBase:
     def __init__(
         self,
-        name: str,
+        item: str,
         workspace: Optional[Union[str, UUID]] = None,
         timeout: Optional[int] = None,
         endpoint_type: str = "warehouse",
@@ -45,11 +45,15 @@ class ConnectBase:
 
         (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-        # Resolve the appropriate ID (warehouse or lakehouse)
+        # Resolve the appropriate ID and name (warehouse or lakehouse)
         if endpoint_type == "warehouse":
-            resource_id = resolve_warehouse_id(warehouse=name, workspace=workspace_id)
+            (resource_id, resource_name) = resolve_item_name_and_id(
+                item=item, type=endpoint_type.capitalize(), workspace=workspace_id
+            )
         else:
-            resource_id = resolve_lakehouse_id(lakehouse=name, workspace=workspace_id)
+            (resource_id, resource_name) = resolve_lakehouse_name_and_id(
+                lakehouse=item, workspace=workspace_id
+            )
 
         # Get the TDS endpoint
         client = fabric.FabricRestClient()
@@ -72,7 +76,7 @@ class ConnectBase:
         # Set up the connection string
         access_token = SynapseTokenProvider()()
         tokenstruct = _bytes2mswin_bstr(access_token.encode())
-        conn_str = f"DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={tds_endpoint};DATABASE={name};Encrypt=Yes;"
+        conn_str = f"DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={tds_endpoint};DATABASE={resource_name};Encrypt=Yes;"
 
         if timeout is not None:
             conn_str += f"Connect Timeout={timeout};"

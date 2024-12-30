@@ -177,21 +177,22 @@ def resolve_lakehouse_name_and_id(
 ) -> Tuple[str, UUID]:
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    type = "Lakehouse"
 
     if lakehouse is None:
         lakehouse_id = fabric.get_lakehouse_id()
         lakehouse_name = fabric.resolve_item_name(
-            item_id=lakehouse_id, type="Lakehouse", workspace=workspace_id
+            item_id=lakehouse_id, type=type, workspace=workspace_id
         )
     elif _is_valid_uuid(lakehouse):
         lakehouse_id = lakehouse
         lakehouse_name = fabric.resolve_item_name(
-            item_id=lakehouse_id, type="Lakehouse", workspace=workspace_id
+            item_id=lakehouse_id, type=type, workspace=workspace_id
         )
     else:
         lakehouse_name = lakehouse
         lakehouse_id = fabric.resolve_item_id(
-            item_name=lakehouse, type="Lakehouse", workspace=workspace_id
+            item_name=lakehouse, type=type, workspace=workspace_id
         )
 
     return lakehouse_name, lakehouse_id
@@ -201,18 +202,9 @@ def resolve_dataset_name_and_id(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> Tuple[str, UUID]:
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    if _is_valid_uuid(dataset):
-        dataset_id = dataset
-        dataset_name = fabric.resolve_item_name(
-            item_id=dataset_id, type="SemanticModel", workspace=workspace_id
-        )
-    else:
-        dataset_name = dataset
-        dataset_id = fabric.resolve_item_id(
-            item_name=dataset, type="SemanticModel", workspace=workspace_id
-        )
+    (dataset_name, dataset_id) = resolve_item_name_and_id(
+        item=dataset, type="SemanticModel", workspace=workspace
+    )
 
     return dataset_name, dataset_id
 
@@ -305,15 +297,15 @@ def resolve_lakehouse_name(
 
 
 def resolve_lakehouse_id(
-    lakehouse: str, workspace: Optional[str | UUID] = None
+    lakehouse: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None
 ) -> UUID:
     """
     Obtains the ID of the Fabric lakehouse.
 
     Parameters
     ----------
-    lakehouse : str
-        The name of the Fabric lakehouse.
+    lakehouse : str | uuid.UUID, default=None
+        The name or ID of the Fabric lakehouse.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -325,9 +317,14 @@ def resolve_lakehouse_id(
         The ID of the Fabric lakehouse.
     """
 
-    return fabric.resolve_item_id(
-        item_name=lakehouse, type="Lakehouse", workspace=workspace
-    )
+    if lakehouse is None:
+        return fabric.get_lakehouse_id()
+    elif _is_valid_uuid(lakehouse):
+        return lakehouse
+    else:
+        fabric.resolve_item_id(
+            item_name=lakehouse, type="Lakehouse", workspace=workspace
+        )
 
 
 def get_direct_lake_sql_endpoint(
@@ -1047,14 +1044,16 @@ def _get_adls_client(account_name):
     return service_client
 
 
-def resolve_warehouse_id(warehouse: str, workspace: Optional[str | UUID]) -> UUID:
+def resolve_warehouse_id(
+    warehouse: str | UUID, workspace: Optional[str | UUID]
+) -> UUID:
     """
     Obtains the Id for a given warehouse.
 
     Parameters
     ----------
-    warehouse : str
-        The warehouse name
+    warehouse : str | uuid.UUID
+        The warehouse name or ID.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID in which the semantic model resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -1062,13 +1061,16 @@ def resolve_warehouse_id(warehouse: str, workspace: Optional[str | UUID]) -> UUI
 
     Returns
     -------
-    UUID
+    uuid.UUID
         The warehouse Id.
     """
 
-    return fabric.resolve_item_id(
-        item_name=warehouse, type="Warehouse", workspace=workspace
-    )
+    if _is_valid_uuid(warehouse):
+        return warehouse
+    else:
+        return fabric.resolve_item_id(
+            item_name=warehouse, type="Warehouse", workspace=workspace
+        )
 
 
 def get_language_codes(languages: str | List[str]):
