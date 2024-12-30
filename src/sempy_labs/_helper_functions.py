@@ -172,6 +172,31 @@ def resolve_item_name_and_id(
     return item_name, item_id
 
 
+def resolve_lakehouse_name_and_id(
+    lakehouse: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None
+) -> Tuple[str, UUID]:
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    if lakehouse is None:
+        lakehouse_id = fabric.get_lakehouse_id()
+        lakehouse_name = fabric.resolve_item_name(
+            item_id=lakehouse_id, type="Lakehouse", workspace=workspace_id
+        )
+    elif _is_valid_uuid(lakehouse):
+        lakehouse_id = lakehouse
+        lakehouse_name = fabric.resolve_item_name(
+            item_id=lakehouse_id, type="Lakehouse", workspace=workspace_id
+        )
+    else:
+        lakehouse_name = lakehouse
+        lakehouse_id = fabric.resolve_item_id(
+            item_name=lakehouse, type="Lakehouse", workspace=workspace_id
+        )
+
+    return lakehouse_name, lakehouse_id
+
+
 def resolve_dataset_name_and_id(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> Tuple[str, UUID]:
@@ -426,7 +451,7 @@ def save_as_delta_table(
     write_mode: str,
     merge_schema: bool = False,
     schema: Optional[dict] = None,
-    lakehouse: Optional[str] = None,
+    lakehouse: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
 ):
     """
@@ -444,8 +469,8 @@ def save_as_delta_table(
         Merges the schemas of the dataframe to the delta table.
     schema : dict, default=None
         A dictionary showing the schema of the columns and their data types.
-    lakehouse : str, default=None
-        The Fabric lakehouse used by the Direct Lake semantic model.
+    lakehouse : str | uuid.UUID, default=None
+        The Fabric lakehouse name or ID.
         Defaults to None which resolves to the lakehouse attached to the notebook.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
@@ -468,21 +493,16 @@ def save_as_delta_table(
     )
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+        lakehouse=lakehouse, workspace=workspace_id
+    )
 
-    if lakehouse is None:
-        lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse = resolve_lakehouse_name(
-            lakehouse_id=lakehouse_id, workspace=workspace_id
-        )
-    else:
-        lakehouse_id = resolve_lakehouse_id(lakehouse, workspace_id)
-
-    writeModes = ["append", "overwrite"]
+    write_modes = ["append", "overwrite"]
     write_mode = write_mode.lower()
 
-    if write_mode not in writeModes:
+    if write_mode not in write_modes:
         raise ValueError(
-            f"{icons.red_dot} Invalid 'write_type' parameter. Choose from one of the following values: {writeModes}."
+            f"{icons.red_dot} Invalid 'write_type' parameter. Choose from one of the following values: {write_modes}."
         )
 
     if " " in delta_table_name:
@@ -507,16 +527,19 @@ def save_as_delta_table(
         "timestamp": TimestampType(),
     }
 
-    if schema is None:
-        spark_df = spark.createDataFrame(dataframe)
+    if isinstance(dataframe, pd.DataFrame):
+        if schema is None:
+            spark_df = spark.createDataFrame(dataframe)
+        else:
+            schema_map = StructType(
+                [
+                    StructField(column_name, type_mapping[data_type], True)
+                    for column_name, data_type in schema.items()
+                ]
+            )
+            spark_df = spark.createDataFrame(dataframe, schema_map)
     else:
-        schema_map = StructType(
-            [
-                StructField(column_name, type_mapping[data_type], True)
-                for column_name, data_type in schema.items()
-            ]
-        )
-        spark_df = spark.createDataFrame(dataframe, schema_map)
+        spark_df = dataframe
 
     filePath = create_abfss_path(
         lakehouse_id=lakehouse_id,
@@ -531,7 +554,7 @@ def save_as_delta_table(
     else:
         spark_df.write.mode(write_mode).format("delta").save(filePath)
     print(
-        f"{icons.green_dot} The dataframe has been saved as the '{delta_table_name}' table in the '{lakehouse}' lakehouse within the '{workspace_name}' workspace."
+        f"{icons.green_dot} The dataframe has been saved as the '{delta_table_name}' table in the '{lakehouse_name}' lakehouse within the '{workspace_name}' workspace."
     )
 
 
