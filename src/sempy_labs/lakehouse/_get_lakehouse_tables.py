@@ -4,10 +4,11 @@ from pyspark.sql import SparkSession
 import pyarrow.parquet as pq
 import datetime
 from sempy_labs._helper_functions import (
-    resolve_lakehouse_id,
-    resolve_lakehouse_name,
+    _get_max_run_id,
     resolve_workspace_name_and_id,
+    resolve_lakehouse_name_and_id,
     pagination,
+    save_as_delta_table,
 )
 from sempy_labs.directlake._guardrails import (
     get_sku_size,
@@ -23,7 +24,7 @@ from uuid import UUID
 
 @log
 def get_lakehouse_tables(
-    lakehouse: Optional[str] = None,
+    lakehouse: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
     extended: bool = False,
     count_rows: bool = False,
@@ -36,8 +37,8 @@ def get_lakehouse_tables(
 
     Parameters
     ----------
-    lakehouse : str, default=None
-        The Fabric lakehouse.
+    lakehouse : str | uuid.UUID, default=None
+        The Fabric lakehouse name or ID.
         Defaults to None which resolves to the lakehouse attached to the notebook.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID used by the lakehouse.
@@ -68,12 +69,9 @@ def get_lakehouse_tables(
     )
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    if lakehouse is None:
-        lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse = resolve_lakehouse_name(lakehouse_id, workspace_id)
-    else:
-        lakehouse_id = resolve_lakehouse_id(lakehouse, workspace_id)
+    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+        lakehouse=lakehouse, workspace=workspace_id
+    )
 
     if count_rows:  # Setting countrows defaults to extended=True
         extended = True
@@ -106,7 +104,7 @@ def get_lakehouse_tables(
         for i in r.get("data", []):
             new_data = {
                 "Workspace Name": workspace_name,
-                "Lakehouse Name": lakehouse,
+                "Lakehouse Name": lakehouse_name,
                 "Table Name": i.get("name"),
                 "Format": i.get("format"),
                 "Type": i.get("type"),
@@ -179,23 +177,17 @@ def get_lakehouse_tables(
                 f"{icons.red_dot} In order to save the report.json file, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
             )
 
-        spark = SparkSession.builder.getOrCreate()
-
-        lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse = resolve_lakehouse_name(
-            lakehouse_id=lakehouse_id, workspace=workspace_id
-        )
+        (current_lakehouse_name, current_lakehouse_id) = resolve_lakehouse_name_and_id()
         lakeTName = "lakehouse_table_details"
         lakeT_filt = df[df["Table Name"] == lakeTName]
 
-        query = f"SELECT MAX(RunId) FROM {lakehouse}.{lakeTName}"
-
         if len(lakeT_filt) == 0:
-            runId = 1
+            run_id = 1
         else:
-            dfSpark = spark.sql(query)
-            maxRunId = dfSpark.collect()[0][0]
-            runId = maxRunId + 1
+            max_run_id = _get_max_run_id(
+                lakehouse=current_lakehouse_name, table_name=lakeTName
+            )
+            run_id = max_run_id + 1
 
         export_df = df.copy()
 
@@ -240,15 +232,11 @@ def get_lakehouse_tables(
         print(
             f"{icons.in_progress} Saving Lakehouse table properties to the '{lakeTName}' table in the lakehouse...\n"
         )
-        now = datetime.datetime.now()
-        export_df["Timestamp"] = now
-        export_df["RunId"] = runId
+        export_df["Timestamp"] = datetime.datetime.now()
+        export_df["RunId"] = run_id
 
-        export_df.columns = export_df.columns.str.replace(" ", "_")
-        spark_df = spark.createDataFrame(export_df)
-        spark_df.write.mode("append").format("delta").saveAsTable(lakeTName)
-        print(
-            f"{icons.bullet} Lakehouse table properties have been saved to the '{lakeTName}' delta table."
+        save_as_delta_table(
+            dataframe=export_df, delta_table_name=lakeTName, write_mode="append"
         )
 
     return df
