@@ -52,6 +52,24 @@ def create_abfss_path(
     return f"abfss://{lakehouse_workspace_id}@onelake.dfs.fabric.microsoft.com/{lakehouse_id}/Tables/{delta_table_name}"
 
 
+def _get_default_file_path() -> str:
+
+    default_file_storage = _get_fabric_context_setting(name="fs.defaultFS")
+
+    return default_file_storage.split("@")[-1][:-1]
+
+
+def _split_abfss_path(path: str) -> Tuple[UUID, UUID, str]:
+
+    # Extracts the workspace ID, item ID and delta table name from the abfss path.
+
+    workspace_id = path.split("abfss://")[1].split("@")[0]
+    item_id = path.split(".com/")[1].split("/")[0]
+    delta_table_name = path.split("/")[-1]
+
+    return workspace_id, item_id, delta_table_name
+
+
 def format_dax_object_name(table: str, column: str) -> str:
     """
     Formats a table/column combination to the 'Table Name'[Column Name] format.
