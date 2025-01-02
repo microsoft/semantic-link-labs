@@ -101,13 +101,15 @@ class ServicePrincipalTokenProvider(TokenProvider):
 
     def __call__(
         self,
-        audience: Literal["pbi", "storage", "azure", "graph", "asazure"] = "pbi",
+        audience: Literal[
+            "pbi", "storage", "azure", "graph", "asazure", "keyvault"
+        ] = "pbi",
         region: Optional[str] = None,
     ) -> str:
         """
         Parameters
         ----------
-        audience : Literal["pbi", "storage"] = "pbi") -> str
+        audience : Literal["pbi", "storage", "azure", "graph", "asazure", "keyvault"] = "pbi") -> str
             Literal if it's for PBI/Fabric API call or OneLake/Storage Account call.
         region : str, default=None
             The region of the Azure Analysis Services. For example: 'westus2'.
@@ -129,14 +131,16 @@ class ServicePrincipalTokenProvider(TokenProvider):
         elif audience == "asazure":
             return self.credential.get_token(
                 f"https://{region}.asazure.windows.net/.default"
-            )
+            ).token
+        elif audience == "keyvault":
+            return self.credential.get_token("https://vault.azure.net/.default").token
         else:
             raise NotImplementedError
 
 
 def _get_headers(
     token_provider: str,
-    audience: Literal["pbi", "storage", "azure", "graph"] = "azure",
+    audience: Literal["pbi", "storage", "azure", "graph", "keyvault"] = "azure",
 ):
     """
     Generates headers for an API request.
