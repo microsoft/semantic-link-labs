@@ -38,7 +38,7 @@ def create_fabric_capacity(
     """
     This function creates a new Fabric capacity within an Azure subscription.
 
-    This is a wrapper function for the following API: `Fabric Capacities - Create Or Update <https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities/create-or-update?view=rest-microsoftfabric-2023-11-01>`_.
+    This is a wrapper function for the following API: `Fabric Capacities - Create Or Update <https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities/create-or-update>`_.
 
     Parameters
     ----------
@@ -619,7 +619,7 @@ def create_resource_group(
     """
     This function creates a resource group in a region within an Azure subscription.
 
-    This is a wrapper function for the following API: `ResourceGroupsOperations Class - CreateOrUpdate <https://learn.microsoft.com/python/api/azure-mgmt-resource/azure.mgmt.resource.resources.v2022_09_01.operations.resourcegroupsoperations?view=azure-python#azure-mgmt-resource-resources-v2022-09-01-operations-resourcegroupsoperations-create-or-update>`_.
+    This is a wrapper function for the following API: `Resource Groups - Create Or Update <https://learn.microsoft.com/rest/api/resources/resource-groups/create-or-update>`_.
 
     Parameters
     ----------
@@ -633,8 +633,6 @@ def create_resource_group(
         The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
     """
 
-    from azure.mgmt.resource import ResourceManagementClient
-
     if token_provider is None:
         token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
             key_vault_uri=kwargs["key_vault_uri"],
@@ -646,22 +644,21 @@ def create_resource_group(
             f"{icons.info} Please use the 'token_provider' parameter instead of the key vault parameters within this function as the key vault parameters have been deprecated."
         )
 
-    resource_client = ResourceManagementClient(
-        token_provider.credential, azure_subscription_id
-    )
-
-    if resource_client.resource_groups.check_existence(resource_group):
+    if check_resource_group_existence(
+        azure_subscription_id=azure_subscription_id,
+        resource_group=resource_group,
+        token_provider=token_provider,
+    ):
         print(
             f"{icons.info} The '{resource_group}' resource group already exists in the '{region}' region within the '{azure_subscription_id}' Azure subscription."
         )
         return
 
-    resource_client.resource_groups.create_or_update(
-        resource_group, {"location": region}
-    )
-
-    print(
-        f"{icons.green_dot} The '{resource_group}' resource group has been created within the '{region}' region within the '{azure_subscription_id}' Azure subscription."
+    create_or_update_resource_group(
+        azure_subscription_id=azure_subscription_id,
+        resource_group=resource_group,
+        region=region,
+        token_provider=token_provider,
     )
 
 
