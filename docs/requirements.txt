@@ -11,5 +11,4 @@ anytree
 IPython
 polib
 powerbiclient
-azure.mgmt.resource
 jsonpath_ng

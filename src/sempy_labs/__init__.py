@@ -125,7 +125,8 @@ from sempy_labs._capacities import (
     list_storage_accounts,
     create_storage_account,
     create_or_update_resource_group,
-
+    list_resource_groups,
+    get_resource_group,
 )
 from sempy_labs._spark import (
     get_spark_settings,
@@ -477,4 +478,6 @@ __all__ = [
     "list_storage_accounts",
     "create_storage_account",
     "create_or_update_resource_group",
+    "list_resource_groups",
+    "get_resource_group",
 ]

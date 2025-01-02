@@ -60,8 +60,6 @@ def create_fabric_capacity(
         Tag(s) to add to the capacity. Example: {'tagName': 'tagValue'}.
     """
 
-    from azure.mgmt.resource import ResourceManagementClient
-
     if isinstance(admin_members, str):
         admin_members = [admin_members]
 
@@ -150,24 +148,19 @@ def create_fabric_capacity(
         )
     headers = _get_headers(token_provider, audience="azure")
 
-    resource_client = ResourceManagementClient(
-        token_provider.credential, azure_subscription_id
-    )
-
     if resource_group is None:
-        for i in resource_client.resources.list(
-            "resourceType eq 'Microsoft.PowerBIDedicated/capacities'"
-        ):
-            if i.name == capacity_name.removesuffix(icons.migrate_capacity_suffix):
-                resource_group = i.id.split("/")[4]
-                print(
-                    f"{icons.yellow_dot} Override resource group flag detected for A SKUs - using the existing resource group '{resource_group}' for the '{capacity_name}' capacity."
-                )
+        dfRG = list_resource_groups(azure_subscription_id=azure_subscription_id, token_provider=token_provider, filter="resourceType eq 'Microsoft.PowerBIDedicated/capacities'")
+        dfRG_filt = dfRG[dfRG['Resource Group Name'] == capacity_name.removesuffix(icons.migrate_capacity_suffix)]
+        if not dfRG_filt.empty:
+            resource_group = dfRG_filt['Resource Group Name'].iloc[0]
+            print(
+                f"{icons.yellow_dot} Override resource group flag detected for A SKUs - using the existing resource group '{resource_group}' for the '{capacity_name}' capacity."
+            )
     else:
         # Attempt to get the resource group
         try:
-            rg = resource_client.resource_groups.get(resource_group)
-            if rg.location != region:
+            dfRG = get_resource_group(azure_subscription_id=azure_subscription_id, resource_group=resource_group, token_provider=token_provider)
+            if dfRG['Location'].iloc[0] != region:
                 print(
                     f"{icons.yellow_dot} The '{resource_group}' resource group exists, but in a different region."
                 )
@@ -179,12 +172,7 @@ def create_fabric_capacity(
             print(
                 f"{icons.in_progress} Creating the '{resource_group}' resource group in the '{region}' region"
             )
-            rg_result = resource_client.resource_groups.create_or_update(
-                resource_group, {"location": region}
-            )
-            print(
-                f"{icons.green_dot} Provisioned resource group with ID: {rg_result.id}"
-            )
+            create_or_update_resource_group(azure_subscription_id=azure_subscription_id, resource_group=resource_group, region=region, token_provider=token_provider)
 
     payload = {
         "properties": {"administration": {"members": admin_members}},
@@ -883,14 +871,14 @@ def _resolve_subscription_name_and_id(
             azure_subscription_id=subscription_id, token_provider=token_provider
         )
         if df.empty:
-            raise ValueError()
+            raise ValueError(f"{icons.red_dot} The subscription ID does not exist.")
         subscription_name = df["Subscription Name"].iloc[0]
     else:
         subscription_name = azure_subscription
         df = list_subscriptions()
         df_filt = df[df["Subscription Name"] == subscription_name]
         if df_filt.empty:
-            raise ValueError()
+            raise ValueError(f"{icons.red_dot} The subscription name does not exist.")
         subscription_id = df_filt["Subscription Id"].iloc[0]
 
     return subscription_name, subscription_id
@@ -1167,3 +1155,101 @@ def check_resource_group_existence(
         return True
     elif response.status_code == 404:
         return False
+
+
+def list_resource_groups(azure_subscription_id: str, token_provider: TokenProvider, filter: Optional[str] = None, top: Optional[int] = None) -> pd.DataFrame:
+    """
+    Lists all resource groups within a subscription.
+
+    This is a wrapper function for the following API: `Resource Groups - List <https://learn.microsoft.com/rest/api/resources/resource-groups/list>`_.
+
+    Parameters
+    ----------
+    azure_subscription_id : str
+        The Azure subscription Id.
+    token_provider : TokenProvider
+        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
+    filter : str, default=None
+        The filter to apply to the operation. Example: filter="tagname eq 'tagvalue'".
+    top : int, default=None
+        The number of results to return. If not specified, returns all results.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of all resource groups within the subscription.
+    """
+
+    headers = _get_headers(token_provider, audience="azure")
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups?"
+
+    if filter is not None:
+        url += f"$filter={filter}&"
+    if top is not None:
+        url += f"$top={top}&"
+
+    url += "api-version=2021-04-01"
+
+    df = pd.DataFrame(columns=["Resource Group Name", "Location", "Tags"])
+    response = requests.get(url, headers=headers)
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    for v in response.json().get("value", []):
+        new_data = {
+            "Resource Group Id": v.get("id"),
+            "Resource Group Name": v.get("name"),
+            "Location": v.get("location"),
+            "Managed By": v.get("managedBy"),
+            "Tags": v.get("tags"),
+            "Type": v.get("type"),
+            "Provisioning State": v.get("properties", {}).get("provisioningState"),
+        }
+
+        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    return df
+
+
+def get_resource_group(azure_subscription_id: str, resource_group: str, token_provider: TokenProvider) -> pd.DataFrame:
+    """
+    Gets details about a specified resource group.
+
+    This is a wrapper function for the following API: `Resource Groups - Get <https://learn.microsoft.com/rest/api/resources/resource-groups/get>`_.
+
+    Parameters
+    ----------
+    azure_subscription_id : str
+        The Azure subscription Id.
+    resource_group : str
+        The name of the resource group.
+    token_provider : TokenProvider
+        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing details of a specific resource group.
+    """
+
+    headers = _get_headers(token_provider, audience="azure")
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}?api-version=2021-04-01"
+
+    response = requests.get(url, headers=headers)
+
+    if response.status_code != 200:
+        raise FabricHTTPException(response)
+
+    v = response.json()
+    new_data = {
+        "Resource Group Id": v.get("id"),
+        "Resource Group Name": v.get("name"),
+        "Location": v.get("location"),
+        "Managed By": v.get("managedBy"),
+        "Tags": v.get("tags"),
+        "Type": v.get("type"),
+        "Provisioning State": v.get("properties", {}).get("provisioningState"),
+    }
+
+    return pd.DataFrame(new_data, index=[0])
