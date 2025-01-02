@@ -93,7 +93,7 @@ class TOMWrapper:
             if match:
                 region = match.group(1)
             token = token_provider(audience="asazure", region=region)
-            connection_str = f'Provider=MSOLAP;Data Source={self._workspace_name};Password="{token.token}";Persist Security Info=True;Impersonation Level=Impersonate'
+            connection_str = f'Provider=MSOLAP;Data Source={self._workspace_name};Password="{token}";Persist Security Info=True;Impersonation Level=Impersonate'
             self._tom_server = TOM.Server()
             self._tom_server.Connect(connection_str)
         # Service Principal Authentication for Power BI via token provider
