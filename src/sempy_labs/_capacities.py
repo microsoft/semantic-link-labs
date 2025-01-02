@@ -1164,12 +1164,12 @@ def check_resource_group_existence(
 
     response = requests.get(url, headers=headers)
 
-    if response.status_code not in [200, 204]:
+    if response.status_code not in [200, 204, 404]:
         raise FabricHTTPException(response)
 
     if response.status_code == 200:
         return True
-    elif response.status_code == 404:
+    elif response.status_code in [204, 404]:
         return False
 
 
