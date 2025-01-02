@@ -149,18 +149,29 @@ def create_fabric_capacity(
     headers = _get_headers(token_provider, audience="azure")
 
     if resource_group is None:
-        dfRG = list_resource_groups(azure_subscription_id=azure_subscription_id, token_provider=token_provider, filter="resourceType eq 'Microsoft.PowerBIDedicated/capacities'")
-        dfRG_filt = dfRG[dfRG['Resource Group Name'] == capacity_name.removesuffix(icons.migrate_capacity_suffix)]
+        dfRG = list_resource_groups(
+            azure_subscription_id=azure_subscription_id,
+            token_provider=token_provider,
+            filter="resourceType eq 'Microsoft.PowerBIDedicated/capacities'",
+        )
+        dfRG_filt = dfRG[
+            dfRG["Resource Group Name"]
+            == capacity_name.removesuffix(icons.migrate_capacity_suffix)
+        ]
         if not dfRG_filt.empty:
-            resource_group = dfRG_filt['Resource Group Name'].iloc[0]
+            resource_group = dfRG_filt["Resource Group Name"].iloc[0]
             print(
                 f"{icons.yellow_dot} Override resource group flag detected for A SKUs - using the existing resource group '{resource_group}' for the '{capacity_name}' capacity."
             )
     else:
         # Attempt to get the resource group
         try:
-            dfRG = get_resource_group(azure_subscription_id=azure_subscription_id, resource_group=resource_group, token_provider=token_provider)
-            if dfRG['Location'].iloc[0] != region:
+            dfRG = get_resource_group(
+                azure_subscription_id=azure_subscription_id,
+                resource_group=resource_group,
+                token_provider=token_provider,
+            )
+            if dfRG["Location"].iloc[0] != region:
                 print(
                     f"{icons.yellow_dot} The '{resource_group}' resource group exists, but in a different region."
                 )
@@ -172,7 +183,12 @@ def create_fabric_capacity(
             print(
                 f"{icons.in_progress} Creating the '{resource_group}' resource group in the '{region}' region"
             )
-            create_or_update_resource_group(azure_subscription_id=azure_subscription_id, resource_group=resource_group, region=region, token_provider=token_provider)
+            create_or_update_resource_group(
+                azure_subscription_id=azure_subscription_id,
+                resource_group=resource_group,
+                region=region,
+                token_provider=token_provider,
+            )
 
     payload = {
         "properties": {"administration": {"members": admin_members}},
@@ -1157,7 +1173,12 @@ def check_resource_group_existence(
         return False
 
 
-def list_resource_groups(azure_subscription_id: str, token_provider: TokenProvider, filter: Optional[str] = None, top: Optional[int] = None) -> pd.DataFrame:
+def list_resource_groups(
+    azure_subscription_id: str,
+    token_provider: TokenProvider,
+    filter: Optional[str] = None,
+    top: Optional[int] = None,
+) -> pd.DataFrame:
     """
     Lists all resource groups within a subscription.
 
@@ -1212,7 +1233,9 @@ def list_resource_groups(azure_subscription_id: str, token_provider: TokenProvid
     return df
 
 
-def get_resource_group(azure_subscription_id: str, resource_group: str, token_provider: TokenProvider) -> pd.DataFrame:
+def get_resource_group(
+    azure_subscription_id: str, resource_group: str, token_provider: TokenProvider
+) -> pd.DataFrame:
     """
     Gets details about a specified resource group.
 

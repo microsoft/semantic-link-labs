@@ -14,7 +14,7 @@ from sempy_labs._helper_functions import (
     convert_to_alphanumeric_lowercase,
 )
 from sempy_labs._capacities import create_fabric_capacity
-from sempy_labs._authentication import _get_headers, ServicePrincipalTokenProvider
+from sempy_labs._authentication import ServicePrincipalTokenProvider
 from sempy.fabric._token_provider import TokenProvider
 
 
@@ -185,7 +185,7 @@ def migrate_capacities(
 
     p_sku_list = list(icons.sku_mapping.keys())
 
-    dfC = list_capacities()
+    dfC = list_capacities(token_provider=token_provider)
 
     if capacities is None:
         dfC_filt = dfC.copy()
