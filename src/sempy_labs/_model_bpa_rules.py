@@ -64,7 +64,7 @@ def model_bpa_rules(
                     obj.FromCardinality == TOM.RelationshipEndCardinality.Many
                     and obj.ToCardinality == TOM.RelationshipEndCardinality.Many
                 )
-                or str(obj.CrossFilteringBehavior) == "BothDirections"
+                or str(obj.CrossFilteringBehavior) == "BothDirections",
                 "Bi-directional and many-to-many relationships may cause performance degradation or even have unintended consequences. Make sure to check these specific relationships to ensure they are working as designed and are actually necessary.",
                 "https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-dax",
             ),
@@ -402,8 +402,8 @@ def model_bpa_rules(
                 lambda obj, tom: tom.is_direct_lake() is False
                 and obj.IsAvailableInMDX is False
                 and (
-                    tom.used_in_sort_by(column=obj)
-                    or tom.used_in_hierarchies(column=obj)
+                    any(tom.used_in_sort_by(column=obj))
+                    or any(tom.used_in_hierarchies(column=obj))
                     or obj.SortByColumn is not None
                 ),
                 "In order to avoid errors, ensure that attribute hierarchies are enabled if a column is used for sorting another column, used in a hierarchy, used in variations, or is sorted by another column. The IsAvailableInMdx property is not relevant for Direct Lake models.",
