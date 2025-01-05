@@ -3,19 +3,16 @@ import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 import requests
 import pandas as pd
+from sempy.fabric._token_provider import TokenProvider
+from sempy_labs._authentication import _get_headers
 
 
-def list_reservation_orders(token_provider: str) -> pd.DataFrame:
+def list_reservation_orders(token_provider: TokenProvider) -> pd.DataFrame:
 
     # https://learn.microsoft.com/rest/api/reserved-vm-instances/reservation-order/list?view=rest-reserved-vm-instances-2022-11-01
 
     url = "https://management.azure.com/providers/Microsoft.Capacity/reservationOrders?api-version=2022-11-01"
-
-    headers = {
-        "Authorization": f"Bearer {token}",  # How to generate headers here?
-        "Content-Type": "application/json",
-    }
-
+    headers = _get_headers(token_provider=token_provider, audience="azure")
     response = requests.get(url, headers=headers)
 
     if response.status_code != 200:
@@ -73,21 +70,29 @@ def list_reservation_orders(token_provider: str) -> pd.DataFrame:
     return df
 
 
-def list_reservation_transactions(billing_account_id: str) -> pd.DataFrame:
+def list_reservation_transactions(
+    billing_account_id: str, token_provider: TokenProvider
+) -> pd.DataFrame:
 
     # https://learn.microsoft.com/rest/api/consumption/reservation-transactions/list?view=rest-consumption-2024-08-01
 
     url = f"https://management.azure.com/providers/Microsoft.Billing/billingAccounts/{billing_account_id}/providers/Microsoft.Consumption/reservationTransactions?api-version=2024-08-01"
 
+    headers = _get_headers(token_provider=token_provider, audience="azure")
     response = requests.get(url, headers=headers)
 
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
+    df = pd.DataFrame(columns=[])
+
+    return df
+
 
 def list_reservations(
     reservation_id: str,
     reservation_order_id: str,
+    token_provider: TokenProvider,
     grain="monthly",
     filter: Optional[str] = None,
 ) -> pd.DataFrame:
@@ -105,15 +110,16 @@ def list_reservations(
             f"{icons.red_dot} The 'filter' parameter is required for daily grain."
         )
 
-    url = f"https://management.azure.com/providers/Microsoft.Capacity/reservationorders/{reservation_order_id}/reservations/{reservation_id}/providers/Microsoft.Consumption/reservationSummaries?grain={grain}"
+    url = f"https://management.azure.com/providers/Microsoft.Capacity/reservationorders/{reservation_order_id}/reservations/{reservation_id}/providers/Microsoft.Consumption/reservationSummaries?grain={grain}&"
 
     if filter is not None:
-        url += f"&$filter={filter}"
+        url += f"$filter={filter}&"
 
-    url += "&api-version=2024-08-01"
+    url += "api-version=2024-08-01"
 
     df = pd.DataFrame(columns=[])
 
+    headers = _get_headers(token_provider=token_provider, audience="azure")
     response = requests.get(url, headers=headers)
 
     if response.status_code != 200:
@@ -160,6 +166,8 @@ def list_reservations(
 
     df[int_cols] = df[int_cols].astype(int)
 
+    return df
+
 
 def buy_reservation(
     reservation_order_id: str,
@@ -170,9 +178,13 @@ def buy_reservation(
     term: str,
     billing_plan: str,
     quantity: int,
+    token_provider: TokenProvider,
+    renew: bool = False,
+    applied_scope_type: str = "Shared",
+    instance_flexibility: str = "On",
 ):
 
-    # https://learn.microsoft.com/en-us/rest/api/reserved-vm-instances/reservation-order/purchase?view=rest-reserved-vm-instances-2022-11-01&tabs=HTTP
+    # https://learn.microsoft.com/rest/api/reserved-vm-instances/reservation-order/purchase?view=rest-reserved-vm-instances-2022-11-01&tabs=HTTP
 
     url = f"https://management.azure.com/providers/Microsoft.Capacity/reservationOrders/{reservation_order_id}?api-version=2022-11-01"
 
@@ -189,13 +201,14 @@ def buy_reservation(
             "quantity": quantity,
             "displayName": name,
             "appliedScopes": None,
-            "appliedScopeType": "Shared",
-            "reservedResourceProperties": {"instanceFlexibility": "On"},
-            "renew": False,
+            "appliedScopeType": applied_scope_type,
+            "reservedResourceProperties": {"instanceFlexibility": instance_flexibility},
+            "renew": renew,
         },
     }
 
-    response = requests.put(url, headers=headers, json=payload)
+    headers = _get_headers(token_provider=token_provider, audience="azure")
+    response = requests.get(url, headers=headers, json=payload)
 
     if response.status_code not in [200, 202]:
         raise FabricHTTPException(response)
