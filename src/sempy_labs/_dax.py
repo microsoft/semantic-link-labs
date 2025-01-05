@@ -470,13 +470,13 @@ def trace_dax(
 def dax_perf_test(
     dataset: str,
     dax_queries: dict,
-    cache_type: str = "warm",
+    clear_cache_before_run: bool = False,
+    refresh_type: Optional[str] = None,
     rest_time: int = 2,
     workspace: Optional[str] = None,
 ) -> Tuple[pd.DataFrame, dict]:
     """
-    Runs a warm/cold cache test against a single or set of DAX queries. Valid for import-only or Direct Lake semantic models. 
-    Cold-cache testing is only available for Direct Lake semantic models.
+    Runs a performance test on a set of DAX queries.
 
     Parameters
     ----------
@@ -488,8 +488,8 @@ def dax_perf_test(
             "Sales Amount Test", """ """ EVALUATE SUMMARIZECOLUMNS("Sales Amount", [Sales Amount]) """ """,
             "Order Quantity with Product", """ """ EVALUATE SUMMARIZECOLUMNS('Product'[Color], "Order Qty", [Order Qty]) """ """,
         }
-    cache_type : str, default="warm"
-        Allows testing for 'warm' or 'cold' cache scenarios. 'Cold' cache testing is only available for Direct Lake semantic models.
+    clear_cache_before_run : bool, default=False
+    refresh_type : str, default=None
     rest_time : int, default=2
         Rest time (in seconds) between the execution of each DAX query.
     workspace : str, default=None
@@ -503,36 +503,11 @@ def dax_perf_test(
         A pandas dataframe showing the SQL profiler trace results of the DAX queries.
         A dictionary of the query results in pandas dataframes.
     """
-    from sempy_labs.tom import connect_semantic_model
     from sempy_labs._refresh_semantic_model import refresh_semantic_model
-
-    sempy.fabric._client._utils._init_analysis_services()
-    import Microsoft.AnalysisServices.Tabular as TOM
+    from sempy_labs._clear_cache import clear_cache
 
     if workspace is None:
         workspace = fabric.resolve_workspace_name()
-
-    cache_type = _validate_cache_type(cache_type)
-
-    dl_tables = []
-    with connect_semantic_model(
-        dataset=dataset, workspace=workspace, readonly=True
-    ) as tom:
-        for p in tom.all_partitions():
-            if p.Mode == TOM.ModeType.DirectLake:
-                dl_tables.append(p.Parent.Name)
-            elif p.Mode == TOM.ModeType.DirectQuery or (
-                p.Mode == TOM.ModeType.Default
-                and tom.model.Model.DefaultMode == TOM.ModeType.DirectQuery
-            ):
-                raise ValueError(
-                    f"{icons.red_dot} This testing is only for Import & Direct Lake semantic models."
-                )
-
-        if cache_type != "warm" and not tom.is_direct_lake():
-            raise ValueError(
-                f"{icons.red_dot} Cold cache testing is only available for Direct Lake semantic models."
-            )
 
     base_cols = ["EventClass", "EventSubclass", "CurrentTime", "NTUserName", "TextData"]
     begin_cols = base_cols + ["StartTime"]
@@ -548,7 +523,6 @@ def dax_perf_test(
     event_schema["VertiPaqSEQueryCacheMatch"] = base_cols
 
     query_results = {}
-    evaluate_one = """ EVALUATE {1}"""
 
     # Establish trace connection
     with fabric.create_trace_connection(
@@ -560,42 +534,20 @@ def dax_perf_test(
             # Loop through DAX queries
             for i, (name, dax) in enumerate(dax_queries.items()):
 
-                # Cold Cache Direct Lake
-                if dl_tables and cache_type == "cold":
-                    # Process Clear
-                    refresh_semantic_model(
-                        dataset=dataset,
-                        workspace=workspace,
-                        refresh_type="clearValues",
-                        tables=dl_tables,
-                    )
-                    # Process Full
-                    refresh_semantic_model(
-                        dataset=dataset, workspace=workspace, refresh_type="full"
-                    )
-                    # Evaluate {1}
-                    fabric.evaluate_dax(
-                        dataset=dataset, workspace=workspace, dax_string=evaluate_one
-                    )
-                    # Run DAX Query
-                    result = fabric.evaluate_dax(
-                        dataset=dataset, workspace=workspace, dax_string=dax
-                    )
-                else:
-                    # Run DAX Query
-                    fabric.evaluate_dax(
-                        dataset=dataset, workspace=workspace, dax_string=dax
-                    )
-                    # Clear Cache
+                if clear_cache_before_run:
                     clear_cache(dataset=dataset, workspace=workspace)
-                    # Evaluate {1}
-                    fabric.evaluate_dax(
-                        dataset=dataset, workspace=workspace, dax_string=evaluate_one
+                if refresh_type is not None:
+                    refresh_semantic_model(
+                        dataset=dataset, workspace=workspace, refresh_type=refresh_type
                     )
-                    # Run DAX Query
-                    result = fabric.evaluate_dax(
-                        dataset=dataset, workspace=workspace, dax_string=dax
-                    )
+
+                fabric.evaluate_dax(
+                    dataset=dataset, workspace=workspace, dax_string="""EVALUATE {1}"""
+                )
+                # Run DAX Query
+                result = fabric.evaluate_dax(
+                    dataset=dataset, workspace=workspace, dax_string=dax
+                )
 
                 # Add results to output
                 query_results[name] = result
@@ -607,41 +559,29 @@ def dax_perf_test(
             # Allow time to collect trace results
             time.sleep(5)
 
+            # Step 1: Filter out unnecessary operations
             query_names = list(dax_queries.keys())
-
-            # DL Cold Cache
-            if dl_tables and cache_type == "cold":
-                # Filter out unnecessary operations
-                df = df[
-                    ~df["Application Name"].isin(["PowerBI", "PowerBIEIM"])
-                    & (~df["Text Data"].str.startswith("EVALUATE {1}"))
-                ]
-                query_begin = df["Event Class"] == "QueryBegin"
-                # Name queries per dictionary
-                df["Query Name"] = (query_begin).cumsum()
-                df["Query Name"] = df["Query Name"].where(query_begin, None).ffill()
-                df["Query Name"] = pd.to_numeric(df["Query Name"], downcast="integer")
-                df["Query Name"] = df["Query Name"].map(lambda x: query_names[x - 1])
-            else:
-                # Filter out unnecessary operations
-                df = df[(~df["Text Data"].str.startswith("EVALUATE {1}"))]
-                query_begin = df["Event Class"] == "QueryBegin"
-                # Name queries per dictionary
-                suffix = "_removeXXX"
-                query_names_full = [
-                    item
-                    for query in query_names
-                    for item in (f"{query}{suffix}", query)
-                ]
-                # Step 3: Assign query names by group and convert to integer
-                df["Query Name"] = (query_begin).cumsum()
-                df["Query Name"] = df["Query Name"].where(query_begin, None).ffill()
-                df["Query Name"] = pd.to_numeric(df["Query Name"], downcast="integer")
-                # Step 4: Map to full query names
-                df["Query Name"] = df["Query Name"].map(
-                    lambda x: query_names_full[x - 1]
-                )
-                df = df[~df["Query Name"].str.endswith(suffix)]
+            df = df[
+                ~df["Application Name"].isin(["PowerBI", "PowerBIEIM"])
+                & (~df["Text Data"].str.startswith("EVALUATE {1}"))
+            ]
+            query_begin = df["Event Class"] == "QueryBegin"
+            # Step 2: Name queries per dictionary
+            suffix = "_removeXXX"
+            query_names_full = [
+                item
+                for query in query_names
+                for item in (f"{query}{suffix}", query)
+            ]
+            # Step 3: Assign query names by group and convert to integer
+            df["Query Name"] = (query_begin).cumsum()
+            df["Query Name"] = df["Query Name"].where(query_begin, None).ffill()
+            df["Query Name"] = pd.to_numeric(df["Query Name"], downcast="integer")
+            # Step 4: Map to full query names
+            df["Query Name"] = df["Query Name"].map(
+                lambda x: query_names_full[x - 1]
+            )
+            df = df[~df["Query Name"].str.endswith(suffix)]
 
     df = df.reset_index(drop=True)
 
