@@ -18,7 +18,7 @@ def delta_analyzer(
     table_name: str, export: bool = False
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
-    Analyzes a delta table and shows the results in a set of 5 dataframes.
+    Analyzes a delta table and shows the results in a set of 5 dataframes. The table analyzed must be in the lakehouse attached to the notebook.
 
     Parameters
     ----------
