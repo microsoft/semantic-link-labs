@@ -11,9 +11,27 @@ from sempy_labs._helper_functions import (
     _get_max_run_id,
 )
 from sempy_labs.lakehouse import get_lakehouse_tables
+from typing import Tuple
 
 
-def delta_analyzer(table_name: str, export: bool = False):
+def delta_analyzer(
+    table_name: str, export: bool = False
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """
+    Analyzes a delta table and shows the results in a set of 5 dataframes.
+
+    Parameters
+    ----------
+    table_name : str
+        The delta table name.
+    export : bool, default=False
+        If True, exports the resulting dataframes to delta tables in the lakehouse attached to the notebook.
+
+    Returns
+    -------
+    Tuple[pandas.DataFrame, pandas.DataFrame, pandas.DataFrame, pandas.DataFrame, pandas.DataFrame]
+        A pandas dataframe in HTML format showing semantic model objects which violated the best practice analyzer rules.
+    """
 
     prefix = "SLL_DeltaAnalyzer_"
     now = datetime.datetime.now()
