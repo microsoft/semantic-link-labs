@@ -221,6 +221,15 @@ contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additio
 7. Select/create a folder to map the cloned repository to your computer.
 8. When prompted to open the cloned repository, click 'Open'.
 
+#### Branching
+When making changes, always create a new branch.
+
+1. Navigate to the Souce Control tab within Visual Studio Code.
+2. Click on the Source Control icon at the bottom left corner of the screen.
+3. Click 'Create new branch...'.
+4. Enter the branch name (i.e. yourusername/branchname).
+5. Click 'Enter'.
+
 #### Building the .whl file
 Running the following in the terminal in Visual Studio Code will create a .whl file in the 'dist' folder within your locally-cloned repository.
 
