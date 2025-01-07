@@ -1,4 +1,5 @@
 import pandas as pd
+from uuid import UUID
 from sempy.fabric._token_provider import TokenProvider
 from sempy_labs.graph._util import _ms_graph_base
 
@@ -60,6 +61,30 @@ def list_teams(token_provider: TokenProvider) -> pd.DataFrame:
     bool_cols = ["Archived", "Favorite By Me", "Discoverable By Me"]
     df[bool_cols] = df[bool_cols].astype(bool)
     df["Creation Date Time"] = pd.to_datetime(df["Creation Date Time"])
+
+    return df
+
+
+def list_chats(user: str | UUID, token_provider: TokenProvider) -> pd.DataFrame:
+    """
+    In progress...
+    """
+
+    from sempy_labs.graph._users import resolve_user_id
+
+    user_id = resolve_user_id(user=user, token_provider=token_provider)
+    result = _ms_graph_base(api_name=f"users/{user_id}/chats")
+
+    df = pd.DataFrame(columns=['Chat Id', 'Type', 'Members'])
+
+    for v in result.get("value"):
+        new_data = {
+            "Chat Id": v.get("id"),
+            "Type": v.get('chatType'),
+            "Members": v.get('members'),
+        }
+
+        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
 
