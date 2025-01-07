@@ -7,7 +7,7 @@ def list_teams(token_provider: TokenProvider) -> pd.DataFrame:
     """
     Shows a list of teams and their properties.
 
-    This is a wrapper function for the following API: `List teams <https://learn.microsoft.com/graph/api/team-list>`_.
+    This is a wrapper function for the following API: `List teams <https://learn.microsoft.com/graph/api/teams-list>`_.
 
     Parameters
     ----------
@@ -62,3 +62,24 @@ def list_teams(token_provider: TokenProvider) -> pd.DataFrame:
     df["Creation Date Time"] = pd.to_datetime(df["Creation Date Time"])
 
     return df
+
+
+def send_teams_message(chat_id: str, message: str, token_provider: TokenProvider):
+    """
+    In progress...
+    """
+
+    payload = {
+        "body": {
+            "content": message,
+        }
+    }
+
+    _ms_graph_base(
+        api_name=f"chats/{chat_id}/messages",
+        token_provider=token_provider,
+        status_success_code=201,
+        return_json=False,
+        payload=payload,
+        call_type="post",
+    )
