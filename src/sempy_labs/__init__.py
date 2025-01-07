@@ -1,4 +1,5 @@
 from sempy_labs._job_scheduler import list_item_job_instances
+from sempy_labs._delta_analyzer import delta_analyzer
 from sempy_labs._gateways import (
     list_gateway_members,
     list_gateway_role_assigments,
@@ -185,6 +186,8 @@ from sempy_labs._dax import (
     evaluate_dax_impersonation,
     get_dax_query_dependencies,
     get_dax_query_memory_size,
+    dax_perf_test,
+    dax_perf_test_bulk,
 )
 from sempy_labs._generate_semantic_model import (
     create_blank_semantic_model,
@@ -470,4 +473,7 @@ __all__ = [
     "bind_semantic_model_to_gateway",
     "list_semantic_model_errors",
     "list_item_job_instances",
+    "delta_analyzer",
+    "dax_perf_test",
+    "dax_perf_test_bulk",
 ]
