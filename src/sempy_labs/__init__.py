@@ -187,6 +187,7 @@ from sempy_labs._dax import (
     get_dax_query_dependencies,
     get_dax_query_memory_size,
     dax_perf_test,
+    dax_perf_test_bulk,
 )
 from sempy_labs._generate_semantic_model import (
     create_blank_semantic_model,
@@ -474,4 +475,5 @@ __all__ = [
     "list_item_job_instances",
     "delta_analyzer",
     "dax_perf_test",
+    "dax_perf_test_bulk",
 ]

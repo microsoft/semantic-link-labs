@@ -377,3 +377,48 @@ def dax_perf_test(
     df = df.reset_index(drop=True)
 
     return df, query_results
+
+
+def dax_perf_test_bulk(
+    mapping: dict,
+    clear_cache_before_run: bool = False,
+    refresh_type: Optional[str] = None,
+    rest_time: int = 2,
+):
+    """
+    mapping is something like this:
+
+    mapping = {
+        "Workspace1": {
+            "Dataset1": {
+                "Query1": "EVALUATE ...",
+                "Query2": "EVALUATE ...",
+            },
+            "Dataset2": {
+                "Query3": "EVALUATE ...",
+                "Query4": "EVALUATE ...",
+            }
+        },
+        "Workspace2": {
+            "Dataset3": {
+                "Query5": "EVALUATE ...",
+                "Query6": "EVALUATE ...",
+            },
+            "Dataset4": {
+                "Query7": "EVALUATE ...",
+                "Query8": "EVALUATE ...",
+            }
+        }
+    }
+    """
+
+    for workspace, datasets in mapping.items():
+        for dataset, queries in datasets.items():
+            dax_perf_test(
+                dataset=dataset,
+                dax_queries=queries,
+                clear_cache_before_run=clear_cache_before_run,
+                refresh_type=refresh_type,
+                rest_time=rest_time,
+                workspace=workspace,
+            )
