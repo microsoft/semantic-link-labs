@@ -12,7 +12,7 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
     save_as_delta_table,
     resolve_workspace_capacity,
-    _get_column_value,
+    _get_column_aggregate,
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
 )
@@ -519,7 +519,9 @@ def vertipaq_analyzer(
         if len(lakeT_filt) == 0:
             runId = 1
         else:
-            max_run_id = _get_column_value(lakehouse=lakehouse, table_name=lakeTName)
+            max_run_id = _get_column_aggregate(
+                lakehouse=lakehouse, table_name=lakeTName
+            )
             runId = max_run_id + 1
 
         dfMap = {

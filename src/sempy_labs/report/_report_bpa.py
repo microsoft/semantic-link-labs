@@ -10,7 +10,7 @@ from sempy_labs._helper_functions import (
     resolve_report_id,
     resolve_lakehouse_name,
     resolve_workspace_capacity,
-    _get_column_value,
+    _get_column_aggregate,
     resolve_workspace_name_and_id,
 )
 from sempy_labs.lakehouse import get_lakehouse_tables, lakehouse_attached
@@ -217,7 +217,7 @@ def run_report_bpa(
         if len(lakeT_filt) == 0:
             runId = 1
         else:
-            max_run_id = _get_column_value(
+            max_run_id = _get_column_aggregate(
                 lakehouse=lakehouse, table_name=delta_table_name
             )
             runId = max_run_id + 1

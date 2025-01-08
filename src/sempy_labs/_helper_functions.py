@@ -1188,16 +1188,24 @@ def generate_guid():
     return str(uuid.uuid4())
 
 
-def _get_column_value(lakehouse: str, table_name: str, column_name: str = 'RunId', function: str = 'MAX') -> int:
+def _get_column_aggregate(
+    lakehouse: str,
+    table_name: str,
+    column_name: str = "RunId",
+    function: str = "max",
+    default_value: int = 0,
+) -> int:
 
     from pyspark.sql import SparkSession
 
     spark = SparkSession.builder.getOrCreate()
+    function = function.upper()
     query = f"SELECT {function}({column_name}) FROM {lakehouse}.{table_name}"
+    if "COUNT" in function and "DISTINCT" in function:
+        query = f"SELECT COUNT(DISTINCT({column_name})) FROM {lakehouse}.{table_name}"
     dfSpark = spark.sql(query)
-    max_run_id = dfSpark.collect()[0][0] or 0
 
-    return max_run_id
+    return dfSpark.collect()[0][0] or default_value
 
 
 def _make_list_unique(my_list):
