@@ -1129,6 +1129,8 @@ def list_storage_accounts(
 
     bool_cols = ["Is HNS Enabled", "Supports HTTPS Traffic Only"]
     df[bool_cols] = df[bool_cols].astype(bool)
+    df["Creation Time"] = pd.to_datetime(df["Creation Time"])
+    
 
     return df
 
