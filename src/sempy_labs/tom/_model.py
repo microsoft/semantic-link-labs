@@ -4402,9 +4402,7 @@ class TOMWrapper:
             measure_name = [m.Name for m in self.all_measures()]
 
         if isinstance(measure_name, str):
-            measure_name = [measure_name]
-
-        client = fabric.FabricRestClient()
+            measure_name = [measure_name]        
 
         if len(measure_name) > max_batch_size:
             measure_lists = [
@@ -4446,6 +4444,7 @@ class TOMWrapper:
                     "modelItems"
                 ].append(new_item)
 
+            client = fabric.FabricRestClient()
             response = client.post("/explore/v202304/nl2nl/completions", json=payload)
             if response.status_code != 200:
                 raise FabricHTTPException(response)
