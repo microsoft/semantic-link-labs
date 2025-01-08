@@ -975,7 +975,7 @@ def resolve_deployment_pipeline_id(deployment_pipeline: str) -> UUID:
 
     Returns
     -------
-    UUID
+    uuid.UUID
         The deployment pipeline Id.
     """
 
