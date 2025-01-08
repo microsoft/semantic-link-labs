@@ -177,6 +177,8 @@ def list_item_schedules(
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     df["Enabled"] = df["Enabled"].astype(bool)
+    df["Created Date Time"] = pd.to_datetime(df["Created Date Time"])
+    df["Start Date Time"] = pd.to_datetime(df["Start Date Time"])
 
     return df
 
