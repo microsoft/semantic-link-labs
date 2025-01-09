@@ -525,29 +525,30 @@ def list_datasets(
     pandas.DataFrame
         A pandas dataframe showing a list of datasets for the organization.
     """
-    df = pd.DataFrame(
-        columns=[
-            "Dataset Id",
-            "Dataset Name",
-            "Web URL",
-            "Add Rows API Enabled",
-            "Configured By",
-            "Is Refreshable",
-            "Is Effective Identity Required",
-            "Is Effective Identity Roles Required",
-            "Target Storage Mode",
-            "Created Date",
-            "Content Provider Type",
-            "Create Report Embed URL",
-            "QnA Embed URL",
-            "Upstream Datasets",
-            "Users",
-            "Is In Place Sharing Enabled",
-            "Workspace Id",
-            "Auto Sync Read Only Replicas",
-            "Max Read Only Replicas",
-        ]
-    )
+
+    columns = [
+        "Dataset Id",
+        "Dataset Name",
+        "Web URL",
+        "Add Rows API Enabled",
+        "Configured By",
+        "Is Refreshable",
+        "Is Effective Identity Required",
+        "Is Effective Identity Roles Required",
+        "Target Storage Mode",
+        "Created Date",
+        "Content Provider Type",
+        "Create Report Embed URL",
+        "QnA Embed URL",
+        "Upstream Datasets",
+        "Users",
+        "Is In Place Sharing Enabled",
+        "Workspace Id",
+        "Auto Sync Read Only Replicas",
+        "Max Read Only Replicas",
+    ]
+
+    df = pd.DataFrame(columns=columns)
 
     client = fabric.FabricRestClient(token_provider=auth.token_provider)
 
@@ -570,35 +571,40 @@ def list_datasets(
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
+    rows = []
     for v in response.json().get("value", []):
-        new_data = {
-            "Dataset Id": v.get("id"),
-            "Dataset Name": v.get("name"),
-            "Web URL": v.get("webUrl"),
-            "Add Rows API Enabled": v.get("addRowsAPIEnabled"),
-            "Configured By": v.get("configuredBy"),
-            "Is Refreshable": v.get("isRefreshable"),
-            "Is Effective Identity Required": v.get("isEffectiveIdentityRequired"),
-            "Is Effective Identity Roles Required": v.get(
-                "isEffectiveIdentityRolesRequired"
-            ),
-            "Target Storage Mode": v.get("targetStorageMode"),
-            "Created Date": pd.to_datetime(v.get("createdDate")),
-            "Content Provider Type": v.get("contentProviderType"),
-            "Create Report Embed URL": v.get("createReportEmbedURL"),
-            "QnA Embed URL": v.get("qnaEmbedURL"),
-            "Upstream Datasets": v.get("upstreamDatasets", []),
-            "Users": v.get("users", []),
-            "Is In Place Sharing Enabled": v.get("isInPlaceSharingEnabled"),
-            "Workspace Id": v.get("workspaceId"),
-            "Auto Sync Read Only Replicas": v.get("queryScaleOutSettings", {}).get(
-                "autoSyncReadOnlyReplicas"
-            ),
-            "Max Read Only Replicas": v.get("queryScaleOutSettings", {}).get(
-                "maxReadOnlyReplicas"
-            ),
-        }
-        df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
+        rows.append(
+            {
+                "Dataset Id": v.get("id"),
+                "Dataset Name": v.get("name"),
+                "Web URL": v.get("webUrl"),
+                "Add Rows API Enabled": v.get("addRowsAPIEnabled"),
+                "Configured By": v.get("configuredBy"),
+                "Is Refreshable": v.get("isRefreshable"),
+                "Is Effective Identity Required": v.get("isEffectiveIdentityRequired"),
+                "Is Effective Identity Roles Required": v.get(
+                    "isEffectiveIdentityRolesRequired"
+                ),
+                "Target Storage Mode": v.get("targetStorageMode"),
+                "Created Date": pd.to_datetime(v.get("createdDate")),
+                "Content Provider Type": v.get("contentProviderType"),
+                "Create Report Embed URL": v.get("createReportEmbedURL"),
+                "QnA Embed URL": v.get("qnaEmbedURL"),
+                "Upstream Datasets": v.get("upstreamDatasets", []),
+                "Users": v.get("users", []),
+                "Is In Place Sharing Enabled": v.get("isInPlaceSharingEnabled"),
+                "Workspace Id": v.get("workspaceId"),
+                "Auto Sync Read Only Replicas": v.get("queryScaleOutSettings", {}).get(
+                    "autoSyncReadOnlyReplicas"
+                ),
+                "Max Read Only Replicas": v.get("queryScaleOutSettings", {}).get(
+                    "maxReadOnlyReplicas"
+                ),
+            }
+        )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=columns)
 
     bool_cols = [
         "Add Rows API Enabled",
@@ -980,25 +986,25 @@ def list_reports(
         A pandas dataframe showing a list of reports for the organization.
     """
 
-    df = pd.DataFrame(
-        columns=[
-            "Report Id",
-            "Report Name",
-            "Type",
-            "Web URL",
-            "Embed URL",
-            "Dataset Id",
-            "Created Date",
-            "Modified Date",
-            "Created By",
-            "Modified By",
-            "Sensitivity Label Id",
-            "Users",
-            "Subscriptions",
-            "Workspace Id",
-            "Report Flags",
-        ]
-    )
+    columns = [
+        "Report Id",
+        "Report Name",
+        "Type",
+        "Web URL",
+        "Embed URL",
+        "Dataset Id",
+        "Created Date",
+        "Modified Date",
+        "Created By",
+        "Modified By",
+        "Sensitivity Label Id",
+        "Users",
+        "Subscriptions",
+        "Workspace Id",
+        "Report Flags",
+    ]
+
+    df = pd.DataFrame(columns=columns)
 
     url = "/v1.0/myorg/admin/reports?"
     if top is not None:
@@ -1016,25 +1022,30 @@ def list_reports(
     if response.status_code != 200:
         raise FabricHTTPException(response)
 
+    rows = []
     for v in response.json().get("value", []):
-        new_data = {
-            "Report Id": v.get("id"),
-            "Report Name": v.get("name"),
-            "Type": v.get("reportType"),
-            "Web URL": v.get("webUrl"),
-            "Embed URL": v.get("embedUrl"),
-            "Dataset Id": v.get("datasetId"),
-            "Created Date": v.get("createdDateTime"),
-            "Modified Date": v.get("modifiedDateTime"),
-            "Created By": v.get("createdBy"),
-            "Modified By": v.get("modifiedBy"),
-            "Sensitivity Label Id": v.get("sensitivityLabel", {}).get("labelId"),
-            "Users": v.get("users"),
-            "Subscriptions": v.get("subscriptions"),
-            "Workspace Id": v.get("workspaceId"),
-            "Report Flags": v.get("reportFlags"),
-        }
-        df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
+        rows.append(
+            {
+                "Report Id": v.get("id"),
+                "Report Name": v.get("name"),
+                "Type": v.get("reportType"),
+                "Web URL": v.get("webUrl"),
+                "Embed URL": v.get("embedUrl"),
+                "Dataset Id": v.get("datasetId"),
+                "Created Date": v.get("createdDateTime"),
+                "Modified Date": v.get("modifiedDateTime"),
+                "Created By": v.get("createdBy"),
+                "Modified By": v.get("modifiedBy"),
+                "Sensitivity Label Id": v.get("sensitivityLabel", {}).get("labelId"),
+                "Users": v.get("users"),
+                "Subscriptions": v.get("subscriptions"),
+                "Workspace Id": v.get("workspaceId"),
+                "Report Flags": v.get("reportFlags"),
+            }
+        )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=columns)
 
     int_cols = ["Report Flags"]
     df[int_cols] = df[int_cols].astype(int)

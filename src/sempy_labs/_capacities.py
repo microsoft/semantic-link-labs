@@ -762,9 +762,7 @@ def list_subscriptions() -> pd.DataFrame:
 
 
 @log
-def get_subscription(
-    azure_subscription_id: str
-) -> pd.DataFrame:
+def get_subscription(azure_subscription_id: str) -> pd.DataFrame:
     """
     Gets details about a specified subscription.
 
@@ -824,14 +822,12 @@ def get_subscription(
 
 
 def _resolve_subscription_name_and_id(
-    azure_subscription: str | UUID
+    azure_subscription: str | UUID,
 ) -> Tuple[str, UUID]:
 
     if _is_valid_uuid(azure_subscription):
         subscription_id = azure_subscription
-        df = get_subscription(
-            azure_subscription_id=subscription_id
-        )
+        df = get_subscription(azure_subscription_id=subscription_id)
         if df.empty:
             raise ValueError(f"{icons.red_dot} The subscription ID does not exist.")
         subscription_name = df["Subscription Name"].iloc[0]
@@ -1168,9 +1164,7 @@ def list_resource_groups(
 
 
 @log
-def get_resource_group(
-    azure_subscription_id: str, resource_group: str
-) -> pd.DataFrame:
+def get_resource_group(azure_subscription_id: str, resource_group: str) -> pd.DataFrame:
     """
     Gets details about a specified resource group.
 
