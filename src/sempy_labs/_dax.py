@@ -301,9 +301,6 @@ def dax_perf_test(
     from sempy_labs._refresh_semantic_model import refresh_semantic_model
     from sempy_labs._clear_cache import clear_cache
 
-    if workspace is None:
-        workspace = fabric.resolve_workspace_name()
-
     base_cols = ["EventClass", "EventSubclass", "CurrentTime", "NTUserName", "TextData"]
     begin_cols = base_cols + ["StartTime"]
     end_cols = base_cols + ["StartTime", "EndTime", "Duration", "CpuTime", "Success"]
@@ -327,7 +324,7 @@ def dax_perf_test(
             trace.start()
             print(f"{icons.in_progress} Starting performance testing...")
             # Loop through DAX queries
-            for i, (name, dax) in enumerate(dax_queries.items()):
+            for name, dax in dax_queries.items():
 
                 if clear_cache_before_run:
                     clear_cache(dataset=dataset, workspace=workspace)
