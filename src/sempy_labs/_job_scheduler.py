@@ -1,4 +1,5 @@
 import sempy.fabric as fabric
+from sempy._utils._log import log
 import pandas as pd
 from typing import Optional
 from sempy_labs._helper_functions import (
@@ -12,6 +13,7 @@ from uuid import UUID
 import sempy_labs._icons as icons
 
 
+@log
 def list_item_job_instances(
     item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
@@ -96,6 +98,7 @@ def list_item_job_instances(
     return df
 
 
+@log
 def list_item_schedules(
     item: str | UUID,
     type: Optional[str] = None,
@@ -183,6 +186,7 @@ def list_item_schedules(
     return df
 
 
+@log
 def run_on_demand_item_job(
     item: str | UUID,
     type: Optional[str] = None,

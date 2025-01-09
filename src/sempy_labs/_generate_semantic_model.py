@@ -3,6 +3,7 @@ import pandas as pd
 import json
 import os
 from typing import Optional, List
+from sempy._utils._log import log
 from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
     resolve_workspace_name_and_id,
@@ -242,6 +243,7 @@ def update_semantic_model_from_bim(
     )
 
 
+@log
 def deploy_semantic_model(
     source_dataset: str,
     source_workspace: Optional[str | UUID] = None,

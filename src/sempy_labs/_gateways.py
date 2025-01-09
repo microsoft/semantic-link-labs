@@ -1,4 +1,5 @@
 import sempy.fabric as fabric
+from sempy._utils._log import log
 import pandas as pd
 from typing import Optional
 from sempy.fabric.exceptions import FabricHTTPException
@@ -13,6 +14,7 @@ from uuid import UUID
 import sempy_labs._icons as icons
 
 
+@log
 def list_gateways() -> pd.DataFrame:
     """
     Returns a list of all gateways the user has permission for, including on-premises, on-premises (personal mode), and virtual network gateways.

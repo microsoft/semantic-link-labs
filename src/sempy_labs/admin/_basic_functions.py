@@ -8,12 +8,14 @@ from sempy_labs._helper_functions import (
     _is_valid_uuid,
     _build_url,
 )
+from sempy._utils._log import log
 import numpy as np
 import pandas as pd
 from dateutil.parser import parse as dtparser
 from sempy.fabric._token_provider import TokenProvider
 
 
+@log
 def list_workspaces(
     capacity: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
@@ -125,6 +127,7 @@ def list_workspaces(
     return df
 
 
+@log
 def list_capacities(
     capacity: Optional[str | UUID] = None,
     token_provider: Optional[TokenProvider] = None,
@@ -180,6 +183,7 @@ def list_capacities(
     return df
 
 
+@log
 def assign_workspaces_to_capacity(
     source_capacity: Optional[str | UUID] = None,
     target_capacity: Optional[str | UUID] = None,
@@ -271,6 +275,7 @@ def assign_workspaces_to_capacity(
     )
 
 
+@log
 def unassign_workspaces_from_capacity(
     workspaces: str | List[str] | UUID | List[UUID],
 ):
@@ -312,6 +317,7 @@ def unassign_workspaces_from_capacity(
     )
 
 
+@log
 def list_tenant_settings(
     token_provider: Optional[TokenProvider] = None,
 ) -> pd.DataFrame:

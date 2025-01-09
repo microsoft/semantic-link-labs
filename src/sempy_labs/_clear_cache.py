@@ -13,6 +13,7 @@ from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
+@log
 def clear_cache(dataset: str | UUID, workspace: Optional[str | UUID] = None):
     """
     Clears the cache of a semantic model.

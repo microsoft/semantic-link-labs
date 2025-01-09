@@ -4,6 +4,7 @@ import sempy_labs._icons as icons
 from typing import Optional
 import base64
 import requests
+from sempy._utils._log import log
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     lro,
@@ -91,6 +92,7 @@ def get_notebook_definition(
     return result
 
 
+@log
 def import_notebook_from_web(
     notebook_name: str,
     url: str,

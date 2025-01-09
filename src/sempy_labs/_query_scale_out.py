@@ -4,12 +4,14 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
 )
+from sempy._utils._log import log
 from typing import Optional, Tuple
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
+@log
 def qso_sync(dataset: str | UUID, workspace: Optional[str | UUID] = None):
     """
     Triggers a query scale-out sync of read-only replicas for the specified dataset from the specified workspace.
@@ -41,6 +43,7 @@ def qso_sync(dataset: str | UUID, workspace: Optional[str | UUID] = None):
     )
 
 
+@log
 def qso_sync_status(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -140,6 +143,7 @@ def qso_sync_status(
         return df, dfRep
 
 
+@log
 def disable_qso(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
@@ -184,6 +188,7 @@ def disable_qso(
     return df
 
 
+@log
 def set_qso(
     dataset: str | UUID,
     auto_sync: bool = True,
@@ -259,6 +264,7 @@ def set_qso(
     return df
 
 
+@log
 def set_semantic_model_storage_format(
     dataset: str | UUID, storage_format: str, workspace: Optional[str | UUID] = None
 ):
@@ -318,6 +324,7 @@ def set_semantic_model_storage_format(
     )
 
 
+@log
 def list_qso_settings(
     dataset: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
@@ -384,6 +391,7 @@ def list_qso_settings(
     return df
 
 
+@log
 def set_workspace_default_storage_format(
     storage_format: str, workspace: Optional[str | UUID] = None
 ):

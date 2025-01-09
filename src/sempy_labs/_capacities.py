@@ -752,6 +752,7 @@ def list_skus(
     return df
 
 
+@log
 def list_subscriptions(token_provider: TokenProvider) -> pd.DataFrame:
     """
     Gets all subscriptions for a tenant.
@@ -811,6 +812,7 @@ def list_subscriptions(token_provider: TokenProvider) -> pd.DataFrame:
     return df
 
 
+@log
 def get_subscription(
     azure_subscription_id: str, token_provider: TokenProvider
 ) -> pd.DataFrame:
@@ -897,6 +899,7 @@ def _resolve_subscription_name_and_id(
     return subscription_name, subscription_id
 
 
+@log
 def list_tenants(token_provider: TokenProvider) -> pd.DataFrame:
     """
     Gets the tenants for your account.
@@ -951,6 +954,7 @@ def list_tenants(token_provider: TokenProvider) -> pd.DataFrame:
     return df
 
 
+@log
 def create_or_update_resource_group(
     azure_subscription_id: str,
     resource_group: str,
@@ -990,6 +994,7 @@ def create_or_update_resource_group(
     )
 
 
+@log
 def create_storage_account(
     azure_subscription_id: str,
     resource_group: str,
@@ -1035,6 +1040,7 @@ def create_storage_account(
     )
 
 
+@log
 def list_storage_accounts(
     azure_subscription_id: str,
     token_provider: TokenProvider,
@@ -1134,6 +1140,7 @@ def list_storage_accounts(
     return df
 
 
+@log
 def check_resource_group_existence(
     azure_subscription_id: str, resource_group: str, token_provider: TokenProvider
 ) -> bool:
@@ -1171,6 +1178,7 @@ def check_resource_group_existence(
         return False
 
 
+@log
 def list_resource_groups(
     azure_subscription_id: str,
     token_provider: TokenProvider,
@@ -1231,6 +1239,7 @@ def list_resource_groups(
     return df
 
 
+@log
 def get_resource_group(
     azure_subscription_id: str, resource_group: str, token_provider: TokenProvider
 ) -> pd.DataFrame:
