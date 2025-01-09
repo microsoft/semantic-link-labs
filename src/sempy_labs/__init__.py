@@ -470,5 +470,4 @@ __all__ = [
     "bind_semantic_model_to_gateway",
     "list_semantic_model_errors",
     "list_item_job_instances",
-    "optimize_delta_tables",
 ]
