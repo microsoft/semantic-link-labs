@@ -313,6 +313,7 @@ def dax_perf_test(
     event_schema["VertiPaqSEQueryBegin"] = begin_cols
     event_schema["VertiPaqSEQueryEnd"] = end_cols
     event_schema["VertiPaqSEQueryCacheMatch"] = base_cols
+    event_schema["ExecutionMetrics"] = ["EventClass", "ApplicationName", "TextData"]
 
     query_results = {}
 
