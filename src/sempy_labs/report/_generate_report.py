@@ -410,4 +410,9 @@ def _get_report(
         ),
     }
 
-    return pd.DataFrame([new_data])
+    df = pd.DataFrame([new_data])
+
+    bool_cols = ["Is From Pbix", "Is Owned By Me"]
+    df[bool_cols] = df[bool_cols].astype(bool)
+
+    return df
