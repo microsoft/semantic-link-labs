@@ -93,7 +93,9 @@ class TOMWrapper:
             if match:
                 region = match.group(1)
             if self._token_provider is None:
-                raise ValueError(f"{icons.red_dot} A token provider must be provided when connecting to Azure Analysis Services.")
+                raise ValueError(
+                    f"{icons.red_dot} A token provider must be provided when connecting to Azure Analysis Services."
+                )
             token = self._token_provider(audience="asazure", region=region)
             connection_str = f'Provider=MSOLAP;Data Source={self._workspace_name};Password="{token}";Persist Security Info=True;Impersonation Level=Impersonate'
             self._tom_server = TOM.Server()
@@ -4473,7 +4475,7 @@ class TOMWrapper:
             measure_name = [m.Name for m in self.all_measures()]
 
         if isinstance(measure_name, str):
-            measure_name = [measure_name]        
+            measure_name = [measure_name]
 
         if len(measure_name) > max_batch_size:
             measure_lists = [

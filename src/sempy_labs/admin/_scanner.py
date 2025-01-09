@@ -6,7 +6,7 @@ import numpy as np
 import time
 from sempy_labs.admin._basic_functions import list_workspaces
 from sempy._utils._log import log
-from sempy.fabric._token_provider import TokenProvider
+import sempy_labs._icons as icons
 
 
 @log
@@ -17,7 +17,6 @@ def scan_workspaces(
     lineage: bool = False,
     artifact_users: bool = False,
     workspace: Optional[str | List[str] | UUID | List[UUID]] = None,
-    token_provider: Optional[TokenProvider] = None,
 ) -> dict:
     """
     Gets the scan result for the specified scan.
@@ -41,8 +40,6 @@ def scan_workspaces(
         Whether to return user details for a Power BI item (such as a report or a dashboard).
     workspace : str | List[str] | uuid.UUID | List[uuid.UUID], default=None
         The required workspace name(s) or id(s) to be scanned
-    token_provider : TokenProvider, default=None
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -55,7 +52,7 @@ def scan_workspaces(
         "misconfiguredDatasourceInstances": [],
     }
 
-    client = fabric.FabricRestClient(token_provider=token_provider)
+    client = fabric.FabricRestClient(token_provider=icons.token_provider)
 
     if workspace is None:
         workspace = fabric.resolve_workspace_name()
@@ -65,7 +62,7 @@ def scan_workspaces(
 
     workspace_list = []
 
-    dfW = list_workspaces(token_provider=token_provider)
+    dfW = list_workspaces(token_provider=icons.token_provider)
     workspace_list = dfW[dfW["Name"].isin(workspace)]["Id"].tolist()
     workspace_list = workspace_list + dfW[dfW["Id"].isin(workspace)]["Id"].tolist()
 
