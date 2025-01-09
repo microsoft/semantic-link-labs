@@ -3,7 +3,7 @@ from sempy.fabric._token_provider import TokenProvider
 from azure.identity import ClientSecretCredential
 from sempy._utils._log import log
 from contextlib import contextmanager
-import sempy_labs._icons as icons
+import sempy_labs._auth as auth
 
 
 class ServicePrincipalTokenProvider(TokenProvider):
@@ -184,12 +184,14 @@ def service_principal_authentication(
         Name of the secret in the Key Vault with the Service Principal Client ID.
     key_vault_client_secret : str
         Name of the secret in the Key Vault with the Service Principal Client Secret.
-
     """
-
-    icons.token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
-        key_vault_uri=key_vault_uri,
-        key_vault_tenant_id=key_vault_tenant_id,
-        key_vault_client_id=key_vault_client_id,
-        key_vault_client_secret=key_vault_client_secret,
-    )
+    try:
+        auth.token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
+            key_vault_uri=key_vault_uri,
+            key_vault_tenant_id=key_vault_tenant_id,
+            key_vault_client_id=key_vault_client_id,
+            key_vault_client_secret=key_vault_client_secret,
+        )
+        yield
+    finally:
+        auth.token_provider = None

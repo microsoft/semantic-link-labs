@@ -5,22 +5,14 @@ from sempy_labs._helper_functions import (
 )
 import pandas as pd
 from sempy_labs.admin._basic_functions import list_workspaces
-from sempy.fabric._token_provider import TokenProvider
-from typing import Optional
+import sempy_labs._auth as auth
 
 
-def list_git_connections(
-    token_provider: Optional[TokenProvider] = None,
-) -> pd.DataFrame:
+def list_git_connections() -> pd.DataFrame:
     """
     Shows a list of Git connections.
 
     This is a wrapper function for the following API: `Workspaces - List Git Connections <https://learn.microsoft.com/rest/api/fabric/admin/workspaces/list-git-connections>`_.
-
-    Parameters
-    ----------
-    token_provider : TokenProvider, default=None
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -28,7 +20,7 @@ def list_git_connections(
         A pandas dataframe showing a list of Git connections.
     """
 
-    client = fabric.FabricRestClient(token_provider=token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider)
     response = client.get("/v1/admin/workspaces/discoverGitConnections")
 
     df = pd.DataFrame(

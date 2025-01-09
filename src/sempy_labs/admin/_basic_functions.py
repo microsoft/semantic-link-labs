@@ -12,7 +12,7 @@ from sempy._utils._log import log
 import numpy as np
 import pandas as pd
 from dateutil.parser import parse as dtparser
-from sempy.fabric._token_provider import TokenProvider
+import sempy_labs._auth as auth
 
 
 @log
@@ -21,7 +21,6 @@ def list_workspaces(
     workspace: Optional[str | UUID] = None,
     workspace_state: Optional[str] = None,
     workspace_type: Optional[str] = None,
-    token_provider: Optional[TokenProvider] = None,
     **kwargs,
 ) -> pd.DataFrame:
     """
@@ -39,8 +38,6 @@ def list_workspaces(
         Return only the workspace with the requested state. You can find the possible states in `Workspace States <https://learn.microsoft.com/en-us/rest/api/fabric/admin/workspaces/list-workspaces?tabs=HTTP#workspacestate>`_.
     workspace_type : str, default=None
         Return only the workspace of the specific type. You can find the possible types in `Workspace Types <https://learn.microsoft.com/en-us/rest/api/fabric/admin/workspaces/list-workspaces?tabs=HTTP#workspacetype>`_.
-    token_provider : TokenProvider, default=None
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -65,7 +62,7 @@ def list_workspaces(
         )
         del kwargs["skip"]
 
-    client = fabric.FabricRestClient(token_provider=token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider)
 
     df = pd.DataFrame(
         columns=[
@@ -130,7 +127,6 @@ def list_workspaces(
 @log
 def list_capacities(
     capacity: Optional[str | UUID] = None,
-    token_provider: Optional[TokenProvider] = None,
 ) -> pd.DataFrame:
     """
     Shows the a list of capacities and their properties.
@@ -141,15 +137,13 @@ def list_capacities(
     ----------
     capacity : str | uuid.UUID, default=None
         Capacity name or id to filter.
-    token_provider : TokenProvider, default=None
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
     pandas.DataFrame
         A pandas dataframe showing the capacities and their properties.
     """
-    client = fabric.FabricRestClient(token_provider=token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider)
 
     df = pd.DataFrame(
         columns=["Capacity Id", "Capacity Name", "Sku", "Region", "State", "Admins"]
@@ -318,25 +312,18 @@ def unassign_workspaces_from_capacity(
 
 
 @log
-def list_tenant_settings(
-    token_provider: Optional[TokenProvider] = None,
-) -> pd.DataFrame:
+def list_tenant_settings() -> pd.DataFrame:
     """
     Lists all tenant settings.
 
     This is a wrapper function for the following API: `Tenants - List Tenant Settings <https://learn.microsoft.com/rest/api/fabric/admin/tenants/list-tenant-settings>`_.
-
-    Parameters
-    ----------
-    token_provider : TokenProvider, default=None
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
     pandas.DataFrame
         A pandas dataframe showing the tenant settings.
     """
-    client = fabric.FabricRestClient(token_provider=token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider)
 
     response = client.get("/v1/admin/tenantsettings")
 
@@ -373,7 +360,6 @@ def list_tenant_settings(
 
 def list_capacities_delegated_tenant_settings(
     return_dataframe: bool = True,
-    token_provider: Optional[TokenProvider] = None,
 ) -> pd.DataFrame | dict:
     """
     Returns list of tenant setting overrides that override at the capacities.
@@ -384,8 +370,6 @@ def list_capacities_delegated_tenant_settings(
     ----------
     return_dataframe : bool, default=True
         If True, returns a dataframe. If False, returns a dictionary.
-    token_provider : TokenProvider, default=None
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -407,7 +391,7 @@ def list_capacities_delegated_tenant_settings(
         ]
     )
 
-    client = fabric.FabricRestClient(token_provider=token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider)
     response = client.get("/v1/admin/capacities/delegatedTenantSettingOverrides")
 
     if response.status_code != 200:
@@ -467,7 +451,6 @@ def list_modified_workspaces(
     modified_since: Optional[str] = None,
     exclude_inactive_workspaces: Optional[bool] = False,
     exclude_personal_workspaces: Optional[bool] = False,
-    token_provider: Optional[TokenProvider] = None,
 ) -> pd.DataFrame:
     """
     Gets a list of workspace IDs in the organization.
@@ -482,15 +465,13 @@ def list_modified_workspaces(
         Whether to exclude inactive workspaces.
     exclude_personal_workspaces : bool, default=False
         Whether to exclude personal workspaces.
-    token_provider : TokenProvider, default=None
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
     pandas.DataFrame
         A pandas dataframe showing a list of workspace IDs in the organization.
     """
-    client = fabric.FabricRestClient(token_provider=token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider)
 
     params = {}
 
@@ -524,7 +505,6 @@ def list_datasets(
     top: Optional[int] = None,
     filter: Optional[str] = None,
     skip: Optional[int] = None,
-    token_provider: Optional[TokenProvider] = None,
 ) -> pd.DataFrame:
     """
     Shows a list of datasets for the organization.
@@ -539,8 +519,6 @@ def list_datasets(
         Returns a subset of a results based on Odata filter query parameter condition.
     skip : int, default=None
         Skips the first n results.
-    token_provider : TokenProvider, default=None
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -571,7 +549,7 @@ def list_datasets(
         ]
     )
 
-    client = fabric.FabricRestClient(token_provider=token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider)
 
     params = {}
     url = "/v1.0/myorg/admin/datasets"
@@ -640,7 +618,6 @@ def list_datasets(
 
 def list_access_entities(
     user_email_address: str,
-    token_provider: Optional[TokenProvider] = None,
 ) -> pd.DataFrame:
     """
     Shows a list of permission details for Fabric and Power BI items the specified user can access.
@@ -651,8 +628,6 @@ def list_access_entities(
     ----------
     user_email_address : str
         The user's email address.
-    token_provider : TokenProvider, default=None
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -668,7 +643,7 @@ def list_access_entities(
             "Additional Permissions",
         ]
     )
-    client = fabric.FabricRestClient(token_provider=token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider)
 
     response = client.get(f"/v1/admin/users/{user_email_address}/access")
 
@@ -695,7 +670,6 @@ def list_access_entities(
 
 def list_workspace_access_details(
     workspace: Optional[Union[str, UUID]] = None,
-    token_provider: Optional[TokenProvider] = None,
 ) -> pd.DataFrame:
     """
     Shows a list of users (including groups and Service Principals) that have access to the specified workspace.
@@ -708,8 +682,6 @@ def list_workspace_access_details(
         The Fabric workspace name or id.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    token_provider : TokenProvider, default=None
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -729,7 +701,7 @@ def list_workspace_access_details(
         ]
     )
 
-    client = fabric.FabricRestClient(token_provider=token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider)
 
     response = client.get(f"/v1/admin/workspaces/{workspace_id}/users")
     if response.status_code != 200:
@@ -755,7 +727,6 @@ def list_activity_events(
     activity_filter: Optional[str] = None,
     user_id_filter: Optional[str] = None,
     return_dataframe: bool = True,
-    token_provider: Optional[TokenProvider] = None,
 ) -> pd.DataFrame | dict:
     """
     Shows a list of audit activity events for a tenant.
@@ -774,8 +745,6 @@ def list_activity_events(
         Email address of the user.
     return_dataframe : bool, default=True
         If True the response is a pandas.DataFrame. If False returns the original Json. Default True
-    token_provider : TokenProvider, default=None
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -834,7 +803,7 @@ def list_activity_events(
     )
 
     response_json = {"activityEventEntities": []}
-    client = fabric.FabricRestClient(token_provider=token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider)
     url = f"/v1.0/myorg/admin/activityevents?startDateTime='{start_time}'&endDateTime='{end_time}'"
 
     conditions = []
@@ -914,10 +883,9 @@ def list_activity_events(
 
 def _resolve_capacity_name_and_id(
     capacity: str | UUID,
-    token_provider: Optional[TokenProvider] = None,
 ) -> Tuple[str, UUID]:
 
-    dfC = list_capacities(capacity=capacity, token_provider=token_provider)
+    dfC = list_capacities(capacity=capacity)
     try:
         capacity_name = dfC["Capacity Name"].iloc[0]
         capacity_id = dfC["Capacity Id"].iloc[0]
@@ -927,18 +895,11 @@ def _resolve_capacity_name_and_id(
     return capacity_name, capacity_id
 
 
-def _list_capacities_meta(
-    token_provider: Optional[TokenProvider] = None,
-) -> pd.DataFrame:
+def _list_capacities_meta() -> pd.DataFrame:
     """
     Shows the a list of capacities and their properties. This function is the admin version.
 
     This is a wrapper function for the following API: `Admin - Get Capacities As Admin <https://learn.microsoft.com/rest/api/power-bi/admin/get-capacities-as-admin>`_.
-
-    Parameters
-    ----------
-    token_provider : TokenProvider, default=None
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -946,7 +907,7 @@ def _list_capacities_meta(
         A pandas dataframe showing the capacities and their properties
     """
 
-    client = fabric.FabricRestClient(token_provider=token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider)
 
     df = pd.DataFrame(
         columns=["Capacity Id", "Capacity Name", "Sku", "Region", "State", "Admins"]
@@ -976,14 +937,13 @@ def _list_capacities_meta(
 
 def _resolve_workspace_name_and_id(
     workspace: str | UUID,
-    token_provider: Optional[TokenProvider] = None,
 ) -> Tuple[str, UUID]:
 
     if workspace is None:
         workspace_id = fabric.get_workspace_id()
         workspace_name = fabric.resolve_workspace_name(workspace_id)
     else:
-        dfW = list_workspaces(workspace=workspace, token_provider=token_provider)
+        dfW = list_workspaces(workspace=workspace)
         if not dfW.empty:
             workspace_name = dfW["Name"].iloc[0]
             workspace_id = dfW["Id"].iloc[0]
@@ -999,7 +959,6 @@ def list_reports(
     top: Optional[int] = None,
     skip: Optional[int] = None,
     filter: Optional[str] = None,
-    token_provider: Optional[TokenProvider] = None,
 ) -> pd.DataFrame:
     """
     Shows a list of reports for the organization.
@@ -1014,8 +973,6 @@ def list_reports(
         Skips the first n results.
     filter : str, default=None
         Returns a subset of a results based on Odata filter query parameter condition.
-    token_provider : TokenProvider, default=None
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -1053,7 +1010,7 @@ def list_reports(
 
     url.rstrip("$").rstrip("?")
 
-    client = fabric.FabricRestClient(token_provider=token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider)
     response = client.get(url)
 
     if response.status_code != 200:
@@ -1090,7 +1047,6 @@ def list_reports(
 
 def get_capacity_assignment_status(
     workspace: Optional[str | UUID] = None,
-    token_provider: Optional[TokenProvider] = None,
 ) -> pd.DataFrame:
     """
     Gets the status of the assignment-to-capacity operation for the specified workspace.
@@ -1103,8 +1059,6 @@ def get_capacity_assignment_status(
         The Fabric workspace name or id.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    token_provider : TokenProvider, default=None
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -1125,7 +1079,7 @@ def get_capacity_assignment_status(
         ]
     )
 
-    client = fabric.FabricRestClient(token_provider=token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider)
     response = client.get(f"/v1.0/myorg/groups/{workspace_id}/CapacityAssignmentStatus")
 
     if response.status_code != 200:

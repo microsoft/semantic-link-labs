@@ -147,4 +147,3 @@ refresh_event_schema = {
     "JobGraph": base_cols,
     "ProgressReportEnd": end_cols,
 }
-token_provider = None
