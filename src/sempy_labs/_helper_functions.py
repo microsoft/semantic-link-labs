@@ -1188,16 +1188,24 @@ def generate_guid():
     return str(uuid.uuid4())
 
 
-def _get_max_run_id(lakehouse: str, table_name: str) -> int:
+def _get_column_aggregate(
+    lakehouse: str,
+    table_name: str,
+    column_name: str = "RunId",
+    function: str = "max",
+    default_value: int = 0,
+) -> int:
 
     from pyspark.sql import SparkSession
 
     spark = SparkSession.builder.getOrCreate()
-    query = f"SELECT MAX(RunId) FROM {lakehouse}.{table_name}"
+    function = function.upper()
+    query = f"SELECT {function}({column_name}) FROM {lakehouse}.{table_name}"
+    if "COUNT" in function and "DISTINCT" in function:
+        query = f"SELECT COUNT(DISTINCT({column_name})) FROM {lakehouse}.{table_name}"
     dfSpark = spark.sql(query)
-    max_run_id = dfSpark.collect()[0][0] or 0
 
-    return max_run_id
+    return dfSpark.collect()[0][0] or default_value
 
 
 def _make_list_unique(my_list):
@@ -1209,20 +1217,17 @@ def _get_partition_map(
     dataset: str, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
-
     partitions = fabric.evaluate_dax(
-        dataset=dataset_id,
-        workspace=workspace_id,
+        dataset=dataset,
+        workspace=workspace,
         dax_string="""
     select [ID] AS [PartitionID], [TableID], [Name] AS [PartitionName] from $system.tmschema_partitions
     """,
     )
 
     tables = fabric.evaluate_dax(
-        dataset=dataset_id,
-        workspace=workspace_id,
+        dataset=dataset,
+        workspace=workspace,
         dax_string="""
     select [ID] AS [TableID], [Name] AS [TableName] from $system.tmschema_tables
     """,
