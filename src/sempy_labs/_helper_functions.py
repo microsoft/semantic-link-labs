@@ -61,11 +61,11 @@ def _get_default_file_path() -> str:
 
 def _split_abfss_path(path: str) -> Tuple[UUID, UUID, str]:
 
-    # Extracts the workspace ID, item ID and delta table name from the abfss path.
+    parsed_url = urllib.parse.urlparse(path)
 
-    workspace_id = path.split("abfss://")[1].split("@")[0]
-    item_id = path.split(".com/")[1].split("/")[0]
-    delta_table_name = path.split("/")[-1]
+    workspace_id = parsed_url.netloc.split("@")[0]
+    item_id = parsed_url.path.lstrip("/").split("/")[0]
+    delta_table_name = parsed_url.path.split("/")[-1]
 
     return workspace_id, item_id, delta_table_name
 
