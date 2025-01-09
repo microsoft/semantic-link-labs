@@ -14,6 +14,8 @@ from sempy_labs._helper_functions import (
     convert_to_alphanumeric_lowercase,
 )
 from sempy_labs._capacities import create_fabric_capacity
+from sempy_labs._authentication import ServicePrincipalTokenProvider
+from sempy.fabric._token_provider import TokenProvider
 
 
 def migrate_settings(source_capacity: str, target_capacity: str):
@@ -138,14 +140,12 @@ def migrate_workspaces(
 @log
 def migrate_capacities(
     azure_subscription_id: str,
-    key_vault_uri: str,
-    key_vault_tenant_id: str,
-    key_vault_client_id: str,
-    key_vault_client_secret: str,
     resource_group: str | dict,
+    token_provider: Optional[TokenProvider] = None,
     capacities: Optional[str | List[str]] = None,
     use_existing_rg_for_A_sku: bool = True,
     p_sku_only: bool = True,
+    **kwargs,
 ):
     """
     This function creates new Fabric capacities for given A or P sku capacities and reassigns their workspaces to the newly created capacity.
@@ -154,18 +154,12 @@ def migrate_capacities(
     ----------
     azure_subscription_id : str
         The Azure subscription ID.
-    key_vault_uri : str
-        The name of the `Azure key vault <https://azure.microsoft.com/products/key-vault>`_ URI. Example: "https://<Key Vault Name>.vault.azure.net/"
-    key_vault_tenant_id : str
-        The name of the Azure key vault secret storing the Tenant ID.
-    key_vault_client_id : str
-        The name of the Azure key vault secret storing the Client ID.
-    key_vault_client_secret : str
-        The name of the Azure key vault secret storing the Client Secret.
     resource_group : str | dict
         The name of the Azure resource group.
         For A skus, this parameter will be ignored and the resource group used for the F sku will be the same as the A sku's resource group.
         For P skus, if this parameter is a string, it will use that resource group for all of the newly created F skus. If this parameter is a dictionary, it will use that mapping (capacity name -> resource group) for creating capacities with the mapped resource groups.
+    token_provider : TokenProvider, default=None
+        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
     capacities : str | List[str], default=None
         The capacity(ies) to migrate from A/P -> F sku.
         Defaults to None which migrates all accessible A/P sku capacities to F skus.
@@ -175,12 +169,23 @@ def migrate_capacities(
         If set to True, only migrates P skus. If set to False, migrates both P and A skus.
     """
 
+    if token_provider is None:
+        token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
+            key_vault_uri=kwargs["key_vault_uri"],
+            key_vault_tenant_id=kwargs["key_vault_tenant_id"],
+            key_vault_client_id=kwargs["key_vault_client_id"],
+            key_vault_client_secret=kwargs["key_vault_client_secret"],
+        )
+        print(
+            f"{icons.info} Please use the 'token_provider' parameter instead of the key vault parameters within this function as the key vault parameters have been deprecated."
+        )
+
     if isinstance(capacities, str):
         capacities = [capacities]
 
     p_sku_list = list(icons.sku_mapping.keys())
 
-    dfC = list_capacities()
+    dfC = list_capacities(token_provider=token_provider)
 
     if capacities is None:
         dfC_filt = dfC.copy()
@@ -233,10 +238,7 @@ def migrate_capacities(
                 create_fabric_capacity(
                     capacity_name=tgt_capacity,
                     azure_subscription_id=azure_subscription_id,
-                    key_vault_uri=key_vault_uri,
-                    key_vault_tenant_id=key_vault_tenant_id,
-                    key_vault_client_id=key_vault_client_id,
-                    key_vault_client_secret=key_vault_client_secret,
+                    token_provider=token_provider,
                     resource_group=rg,
                     region=region,
                     sku=icons.sku_mapping.get(sku_size),
@@ -624,15 +626,13 @@ def migrate_spark_settings(source_capacity: str, target_capacity: str):
 @log
 def migrate_fabric_trial_capacity(
     azure_subscription_id: str,
-    key_vault_uri: str,
-    key_vault_tenant_id: str,
-    key_vault_client_id: str,
-    key_vault_client_secret: str,
     resource_group: str,
     source_capacity: str,
     target_capacity: str,
+    token_provider: Optional[TokenProvider] = None,
     target_capacity_sku: str = "F64",
     target_capacity_admin_members: Optional[str | List[str]] = None,
+    **kwargs,
 ):
     """
     This function migrates a Fabric trial capacity to a Fabric capacity. If the 'target_capacity' does not exist, it is created with the relevant target capacity parameters (sku, region, admin members).
@@ -641,26 +641,31 @@ def migrate_fabric_trial_capacity(
     ----------
     azure_subscription_id : str
         The Azure subscription ID.
-    key_vault_uri : str
-        The name of the `Azure key vault <https://azure.microsoft.com/products/key-vault>`_ URI. Example: "https://<Key Vault Name>.vault.azure.net/"
-    key_vault_tenant_id : str
-        The name of the Azure key vault secret storing the Tenant ID.
-    key_vault_client_id : str
-        The name of the Azure key vault secret storing the Client ID.
-    key_vault_client_secret : str
-        The name of the Azure key vault secret storing the Client Secret.
     resource_group : str
         The name of the Azure resource group.
     source_capacity : str
         The name of the Fabric trial capacity.
     target_capacity : str
         The name of the new Fabric capacity (F SKU). If this capacity does not exist, it will be created.
+    token_provider : TokenProvider, default=None
+        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
     target_capacity_sku : str, default="F64"
         If the target capacity does not exist, this property sets the SKU size for the target capacity.
     target_capacity_admin_members : str, default=None
         If the target capacity does not exist, this property sets the admin members for the target capacity.
         Defaults to None which resolves to the admin members on the Trial SKU.
     """
+
+    if token_provider is None:
+        token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
+            key_vault_uri=kwargs["key_vault_uri"],
+            key_vault_tenant_id=kwargs["key_vault_tenant_id"],
+            key_vault_client_id=kwargs["key_vault_client_id"],
+            key_vault_client_secret=kwargs["key_vault_client_secret"],
+        )
+        print(
+            f"{icons.info} Please use the 'token_provider' parameter instead of the key vault parameters within this function as the key vault parameters have been deprecated."
+        )
 
     notebook_workspace_id = fabric.get_notebook_workspace_id()
     dfW = fabric.list_workspaces(filter=f"id eq '{notebook_workspace_id}'")
@@ -701,10 +706,7 @@ def migrate_fabric_trial_capacity(
         create_fabric_capacity(
             capacity_name=target_capacity,
             azure_subscription_id=azure_subscription_id,
-            key_vault_uri=key_vault_uri,
-            key_vault_tenant_id=key_vault_tenant_id,
-            key_vault_client_id=key_vault_client_id,
-            key_vault_client_secret=key_vault_client_secret,
+            token_provider=token_provider,
             resource_group=resource_group,
             region=target_capacity_region,
             admin_members=target_capacity_admin_members,

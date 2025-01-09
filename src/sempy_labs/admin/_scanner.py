@@ -6,6 +6,7 @@ import numpy as np
 import time
 from sempy_labs.admin._basic_functions import list_workspaces
 from sempy._utils._log import log
+from sempy.fabric._token_provider import TokenProvider
 
 
 @log
@@ -16,6 +17,7 @@ def scan_workspaces(
     lineage: bool = False,
     artifact_users: bool = False,
     workspace: Optional[str | List[str] | UUID | List[UUID]] = None,
+    token_provider: Optional[TokenProvider] = None,
 ) -> dict:
     """
     Gets the scan result for the specified scan.
@@ -32,13 +34,15 @@ def scan_workspaces(
     dataset_schema: bool = False
         Whether to return dataset schema (tables, columns and measures). If you set this parameter to true, you must fully enable metadata scanning in order for data to be returned. For more information, see Enable tenant settings for metadata scanning.
     dataset_expressions : bool, default=False
-        Whether to return data source details
+        Whether to return data source details.
     lineage : bool, default=False
-        Whether to return lineage info (upstream dataflows, tiles, data source IDs)
+        Whether to return lineage info (upstream dataflows, tiles, data source IDs).
     artifact_users : bool, default=False
-        Whether to return user details for a Power BI item (such as a report or a dashboard)
+        Whether to return user details for a Power BI item (such as a report or a dashboard).
     workspace : str | List[str] | uuid.UUID | List[uuid.UUID], default=None
         The required workspace name(s) or id(s) to be scanned
+    token_provider : TokenProvider, default=None
+        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -51,7 +55,7 @@ def scan_workspaces(
         "misconfiguredDatasourceInstances": [],
     }
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=token_provider)
 
     if workspace is None:
         workspace = fabric.resolve_workspace_name()
@@ -61,7 +65,7 @@ def scan_workspaces(
 
     workspace_list = []
 
-    dfW = list_workspaces()
+    dfW = list_workspaces(token_provider=token_provider)
     workspace_list = dfW[dfW["Name"].isin(workspace)]["Id"].tolist()
     workspace_list = workspace_list + dfW[dfW["Id"].isin(workspace)]["Id"].tolist()
 

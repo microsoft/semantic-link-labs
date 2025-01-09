@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Optional
 from sempy.fabric._token_provider import TokenProvider
 from azure.identity import ClientSecretCredential
 
@@ -40,6 +40,10 @@ class ServicePrincipalTokenProvider(TokenProvider):
         credential = ClientSecretCredential(
             tenant_id=tenant_id, client_id=client_id, client_secret=client_secret
         )
+
+        cls.tenant_id = tenant_id
+        cls.client_id = client_id
+        cls.client_secret = client_secret
 
         return cls(credential)
 
@@ -89,16 +93,26 @@ class ServicePrincipalTokenProvider(TokenProvider):
             tenant_id=tenant_id, client_id=client_id, client_secret=client_secret
         )
 
+        cls.tenant_id = tenant_id
+        cls.client_id = client_id
+        cls.client_secret = client_secret
+
         return cls(credential)
 
     def __call__(
-        self, audience: Literal["pbi", "storage", "azure", "graph"] = "pbi"
+        self,
+        audience: Literal[
+            "pbi", "storage", "azure", "graph", "asazure", "keyvault"
+        ] = "pbi",
+        region: Optional[str] = None,
     ) -> str:
         """
         Parameters
         ----------
-        audience : Literal["pbi", "storage", "azure", "graph"] = "pbi") -> str
+        audience : Literal["pbi", "storage", "azure", "graph", "asazure", "keyvault"] = "pbi") -> str
             Literal if it's for PBI/Fabric API call or OneLake/Storage Account call.
+        region : str, default=None
+            The region of the Azure Analysis Services. For example: 'westus2'.
         """
         if audience == "pbi":
             return self.credential.get_token(
@@ -114,12 +128,19 @@ class ServicePrincipalTokenProvider(TokenProvider):
             return self.credential.get_token(
                 "https://graph.microsoft.com/.default"
             ).token
+        elif audience == "asazure":
+            return self.credential.get_token(
+                f"https://{region}.asazure.windows.net/.default"
+            ).token
+        elif audience == "keyvault":
+            return self.credential.get_token("https://vault.azure.net/.default").token
         else:
             raise NotImplementedError
 
 
 def _get_headers(
-    token_provider: str, audience: Literal["pbi", "storage", "azure", "graph"] = "azure"
+    token_provider: str,
+    audience: Literal["pbi", "storage", "azure", "graph", "asazure", "keyvault"] = "azure",
 ):
     """
     Generates headers for an API request.

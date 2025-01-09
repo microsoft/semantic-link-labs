@@ -14,7 +14,6 @@ from sempy_labs._gateways import (
     update_on_premises_gateway,
     bind_semantic_model_to_gateway,
 )
-
 from sempy_labs._authentication import (
     ServicePrincipalTokenProvider,
 )
@@ -121,6 +120,17 @@ from sempy_labs._capacities import (
     delete_embedded_capacity,
     delete_premium_capacity,
     create_resource_group,
+    list_skus,
+    list_skus_for_capacity,
+    list_subscriptions,
+    list_tenants,
+    get_subscription,
+    check_resource_group_existence,
+    list_storage_accounts,
+    create_storage_account,
+    create_or_update_resource_group,
+    list_resource_groups,
+    get_resource_group,
 )
 from sempy_labs._spark import (
     get_spark_settings,
@@ -474,4 +484,15 @@ __all__ = [
     "list_semantic_model_errors",
     "list_item_job_instances",
     "list_item_schedules",
+    "list_skus",
+    "list_skus_for_capacity",
+    "list_subscriptions",
+    "list_tenants",
+    "get_subscription",
+    "check_resource_group_existence",
+    "list_storage_accounts",
+    "create_storage_account",
+    "create_or_update_resource_group",
+    "list_resource_groups",
+    "get_resource_group",
 ]
