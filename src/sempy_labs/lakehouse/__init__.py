@@ -4,6 +4,7 @@ from sempy_labs.lakehouse._lakehouse import (
     lakehouse_attached,
     optimize_lakehouse_tables,
     vacuum_lakehouse_tables,
+    run_table_maintenance,
 )
 
 from sempy_labs.lakehouse._shortcuts import (
@@ -21,4 +22,5 @@ __all__ = [
     "create_shortcut_onelake",
     "delete_shortcut",
     "vacuum_lakehouse_tables",
+    "run_table_maintenance",
 ]

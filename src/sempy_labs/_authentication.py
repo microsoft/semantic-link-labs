@@ -140,7 +140,9 @@ class ServicePrincipalTokenProvider(TokenProvider):
 
 def _get_headers(
     token_provider: str,
-    audience: Literal["pbi", "storage", "azure", "graph", "asazure", "keyvault"] = "azure",
+    audience: Literal[
+        "pbi", "storage", "azure", "graph", "asazure", "keyvault"
+    ] = "azure",
 ):
     """
     Generates headers for an API request.
