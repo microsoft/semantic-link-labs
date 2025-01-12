@@ -139,3 +139,41 @@ def delete_kql_database(name: str, workspace: Optional[str | UUID] = None):
     print(
         f"{icons.green_dot} The '{name}' KQL database within the '{workspace_name}' workspace has been deleted."
     )
+
+def query_kql_database(kql_database: [str | UUID], kql_query: str, workspace: Optional[str | UUID] = None) -> pd.DataFrame:
+    """
+    Queries a KQL database.
+
+    Parameters
+    ----------
+    kql_database : str | uuid.UUID
+        The KQL database name or ID.
+    kql_query : str
+        The KQL query to execute.
+    workspace : str | uuid.UUID
+        The Fabric workspace name or ID.
+
+    Returns
+    -------
+    pandas.DataFrame
+        The result of the KQL query.
+    """
+
+    workspace_name, workspace_id = resolve_workspace_name_and_id(workspace)
+    kql_databases_df = labs.list_kql_databases(workspace_id)
+    
+    kql_database_search_attribute = 'KQL Database Id' if _is_valid_uuid(kql_database) else 'KQL Database Name'
+    kql_database_info = kql_databases_df.loc[kql_databases_df[kql_database_search_attribute] == kql_database]
+    kql_database_uri = kql_database_info['Query Service URI'].values[0]
+    kql_database_id = kql_database_info['KQL Database Id'].values[0]
+
+    access_token = mssparkutils.credentials.getToken(kql_database_uri)
+
+    kusto_query_result = spark.read \
+        .format('com.microsoft.kusto.spark.synapse.datasource') \
+        .option('accessToken', access_token) \
+        .option('kustoCluster', kql_database_uri) \
+        .option('kustoDatabase', kql_database_id) \
+        .option('kustoQuery', kql_query).load()
+
+    return kusto_query_result
