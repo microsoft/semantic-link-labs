@@ -176,4 +176,6 @@ def query_kql_database(kql_database: [str | UUID], kql_query: str, workspace: Op
         .option('kustoDatabase', kql_database_id) \
         .option('kustoQuery', kql_query).load()
 
+    kusto_query_result = kusto_query_result.toPandas()
+
     return kusto_query_result

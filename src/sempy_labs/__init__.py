@@ -413,6 +413,7 @@ __all__ = [
     "list_kql_databases",
     "create_kql_database",
     "delete_kql_database",
+    "query_kql_database",
     "create_eventhouse",
     "list_eventhouses",
     "delete_eventhouse",
