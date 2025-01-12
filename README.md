@@ -220,6 +220,19 @@ contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additio
 6. Select 'Clone from URL'.
 7. Select/create a folder to map the cloned repository to your computer.
 8. When prompted to open the cloned repository, click 'Open'.
+9. Open the integrated terminal (View -> Terminal).
+10. Run the following code in the terminal to ensure a virtual environment exists.
+```python
+python -m venv venv
+```
+11. Run the following code in the terminal to activate the virtual environment.
+```python
+.\venv\Scripts\Activate.ps1
+```
+12. Run the following code in the terminal to install the build module.
+```
+pip install build
+```
 
 #### Branching
 When making changes, always create a new branch.
