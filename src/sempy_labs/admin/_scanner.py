@@ -52,7 +52,7 @@ def scan_workspaces(
         "misconfiguredDatasourceInstances": [],
     }
 
-    client = fabric.FabricRestClient(token_provider=auth.token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
 
     if workspace is None:
         workspace = fabric.resolve_workspace_name()
@@ -62,7 +62,7 @@ def scan_workspaces(
 
     workspace_list = []
 
-    dfW = list_workspaces(token_provider=auth.token_provider)
+    dfW = list_workspaces(token_provider=auth.token_provider.get())
     workspace_list = dfW[dfW["Name"].isin(workspace)]["Id"].tolist()
     workspace_list = workspace_list + dfW[dfW["Id"].isin(workspace)]["Id"].tolist()
 

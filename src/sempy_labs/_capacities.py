@@ -133,8 +133,9 @@ def create_fabric_capacity(
             f"{icons.red_dot} Invalid region. Valid options: {valid_regions}."
         )
 
-    if auth.token_provider is None:
-        auth.token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
+    token_provider = auth.token_provider.get()
+    if token_provider is None:
+        token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
             key_vault_uri=kwargs["key_vault_uri"],
             key_vault_tenant_id=kwargs["key_vault_tenant_id"],
             key_vault_client_id=kwargs["key_vault_client_id"],
@@ -143,7 +144,7 @@ def create_fabric_capacity(
         print(
             f"{icons.info} Please use the 'token_provider' parameter instead of the key vault parameters within this function as the key vault parameters have been deprecated."
         )
-    headers = _get_headers(auth.token_provider, audience="azure")
+    headers = _get_headers(token_provider, audience="azure")
 
     if resource_group is None:
         dfRG = list_resource_groups(
@@ -264,8 +265,9 @@ def suspend_fabric_capacity(
         The name of the Azure resource group.
     """
 
-    if auth.token_provider is None:
-        auth.token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
+    token_provider = auth.token_provider.get()
+    if token_provider is None:
+        token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
             key_vault_uri=kwargs["key_vault_uri"],
             key_vault_tenant_id=kwargs["key_vault_tenant_id"],
             key_vault_client_id=kwargs["key_vault_client_id"],
@@ -275,7 +277,7 @@ def suspend_fabric_capacity(
             f"{icons.info} Please use the 'token_provider' parameter instead of the key vault parameters within this function as the key vault parameters have been deprecated."
         )
 
-    headers = _get_headers(auth.token_provider, audience="azure")
+    headers = _get_headers(token_provider, audience="azure")
 
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}/suspend?api-version={icons.azure_api_version}"
 
@@ -308,8 +310,9 @@ def resume_fabric_capacity(
         The name of the Azure resource group.
     """
 
-    if auth.token_provider is None:
-        auth.token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
+    token_provider = auth.token_provider.get()
+    if token_provider is None:
+        token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
             key_vault_uri=kwargs["key_vault_uri"],
             key_vault_tenant_id=kwargs["key_vault_tenant_id"],
             key_vault_client_id=kwargs["key_vault_client_id"],
@@ -319,7 +322,7 @@ def resume_fabric_capacity(
             f"{icons.info} Please use the 'token_provider' parameter instead of the key vault parameters within this function as the key vault parameters have been deprecated."
         )
 
-    headers = _get_headers(auth.token_provider, audience="azure")
+    headers = _get_headers(token_provider, audience="azure")
 
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}/resume?api-version={icons.azure_api_version}"
 
@@ -350,8 +353,9 @@ def delete_embedded_capacity(
         The name of the Azure resource group.
     """
 
-    if auth.token_provider is None:
-        auth.token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
+    token_provider = auth.token_provider.get()
+    if token_provider is None:
+        token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
             key_vault_uri=kwargs["key_vault_uri"],
             key_vault_tenant_id=kwargs["key_vault_tenant_id"],
             key_vault_client_id=kwargs["key_vault_client_id"],
@@ -361,7 +365,7 @@ def delete_embedded_capacity(
             f"{icons.info} Please use the 'token_provider' parameter instead of the key vault parameters within this function as the key vault parameters have been deprecated."
         )
 
-    headers = _get_headers(auth.token_provider, audience="azure")
+    headers = _get_headers(token_provider, audience="azure")
 
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.PowerBIDedicated/capacities/{capacity_name}?api-version={icons.azure_api_version}"
 
@@ -422,8 +426,9 @@ def delete_fabric_capacity(
         The name of the Azure resource group.
     """
 
-    if auth.token_provider is None:
-        auth.token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
+    token_provider = auth.token_provider.get()
+    if token_provider is None:
+        token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
             key_vault_uri=kwargs["key_vault_uri"],
             key_vault_tenant_id=kwargs["key_vault_tenant_id"],
             key_vault_client_id=kwargs["key_vault_client_id"],
@@ -433,7 +438,7 @@ def delete_fabric_capacity(
             f"{icons.info} Please use the 'token_provider' parameter instead of the key vault parameters within this function as the key vault parameters have been deprecated."
         )
 
-    headers = _get_headers(auth.token_provider, audience="azure")
+    headers = _get_headers(token_provider, audience="azure")
 
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}?api-version={icons.azure_api_version}"
 
@@ -475,8 +480,9 @@ def update_fabric_capacity(
         Tag(s) to add to the capacity. Example: {'tagName': 'tagValue'}.
     """
 
-    if auth.token_provider is None:
-        auth.token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
+    token_provider = auth.token_provider.get()
+    if token_provider is None:
+        token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
             key_vault_uri=kwargs["key_vault_uri"],
             key_vault_tenant_id=kwargs["key_vault_tenant_id"],
             key_vault_client_id=kwargs["key_vault_client_id"],
@@ -486,7 +492,7 @@ def update_fabric_capacity(
             f"{icons.info} Please use the 'token_provider' parameter instead of the key vault parameters within this function as the key vault parameters have been deprecated."
         )
 
-    headers = _get_headers(auth.token_provider, audience="azure")
+    headers = _get_headers(token_provider, audience="azure")
 
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}?api-version={icons.azure_api_version}"
 
@@ -560,8 +566,9 @@ def check_fabric_capacity_name_availablility(
         An indication as to whether the Fabric capacity name is available or not.
     """
 
-    if auth.token_provider is None:
-        auth.token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
+    token_provider = auth.token_provider.get()
+    if token_provider is None:
+        token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
             key_vault_uri=kwargs["key_vault_uri"],
             key_vault_tenant_id=kwargs["key_vault_tenant_id"],
             key_vault_client_id=kwargs["key_vault_client_id"],
@@ -571,7 +578,7 @@ def check_fabric_capacity_name_availablility(
             f"{icons.info} Please use the 'token_provider' parameter instead of the key vault parameters within this function as the key vault parameters have been deprecated."
         )
 
-    headers = _get_headers(auth.token_provider, audience="azure")
+    headers = _get_headers(token_provider, audience="azure")
 
     payload = {"name": capacity_name, "type": "Microsoft.Fabric/capacities"}
 
@@ -649,7 +656,7 @@ def list_skus_for_capacity(
 
     df = pd.DataFrame(columns=["Resource Type", "Sku", "Sku Tier"])
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity}/skus?api-version=2023-11-01"
-    headers = _get_headers(token_provider=auth.token_provider, audience="azure")
+    headers = _get_headers(token_provider=auth.token_provider.get(), audience="azure")
 
     response = requests.get(url, headers=headers)
     if response.status_code != 200:
@@ -689,7 +696,7 @@ def list_skus(
 
     df = pd.DataFrame(columns=["Sku", "Locations"])
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/providers/Microsoft.Fabric/skus?api-version=2023-11-01"
-    headers = _get_headers(token_provider=auth.token_provider, audience="azure")
+    headers = _get_headers(token_provider=auth.token_provider.get(), audience="azure")
 
     response = requests.get(url, headers=headers)
     if response.status_code != 200:
@@ -734,7 +741,7 @@ def list_subscriptions() -> pd.DataFrame:
         ]
     )
     url = "https://management.azure.com/subscriptions?api-version=2022-12-01"
-    headers = _get_headers(token_provider=auth.token_provider, audience="azure")
+    headers = _get_headers(token_provider=auth.token_provider.get(), audience="azure")
 
     response = requests.get(url, headers=headers)
     if response.status_code != 200:
@@ -794,7 +801,7 @@ def get_subscription(azure_subscription_id: str) -> pd.DataFrame:
         ]
     )
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}?api-version=2022-12-01"
-    headers = _get_headers(token_provider=auth.token_provider, audience="azure")
+    headers = _get_headers(token_provider=auth.token_provider.get(), audience="azure")
 
     response = requests.get(url, headers=headers)
     if response.status_code != 200:
@@ -868,7 +875,7 @@ def list_tenants() -> pd.DataFrame:
         ]
     )
     url = "https://management.azure.com/tenants?api-version=2022-12-01"
-    headers = _get_headers(token_provider=auth.token_provider, audience="azure")
+    headers = _get_headers(token_provider=auth.token_provider.get(), audience="azure")
 
     response = requests.get(url, headers=headers)
     if response.status_code != 200:
@@ -913,7 +920,7 @@ def create_or_update_resource_group(
         The name of the region.
     """
 
-    headers = _get_headers(auth.token_provider, audience="azure")
+    headers = _get_headers(auth.token_provider.get(), audience="azure")
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourcegroups/{resource_group}?api-version=2021-04-01"
 
     payload = {
@@ -953,7 +960,7 @@ def create_storage_account(
         The name of the region.
     """
 
-    headers = _get_headers(auth.token_provider, audience="azure")
+    headers = _get_headers(auth.token_provider.get(), audience="azure")
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Storage/storageAccounts/{storage_account}?api-version=2018-02-01"
 
     payload = {
@@ -995,7 +1002,7 @@ def list_storage_accounts(
         A pandas dataframe showing a list of all storage accounts within the subscription (or resource group).
     """
 
-    headers = _get_headers(auth.token_provider, audience="azure")
+    headers = _get_headers(auth.token_provider.get(), audience="azure")
 
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}"
 
@@ -1091,7 +1098,7 @@ def check_resource_group_existence(
         True/False indicating if the resource group exists or not.
     """
 
-    headers = _get_headers(auth.token_provider, audience="azure")
+    headers = _get_headers(auth.token_provider.get(), audience="azure")
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}?api-version=2021-04-01"
 
     response = requests.get(url, headers=headers)
@@ -1131,7 +1138,7 @@ def list_resource_groups(
         A pandas dataframe showing a list of all resource groups within the subscription.
     """
 
-    headers = _get_headers(auth.token_provider, audience="azure")
+    headers = _get_headers(auth.token_provider.get(), audience="azure")
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups?"
 
     if filter is not None:
@@ -1183,7 +1190,7 @@ def get_resource_group(azure_subscription_id: str, resource_group: str) -> pd.Da
         A pandas dataframe showing details of a specific resource group.
     """
 
-    headers = _get_headers(auth.token_provider, audience="azure")
+    headers = _get_headers(auth.token_provider.get(), audience="azure")
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}?api-version=2021-04-01"
 
     response = requests.get(url, headers=headers)

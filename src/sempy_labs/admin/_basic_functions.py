@@ -62,7 +62,7 @@ def list_workspaces(
         )
         del kwargs["skip"]
 
-    client = fabric.FabricRestClient(token_provider=auth.token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
 
     df = pd.DataFrame(
         columns=[
@@ -143,7 +143,7 @@ def list_capacities(
     pandas.DataFrame
         A pandas dataframe showing the capacities and their properties.
     """
-    client = fabric.FabricRestClient(token_provider=auth.token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
 
     df = pd.DataFrame(
         columns=["Capacity Id", "Capacity Name", "Sku", "Region", "State", "Admins"]
@@ -323,7 +323,7 @@ def list_tenant_settings() -> pd.DataFrame:
     pandas.DataFrame
         A pandas dataframe showing the tenant settings.
     """
-    client = fabric.FabricRestClient(token_provider=auth.token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
 
     response = client.get("/v1/admin/tenantsettings")
 
@@ -391,7 +391,7 @@ def list_capacities_delegated_tenant_settings(
         ]
     )
 
-    client = fabric.FabricRestClient(token_provider=auth.token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
     response = client.get("/v1/admin/capacities/delegatedTenantSettingOverrides")
 
     if response.status_code != 200:
@@ -471,7 +471,7 @@ def list_modified_workspaces(
     pandas.DataFrame
         A pandas dataframe showing a list of workspace IDs in the organization.
     """
-    client = fabric.FabricRestClient(token_provider=auth.token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
 
     params = {}
 
@@ -550,7 +550,7 @@ def list_datasets(
 
     df = pd.DataFrame(columns=columns)
 
-    client = fabric.FabricRestClient(token_provider=auth.token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
 
     params = {}
     url = "/v1.0/myorg/admin/datasets"
@@ -649,7 +649,7 @@ def list_access_entities(
             "Additional Permissions",
         ]
     )
-    client = fabric.FabricRestClient(token_provider=auth.token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
 
     response = client.get(f"/v1/admin/users/{user_email_address}/access")
 
@@ -707,7 +707,7 @@ def list_workspace_access_details(
         ]
     )
 
-    client = fabric.FabricRestClient(token_provider=auth.token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
 
     response = client.get(f"/v1/admin/workspaces/{workspace_id}/users")
     if response.status_code != 200:
@@ -809,7 +809,7 @@ def list_activity_events(
     )
 
     response_json = {"activityEventEntities": []}
-    client = fabric.FabricRestClient(token_provider=auth.token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
     url = f"/v1.0/myorg/admin/activityevents?startDateTime='{start_time}'&endDateTime='{end_time}'"
 
     conditions = []
@@ -913,7 +913,7 @@ def _list_capacities_meta() -> pd.DataFrame:
         A pandas dataframe showing the capacities and their properties
     """
 
-    client = fabric.FabricRestClient(token_provider=auth.token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
 
     df = pd.DataFrame(
         columns=["Capacity Id", "Capacity Name", "Sku", "Region", "State", "Admins"]
@@ -1016,7 +1016,7 @@ def list_reports(
 
     url.rstrip("$").rstrip("?")
 
-    client = fabric.FabricRestClient(token_provider=auth.token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
     response = client.get(url)
 
     if response.status_code != 200:
@@ -1090,7 +1090,7 @@ def get_capacity_assignment_status(
         ]
     )
 
-    client = fabric.FabricRestClient(token_provider=auth.token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
     response = client.get(f"/v1.0/myorg/groups/{workspace_id}/CapacityAssignmentStatus")
 
     if response.status_code != 200:

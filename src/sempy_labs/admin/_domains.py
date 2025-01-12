@@ -60,7 +60,7 @@ def list_domains(non_empty_only: bool = False) -> pd.DataFrame:
         ]
     )
 
-    client = fabric.FabricRestClient(token_provider=auth.token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
     url = "/v1/admin/domains"
     if non_empty_only:
         url = f"{url}?nonEmptyOnly=True"
@@ -103,7 +103,7 @@ def list_domain_workspaces(domain_name: str) -> pd.DataFrame:
 
     df = pd.DataFrame(columns=["Workspace ID", "Workspace Name"])
 
-    client = fabric.FabricRestClient(token_provider=auth.token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
     response = client.get(f"/v1/admin/domains/{domain_id}/workspaces")
 
     if response.status_code != 200:

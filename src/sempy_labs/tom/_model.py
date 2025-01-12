@@ -50,7 +50,7 @@ class TOMWrapper:
         prefix = "asazure"
         prefix_full = f"{prefix}://"
         read_write = ":rw"
-        self._token_provider = auth.token_provider
+        self._token_provider = auth.token_provider.get()
 
         # Azure AS workspace logic
         if workspace.startswith(prefix_full):

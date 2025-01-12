@@ -20,7 +20,7 @@ def list_git_connections() -> pd.DataFrame:
         A pandas dataframe showing a list of Git connections.
     """
 
-    client = fabric.FabricRestClient(token_provider=auth.token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
     response = client.get("/v1/admin/workspaces/discoverGitConnections")
 
     df = pd.DataFrame(

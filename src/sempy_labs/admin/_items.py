@@ -121,7 +121,7 @@ def list_items(
         ]
     )
 
-    client = fabric.FabricRestClient(token_provider=auth.token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
 
     params = {}
 
@@ -218,7 +218,7 @@ def list_item_access_details(
             f"{icons.red_dot} The parameter 'item' and 'type' are mandatory."
         )
 
-    client = fabric.FabricRestClient(token_provider=auth.token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
 
     workspace_name, workspace_id = _resolve_workspace_name_and_id(workspace)
     item_name, item_id = _resolve_item_name_and_id(
