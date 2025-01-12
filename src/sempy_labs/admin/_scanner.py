@@ -6,7 +6,7 @@ import numpy as np
 import time
 from sempy_labs.admin._basic_functions import list_workspaces
 from sempy._utils._log import log
-import sempy_labs._auth as auth
+import sempy_labs._authentication as auth
 
 
 @log

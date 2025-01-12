@@ -13,7 +13,7 @@ from sempy_labs._helper_functions import (
     _is_valid_uuid,
     _build_url,
 )
-import sempy_labs._auth as auth
+import sempy_labs._authentication as auth
 
 
 def _resolve_item_id(

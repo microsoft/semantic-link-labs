@@ -8,7 +8,7 @@ import pandas as pd
 from sempy_labs._authentication import _get_headers, ServicePrincipalTokenProvider
 from uuid import UUID
 from sempy_labs._helper_functions import _is_valid_uuid
-import sempy_labs._auth as auth
+import sempy_labs._authentication as auth
 
 
 def _add_sll_tag(payload, tags):

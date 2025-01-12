@@ -20,7 +20,7 @@ import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 import ast
 from uuid import UUID
-import sempy_labs._auth as auth
+import sempy_labs._authentication as auth
 
 
 if TYPE_CHECKING:

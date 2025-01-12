@@ -6,7 +6,7 @@ from sempy.fabric.exceptions import FabricHTTPException
 import pandas as pd
 from uuid import UUID
 from sempy_labs.admin._basic_functions import list_workspaces
-import sempy_labs._auth as auth
+import sempy_labs._authentication as auth
 
 
 def resolve_domain_id(domain_name: str) -> UUID:

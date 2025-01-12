@@ -5,7 +5,7 @@ from sempy_labs._helper_functions import (
 )
 import pandas as pd
 from sempy_labs.admin._basic_functions import list_workspaces
-import sempy_labs._auth as auth
+import sempy_labs._authentication as auth
 
 
 def list_git_connections() -> pd.DataFrame:

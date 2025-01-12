@@ -12,7 +12,7 @@ from sempy._utils._log import log
 import numpy as np
 import pandas as pd
 from dateutil.parser import parse as dtparser
-import sempy_labs._auth as auth
+import sempy_labs._authentication as auth
 
 
 @log
