@@ -354,10 +354,10 @@ def dax_perf_test(
 
             # Step 1: Filter out unnecessary operations
             query_names = list(dax_queries.keys())
-            df = df[
-                ~df["Application Name"].isin(["PowerBI", "PowerBIEIM"])
-                & (~df["Text Data"].str.startswith("EVALUATE {1}"))
-            ]
+            #df = df[
+            #    ~df["Application Name"].isin(["PowerBI", "PowerBIEIM"])
+            #    & (~df["Text Data"].str.startswith("EVALUATE {1}"))
+            #]
             query_begin = df["Event Class"] == "QueryBegin"
             # Step 2: Name queries per dictionary
             suffix = "_removeXXX"
@@ -365,12 +365,12 @@ def dax_perf_test(
                 item for query in query_names for item in (f"{query}{suffix}", query)
             ]
             # Step 3: Assign query names by group and convert to integer
-            df["Query Name"] = (query_begin).cumsum()
-            df["Query Name"] = df["Query Name"].where(query_begin, None).ffill()
-            df["Query Name"] = pd.to_numeric(df["Query Name"], downcast="integer")
+            #df["Query Name"] = (query_begin).cumsum()
+            #df["Query Name"] = df["Query Name"].where(query_begin, None).ffill()
+            #df["Query Name"] = pd.to_numeric(df["Query Name"], downcast="integer")
             # Step 4: Map to full query names
-            df["Query Name"] = df["Query Name"].map(lambda x: query_names_full[x - 1])
-            df = df[~df["Query Name"].str.endswith(suffix)]
+            #df["Query Name"] = df["Query Name"].map(lambda x: query_names_full[x - 1])
+            #df = df[~df["Query Name"].str.endswith(suffix)]
 
     df = df.reset_index(drop=True)
 
