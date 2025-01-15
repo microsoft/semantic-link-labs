@@ -887,7 +887,7 @@ def list_tenants() -> pd.DataFrame:
             "Tenant Id": v.get("tenantId"),
             "Tenant Name": v.get("displayName"),
             "Country Code": v.get("countryCode"),
-            "Domains": d if d is not None else [],
+            "Domains": d if d is not None else "",
             "Tenant Category": v.get("tenantCategory"),
             "Default Domain": v.get("defaultDomain"),
             "Tenant Type": v.get("tenantType"),
