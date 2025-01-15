@@ -60,7 +60,7 @@ class TOMWrapper:
             elif readonly is True and workspace.endswith(read_write):
                 workspace = workspace[: -len(read_write)]
             self._workspace_name = workspace
-            self._workspace_id
+            self._workspace_id = workspace
             self._dataset_id = dataset
             self._dataset_name = dataset
             self._is_azure_as = True
