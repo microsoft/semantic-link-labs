@@ -16,6 +16,7 @@ from sempy_labs._gateways import (
 )
 from sempy_labs._authentication import (
     ServicePrincipalTokenProvider,
+    service_principal_authentication,
 )
 from sempy_labs._mirrored_databases import (
     get_mirrored_database_definition,
@@ -495,4 +496,5 @@ __all__ = [
     "create_or_update_resource_group",
     "list_resource_groups",
     "get_resource_group",
+    "service_principal_authentication",
 ]
