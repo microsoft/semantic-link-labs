@@ -4,7 +4,7 @@ from pyspark.sql import SparkSession
 import pyarrow.parquet as pq
 import datetime
 from sempy_labs._helper_functions import (
-    _get_max_run_id,
+    _get_column_aggregate,
     resolve_workspace_name_and_id,
     resolve_lakehouse_name_and_id,
     pagination,
@@ -184,7 +184,7 @@ def get_lakehouse_tables(
         if len(lakeT_filt) == 0:
             run_id = 1
         else:
-            max_run_id = _get_max_run_id(
+            max_run_id = _get_column_aggregate(
                 lakehouse=current_lakehouse_name, table_name=lakeTName
             )
             run_id = max_run_id + 1
