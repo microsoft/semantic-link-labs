@@ -318,8 +318,8 @@ def list_storage_account_files(
         ]
     )
 
-    onelake = _get_adls_client(storage_account)
-    fs = onelake.get_file_system_client(container)
+    client = _get_adls_client(storage_account)
+    fs = client.get_file_system_client(container)
 
     for x in list(fs.get_paths()):
         if not x.is_directory:

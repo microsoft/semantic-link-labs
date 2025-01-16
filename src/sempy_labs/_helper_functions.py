@@ -11,8 +11,8 @@ import datetime
 from typing import Optional, Tuple, List
 from uuid import UUID
 import sempy_labs._icons as icons
-import urllib.parse
 from azure.core.credentials import TokenCredential, AccessToken
+import urllib.parse
 import numpy as np
 from IPython.display import display, HTML
 
@@ -368,9 +368,6 @@ def get_direct_lake_sql_endpoint(
 
     from sempy_labs.tom import connect_semantic_model
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
-
     # dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
     # dfP_filt = dfP[dfP["Mode"] == "DirectLake"]
 
@@ -380,7 +377,7 @@ def get_direct_lake_sql_endpoint(
     #    )
 
     with connect_semantic_model(
-        dataset=dataset_id, readonly=True, workspace=workspace_id
+        dataset=dataset, readonly=True, workspace=workspace
     ) as tom:
         sqlEndpointId = None
         for e in tom.model.Expressions:
@@ -659,9 +656,7 @@ def _conv_b64(file):
 
 def _decode_b64(file, format: Optional[str] = "utf-8"):
 
-    result = base64.b64decode(file).decode(format)
-
-    return result
+    return base64.b64decode(file).decode(format)
 
 
 def is_default_semantic_model(
@@ -728,15 +723,15 @@ def resolve_item_type(item_id: UUID, workspace: Optional[str | UUID] = None) -> 
 
 
 def resolve_dataset_from_report(
-    report: str, workspace: Optional[str | UUID] = None
+    report: str | UUID, workspace: Optional[str | UUID] = None
 ) -> Tuple[UUID, str, UUID, str]:
     """
     Obtains the basic semantic model properties from which the report's data is sourced.
 
     Parameters
     ----------
-    report : str
-        The name of the Power BI report.
+    report : str | uuid.UUID
+        The name or ID of the Power BI report.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -744,20 +739,15 @@ def resolve_dataset_from_report(
 
     Returns
     -------
-    Tuple[UUID, str, UUID, str]
+    Tuple[uuid.UUID, str, uuid.UUID, str]
         The semantic model UUID, semantic model name, semantic model workspace UUID, semantic model workspace name
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    from sempy_labs.report._generate_report import _get_report
 
-    dfR = fabric.list_reports(workspace=workspace_id)
-    dfR_filt = dfR[dfR["Name"] == report]
-    if len(dfR_filt) == 0:
-        raise ValueError(
-            f"{icons.red_dot} The '{report}' report does not exist within the '{workspace_name}' workspace."
-        )
-    dataset_id = dfR_filt["Dataset Id"].iloc[0]
-    dataset_workspace_id = dfR_filt["Dataset Workspace Id"].iloc[0]
+    dfR = _get_report(report=report, workspace=workspace)
+    dataset_id = dfR["Dataset Id"].iloc[0]
+    dataset_workspace_id = dfR["Dataset Workspace Id"].iloc[0]
     dataset_workspace = fabric.resolve_workspace_name(dataset_workspace_id)
     dataset_name = resolve_dataset_name(
         dataset_id=dataset_id, workspace=dataset_workspace
