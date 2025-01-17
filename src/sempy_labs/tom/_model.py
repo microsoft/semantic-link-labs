@@ -53,7 +53,7 @@ class TOMWrapper:
         self._token_provider = auth.token_provider.get()
 
         # Azure AS workspace logic
-        if workspace.startswith(prefix_full):
+        if workspace is not None and workspace.startswith(prefix_full):
             # Set read or read/write accordingly
             if readonly is False and not workspace.endswith(read_write):
                 workspace += read_write

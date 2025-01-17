@@ -1337,41 +1337,50 @@ def list_reports_using_semantic_model(
         A pandas dataframe showing the reports which use a given semantic model.
     """
 
-    df = pd.DataFrame(
-        columns=[
-            "Report Name",
-            "Report Id",
-            "Report Workspace Name",
-            "Report Workspace Id",
-        ]
-    )
+    # df = pd.DataFrame(
+    #    columns=[
+    #        "Report Name",
+    #        "Report Id",
+    #        "Report Workspace Name",
+    #        "Report Workspace Id",
+    #    ]
+    # )
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    client = fabric.PowerBIRestClient()
-    response = client.get(
-        f"metadata/relations/downstream/dataset/{dataset_id}?apiVersion=3"
-    )
+    dfR = fabric.list_reports(workspace=workspace_id)
+    dfR_filt = dfR[
+        (dfR["Dataset Id"] == dataset_id)
+        & (dfR["Dataset Workspace Id"] == workspace_id)
+    ][["Name", "Id"]]
+    dfR_filt.rename(columns={"Name": "Report Name", "Id": "Report Id"}, inplace=True)
+    dfR_filt["Report Worskpace Name"] = workspace_name
+    dfR_filt["Report Workspace Id"] = workspace_id
 
-    response_json = response.json()
+    return dfR_filt
 
-    for i in response_json.get("artifacts", []):
-        object_workspace_id = i.get("workspace", {}).get("objectId")
-        object_type = i.get("typeName")
+    # client = fabric.PowerBIRestClient()
+    # response = client.get(
+    #    f"metadata/relations/downstream/dataset/{dataset_id}?apiVersion=3"
+    # )
 
-        if object_type == "Report":
-            new_data = {
-                "Report Name": i.get("displayName"),
-                "Report Id": i.get("objectId"),
-                "Report Workspace Name": fabric.resolve_workspace_name(
-                    object_workspace_id
-                ),
-                "Report Workspace Id": object_workspace_id,
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    # response_json = response.json()
 
-    return df
+    # for i in response_json.get("artifacts", []):
+    #    object_workspace_id = i.get("workspace", {}).get("objectId")
+    #    object_type = i.get("typeName")
+
+    #    if object_type == "Report":
+    #        new_data = {
+    #            "Report Name": i.get("displayName"),
+    #            "Report Id": i.get("objectId"),
+    #            "Report Workspace Name": fabric.resolve_workspace_name(
+    #                object_workspace_id
+    #            ),
+    #            "Report Workspace Id": object_workspace_id,
+    #        }
+    #        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
 
 def list_report_semantic_model_objects(

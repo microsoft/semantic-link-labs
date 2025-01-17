@@ -233,7 +233,7 @@ def migrate_capacities(
             )
 
             # Migrate settings to new capacity
-            migrate_settings(source_capacity=cap_name, target_capacity=tgt_capacity)
+            # migrate_settings(source_capacity=cap_name, target_capacity=tgt_capacity)
 
 
 @log
@@ -688,7 +688,7 @@ def migrate_fabric_trial_capacity(
     )
 
     # This migrates all the capacity settings
-    migrate_settings(
-        source_capacity=source_capacity,
-        target_capacity=target_capacity,
-    )
+    # migrate_settings(
+    #    source_capacity=source_capacity,
+    #    target_capacity=target_capacity,
+    # )

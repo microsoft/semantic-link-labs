@@ -50,7 +50,6 @@ def direct_lake_schema_compare(
     artifact_type, lakehouse_name, lakehouse_id, lakehouse_workspace_id = (
         get_direct_lake_source(dataset=dataset_id, workspace=workspace_id)
     )
-    lakehouse_workspace = fabric.resolve_workspace_name(lakehouse_workspace_id)
 
     if artifact_type == "Warehouse":
         raise ValueError(
@@ -59,11 +58,15 @@ def direct_lake_schema_compare(
 
     dfP = fabric.list_partitions(dataset=dataset_id, workspace=workspace_id)
 
-    if not any(r["Mode"] == "DirectLake" for i, r in dfP.iterrows()):
+    if not any(r["Mode"] == "DirectLake" for _, r in dfP.iterrows()):
         raise ValueError(
             f"{icons.red_dot} The '{dataset_name}' semantic model within the '{workspace_name}' workspace is not in Direct Lake mode."
         )
 
+    if artifact_type is None:
+        raise ValueError(f"{icons.red_dot} This function only supports Direct Lake semantic models where the source lakehouse resides in the same workpace as the semantic model.")
+
+    lakehouse_workspace = fabric.resolve_workspace_name(lakehouse_workspace_id)
     dfT = fabric.list_tables(dataset=dataset_id, workspace=workspace_id)
     dfC = fabric.list_columns(dataset=dataset_id, workspace=workspace_id)
     lc = get_lakehouse_columns(lakehouse_name, lakehouse_workspace)

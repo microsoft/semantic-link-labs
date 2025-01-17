@@ -205,7 +205,7 @@ def get_direct_lake_source(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> Tuple[str, str, UUID, UUID]:
     """
-    Obtains the source information for a direct lake semantic model.
+    Obtains the source information for a direct lake semantic model (if the source is located in the same workspace as the semantic model).
 
     Parameters
     ----------
@@ -224,34 +224,46 @@ def get_direct_lake_source(
         If the semantic model is not a Direct Lake semantic model, it will return None, None, None.
     """
 
+    from sempy_labs._helper_functions import get_direct_lake_sql_endpoint
+
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
-    client = fabric.PowerBIRestClient()
-    request_body = {
-        "artifacts": [
-            {
-                "objectId": dataset_id,
-                "type": "dataset",
-            }
-        ]
-    }
-    response = client.post(
-        "metadata/relations/upstream?apiVersion=3", json=request_body
-    )
+    sql_endpoint_id = get_direct_lake_sql_endpoint(dataset=dataset, workspace=workspace)
+    dfI = fabric.list_items(workspace=workspace)
+    dfI_filt = dfI[(dfI['Id'] == sql_endpoint_id) & (dfI['Type'] == 'SQLEndpoint')]
 
-    artifacts = response.json().get("artifacts", [])
-    sql_id, sql_object_name, sql_workspace_id, artifact_type = None, None, None, None
+    if not dfI_filt.empty:
+        artifact_name = dfI_filt['Display Name'].iloc[0]
+        artifact_id = dfI[(dfI['Display Name'] == artifact_name) & (dfI['Type'].isin(['Lakehouse', 'Warehouse']))]['Id'].iloc[0]
+        artifact_type = dfI[(dfI['Display Name'] == artifact_name) & (dfI['Type'].isin(['Lakehouse', 'Warehouse']))]['Type'].iloc[0]
 
-    for artifact in artifacts:
-        object_type = artifact.get("typeName")
-        display_name = artifact.get("displayName")
-        if object_type in ["Datawarehouse", "Lakewarehouse"]:
-            artifact_type = (
-                "Warehouse" if object_type == "Datawarehouse" else "Lakehouse"
-            )
-            sql_id = artifact.get("objectId")
-            sql_workspace_id = artifact.get("workspace", {}).get("objectId")
-            sql_object_name = display_name
-            break
+        return artifact_type, artifact_name, artifact_id, workspace_id
 
-    return artifact_type, sql_object_name, sql_id, sql_workspace_id
+    # client = fabric.PowerBIRestClient()
+    # request_body = {
+    #    "artifacts": [
+    #        {
+    #            "objectId": dataset_id,
+    #            "type": "dataset",
+    #        }
+    #    ]
+    # }
+    # response = client.post(
+    #    "metadata/relations/upstream?apiVersion=3", json=request_body
+    # )
+
+    # artifacts = response.json().get("artifacts", [])
+    # sql_id, sql_object_name, sql_workspace_id, artifact_type = None, None, None, None
+
+    # for artifact in artifacts:
+    #    object_type = artifact.get("typeName")
+    #    display_name = artifact.get("displayName")
+    #    if object_type in ["Datawarehouse", "Lakewarehouse"]:
+    #        artifact_type = (
+    #            "Warehouse" if object_type == "Datawarehouse" else "Lakehouse"
+    #        )
+    #        sql_id = artifact.get("objectId")
+    #        sql_workspace_id = artifact.get("workspace", {}).get("objectId")
+    #        sql_object_name = display_name
+    #        break
+
+    # return artifact_type, sql_object_name, sql_id, sql_workspace_id
