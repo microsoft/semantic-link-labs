@@ -13,17 +13,16 @@ from sempy_labs._helper_functions import (
     _is_valid_uuid,
     _build_url,
 )
-from sempy.fabric._token_provider import TokenProvider
+import sempy_labs._authentication as auth
 
 
 def _resolve_item_id(
     item_name: str,
     type: Optional[str] = None,
     workspace: Optional[str | UUID] = None,
-    token_provider: Optional[TokenProvider] = None,
 ) -> UUID:
 
-    dfI = list_items(workspace=workspace, type=type, token_provider=token_provider)
+    dfI = list_items(workspace=workspace, type=type)
     dfI_filt = dfI[dfI["Item Name"] == item_name]
 
     if len(dfI_filt) == 0:
@@ -38,7 +37,6 @@ def _resolve_item_name_and_id(
     item: str,
     type: Optional[str] = None,
     workspace: Optional[str | UUID] = None,
-    token_provider: Optional[TokenProvider] = None,
     **kwargs,
 ) -> Tuple[str, UUID]:
     if "item_name" in kwargs:
@@ -48,9 +46,7 @@ def _resolve_item_name_and_id(
         item = item_name
         del kwargs["item_name"]
 
-    dfI = list_items(
-        workspace=workspace, type=type, item=item, token_provider=token_provider
-    )
+    dfI = list_items(workspace=workspace, type=type, item=item)
 
     if len(dfI) > 1:
         raise ValueError(
@@ -74,7 +70,6 @@ def list_items(
     state: Optional[str] = None,
     type: Optional[str] = None,
     item: Optional[str | UUID] = None,
-    token_provider: Optional[TokenProvider] = None,
     **kwargs,
 ) -> pd.DataFrame:
     """
@@ -96,8 +91,6 @@ def list_items(
         The item type.
     item : str | UUID, default=None
         Item id or name to filter the list.
-    token_provider : TokenProvider, default=None
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -128,21 +121,17 @@ def list_items(
         ]
     )
 
-    client = fabric.FabricRestClient(token_provider=token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
 
     params = {}
 
     url = "/v1/admin/items"
 
     if capacity is not None:
-        params["capacityId"] = _resolve_capacity_name_and_id(
-            capacity, token_provider=token_provider
-        )[1]
+        params["capacityId"] = _resolve_capacity_name_and_id(capacity)[1]
 
     if workspace is not None:
-        params["workspaceId"] = _resolve_workspace_name_and_id(
-            workspace, token_provider=token_provider
-        )[1]
+        params["workspaceId"] = _resolve_workspace_name_and_id(workspace)[1]
 
     if state is not None:
         params["state"] = state
@@ -194,7 +183,6 @@ def list_item_access_details(
     item: str | UUID = None,
     type: str = None,
     workspace: Optional[str | UUID] = None,
-    token_provider: Optional[TokenProvider] = None,
     **kwargs,
 ) -> pd.DataFrame:
     """
@@ -212,8 +200,6 @@ def list_item_access_details(
         The Fabric workspace name or id.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    token_provider : TokenProvider, default=None
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -232,13 +218,11 @@ def list_item_access_details(
             f"{icons.red_dot} The parameter 'item' and 'type' are mandatory."
         )
 
-    client = fabric.FabricRestClient(token_provider=token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
 
-    workspace_name, workspace_id = _resolve_workspace_name_and_id(
-        workspace, token_provider=token_provider
-    )
+    workspace_name, workspace_id = _resolve_workspace_name_and_id(workspace)
     item_name, item_id = _resolve_item_name_and_id(
-        item=item, type=type, workspace=workspace_name, token_provider=token_provider
+        item=item, type=type, workspace=workspace_name
     )
 
     df = pd.DataFrame(

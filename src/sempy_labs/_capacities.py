@@ -6,9 +6,9 @@ from sempy.fabric.exceptions import FabricHTTPException
 import requests
 import pandas as pd
 from sempy_labs._authentication import _get_headers, ServicePrincipalTokenProvider
-from sempy.fabric._token_provider import TokenProvider
 from uuid import UUID
 from sempy_labs._helper_functions import _is_valid_uuid
+import sempy_labs._authentication as auth
 
 
 def _add_sll_tag(payload, tags):
@@ -31,7 +31,6 @@ def create_fabric_capacity(
     region: str,
     sku: str,
     admin_members: str | List[str],
-    token_provider: Optional[TokenProvider] = None,
     tags: Optional[dict] = None,
     **kwargs,
 ):
@@ -54,8 +53,6 @@ def create_fabric_capacity(
         The `sku size <https://azure.microsoft.com/pricing/details/microsoft-fabric/>`_ of the Fabric capacity.
     admin_members : str | List[str]
         The email address(es) of the admin(s) of the Fabric capacity.
-    token_provider : TokenProvider, default=None
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
     tags: dict, default=None
         Tag(s) to add to the capacity. Example: {'tagName': 'tagValue'}.
     """
@@ -136,6 +133,7 @@ def create_fabric_capacity(
             f"{icons.red_dot} Invalid region. Valid options: {valid_regions}."
         )
 
+    token_provider = auth.token_provider.get()
     if token_provider is None:
         token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
             key_vault_uri=kwargs["key_vault_uri"],
@@ -151,7 +149,6 @@ def create_fabric_capacity(
     if resource_group is None:
         dfRG = list_resource_groups(
             azure_subscription_id=azure_subscription_id,
-            token_provider=token_provider,
             filter="resourceType eq 'Microsoft.PowerBIDedicated/capacities'",
         )
         dfRG_filt = dfRG[
@@ -169,7 +166,6 @@ def create_fabric_capacity(
             dfRG = get_resource_group(
                 azure_subscription_id=azure_subscription_id,
                 resource_group=resource_group,
-                token_provider=token_provider,
             )
             if dfRG["Location"].iloc[0] != region:
                 print(
@@ -187,7 +183,6 @@ def create_fabric_capacity(
                 azure_subscription_id=azure_subscription_id,
                 resource_group=resource_group,
                 region=region,
-                token_provider=token_provider,
             )
 
     payload = {
@@ -253,7 +248,6 @@ def suspend_fabric_capacity(
     capacity_name: str,
     azure_subscription_id: str,
     resource_group: str,
-    token_provider: Optional[TokenProvider] = None,
     **kwargs,
 ):
     """
@@ -269,10 +263,9 @@ def suspend_fabric_capacity(
         The Azure subscription ID.
     resource_group : str
         The name of the Azure resource group.
-    token_provider : TokenProvider, default=None
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
     """
 
+    token_provider = auth.token_provider.get()
     if token_provider is None:
         token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
             key_vault_uri=kwargs["key_vault_uri"],
@@ -300,7 +293,6 @@ def resume_fabric_capacity(
     capacity_name: str,
     azure_subscription_id: str,
     resource_group: str,
-    token_provider: Optional[TokenProvider] = None,
     **kwargs,
 ):
     """
@@ -316,10 +308,9 @@ def resume_fabric_capacity(
         The Azure subscription ID.
     resource_group : str
         The name of the Azure resource group.
-    token_provider : TokenProvider, default=None
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
     """
 
+    token_provider = auth.token_provider.get()
     if token_provider is None:
         token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
             key_vault_uri=kwargs["key_vault_uri"],
@@ -347,7 +338,6 @@ def delete_embedded_capacity(
     capacity_name: str,
     azure_subscription_id: str,
     resource_group: str,
-    token_provider: Optional[TokenProvider] = None,
     **kwargs,
 ):
     """
@@ -361,10 +351,9 @@ def delete_embedded_capacity(
         The Azure subscription ID.
     resource_group : str
         The name of the Azure resource group.
-    token_provider : TokenProvider, default=None
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
     """
 
+    token_provider = auth.token_provider.get()
     if token_provider is None:
         token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
             key_vault_uri=kwargs["key_vault_uri"],
@@ -420,7 +409,6 @@ def delete_fabric_capacity(
     capacity_name: str,
     azure_subscription_id: str,
     resource_group: str,
-    token_provider: Optional[TokenProvider] = None,
     **kwargs,
 ):
     """
@@ -436,10 +424,9 @@ def delete_fabric_capacity(
         The Azure subscription ID.
     resource_group : str
         The name of the Azure resource group.
-    token_provider : TokenProvider, default=None
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
     """
 
+    token_provider = auth.token_provider.get()
     if token_provider is None:
         token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
             key_vault_uri=kwargs["key_vault_uri"],
@@ -467,7 +454,6 @@ def update_fabric_capacity(
     capacity_name: str,
     azure_subscription_id: str,
     resource_group: str,
-    token_provider: Optional[TokenProvider] = None,
     sku: Optional[str] = None,
     admin_members: Optional[str | List[str]] = None,
     tags: Optional[dict] = None,
@@ -486,8 +472,6 @@ def update_fabric_capacity(
         The Azure subscription ID.
     resource_group : str
         The name of the Azure resource group.
-    token_provider : TokenProvider, default=None
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
     sku : str, default=None
          The `sku size <https://azure.microsoft.com/pricing/details/microsoft-fabric/>`_ of the Fabric capacity.
     admin_members : str | List[str], default=None
@@ -496,6 +480,7 @@ def update_fabric_capacity(
         Tag(s) to add to the capacity. Example: {'tagName': 'tagValue'}.
     """
 
+    token_provider = auth.token_provider.get()
     if token_provider is None:
         token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
             key_vault_uri=kwargs["key_vault_uri"],
@@ -559,7 +544,6 @@ def check_fabric_capacity_name_availablility(
     capacity_name: str,
     azure_subscription_id: str,
     region: str,
-    token_provider: Optional[TokenProvider] = None,
     **kwargs,
 ) -> bool:
     """
@@ -575,8 +559,6 @@ def check_fabric_capacity_name_availablility(
         The Azure subscription ID.
     region : str
         The region name.
-    token_provider : TokenProvider, default=None
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -584,6 +566,7 @@ def check_fabric_capacity_name_availablility(
         An indication as to whether the Fabric capacity name is available or not.
     """
 
+    token_provider = auth.token_provider.get()
     if token_provider is None:
         token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
             key_vault_uri=kwargs["key_vault_uri"],
@@ -613,7 +596,6 @@ def create_resource_group(
     azure_subscription_id: str,
     resource_group: str,
     region: str,
-    token_provider: Optional[TokenProvider] = None,
     **kwargs,
 ):
     """
@@ -629,25 +611,11 @@ def create_resource_group(
         The name of the Azure resource group to be created.
     region : str
         The name of the region in which the resource group will be created.
-    token_provider : TokenProvider, default=None
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
     """
-
-    if token_provider is None:
-        token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
-            key_vault_uri=kwargs["key_vault_uri"],
-            key_vault_tenant_id=kwargs["key_vault_tenant_id"],
-            key_vault_client_id=kwargs["key_vault_client_id"],
-            key_vault_client_secret=kwargs["key_vault_client_secret"],
-        )
-        print(
-            f"{icons.info} Please use the 'token_provider' parameter instead of the key vault parameters within this function as the key vault parameters have been deprecated."
-        )
 
     if check_resource_group_existence(
         azure_subscription_id=azure_subscription_id,
         resource_group=resource_group,
-        token_provider=token_provider,
     ):
         print(
             f"{icons.info} The '{resource_group}' resource group already exists in the '{region}' region within the '{azure_subscription_id}' Azure subscription."
@@ -658,7 +626,6 @@ def create_resource_group(
         azure_subscription_id=azure_subscription_id,
         resource_group=resource_group,
         region=region,
-        token_provider=token_provider,
     )
 
 
@@ -666,7 +633,6 @@ def list_skus_for_capacity(
     capacity: str,
     azure_subscription_id: str,
     resource_group: str,
-    token_provider: TokenProvider,
 ) -> pd.DataFrame:
     """
     Lists eligible SKUs for a Microsoft Fabric resource.
@@ -681,8 +647,6 @@ def list_skus_for_capacity(
         The Azure subscription ID.
     resource_group : str
         The name of the resource group.
-    token_provider : TokenProvider
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -692,7 +656,7 @@ def list_skus_for_capacity(
 
     df = pd.DataFrame(columns=["Resource Type", "Sku", "Sku Tier"])
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity}/skus?api-version=2023-11-01"
-    headers = _get_headers(token_provider=token_provider, audience="azure")
+    headers = _get_headers(token_provider=auth.token_provider.get(), audience="azure")
 
     response = requests.get(url, headers=headers)
     if response.status_code != 200:
@@ -713,7 +677,6 @@ def list_skus_for_capacity(
 
 def list_skus(
     azure_subscription_id: str,
-    token_provider: TokenProvider,
 ) -> pd.DataFrame:
     """
     Lists eligible SKUs for Microsoft Fabric resource provider.
@@ -724,8 +687,6 @@ def list_skus(
     ----------
     azure_subscription_id : str
         The Azure subscription ID.
-    token_provider : TokenProvider
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -735,7 +696,7 @@ def list_skus(
 
     df = pd.DataFrame(columns=["Sku", "Locations"])
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/providers/Microsoft.Fabric/skus?api-version=2023-11-01"
-    headers = _get_headers(token_provider=token_provider, audience="azure")
+    headers = _get_headers(token_provider=auth.token_provider.get(), audience="azure")
 
     response = requests.get(url, headers=headers)
     if response.status_code != 200:
@@ -753,16 +714,11 @@ def list_skus(
 
 
 @log
-def list_subscriptions(token_provider: TokenProvider) -> pd.DataFrame:
+def list_subscriptions() -> pd.DataFrame:
     """
     Gets all subscriptions for a tenant.
 
     This is a wrapper function for the following API: `Subscriptions - List <https://learn.microsoft.com/rest/api/resources/subscriptions/list?view=rest-resources-2022-12-01>`_.
-
-    Parameters
-    ----------
-    token_provider : TokenProvider
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -785,7 +741,7 @@ def list_subscriptions(token_provider: TokenProvider) -> pd.DataFrame:
         ]
     )
     url = "https://management.azure.com/subscriptions?api-version=2022-12-01"
-    headers = _get_headers(token_provider=token_provider, audience="azure")
+    headers = _get_headers(token_provider=auth.token_provider.get(), audience="azure")
 
     response = requests.get(url, headers=headers)
     if response.status_code != 200:
@@ -813,9 +769,7 @@ def list_subscriptions(token_provider: TokenProvider) -> pd.DataFrame:
 
 
 @log
-def get_subscription(
-    azure_subscription_id: str, token_provider: TokenProvider
-) -> pd.DataFrame:
+def get_subscription(azure_subscription_id: str) -> pd.DataFrame:
     """
     Gets details about a specified subscription.
 
@@ -825,8 +779,6 @@ def get_subscription(
     ----------
     azure_subscription_id : str
         The Azure subscription ID.
-    token_provider : TokenProvider
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -849,7 +801,7 @@ def get_subscription(
         ]
     )
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}?api-version=2022-12-01"
-    headers = _get_headers(token_provider=token_provider, audience="azure")
+    headers = _get_headers(token_provider=auth.token_provider.get(), audience="azure")
 
     response = requests.get(url, headers=headers)
     if response.status_code != 200:
@@ -877,14 +829,12 @@ def get_subscription(
 
 
 def _resolve_subscription_name_and_id(
-    azure_subscription: str | UUID, token_provider: TokenProvider
+    azure_subscription: str | UUID,
 ) -> Tuple[str, UUID]:
 
     if _is_valid_uuid(azure_subscription):
         subscription_id = azure_subscription
-        df = get_subscription(
-            azure_subscription_id=subscription_id, token_provider=token_provider
-        )
+        df = get_subscription(azure_subscription_id=subscription_id)
         if df.empty:
             raise ValueError(f"{icons.red_dot} The subscription ID does not exist.")
         subscription_name = df["Subscription Name"].iloc[0]
@@ -900,16 +850,11 @@ def _resolve_subscription_name_and_id(
 
 
 @log
-def list_tenants(token_provider: TokenProvider) -> pd.DataFrame:
+def list_tenants() -> pd.DataFrame:
     """
     Gets the tenants for your account.
 
     This is a wrapper function for the following API: `Tenants - List <https://learn.microsoft.com/rest/api/resources/tenants/list?view=rest-resources-2022-12-01>`_.
-
-    Parameters
-    ----------
-    token_provider : TokenProvider
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -930,7 +875,7 @@ def list_tenants(token_provider: TokenProvider) -> pd.DataFrame:
         ]
     )
     url = "https://management.azure.com/tenants?api-version=2022-12-01"
-    headers = _get_headers(token_provider=token_provider, audience="azure")
+    headers = _get_headers(token_provider=auth.token_provider.get(), audience="azure")
 
     response = requests.get(url, headers=headers)
     if response.status_code != 200:
@@ -942,7 +887,7 @@ def list_tenants(token_provider: TokenProvider) -> pd.DataFrame:
             "Tenant Id": v.get("tenantId"),
             "Tenant Name": v.get("displayName"),
             "Country Code": v.get("countryCode"),
-            "Domains": d if d is not None else [],
+            "Domains": d if d is not None else "",
             "Tenant Category": v.get("tenantCategory"),
             "Default Domain": v.get("defaultDomain"),
             "Tenant Type": v.get("tenantType"),
@@ -959,7 +904,6 @@ def create_or_update_resource_group(
     azure_subscription_id: str,
     resource_group: str,
     region: str,
-    token_provider: TokenProvider,
 ):
     """
     Creates or updates a resource group.
@@ -974,11 +918,9 @@ def create_or_update_resource_group(
         The name of the resource group.
     region : str
         The name of the region.
-    token_provider : TokenProvider
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
     """
 
-    headers = _get_headers(token_provider, audience="azure")
+    headers = _get_headers(auth.token_provider.get(), audience="azure")
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourcegroups/{resource_group}?api-version=2021-04-01"
 
     payload = {
@@ -1000,7 +942,6 @@ def create_storage_account(
     resource_group: str,
     storage_account: str,
     region: str,
-    token_provider: TokenProvider,
 ):
     """
     Asynchronously creates a new storage account with the specified parameters. If an account is already created and a subsequent create request is issued with different properties, the account properties will be updated. If an account is already created and a subsequent create or update request is issued with the exact same set of properties, the request will succeed.
@@ -1017,11 +958,9 @@ def create_storage_account(
         The name of the storage account to be created.
     region : str
         The name of the region.
-    token_provider : TokenProvider
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
     """
 
-    headers = _get_headers(token_provider, audience="azure")
+    headers = _get_headers(auth.token_provider.get(), audience="azure")
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Storage/storageAccounts/{storage_account}?api-version=2018-02-01"
 
     payload = {
@@ -1043,7 +982,6 @@ def create_storage_account(
 @log
 def list_storage_accounts(
     azure_subscription_id: str,
-    token_provider: TokenProvider,
     resource_group: Optional[str] = None,
 ) -> pd.DataFrame:
     """
@@ -1055,8 +993,6 @@ def list_storage_accounts(
     ----------
     azure_subscription_id : str
         The Azure subscription Id.
-    token_provider : TokenProvider
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
     resource_group : str, default=None
         If set to None, retrieves all storage accounts for the subscription. If not None, shows the storage accounts within that resource group.
 
@@ -1066,7 +1002,7 @@ def list_storage_accounts(
         A pandas dataframe showing a list of all storage accounts within the subscription (or resource group).
     """
 
-    headers = _get_headers(token_provider, audience="azure")
+    headers = _get_headers(auth.token_provider.get(), audience="azure")
 
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}"
 
@@ -1142,7 +1078,7 @@ def list_storage_accounts(
 
 @log
 def check_resource_group_existence(
-    azure_subscription_id: str, resource_group: str, token_provider: TokenProvider
+    azure_subscription_id: str, resource_group: str
 ) -> bool:
     """
     Checks whether a resource group exists.
@@ -1155,8 +1091,6 @@ def check_resource_group_existence(
         The Azure subscription Id.
     resource_group : str
         The name of the resource group.
-    token_provider : TokenProvider
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -1164,7 +1098,7 @@ def check_resource_group_existence(
         True/False indicating if the resource group exists or not.
     """
 
-    headers = _get_headers(token_provider, audience="azure")
+    headers = _get_headers(auth.token_provider.get(), audience="azure")
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}?api-version=2021-04-01"
 
     response = requests.get(url, headers=headers)
@@ -1181,7 +1115,6 @@ def check_resource_group_existence(
 @log
 def list_resource_groups(
     azure_subscription_id: str,
-    token_provider: TokenProvider,
     filter: Optional[str] = None,
     top: Optional[int] = None,
 ) -> pd.DataFrame:
@@ -1194,8 +1127,6 @@ def list_resource_groups(
     ----------
     azure_subscription_id : str
         The Azure subscription Id.
-    token_provider : TokenProvider
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
     filter : str, default=None
         The filter to apply to the operation. Example: filter="tagname eq 'tagvalue'".
     top : int, default=None
@@ -1207,7 +1138,7 @@ def list_resource_groups(
         A pandas dataframe showing a list of all resource groups within the subscription.
     """
 
-    headers = _get_headers(token_provider, audience="azure")
+    headers = _get_headers(auth.token_provider.get(), audience="azure")
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups?"
 
     if filter is not None:
@@ -1240,9 +1171,7 @@ def list_resource_groups(
 
 
 @log
-def get_resource_group(
-    azure_subscription_id: str, resource_group: str, token_provider: TokenProvider
-) -> pd.DataFrame:
+def get_resource_group(azure_subscription_id: str, resource_group: str) -> pd.DataFrame:
     """
     Gets details about a specified resource group.
 
@@ -1254,8 +1183,6 @@ def get_resource_group(
         The Azure subscription Id.
     resource_group : str
         The name of the resource group.
-    token_provider : TokenProvider
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -1263,7 +1190,7 @@ def get_resource_group(
         A pandas dataframe showing details of a specific resource group.
     """
 
-    headers = _get_headers(token_provider, audience="azure")
+    headers = _get_headers(auth.token_provider.get(), audience="azure")
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}?api-version=2021-04-01"
 
     response = requests.get(url, headers=headers)

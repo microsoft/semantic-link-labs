@@ -6,12 +6,10 @@ from sempy.fabric.exceptions import FabricHTTPException
 import pandas as pd
 from uuid import UUID
 from sempy_labs.admin._basic_functions import list_workspaces
-from sempy.fabric._token_provider import TokenProvider
+import sempy_labs._authentication as auth
 
 
-def resolve_domain_id(
-    domain_name: str, token_provider: Optional[TokenProvider] = None
-) -> UUID:
+def resolve_domain_id(domain_name: str) -> UUID:
     """
     Obtains the domain Id for a given domain name.
 
@@ -19,8 +17,6 @@ def resolve_domain_id(
     ----------
     domain_name : str
         The domain name
-    token_provider : TokenProvider, default=None
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -28,7 +24,7 @@ def resolve_domain_id(
         The domain Id.
     """
 
-    dfL = list_domains(token_provider=token_provider)
+    dfL = list_domains()
     dfL_filt = dfL[dfL["Domain Name"] == domain_name]
     if len(dfL_filt) == 0:
         raise ValueError(f"{icons.red_dot} '{domain_name}' is not a valid domain name.")
@@ -36,9 +32,7 @@ def resolve_domain_id(
     return dfL_filt["Domain ID"].iloc[0]
 
 
-def list_domains(
-    non_empty_only: bool = False, token_provider: Optional[TokenProvider] = None
-) -> pd.DataFrame:
+def list_domains(non_empty_only: bool = False) -> pd.DataFrame:
     """
     Shows a list of domains.
 
@@ -49,8 +43,6 @@ def list_domains(
     non_empty_only : bool, default=False
         When True, only return domains that have at least one workspace containing an item.
         Defaults to False.
-    token_provider : TokenProvider, default=None
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -68,7 +60,7 @@ def list_domains(
         ]
     )
 
-    client = fabric.FabricRestClient(token_provider=token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
     url = "/v1/admin/domains"
     if non_empty_only:
         url = f"{url}?nonEmptyOnly=True"
@@ -90,9 +82,7 @@ def list_domains(
     return df
 
 
-def list_domain_workspaces(
-    domain_name: str, token_provider: Optional[TokenProvider] = None
-) -> pd.DataFrame:
+def list_domain_workspaces(domain_name: str) -> pd.DataFrame:
     """
     Shows a list of workspaces within the domain.
 
@@ -102,8 +92,6 @@ def list_domain_workspaces(
     ----------
     domain_name : str
         The domain name.
-    token_provider : TokenProvider, default=None
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -111,11 +99,11 @@ def list_domain_workspaces(
         A pandas dataframe showing a list of workspaces within the domain.
     """
 
-    domain_id = resolve_domain_id(domain_name, token_provider=token_provider)
+    domain_id = resolve_domain_id(domain_name)
 
     df = pd.DataFrame(columns=["Workspace ID", "Workspace Name"])
 
-    client = fabric.FabricRestClient(token_provider=token_provider)
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
     response = client.get(f"/v1/admin/domains/{domain_id}/workspaces")
 
     if response.status_code != 200:

@@ -20,7 +20,8 @@ import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 import ast
 from uuid import UUID
-from sempy.fabric._token_provider import TokenProvider
+import sempy_labs._authentication as auth
+
 
 if TYPE_CHECKING:
     import Microsoft.AnalysisServices.Tabular
@@ -43,12 +44,13 @@ class TOMWrapper:
     _table_map = dict
     _column_map = dict
 
-    def __init__(self, dataset, workspace, readonly, token_provider):
+    def __init__(self, dataset, workspace, readonly):
 
         self._is_azure_as = False
         prefix = "asazure"
         prefix_full = f"{prefix}://"
         read_write = ":rw"
+        self._token_provider = auth.token_provider.get()
 
         # Azure AS workspace logic
         if workspace.startswith(prefix_full):
@@ -62,7 +64,7 @@ class TOMWrapper:
             self._dataset_id = dataset
             self._dataset_name = dataset
             self._is_azure_as = True
-            if token_provider is None:
+            if self._token_provider is None:
                 raise ValueError(
                     f"{icons.red_dot} A token provider must be provided when connecting to an Azure AS workspace."
                 )
@@ -77,7 +79,6 @@ class TOMWrapper:
             self._workspace_id = workspace_id
         self._readonly = readonly
         self._tables_added = []
-        self._token_provider = token_provider
 
         # No token provider (standard authentication)
         if self._token_provider is None:
@@ -111,7 +112,7 @@ class TOMWrapper:
             )
             from System import Func
 
-            token = token_provider(audience="pbi")
+            token = self._token_provider(audience="pbi")
             self._tom_server = TOM.Server()
             get_access_token = create_on_access_token_expired_callback(
                 ConstantTokenProvider(token)
@@ -4742,7 +4743,6 @@ def connect_semantic_model(
     dataset: str | UUID,
     readonly: bool = True,
     workspace: Optional[str | UUID] = None,
-    token_provider: Optional[TokenProvider] = None,
 ) -> Iterator[TOMWrapper]:
     """
     Connects to the Tabular Object Model (TOM) within a semantic model.
@@ -4758,8 +4758,6 @@ def connect_semantic_model(
         If connecting to Azure Analysis Services, enter the workspace parameter in the following format: 'asazure://<region>.asazure.windows.net/<server_name>'.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    token_provider : TokenProvider, default=None
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class. Required when connecting to Azure Analysis Services.
     Returns
     -------
     typing.Iterator[TOMWrapper]
@@ -4773,7 +4771,6 @@ def connect_semantic_model(
         dataset=dataset,
         workspace=workspace,
         readonly=readonly,
-        token_provider=token_provider,
     )
     try:
         yield tw

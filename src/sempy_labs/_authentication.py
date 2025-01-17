@@ -1,6 +1,9 @@
 from typing import Literal, Optional
 from sempy.fabric._token_provider import TokenProvider
 from azure.identity import ClientSecretCredential
+from sempy._utils._log import log
+from contextlib import contextmanager
+import contextvars
 
 
 class ServicePrincipalTokenProvider(TokenProvider):
@@ -158,3 +161,51 @@ def _get_headers(
         headers["Content-Type"] = "application/json"
 
     return headers
+
+
+token_provider = contextvars.ContextVar("token_provider", default=None)
+
+
+@log
+@contextmanager
+def service_principal_authentication(
+    key_vault_uri: str,
+    key_vault_tenant_id: str,
+    key_vault_client_id: str,
+    key_vault_client_secret: str,
+):
+    """
+    Establishes an authentication via Service Principal.
+
+    Parameters
+    ----------
+    key_vault_uri : str
+        Azure Key Vault URI.
+    key_vault_tenant_id : str
+        Name of the secret in the Key Vault with the Fabric Tenant ID.
+    key_vault_client_id : str
+        Name of the secret in the Key Vault with the Service Principal Client ID.
+    key_vault_client_secret : str
+        Name of the secret in the Key Vault with the Service Principal Client Secret.
+    """
+
+    # Save the prior state
+    prior_token = token_provider.get()
+
+    # Set the new token_provider in a thread-safe manner
+    token_provider.set(
+        ServicePrincipalTokenProvider.from_azure_key_vault(
+            key_vault_uri=key_vault_uri,
+            key_vault_tenant_id=key_vault_tenant_id,
+            key_vault_client_id=key_vault_client_id,
+            key_vault_client_secret=key_vault_client_secret,
+        )
+    )
+    try:
+        yield
+    finally:
+        # Restore the prior state
+        if prior_token is None:
+            token_provider.set(None)
+        else:
+            token_provider.set(prior_token)
