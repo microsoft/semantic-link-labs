@@ -229,12 +229,18 @@ def get_direct_lake_source(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     sql_endpoint_id = get_direct_lake_sql_endpoint(dataset=dataset, workspace=workspace)
     dfI = fabric.list_items(workspace=workspace)
-    dfI_filt = dfI[(dfI['Id'] == sql_endpoint_id) & (dfI['Type'] == 'SQLEndpoint')]
+    dfI_filt = dfI[(dfI["Id"] == sql_endpoint_id) & (dfI["Type"] == "SQLEndpoint")]
 
     if not dfI_filt.empty:
-        artifact_name = dfI_filt['Display Name'].iloc[0]
-        artifact_id = dfI[(dfI['Display Name'] == artifact_name) & (dfI['Type'].isin(['Lakehouse', 'Warehouse']))]['Id'].iloc[0]
-        artifact_type = dfI[(dfI['Display Name'] == artifact_name) & (dfI['Type'].isin(['Lakehouse', 'Warehouse']))]['Type'].iloc[0]
+        artifact_name = dfI_filt["Display Name"].iloc[0]
+        artifact_id = dfI[
+            (dfI["Display Name"] == artifact_name)
+            & (dfI["Type"].isin(["Lakehouse", "Warehouse"]))
+        ]["Id"].iloc[0]
+        artifact_type = dfI[
+            (dfI["Display Name"] == artifact_name)
+            & (dfI["Type"].isin(["Lakehouse", "Warehouse"]))
+        ]["Type"].iloc[0]
 
         return artifact_type, artifact_name, artifact_id, workspace_id
 

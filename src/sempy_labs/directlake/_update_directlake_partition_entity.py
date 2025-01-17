@@ -124,9 +124,11 @@ def add_table_to_direct_lake_semantic_model(
         raise ValueError(
             f"{icons.red_dot} This function is only valid for Direct Lake semantic models which source from Fabric lakehouses (not warehouses)."
         )
-    
+
     if artifact_type is None:
-        raise ValueError(f"{icons.red_dot} This function only supports Direct Lake semantic models where the source lakehouse resides in the same workpace as the semantic model.")
+        raise ValueError(
+            f"{icons.red_dot} This function only supports Direct Lake semantic models where the source lakehouse resides in the same workpace as the semantic model."
+        )
 
     lakehouse_workspace = fabric.resolve_workspace_name(lakehouse_workspace_id)
 

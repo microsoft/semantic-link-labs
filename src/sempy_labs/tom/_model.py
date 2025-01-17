@@ -4747,6 +4747,8 @@ def connect_semantic_model(
     """
     Connects to the Tabular Object Model (TOM) within a semantic model.
 
+    Service Principal Authr=entication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     dataset : str | uuid.UUID
@@ -4754,7 +4756,7 @@ def connect_semantic_model(
     readonly: bool, default=True
         Whether the connection is read-only or read/write. Setting this to False enables read/write which saves the changes made back to the server.
     workspace : str | uuid.UUID, default=None
-        The Fabric workspace name or ID. Also supports Azure Analysis Services (token_provider required).
+        The Fabric workspace name or ID. Also supports Azure Analysis Services (Service Principal Authentication required).
         If connecting to Azure Analysis Services, enter the workspace parameter in the following format: 'asazure://<region>.asazure.windows.net/<server_name>'.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
