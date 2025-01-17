@@ -336,13 +336,15 @@ def resolve_lakehouse_id(
     """
 
     if lakehouse is None:
-        return fabric.get_lakehouse_id()
+        lakehouse_id = fabric.get_lakehouse_id()
     elif _is_valid_uuid(lakehouse):
-        return lakehouse
+        lakehouse_id = lakehouse
     else:
-        fabric.resolve_item_id(
+        lakehouse_id = fabric.resolve_item_id(
             item_name=lakehouse, type="Lakehouse", workspace=workspace
         )
+
+    return lakehouse_id
 
 
 def get_direct_lake_sql_endpoint(
