@@ -54,7 +54,9 @@ def get_direct_lake_lakehouse(
         dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
         dfP_filt = dfP[dfP["Mode"] == "DirectLake"]
         if dfP_filt.empty:
-            raise ValueError(f"{icons.red_dot} The '{dataset}' semantic model within the '{workspace}' workspace is not in Direct Lake mode.")
+            raise ValueError(
+                f"{icons.red_dot} The '{dataset}' semantic model within the '{workspace}' workspace is not in Direct Lake mode."
+            )
         lakehouse_id = resolve_lakehouse_id(
             lakehouse=lakehouse, workspace=lakehouse_workspace
         )
