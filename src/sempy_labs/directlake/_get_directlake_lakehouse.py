@@ -8,6 +8,7 @@ from sempy_labs._helper_functions import (
 )
 from typing import Optional, Tuple
 from uuid import UUID
+import sempy_labs._icons as icons
 
 
 def get_direct_lake_lakehouse(
@@ -41,30 +42,20 @@ def get_direct_lake_lakehouse(
         The lakehouse name and lakehouse ID.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    from sempy_labs.directlake._dl_helper import get_direct_lake_source
 
-    if lakehouse_workspace is None:
-        lakehouse_workspace = workspace_name
+    artifact_type, artifact_name, artifact_id, workspace_id = get_direct_lake_source(
+        dataset=dataset, workspace=workspace
+    )
 
-    if lakehouse is None:
-        lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse = resolve_lakehouse_name(lakehouse_id, lakehouse_workspace)
-
-    # dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
-    # dfP_filt = dfP[dfP["Mode"] == "DirectLake"]
-
-    # if len(dfP_filt) == 0:
-    #    raise ValueError(
-    #        f"{icons.red_dot} The '{dataset}' semantic model within the '{workspace}' workspace is not in Direct Lake mode."
-    #    )
-
-    sqlEndpointId = get_direct_lake_sql_endpoint(dataset_id, workspace_id)
-
-    dfI = fabric.list_items(workspace=lakehouse_workspace, type="SQLEndpoint")
-    dfI_filt = dfI[dfI["Id"] == sqlEndpointId]
-    lakehouseName = dfI_filt["Display Name"].iloc[0]
-
-    lakehouseId = resolve_lakehouse_id(lakehouseName, lakehouse_workspace)
-
-    return lakehouseName, lakehouseId
+    if artifact_type in ["Lakehouse", "Warehouse"]:
+        return artifact_name, artifact_id
+    else:
+        dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
+        dfP_filt = dfP[dfP["Mode"] == "DirectLake"]
+        if dfP_filt.empty:
+            raise ValueError(f"{icons.red_dot} The '{dataset}' semantic model within the '{workspace}' workspace is not in Direct Lake mode.")
+        lakehouse_id = resolve_lakehouse_id(
+            lakehouse=lakehouse, workspace=lakehouse_workspace
+        )
+        return lakehouse, lakehouse_id
