@@ -231,6 +231,8 @@ def get_direct_lake_source(
     dfI = fabric.list_items(workspace=workspace)
     dfI_filt = dfI[(dfI["Id"] == sql_endpoint_id) & (dfI["Type"] == "SQLEndpoint")]
 
+    artifact_type, artifact_name, artifact_id = None, None, None
+
     if not dfI_filt.empty:
         artifact_name = dfI_filt["Display Name"].iloc[0]
         artifact_id = dfI[
@@ -242,7 +244,7 @@ def get_direct_lake_source(
             & (dfI["Type"].isin(["Lakehouse", "Warehouse"]))
         ]["Type"].iloc[0]
 
-        return artifact_type, artifact_name, artifact_id, workspace_id
+    return artifact_type, artifact_name, artifact_id, workspace_id
 
     # client = fabric.PowerBIRestClient()
     # request_body = {
