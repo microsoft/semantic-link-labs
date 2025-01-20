@@ -4747,7 +4747,7 @@ def connect_semantic_model(
     """
     Connects to the Tabular Object Model (TOM) within a semantic model.
 
-    Service Principal Authr=entication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------

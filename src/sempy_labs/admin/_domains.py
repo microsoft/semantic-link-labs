@@ -38,6 +38,8 @@ def list_domains(non_empty_only: bool = False) -> pd.DataFrame:
 
     This is a wrapper function for the following API: `Domains - List Domains <https://learn.microsoft.com/rest/api/fabric/admin/domains/list-domains>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     non_empty_only : bool, default=False
@@ -87,6 +89,8 @@ def list_domain_workspaces(domain_name: str) -> pd.DataFrame:
     Shows a list of workspaces within the domain.
 
     This is a wrapper function for the following API: `Domains - List Domain Workspaces <https://learn.microsoft.com/rest/api/fabric/admin/domains/list-domain-workspaces>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------

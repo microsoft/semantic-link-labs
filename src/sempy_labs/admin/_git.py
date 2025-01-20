@@ -14,6 +14,8 @@ def list_git_connections() -> pd.DataFrame:
 
     This is a wrapper function for the following API: `Workspaces - List Git Connections <https://learn.microsoft.com/rest/api/fabric/admin/workspaces/list-git-connections>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Returns
     -------
     pandas.DataFrame

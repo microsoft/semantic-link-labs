@@ -26,6 +26,8 @@ def scan_workspaces(
         `Admin - WorkspaceInfo GetScanStatus <https://learn.microsoft.com/rest/api/power-bi/admin/workspace-info-get-scan-status>`_.
         `Admin - WorkspaceInfo GetScanResult <https://learn.microsoft.com/rest/api/power-bi/admin/workspace-info-get-scan-result>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     data_source_details : bool, default=False
@@ -62,7 +64,7 @@ def scan_workspaces(
 
     workspace_list = []
 
-    dfW = list_workspaces(token_provider=auth.token_provider.get())
+    dfW = list_workspaces()
     workspace_list = dfW[dfW["Name"].isin(workspace)]["Id"].tolist()
     workspace_list = workspace_list + dfW[dfW["Id"].isin(workspace)]["Id"].tolist()
 
