@@ -6,6 +6,7 @@ from sempy.fabric.exceptions import FabricHTTPException
 import pandas as pd
 from uuid import UUID
 from sempy_labs.admin._basic_functions import list_workspaces
+import sempy_labs._authentication as auth
 
 
 def resolve_domain_id(domain_name: str) -> UUID:
@@ -37,6 +38,8 @@ def list_domains(non_empty_only: bool = False) -> pd.DataFrame:
 
     This is a wrapper function for the following API: `Domains - List Domains <https://learn.microsoft.com/rest/api/fabric/admin/domains/list-domains>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     non_empty_only : bool, default=False
@@ -59,7 +62,7 @@ def list_domains(non_empty_only: bool = False) -> pd.DataFrame:
         ]
     )
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
     url = "/v1/admin/domains"
     if non_empty_only:
         url = f"{url}?nonEmptyOnly=True"
@@ -87,6 +90,8 @@ def list_domain_workspaces(domain_name: str) -> pd.DataFrame:
 
     This is a wrapper function for the following API: `Domains - List Domain Workspaces <https://learn.microsoft.com/rest/api/fabric/admin/domains/list-domain-workspaces>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     domain_name : str
@@ -102,7 +107,7 @@ def list_domain_workspaces(domain_name: str) -> pd.DataFrame:
 
     df = pd.DataFrame(columns=["Workspace ID", "Workspace Name"])
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
     response = client.get(f"/v1/admin/domains/{domain_id}/workspaces")
 
     if response.status_code != 200:

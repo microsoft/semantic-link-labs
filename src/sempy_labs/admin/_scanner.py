@@ -6,6 +6,7 @@ import numpy as np
 import time
 from sempy_labs.admin._basic_functions import list_workspaces
 from sempy._utils._log import log
+import sempy_labs._authentication as auth
 
 
 @log
@@ -24,6 +25,8 @@ def scan_workspaces(
         `Admin - WorkspaceInfo PostWorkspaceInfo <https://learn.microsoft.com/rest/api/power-bi/admin/workspace-info-post-workspace-info>`_.
         `Admin - WorkspaceInfo GetScanStatus <https://learn.microsoft.com/rest/api/power-bi/admin/workspace-info-get-scan-status>`_.
         `Admin - WorkspaceInfo GetScanResult <https://learn.microsoft.com/rest/api/power-bi/admin/workspace-info-get-scan-result>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -51,7 +54,7 @@ def scan_workspaces(
         "misconfiguredDatasourceInstances": [],
     }
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
 
     if workspace is None:
         workspace = fabric.resolve_workspace_name()

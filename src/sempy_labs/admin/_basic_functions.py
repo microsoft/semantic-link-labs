@@ -12,6 +12,7 @@ from sempy._utils._log import log
 import numpy as np
 import pandas as pd
 from dateutil.parser import parse as dtparser
+import sempy_labs._authentication as auth
 
 
 @log
@@ -26,6 +27,8 @@ def list_workspaces(
     Lists workspaces for the organization. This function is the admin version of list_workspaces.
 
     This is a wrapper function for the following API: `Workspaces - List Workspaces - REST API (Admin) <https://learn.microsoft.com/en-us/rest/api/fabric/admin/workspaces/list-workspaces>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -61,7 +64,7 @@ def list_workspaces(
         )
         del kwargs["skip"]
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
 
     df = pd.DataFrame(
         columns=[
@@ -132,6 +135,8 @@ def list_capacities(
 
     This is a wrapper function for the following API: `Admin - Get Capacities As Admin <https://learn.microsoft.com/rest/api/power-bi/admin/get-capacities-as-admin>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     capacity : str | uuid.UUID, default=None
@@ -142,7 +147,7 @@ def list_capacities(
     pandas.DataFrame
         A pandas dataframe showing the capacities and their properties.
     """
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
 
     df = pd.DataFrame(
         columns=["Capacity Id", "Capacity Name", "Sku", "Region", "State", "Admins"]
@@ -317,12 +322,14 @@ def list_tenant_settings() -> pd.DataFrame:
 
     This is a wrapper function for the following API: `Tenants - List Tenant Settings <https://learn.microsoft.com/rest/api/fabric/admin/tenants/list-tenant-settings>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Returns
     -------
     pandas.DataFrame
         A pandas dataframe showing the tenant settings.
     """
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
 
     response = client.get("/v1/admin/tenantsettings")
 
@@ -365,6 +372,8 @@ def list_capacities_delegated_tenant_settings(
 
     This is a wrapper function for the following API: `Tenants - List Capacities Tenant Settings Overrides <https://learn.microsoft.com/rest/api/fabric/admin/tenants/list-capacities-tenant-settings-overrides>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     return_dataframe : bool, default=True
@@ -390,7 +399,7 @@ def list_capacities_delegated_tenant_settings(
         ]
     )
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
     response = client.get("/v1/admin/capacities/delegatedTenantSettingOverrides")
 
     if response.status_code != 200:
@@ -456,6 +465,8 @@ def list_modified_workspaces(
 
     This is a wrapper function for the following API: `Admin - WorkspaceInfo GetModifiedWorkspaces <https://learn.microsoft.com/rest/api/power-bi/admin/workspace-info-get-modified-workspaces>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     modified_since : str, default=None
@@ -470,7 +481,7 @@ def list_modified_workspaces(
     pandas.DataFrame
         A pandas dataframe showing a list of workspace IDs in the organization.
     """
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
 
     params = {}
 
@@ -509,6 +520,8 @@ def list_datasets(
     Shows a list of datasets for the organization.
 
     This is a wrapper function for the following API: `Admin - Datasets GetDatasetsAsAdmin <https://learn.microsoft.com/rest/api/power-bi/admin/datasets-get-datasets-as-admin>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -549,7 +562,7 @@ def list_datasets(
 
     df = pd.DataFrame(columns=columns)
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
 
     params = {}
     url = "/v1.0/myorg/admin/datasets"
@@ -629,6 +642,8 @@ def list_access_entities(
 
     This is a wrapper function for the following API: `Users - List Access Entities <https://learn.microsoft.com/rest/api/fabric/admin/users/list-access-entities>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     user_email_address : str
@@ -648,7 +663,7 @@ def list_access_entities(
             "Additional Permissions",
         ]
     )
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
 
     response = client.get(f"/v1/admin/users/{user_email_address}/access")
 
@@ -681,6 +696,8 @@ def list_workspace_access_details(
 
     This is a wrapper function for the following API: `Workspaces - List Workspace Access Details <https://learn.microsoft.com/rest/api/fabric/admin/workspaces/list-workspace-access-details>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     workspace : str | uuid.UUID, default=None
@@ -706,7 +723,7 @@ def list_workspace_access_details(
         ]
     )
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
 
     response = client.get(f"/v1/admin/workspaces/{workspace_id}/users")
     if response.status_code != 200:
@@ -737,6 +754,8 @@ def list_activity_events(
     Shows a list of audit activity events for a tenant.
 
     This is a wrapper function for the following API: `Admin - Get Activity Events <https://learn.microsoft.com/rest/api/power-bi/admin/get-activity-events>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -808,7 +827,7 @@ def list_activity_events(
     )
 
     response_json = {"activityEventEntities": []}
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
     url = f"/v1.0/myorg/admin/activityevents?startDateTime='{start_time}'&endDateTime='{end_time}'"
 
     conditions = []
@@ -970,6 +989,8 @@ def list_reports(
 
     This is a wrapper function for the following API: `Admin - Reports GetReportsAsAdmin <https://learn.microsoft.com/rest/api/power-bi/admin/reports-get-reports-as-admin>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     top : int, default=None
@@ -1015,7 +1036,7 @@ def list_reports(
 
     url.rstrip("$").rstrip("?")
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
     response = client.get(url)
 
     if response.status_code != 200:
@@ -1063,6 +1084,8 @@ def get_capacity_assignment_status(
 
     This is a wrapper function for the following API: `Capacities - Groups CapacityAssignmentStatus <https://learn.microsoft.com/rest/api/power-bi/capacities/groups-capacity-assignment-status>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     workspace : str | uuid.UUID, default=None
@@ -1089,7 +1112,7 @@ def get_capacity_assignment_status(
         ]
     )
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
     response = client.get(f"/v1.0/myorg/groups/{workspace_id}/CapacityAssignmentStatus")
 
     if response.status_code != 200:

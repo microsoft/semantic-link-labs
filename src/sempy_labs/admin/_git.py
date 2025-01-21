@@ -5,6 +5,7 @@ from sempy_labs._helper_functions import (
 )
 import pandas as pd
 from sempy_labs.admin._basic_functions import list_workspaces
+import sempy_labs._authentication as auth
 
 
 def list_git_connections() -> pd.DataFrame:
@@ -13,13 +14,15 @@ def list_git_connections() -> pd.DataFrame:
 
     This is a wrapper function for the following API: `Workspaces - List Git Connections <https://learn.microsoft.com/rest/api/fabric/admin/workspaces/list-git-connections>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Returns
     -------
     pandas.DataFrame
         A pandas dataframe showing a list of Git connections.
     """
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
     response = client.get("/v1/admin/workspaces/discoverGitConnections")
 
     df = pd.DataFrame(

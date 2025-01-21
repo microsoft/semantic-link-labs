@@ -13,6 +13,7 @@ from sempy_labs._helper_functions import (
     _is_valid_uuid,
     _build_url,
 )
+import sempy_labs._authentication as auth
 
 
 def _resolve_item_id(
@@ -76,6 +77,8 @@ def list_items(
 
     This is a wrapper function for the following API: `Items - List Items <https://learn.microsoft.com/rest/api/fabric/admin/items/list-items>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     capacity : str | uuid.UUID, default=None
@@ -120,7 +123,7 @@ def list_items(
         ]
     )
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
 
     params = {}
 
@@ -189,6 +192,8 @@ def list_item_access_details(
 
     This is a wrapper function for the following API: `Items - List Item Access Details <https://learn.microsoft.com/rest/api/fabric/admin/items/list-item-access-details>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     item : str
@@ -217,7 +222,7 @@ def list_item_access_details(
             f"{icons.red_dot} The parameter 'item' and 'type' are mandatory."
         )
 
-    client = fabric.FabricRestClient()
+    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
 
     workspace_name, workspace_id = _resolve_workspace_name_and_id(workspace)
     item_name, item_id = _resolve_item_name_and_id(
