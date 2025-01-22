@@ -1,6 +1,7 @@
 import sempy.fabric
 from unittest.mock import patch
 from sempy_labs.tom import connect_semantic_model
+import os
 
 
 @patch("sempy.fabric.resolve_item_id")
@@ -10,6 +11,7 @@ from sempy_labs.tom import connect_semantic_model
 @patch("sempy.fabric.create_tom_server")
 def test_tom_wrapper(create_tom_server, resolve_workspace_name_and_id, resolve_dataset_name_and_id, resolve_workspace_id, resolve_item_id):
 
+    os.environ["DOTNET_SYSTEM_GLOBALIZATION_INVARIANT"] = "true"
     sempy.fabric._client._utils._init_analysis_services()
     import Microsoft.AnalysisServices.Tabular as TOM
 
