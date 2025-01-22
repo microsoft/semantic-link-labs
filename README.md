@@ -58,7 +58,9 @@ Check out the video below for an introduction to Semantic Link, Semantic Link La
 * Notebooks
     * [Import a notebook from the web](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.import_notebook_from_web)    
 * APIs
-    * Wrapper functions for [Power BI](https://learn.microsoft.com/rest/api/power-bi/), [Fabric](https://learn.microsoft.com/rest/api/fabric/articles/using-fabric-apis), and [Azure (Fabric Capacity)](https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities?view=rest-microsoftfabric-2023-11-01) APIs
+    * Wrapper functions for [Power BI](https://learn.microsoft.com/rest/api/power-bi/), [Fabric](https://learn.microsoft.com/rest/api/fabric/articles/using-fabric-apis), and [Azure](https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities?view=rest-microsoftfabric-2023-11-01) APIs
+* Service Principal Authentication
+    * Now supported using the [service_principal_authentication](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.service_principal_authentication) context manager for the [admin](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.admin.html) subpackage, Azure API wrapper functions, and [connect_semantic_model](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.tom.html#sempy_labs.tom.connect_semantic_model). See this [helper notebook](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb) for additional instructions.
 
 ## Helper Notebooks
 
