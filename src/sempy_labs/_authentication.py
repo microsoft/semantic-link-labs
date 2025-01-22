@@ -17,7 +17,6 @@ class ServicePrincipalTokenProvider(TokenProvider):
 
         self.credential = credential
 
-    @log
     @classmethod
     def from_aad_application_key_authentication(
         cls, tenant_id: str, client_id: str, client_secret: str
@@ -51,7 +50,6 @@ class ServicePrincipalTokenProvider(TokenProvider):
 
         return cls(credential)
 
-    @log
     @classmethod
     def from_azure_key_vault(
         cls,
