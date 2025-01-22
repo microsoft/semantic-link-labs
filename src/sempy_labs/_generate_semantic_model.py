@@ -18,6 +18,7 @@ from sempy_labs._refresh_semantic_model import refresh_semantic_model
 from uuid import UUID
 
 
+@log
 def create_blank_semantic_model(
     dataset: str,
     compatibility_level: int = 1605,
@@ -118,6 +119,7 @@ def create_blank_semantic_model(
     )
 
 
+@log
 def create_semantic_model_from_bim(
     dataset: str, bim_file: dict, workspace: Optional[str | UUID] = None
 ):
@@ -184,6 +186,7 @@ def create_semantic_model_from_bim(
     )
 
 
+@log
 def update_semantic_model_from_bim(
     dataset: str | UUID, bim_file: dict, workspace: Optional[str | UUID] = None
 ):
@@ -325,6 +328,7 @@ def deploy_semantic_model(
         refresh_semantic_model(dataset=target_dataset, workspace=target_workspace_id)
 
 
+@log
 def get_semantic_model_bim(
     dataset: str | UUID,
     workspace: Optional[str | UUID] = None,
@@ -388,6 +392,7 @@ def get_semantic_model_bim(
     return bimJson
 
 
+@log
 def get_semantic_model_definition(
     dataset: str | UUID,
     format: str = "TMSL",
@@ -456,6 +461,7 @@ def get_semantic_model_definition(
         return decoded_parts
 
 
+@log
 def get_semantic_model_size(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
 ):

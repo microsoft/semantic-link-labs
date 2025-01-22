@@ -246,6 +246,7 @@ def get_capacity_resource_governance(capacity_name: str):
     return response.json()["workloadSettings"]
 
 
+@log
 def suspend_fabric_capacity(
     capacity_name: str,
     azure_subscription_id: str,
@@ -293,6 +294,7 @@ def suspend_fabric_capacity(
     print(f"{icons.green_dot} The '{capacity_name}' capacity has been suspended.")
 
 
+@log
 def resume_fabric_capacity(
     capacity_name: str,
     azure_subscription_id: str,
@@ -340,6 +342,7 @@ def resume_fabric_capacity(
     print(f"{icons.green_dot} The '{capacity_name}' capacity has been resumed.")
 
 
+@log
 def delete_embedded_capacity(
     capacity_name: str,
     azure_subscription_id: str,
@@ -385,6 +388,7 @@ def delete_embedded_capacity(
     print(f"{icons.green_dot} The '{capacity_name}' capacity has been deleted.")
 
 
+@log
 def delete_premium_capacity(capacity_name: str):
     """
     This function deletes a Power BI Premium capacity.
@@ -413,6 +417,7 @@ def delete_premium_capacity(capacity_name: str):
     print(f"{icons.green_dot} The '{capacity_name}' capacity has been deleted.")
 
 
+@log
 def delete_fabric_capacity(
     capacity_name: str,
     azure_subscription_id: str,
@@ -460,6 +465,7 @@ def delete_fabric_capacity(
     print(f"{icons.green_dot} The '{capacity_name}' capacity has been deleted.")
 
 
+@log
 def update_fabric_capacity(
     capacity_name: str,
     azure_subscription_id: str,
@@ -552,6 +558,7 @@ def update_fabric_capacity(
     )
 
 
+@log
 def check_fabric_capacity_name_availablility(
     capacity_name: str,
     azure_subscription_id: str,
@@ -606,6 +613,7 @@ def check_fabric_capacity_name_availablility(
     return bool(response.json().get("nameAvailable"))
 
 
+@log
 def create_resource_group(
     azure_subscription_id: str,
     resource_group: str,
@@ -645,6 +653,7 @@ def create_resource_group(
     )
 
 
+@log
 def list_skus_for_capacity(
     capacity: str,
     azure_subscription_id: str,
@@ -693,6 +702,7 @@ def list_skus_for_capacity(
     return df
 
 
+@log
 def list_skus(
     azure_subscription_id: str,
 ) -> pd.DataFrame:

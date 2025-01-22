@@ -1,9 +1,4 @@
-import sempy.fabric as fabric
 from tqdm.auto import tqdm
-from sempy_labs._helper_functions import (
-    resolve_lakehouse_name,
-    resolve_workspace_name_and_id,
-)
 from typing import List, Optional, Union
 from sempy._utils._log import log
 from uuid import UUID
@@ -52,11 +47,29 @@ def optimize_lakehouse_tables(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    from sempy_labs._optimize import optimize_delta_tables
+    from pyspark.sql import SparkSession
+    from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
+    from delta import DeltaTable
 
-    optimize_delta_tables(
-        tables=tables, source=lakehouse, source_type="Lakehouse", workspace=workspace
-    )
+    lakeTables = get_lakehouse_tables(lakehouse=lakehouse, workspace=workspace)
+    lakeTablesDelta = lakeTables[lakeTables["Format"] == "delta"]
+
+    if isinstance(tables, str):
+        tables = [tables]
+
+    if tables is not None:
+        tables_filt = lakeTablesDelta[lakeTablesDelta["Table Name"].isin(tables)]
+    else:
+        tables_filt = lakeTablesDelta.copy()
+
+    spark = SparkSession.builder.getOrCreate()
+
+    for _, r in (bar := tqdm(tables_filt.iterrows())):
+        tableName = r["Table Name"]
+        tablePath = r["Location"]
+        bar.set_description(f"Optimizing the '{tableName}' table...")
+        deltaTable = DeltaTable.forPath(spark, tablePath)
+        deltaTable.optimize().executeCompaction()
 
 
 @log
@@ -91,13 +104,7 @@ def vacuum_lakehouse_tables(
     from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
     from delta import DeltaTable
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    if lakehouse is None:
-        lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse = resolve_lakehouse_name(lakehouse_id, workspace_id)
-
-    lakeTables = get_lakehouse_tables(lakehouse=lakehouse, workspace=workspace_id)
+    lakeTables = get_lakehouse_tables(lakehouse=lakehouse, workspace=workspace)
     lakeTablesDelta = lakeTables[lakeTables["Format"] == "delta"]
 
     if isinstance(tables, str):
