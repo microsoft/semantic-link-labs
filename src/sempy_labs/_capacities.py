@@ -39,6 +39,8 @@ def create_fabric_capacity(
 
     This is a wrapper function for the following API: `Fabric Capacities - Create Or Update <https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities/create-or-update>`_.
 
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     capacity_name : str
@@ -255,6 +257,8 @@ def suspend_fabric_capacity(
 
     This is a wrapper function for the following API: `Fabric Capacities - Suspend <https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities/suspend?view=rest-microsoftfabric-2023-11-01>`_.
 
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     capacity_name : str
@@ -300,6 +304,8 @@ def resume_fabric_capacity(
 
     This is a wrapper function for the following API: `Fabric Capacities - Resume <https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities/resume?view=rest-microsoftfabric-2023-11-01>`_.
 
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     capacity_name : str
@@ -342,6 +348,8 @@ def delete_embedded_capacity(
 ):
     """
     This function deletes a Power BI Embedded capacity.
+
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -416,6 +424,8 @@ def delete_fabric_capacity(
 
     This is a wrapper function for the following API: `Fabric Capacities - Delete <https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities/delete?view=rest-microsoftfabric-2023-11-01>`_.
 
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     capacity_name : str
@@ -463,6 +473,8 @@ def update_fabric_capacity(
     This function updates a Fabric capacity's properties.
 
     This is a wrapper function for the following API: `Fabric Capacities - Update <https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities/update?view=rest-microsoftfabric-2023-11-01>`_.
+
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -551,6 +563,8 @@ def check_fabric_capacity_name_availablility(
 
     This is a wrapper function for the following API: `Fabric Capacities - Check Name Availability <https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities/check-name-availability?view=rest-microsoftfabric-2023-11-01>`_.
 
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     capacity_name : str
@@ -603,6 +617,8 @@ def create_resource_group(
 
     This is a wrapper function for the following API: `Resource Groups - Create Or Update <https://learn.microsoft.com/rest/api/resources/resource-groups/create-or-update>`_.
 
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     azure_subscription_id : str
@@ -638,6 +654,8 @@ def list_skus_for_capacity(
     Lists eligible SKUs for a Microsoft Fabric resource.
 
     This is a wrapper function for the following API: `Fabric Capacities - List Skus For Capacity <https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities/list-skus-for-capacity?view=rest-microsoftfabric-2023-11-01>`_.
+
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -683,6 +701,8 @@ def list_skus(
 
     This is a wrapper function for the following API: `Fabric Capacities - List Skus For Capacity <https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities/list-skus?view=rest-microsoftfabric-2023-11-01>`_.
 
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     azure_subscription_id : str
@@ -719,6 +739,8 @@ def list_subscriptions() -> pd.DataFrame:
     Gets all subscriptions for a tenant.
 
     This is a wrapper function for the following API: `Subscriptions - List <https://learn.microsoft.com/rest/api/resources/subscriptions/list?view=rest-resources-2022-12-01>`_.
+
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Returns
     -------
@@ -774,6 +796,8 @@ def get_subscription(azure_subscription_id: str) -> pd.DataFrame:
     Gets details about a specified subscription.
 
     This is a wrapper function for the following API: `Subscriptions - Get <https://learn.microsoft.com/rest/api/resources/subscriptions/get?view=rest-resources-2022-12-01>`_.
+
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -856,6 +880,8 @@ def list_tenants() -> pd.DataFrame:
 
     This is a wrapper function for the following API: `Tenants - List <https://learn.microsoft.com/rest/api/resources/tenants/list?view=rest-resources-2022-12-01>`_.
 
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Returns
     -------
     pandas.DataFrame
@@ -910,6 +936,8 @@ def create_or_update_resource_group(
 
     This is a wrapper function for the following API: `Resource Groups - Create Or Update <https://learn.microsoft.com/rest/api/resources/resource-groups/create-or-update>`_.
 
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     azure_subscription_id : str
@@ -947,6 +975,8 @@ def create_storage_account(
     Asynchronously creates a new storage account with the specified parameters. If an account is already created and a subsequent create request is issued with different properties, the account properties will be updated. If an account is already created and a subsequent create or update request is issued with the exact same set of properties, the request will succeed.
 
     This is a wrapper function for the following API: `Storage Accounts - Create <https://learn.microsoft.com/rest/api/storagerp/storage-accounts/create`_.
+
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -988,6 +1018,8 @@ def list_storage_accounts(
     Lists all the storage accounts available under the subscription (or resource group). Note that storage keys are not returned; use the ListKeys operation for this.
 
     This is a wrapper function for the following APIs: `Storage Accounts - List <https://learn.microsoft.com/rest/api/storagerp/storage-accounts/list>`_, `Storage Accounts - List By Resource Group <https://learn.microsoft.com/rest/api/storagerp/storage-accounts/list-by-resource-group>`_.
+
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -1085,6 +1117,8 @@ def check_resource_group_existence(
 
     This is a wrapper function for the following API: `Resource Groups - Check Existence <https://learn.microsoft.com/rest/api/resources/resource-groups/check-existence>`_.
 
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     azure_subscription_id : str
@@ -1122,6 +1156,8 @@ def list_resource_groups(
     Lists all resource groups within a subscription.
 
     This is a wrapper function for the following API: `Resource Groups - List <https://learn.microsoft.com/rest/api/resources/resource-groups/list>`_.
+
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -1176,6 +1212,8 @@ def get_resource_group(azure_subscription_id: str, resource_group: str) -> pd.Da
     Gets details about a specified resource group.
 
     This is a wrapper function for the following API: `Resource Groups - Get <https://learn.microsoft.com/rest/api/resources/resource-groups/get>`_.
+
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
