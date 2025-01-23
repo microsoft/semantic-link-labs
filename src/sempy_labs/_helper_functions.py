@@ -166,6 +166,16 @@ def resolve_report_name(report_id: UUID, workspace: Optional[str | UUID] = None)
     )
 
 
+def resolve_item_id(
+    item: str | UUID, type: str, workspace: Optional[str] = None
+) -> UUID:
+
+    if _is_valid_uuid(item):
+        return item
+    else:
+        return fabric.resolve_item_id(item_name=item, type=type, workspace=workspace)
+
+
 def resolve_item_name_and_id(
     item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None
 ) -> Tuple[str, UUID]:
@@ -1458,7 +1468,7 @@ def _base_api(
     status_codes: Optional[int] = 200,
     uses_pagination: bool = False,
     lro_return_json: bool = False,
-    lro_return_status_codes: bool = False,
+    lro_return_status_code: bool = False,
 ):
 
     if client == "fabric":
@@ -1484,7 +1494,7 @@ def _base_api(
         return responses
     elif lro_return_json:
         lro(client, response, status_codes, return_status_code=False)
-    elif lro_return_status_codes:
+    elif lro_return_status_code:
         lro(client, response, status_codes, return_status_code=True)
     else:
         return response
@@ -1513,5 +1523,18 @@ def _update_dataframe_datatypes(dataframe: pd.DataFrame, column_map: dict):
                 dataframe[column] = pd.to_datetime(dataframe[column])
             elif data_type == "datetime_coerce":
                 dataframe[column] = pd.to_datetime(dataframe[column], errors="coerce")
-            elif data_type in ['str', 'string']:
+            elif data_type in ["str", "string"]:
                 dataframe[column] = dataframe[column].astype(str)
+
+
+def _print_success(item_name, item_type, workspace_name, action="created"):
+    if action == "created":
+        print(
+            f"{icons.green_dot} The '{item_name}' {item_type} has been successfully created in the '{workspace_name}' workspace."
+        )
+    elif action == "deleted":
+        print(
+            f"{icons.green_dot} The '{item_name}' {item_type} has been successfully deleted from the '{workspace_name}' workspace."
+        )
+    else:
+        raise NotImplementedError
