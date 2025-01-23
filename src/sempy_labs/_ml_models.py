@@ -87,7 +87,7 @@ def create_ml_model(
     _base_api(
         request=f"/v1/workspaces/{workspace_id}/mlModels",
         client="fabric",
-        api_call="post",
+        method="post",
         status_codes=[201, 202],
         payload=payload,
         lro_return_status_code=True,
@@ -118,7 +118,6 @@ def delete_ml_model(name: str | UUID, workspace: Optional[str | UUID] = None):
 
     item_id = resolve_item_id(item=name, type="MLModel", workspace=workspace)
     fabric.delete_item(item_id=item_id, workspace=workspace)
-
     _print_success(
         item_name=name, item_type="ML Model", workspace_name=workspace, action="deleted"
     )

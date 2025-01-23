@@ -1462,8 +1462,8 @@ def get_tenant_id():
 
 def _base_api(
     request: str,
-    client: Optional[str] = "fabric",
-    api_call: Optional[str] = "get",
+    client: str = "fabric",
+    method: str = "get",
     payload: Optional[str] = None,
     status_codes: Optional[int] = 200,
     uses_pagination: bool = False,
@@ -1479,23 +1479,30 @@ def _base_api(
     if isinstance(status_codes, int):
         status_codes = [status_codes]
 
-    if api_call == "get":
+    if method == "get":
         response = client.get(request)
-    elif api_call == "post":
+    elif method == "post":
         response = client.post(request, json=payload)
+    elif method == "delete":
+        response = client.delete(request)
+    elif method == "patch":
+        response = client.patch(request, json=payload)
     else:
         raise NotImplementedError
 
     if response.status_code not in status_codes:
         raise FabricHTTPException(response)
 
+    if (lro_return_json or lro_return_status_code) and status_codes is None:
+        status_codes = [200, 202]
+
     if uses_pagination:
         responses = pagination(client, response)
         return responses
     elif lro_return_json:
-        lro(client, response, status_codes, return_status_code=False)
+        return lro(client, response, status_codes).json()
     elif lro_return_status_code:
-        lro(client, response, status_codes, return_status_code=True)
+        return lro(client, response, status_codes, return_status_code=True)
     else:
         return response
 

@@ -117,7 +117,6 @@ def delete_ml_experiment(name: str, workspace: Optional[str | UUID] = None):
 
     item_id = resolve_item_id(item=name, type="MLExperiment", workspace=workspace)
     fabric.delete_item(item_id=item_id, workspace=workspace)
-
     _print_success(
         item_name=name,
         item_type="ML Experiment",

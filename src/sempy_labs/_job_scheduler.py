@@ -8,6 +8,7 @@ from sempy_labs._helper_functions import (
     pagination,
     lro,
     _update_dataframe_datatypes,
+    _base_api,
 )
 from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
@@ -45,14 +46,6 @@ def list_item_job_instances(
         item=item, type=type, workspace=workspace
     )
 
-    client = fabric.FabricRestClient()
-    response = client.get(
-        f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/instances"
-    )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
     df = pd.DataFrame(
         columns=[
             "Job Instance Id",
@@ -69,7 +62,10 @@ def list_item_job_instances(
         ]
     )
 
-    responses = pagination(client, response)
+    responses = _base_api(
+        request=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/instances",
+        uses_pagination=True,
+    )
 
     if not responses[0].get("value"):
         return df
@@ -152,13 +148,9 @@ def list_item_schedules(
         ]
     )
 
-    client = fabric.FabricRestClient()
-    response = client.get(
-        f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/{job_type}/schedules"
+    response = _base_api(
+        request=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/{job_type}/schedules"
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
 
     for v in response.json().get("value", []):
         config = v.get("configuration", {})
@@ -222,11 +214,10 @@ def run_on_demand_item_job(
         item=item, type=type, workspace=workspace
     )
 
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/instances?jobType={job_type}"
+    _base_api(
+        request=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/instances?jobType={job_type}",
+        method="post",
+        lro_return_status_code=True,
     )
-
-    lro(client, response, return_status_code=True)
 
     print(f"{icons.green_dot} The '{item_name}' {type.lower()} has been executed.")
