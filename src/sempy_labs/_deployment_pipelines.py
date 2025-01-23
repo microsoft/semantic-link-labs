@@ -144,7 +144,7 @@ def list_deployment_pipeline_stage_items(
     dfPS = list_deployment_pipeline_stages(deployment_pipeline=deployment_pipeline)
     dfPS_filt = dfPS[dfPS["Deployment Pipeline Stage Name"] == stage_name]
 
-    if len(dfPS_filt) == 0:
+    if dfPS_filt.empty:
         raise ValueError(
             f"{icons.red_dot} The '{stage_name}' stage does not exist within the '{deployment_pipeline}' deployment pipeline."
         )
@@ -171,7 +171,5 @@ def list_deployment_pipeline_stage_items(
                 "Last Deployment Time": v.get("lastDeploymentTime"),
             }
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    df["Last Deployment Time"] = pd.to_datetime(df["Last Deployment Time"])
 
     return df
