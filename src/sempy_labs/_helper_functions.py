@@ -15,6 +15,7 @@ from azure.core.credentials import TokenCredential, AccessToken
 import urllib.parse
 import numpy as np
 from IPython.display import display, HTML
+import sempy_labs._authentication as auth
 
 
 def _build_url(url: str, params: dict) -> str:
@@ -1473,6 +1474,8 @@ def _base_api(
 
     if client == "fabric":
         client = fabric.FabricRestClient()
+    elif client == "fabric_sp":
+        client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
     else:
         raise ValueError(f"{icons.red_dot} The '{client}' client is not supported.")
 

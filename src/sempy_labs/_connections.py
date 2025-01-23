@@ -1,12 +1,11 @@
 import sempy.fabric as fabric
 import pandas as pd
-from sempy.fabric.exceptions import FabricHTTPException
 from typing import Optional
 from sempy_labs._helper_functions import (
-    pagination,
     _is_valid_uuid,
     resolve_workspace_name_and_id,
     _update_dataframe_datatypes,
+    _base_api,
 )
 from uuid import UUID
 import sempy_labs._icons as icons
@@ -26,13 +25,7 @@ def delete_connection(connection: str | UUID):
     """
 
     connection_id = _resolve_connection_id(connection)
-
-    client = fabric.FabricRestClient()
-    response = client.delete(f"/v1/connections/{connection_id}")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
+    _base_api(request=f"/v1/connections/{connection_id}", method="delete")
     print(f"{icons.green_dot} The '{connection}' connection has been deleted.")
 
 
@@ -51,14 +44,10 @@ def delete_connection_role_assignment(connection: str | UUID, role_assignment_id
     """
 
     connection_id = _resolve_connection_id(connection)
-
-    client = fabric.FabricRestClient()
-    response = client.delete(
-        f"/v1/connections/{connection_id}/roleAssignments/{role_assignment_id}"
+    _base_api(
+        request=f"/v1/connections/{connection_id}/roleAssignments/{role_assignment_id}",
+        method="delete",
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
 
     print(
         f"{icons.green_dot} The '{role_assignment_id}' role assignment Id has been deleted from the '{connection}' connection."
@@ -100,9 +89,6 @@ def list_connection_role_assignments(connection: str | UUID) -> pd.DataFrame:
 
     connection_id = _resolve_connection_id(connection)
 
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/connections/{connection_id}/roleAssignments")
-
     df = pd.DataFrame(
         columns=[
             "Connection Role Assignment Id",
@@ -112,10 +98,9 @@ def list_connection_role_assignments(connection: str | UUID) -> pd.DataFrame:
         ]
     )
 
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
+    responses = _base_api(
+        request=f"/v1/connections/{connection_id}/roleAssignments", uses_pagination=True
+    )
 
     for r in responses:
         for v in r.get("value", []):
@@ -141,14 +126,6 @@ def list_connections() -> pd.DataFrame:
         A pandas dataframe showing all available connections.
     """
 
-    client = fabric.FabricRestClient()
-    response = client.get("/v1/connections")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
-
     df = pd.DataFrame(
         columns=[
             "Connection Id",
@@ -164,6 +141,9 @@ def list_connections() -> pd.DataFrame:
             "Skip Test Connection",
         ]
     )
+
+    responses = _base_api(request="/v1/connections", uses_pagination=True)
+
     for r in responses:
         for i in r.get("value", []):
             connection_details = i.get("connectionDetails", {})
@@ -241,9 +221,6 @@ def list_item_connections(
         item_name=item_name, type=item_type, workspace=workspace_id
     )
 
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/items/{item_id}/connections")
-
     df = pd.DataFrame(
         columns=[
             "Connection Name",
@@ -255,10 +232,10 @@ def list_item_connections(
         ]
     )
 
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
+    responses = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/items/{item_id}/connections",
+        uses_pagination=True,
+    )
 
     for r in responses:
         for v in r.get("value", []):
@@ -296,12 +273,7 @@ def _list_supported_connection_types(
     )
 
     url = url.rstrip("&")
-    client = fabric.FabricRestClient()
-    response = client.get(url)
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
+    responses = _base_api(request=url, uses_pagination=True)
 
     records = []
     for r in responses:
@@ -361,7 +333,7 @@ def create_cloud_connection(
         If True, skips the test connection.
     """
 
-    request_body = {
+    payload = {
         "connectivityType": "ShareableCloud",
         "displayName": name,
         "connectionDetails": {
@@ -393,11 +365,9 @@ def create_cloud_connection(
         },
     }
 
-    client = fabric.FabricRestClient()
-    response = client.post("/v1/connections", json=request_body)
-
-    if response.status_code != 201:
-        raise FabricHTTPException(response)
+    _base_api(
+        request="/v1/connections", method="post", payload=payload, status_codes=201
+    )
 
     print(f"{icons.green_dot} The '{name}' cloud connection has been created.")
 
@@ -441,7 +411,7 @@ def create_on_prem_connection(
 
     gateway_id = _resolve_gateway_id(gateway)
 
-    request_body = {
+    payload = {
         "connectivityType": "OnPremisesGateway",
         "gatewayId": gateway_id,
         "displayName": name,
@@ -473,11 +443,9 @@ def create_on_prem_connection(
         },
     }
 
-    client = fabric.FabricRestClient()
-    response = client.post("/v1/connections", json=request_body)
-
-    if response.status_code != 201:
-        raise FabricHTTPException(response)
+    _base_api(
+        request="/v1/connections", method="post", payload=payload, status_codes=201
+    )
 
     print(f"{icons.green_dot} The '{name}' on-prem connection has been created.")
 
@@ -522,7 +490,7 @@ def create_vnet_connection(
 
     gateway_id = _resolve_gateway_id(gateway)
 
-    request_body = {
+    payload = {
         "connectivityType": "VirtualNetworkGateway",
         "gatewayId": gateway_id,
         "displayName": name,
@@ -555,11 +523,9 @@ def create_vnet_connection(
         },
     }
 
-    client = fabric.FabricRestClient()
-    response = client.post("/v1/connections", json=request_body)
-
-    if response.status_code != 201:
-        raise FabricHTTPException(response)
+    _base_api(
+        request="/v1/connections", method="post", payload=payload, status_codes=201
+    )
 
     print(
         f"{icons.green_dot} The '{name}' virtual network gateway connection has been created."

@@ -1,19 +1,16 @@
-import sempy.fabric as fabric
 import pandas as pd
 from typing import Optional, Tuple
 from uuid import UUID
 import sempy_labs._icons as icons
-from sempy.fabric.exceptions import FabricHTTPException
 from sempy_labs.admin._basic_functions import (
     _resolve_capacity_name_and_id,
     _resolve_workspace_name_and_id,
 )
 from sempy_labs._helper_functions import (
-    pagination,
     _is_valid_uuid,
     _build_url,
+    _base_api,
 )
-import sempy_labs._authentication as auth
 
 
 def _resolve_item_id(
@@ -123,10 +120,7 @@ def list_items(
         ]
     )
 
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
-
     params = {}
-
     url = "/v1/admin/items"
 
     if capacity is not None:
@@ -143,12 +137,7 @@ def list_items(
 
     url = _build_url(url, params)
 
-    response = client.get(url)
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
+    responses = _base_api(request=url, client="fabric_sp", uses_pagination=True)
 
     for r in responses:
         for v in r.get("itemEntities", []):
@@ -222,8 +211,6 @@ def list_item_access_details(
             f"{icons.red_dot} The parameter 'item' and 'type' are mandatory."
         )
 
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
-
     workspace_name, workspace_id = _resolve_workspace_name_and_id(workspace)
     item_name, item_id = _resolve_item_name_and_id(
         item=item, type=type, workspace=workspace_name
@@ -243,10 +230,7 @@ def list_item_access_details(
         ]
     )
 
-    response = client.get(f"/v1/admin/workspaces/{workspace_id}/items/{item_id}/users")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    response = _base_api(request=f"/v1/admin/workspaces/{workspace_id}/items/{item_id}/users", client="fabric_sp")
 
     for v in response.json().get("accessDetails", []):
         new_data = {

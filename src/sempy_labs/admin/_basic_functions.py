@@ -2,18 +2,16 @@ import sempy.fabric as fabric
 from typing import Optional, List, Union, Tuple
 from uuid import UUID
 import sempy_labs._icons as icons
-from sempy.fabric.exceptions import FabricHTTPException
 from sempy_labs._helper_functions import (
-    pagination,
     _is_valid_uuid,
     _build_url,
     _update_dataframe_datatypes,
+    _base_api,
 )
 from sempy._utils._log import log
 import numpy as np
 import pandas as pd
 from dateutil.parser import parse as dtparser
-import sempy_labs._authentication as auth
 
 
 @log
@@ -65,8 +63,6 @@ def list_workspaces(
         )
         del kwargs["skip"]
 
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
-
     df = pd.DataFrame(
         columns=[
             "Id",
@@ -94,16 +90,10 @@ def list_workspaces(
 
     url = _build_url(url, params)
 
-    response = client.get(path_or_url=url)
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responsePaginated = pagination(client, response)
-
+    responses = _base_api(request=url, client="fabric_sp", uses_pagination=True)
     workspaces = []
 
-    for r in responsePaginated:
+    for r in responses:
         workspaces = workspaces + r.get("workspaces", [])
 
     if len(workspaces) > 0:
@@ -148,18 +138,14 @@ def list_capacities(
     pandas.DataFrame
         A pandas dataframe showing the capacities and their properties.
     """
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
 
     df = pd.DataFrame(
         columns=["Capacity Id", "Capacity Name", "Sku", "Region", "State", "Admins"]
     )
 
-    response = client.get("/v1.0/myorg/admin/capacities")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
+    responses = _base_api(
+        request="/v1.0/myorg/admin/capacities", client="fabric_sp", uses_pagination=True
+    )
 
     for r in responses:
         for i in r.get("value", []):
@@ -251,7 +237,7 @@ def assign_workspaces_to_capacity(
     batch_size = 999
     for i in range(0, len(workspaces), batch_size):
         batch = workspaces[i : i + batch_size].tolist()
-        request_body = {
+        payload = {
             "capacityMigrationAssignments": [
                 {
                     "targetCapacityObjectId": target_capacity_id.upper(),
@@ -260,15 +246,12 @@ def assign_workspaces_to_capacity(
             ]
         }
 
-        client = fabric.FabricRestClient()
-
-        response = client.post(
-            "/v1.0/myorg/admin/capacities/AssignWorkspaces",
-            json=request_body,
+        _base_api(
+            request="/v1.0/myorg/admin/capacities/AssignWorkspaces",
+            method="post",
+            payload=payload,
         )
 
-        if response.status_code != 200:
-            raise FabricHTTPException(response)
     print(
         f"{icons.green_dot} The workspaces have been assigned to the '{target_capacity}' capacity. A total of {len(workspaces)} were moved."
     )
@@ -301,15 +284,11 @@ def unassign_workspaces_from_capacity(
         )
 
     payload = {"workspacesToUnassign": workspacesIds}
-
-    client = fabric.PowerBIRestClient()
-    response = client.post(
-        "/v1.0/myorg/admin/capacities/UnassignWorkspaces",
-        json=payload,
+    _base_api(
+        request="/v1.0/myorg/admin/capacities/UnassignWorkspaces",
+        method="post",
+        payload=payload,
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
 
     print(
         f"{icons.green_dot} A total of {len(workspacesIds)} workspaces have been unassigned."
@@ -330,12 +309,6 @@ def list_tenant_settings() -> pd.DataFrame:
     pandas.DataFrame
         A pandas dataframe showing the tenant settings.
     """
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
-
-    response = client.get("/v1/admin/tenantsettings")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
 
     df = pd.DataFrame(
         columns=[
@@ -347,6 +320,8 @@ def list_tenant_settings() -> pd.DataFrame:
             "Enabled Security Groups",
         ]
     )
+
+    response = _base_api(request="/v1/admin/tenantsettings", client="fabric_sp")
 
     for i in response.json().get("tenantSettings", []):
         new_data = {
@@ -404,13 +379,11 @@ def list_capacities_delegated_tenant_settings(
         ]
     )
 
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
-    response = client.get("/v1/admin/capacities/delegatedTenantSettingOverrides")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
+    responses = _base_api(
+        request="/v1/admin/capacities/delegatedTenantSettingOverrides",
+        client="fabric_sp",
+        uses_pagination=True,
+    )
 
     if return_dataframe:
         for r in responses:
@@ -486,10 +459,7 @@ def list_modified_workspaces(
     pandas.DataFrame
         A pandas dataframe showing a list of workspace IDs in the organization.
     """
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
-
     params = {}
-
     url = "/v1.0/myorg/admin/workspaces/modified"
 
     if modified_since is not None:
@@ -505,11 +475,7 @@ def list_modified_workspaces(
         params["excludePersonalWorkspaces"] = exclude_personal_workspaces
 
     url = _build_url(url, params)
-
-    response = client.get(url)
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    response = _base_api(request=url, client="fabric_sp")
 
     df = pd.DataFrame(response.json()).rename(columns={"id": "Workspace Id"})
 
@@ -567,8 +533,6 @@ def list_datasets(
 
     df = pd.DataFrame(columns=columns)
 
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
-
     params = {}
     url = "/v1.0/myorg/admin/datasets"
 
@@ -582,11 +546,7 @@ def list_datasets(
         params["$skip"] = skip
 
     url = _build_url(url, params)
-
-    response = client.get(url)
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    response = _base_api(request=url, client="fabric_sp")
 
     rows = []
     for v in response.json().get("value", []):
@@ -668,14 +628,12 @@ def list_access_entities(
             "Additional Permissions",
         ]
     )
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
 
-    response = client.get(f"/v1/admin/users/{user_email_address}/access")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
+    responses = _base_api(
+        request=f"/v1/admin/users/{user_email_address}/access",
+        client="fabric_sp",
+        uses_pagination=True,
+    )
 
     for r in responses:
         for v in r.get("accessEntities", []):
@@ -728,11 +686,9 @@ def list_workspace_access_details(
         ]
     )
 
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
-
-    response = client.get(f"/v1/admin/workspaces/{workspace_id}/users")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    response = _base_api(
+        request=f"/v1/admin/workspaces/{workspace_id}/users", client="fabric_sp"
+    )
 
     for v in response.json().get("accessDetails", []):
         new_data = {
@@ -832,7 +788,6 @@ def list_activity_events(
     )
 
     response_json = {"activityEventEntities": []}
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
     url = f"/v1.0/myorg/admin/activityevents?startDateTime='{start_time}'&endDateTime='{end_time}'"
 
     conditions = []
@@ -844,12 +799,7 @@ def list_activity_events(
     if conditions:
         url += f"&$filter={f' and '.join(conditions)}"
 
-    response = client.get(url)
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
+    responses = _base_api(request=url, client="fabric_sp", uses_pagination=True)
 
     for r in responses:
         if return_dataframe:
@@ -936,18 +886,13 @@ def _list_capacities_meta() -> pd.DataFrame:
         A pandas dataframe showing the capacities and their properties
     """
 
-    client = fabric.FabricRestClient()
-
     df = pd.DataFrame(
         columns=["Capacity Id", "Capacity Name", "Sku", "Region", "State", "Admins"]
     )
 
-    response = client.get("/v1.0/myorg/admin/capacities")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
+    responses = _base_api(
+        request="/v1.0/myorg/admin/capacities", client="fabric_sp", uses_pagination=True
+    )
 
     for r in responses:
         for i in r.get("value", []):
@@ -1040,14 +985,9 @@ def list_reports(
         url += f"$filter={filter}&"
 
     url.rstrip("$").rstrip("?")
-
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
-    response = client.get(url)
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
+    response = _base_api(request=url, client="fabric_sp")
     rows = []
+
     for v in response.json().get("value", []):
         rows.append(
             {
@@ -1119,12 +1059,10 @@ def get_capacity_assignment_status(
         ]
     )
 
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
-    response = client.get(f"/v1.0/myorg/groups/{workspace_id}/CapacityAssignmentStatus")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
+    response = _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}/CapacityAssignmentStatus",
+        client="fabric_sp",
+    )
     v = response.json()
     capacity_id = v.get("capacityId")
 
