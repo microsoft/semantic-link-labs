@@ -3,6 +3,7 @@ import pandas as pd
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
+    _update_dataframe_datatypes,
 )
 from sempy._utils._log import log
 from typing import Optional, Tuple
@@ -125,17 +126,23 @@ def qso_sync_status(
                 [dfRep, pd.DataFrame(new_data, index=[0])], ignore_index=True
             )
 
-        df["Sync Start Time"] = pd.to_datetime(df["Sync Start Time"])
-        df["Sync End Time"] = pd.to_datetime(df["Sync End Time"])
-        df["Commit Timestamp"] = pd.to_datetime(df["Commit Timestamp"])
-        df["Target Sync Timestamp"] = pd.to_datetime(df["Target Sync Timestamp"])
-        df["Min Active Read Timestamp"] = pd.to_datetime(
-            df["Min Active Read Timestamp"]
-        )
-        dfRep["Replica Timestamp"] = pd.to_datetime(dfRep["Replica Timestamp"])
-        df["Commit Version"] = df["Commit Version"].astype("int")
-        df["Target Sync Version"] = df["Target Sync Version"].astype("int")
-        df["Min Active Read Version"] = df["Min Active Read Version"].astype("int")
+        column_map = {
+            "Sync Start Time": "datetime",
+            "Sync End Time": "datetime",
+            "Commit Timestamp": "datetime",
+            "Target Sync Timestamp": "datetime",
+            "Min Active Read Timestamp": "datetime",
+            "Commit Version": "int",
+            "Target Sync Version": "int",
+            "Min Active Read Version": "int",
+        }
+
+        _update_dataframe_datatypes(dataframe=df, column_map=column_map)
+
+        column_map = {
+            "Replica Timestamp": "datetime",
+        }
+        _update_dataframe_datatypes(dataframe=dfRep, column_map=column_map)
 
         return df, dfRep
     else:
@@ -382,8 +389,11 @@ def list_qso_settings(
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    df["QSO Auto Sync Enabled"] = df["QSO Auto Sync Enabled"].astype("bool")
-    df["QSO Max Read Only Replicas"] = df["QSO Max Read Only Replicas"].astype("int")
+    column_map = {
+        "QSO Auto Sync Enabled": "bool",
+        "QSO Max Read Only Replicas": "int",
+    }
+    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     if dataset is not None:
         df = df[df["Dataset Id"] == dataset_id]

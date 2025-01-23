@@ -9,6 +9,7 @@ from sempy_labs._helper_functions import (
     resolve_capacity_id,
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
+    _update_dataframe_datatypes,
 )
 from uuid import UUID
 import sempy_labs._icons as icons
@@ -67,10 +68,12 @@ def list_gateways() -> pd.DataFrame:
 
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    int_cols = ["Number Of Member Gateways"]
-    bool_cols = ["Allow Cloud Connection Refresh", "Allow Custom Connectors"]
-    df[bool_cols] = df[bool_cols].astype(bool)
-    df[int_cols] = df[int_cols].astype(int)
+    column_map = {
+        "Number Of Member Gateways": "int",
+        "Allow Cloud Connection Refresh": "bool",
+        "Allow Custom Connectors": "bool",
+    }
+    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     return df
 
@@ -275,8 +278,11 @@ def list_gateway_members(gateway: str | UUID) -> pd.DataFrame:
 
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    bool_cols = ["Enabled"]
-    df[bool_cols] = df[bool_cols].astype(bool)
+    column_map = {
+        "Enabled": "bool",
+    }
+
+    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     return df
 

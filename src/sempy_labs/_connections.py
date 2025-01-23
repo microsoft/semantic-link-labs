@@ -6,6 +6,7 @@ from sempy_labs._helper_functions import (
     pagination,
     _is_valid_uuid,
     resolve_workspace_name_and_id,
+    _update_dataframe_datatypes,
 )
 from uuid import UUID
 import sempy_labs._icons as icons
@@ -199,8 +200,12 @@ def list_connections() -> pd.DataFrame:
             }
 
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-    bool_cols = ["Skip Test Connection"]
-    df[bool_cols] = df[bool_cols].astype(bool)
+
+    column_map = {
+        "Skip Test Connection": "bool",
+    }
+
+    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     return df
 

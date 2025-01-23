@@ -3,6 +3,8 @@ import pandas as pd
 from sempy_labs._helper_functions import (
     pagination,
     _is_valid_uuid,
+    _base_api,
+    _update_dataframe_datatypes,
 )
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
@@ -24,14 +26,12 @@ def list_deployment_pipelines() -> pd.DataFrame:
     df = pd.DataFrame(
         columns=["Deployment Pipeline Id", "Deployment Pipeline Name", "Description"]
     )
-
-    client = fabric.FabricRestClient()
-    response = client.get("/v1/deploymentPipelines")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
+    responses = _base_api(
+        request="/v1/deploymentPipelines",
+        client="fabric",
+        status_codes=200,
+        uses_pagination=True,
+    )
 
     for r in responses:
         for v in r.get("value", []):
@@ -79,13 +79,13 @@ def list_deployment_pipeline_stages(deployment_pipeline: str | UUID) -> pd.DataF
     deployment_pipeline_id = resolve_deployment_pipeline_id(
         deployment_pipeline=deployment_pipeline
     )
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/deploymentPipelines/{deployment_pipeline_id}/stages")
 
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
+    responses = _base_api(
+        request=f"/v1/deploymentPipelines/{deployment_pipeline_id}/stages",
+        client="fabric",
+        status_codes=200,
+        uses_pagination=True,
+    )
 
     for r in responses:
         for v in r.get("value", []):
@@ -100,8 +100,11 @@ def list_deployment_pipeline_stages(deployment_pipeline: str | UUID) -> pd.DataF
             }
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    df["Order"] = df["Order"].astype(int)
-    df["Public"] = df["Public"].astype(bool)
+    column_map = {
+        "Order": "int",
+        "Public": "bool",
+    }
+    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     return df
 
@@ -165,15 +168,12 @@ def list_deployment_pipeline_stage_items(
 
     stage_id = resolve_deployment_pipeline_stage_id(deployment_pipeline_id, stage)
 
-    client = fabric.FabricRestClient()
-    response = client.get(
-        f"/v1/deploymentPipelines/{deployment_pipeline_id}/stages/{stage_id}/items"
+    responses = _base_api(
+        request=f"/v1/deploymentPipelines/{deployment_pipeline_id}/stages/{stage_id}/items",
+        client="fabric",
+        status_codes=200,
+        uses_pagination=True,
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
 
     for r in responses:
         for v in r.get("value", []):

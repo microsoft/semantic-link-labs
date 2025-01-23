@@ -1448,3 +1448,70 @@ def _get_fabric_context_setting(name: str):
 def get_tenant_id():
 
     _get_fabric_context_setting(name="trident.tenant.id")
+
+
+def _base_api(
+    request: str,
+    client: Optional[str] = "fabric",
+    api_call: Optional[str] = "get",
+    payload: Optional[str] = None,
+    status_codes: Optional[int] = 200,
+    uses_pagination: bool = False,
+    lro_return_json: bool = False,
+    lro_return_status_codes: bool = False,
+):
+
+    if client == "fabric":
+        client = fabric.FabricRestClient()
+    else:
+        raise ValueError(f"{icons.red_dot} The '{client}' client is not supported.")
+
+    if isinstance(status_codes, int):
+        status_codes = [status_codes]
+
+    if api_call == "get":
+        response = client.get(request)
+    elif api_call == "post":
+        response = client.post(request, json=payload)
+    else:
+        raise NotImplementedError
+
+    if response.status_code not in status_codes:
+        raise FabricHTTPException(response)
+
+    if uses_pagination:
+        responses = pagination(client, response)
+        return responses
+    elif lro_return_json:
+        lro(client, response, status_codes, return_status_code=False)
+    elif lro_return_status_codes:
+        lro(client, response, status_codes, return_status_code=True)
+    else:
+        return response
+
+
+def _update_dataframe_datatypes(dataframe: pd.DataFrame, column_map: dict):
+    """
+    Updates the datatypes of columns in a pandas dataframe based on a column map.
+
+    Example:
+    {
+        "Order": "int",
+        "Public": "bool",
+    }
+    """
+
+    for column, data_type in column_map.items():
+        if column in dataframe.columns:
+            if data_type == "int":
+                dataframe[column] = dataframe[column].astype(int)
+            elif data_type == "bool":
+                dataframe[column] = dataframe[column].astype(bool)
+            elif data_type == "float":
+                dataframe[column] = dataframe[column].astype(float)
+            elif data_type == "datetime":
+                dataframe[column] = pd.to_datetime(dataframe[column])
+            elif data_type == "datetime_coerce":
+                dataframe[column] = pd.to_datetime(dataframe[column], errors="coerce")
+            elif data_type in ['str', 'string']:
+                dataframe[column] = dataframe[column].astype(str)

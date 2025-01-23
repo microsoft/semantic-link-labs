@@ -6,6 +6,7 @@ from sempy_labs._helper_functions import (
     pagination,
     lro,
     _decode_b64,
+    _update_dataframe_datatypes,
 )
 from sempy.fabric.exceptions import FabricHTTPException
 import sempy_labs._icons as icons
@@ -253,9 +254,12 @@ def get_tables_mirroring_status(
 
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    int_cols = ["Processed Bytes", "Processed Rows"]
-    df[int_cols] = df[int_cols].astype(int)
-    df["Last Sync Date"] = pd.to_datetime(df["Last Sync Date"])
+    column_map = {
+        "Processed Bytes": "int",
+        "Processed Rows": "int",
+        "Last Sync Date": "datetime",
+    }
+    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     return df
 

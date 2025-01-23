@@ -3,6 +3,7 @@ import pandas as pd
 from typing import Optional
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
+from sempy_labs._helper_functions import _update_dataframe_datatypes
 
 
 def list_workloads(capacity_name: str) -> pd.DataFrame:
@@ -45,8 +46,11 @@ def list_workloads(capacity_name: str) -> pd.DataFrame:
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    int_cols = ["Max Memory Percentage Set By User"]
-    df[int_cols] = df[int_cols].astype(int)
+    column_map = {
+        "Max Memory Percentage Set By User": "int",
+    }
+
+    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     return df
 

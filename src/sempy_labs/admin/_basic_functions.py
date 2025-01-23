@@ -7,6 +7,7 @@ from sempy_labs._helper_functions import (
     pagination,
     _is_valid_uuid,
     _build_url,
+    _update_dataframe_datatypes,
 )
 from sempy._utils._log import log
 import numpy as np
@@ -358,8 +359,12 @@ def list_tenant_settings() -> pd.DataFrame:
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    bool_cols = ["Enabled", "Can Specify Security Groups"]
-    df[bool_cols] = df[bool_cols].astype(bool)
+    column_map = {
+        "Enabled": "bool",
+        "Can Specify Security Groups": "bool",
+    }
+
+    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     return df
 
@@ -433,12 +438,12 @@ def list_capacities_delegated_tenant_settings(
                         [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
                     )
 
-            bool_cols = [
-                "Enabled Security Groups",
-                "Can Specify Security Groups",
-                "Delegate to Workspace",
-            ]
-            df[bool_cols] = df[bool_cols].astype(bool)
+            column_map = {
+                "Enabled Security Groups": "bool",
+                "Can Specify Security Groups": "bool",
+                "Delegate to Workspace": "bool",
+            }
+            _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
             return df
     else:
@@ -618,18 +623,18 @@ def list_datasets(
     if rows:
         df = pd.DataFrame(rows, columns=columns)
 
-    bool_cols = [
-        "Add Rows API Enabled",
-        "Is Refreshable",
-        "Is Effective Identity Required",
-        "Is Effective Identity Roles Required",
-        "Is In Place Sharing Enabled",
-        "Auto Sync Read Only Replicas",
-    ]
-    df[bool_cols] = df[bool_cols].astype(bool)
+    column_map = {
+        "Add Rows API Enabled": "bool",
+        "Is Refreshable": "bool",
+        "Is Effective Identity Required": "bool",
+        "Is Effective Identity Roles Required": "bool",
+        "Is In Place Sharing Enabled": "bool",
+        "Auto Sync Read Only Replicas": "bool",
+        "Created Date": "datetime",
+        "Max Read Only Replicas": "int",
+    }
 
-    df["Created Date"] = pd.to_datetime(df["Created Date"])
-    df["Max Read Only Replicas"] = df["Max Read Only Replicas"].astype(int)
+    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     return df
 
@@ -1067,11 +1072,13 @@ def list_reports(
     if rows:
         df = pd.DataFrame(rows, columns=columns)
 
-    int_cols = ["Report Flags"]
-    df[int_cols] = df[int_cols].astype(int)
+    column_map = {
+        "Report Flags": "int",
+        "Created Date": "datetime_coerce",
+        "Modified Date": "datetime_coerce",
+    }
 
-    df["Created Date"] = pd.to_datetime(df["Created Date"], errors="coerce")
-    df["Modified Date"] = pd.to_datetime(df["Modified Date"], errors="coerce")
+    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     return df
 

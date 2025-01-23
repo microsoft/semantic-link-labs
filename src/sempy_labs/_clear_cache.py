@@ -4,6 +4,7 @@ from sempy_labs._helper_functions import (
     _get_adls_client,
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
+    _update_dataframe_datatypes,
 )
 from typing import Optional
 import sempy_labs._icons as icons
@@ -334,6 +335,10 @@ def list_storage_account_files(
 
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    df["File Size"] = df["File Size"].astype(int)
+    column_map = {
+        "File Size": "int",
+    }
+
+    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     return df

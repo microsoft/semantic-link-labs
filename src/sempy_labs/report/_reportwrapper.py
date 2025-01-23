@@ -9,6 +9,7 @@ from sempy_labs._helper_functions import (
     lro,
     _decode_b64,
     resolve_workspace_name_and_id,
+    _update_dataframe_datatypes,
 )
 from typing import Optional, List
 import pandas as pd
@@ -266,8 +267,10 @@ class ReportWrapper:
             self.list_visuals()["Type"]
         )
 
-        bool_cols = ["Used in Report"]
-        df[bool_cols] = df[bool_cols].astype(bool)
+        column_map = {
+            "Used in Report": "bool",
+        }
+        _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
         return df
 
@@ -333,8 +336,12 @@ class ReportWrapper:
                             [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
                         )
 
-        bool_cols = ["Hidden", "Locked", "Used"]
-        df[bool_cols] = df[bool_cols].astype(bool)
+        column_map = {
+            "Hidden": "bool",
+            "Locked": "bool",
+            "Used": "bool",
+        }
+        _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
         if extended:
             df = self._add_extended(dataframe=df)
@@ -420,8 +427,12 @@ class ReportWrapper:
             lambda page_name: f"{helper.get_web_url(report=self._report, workspace=self._workspace_id)}/{page_name}"
         )
 
-        bool_cols = ["Hidden", "Locked", "Used"]
-        df[bool_cols] = df[bool_cols].astype(bool)
+        column_map = {
+            "Hidden": "bool",
+            "Locked": "bool",
+            "Used": "bool",
+        }
+        _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
         if extended:
             df = self._add_extended(dataframe=df)
@@ -508,8 +519,12 @@ class ReportWrapper:
                                 ignore_index=True,
                             )
 
-        bool_cols = ["Hidden", "Locked", "Used"]
-        df[bool_cols] = df[bool_cols].astype(bool)
+        column_map = {
+            "Hidden": "bool",
+            "Locked": "bool",
+            "Used": "bool",
+        }
+        _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
         if extended:
             df = self._add_extended(dataframe=df)
@@ -681,18 +696,18 @@ class ReportWrapper:
 
         df.loc[df["Page Name"] == activePage, "Active"] = True
 
-        int_cols = [
-            "Width",
-            "Height",
-            "Page Filter Count",
-            "Visual Count",
-            "Visible Visual Count",
-            "Data Visual Count",
-        ]
-        df[int_cols] = df[int_cols].astype(int)
-
-        bool_cols = ["Hidden", "Active", "Drillthrough Target Page"]
-        df[bool_cols] = df[bool_cols].astype(bool)
+        column_map = {
+            "Width": "int",
+            "Height": "int",
+            "Page Filter Count": "int",
+            "Visual Count": "int",
+            "Visible Visual Count": "int",
+            "Data Visual Count": "int",
+            "Hidden": "bool",
+            "Active": "bool",
+            "Drillthrough Target Page": "bool",
+        }
+        _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
         df["Page URL"] = df["Page Name"].apply(
             lambda page_name: f"{helper.get_web_url(report=self._report, workspace=self._workspace_id)}/{page_name}"
@@ -910,16 +925,6 @@ class ReportWrapper:
                     [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
                 )
 
-        bool_cols = [
-            "Hidden",
-            "Show Items With No Data",
-            "Custom Visual",
-            "Data Visual",
-            "Has Sparkline",
-            "Row SubTotals",
-            "Column SubTotals",
-        ]
-
         grouped_df = (
             self.list_visual_objects()
             .groupby(["Page Name", "Visual Name"])
@@ -936,11 +941,25 @@ class ReportWrapper:
         )
         df["Visual Object Count"] = df["Visual Object Count"].fillna(0).astype(int)
 
-        float_cols = ["X", "Y", "Width", "Height"]
-        int_cols = ["Z", "Visual Filter Count", "Data Limit", "Visual Object Count"]
-        df[bool_cols] = df[bool_cols].astype(bool)
-        df[int_cols] = df[int_cols].astype(int)
-        df[float_cols] = df[float_cols].astype(float)
+        column_map = {
+            "X": "float",
+            "Y": "float",
+            "Width": "float",
+            "Height": "float",
+            "Z": "int",
+            "Visual Filter Count": "int",
+            "Data Limit": "int",
+            "Visual Object Count": "int",
+            "Hidden": "bool",
+            "Show Items With No Data": "bool",
+            "Custom Visual": "bool",
+            "Data Visual": "bool",
+            "Has Sparkline": "bool",
+            "Row SubTotals": "bool",
+            "Column SubTotals": "bool",
+        }
+
+        _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
         return df
 
@@ -1089,8 +1108,12 @@ class ReportWrapper:
         if extended:
             df = self._add_extended(dataframe=df)
 
-        bool_cols = ["Implicit Measure", "Sparkline", "Visual Calc"]
-        df[bool_cols] = df[bool_cols].astype(bool)
+        column_map = {
+            "Implicit Measure": "bool",
+            "Sparkline": "bool",
+            "Visual Calc": "bool",
+        }
+        _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
         return df
 
@@ -1320,8 +1343,10 @@ class ReportWrapper:
                         [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
                     )
 
-        bool_cols = ["Visual Hidden"]
-        df[bool_cols] = df[bool_cols].astype(bool)
+        column_map = {
+            "Visual Hidden": "bool",
+        }
+        _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
         return df
 

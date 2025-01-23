@@ -7,6 +7,7 @@ from sempy_labs._helper_functions import (
     resolve_item_name_and_id,
     pagination,
     lro,
+    _update_dataframe_datatypes,
 )
 from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
@@ -179,9 +180,13 @@ def list_item_schedules(
 
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    df["Enabled"] = df["Enabled"].astype(bool)
-    df["Created Date Time"] = pd.to_datetime(df["Created Date Time"])
-    df["Start Date Time"] = pd.to_datetime(df["Start Date Time"])
+    column_map = {
+        "Created Date Time": "datetime",
+        "Start Date Time": "datetime",
+        "Enabled": "bool",
+    }
+
+    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     return df
 

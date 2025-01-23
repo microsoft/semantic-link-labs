@@ -10,6 +10,7 @@ from sempy_labs._helper_functions import (
     resolve_dataset_name_and_id,
     resolve_item_name_and_id,
     lro,
+    _update_dataframe_datatypes,
 )
 import sempy_labs._icons as icons
 from sempy._utils._log import log
@@ -412,7 +413,11 @@ def _get_report(
 
     df = pd.DataFrame([new_data])
 
-    bool_cols = ["Is From Pbix", "Is Owned By Me"]
-    df[bool_cols] = df[bool_cols].astype(bool)
+    column_map = {
+        "Is From Pbix": "bool",
+        "Is Owned By Me": "bool",
+    }
+
+    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     return df

@@ -3,6 +3,7 @@ import pandas as pd
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _is_valid_uuid,
+    _update_dataframe_datatypes,
 )
 from typing import Optional, Tuple
 import sempy_labs._icons as icons
@@ -51,7 +52,12 @@ def list_dataflows(workspace: Optional[str | UUID] = None):
 
     if data:
         df = pd.DataFrame(data)
-        df["Generation"] = df["Generation"].astype(int)
+
+        column_map = {
+            "Generation": "int",
+        }
+
+        _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     return df
 
@@ -132,7 +138,11 @@ def list_dataflow_storage_accounts() -> pd.DataFrame:
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    df["Enabled"] = df["Enabled"].astype(bool)
+    column_map = {
+        "Enabled": "bool",
+    }
+
+    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     return df
 
