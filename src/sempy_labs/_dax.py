@@ -354,16 +354,31 @@ def dax_perf_test(
 
             # Step 1: Filter out unnecessary operations
             query_names = list(dax_queries.keys())
-            #df = df[
-            #    ~df["Application Name"].isin(["PowerBI", "PowerBIEIM"])
-            #    & (~df["Text Data"].str.startswith("EVALUATE {1}"))
-            #]
-            query_begin = df["Event Class"] == "QueryBegin"
-            # Step 2: Name queries per dictionary
-            suffix = "_removeXXX"
-            query_names_full = [
-                item for query in query_names for item in (f"{query}{suffix}", query)
+            df = df[
+                ~df["Application Name"].isin(["PowerBI", "PowerBIEIM"])
+                & (~df["Text Data"].str.startswith("EVALUATE {1}"))
             ]
+            query_begin = df["Event Class"] == "QueryBegin"
+            temp_column_name = 'QueryName_INT'
+            df = df.copy()
+            df[temp_column_name] = query_begin.cumsum()
+            df[temp_column_name] = (
+                df[temp_column_name]
+                .where(query_begin, None)  # Assign None to non-query begin rows
+                .ffill()  # Forward fill None values
+                .astype("Int64")  # Use pandas nullable integer type for numeric indices
+            )
+
+            df.loc[df[temp_column_name].notna(), "Query Name"] = (
+                df[temp_column_name].dropna().astype(int).map(lambda x: query_names[x - 1])
+            )
+            df = df[df[temp_column_name] != None]
+            df = df.drop(columns=[temp_column_name])
+            # Step 2: Name queries per dictionary
+            #suffix = "_removeXXX"
+            #query_names_full = [
+            #    item for query in query_names for item in (f"{query}{suffix}", query)
+            #]
             # Step 3: Assign query names by group and convert to integer
             #df["Query Name"] = (query_begin).cumsum()
             #df["Query Name"] = df["Query Name"].where(query_begin, None).ffill()
