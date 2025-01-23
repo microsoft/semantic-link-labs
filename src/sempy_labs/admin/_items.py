@@ -230,7 +230,10 @@ def list_item_access_details(
         ]
     )
 
-    response = _base_api(request=f"/v1/admin/workspaces/{workspace_id}/items/{item_id}/users", client="fabric_sp")
+    response = _base_api(
+        request=f"/v1/admin/workspaces/{workspace_id}/items/{item_id}/users",
+        client="fabric_sp",
+    )
 
     for v in response.json().get("accessDetails", []):
         new_data = {
