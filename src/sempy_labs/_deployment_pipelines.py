@@ -2,9 +2,11 @@ import sempy.fabric as fabric
 import pandas as pd
 from sempy_labs._helper_functions import (
     pagination,
+    _is_valid_uuid,
 )
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
+from uuid import UUID
 
 
 def list_deployment_pipelines() -> pd.DataFrame:
@@ -43,7 +45,7 @@ def list_deployment_pipelines() -> pd.DataFrame:
     return df
 
 
-def list_deployment_pipeline_stages(deployment_pipeline: str) -> pd.DataFrame:
+def list_deployment_pipeline_stages(deployment_pipeline: str | UUID) -> pd.DataFrame:
     """
     Shows the specified deployment pipeline stages.
 
@@ -51,8 +53,8 @@ def list_deployment_pipeline_stages(deployment_pipeline: str) -> pd.DataFrame:
 
     Parameters
     ----------
-    deployment_pipeline : str
-        The deployment pipeline name.
+    deployment_pipeline : str | uuid.UUID
+        The deployment pipeline name or ID.
 
     Returns
     -------
@@ -105,7 +107,8 @@ def list_deployment_pipeline_stages(deployment_pipeline: str) -> pd.DataFrame:
 
 
 def list_deployment_pipeline_stage_items(
-    deployment_pipeline: str, stage_name: str
+    deployment_pipeline: str | UUID,
+    stage: str | UUID,
 ) -> pd.DataFrame:
     """
     Shows the supported items from the workspace assigned to the specified stage of the specified deployment pipeline.
@@ -114,10 +117,10 @@ def list_deployment_pipeline_stage_items(
 
     Parameters
     ----------
-    deployment_pipeline : str
-        The deployment pipeline name.
-    stage_name : str
-        The deployment pipeline stage name.
+    deployment_pipeline : str | uuid.UUID
+        The deployment pipeline name or ID.
+    stage : str | uuid.UUID
+        The deployment pipeline stage name or ID.
 
     Returns
     -------
@@ -141,14 +144,26 @@ def list_deployment_pipeline_stage_items(
     deployment_pipeline_id = resolve_deployment_pipeline_id(
         deployment_pipeline=deployment_pipeline
     )
-    dfPS = list_deployment_pipeline_stages(deployment_pipeline=deployment_pipeline)
-    dfPS_filt = dfPS[dfPS["Deployment Pipeline Stage Name"] == stage_name]
 
-    if dfPS_filt.empty:
-        raise ValueError(
-            f"{icons.red_dot} The '{stage_name}' stage does not exist within the '{deployment_pipeline}' deployment pipeline."
+    def resolve_deployment_pipeline_stage_id(
+        deployment_pipeline_id: UUID, stage: str | UUID
+    ):
+
+        dfPS = list_deployment_pipeline_stages(
+            deployment_pipeline=deployment_pipeline_id
         )
-    stage_id = dfPS_filt["Deployment Pipeline Stage Id"].iloc[0]
+
+        if _is_valid_uuid(stage):
+            dfPS_filt = dfPS[dfPS["Deployment Pipeline Stage Id"] == stage]
+        else:
+            dfPS_filt = dfPS[dfPS["Deployment Pipeline Stage Name"] == stage]
+        if dfPS.empty:
+            raise ValueError(
+                f"{icons.red_dot} The '{stage}' stage does not exist within the '{deployment_pipeline}' deployment pipeline."
+            )
+        return dfPS_filt["Deployment Pipeline Stage Id"].iloc[0]
+
+    stage_id = resolve_deployment_pipeline_stage_id(deployment_pipeline_id, stage)
 
     client = fabric.FabricRestClient()
     response = client.get(
