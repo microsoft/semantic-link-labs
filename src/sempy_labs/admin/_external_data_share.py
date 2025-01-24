@@ -1,9 +1,10 @@
-import sempy.fabric as fabric
 from uuid import UUID
 import sempy_labs._icons as icons
-from sempy.fabric.exceptions import FabricHTTPException
 import pandas as pd
 from sempy_labs.admin._basic_functions import _resolve_workspace_name_and_id
+from sempy_labs._helper_functions import (
+    _base_api,
+)
 
 
 def list_external_data_shares() -> pd.DataFrame:
@@ -34,11 +35,7 @@ def list_external_data_shares() -> pd.DataFrame:
         ]
     )
 
-    client = fabric.FabricRestClient()
-    response = client.get("/v1/admin/items/externalDataShares")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    response = _base_api(request="/v1/admin/items/externalDataShares")
 
     for i in response.json().get("value", []):
         cp = i.get("creatorPrincipal", {})
@@ -84,13 +81,10 @@ def revoke_external_data_share(
     """
     (workspace, workspace_id) = _resolve_workspace_name_and_id(workspace)
 
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/admin/workspaces/{workspace_id}/items/{item_id}/externalDataShares/{external_data_share_id}/revoke"
+    _base_api(
+        request=f"/v1/admin/workspaces/{workspace_id}/items/{item_id}/externalDataShares/{external_data_share_id}/revoke",
+        method="post",
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
 
     print(
         f"{icons.green_dot} The '{external_data_share_id}' external data share for the '{item_id}' item within the '{workspace}' workspace has been revoked."

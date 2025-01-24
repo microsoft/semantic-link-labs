@@ -7,7 +7,10 @@ import requests
 import pandas as pd
 from sempy_labs._authentication import _get_headers, ServicePrincipalTokenProvider
 from uuid import UUID
-from sempy_labs._helper_functions import _is_valid_uuid
+from sempy_labs._helper_functions import (
+    _is_valid_uuid,
+    _update_dataframe_datatypes,
+)
 import sempy_labs._authentication as auth
 
 
@@ -226,8 +229,11 @@ def list_vcores() -> pd.DataFrame:
     }
     df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    int_cols = ["Total Purchased Cores", "Available Cores"]
-    df[int_cols] = df[int_cols].astype(int)
+    column_map = {
+        "Total Purchased Cores": "int",
+        "Available Cores": "int",
+    }
+    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     return df
 
@@ -1111,9 +1117,13 @@ def list_storage_accounts(
 
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    bool_cols = ["Is HNS Enabled", "Supports HTTPS Traffic Only"]
-    df[bool_cols] = df[bool_cols].astype(bool)
-    df["Creation Time"] = pd.to_datetime(df["Creation Time"])
+    column_map = {
+        "Is HNS Enabled": "bool",
+        "Supports HTTPS Traffic Only": "bool",
+        "Creation Time": "datetime",
+    }
+
+    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     return df
 

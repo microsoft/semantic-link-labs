@@ -15,6 +15,7 @@ from azure.core.credentials import TokenCredential, AccessToken
 import urllib.parse
 import numpy as np
 from IPython.display import display, HTML
+import sempy_labs._authentication as auth
 
 
 def _build_url(url: str, params: dict) -> str:
@@ -164,6 +165,16 @@ def resolve_report_name(report_id: UUID, workspace: Optional[str | UUID] = None)
     return fabric.resolve_item_name(
         item_id=report_id, type="Report", workspace=workspace
     )
+
+
+def resolve_item_id(
+    item: str | UUID, type: str, workspace: Optional[str] = None
+) -> UUID:
+
+    if _is_valid_uuid(item):
+        return item
+    else:
+        return fabric.resolve_item_id(item_name=item, type=type, workspace=workspace)
 
 
 def resolve_item_name_and_id(
@@ -994,13 +1005,13 @@ def pagination(client, response):
     return responses
 
 
-def resolve_deployment_pipeline_id(deployment_pipeline: str) -> UUID:
+def resolve_deployment_pipeline_id(deployment_pipeline: str | UUID) -> UUID:
     """
     Obtains the Id for a given deployment pipeline.
 
     Parameters
     ----------
-    deployment_pipeline : str
+    deployment_pipeline : str | uuid.UUID
         The deployment pipeline name
 
     Returns
@@ -1011,15 +1022,17 @@ def resolve_deployment_pipeline_id(deployment_pipeline: str) -> UUID:
 
     from sempy_labs._deployment_pipelines import list_deployment_pipelines
 
-    dfP = list_deployment_pipelines()
-    dfP_filt = dfP[dfP["Deployment Pipeline Name"] == deployment_pipeline]
-    if len(dfP_filt) == 0:
-        raise ValueError(
-            f"{icons.red_dot} The '{deployment_pipeline}' deployment pipeline is not valid."
-        )
-    deployment_pipeline_id = dfP_filt["Deployment Pipeline Id"].iloc[0]
+    if _is_valid_uuid(deployment_pipeline):
+        return deployment_pipeline
+    else:
 
-    return deployment_pipeline_id
+        dfP = list_deployment_pipelines()
+        dfP_filt = dfP[dfP["Deployment Pipeline Name"] == deployment_pipeline]
+        if len(dfP_filt) == 0:
+            raise ValueError(
+                f"{icons.red_dot} The '{deployment_pipeline}' deployment pipeline is not valid."
+            )
+        return dfP_filt["Deployment Pipeline Id"].iloc[0]
 
 
 class FabricTokenCredential(TokenCredential):
@@ -1446,3 +1459,94 @@ def _get_fabric_context_setting(name: str):
 def get_tenant_id():
 
     _get_fabric_context_setting(name="trident.tenant.id")
+
+
+def _base_api(
+    request: str,
+    client: str = "fabric",
+    method: str = "get",
+    payload: Optional[str] = None,
+    status_codes: Optional[int] = 200,
+    uses_pagination: bool = False,
+    lro_return_json: bool = False,
+    lro_return_status_code: bool = False,
+):
+
+    if client == "fabric":
+        client = fabric.FabricRestClient()
+    elif client == "fabric_sp":
+        client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
+    else:
+        raise ValueError(f"{icons.red_dot} The '{client}' client is not supported.")
+
+    if isinstance(status_codes, int):
+        status_codes = [status_codes]
+
+    if method == "get":
+        response = client.get(request)
+    elif method == "delete":
+        response = client.delete(request)
+    elif method == "post":
+        response = client.post(request, json=payload)
+    elif method == "patch":
+        response = client.patch(request, json=payload)
+    elif method == "put":
+        response = client.put(request, json=payload)
+    else:
+        raise NotImplementedError
+
+    if response.status_code not in status_codes:
+        raise FabricHTTPException(response)
+
+    if (lro_return_json or lro_return_status_code) and status_codes is None:
+        status_codes = [200, 202]
+
+    if uses_pagination:
+        responses = pagination(client, response)
+        return responses
+    elif lro_return_json:
+        return lro(client, response, status_codes).json()
+    elif lro_return_status_code:
+        return lro(client, response, status_codes, return_status_code=True)
+    else:
+        return response
+
+
+def _update_dataframe_datatypes(dataframe: pd.DataFrame, column_map: dict):
+    """
+    Updates the datatypes of columns in a pandas dataframe based on a column map.
+
+    Example:
+    {
+        "Order": "int",
+        "Public": "bool",
+    }
+    """
+
+    for column, data_type in column_map.items():
+        if column in dataframe.columns:
+            if data_type == "int":
+                dataframe[column] = dataframe[column].astype(int)
+            elif data_type == "bool":
+                dataframe[column] = dataframe[column].astype(bool)
+            elif data_type == "float":
+                dataframe[column] = dataframe[column].astype(float)
+            elif data_type == "datetime":
+                dataframe[column] = pd.to_datetime(dataframe[column])
+            elif data_type == "datetime_coerce":
+                dataframe[column] = pd.to_datetime(dataframe[column], errors="coerce")
+            elif data_type in ["str", "string"]:
+                dataframe[column] = dataframe[column].astype(str)
+
+
+def _print_success(item_name, item_type, workspace_name, action="created"):
+    if action == "created":
+        print(
+            f"{icons.green_dot} The '{item_name}' {item_type} has been successfully created in the '{workspace_name}' workspace."
+        )
+    elif action == "deleted":
+        print(
+            f"{icons.green_dot} The '{item_name}' {item_type} has been successfully deleted from the '{workspace_name}' workspace."
+        )
+    else:
+        raise NotImplementedError

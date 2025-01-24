@@ -1,13 +1,11 @@
-import sempy.fabric as fabric
 import pandas as pd
 import sempy_labs._icons as icons
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
-    lro,
-    pagination,
+    _base_api,
+    _print_success,
 )
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
@@ -35,20 +33,23 @@ def create_environment(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    request_body = {"displayName": environment}
+    payload = {"displayName": environment}
 
     if description:
-        request_body["description"] = description
+        payload["description"] = description
 
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/environments", json=request_body
+    _base_api(
+        request="/v1/workspaces/{workspace_id}/environments",
+        method="post",
+        payload=payload,
+        status_codes=[201, 202],
+        lro_return_status_code=True,
     )
-
-    lro(client, response, status_codes=[201, 202])
-
-    print(
-        f"{icons.green_dot} The '{environment}' environment has been created within the '{workspace_name}' workspace."
+    _print_success(
+        item_name=environment,
+        item_type="environment",
+        workspace_name=workspace_name,
+        action="created",
     )
 
 
@@ -75,12 +76,9 @@ def list_environments(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/environments")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
+    responses = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/environments", uses_pagination=True
+    )
 
     for r in responses:
         for v in r.get("value", []):
@@ -117,16 +115,15 @@ def delete_environment(environment: str, workspace: Optional[str | UUID] = None)
         environment=environment, workspace=workspace_id
     )
 
-    client = fabric.FabricRestClient()
-    response = client.delete(
-        f"/v1/workspaces/{workspace_id}/environments/{environment_id}"
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/environments/{environment_id}",
+        method="delete",
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    print(
-        f"{icons.green_dot} The '{environment}' environment within the '{workspace_name}' workspace has been deleted."
+    _print_success(
+        item_name=environment,
+        item_type="environment",
+        workspace_name=workspace_name,
+        action="deleted",
     )
 
 
@@ -153,12 +150,11 @@ def publish_environment(environment: str, workspace: Optional[str | UUID] = None
         environment=environment, workspace=workspace_id
     )
 
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/environments/{environment_id}/staging/publish"
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/environments/{environment_id}/staging/publish",
+        method="post",
+        lro_return_status_code=True,
     )
-
-    lro(client, response)
 
     print(
         f"{icons.green_dot} The '{environment}' environment within the '{workspace_name}' workspace has been published."

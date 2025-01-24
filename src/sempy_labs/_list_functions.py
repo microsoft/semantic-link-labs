@@ -7,6 +7,7 @@ from sempy_labs._helper_functions import (
     resolve_item_type,
     format_dax_object_name,
     resolve_dataset_name_and_id,
+    _update_dataframe_datatypes,
 )
 import pandas as pd
 from typing import Optional
@@ -240,19 +241,20 @@ def list_tables(
         df = pd.DataFrame(rows)
 
         if extended:
-            int_cols = [
-                "Row Count",
-                "Total Size",
-                "Dictionary Size",
-                "Data Size",
-                "Hierarchy Size",
-                "Relationship Size",
-                "User Hierarchy Size",
-                "Partitions",
-                "Columns",
-            ]
-            df[int_cols] = df[int_cols].astype(int)
-            df["% DB"] = df["% DB"].astype(float)
+            column_map = {
+                "Row Count": "int",
+                "Total Size": "int",
+                "Dictionary Size": "int",
+                "Data Size": "int",
+                "Hierarchy Size": "int",
+                "Relationship Size": "int",
+                "User Hierarchy Size": "int",
+                "Partitions": "int",
+                "Columns": "int",
+                "% DB": "float",
+            }
+
+            _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     return df
 
@@ -643,7 +645,11 @@ def list_dashboards(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    df["Read Only"] = df["Read Only"].astype(bool)
+    column_map = {
+        "Read Only": "bool",
+    }
+
+    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     return df
 
@@ -935,7 +941,11 @@ def list_relationships(
             sumval = filtered_cs["USED_SIZE"].sum()
             dfR.at[i, "Used Size"] = sumval
 
-        dfR["Used Size"] = dfR["Used Size"].astype("int")
+        column_map = {
+            "Used Size": "int",
+        }
+
+        _update_dataframe_datatypes(dataframe=dfR, column_map=column_map)
 
     return dfR
 
@@ -1636,8 +1646,12 @@ def list_server_properties(workspace: Optional[str | UUID] = None) -> pd.DataFra
     tom_server.Dispose()
     df = pd.DataFrame(rows)
 
-    bool_cols = ["Is Read Only", "Requires Restart"]
-    df[bool_cols] = df[bool_cols].astype(bool)
+    column_map = {
+        "Is Read Only": "bool",
+        "Requires Restart": "bool",
+    }
+
+    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     return df
 

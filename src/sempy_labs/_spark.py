@@ -4,6 +4,7 @@ import sempy_labs._icons as icons
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
+    _update_dataframe_datatypes,
 )
 from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
@@ -71,17 +72,17 @@ def list_custom_pools(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    bool_cols = ["Auto Scale Enabled", "Dynamic Executor Allocation Enabled"]
-    int_cols = [
-        "Auto Scale Min Node Count",
-        "Auto Scale Max Node Count",
-        "Dynamic Executor Allocation Enabled",
-        "Dynamic Executor Allocation Min Executors",
-        "Dynamic Executor Allocation Max Executors",
-    ]
+    column_map = {
+        "Auto Scale Enabled": "bool",
+        "Dynamic Executor Allocation Enabled": "bool",
+        "Auto Scale Min Node Count": "int",
+        "Auto Scale Max Node Count": "int",
+        "Dynamic Executor Allocation Enabled": "int",
+        "Dynamic Executor Allocation Min Executors": "int",
+        "Dynamic Executor Allocation Max Executors": "int",
+    }
 
-    df[bool_cols] = df[bool_cols].astype(bool)
-    df[int_cols] = df[int_cols].astype(int)
+    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     return df
 
@@ -369,15 +370,13 @@ def get_spark_settings(
     }
     df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    bool_cols = [
-        "Automatic Log Enabled",
-        "High Concurrency Enabled",
-        "Customize Compute Enabled",
-    ]
-    # int_cols = ["Max Node Count", "Max Executors"]
+    column_map = {
+        "Automatic Log Enabled": "bool",
+        "High Concurrency Enabled": "bool",
+        "Customize Compute Enabled": "bool",
+    }
 
-    df[bool_cols] = df[bool_cols].astype(bool)
-    # df[int_cols] = df[int_cols].astype(int)
+    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     if return_dataframe:
         return df

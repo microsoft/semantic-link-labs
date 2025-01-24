@@ -5,6 +5,7 @@ from sempy_labs._helper_functions import (
     _get_partition_map,
     _process_and_display_chart,
     resolve_dataset_name_and_id,
+    _update_dataframe_datatypes,
 )
 from typing import Any, List, Optional, Union
 from sempy._utils._log import log
@@ -429,8 +430,10 @@ def get_semantic_model_refresh_history(
     # df[date_cols] = df[date_cols].apply(pd.to_datetime)
 
     if "Attempt Id" in df.columns:
-        df["Attempt Id"] = df["Attempt Id"].astype(int)
-        # date_cols = ["Attempt Start Time", "Attempt End Time"]
-        # df[date_cols] = df[date_cols].apply(pd.to_datetime)
+        column_map = {
+            "Attempt Id": "int",
+        }
+
+        _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     return df

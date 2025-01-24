@@ -3,6 +3,8 @@ import pandas as pd
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _is_valid_uuid,
+    _update_dataframe_datatypes,
+    _base_api,
 )
 from typing import Optional, Tuple
 import sempy_labs._icons as icons
@@ -28,14 +30,12 @@ def list_dataflows(workspace: Optional[str | UUID] = None):
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    client = fabric.PowerBIRestClient()
-    response = client.get(f"/v1.0/myorg/groups/{workspace_id}/dataflows")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
 
     df = pd.DataFrame(
         columns=["Dataflow Id", "Dataflow Name", "Configured By", "Users", "Generation"]
     )
+
+    response = _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/dataflows")
 
     data = []  # Collect rows here
 
@@ -51,7 +51,12 @@ def list_dataflows(workspace: Optional[str | UUID] = None):
 
     if data:
         df = pd.DataFrame(data)
-        df["Generation"] = df["Generation"].astype(int)
+
+        column_map = {
+            "Generation": "int",
+        }
+
+        _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     return df
 
@@ -85,16 +90,14 @@ def assign_workspace_to_dataflow_storage(
         )
 
     dataflow_storage_id = df_filt["Dataflow Storage Account ID"].iloc[0]
-    client = fabric.PowerBIRestClient()
+    payload = {"dataflowStorageId": dataflow_storage_id}
 
-    request_body = {"dataflowStorageId": dataflow_storage_id}
-
-    response = client.post(
-        f"/v1.0/myorg/groups/{workspace_id}/AssignToDataflowStorage", json=request_body
+    _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}/AssignToDataflowStorage",
+        method="post",
+        payload=payload,
     )
 
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
     print(
         f"{icons.green_dot} The '{dataflow_storage_account}' dataflow storage account has been assigned to the '{workspace_name}' workspacce."
     )
@@ -119,10 +122,8 @@ def list_dataflow_storage_accounts() -> pd.DataFrame:
             "Enabled",
         ]
     )
-    client = fabric.PowerBIRestClient()
-    response = client.get("/v1.0/myorg/dataflowStorageAccounts")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+
+    response = _base_api(request="/v1.0/myorg/dataflowStorageAccounts")
 
     for v in response.json().get("value", []):
         new_data = {
@@ -132,7 +133,11 @@ def list_dataflow_storage_accounts() -> pd.DataFrame:
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    df["Enabled"] = df["Enabled"].astype(bool)
+    column_map = {
+        "Enabled": "bool",
+    }
+
+    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     return df
 
@@ -164,7 +169,6 @@ def list_upstream_dataflows(
     (dataflow_name, dataflow_id) = _resolve_dataflow_name_and_id(
         dataflow=dataflow, workspace=workspace_id
     )
-    client = fabric.PowerBIRestClient()
 
     df = pd.DataFrame(
         columns=[
@@ -179,14 +183,10 @@ def list_upstream_dataflows(
         ]
     )
 
-    def collect_upstreams(
-        client, dataflow_id, dataflow_name, workspace_id, workspace_name
-    ):
-        response = client.get(
-            f"/v1.0/myorg/groups/{workspace_id}/dataflows/{dataflow_id}/upstreamDataflows"
+    def collect_upstreams(dataflow_id, dataflow_name, workspace_id, workspace_name):
+        response = _base_api(
+            request=f"/v1.0/myorg/groups/{workspace_id}/dataflows/{dataflow_id}/upstreamDataflows"
         )
-        if response.status_code != 200:
-            raise FabricHTTPException(response)
 
         values = response.json().get("value", [])
         for v in values:
@@ -209,14 +209,13 @@ def list_upstream_dataflows(
             }
 
             collect_upstreams(
-                client,
                 tgt_dataflow_id,
                 tgt_dataflow_name,
                 tgt_workspace_id,
                 tgt_workspace_name,
             )
 
-    collect_upstreams(client, dataflow_id, dataflow_name, workspace_id, workspace_name)
+    collect_upstreams(dataflow_id, dataflow_name, workspace_id, workspace_name)
 
     return df
 

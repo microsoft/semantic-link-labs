@@ -18,6 +18,7 @@ from sempy_labs._helper_functions import (
     lro,
     _decode_b64,
     resolve_dataset_id,
+    _update_dataframe_datatypes,
 )
 from typing import List, Optional, Union
 from sempy._utils._log import log
@@ -554,9 +555,14 @@ def list_report_pages(report: str, workspace: Optional[str | UUID] = None):
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    df["Hidden"] = df["Hidden"].astype(bool)
-    intCol = ["Width", "Height", "Visual Count"]
-    df[intCol] = df[intCol].astype(int)
+    column_map = {
+        "Hidden": "bool",
+        "Width": "int",
+        "Height": "int",
+        "Visual Count": "int",
+    }
+
+    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     return df
 

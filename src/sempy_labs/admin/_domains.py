@@ -1,12 +1,11 @@
-import sempy.fabric as fabric
 from typing import Optional, List
 import sempy_labs._icons as icons
-from sempy_labs._helper_functions import lro
-from sempy.fabric.exceptions import FabricHTTPException
 import pandas as pd
 from uuid import UUID
 from sempy_labs.admin._basic_functions import list_workspaces
-import sempy_labs._authentication as auth
+from sempy_labs._helper_functions import (
+    _base_api,
+)
 
 
 def resolve_domain_id(domain_name: str) -> UUID:
@@ -62,14 +61,11 @@ def list_domains(non_empty_only: bool = False) -> pd.DataFrame:
         ]
     )
 
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
     url = "/v1/admin/domains"
     if non_empty_only:
         url = f"{url}?nonEmptyOnly=True"
-    response = client.get(url)
 
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    response = _base_api(request=url, client="fabric_sp")
 
     for v in response.json().get("domains", []):
         new_data = {
@@ -107,11 +103,9 @@ def list_domain_workspaces(domain_name: str) -> pd.DataFrame:
 
     df = pd.DataFrame(columns=["Workspace ID", "Workspace Name"])
 
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
-    response = client.get(f"/v1/admin/domains/{domain_id}/workspaces")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    response = _base_api(
+        request=f"/v1/admin/domains/{domain_id}/workspaces", client="fabric_sp"
+    )
 
     for v in response.json().get("value", []):
         new_data = {
@@ -153,11 +147,9 @@ def create_domain(
     if parent_domain_name is not None:
         payload["parentDomainId"] = parent_domain_id
 
-    client = fabric.FabricRestClient()
-    response = client.post("/v1/admin/domains", json=payload)
-
-    if response.status_code != 201:
-        raise FabricHTTPException(response)
+    _base_api(
+        request="/v1/admin/domains", method="post", payload=payload, status_codes=201
+    )
 
     print(f"{icons.green_dot} The '{domain_name}' domain has been created.")
 
@@ -175,12 +167,7 @@ def delete_domain(domain_name: str):
     """
 
     domain_id = resolve_domain_id(domain_name)
-
-    client = fabric.FabricRestClient()
-    response = client.delete(f"/v1/admin/domains/{domain_id}")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    _base_api(request=f"/v1/admin/domains/{domain_id}", method="delete")
 
     print(f"{icons.green_dot} The '{domain_name}' domain has been deleted.")
 
@@ -222,11 +209,7 @@ def update_domain(
     if contributors_scope is not None:
         payload["contributorsScope"] = contributors_scope
 
-    client = fabric.FabricRestClient()
-    response = client.patch(f"/v1/admin/domains/{domain_id}", json=payload)
-
-    if response != 200:
-        raise FabricHTTPException(response)
+    _base_api(request=f"/v1/admin/domains/{domain_id}", method="patch", payload=payload)
 
     print(f"{icons.green_dot} The '{domain_name}' domain has been updated.")
 
@@ -276,13 +259,12 @@ def assign_domain_workspaces_by_capacities(
 
     payload = {"capacitiesIds": capacity_list}
 
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/admin/domains/{domain_id}/assignWorkspacesByCapacities",
-        json=payload,
+    _base_api(
+        request=f"/v1/admin/domains/{domain_id}/assignWorkspacesByCapacities",
+        method="post",
+        payload=payload,
+        lro_return_status_code=True,
     )
-
-    lro(client, response)
 
     print(
         f"{icons.green_dot} The workspaces in the {capacity_names} capacities have been assigned to the '{domain_name}' domain."
@@ -329,13 +311,12 @@ def assign_domain_workspaces(domain_name: str, workspace_names: str | List[str])
 
     payload = {"workspacesIds": workspace_list}
 
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/admin/domains/{domain_id}/assignWorkspaces",
-        json=payload,
+    _base_api(
+        request=f"/v1/admin/domains/{domain_id}/assignWorkspaces",
+        method="post",
+        payload=payload,
+        lro_return_status_code=True,
     )
-
-    lro(client, response)
 
     print(
         f"{icons.green_dot} The {workspace_names} workspaces have been assigned to the '{domain_name}' domain."
@@ -356,11 +337,12 @@ def unassign_all_domain_workspaces(domain_name: str):
 
     domain_id = resolve_domain_id(domain_name=domain_name)
 
-    client = fabric.FabricRestClient()
-    response = client.post(f"/v1/admin/domains/{domain_id}/unassignAllWorkspaces")
+    _base_api(
+        request=f"/v1/admin/domains/{domain_id}/unassignAllWorkspaces",
+        method="post",
+        lro_return_status_code=True,
+    )
 
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
     print(
         f"{icons.green_dot} All workspaces assigned to the '{domain_name}' domain have been unassigned."
     )
@@ -405,13 +387,13 @@ def unassign_domain_workspaces(domain_name: str, workspace_names: str | List[str
     workspace_list = list(dfW_filt["Id"])
 
     payload = {"workspacesIds": workspace_list}
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/admin/domains/{domain_id}/unassignWorkspaces", json=payload
+
+    _base_api(
+        request=f"/v1/admin/domains/{domain_id}/unassignWorkspaces",
+        method="post",
+        payload=payload,
     )
 
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
     print(
         f"{icons.green_dot} The {workspace_names} workspaces assigned to the '{domain_name}' domain have been unassigned."
     )
