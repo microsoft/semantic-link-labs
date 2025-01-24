@@ -42,7 +42,9 @@ def list_kql_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    responses = _base_api(request=f"v1/workspaces/{workspace_id}/kqlDatabases", uses_pagination=True)
+    responses = _base_api(
+        request=f"v1/workspaces/{workspace_id}/kqlDatabases", uses_pagination=True
+    )
 
     for r in responses:
         for v in r.get("value", []):
@@ -89,7 +91,13 @@ def create_kql_database(
     if description:
         payload["description"] = description
 
-    _base_api(request=f"v1/workspaces/{workspace_id}/kqlDatabases", method="post", payload=payload, status_codes=[201, 202], lro_return_status_code=True)
+    _base_api(
+        request=f"v1/workspaces/{workspace_id}/kqlDatabases",
+        method="post",
+        payload=payload,
+        status_codes=[201, 202],
+        lro_return_status_code=True,
+    )
 
     print(
         f"{icons.green_dot} The '{name}' KQL database has been created within the '{workspace_name}' workspace."
@@ -117,7 +125,10 @@ def delete_kql_database(name: str, workspace: Optional[str | UUID] = None):
         item_name=name, type="KQLDatabase", workspace=workspace_id
     )
 
-    _base_api(request=f"/v1/workspaces/{workspace_id}/kqlDatabases/{kql_database_id}", method="delete")
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/kqlDatabases/{kql_database_id}",
+        method="delete",
+    )
     print(
         f"{icons.green_dot} The '{name}' KQL database within the '{workspace_name}' workspace has been deleted."
     )

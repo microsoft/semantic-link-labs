@@ -55,7 +55,11 @@ def report_rebind(
 
         payload = {"datasetId": dataset_id}
 
-        _base_api(request=f"v1.0/myorg/groups/{report_workspace_id}/reports/{report_id}/Rebind", method="post", json=payload)
+        _base_api(
+            request=f"v1.0/myorg/groups/{report_workspace_id}/reports/{report_id}/Rebind",
+            method="post",
+            json=payload,
+        )
 
         print(
             f"{icons.green_dot} The '{rpt}' report has been successfully rebinded to the '{dataset}' semantic model."

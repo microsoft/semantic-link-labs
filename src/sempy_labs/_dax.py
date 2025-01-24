@@ -53,7 +53,11 @@ def evaluate_dax_impersonation(
         "impersonatedUserName": user_name,
     }
 
-    response = _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/executeQueries", method="post", payload=payload)
+    response = _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/executeQueries",
+        method="post",
+        payload=payload,
+    )
     data = response.json()["results"][0]["tables"]
     column_names = data[0]["rows"][0].keys()
     data_rows = [row.values() for item in data for row in item["rows"]]

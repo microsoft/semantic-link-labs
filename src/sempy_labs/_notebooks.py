@@ -24,7 +24,11 @@ def _get_notebook_definition_base(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     item_id = resolve_item_id(item=notebook_name, type="Notebook", workspace=workspace)
-    result = _base_api(request=f"v1/workspaces/{workspace_id}/notebooks/{item_id}/getDefinition", method="post", lro_return_json=True)
+    result = _base_api(
+        request=f"v1/workspaces/{workspace_id}/notebooks/{item_id}/getDefinition",
+        method="post",
+        lro_return_json=True,
+    )
 
     return pd.json_normalize(result["definition"]["parts"])
 
@@ -197,7 +201,12 @@ def create_notebook(
     if description is not None:
         payload["description"] = description
 
-    _base_api(request=f"v1/workspaces/{workspace_id}/notebooks", payload=payload, method="post", lro_return_status_code=True)
+    _base_api(
+        request=f"v1/workspaces/{workspace_id}/notebooks",
+        payload=payload,
+        method="post",
+        lro_return_status_code=True,
+    )
 
     print(
         f"{icons.green_dot} The '{name}' notebook was created within the '{workspace_name}' workspace."
@@ -239,7 +248,12 @@ def update_notebook_definition(
         },
     }
 
-    _base_api(request=f"v1/workspaces/{workspace_id}/notebooks/{item_id}/updateDefinition", payload=payload, method="post", lro_return_status_code=True)
+    _base_api(
+        request=f"v1/workspaces/{workspace_id}/notebooks/{item_id}/updateDefinition",
+        payload=payload,
+        method="post",
+        lro_return_status_code=True,
+    )
 
     print(
         f"{icons.green_dot} The '{name}' notebook was updated within the '{workspace_name}' workspace."

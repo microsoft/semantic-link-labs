@@ -58,7 +58,9 @@ def download_report(
     file_name = file_name or report
     report_id = resolve_item_id(item=report, type="Report", workspace=workspace)
 
-    response = _base_api(request=f"v1.0/myorg/groups/{workspace_id}/reports/{report_id}/Export?downloadType={download_type}")
+    response = _base_api(
+        request=f"v1.0/myorg/groups/{workspace_id}/reports/{report_id}/Export?downloadType={download_type}"
+    )
 
     # Save file to the attached lakehouse
     with open(f"/lakehouse/default/Files/{file_name}.pbix", "wb") as file:

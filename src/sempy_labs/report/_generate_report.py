@@ -106,7 +106,13 @@ def create_report_from_reportjson(
         }
         request_body["definition"]["parts"].append(part)
 
-    _base_api(request=f"/v1/workspaces/{workspace_id}/reports", method="post", payload=request_body, lro_return_status_code=True, status_codes=[201, 202])
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/reports",
+        method="post",
+        payload=request_body,
+        lro_return_status_code=True,
+        status_codes=[201, 202],
+    )
 
     print(
         f"{icons.green_dot} Succesfully created the '{report}' report within the '{workspace_name}' workspace."
@@ -159,7 +165,12 @@ def update_report_from_reportjson(
         }
     }
 
-    _base_api(request=f"/v1/workspaces/{workspace_id}/reports/{report_id}/updateDefinition", method="post", payload=payload, lro_return_status_code=True)
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/reports/{report_id}/updateDefinition",
+        method="post",
+        payload=payload,
+        lro_return_status_code=True,
+    )
 
     print(
         f"{icons.green_dot} The '{report}' report within the '{workspace_name}' workspace has been successfully updated."
@@ -194,7 +205,11 @@ def get_report_definition(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     report_id = resolve_item_id(item=report, type="Report", workspace=workspace)
 
-    result = _base_api(request=f"/v1/workspaces/{workspace_id}/reports/{report_id}/getDefinition", method="post", lro_return_json=True)
+    result = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/reports/{report_id}/getDefinition",
+        method="post",
+        lro_return_json=True,
+    )
 
     if return_dataframe:
         return pd.json_normalize(result["definition"]["parts"])
@@ -369,7 +384,9 @@ def _get_report(
         item=report, type="Report", workspace=workspace
     )
 
-    response = _base_api(request=f"v1.0/myorg/groups/{workspace_id}/reports/{report_id}")
+    response = _base_api(
+        request=f"v1.0/myorg/groups/{workspace_id}/reports/{report_id}"
+    )
     result = response.json()
 
     new_data = {

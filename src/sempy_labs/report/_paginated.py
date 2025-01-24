@@ -43,9 +43,13 @@ def get_report_datasources(
     )
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    report_id = resolve_item_id(item=report, type="PaginatedReport", workspace=workspace)
+    report_id = resolve_item_id(
+        item=report, type="PaginatedReport", workspace=workspace
+    )
 
-    response = _base_api(request=f"v1.0/myorg/groups/{workspace_id}/reports/{report_id}/datasources")
+    response = _base_api(
+        request=f"v1.0/myorg/groups/{workspace_id}/reports/{report_id}/datasources"
+    )
 
     for i in response.json().get("value", []):
         conn = i.get("connectionDetails", {})

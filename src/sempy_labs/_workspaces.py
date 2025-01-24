@@ -29,7 +29,10 @@ def delete_user_from_workspace(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/users/{email_address}", method="delete")
+    _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}/users/{email_address}",
+        method="delete",
+    )
     print(
         f"{icons.green_dot} The '{email_address}' user has been removed from accessing the '{workspace_name}' workspace."
     )
@@ -82,7 +85,11 @@ def update_workspace_user(
         "identifier": email_address,
     }
 
-    _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/users", method="put", payload=payload)
+    _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}/users",
+        method="put",
+        payload=payload,
+    )
     print(
         f"{icons.green_dot} The '{email_address}' user has been updated to a '{role_name}' within the '{workspace_name}' workspace."
     )
@@ -111,7 +118,9 @@ def list_workspace_users(workspace: Optional[str | UUID] = None) -> pd.DataFrame
 
     df = pd.DataFrame(columns=["User Name", "Email Address", "Role", "Type", "User ID"])
 
-    responses = _base_api(request=f"v1/workspaces/{workspace_id}/roleAssignments", uses_pagination=True)
+    responses = _base_api(
+        request=f"v1/workspaces/{workspace_id}/roleAssignments", uses_pagination=True
+    )
 
     for r in responses:
         for v in r.get("value", []):
@@ -176,7 +185,11 @@ def add_user_to_workspace(
         "identifier": email_address,
     }
 
-    _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/users", method="post", payload=payload)
+    _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}/users",
+        method="post",
+        payload=payload,
+    )
     print(
         f"{icons.green_dot} The '{email_address}' user has been added as a{plural} '{role_name}' within the '{workspace_name}' workspace."
     )
@@ -205,7 +218,12 @@ def assign_workspace_to_capacity(
 
     payload = {"capacityId": capacity_id}
 
-    _base_api(request=f"/v1/workspaces/{workspace_id}/assignToCapacity", method="post", payload=payload, status_codes=[200, 202])
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/assignToCapacity",
+        method="post",
+        payload=payload,
+        status_codes=[200, 202],
+    )
     print(
         f"{icons.green_dot} The '{workspace_name}' workspace has been assigned to the '{capacity_name}' capacity."
     )
@@ -227,7 +245,11 @@ def unassign_workspace_from_capacity(workspace: Optional[str | UUID] = None):
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    _base_api(request=f"/v1/workspaces/{workspace_id}/unassignFromCapacity", method="post", status_codes=[200, 202])
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/unassignFromCapacity",
+        method="post",
+        status_codes=[200, 202],
+    )
     print(
         f"{icons.green_dot} The '{workspace_name}' workspace has been unassigned from its capacity."
     )
@@ -258,7 +280,9 @@ def list_workspace_role_assignments(
 
     df = pd.DataFrame(columns=["User Name", "User Email", "Role Name", "Type"])
 
-    responses = _base_api(request=f"v1/workspaces/{workspace_id}/roleAssignments", uses_pagination=True)
+    responses = _base_api(
+        request=f"v1/workspaces/{workspace_id}/roleAssignments", uses_pagination=True
+    )
 
     for r in responses:
         for i in r.get("value", []):

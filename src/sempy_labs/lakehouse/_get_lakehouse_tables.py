@@ -85,7 +85,10 @@ def get_lakehouse_tables(
             "Count rows runs a spark query and cross-workspace spark queries are currently not supported."
         )
 
-    responses = _base_api(request=f"v1/workspaces/{workspace_id}/lakehouses/{lakehouse_id}/tables", uses_pagination=True)
+    responses = _base_api(
+        request=f"v1/workspaces/{workspace_id}/lakehouses/{lakehouse_id}/tables",
+        uses_pagination=True,
+    )
 
     if not responses[0].get("data"):
         return df

@@ -32,7 +32,10 @@ def qso_sync(dataset: str | UUID, workspace: Optional[str | UUID] = None):
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/queryScaleOut/sync", method="post")
+    _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/queryScaleOut/sync",
+        method="post",
+    )
     print(
         f"{icons.green_dot} QSO sync initiated for the '{dataset_name}' semantic model within the '{workspace_name}' workspace."
     )
@@ -83,7 +86,9 @@ def qso_sync_status(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    response = _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/queryScaleOut/syncStatus")
+    response = _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/queryScaleOut/syncStatus"
+    )
 
     o = response.json()
     sos = o.get("scaleOutStatus")
@@ -167,7 +172,11 @@ def disable_qso(
 
     payload = {"queryScaleOutSettings": {"maxReadOnlyReplicas": "0"}}
 
-    _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}", method="patch", payload=payload)
+    _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}",
+        method="patch",
+        payload=payload,
+    )
 
     df = list_qso_settings(dataset=dataset_id, workspace=workspace_id)
 
@@ -238,7 +247,11 @@ def set_qso(
             dataset=dataset_id, storage_format="Large", workspace=workspace_id
         )
 
-    _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}", method="patch", payload=payload)
+    _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}",
+        method="patch",
+        payload=payload,
+    )
 
     df = list_qso_settings(dataset=dataset_id, workspace=workspace_id)
     print(
@@ -297,7 +310,11 @@ def set_semantic_model_storage_format(
         )
         return
 
-    _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}", method="patch", payload=payload)
+    _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}",
+        method="patch",
+        payload=payload,
+    )
     print(
         f"{icons.green_dot} The semantic model storage format for the '{dataset_name}' semantic model within the '{workspace_name}' workspace has been set to '{storage_format}'."
     )
@@ -419,7 +436,9 @@ def set_workspace_default_storage_format(
         "defaultDatasetStorageFormat": storage_format,
     }
 
-    _base_api(request=f"/v1.0/myorg/groups/{workspace_id}", method="patch", payload=payload)
+    _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}", method="patch", payload=payload
+    )
 
     print(
         f"{icons.green_dot} The default storage format for the '{workspace_name}' workspace has been updated to '{storage_format}."

@@ -172,7 +172,13 @@ def create_semantic_model_from_bim(
         },
     }
 
-    _base_api(request=f"v1/workspaces/{workspace_id}/semanticModels", payload=payload, method="post", lro_return_status_code=True, status_codes=[201, 202])
+    _base_api(
+        request=f"v1/workspaces/{workspace_id}/semanticModels",
+        payload=payload,
+        method="post",
+        lro_return_status_code=True,
+        status_codes=[201, 202],
+    )
 
     print(
         f"{icons.green_dot} The '{dataset}' semantic model has been created within the '{workspace_name}' workspace."
@@ -225,7 +231,12 @@ def update_semantic_model_from_bim(
         },
     }
 
-    _base_api(request=f"v1/workspaces/{workspace_id}/semanticModels/{dataset_id}/updateDefinition", payload=payload, method="post", lro_return_status_code=True)
+    _base_api(
+        request=f"v1/workspaces/{workspace_id}/semanticModels/{dataset_id}/updateDefinition",
+        payload=payload,
+        method="post",
+        lro_return_status_code=True,
+    )
 
     print(
         f"{icons.green_dot} The '{dataset_name}' semantic model has been updated within the '{workspace_name}' workspace."
@@ -416,7 +427,11 @@ def get_semantic_model_definition(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    result = _base_api(request=f"v1/workspaces/{workspace_id}/semanticModels/{dataset_id}/getDefinition?format={format}", method="post", lro_return_json=True)
+    result = _base_api(
+        request=f"v1/workspaces/{workspace_id}/semanticModels/{dataset_id}/getDefinition?format={format}",
+        method="post",
+        lro_return_json=True,
+    )
 
     files = result["definition"]["parts"]
 
