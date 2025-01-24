@@ -5,6 +5,7 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
     _update_dataframe_datatypes,
+    _base_api,
 )
 from typing import Optional
 import sempy_labs._icons as icons
@@ -265,14 +266,8 @@ def list_backups(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing a list of backup files contained within a workspace's ADLS Gen2 storage account.
     """
 
-    client = fabric.PowerBIRestClient()
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    response = client.get(
-        f"/v1.0/myorg/resources?resourceType=StorageAccount&folderObjectId={workspace_id}"
-    )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)    
+    response = _base_api(request=f"/v1.0/myorg/resources?resourceType=StorageAccount&folderObjectId={workspace_id}")
 
     v = response.json().get("value", [])
     if not v:

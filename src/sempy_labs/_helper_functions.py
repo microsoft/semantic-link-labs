@@ -1484,12 +1484,14 @@ def _base_api(
 
     if method == "get":
         response = client.get(request)
-    elif method == "post":
-        response = client.post(request, json=payload)
     elif method == "delete":
         response = client.delete(request)
+    elif method == "post":
+        response = client.post(request, json=payload)
     elif method == "patch":
         response = client.patch(request, json=payload)
+    elif method == "put":
+        response = client.put(request, json=payload)
     else:
         raise NotImplementedError
 

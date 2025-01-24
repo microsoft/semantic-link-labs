@@ -4,6 +4,7 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     format_dax_object_name,
     resolve_dataset_name_and_id,
+    _base_api,
 )
 from sempy_labs._model_dependencies import get_model_calc_dependencies
 from typing import Optional, List
@@ -47,16 +48,12 @@ def evaluate_dax_impersonation(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    request_body = {
+    payload = {
         "queries": [{"query": dax_query}],
         "impersonatedUserName": user_name,
     }
 
-    client = fabric.PowerBIRestClient()
-    response = client.post(
-        f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/executeQueries",
-        json=request_body,
-    )
+    response = _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/executeQueries", method="post", payload=payload)
     data = response.json()["results"][0]["tables"]
     column_names = data[0]["rows"][0].keys()
     data_rows = [row.values() for item in data for row in item["rows"]]

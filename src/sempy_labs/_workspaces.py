@@ -1,13 +1,11 @@
-import sempy.fabric as fabric
 import pandas as pd
 import sempy_labs._icons as icons
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
-    pagination,
     resolve_capacity_id,
+    _base_api,
 )
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
@@ -31,11 +29,7 @@ def delete_user_from_workspace(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    client = fabric.PowerBIRestClient()
-    response = client.delete(f"/v1.0/myorg/groups/{workspace_id}/users/{email_address}")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/users/{email_address}", method="delete")
     print(
         f"{icons.green_dot} The '{email_address}' user has been removed from accessing the '{workspace_name}' workspace."
     )
@@ -81,18 +75,14 @@ def update_workspace_user(
             f"{icons.red_dot} Invalid princpal type. Valid options: {principal_types}."
         )
 
-    request_body = {
+    payload = {
         "emailAddress": email_address,
         "groupUserAccessRight": role_name,
         "principalType": principal_type,
         "identifier": email_address,
     }
 
-    client = fabric.PowerBIRestClient()
-    response = client.put(f"/v1.0/myorg/groups/{workspace_id}/users", json=request_body)
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/users", method="put", payload=payload)
     print(
         f"{icons.green_dot} The '{email_address}' user has been updated to a '{role_name}' within the '{workspace_name}' workspace."
     )
@@ -120,12 +110,8 @@ def list_workspace_users(workspace: Optional[str | UUID] = None) -> pd.DataFrame
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     df = pd.DataFrame(columns=["User Name", "Email Address", "Role", "Type", "User ID"])
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/roleAssignments")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
 
-    responses = pagination(client, response)
+    responses = _base_api(request=f"v1/workspaces/{workspace_id}/roleAssignments", uses_pagination=True)
 
     for r in responses:
         for v in r.get("value", []):
@@ -183,21 +169,14 @@ def add_user_to_workspace(
             f"{icons.red_dot} Invalid princpal type. Valid options: {principal_types}."
         )
 
-    client = fabric.PowerBIRestClient()
-
-    request_body = {
+    payload = {
         "emailAddress": email_address,
         "groupUserAccessRight": role_name,
         "principalType": principal_type,
         "identifier": email_address,
     }
 
-    response = client.post(
-        f"/v1.0/myorg/groups/{workspace_id}/users", json=request_body
-    )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/users", method="post", payload=payload)
     print(
         f"{icons.green_dot} The '{email_address}' user has been added as a{plural} '{role_name}' within the '{workspace_name}' workspace."
     )
@@ -224,16 +203,9 @@ def assign_workspace_to_capacity(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     capacity_id = resolve_capacity_id(capacity_name=capacity_name)
 
-    request_body = {"capacityId": capacity_id}
+    payload = {"capacityId": capacity_id}
 
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/assignToCapacity",
-        json=request_body,
-    )
-
-    if response.status_code not in [200, 202]:
-        raise FabricHTTPException(response)
+    _base_api(request=f"/v1/workspaces/{workspace_id}/assignToCapacity", method="post", payload=payload, status_codes=[200, 202])
     print(
         f"{icons.green_dot} The '{workspace_name}' workspace has been assigned to the '{capacity_name}' capacity."
     )
@@ -255,11 +227,7 @@ def unassign_workspace_from_capacity(workspace: Optional[str | UUID] = None):
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    client = fabric.FabricRestClient()
-    response = client.post(f"/v1/workspaces/{workspace_id}/unassignFromCapacity")
-
-    if response.status_code not in [200, 202]:
-        raise FabricHTTPException(response)
+    _base_api(request=f"/v1/workspaces/{workspace_id}/unassignFromCapacity", method="post", status_codes=[200, 202])
     print(
         f"{icons.green_dot} The '{workspace_name}' workspace has been unassigned from its capacity."
     )
@@ -290,12 +258,7 @@ def list_workspace_role_assignments(
 
     df = pd.DataFrame(columns=["User Name", "User Email", "Role Name", "Type"])
 
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/roleAssignments")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
+    responses = _base_api(request=f"v1/workspaces/{workspace_id}/roleAssignments", uses_pagination=True)
 
     for r in responses:
         for i in r.get("value", []):
