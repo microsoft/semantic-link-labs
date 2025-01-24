@@ -1,15 +1,15 @@
-import sempy.fabric as fabric
 from typing import Optional
-from sempy.fabric.exceptions import FabricHTTPException
 import pandas as pd
 from uuid import UUID
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
+    _base_api,
+    resolve_item_id,
 )
 
 
 def get_report_datasources(
-    report: str,
+    report: str | UUID,
     workspace: Optional[str | UUID] = None,
 ) -> pd.DataFrame:
     """
@@ -17,8 +17,8 @@ def get_report_datasources(
 
     Parameters
     ----------
-    report : str | List[str]
-        Name(s) of the Power BI report(s).
+    report : str | uuid.UUID
+        Name or ID of the Power BI report.
     workspace : str | uuid.UUID, default=None
         The name or ID of the Fabric workspace in which the report resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -43,19 +43,9 @@ def get_report_datasources(
     )
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    report_id = resolve_item_id(item=report, type="PaginatedReport", workspace=workspace)
 
-    report_id = fabric.resolve_item_id(
-        item_name=report, type="PaginatedReport", workspace=workspace_id
-    )
-
-    client = fabric.PowerBIRestClient()
-
-    response = client.get(
-        f"/v1.0/myorg/groups/{workspace_id}/reports/{report_id}/datasources"
-    )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    response = _base_api(request=f"v1.0/myorg/groups/{workspace_id}/reports/{report_id}/datasources")
 
     for i in response.json().get("value", []):
         conn = i.get("connectionDetails", {})

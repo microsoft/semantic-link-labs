@@ -7,8 +7,8 @@ from sempy_labs._helper_functions import (
     _get_column_aggregate,
     resolve_workspace_name_and_id,
     resolve_lakehouse_name_and_id,
-    pagination,
     save_as_delta_table,
+    _base_api,
 )
 from sempy_labs.directlake._guardrails import (
     get_sku_size,
@@ -18,7 +18,6 @@ from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from typing import Optional
 import sempy_labs._icons as icons
 from sempy._utils._log import log
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
@@ -86,15 +85,7 @@ def get_lakehouse_tables(
             "Count rows runs a spark query and cross-workspace spark queries are currently not supported."
         )
 
-    client = fabric.FabricRestClient()
-    response = client.get(
-        f"/v1/workspaces/{workspace_id}/lakehouses/{lakehouse_id}/tables"
-    )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
+    responses = _base_api(request=f"v1/workspaces/{workspace_id}/lakehouses/{lakehouse_id}/tables", uses_pagination=True)
 
     if not responses[0].get("data"):
         return df

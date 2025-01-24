@@ -6,16 +6,16 @@ from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _conv_b64,
-    resolve_report_id,
     resolve_dataset_name_and_id,
     resolve_item_name_and_id,
     lro,
     _update_dataframe_datatypes,
+    _base_api,
+    resolve_item_id,
 )
 import sempy_labs._icons as icons
 from sempy._utils._log import log
 from uuid import UUID
-from sempy.fabric.exceptions import FabricHTTPException
 
 
 def create_report_from_reportjson(
@@ -58,7 +58,6 @@ def create_report_from_reportjson(
         )
         return
 
-    client = fabric.FabricRestClient()
     defPBIR = {
         "version": "1.0",
         "datasetReference": {
@@ -107,9 +106,7 @@ def create_report_from_reportjson(
         }
         request_body["definition"]["parts"].append(part)
 
-    response = client.post(f"/v1/workspaces/{workspace_id}/reports", json=request_body)
-
-    lro(client, response, status_codes=[201, 202], return_status_code=True)
+    _base_api(request=f"/v1/workspaces/{workspace_id}/reports", method="post", payload=request_body, lro_return_status_code=True, status_codes=[201, 202])
 
     print(
         f"{icons.green_dot} Succesfully created the '{report}' report within the '{workspace_name}' workspace."
@@ -117,7 +114,7 @@ def create_report_from_reportjson(
 
 
 def update_report_from_reportjson(
-    report: str, report_json: dict, workspace: Optional[str | UUID] = None
+    report: str | UUID, report_json: dict, workspace: Optional[str | UUID] = None
 ):
     """
     Updates a report based on a report.json file.
@@ -126,8 +123,8 @@ def update_report_from_reportjson(
 
     Parameters
     ----------
-    report : str
-        Name of the report.
+    report : str | uuid.UUID
+        Name or ID of the report.
     report_json : dict
         The report.json file to be used to update the report.
     workspace : str | uuid.UUID, default=None
@@ -137,7 +134,7 @@ def update_report_from_reportjson(
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    report_id = resolve_report_id(report=report, workspace=workspace_id)
+    report_id = resolve_item_id(item=report, type="Report", workspace=workspace)
 
     # Get the existing PBIR file
     df_items = get_report_definition(report=report, workspace=workspace_id)
@@ -145,7 +142,7 @@ def update_report_from_reportjson(
     rptDefFile = df_items_filt["payload"].iloc[0]
     payloadReportJson = _conv_b64(report_json)
 
-    request_body = {
+    payload = {
         "definition": {
             "parts": [
                 {
@@ -162,13 +159,7 @@ def update_report_from_reportjson(
         }
     }
 
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/reports/{report_id}/updateDefinition",
-        json=request_body,
-    )
-
-    lro(client, response, return_status_code=True)
+    _base_api(request=f"/v1/workspaces/{workspace_id}/reports/{report_id}/updateDefinition", method="post", payload=payload, lro_return_status_code=True)
 
     print(
         f"{icons.green_dot} The '{report}' report within the '{workspace_name}' workspace has been successfully updated."
@@ -201,14 +192,9 @@ def get_report_definition(
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    report_id = resolve_item_id(item=report, type="Report", workspace=workspace)
 
-    report_id = resolve_report_id(report=report, workspace=workspace_id)
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/reports/{report_id}/getDefinition",
-    )
-
-    result = lro(client, response).json()
+    result = _base_api(request=f"/v1/workspaces/{workspace_id}/reports/{report_id}/getDefinition", method="post", lro_return_json=True)
 
     if return_dataframe:
         return pd.json_normalize(result["definition"]["parts"])
@@ -239,8 +225,6 @@ def create_model_bpa_report(
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
     """
-    # from sempy_labs._helper_functions import resolve_dataset_id
-
     (dataset_workspace_name, dataset_workspace_id) = resolve_workspace_name_and_id(
         dataset_workspace
     )
@@ -385,12 +369,7 @@ def _get_report(
         item=report, type="Report", workspace=workspace
     )
 
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1.0/myorg/groups/{workspace_id}/reports/{report_id}")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
+    response = _base_api(request=f"v1.0/myorg/groups/{workspace_id}/reports/{report_id}")
     result = response.json()
 
     new_data = {
@@ -417,7 +396,6 @@ def _get_report(
         "Is From Pbix": "bool",
         "Is Owned By Me": "bool",
     }
-
     _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     return df
