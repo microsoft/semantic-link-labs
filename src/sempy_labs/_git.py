@@ -1,12 +1,10 @@
-import sempy.fabric as fabric
 import pandas as pd
 import sempy_labs._icons as icons
 from typing import Optional, List
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
-    lro,
+    _base_api,
 )
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
@@ -43,7 +41,7 @@ def connect_workspace_to_azure_dev_ops(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    request_body = {
+    payload = {
         "gitProviderDetails": {
             "organizationName": organization_name,
             "projectName": project_name,
@@ -54,12 +52,11 @@ def connect_workspace_to_azure_dev_ops(
         }
     }
 
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/git/connect", json=request_body
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/git/connect",
+        payload=payload,
+        method="post",
     )
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
 
     print(
         f"{icons.green_dot} The '{workspace_name}' workspace has been connected to the '{project_name}' Git project in Azure DevOps within the '{repository_name}' repository."
@@ -102,7 +99,7 @@ def connect_workspace_to_github(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    request_body = {
+    payload = {
         "gitProviderDetails": {
             "ownerName": owner_name,
             "gitProviderType": "GitHub",
@@ -116,12 +113,11 @@ def connect_workspace_to_github(
         },
     }
 
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/git/connect", json=request_body
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/git/connect",
+        payload=payload,
+        method="post",
     )
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
 
     print(
         f"{icons.green_dot} The '{workspace_name}' workspace has been connected to the '{repository_name}' GitHub repository."
@@ -144,10 +140,7 @@ def disconnect_workspace_from_git(workspace: Optional[str | UUID] = None):
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    client = fabric.FabricRestClient()
-    response = client.post(f"/v1/workspaces/{workspace_id}/git/disconnect")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    _base_api(request=f"/v1/workspaces/{workspace_id}/git/disconnect", method="post")
 
     print(
         f"{icons.green_dot} The '{workspace_name}' workspace has been disconnected from Git."
@@ -189,13 +182,9 @@ def get_git_status(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         ]
     )
 
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/git/status")
-
-    if response.status_code not in [200, 202]:
-        raise FabricHTTPException(response)
-
-    result = lro(client, response).json()
+    result = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/git/status", lro_return_json=True
+    )
 
     for changes in result.get("changes", []):
         item_metadata = changes.get("itemMetadata", {})
@@ -252,11 +241,7 @@ def get_git_connection(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         ]
     )
 
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/git/connection")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    response = _base_api(request=f"/v1/workspaces/{workspace_id}/git/connection")
 
     r = response.json()
     provider_details = r.get("gitProviderDetails", {})
@@ -298,19 +283,17 @@ def initialize_git_connection(workspace: Optional[str | UUID] = None) -> str:
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    client = fabric.FabricRestClient()
-    response = client.post(f"/v1/workspaces/{workspace_id}/git/initializeConnection")
-
-    if response.status_code not in [200, 202]:
-        raise FabricHTTPException(response)
-
-    lro(client, response)
+    response_json = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/git/initializeConnection",
+        method="post",
+        lro_return_json=True,
+    )
 
     print(
         f"{icons.green_dot} The '{workspace_name}' workspace git connection has been initialized."
     )
 
-    return response.json().get("remoteCommitHash")
+    return response_json.get("remoteCommitHash")
 
 
 def commit_to_git(
@@ -350,25 +333,21 @@ def commit_to_git(
         if isinstance(item_ids, str):
             item_ids = [item_ids]
 
-        request_body = {
+        payload = {
             "mode": commit_mode,
             "workspaceHead": workspace_head,
             "comment": comment,
         }
 
         if item_ids is not None:
-            request_body["items"] = [{"objectId": item_id} for item_id in item_ids]
+            payload["items"] = [{"objectId": item_id} for item_id in item_ids]
 
-        client = fabric.FabricRestClient()
-        response = client.post(
-            f"/v1/workspaces/{workspace_id}/git/commitToGit",
-            json=request_body,
+        _base_api(
+            request=f"/v1/workspaces/{workspace_id}/git/commitToGit",
+            method="post",
+            payload=payload,
+            lro_return_status_code=True,
         )
-
-        if response.status_code not in [200, 202]:
-            raise FabricHTTPException(response)
-
-        lro(client=client, response=response, return_status_code=True)
 
         if commit_mode == "All":
             print(
@@ -426,28 +405,24 @@ def update_from_git(
             f"{icons.red_dot} Invalid conflict resolution policy. Valid options: {conflict_resolution_policies}."
         )
 
-    request_body = {}
-    request_body["remoteCommitHash"] = remote_commit_hash
-    request_body["conflictResolution"] = {
+    payload = {}
+    payload["remoteCommitHash"] = remote_commit_hash
+    payload["conflictResolution"] = {
         "conflictResolutionType": "Workspace",
         "conflictResolutionPolicy": conflict_resolution_policy,
     }
 
     if workspace_head is not None:
-        request_body["workspaceHead"] = workspace_head
+        payload["workspaceHead"] = workspace_head
     if allow_override is not None:
-        request_body["options"] = {"allowOverrideItems": allow_override}
+        payload["options"] = {"allowOverrideItems": allow_override}
 
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/git/updateFromGit",
-        json=request_body,
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/git/updateFromGit",
+        method="post",
+        payload=payload,
+        lro_return_status_code=True,
     )
-
-    if response.status_code not in [200, 202]:
-        raise FabricHTTPException(response)
-
-    lro(client, response, return_status_code=True)
 
     print(
         f"{icons.green_dot} The '{workspace_name}' workspace has been updated with commits pushed to the connected branch."

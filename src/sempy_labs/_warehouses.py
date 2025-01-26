@@ -1,13 +1,11 @@
 import sempy.fabric as fabric
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
-    pagination,
-    lro,
+    _base_api,
 )
 import pandas as pd
 from typing import Optional
 import sempy_labs._icons as icons
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
@@ -38,22 +36,23 @@ def create_warehouse(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    request_body = {"displayName": warehouse}
+    payload = {"displayName": warehouse}
 
     if description:
-        request_body["description"] = description
+        payload["description"] = description
     if case_insensitive_collation:
-        request_body.setdefault("creationPayload", {})
-        request_body["creationPayload"][
+        payload.setdefault("creationPayload", {})
+        payload["creationPayload"][
             "defaultCollation"
         ] = "Latin1_General_100_CI_AS_KS_WS_SC_UTF8"
 
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/warehouses/", json=request_body
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/warehouses",
+        payload=payload,
+        method="post",
+        lro_return_status_code=True,
+        status_codes=[201, 202],
     )
-
-    lro(client, response, status_codes=[201, 202])
 
     print(
         f"{icons.green_dot} The '{warehouse}' warehouse has been created within the '{workspace_name}' workspace."
@@ -92,12 +91,9 @@ def list_warehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/warehouses")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
+    responses = _base_api(
+        reqeust=f"/v1/workspaces/{workspace_id}/warehouses", uses_pagination=True
+    )
 
     for r in responses:
         for v in r.get("value", []):
@@ -138,11 +134,9 @@ def delete_warehouse(name: str, workspace: Optional[str | UUID] = None):
         item_name=name, type="Warehouse", workspace=workspace_id
     )
 
-    client = fabric.FabricRestClient()
-    response = client.delete(f"/v1/workspaces/{workspace_id}/warehouses/{item_id}")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/warehouses/{item_id}", method="delete"
+    )
 
     print(
         f"{icons.green_dot} The '{name}' warehouse within the '{workspace_name}' workspace has been deleted."

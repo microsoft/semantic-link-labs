@@ -1,12 +1,11 @@
-import sempy.fabric as fabric
 import pandas as pd
 import sempy_labs._icons as icons
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _update_dataframe_datatypes,
+    _base_api,
 )
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
@@ -47,10 +46,7 @@ def list_custom_pools(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         ]
     )
 
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/spark/pools")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    response = _base_api(request=f"/v1/workspaces/{workspace_id}/spark/pools")
 
     for i in response.json()["value"]:
 
@@ -77,7 +73,6 @@ def list_custom_pools(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         "Dynamic Executor Allocation Enabled": "bool",
         "Auto Scale Min Node Count": "int",
         "Auto Scale Max Node Count": "int",
-        "Dynamic Executor Allocation Enabled": "int",
         "Dynamic Executor Allocation Min Executors": "int",
         "Dynamic Executor Allocation Max Executors": "int",
     }
@@ -132,7 +127,7 @@ def create_custom_pool(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    request_body = {
+    payload = {
         "name": pool_name,
         "nodeFamily": node_family,
         "nodeSize": node_size,
@@ -148,13 +143,12 @@ def create_custom_pool(
         },
     }
 
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/spark/pools", json=request_body
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/spark/pools",
+        payload=payload,
+        method="post",
+        status_codes=201,
     )
-
-    if response.status_code != 201:
-        raise FabricHTTPException(response)
     print(
         f"{icons.green_dot} The '{pool_name}' spark pool has been created within the '{workspace_name}' workspace."
     )
@@ -240,7 +234,7 @@ def update_custom_pool(
     if max_executors is None:
         max_executors = int(df_pool["Max Executors"].iloc[0])
 
-    request_body = {
+    payload = {
         "name": pool_name,
         "nodeFamily": node_family,
         "nodeSize": node_size,
@@ -256,13 +250,11 @@ def update_custom_pool(
         },
     }
 
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/spark/pools", json=request_body
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/spark/pools",
+        payload=payload,
+        method="post",
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
     print(
         f"{icons.green_dot} The '{pool_name}' spark pool within the '{workspace_name}' workspace has been updated."
     )
@@ -289,17 +281,15 @@ def delete_custom_pool(pool_name: str, workspace: Optional[str | UUID] = None):
     dfL = list_custom_pools(workspace=workspace_id)
     dfL_filt = dfL[dfL["Custom Pool Name"] == pool_name]
 
-    if len(dfL_filt) == 0:
+    if dfL_filt.empty:
         raise ValueError(
             f"{icons.red_dot} The '{pool_name}' custom pool does not exist within the '{workspace_name}' workspace."
         )
     pool_id = dfL_filt["Custom Pool ID"].iloc[0]
 
-    client = fabric.FabricRestClient()
-    response = client.delete(f"/v1/workspaces/{workspace_id}/spark/pools/{pool_id}")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/spark/pools/{pool_id}", method="delete"
+    )
     print(
         f"{icons.green_dot} The '{pool_name}' spark pool has been deleted from the '{workspace_name}' workspace."
     )
@@ -344,10 +334,7 @@ def get_spark_settings(
         ]
     )
 
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/spark/settings")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    response = _base_api(request=f"/v1/workspaces/{workspace_id}/spark/settings")
 
     i = response.json()
     p = i.get("pool")
@@ -434,34 +421,32 @@ def update_spark_settings(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    request_body = get_spark_settings(workspace=workspace, return_dataframe=False)
+    payload = get_spark_settings(workspace=workspace, return_dataframe=False)
 
     if automatic_log_enabled is not None:
-        request_body["automaticLog"]["enabled"] = automatic_log_enabled
+        payload["automaticLog"]["enabled"] = automatic_log_enabled
     if high_concurrency_enabled is not None:
-        request_body["highConcurrency"][
+        payload["highConcurrency"][
             "notebookInteractiveRunEnabled"
         ] = high_concurrency_enabled
     if customize_compute_enabled is not None:
-        request_body["pool"]["customizeComputeEnabled"] = customize_compute_enabled
+        payload["pool"]["customizeComputeEnabled"] = customize_compute_enabled
     if default_pool_name is not None:
-        request_body["pool"]["defaultPool"]["name"] = default_pool_name
+        payload["pool"]["defaultPool"]["name"] = default_pool_name
     if max_node_count is not None:
-        request_body["pool"]["starterPool"]["maxNodeCount"] = max_node_count
+        payload["pool"]["starterPool"]["maxNodeCount"] = max_node_count
     if max_executors is not None:
-        request_body["pool"]["starterPool"]["maxExecutors"] = max_executors
+        payload["pool"]["starterPool"]["maxExecutors"] = max_executors
     if environment_name is not None:
-        request_body["environment"]["name"] = environment_name
+        payload["environment"]["name"] = environment_name
     if runtime_version is not None:
-        request_body["environment"]["runtimeVersion"] = runtime_version
+        payload["environment"]["runtimeVersion"] = runtime_version
 
-    client = fabric.FabricRestClient()
-    response = client.patch(
-        f"/v1/workspaces/{workspace_id}/spark/settings", json=request_body
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/spark/settings",
+        payload=payload,
+        method="patch",
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
     print(
         f"{icons.green_dot} The spark settings within the '{workspace_name}' workspace have been updated accordingly."
     )

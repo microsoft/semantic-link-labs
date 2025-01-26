@@ -1,14 +1,13 @@
-import sempy.fabric as fabric
 import pandas as pd
 from typing import Optional, Union, List
 from sempy._utils._log import log
 import struct
 from itertools import chain, repeat
-from sempy.fabric.exceptions import FabricHTTPException
 from sempy_labs._helper_functions import (
     resolve_lakehouse_name_and_id,
     resolve_item_name_and_id,
     resolve_workspace_name_and_id,
+    _base_api,
 )
 from uuid import UUID
 
@@ -56,12 +55,9 @@ class ConnectBase:
             )
 
         # Get the TDS endpoint
-        client = fabric.FabricRestClient()
-        response = client.get(
-            f"v1/workspaces/{workspace_id}/{endpoint_type}s/{resource_id}"
+        response = _base_api(
+            request=f"v1/workspaces/{workspace_id}/{endpoint_type}s/{resource_id}"
         )
-        if response.status_code != 200:
-            raise FabricHTTPException(response)
 
         if endpoint_type == "warehouse":
             tds_endpoint = response.json().get("properties", {}).get("connectionString")

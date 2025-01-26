@@ -1,4 +1,3 @@
-import sempy.fabric as fabric
 from sempy_labs._helper_functions import (
     resolve_report_id,
     format_dax_object_name,
@@ -6,10 +5,10 @@ from sempy_labs._helper_functions import (
     _conv_b64,
     _extract_json,
     _add_part,
-    lro,
     _decode_b64,
     resolve_workspace_name_and_id,
     _update_dataframe_datatypes,
+    _base_api,
 )
 from typing import Optional, List
 import pandas as pd
@@ -145,13 +144,12 @@ class ReportWrapper:
 
     def update_report(self, request_body: dict):
 
-        client = fabric.FabricRestClient()
-        response = client.post(
-            f"/v1/workspaces/{self._workspace_id}/reports/{self._report_id}/updateDefinition",
-            json=request_body,
+        _base_api(
+            request=f"/v1/workspaces/{self._workspace_id}/reports/{self._report_id}/updateDefinition",
+            method="post",
+            payload=request_body,
+            lro_return_status_code=True,
         )
-
-        lro(client, response, return_status_code=True)
 
     def resolve_page_name(self, page_display_name: str) -> UUID:
         """

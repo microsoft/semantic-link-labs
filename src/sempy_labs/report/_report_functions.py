@@ -19,6 +19,7 @@ from sempy_labs._helper_functions import (
     _decode_b64,
     resolve_dataset_id,
     _update_dataframe_datatypes,
+    _base_api,
 )
 from typing import List, Optional, Union
 from sempy._utils._log import log
@@ -58,12 +59,7 @@ def get_report_json(
     report_id = resolve_report_id(report=report, workspace=workspace_id)
     fmt = "PBIR-Legacy"
 
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/reports/{report_id}/getDefinition?format={fmt}"
-    )
-
-    result = lro(client, response).json()
+    result = _base_api(request=f"/v1/workspaces/{workspace_id}/reports/{report_id}/getDefinition?format={fmt}", method="post", lro_return_json=True)
     df_items = pd.json_normalize(result["definition"]["parts"])
     df_items_filt = df_items[df_items["path"] == "report.json"]
     payload = df_items_filt["payload"].iloc[0]

@@ -10,6 +10,7 @@ from uuid import UUID
 from sempy_labs._helper_functions import (
     _is_valid_uuid,
     _update_dataframe_datatypes,
+    _base_api,
 )
 import sempy_labs._authentication as auth
 
@@ -218,10 +219,7 @@ def list_vcores() -> pd.DataFrame:
 
     df = pd.DataFrame(columns=["Total Purchased Cores", "Available Cores"])
 
-    client = fabric.PowerBIRestClient()
-    response = client.get("capacities/vcores")
-    if response.status_code != 200:
-        FabricHTTPException(response)
+    response = _base_api(request="capacities/vcores")
     response_json = response.json()
     new_data = {
         "Total Purchased Cores": response_json.get("totalPurchasedCores"),
@@ -243,11 +241,8 @@ def get_capacity_resource_governance(capacity_name: str):
     dfC = fabric.list_capacities()
     dfC_filt = dfC[dfC["Display Name"] == capacity_name]
     capacity_id = dfC_filt["Id"].iloc[0].upper()
-    client = fabric.PowerBIRestClient()
-    response = client.get(f"capacities/{capacity_id}/resourceGovernance")
 
-    if response.status_code != 200:
-        FabricHTTPException(response)
+    response = _base_api(request=f"capacities/{capacity_id}/resourceGovernance")
 
     return response.json()["workloadSettings"]
 
@@ -414,11 +409,7 @@ def delete_premium_capacity(capacity_name: str):
         )
     capacity_id = dfC_filt["Id"].iloc[0].upper()
 
-    client = fabric.FabricRestClient()
-    response = client.delete(f"capacities/{capacity_id}")
-
-    if response.status_code != 204:
-        raise FabricHTTPException(response)
+    _base_api(request=f"capacities/{capacity_id}", method="delete", status_codes=204)
 
     print(f"{icons.green_dot} The '{capacity_name}' capacity has been deleted.")
 

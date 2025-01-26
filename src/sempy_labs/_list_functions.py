@@ -3,16 +3,15 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     create_relationship_name,
     resolve_lakehouse_id,
-    pagination,
     resolve_item_type,
     format_dax_object_name,
     resolve_dataset_name_and_id,
     _update_dataframe_datatypes,
+    _base_api,
 )
 import pandas as pd
 from typing import Optional
 import sempy_labs._icons as icons
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
@@ -627,10 +626,7 @@ def list_dashboards(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    client = fabric.PowerBIRestClient()
-    response = client.get(f"/v1.0/myorg/groups/{workspace_id}/dashboards")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    response = _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/dashboards")
 
     for v in response.json().get("value", []):
         new_data = {
@@ -686,13 +682,9 @@ def list_lakehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/lakehouses")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
+    responses = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/lakehouses", uses_pagination=True
+    )
 
     for r in responses:
         for v in r.get("value", []):
@@ -735,12 +727,9 @@ def list_sql_endpoints(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/sqlEndpoints")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
+    responses = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/sqlEndpoints", uses_pagination=True
+    )
 
     for r in responses:
         for v in r.get("value", []):
@@ -776,15 +765,12 @@ def list_datamarts(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/datamarts")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
+    responses = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/datamarts", uses_pagination=True
+    )
 
     for r in responses:
-        for v in response.get("value", []):
+        for v in r.get("value", []):
             new_data = {
                 "Datamart Name": v.get("displayName"),
                 "Datamart ID": v.get("id"),
@@ -841,17 +827,15 @@ def update_item(
 
     itemId = dfI_filt["Id"].iloc[0]
 
-    request_body = {"displayName": new_name}
+    payload = {"displayName": new_name}
     if description:
-        request_body["description"] = description
+        payload["description"] = description
 
-    client = fabric.FabricRestClient()
-    response = client.patch(
-        f"/v1/workspaces/{workspace_id}/{itemType}/{itemId}", json=request_body
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/{itemType}/{itemId}",
+        payload=payload,
+        method="patch",
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
     if description is None:
         print(
             f"{icons.green_dot} The '{current_name}' {item_type} within the '{workspace_name}' workspace has been updated to be named '{new_name}'"
@@ -1212,8 +1196,6 @@ def list_shortcuts(
     else:
         lakehouse_id = resolve_lakehouse_id(lakehouse, workspace_id)
 
-    client = fabric.FabricRestClient()
-
     df = pd.DataFrame(
         columns=[
             "Shortcut Name",
@@ -1232,14 +1214,10 @@ def list_shortcuts(
         ]
     )
 
-    response = client.get(
-        f"/v1/workspaces/{workspace_id}/items/{lakehouse_id}/shortcuts"
+    responses = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/items/{lakehouse_id}/shortcuts",
+        uses_pagination=True,
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
 
     for r in responses:
         for i in r.get("value", []):
@@ -1307,10 +1285,7 @@ def list_capacities() -> pd.DataFrame:
         columns=["Id", "Display Name", "Sku", "Region", "State", "Admins"]
     )
 
-    client = fabric.PowerBIRestClient()
-    response = client.get("/v1.0/myorg/capacities")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    response = _base_api(request="/v1.0/myorg/capacities")
 
     for i in response.json().get("value", []):
         new_data = {
