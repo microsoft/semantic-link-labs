@@ -1,13 +1,10 @@
-import sempy.fabric as fabric
 import pandas as pd
 from sempy_labs._helper_functions import (
-    pagination,
     _is_valid_uuid,
     _base_api,
     _update_dataframe_datatypes,
 )
 import sempy_labs._icons as icons
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
@@ -28,7 +25,6 @@ def list_deployment_pipelines() -> pd.DataFrame:
     )
     responses = _base_api(
         request="/v1/deploymentPipelines",
-        client="fabric",
         status_codes=200,
         uses_pagination=True,
     )
@@ -82,7 +78,6 @@ def list_deployment_pipeline_stages(deployment_pipeline: str | UUID) -> pd.DataF
 
     responses = _base_api(
         request=f"/v1/deploymentPipelines/{deployment_pipeline_id}/stages",
-        client="fabric",
         status_codes=200,
         uses_pagination=True,
     )
@@ -170,7 +165,6 @@ def list_deployment_pipeline_stage_items(
 
     responses = _base_api(
         request=f"/v1/deploymentPipelines/{deployment_pipeline_id}/stages/{stage_id}/items",
-        client="fabric",
         status_codes=200,
         uses_pagination=True,
     )

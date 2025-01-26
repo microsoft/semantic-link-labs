@@ -1,6 +1,5 @@
 import sempy.fabric as fabric
 import pandas as pd
-import sempy_labs._icons as icons
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
@@ -36,7 +35,6 @@ def list_ml_models(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
     responses = _base_api(
         request=f"/v1/workspaces/{workspace_id}/mlModels",
-        client="fabric",
         status_codes=200,
         uses_pagination=True,
     )
@@ -86,7 +84,6 @@ def create_ml_model(
 
     _base_api(
         request=f"/v1/workspaces/{workspace_id}/mlModels",
-        client="fabric",
         method="post",
         status_codes=[201, 202],
         payload=payload,

@@ -679,7 +679,7 @@ def list_skus_for_capacity(
     """
 
     df = pd.DataFrame(columns=["Resource Type", "Sku", "Sku Tier"])
-    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity}/skus?api-version=2023-11-01"    
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity}/skus?api-version=2023-11-01"
     response = _base_api(request=url, client="azure")
 
     for v in response.json().get("value", []):
@@ -718,7 +718,7 @@ def list_skus(
     """
 
     df = pd.DataFrame(columns=["Sku", "Locations"])
-    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/providers/Microsoft.Fabric/skus?api-version=2023-11-01"    
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/providers/Microsoft.Fabric/skus?api-version=2023-11-01"
     response = _base_api(request=url, client="azure")
 
     for v in response.json().get("value", []):
@@ -761,7 +761,7 @@ def list_subscriptions() -> pd.DataFrame:
             "Tags",
         ]
     )
-    url = "https://management.azure.com/subscriptions?api-version=2022-12-01"    
+    url = "https://management.azure.com/subscriptions?api-version=2022-12-01"
     response = _base_api(request=url, client="azure")
 
     for v in response.json().get("value", []):
@@ -942,7 +942,13 @@ def create_or_update_resource_group(
         "location": region,
     }
 
-    _base_api(request=url, client="azure", method="put", payload=payload, status_codes=[200, 201])
+    _base_api(
+        request=url,
+        client="azure",
+        method="put",
+        payload=payload,
+        status_codes=[200, 201],
+    )
 
     print(
         f"{icons.green_dot} The '{resource_group}' resource group has been created/updated."
@@ -1159,7 +1165,7 @@ def list_resource_groups(
 
     url += "api-version=2021-04-01"
 
-    df = pd.DataFrame(columns=["Resource Group Name", "Location", "Tags"])    
+    df = pd.DataFrame(columns=["Resource Group Name", "Location", "Tags"])
     response = _base_api(request=url, client="azure")
 
     for v in response.json().get("value", []):

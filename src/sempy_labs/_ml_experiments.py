@@ -35,7 +35,6 @@ def list_ml_experiments(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
     responses = _base_api(
         request=f"/v1/workspaces/{workspace_id}/mlExperiments",
-        client="fabric",
         status_codes=200,
         uses_pagination=True,
     )
@@ -85,7 +84,6 @@ def create_ml_experiment(
 
     _base_api(
         request=f"/v1/workspaces/{workspace_id}/mlExperiments",
-        client="fabric",
         method="post",
         json=payload,
         status_codes=[201, 202],

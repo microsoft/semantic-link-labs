@@ -49,7 +49,6 @@ def list_mirrored_databases(workspace: Optional[str | UUID] = None) -> pd.DataFr
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     responses = _base_api(
         request=f"/v1/workspaces/{workspace_id}/mirroredDatabases",
-        client="fabric",
         status_codes=200,
         uses_pagination=True,
     )
@@ -102,7 +101,6 @@ def create_mirrored_database(
 
     _base_api(
         request=f"/v1/workspaces/{workspace_id}/mirroredDatabases",
-        client="fabric",
         status_codes=201,
         method="post",
         payload=payload,
@@ -170,7 +168,6 @@ def get_mirroring_status(
     )
     response = _base_api(
         request=f"/v1/workspaces/{workspace_id}/mirroredDatabases/{item_id}/getMirroringStatus",
-        client="fabric",
         status_codes=200,
     )
 
@@ -207,7 +204,6 @@ def get_tables_mirroring_status(
     responses = _base_api(
         request=f"/v1/workspaces/{workspace_id}/mirroredDatabases/{item_id}/getTablesMirroringStatus",
         method="post",
-        client="fabric",
         status_codes=200,
         uses_pagination=True,
     )
@@ -271,7 +267,6 @@ def start_mirroring(
     )
     _base_api(
         request=f"/v1/workspaces/{workspace_id}/mirroredDatabases/{item_id}/startMirroring",
-        client="fabric",
         method="post",
         status_codes=200,
     )
@@ -305,7 +300,6 @@ def stop_mirroring(
     )
     _base_api(
         request=f"/v1/workspaces/{workspace_id}/mirroredDatabases/{item_id}/stopMirroring",
-        client="fabric",
         method="post",
         status_codes=200,
     )
@@ -349,7 +343,6 @@ def get_mirrored_database_definition(
     )
     result = _base_api(
         request=f"/v1/workspaces/{workspace_id}/mirroredDatabases/{item_id}/getDefinition",
-        client="fabric",
         method="post",
         status_codes=200,
         lro_return_json=True,
@@ -409,7 +402,6 @@ def update_mirrored_database_definition(
 
     _base_api(
         request=f"/v1/workspaces/{workspace_id}/mirroredDatabases/{item_id}/updateDefinition",
-        client="fabric",
         method="post",
         json=request_body,
         status_codes=None,

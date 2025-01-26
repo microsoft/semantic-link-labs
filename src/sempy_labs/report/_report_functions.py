@@ -59,7 +59,11 @@ def get_report_json(
     report_id = resolve_report_id(report=report, workspace=workspace_id)
     fmt = "PBIR-Legacy"
 
-    result = _base_api(request=f"/v1/workspaces/{workspace_id}/reports/{report_id}/getDefinition?format={fmt}", method="post", lro_return_json=True)
+    result = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/reports/{report_id}/getDefinition?format={fmt}",
+        method="post",
+        lro_return_json=True,
+    )
     df_items = pd.json_normalize(result["definition"]["parts"])
     df_items_filt = df_items[df_items["path"] == "report.json"]
     payload = df_items_filt["payload"].iloc[0]
@@ -455,7 +459,11 @@ def clone_report(
     if target_workspace != workspace_name:
         payload["targetWorkspaceId"] = target_workspace_id
 
-    _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/reports/{reportId}/Clone", method="post", payload=payload)
+    _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}/reports/{reportId}/Clone",
+        method="post",
+        payload=payload,
+    )
     print(
         f"{icons.green_dot} The '{report}' report has been successfully cloned as the '{cloned_report}' report within the '{target_workspace}' workspace."
     )

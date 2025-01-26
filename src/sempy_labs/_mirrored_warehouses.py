@@ -33,7 +33,6 @@ def list_mirrored_warehouses(workspace: Optional[str | UUID] = None) -> pd.DataF
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     responses = _base_api(
         request=f"/v1/workspaces/{workspace_id}/mirroredWarehouses",
-        client="fabric",
         status_codes=200,
         uses_pagination=True,
     )

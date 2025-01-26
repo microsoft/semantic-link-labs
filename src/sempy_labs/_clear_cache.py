@@ -11,7 +11,6 @@ from typing import Optional
 import sempy_labs._icons as icons
 from sempy._utils._log import log
 import pandas as pd
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 

@@ -8,7 +8,6 @@ from sempy_labs._helper_functions import (
 )
 from typing import Optional, Tuple
 import sempy_labs._icons as icons
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 

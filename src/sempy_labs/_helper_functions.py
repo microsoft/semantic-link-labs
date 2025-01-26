@@ -1502,7 +1502,9 @@ def _base_api(
             raise NotImplementedError
     else:
         headers = _get_headers(auth.token_provider.get(), audience="azure")
-        response = requests.request(method.upper(), request, headers=headers, json=payload)
+        response = requests.request(
+            method.upper(), request, headers=headers, json=payload
+        )
 
     if (lro_return_json or lro_return_status_code) and status_codes is None:
         status_codes = [200, 202]

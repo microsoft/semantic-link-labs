@@ -1,16 +1,12 @@
-import sempy.fabric as fabric
 from sempy._utils._log import log
 import pandas as pd
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_item_name_and_id,
-    pagination,
-    lro,
     _update_dataframe_datatypes,
     _base_api,
 )
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 import sempy_labs._icons as icons
 

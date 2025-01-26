@@ -1,4 +1,3 @@
-import sempy.fabric as fabric
 import pandas as pd
 import sempy_labs._icons as icons
 from typing import Optional
@@ -8,7 +7,6 @@ from sempy_labs._helper_functions import (
     _base_api,
     _print_success,
 )
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
@@ -57,7 +55,6 @@ def create_managed_private_endpoint(
 
     _base_api(
         request=f"/v1/workspaces/{workspace_id}/managedPrivateEndpoints",
-        client="fabric",
         method="post",
         status_codes=[201, 202],
         payload=request_body,
@@ -108,7 +105,6 @@ def list_managed_private_endpoints(
 
     responses = _base_api(
         request=f"/v1/workspaces/{workspace_id}/managedPrivateEndpoints",
-        client="fabric",
         uses_pagination=True,
         status_codes=200,
     )
