@@ -183,7 +183,9 @@ def get_git_status(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     )
 
     result = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/git/status", lro_return_json=True
+        request=f"/v1/workspaces/{workspace_id}/git/status",
+        lro_return_json=True,
+        status_codes=None,
     )
 
     for changes in result.get("changes", []):
@@ -287,6 +289,7 @@ def initialize_git_connection(workspace: Optional[str | UUID] = None) -> str:
         request=f"/v1/workspaces/{workspace_id}/git/initializeConnection",
         method="post",
         lro_return_json=True,
+        status_codes=None,
     )
 
     print(
@@ -347,6 +350,7 @@ def commit_to_git(
             method="post",
             payload=payload,
             lro_return_status_code=True,
+            status_codes=None,
         )
 
         if commit_mode == "All":
@@ -422,6 +426,7 @@ def update_from_git(
         method="post",
         payload=payload,
         lro_return_status_code=True,
+        status_codes=None,
     )
 
     print(

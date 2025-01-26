@@ -154,6 +154,7 @@ def publish_environment(environment: str, workspace: Optional[str | UUID] = None
         request=f"/v1/workspaces/{workspace_id}/environments/{environment_id}/staging/publish",
         method="post",
         lro_return_status_code=True,
+        status_codes=None,
     )
 
     print(

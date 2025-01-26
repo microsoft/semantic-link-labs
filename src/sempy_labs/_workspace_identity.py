@@ -27,6 +27,7 @@ def provision_workspace_identity(workspace: Optional[str | UUID] = None):
         request=f"/v1/workspaces/{workspace_id}/provisionIdentity",
         method="post",
         lro_return_status_code=True,
+        status_codes=None,
     )
 
     print(
@@ -54,6 +55,7 @@ def deprovision_workspace_identity(workspace: Optional[str | UUID] = None):
         request=f"/v1/workspaces/{workspace_id}/deprovisionIdentity",
         method="post",
         lro_return_status_code=True,
+        status_codes=None,
     )
 
     print(

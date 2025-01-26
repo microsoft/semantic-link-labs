@@ -264,6 +264,7 @@ def assign_domain_workspaces_by_capacities(
         method="post",
         payload=payload,
         lro_return_status_code=True,
+        status_codes=202,
     )
 
     print(
@@ -316,6 +317,7 @@ def assign_domain_workspaces(domain_name: str, workspace_names: str | List[str])
         method="post",
         payload=payload,
         lro_return_status_code=True,
+        status_codes=200,
     )
 
     print(
@@ -341,6 +343,7 @@ def unassign_all_domain_workspaces(domain_name: str):
         request=f"/v1/admin/domains/{domain_id}/unassignAllWorkspaces",
         method="post",
         lro_return_status_code=True,
+        status_codes=200,
     )
 
     print(

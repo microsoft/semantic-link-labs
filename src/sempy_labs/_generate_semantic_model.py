@@ -236,6 +236,7 @@ def update_semantic_model_from_bim(
         payload=payload,
         method="post",
         lro_return_status_code=True,
+        status_codes=None,
     )
 
     print(
@@ -431,6 +432,7 @@ def get_semantic_model_definition(
         request=f"v1/workspaces/{workspace_id}/semanticModels/{dataset_id}/getDefinition?format={format}",
         method="post",
         lro_return_json=True,
+        status_codes=None,
     )
 
     files = result["definition"]["parts"]

@@ -28,6 +28,7 @@ def _get_notebook_definition_base(
         request=f"v1/workspaces/{workspace_id}/notebooks/{item_id}/getDefinition",
         method="post",
         lro_return_json=True,
+        status_codes=None,
     )
 
     return pd.json_normalize(result["definition"]["parts"])
@@ -183,7 +184,7 @@ def create_notebook(
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    notebook_payload = base64.b64encode(notebook_content)
+    notebook_payload = base64.b64encode(notebook_content).decode("utf-8")
 
     payload = {
         "displayName": name,
@@ -206,6 +207,7 @@ def create_notebook(
         payload=payload,
         method="post",
         lro_return_status_code=True,
+        status_codes=[201, 202],
     )
 
     print(
@@ -253,6 +255,7 @@ def update_notebook_definition(
         payload=payload,
         method="post",
         lro_return_status_code=True,
+        status_codes=None,
     )
 
     print(

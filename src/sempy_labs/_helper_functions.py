@@ -1475,6 +1475,9 @@ def _base_api(
 
     from sempy_labs._authentication import _get_headers
 
+    if (lro_return_json or lro_return_status_code) and status_codes is None:
+        status_codes = [200, 202]
+
     if isinstance(status_codes, int):
         status_codes = [status_codes]
 
@@ -1506,21 +1509,18 @@ def _base_api(
             method.upper(), request, headers=headers, json=payload
         )
 
-    if (lro_return_json or lro_return_status_code) and status_codes is None:
-        status_codes = [200, 202]
-
-    if response.status_code not in status_codes:
-        raise FabricHTTPException(response)
-
-    if uses_pagination:
-        responses = pagination(client, response)
-        return responses
-    elif lro_return_json:
-        return lro(client, response, status_codes).json()
+    if lro_return_json:
+        return lro(c, response, status_codes).json()
     elif lro_return_status_code:
-        return lro(client, response, status_codes, return_status_code=True)
+        return lro(c, response, status_codes, return_status_code=True)
     else:
-        return response
+        if response.status_code not in status_codes:
+            raise FabricHTTPException(response)
+        if uses_pagination:
+            responses = pagination(c, response)
+            return responses
+        else:
+            return response
 
 
 def _update_dataframe_datatypes(dataframe: pd.DataFrame, column_map: dict):

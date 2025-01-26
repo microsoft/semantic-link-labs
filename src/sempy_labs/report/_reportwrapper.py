@@ -149,6 +149,7 @@ class ReportWrapper:
             method="post",
             payload=request_body,
             lro_return_status_code=True,
+            status_codes=None,
         )
 
     def resolve_page_name(self, page_display_name: str) -> UUID:

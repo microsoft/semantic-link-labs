@@ -170,6 +170,7 @@ def update_report_from_reportjson(
         method="post",
         payload=payload,
         lro_return_status_code=True,
+        status_codes=None,
     )
 
     print(
@@ -209,6 +210,7 @@ def get_report_definition(
         request=f"/v1/workspaces/{workspace_id}/reports/{report_id}/getDefinition",
         method="post",
         lro_return_json=True,
+        status_codes=None,
     )
 
     if return_dataframe:
@@ -356,6 +358,7 @@ def _create_report(
             method="post",
             payload=request_body,
             lro_return_status_code=True,
+            status_codes=None,
         )
         print(
             f"{icons.green_dot} The '{report}' report has been updated within the '{report_workspace}'"

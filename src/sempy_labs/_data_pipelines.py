@@ -152,6 +152,7 @@ def get_data_pipeline_definition(
         request=f"/v1/workspaces/{workspace_id}/dataPipelines/{item_id}/getDefinition",
         method="post",
         lro_return_json=True,
+        status_codes=None,
     )
     df = pd.json_normalize(result["definition"]["parts"])
 

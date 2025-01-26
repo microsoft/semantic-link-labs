@@ -41,7 +41,7 @@ def list_gateways() -> pd.DataFrame:
         ]
     )
 
-    responses = _base_api(requests="/v1/gateways", uses_pagination=True)
+    responses = _base_api(request="/v1/gateways", uses_pagination=True)
 
     for r in responses:
         for v in r.get("value", []):

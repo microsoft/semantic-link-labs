@@ -214,6 +214,7 @@ def run_on_demand_item_job(
         request=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/instances?jobType={job_type}",
         method="post",
         lro_return_status_code=True,
+        status_codes=202,
     )
 
     print(f"{icons.green_dot} The '{item_name}' {type.lower()} has been executed.")

@@ -63,6 +63,7 @@ def get_report_json(
         request=f"/v1/workspaces/{workspace_id}/reports/{report_id}/getDefinition?format={fmt}",
         method="post",
         lro_return_json=True,
+        status_codes=None,
     )
     df_items = pd.json_normalize(result["definition"]["parts"])
     df_items_filt = df_items[df_items["path"] == "report.json"]
