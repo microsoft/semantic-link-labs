@@ -449,20 +449,13 @@ def clone_report(
             f"{icons.warning} The 'report' and 'cloned_report' parameters have the same value of '{report}. The 'workspace' and 'target_workspace' have the same value of '{workspace_name}'. Either the 'cloned_report' or the 'target_workspace' must be different from the original report."
         )
 
-    client = fabric.PowerBIRestClient()
-
-    request_body = {"name": cloned_report}
+    payload = {"name": cloned_report}
     if target_dataset is not None:
-        request_body["targetModelId"] = target_dataset_id
+        payload["targetModelId"] = target_dataset_id
     if target_workspace != workspace_name:
-        request_body["targetWorkspaceId"] = target_workspace_id
+        payload["targetWorkspaceId"] = target_workspace_id
 
-    response = client.post(
-        f"/v1.0/myorg/groups/{workspace_id}/reports/{reportId}/Clone", json=request_body
-    )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/reports/{reportId}/Clone", method="post", payload=payload)
     print(
         f"{icons.green_dot} The '{report}' report has been successfully cloned as the '{cloned_report}' report within the '{target_workspace}' workspace."
     )

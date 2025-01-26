@@ -16,6 +16,7 @@ import urllib.parse
 import numpy as np
 from IPython.display import display, HTML
 import sempy_labs._authentication as auth
+import requests
 
 
 def _build_url(url: str, params: dict) -> str:
@@ -1472,34 +1473,42 @@ def _base_api(
     lro_return_status_code: bool = False,
 ):
 
-    if client == "fabric":
-        client = fabric.FabricRestClient()
-    elif client == "fabric_sp":
-        client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
-    else:
-        raise ValueError(f"{icons.red_dot} The '{client}' client is not supported.")
+    from sempy_labs._authentication import _get_headers
 
     if isinstance(status_codes, int):
         status_codes = [status_codes]
 
-    if method == "get":
-        response = client.get(request)
-    elif method == "delete":
-        response = client.delete(request)
-    elif method == "post":
-        response = client.post(request, json=payload)
-    elif method == "patch":
-        response = client.patch(request, json=payload)
-    elif method == "put":
-        response = client.put(request, json=payload)
+    if client == "fabric":
+        c = fabric.FabricRestClient()
+    elif client == "fabric_sp":
+        c = fabric.FabricRestClient(token_provider=auth.token_provider.get())
+    elif client == "azure":
+        pass
     else:
-        raise NotImplementedError
+        raise ValueError(f"{icons.red_dot} The '{client}' client is not supported.")
 
-    if response.status_code not in status_codes:
-        raise FabricHTTPException(response)
+    if client != "azure":
+        if method == "get":
+            response = c.get(request)
+        elif method == "delete":
+            response = c.delete(request)
+        elif method == "post":
+            response = c.post(request, json=payload)
+        elif method == "patch":
+            response = c.patch(request, json=payload)
+        elif method == "put":
+            response = c.put(request, json=payload)
+        else:
+            raise NotImplementedError
+    else:
+        headers = _get_headers(auth.token_provider.get(), audience="azure")
+        response = requests.request(method.upper(), request, headers=headers, json=payload)
 
     if (lro_return_json or lro_return_status_code) and status_codes is None:
         status_codes = [200, 202]
+
+    if response.status_code not in status_codes:
+        raise FabricHTTPException(response)
 
     if uses_pagination:
         responses = pagination(client, response)

@@ -679,12 +679,8 @@ def list_skus_for_capacity(
     """
 
     df = pd.DataFrame(columns=["Resource Type", "Sku", "Sku Tier"])
-    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity}/skus?api-version=2023-11-01"
-    headers = _get_headers(token_provider=auth.token_provider.get(), audience="azure")
-
-    response = requests.get(url, headers=headers)
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity}/skus?api-version=2023-11-01"    
+    response = _base_api(request=url, client="azure")
 
     for v in response.json().get("value", []):
         sku = v.get("sku", {})
@@ -722,12 +718,8 @@ def list_skus(
     """
 
     df = pd.DataFrame(columns=["Sku", "Locations"])
-    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/providers/Microsoft.Fabric/skus?api-version=2023-11-01"
-    headers = _get_headers(token_provider=auth.token_provider.get(), audience="azure")
-
-    response = requests.get(url, headers=headers)
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/providers/Microsoft.Fabric/skus?api-version=2023-11-01"    
+    response = _base_api(request=url, client="azure")
 
     for v in response.json().get("value", []):
         new_data = {
@@ -769,12 +761,8 @@ def list_subscriptions() -> pd.DataFrame:
             "Tags",
         ]
     )
-    url = "https://management.azure.com/subscriptions?api-version=2022-12-01"
-    headers = _get_headers(token_provider=auth.token_provider.get(), audience="azure")
-
-    response = requests.get(url, headers=headers)
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    url = "https://management.azure.com/subscriptions?api-version=2022-12-01"    
+    response = _base_api(request=url, client="azure")
 
     for v in response.json().get("value", []):
         policy = v.get("subscriptionPolicies", {})
@@ -832,12 +820,8 @@ def get_subscription(azure_subscription_id: str) -> pd.DataFrame:
         ]
     )
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}?api-version=2022-12-01"
-    headers = _get_headers(token_provider=auth.token_provider.get(), audience="azure")
 
-    response = requests.get(url, headers=headers)
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
+    response = _base_api(request=url, client="azure")
     v = response.json()
     policy = v.get("subscriptionPolicies", {})
     tenants = v.get("managedByTenants")
@@ -908,11 +892,8 @@ def list_tenants() -> pd.DataFrame:
         ]
     )
     url = "https://management.azure.com/tenants?api-version=2022-12-01"
-    headers = _get_headers(token_provider=auth.token_provider.get(), audience="azure")
 
-    response = requests.get(url, headers=headers)
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    response = _base_api(request=url, client="azure")
 
     for v in response.json().get("value", []):
         d = v.get("domains")
@@ -955,16 +936,13 @@ def create_or_update_resource_group(
         The name of the region.
     """
 
-    headers = _get_headers(auth.token_provider.get(), audience="azure")
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourcegroups/{resource_group}?api-version=2021-04-01"
 
     payload = {
         "location": region,
     }
 
-    response = requests.put(url, headers=headers, json=payload)
-    if response.status_code not in [200, 201]:
-        raise FabricHTTPException(response)
+    _base_api(request=url, client="azure", method="put", payload=payload, status_codes=[200, 201])
 
     print(
         f"{icons.green_dot} The '{resource_group}' resource group has been created/updated."
@@ -997,7 +975,6 @@ def create_storage_account(
         The name of the region.
     """
 
-    headers = _get_headers(auth.token_provider.get(), audience="azure")
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Storage/storageAccounts/{storage_account}?api-version=2018-02-01"
 
     payload = {
@@ -1006,10 +983,7 @@ def create_storage_account(
         "location": region,
     }
 
-    response = requests.put(url, headers=headers, json=payload)
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    _base_api(request=url, client="azure", method="put", payload=payload)
 
     print(
         f"{icons.green_dot} The '{storage_account}' storage account has been created."
@@ -1040,8 +1014,6 @@ def list_storage_accounts(
     pandas.DataFrame
         A pandas dataframe showing a list of all storage accounts within the subscription (or resource group).
     """
-
-    headers = _get_headers(auth.token_provider.get(), audience="azure")
 
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}"
 
@@ -1075,10 +1047,7 @@ def list_storage_accounts(
             "Tags",
         ]
     )
-    response = requests.get(url, headers=headers)
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    response = _base_api(request=url, client="azure")
 
     for v in response.json().get("value", []):
         p = v.get("properties", {})
@@ -1143,13 +1112,9 @@ def check_resource_group_existence(
         True/False indicating if the resource group exists or not.
     """
 
-    headers = _get_headers(auth.token_provider.get(), audience="azure")
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}?api-version=2021-04-01"
 
-    response = requests.get(url, headers=headers)
-
-    if response.status_code not in [200, 204, 404]:
-        raise FabricHTTPException(response)
+    response = _base_api(request=url, client="azure", status_codes=[200, 204, 404])
 
     if response.status_code == 200:
         return True
@@ -1185,7 +1150,6 @@ def list_resource_groups(
         A pandas dataframe showing a list of all resource groups within the subscription.
     """
 
-    headers = _get_headers(auth.token_provider.get(), audience="azure")
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups?"
 
     if filter is not None:
@@ -1195,11 +1159,8 @@ def list_resource_groups(
 
     url += "api-version=2021-04-01"
 
-    df = pd.DataFrame(columns=["Resource Group Name", "Location", "Tags"])
-    response = requests.get(url, headers=headers)
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    df = pd.DataFrame(columns=["Resource Group Name", "Location", "Tags"])    
+    response = _base_api(request=url, client="azure")
 
     for v in response.json().get("value", []):
         new_data = {
@@ -1239,13 +1200,8 @@ def get_resource_group(azure_subscription_id: str, resource_group: str) -> pd.Da
         A pandas dataframe showing details of a specific resource group.
     """
 
-    headers = _get_headers(auth.token_provider.get(), audience="azure")
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}?api-version=2021-04-01"
-
-    response = requests.get(url, headers=headers)
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    response = _base_api(request=url, client="azure")
 
     v = response.json()
     new_data = {

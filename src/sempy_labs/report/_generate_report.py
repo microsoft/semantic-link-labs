@@ -334,28 +334,18 @@ def _create_report(
     dfR_filt = dfR[dfR["Name"] == report]
 
     updated_report = False
-    client = fabric.FabricRestClient()
     # Create report if it does not exist
-    if len(dfR_filt) == 0:
-        response = client.post(
-            f"/v1/workspaces/{report_workspace_id}/reports",
-            json=request_body,
-        )
-
-        lro(client, response, status_codes=[201, 202], return_status_code=True)
+    if dfR_filt.empty:
+        _base_api(request=f"/v1/workspaces/{report_workspace_id}/reports", method="post", payload=request_body, lro_return_status_code=True, status_codes=[201, 202])
 
         print(
             f"{icons.green_dot} The '{report}' report has been created within the '{report_workspace}'"
         )
         updated_report = True
     # Update the report if it exists
-    elif len(dfR_filt) > 0 and overwrite:
+    elif not dfR_filt.empty and overwrite:
         report_id = dfR_filt["Id"].iloc[0]
-        response = client.post(
-            f"/v1/workspaces/{report_workspace_id}/reports/{report_id}/updateDefinition",
-            json=request_body,
-        )
-        lro(client, response, return_status_code=True)
+        _base_api(request=f"/v1/workspaces/{report_workspace_id}/reports/{report_id}/updateDefinition",method="post", payload=request_body, lro_return_status_code=True)
         print(
             f"{icons.green_dot} The '{report}' report has been updated within the '{report_workspace}'"
         )
