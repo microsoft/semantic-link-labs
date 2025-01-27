@@ -13,12 +13,12 @@ def lakehouse_attached() -> bool:
     bool
         Returns True if a lakehouse is attached to the notebook.
     """
-    from pyspark.sql import SparkSession
 
-    spark = SparkSession.builder.getOrCreate()
-    lakeId = spark.conf.get("trident.lakehouse.id")
+    from sempy_labs._helper_functions import _get_fabric_context_setting
 
-    if len(lakeId) > 0:
+    lake_id = _get_fabric_context_setting(name="trident.lakehouse.id")
+
+    if len(lake_id) > 0:
         return True
     else:
         return False

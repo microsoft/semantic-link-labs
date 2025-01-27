@@ -15,7 +15,6 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
     language_validate,
     resolve_workspace_name_and_id,
-    lro,
     _decode_b64,
     resolve_dataset_id,
     _update_dataframe_datatypes,
@@ -24,7 +23,6 @@ from sempy_labs._helper_functions import (
 from typing import List, Optional, Union
 from sempy._utils._log import log
 import sempy_labs._icons as icons
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
@@ -286,7 +284,6 @@ def export_report(
         )
 
     reportId = dfI_filt["Id"].iloc[0]
-    client = fabric.PowerBIRestClient()
 
     if (
         export_format in ["BMP", "EMF", "GIF", "JPEG", "TIFF"]
@@ -364,31 +361,35 @@ def export_report(
         ]
 
     base_url = f"/v1.0/myorg/groups/{workspace_id}/reports/{reportId}"
-    response = client.post(f"{base_url}/ExportTo", json=request_body)
+    response = _base_api(
+        request=f"{base_url}/ExportTo",
+        method="post",
+        payload=request_body,
+        status_codes=202,
+    )
+    export_id = json.loads(response.content).get("id")
 
-    if response.status_code == 202:
+    get_status_url = f"{base_url}/exports/{export_id}"
+    response = _base_api(request=get_status_url, status_codes=[200, 202])
+    response_body = json.loads(response.content)
+    while response_body["status"] not in ["Succeeded", "Failed"]:
+        time.sleep(3)
+        response = _base_api(request=get_status_url, status_codes=[200, 202])
         response_body = json.loads(response.content)
-        export_id = response_body["id"]
-        response = client.get(f"{base_url}/exports/{export_id}")
-        response_body = json.loads(response.content)
-        while response_body["status"] not in ["Succeeded", "Failed"]:
-            time.sleep(3)
-            response = client.get(f"{base_url}/exports/{export_id}")
-            response_body = json.loads(response.content)
-        if response_body["status"] == "Failed":
-            raise ValueError(
-                f"{icons.red_dot} The export for the '{report}' report within the '{workspace_name}' workspace in the '{export_format}' format has failed."
-            )
-        else:
-            response = client.get(f"{base_url}/exports/{export_id}/file")
-            print(
-                f"{icons.in_progress} Saving the '{export_format}' export for the '{report}' report within the '{workspace_name}' workspace to the lakehouse..."
-            )
-            with open(filePath, "wb") as export_file:
-                export_file.write(response.content)
-            print(
-                f"{icons.green_dot} The '{export_format}' export for the '{report}' report within the '{workspace_name}' workspace has been saved to the following location: '{filePath}'."
-            )
+    if response_body["status"] == "Failed":
+        raise ValueError(
+            f"{icons.red_dot} The export for the '{report}' report within the '{workspace_name}' workspace in the '{export_format}' format has failed."
+        )
+    else:
+        response = _base_api(request=f"{get_status_url}/file")
+        print(
+            f"{icons.in_progress} Saving the '{export_format}' export for the '{report}' report within the '{workspace_name}' workspace to the lakehouse..."
+        )
+        with open(filePath, "wb") as export_file:
+            export_file.write(response.content)
+        print(
+            f"{icons.green_dot} The '{export_format}' export for the '{report}' report within the '{workspace_name}' workspace has been saved to the following location: '{filePath}'."
+        )
 
 
 def clone_report(

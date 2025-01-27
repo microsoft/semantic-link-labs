@@ -11,6 +11,7 @@ from sempy_labs._helper_functions import (
     _convert_data_type,
     resolve_dataset_name_and_id,
     resolve_workspace_name_and_id,
+    _base_api,
 )
 
 
@@ -246,18 +247,16 @@ def get_direct_lake_source(
 
     return artifact_type, artifact_name, artifact_id, workspace_id
 
-    # client = fabric.PowerBIRestClient()
-    # request_body = {
-    #    "artifacts": [
-    #        {
-    #            "objectId": dataset_id,
-    #            "type": "dataset",
-    #        }
-    #    ]
+    # payload = {
+    #   "artifacts": [
+    #       {
+    #           "objectId": dataset_id,
+    #           "type": "dataset",
+    #       }
+    #   ]
     # }
-    # response = client.post(
-    #    "metadata/relations/upstream?apiVersion=3", json=request_body
-    # )
+
+    # response = _base_api(request="metadata/relations/upstream?apiVersion=3", payload=payload, method="post")
 
     # artifacts = response.json().get("artifacts", [])
     # sql_id, sql_object_name, sql_workspace_id, artifact_type = None, None, None, None

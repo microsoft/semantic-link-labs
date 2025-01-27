@@ -1345,10 +1345,7 @@ def list_reports_using_semantic_model(
 
     return dfR_filt
 
-    # client = fabric.PowerBIRestClient()
-    # response = client.get(
-    #    f"metadata/relations/downstream/dataset/{dataset_id}?apiVersion=3"
-    # )
+    # response = _base_api(request=f"metadata/relations/downstream/dataset/{dataset_id}?apiVersion=3")
 
     # response_json = response.json()
 
