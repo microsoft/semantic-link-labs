@@ -1549,10 +1549,13 @@ def _update_dataframe_datatypes(dataframe: pd.DataFrame, column_map: dict):
                 dataframe[column] = dataframe[column].astype(float)
             elif data_type == "datetime":
                 dataframe[column] = pd.to_datetime(dataframe[column])
+            # This is for a special case in admin.list_reports where datetime itself does not work. Coerce fixes the issue.
             elif data_type == "datetime_coerce":
                 dataframe[column] = pd.to_datetime(dataframe[column], errors="coerce")
             elif data_type in ["str", "string"]:
                 dataframe[column] = dataframe[column].astype(str)
+            else:
+                raise NotImplementedError
 
 
 def _print_success(item_name, item_type, workspace_name, action="created"):
