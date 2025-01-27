@@ -13,6 +13,7 @@ from sempy_labs._gateways import (
 )
 from sempy_labs._authentication import (
     ServicePrincipalTokenProvider,
+    service_principal_authentication,
 )
 from sempy_labs._mirrored_databases import (
     get_mirrored_database_definition,
@@ -469,4 +470,5 @@ __all__ = [
     "bind_semantic_model_to_gateway",
     "list_semantic_model_errors",
     "list_item_job_instances",
+    "service_principal_authentication",
 ]

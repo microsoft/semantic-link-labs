@@ -75,13 +75,13 @@ def list_chats(user: str | UUID, token_provider: TokenProvider) -> pd.DataFrame:
     user_id = resolve_user_id(user=user, token_provider=token_provider)
     result = _ms_graph_base(api_name=f"users/{user_id}/chats")
 
-    df = pd.DataFrame(columns=['Chat Id', 'Type', 'Members'])
+    df = pd.DataFrame(columns=["Chat Id", "Type", "Members"])
 
     for v in result.get("value"):
         new_data = {
             "Chat Id": v.get("id"),
-            "Type": v.get('chatType'),
-            "Members": v.get('members'),
+            "Type": v.get("chatType"),
+            "Members": v.get("members"),
         }
 
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)

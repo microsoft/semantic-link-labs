@@ -15,6 +15,8 @@ import urllib.parse
 from azure.core.credentials import TokenCredential, AccessToken
 import numpy as np
 from IPython.display import display, HTML
+import requests
+import sempy_labs._authentication as auth
 
 
 def _build_url(url: str, params: dict) -> str:
@@ -1406,3 +1408,115 @@ def _get_fabric_context_setting(name: str):
 def get_tenant_id():
 
     _get_fabric_context_setting(name="trident.tenant.id")
+
+
+def _base_api(
+    request: str,
+    client: str = "fabric",
+    method: str = "get",
+    payload: Optional[str] = None,
+    status_codes: Optional[int] = 200,
+    uses_pagination: bool = False,
+    lro_return_json: bool = False,
+    lro_return_status_code: bool = False,
+):
+
+    from sempy_labs._authentication import _get_headers
+
+    if (lro_return_json or lro_return_status_code) and status_codes is None:
+        status_codes = [200, 202]
+
+    if isinstance(status_codes, int):
+        status_codes = [status_codes]
+
+    if client == "fabric":
+        c = fabric.FabricRestClient()
+    elif client == "fabric_sp":
+        c = fabric.FabricRestClient(token_provider=auth.token_provider.get())
+    elif client in ["azure", "graph"]:
+        pass
+    else:
+        raise ValueError(f"{icons.red_dot} The '{client}' client is not supported.")
+
+    if client not in ["azure", "graph"]:
+        if method == "get":
+            response = c.get(request)
+        elif method == "delete":
+            response = c.delete(request)
+        elif method == "post":
+            response = c.post(request, json=payload)
+        elif method == "patch":
+            response = c.patch(request, json=payload)
+        elif method == "put":
+            response = c.put(request, json=payload)
+        else:
+            raise NotImplementedError
+    else:
+        headers = _get_headers(auth.token_provider.get(), audience=client)
+        response = requests.request(
+            method.upper(),
+            f"https://graph.microsoft.com/v1.0/{request}",
+            headers=headers,
+            json=payload,
+        )
+
+    if lro_return_json:
+        return lro(c, response, status_codes).json()
+    elif lro_return_status_code:
+        return lro(c, response, status_codes, return_status_code=True)
+    else:
+        if response.status_code not in status_codes:
+            raise FabricHTTPException(response)
+        if uses_pagination:
+            responses = pagination(c, response)
+            return responses
+        else:
+            return response
+
+
+def _create_dataframe(columns: dict) -> pd.DataFrame:
+
+    return pd.DataFrame(columns=list(columns.keys()))
+
+
+def _update_dataframe_datatypes(dataframe: pd.DataFrame, column_map: dict):
+    """
+    Updates the datatypes of columns in a pandas dataframe based on a column map.
+
+    Example:
+    {
+        "Order": "int",
+        "Public": "bool",
+    }
+    """
+
+    for column, data_type in column_map.items():
+        if column in dataframe.columns:
+            if data_type == "int":
+                dataframe[column] = dataframe[column].astype(int)
+            elif data_type == "bool":
+                dataframe[column] = dataframe[column].astype(bool)
+            elif data_type == "float":
+                dataframe[column] = dataframe[column].astype(float)
+            elif data_type == "datetime":
+                dataframe[column] = pd.to_datetime(dataframe[column])
+            # This is for a special case in admin.list_reports where datetime itself does not work. Coerce fixes the issue.
+            elif data_type == "datetime_coerce":
+                dataframe[column] = pd.to_datetime(dataframe[column], errors="coerce")
+            elif data_type in ["str", "string"]:
+                dataframe[column] = dataframe[column].astype(str)
+            else:
+                raise NotImplementedError
+
+
+def _print_success(item_name, item_type, workspace_name, action="created"):
+    if action == "created":
+        print(
+            f"{icons.green_dot} The '{item_name}' {item_type} has been successfully created in the '{workspace_name}' workspace."
+        )
+    elif action == "deleted":
+        print(
+            f"{icons.green_dot} The '{item_name}' {item_type} has been successfully deleted from the '{workspace_name}' workspace."
+        )
+    else:
+        raise NotImplementedError

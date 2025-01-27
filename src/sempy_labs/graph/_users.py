@@ -1,15 +1,15 @@
 import pandas as pd
 from uuid import UUID
-from sempy.fabric._token_provider import TokenProvider
 import sempy_labs._icons as icons
 from typing import List
-from sempy_labs.graph._util import (
-    _ms_graph_base,
+from sempy_labs._helper_functions import (
+    _is_valid_uuid,
+    _base_api,
+    _create_dataframe,
 )
-from sempy_labs._helper_functions import _is_valid_uuid
 
 
-def resolve_user_id(user: str | UUID, token_provider: TokenProvider) -> UUID:
+def resolve_user_id(user: str | UUID) -> UUID:
     """
     Resolves the user ID from the user principal name or ID.
 
@@ -17,8 +17,6 @@ def resolve_user_id(user: str | UUID, token_provider: TokenProvider) -> UUID:
     ----------
     user : str | uuid.UUID
         The user ID or user principal name.
-    token_provider : TokenProvider
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -29,11 +27,11 @@ def resolve_user_id(user: str | UUID, token_provider: TokenProvider) -> UUID:
     if _is_valid_uuid(user):
         return user
     else:
-        result = _ms_graph_base(api_name=f"users/{user}", token_provider=token_provider)
+        result = _base_api(request=f"users/{user}", client="graph").json()
         return result.get("id")
 
 
-def get_user(user: str | UUID, token_provider: TokenProvider) -> pd.DataFrame:
+def get_user(user: str | UUID) -> pd.DataFrame:
     """
     Shows properties of a given user.
 
@@ -43,8 +41,6 @@ def get_user(user: str | UUID, token_provider: TokenProvider) -> pd.DataFrame:
     ----------
     user : str | uuid.UUID
         The user ID or user principal name.
-    token_provider : TokenProvider
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -52,7 +48,7 @@ def get_user(user: str | UUID, token_provider: TokenProvider) -> pd.DataFrame:
         A pandas dataframe showing properties of a given user.
     """
 
-    result = _ms_graph_base(api_name=f"users/{user}", token_provider=token_provider)
+    result = _base_api(request=f"users/{user}", client="graph").json()
 
     new_data = {
         "User Id": result.get("id"),
@@ -70,16 +66,11 @@ def get_user(user: str | UUID, token_provider: TokenProvider) -> pd.DataFrame:
     return pd.DataFrame([new_data])
 
 
-def list_users(token_provider: TokenProvider) -> pd.DataFrame:
+def list_users() -> pd.DataFrame:
     """
     Shows a list of users and their properties.
 
     This is a wrapper function for the following API: `List users <https://learn.microsoft.com/graph/api/user-list>`_.
-
-    Parameters
-    ----------
-    token_provider : TokenProvider
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -87,22 +78,22 @@ def list_users(token_provider: TokenProvider) -> pd.DataFrame:
         A pandas dataframe showing a list of users and their properties.
     """
 
-    result = _ms_graph_base(api_name="users", token_provider=token_provider)
+    result = _base_api(request="users", client="graph").json()
 
-    df = pd.DataFrame(
-        columns=[
-            "User Id",
-            "User Principal Name",
-            "User Name",
-            "Mail",
-            "Job Title",
-            "Office Location",
-            "Mobile Phone",
-            "Business Phones",
-            "Preferred Language",
-            "Surname",
-        ]
-    )
+    columns = {
+        "User Id": "string",
+        "User Principal Name": "string",
+        "User Name": "string",
+        "Mail": "string",
+        "Job Title": "string",
+        "Office Location": "string",
+        "Mobile Phone": "string",
+        "Business Phones": "string",
+        "Preferred Language": "string",
+        "Surname": "string",
+    }
+
+    df = _create_dataframe(columns=columns)
 
     for v in result.get("value"):
         new_data = {
@@ -128,7 +119,6 @@ def send_mail(
     subject: str,
     to_recipients: str | List[str],
     content: str,
-    token_provider: TokenProvider,
     cc_recipients: str | List[str] = None,
 ):
     """
@@ -146,8 +136,6 @@ def send_mail(
         The email address of the recipients.
     content : str
         The email content.
-    token_provider : TokenProvider
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
     cc_recipients : str | List[str], default=None
         The email address of the CC recipients.
     """
@@ -184,13 +172,12 @@ def send_mail(
     if cc_email_addresses:
         payload["message"]["ccRecipients"] = cc_email_addresses
 
-    _ms_graph_base(
-        api_name=f"users/{user_id}/sendMail",
-        token_provider=token_provider,
-        status_success_code=202,
-        return_json=False,
+    _base_api(
+        request=f"users/{user_id}/sendMail",
+        client="graph",
+        status_codes=202,
         payload=payload,
-        call_type="post",
+        method="post",
     )
 
     print(f"{icons.green_dot} The email has been sent to {to_recipients}.")

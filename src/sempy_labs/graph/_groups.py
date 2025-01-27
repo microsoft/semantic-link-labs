@@ -1,13 +1,16 @@
 import pandas as pd
 from uuid import UUID
-from sempy.fabric._token_provider import TokenProvider
-from sempy_labs._helper_functions import _is_valid_uuid
+from sempy_labs._helper_functions import (
+    _is_valid_uuid,
+    _base_api,
+    _create_dataframe,
+    _update_dataframe_datatypes,
+)
 import sempy_labs._icons as icons
 from typing import List, Literal
-from sempy_labs.graph._util import _ms_graph_base
 
 
-def resolve_group_id(group: str | UUID, token_provider: TokenProvider) -> UUID:
+def resolve_group_id(group: str | UUID) -> UUID:
     """
     Resolves the group ID from the group name or ID.
 
@@ -15,8 +18,6 @@ def resolve_group_id(group: str | UUID, token_provider: TokenProvider) -> UUID:
     ----------
     group : str | uuid.UUID
         The group name.
-    token_provider : TokenProvider
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -26,7 +27,7 @@ def resolve_group_id(group: str | UUID, token_provider: TokenProvider) -> UUID:
     if _is_valid_uuid(group):
         group_id = group
     else:
-        dfG = list_groups(token_provider=token_provider)
+        dfG = list_groups()
         dfG_filt = dfG[dfG["Group Name"] == group]
         if dfG_filt.empty:
             raise ValueError(f"{icons.red_dot} The '{group}' group does not exist.")
@@ -35,16 +36,11 @@ def resolve_group_id(group: str | UUID, token_provider: TokenProvider) -> UUID:
     return group_id
 
 
-def list_groups(token_provider: TokenProvider) -> pd.DataFrame:
+def list_groups() -> pd.DataFrame:
     """
     Shows a list of groups and their properties.
 
     This is a wrapper function for the following API: `List groups <https://learn.microsoft.com/graph/api/group-list>`_.
-
-    Parameters
-    ----------
-    token_provider : TokenProvider
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -52,25 +48,25 @@ def list_groups(token_provider: TokenProvider) -> pd.DataFrame:
         A pandas dataframe showing a list of groups and their properties.
     """
 
-    result = _ms_graph_base(api_name="groups", token_provider=token_provider)
+    result = _base_api(request="groups", client="graph").json()
 
-    df = pd.DataFrame(
-        columns=[
-            "Group Id",
-            "Group Name",
-            "Mail",
-            "Description",
-            "Classification",
-            "Mail Enabled",
-            "Security Enabled",
-            "Created Date Time",
-            "Expiration Date Time",
-            "Deleted Date Time",
-            "Renewed Date Time",
-            "Visibility",
-            "Security Identifier",
-        ]
-    )
+    columns = {
+        "Group Id": "string",
+        "Group Name": "string",
+        "Mail": "string",
+        "Description": "string",
+        "Classification": "string",
+        "Mail Enabled": "bool",
+        "Security Enabled": "bool",
+        "Created Date Time": "datetime",
+        "Expiration Date Time": "string",
+        "Deleted Date Time": "string",
+        "Renewed Date Time": "string",
+        "Visibility": "string",
+        "Security Identifier": "string",
+    }
+
+    df = _create_dataframe(columns=columns)
 
     for v in result.get("value"):
         new_data = {
@@ -91,14 +87,12 @@ def list_groups(token_provider: TokenProvider) -> pd.DataFrame:
 
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    bool_cols = ["Mail Enabled", "Security Enabled"]
-    df[bool_cols] = df[bool_cols].astype(bool)
-    df["Created Date Time"] = pd.to_datetime(df["Created Date Time"])
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
 
-def _get_group(group_id: UUID, token_provider: TokenProvider) -> pd.DataFrame:
+def _get_group(group_id: UUID) -> pd.DataFrame:
     """
     Shows a list of groups and their properties.
 
@@ -108,7 +102,6 @@ def _get_group(group_id: UUID, token_provider: TokenProvider) -> pd.DataFrame:
     ----------
     group_id : uuid.UUID
         The group ID.
-    token_provider : TokenProvider
 
     Returns
     -------
@@ -116,27 +109,24 @@ def _get_group(group_id: UUID, token_provider: TokenProvider) -> pd.DataFrame:
         A pandas dataframe showing a list of groups and their properties.
     """
 
-    result = _ms_graph_base(
-        api_name=f"groups/{group_id}", token_provider=token_provider
-    )
+    result = _base_api(request=f"groups/{group_id}", client="graph").json()
 
-    df = pd.DataFrame(
-        columns=[
-            "Group Id",
-            "Group Name",
-            "Mail",
-            "Description",
-            "Classification",
-            "Mail Enabled",
-            "Security Enabled",
-            "Created Date Time",
-            "Expiration Date Time",
-            "Deleted Date Time",
-            "Renewed Date Time",
-            "Visibility",
-            "Security Identifier",
-        ]
-    )
+    columns = {
+        "Group Id": "string",
+        "Group Name": "string",
+        "Mail": "string",
+        "Description": "string",
+        "Classification": "string",
+        "Mail Enabled": "bool",
+        "Security Enabled": "bool",
+        "Created Date Time": "datetime",
+        "Expiration Date Time": "string",
+        "Deleted Date Time": "string",
+        "Renewed Date Time": "string",
+        "Visibility": "string",
+        "Security Identifier": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     for v in result.get("value"):
         new_data = {
@@ -157,16 +147,12 @@ def _get_group(group_id: UUID, token_provider: TokenProvider) -> pd.DataFrame:
 
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    bool_cols = ["Mail Enabled", "Security Enabled"]
-    df[bool_cols] = df[bool_cols].astype(bool)
-    df["Created Date Time"] = pd.to_datetime(df["Created Date Time"])
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
 
-def list_group_members(
-    group: str | UUID, token_provider: TokenProvider
-) -> pd.DataFrame:
+def list_group_members(group: str | UUID) -> pd.DataFrame:
     """
     Shows a list of the members of a group.
 
@@ -176,8 +162,6 @@ def list_group_members(
     ----------
     group : str | uuid.UUID
         The group name or ID.
-    token_provider : TokenProvider
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -185,27 +169,25 @@ def list_group_members(
         A pandas dataframe showing a list of the members of a group.
     """
 
-    group_id = resolve_group_id(group, token_provider)
+    group_id = resolve_group_id(group)
 
-    result = _ms_graph_base(
-        api_name=f"groups/{group_id}/members", token_provider=token_provider
-    )
+    result = _base_api(request=f"groups/{group_id}/members", client="graph").json()
 
-    df = pd.DataFrame(
-        columns=[
-            "Member Id",
-            "Member Name",
-            "User Principal Name",
-            "Mail",
-            "Job Title",
-            "Office Location",
-            "Mobile Phone",
-            "Business Phones",
-            "Preferred Language",
-            "Given Name",
-            "Surname",
-        ]
-    )
+    columns = {
+        "Member Id": "string",
+        "Member Name": "string",
+        "User Principal Name": "string",
+        "Mail": "string",
+        "Job Title": "string",
+        "Office Location": "string",
+        "Mobile Phone": "string",
+        "Business Phones": "string",
+        "Preferred Language": "string",
+        "Given Name": "string",
+        "Surname": "string",
+    }
+
+    df = _create_dataframe(columns=columns)
 
     for v in result.get("value"):
         new_data = {
@@ -227,7 +209,7 @@ def list_group_members(
     return df
 
 
-def list_group_owners(group: str | UUID, token_provider: TokenProvider) -> pd.DataFrame:
+def list_group_owners(group: str | UUID) -> pd.DataFrame:
     """
     Shows a list of the owners of a group.
 
@@ -237,8 +219,6 @@ def list_group_owners(group: str | UUID, token_provider: TokenProvider) -> pd.Da
     ----------
     group : str | uuid.UUID
         The group name or ID.
-    token_provider : TokenProvider
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -249,27 +229,25 @@ def list_group_owners(group: str | UUID, token_provider: TokenProvider) -> pd.Da
     if _is_valid_uuid(group):
         group_id = group
     else:
-        group_id = resolve_group_id(group, token_provider)
+        group_id = resolve_group_id(group)
 
-    result = _ms_graph_base(
-        api_name=f"groups/{group_id}/members", token_provider=token_provider
-    )
+    result = _base_api(request=f"groups/{group_id}/owners", client="graph").json()
 
-    df = pd.DataFrame(
-        columns=[
-            "Owner Id",
-            "Owner Name",
-            "User Principal Name",
-            "Mail",
-            "Job Title",
-            "Office Location",
-            "Mobile Phone",
-            "Business Phones",
-            "Preferred Language",
-            "Given Name",
-            "Surname",
-        ]
-    )
+    columns = {
+        "Owner Id": "string",
+        "Owner Name": "string",
+        "User Principal Name": "string",
+        "Mail": "string",
+        "Job Title": "string",
+        "Office Location": "string",
+        "Mobile Phone": "string",
+        "Business Phones": "string",
+        "Preferred Language": "string",
+        "Given Name": "string",
+        "Surname": "string",
+    }
+
+    df = _create_dataframe(columns=columns)
 
     for v in result.get("value"):
         new_data = {
@@ -294,7 +272,6 @@ def list_group_owners(group: str | UUID, token_provider: TokenProvider) -> pd.Da
 def _base_add_to_group(
     group: str | UUID,
     object: str | UUID,
-    token_provider: TokenProvider,
     object_type: Literal["members", "owners"],
 ):
 
@@ -305,14 +282,14 @@ def _base_add_to_group(
     if isinstance(object, str):
         object = [object]
 
-    group_id = resolve_group_id(group, token_provider)
+    group_id = resolve_group_id(group)
     url = f"groups/{group_id}/{object_type}/$ref"
 
     for m in object:
         if _is_valid_uuid(m):
             member_id = m
         else:
-            member_id = resolve_user_id(m, token_provider)
+            member_id = resolve_user_id(m)
         if object_type == "members":
             object_list.append(
                 f"https://graph.microsoft.com/v1.0/directoryObjects/{member_id}"
@@ -323,24 +300,24 @@ def _base_add_to_group(
     # Must submit one request for each owner. Members can be sent in a single request.
     if object_type == "members":
         payload = {"members@odata.bind": object_list}
-        _ms_graph_base(
-            api_name=url,
-            token_provider=token_provider,
+
+        _base_api(
+            request=url,
+            client="graph",
             payload=payload,
-            status_success_code=204,
-            return_json=False,
-            call_type="post",
+            method="post",
+            status_codes=204,
         )
+
     else:
         for o in object_list:
             payload = {"odata.id": o}
-            _ms_graph_base(
-                api_name=url,
-                token_provider=token_provider,
+            _base_api(
+                request=url,
+                client="graph",
                 payload=payload,
-                status_success_code=204,
-                return_json=False,
-                call_type="post",
+                method="post",
+                status_codes=204,
             )
 
     print(
@@ -351,7 +328,6 @@ def _base_add_to_group(
 def add_group_members(
     group: str | UUID,
     user: str | UUID | List[str | UUID],
-    token_provider: TokenProvider,
 ):
     """
     Adds a member to a group.
@@ -364,19 +340,14 @@ def add_group_members(
         The group name or ID.
     user : str | uuid.UUID
         The user ID or user principal name.
-    token_provider : TokenProvider
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
     """
 
-    _base_add_to_group(
-        group=group, object=user, token_provider=token_provider, object_type="members"
-    )
+    _base_add_to_group(group=group, object=user, object_type="members")
 
 
 def add_group_owners(
     group: str | UUID,
     user: str | UUID | List[str | UUID],
-    token_provider: TokenProvider,
 ):
     """
     Adds an owner to a group.
@@ -389,16 +360,12 @@ def add_group_owners(
         The group name or ID.
     user : str | uuid.UUID
         The user ID or user principal name.
-    token_provider : TokenProvider
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
     """
 
-    _base_add_to_group(
-        group=group, object=user, token_provider=token_provider, object_type="owners"
-    )
+    _base_add_to_group(group=group, object=user, object_type="owners")
 
 
-def renew_group(group: str | UUID, token_provider: TokenProvider):
+def renew_group(group: str | UUID):
     """
     Renews the group.
 
@@ -412,14 +379,13 @@ def renew_group(group: str | UUID, token_provider: TokenProvider):
         The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
     """
 
-    group_id = resolve_group_id(group, token_provider)
+    group_id = resolve_group_id(group)
 
-    _ms_graph_base(
-        api_name=f"groups/{group_id}/renew",
-        token_provider=token_provider,
-        status_success_code=204,
-        return_json=False,
-        call_type="post",
+    _base_api(
+        request=f"groups/{group_id}/renew",
+        client="graph",
+        method="post",
+        status_codes=204,
     )
 
     print(f"{icons.green_dot} The '{group}' group has been renewed.")
