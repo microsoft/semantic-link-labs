@@ -8,7 +8,6 @@ from sempy_labs._helper_functions import (
     _conv_b64,
     resolve_dataset_name_and_id,
     resolve_item_name_and_id,
-    lro,
     _update_dataframe_datatypes,
     _base_api,
     resolve_item_id,

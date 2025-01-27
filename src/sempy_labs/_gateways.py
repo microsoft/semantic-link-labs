@@ -8,6 +8,7 @@ from sempy_labs._helper_functions import (
     resolve_dataset_name_and_id,
     _update_dataframe_datatypes,
     _base_api,
+    _create_dataframe,
 )
 from uuid import UUID
 import sempy_labs._icons as icons
@@ -26,20 +27,19 @@ def list_gateways() -> pd.DataFrame:
         A pandas dataframe showing a list of all gateways the user has permission for, including on-premises, on-premises (personal mode), and virtual network gateways.
     """
 
-    df = pd.DataFrame(
-        columns=[
-            "Gateway Name",
-            "Gateway Id",
-            "Type",
-            "Public Key Exponent",
-            "Public Key Modulus",
-            "Version",
-            "Number Of Member Gateways",
-            "Load Balancing Setting",
-            "Allow Cloud Connection Refresh",
-            "Allow Custom Connectors",
-        ]
-    )
+    columns = {
+        "Gateway Name": "string",
+        "Gateway Id": "string",
+        "Type": "string",
+        "Public Key Exponent": "string",
+        "Public Key Modulus": "string",
+        "Version": "string",
+        "Number Of Member Gateways": "int",
+        "Load Balancing Setting": "string",
+        "Allow Cloud Connection Refresh": "bool",
+        "Allow Custom Connectors": "bool",
+    }
+    df = _create_dataframe(columns=columns)
 
     responses = _base_api(request="/v1/gateways", uses_pagination=True)
 
@@ -60,12 +60,7 @@ def list_gateways() -> pd.DataFrame:
 
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    column_map = {
-        "Number Of Member Gateways": "int",
-        "Allow Cloud Connection Refresh": "bool",
-        "Allow Custom Connectors": "bool",
-    }
-    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -118,9 +113,13 @@ def list_gateway_role_assigments(gateway: str | UUID) -> pd.DataFrame:
         A pandas dataframe showing a list of gateway role assignments.
     """
 
-    df = pd.DataFrame(
-        columns=["Gateway Role Assignment Id", "Principal Id", "Principal Type", "Role"]
-    )
+    columns = {
+        "Gateway Role Assignment Id": "string",
+        "Principal Id": "string",
+        "Principal Type": "string",
+        "Role": "string",
+    }
+    df = _create_dataframe(columns=columns)
     gateway_id = _resolve_gateway_id(gateway)
     responses = _base_api(
         request=f"/v1/gateways/{gateway_id}/roleAssignments", uses_pagination=True
@@ -226,16 +225,15 @@ def list_gateway_members(gateway: str | UUID) -> pd.DataFrame:
 
     gateway_id = _resolve_gateway_id(gateway)
 
-    df = pd.DataFrame(
-        columns=[
-            "Member Id",
-            "Member Name",
-            "Public Key Exponent",
-            "Public Key Modulus",
-            "Version",
-            "Enabled",
-        ]
-    )
+    columns = {
+        "Member Id": "string",
+        "Member Name": "string",
+        "Public Key Exponent": "string",
+        "Public Key Modulus": "string",
+        "Version": "string",
+        "Enabled": "bool",
+    }
+    df = _create_dataframe(columns=columns)
 
     response = _base_api(request=f"/v1/gateways/{gateway_id}/members")
 
@@ -251,11 +249,7 @@ def list_gateway_members(gateway: str | UUID) -> pd.DataFrame:
 
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    column_map = {
-        "Enabled": "bool",
-    }
-
-    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 

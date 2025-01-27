@@ -6,6 +6,7 @@ from sempy_labs._helper_functions import (
     resolve_item_name_and_id,
     _update_dataframe_datatypes,
     _base_api,
+    _create_dataframe,
 )
 from uuid import UUID
 import sempy_labs._icons as icons
@@ -42,21 +43,20 @@ def list_item_job_instances(
         item=item, type=type, workspace=workspace
     )
 
-    df = pd.DataFrame(
-        columns=[
-            "Job Instance Id",
-            "Item Name",
-            "Item Id",
-            "Item Type",
-            "Job Type",
-            "Invoke Type",
-            "Status",
-            "Root Activity Id",
-            "Start Time UTC",
-            "End Time UTC",
-            "Failure Reason",
-        ]
-    )
+    columns = {
+        "Job Instance Id": "string",
+        "Item Name": "string",
+        "Item Id": "string",
+        "Item Type": "string",
+        "Job Type": "string",
+        "Invoke Type": "string",
+        "Status": "string",
+        "Root Activity Id": "string",
+        "Start Time UTC": "datetime",
+        "End Time UTC": "string",
+        "Error Message": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     responses = _base_api(
         request=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/instances",
@@ -87,6 +87,8 @@ def list_item_job_instances(
 
     if dfs:
         df = pd.concat(dfs, ignore_index=True)
+
+    df = _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -127,22 +129,21 @@ def list_item_schedules(
         item=item, type=type, workspace=workspace
     )
 
-    df = pd.DataFrame(
-        columns=[
-            "Job Schedule Id",
-            "Enabled",
-            "Created Date Time",
-            "Start Date Time",
-            "End Date Time",
-            "Local Time Zone Id",
-            "Type",
-            "Interval",
-            "Weekdays",
-            "Times",
-            "Owner Id",
-            "Owner Type",
-        ]
-    )
+    columns = {
+        "Job Schedule Id": "string",
+        "Enabled": "bool",
+        "Created Date Time": "datetime",
+        "Start Date Time": "datetime",
+        "End Date Time": "string",
+        "Local Time Zone Id": "string",
+        "Type": "string",
+        "Interval": "string",
+        "Weekdays": "string",
+        "Times": "string",
+        "Owner Id": "string",
+        "Owner Type": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     response = _base_api(
         request=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/{job_type}/schedules"
@@ -168,13 +169,7 @@ def list_item_schedules(
 
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    column_map = {
-        "Created Date Time": "datetime",
-        "Start Date Time": "datetime",
-        "Enabled": "bool",
-    }
-
-    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 

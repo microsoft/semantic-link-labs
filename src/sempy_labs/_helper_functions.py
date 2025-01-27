@@ -1523,6 +1523,11 @@ def _base_api(
             return response
 
 
+def _create_dataframe(columns: dict) -> pd.DataFrame:
+
+    return pd.DataFrame(columns=list(columns.keys()))
+
+
 def _update_dataframe_datatypes(dataframe: pd.DataFrame, column_map: dict):
     """
     Updates the datatypes of columns in a pandas dataframe based on a column map.

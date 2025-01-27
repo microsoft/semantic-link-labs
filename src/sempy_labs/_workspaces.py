@@ -5,6 +5,7 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_capacity_id,
     _base_api,
+    _create_dataframe,
 )
 from uuid import UUID
 
@@ -116,7 +117,14 @@ def list_workspace_users(workspace: Optional[str | UUID] = None) -> pd.DataFrame
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    df = pd.DataFrame(columns=["User Name", "Email Address", "Role", "Type", "User ID"])
+    columns = {
+        "User Name": "string",
+        "Email Address": "string",
+        "Role": "string",
+        "Type": "string",
+        "User ID": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     responses = _base_api(
         request=f"v1/workspaces/{workspace_id}/roleAssignments", uses_pagination=True
@@ -278,7 +286,13 @@ def list_workspace_role_assignments(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    df = pd.DataFrame(columns=["User Name", "User Email", "Role Name", "Type"])
+    columns = {
+        "User Name": "string",
+        "User Email": "string",
+        "Role Name": "string",
+        "Type": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     responses = _base_api(
         request=f"v1/workspaces/{workspace_id}/roleAssignments", uses_pagination=True

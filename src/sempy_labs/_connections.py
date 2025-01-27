@@ -6,6 +6,7 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _update_dataframe_datatypes,
     _base_api,
+    _create_dataframe,
 )
 from uuid import UUID
 import sempy_labs._icons as icons
@@ -89,14 +90,14 @@ def list_connection_role_assignments(connection: str | UUID) -> pd.DataFrame:
 
     connection_id = _resolve_connection_id(connection)
 
-    df = pd.DataFrame(
-        columns=[
-            "Connection Role Assignment Id",
-            "Principal Id",
-            "Principal Type",
-            "Role",
-        ]
-    )
+    columns = {
+        "Connection Role Assignment Id": "string",
+        "Principal Id": "string",
+        "Principal Type": "string",
+        "Role": "string",
+    }
+
+    df = _create_dataframe(columns=columns)
 
     responses = _base_api(
         request=f"/v1/connections/{connection_id}/roleAssignments", uses_pagination=True
@@ -126,21 +127,20 @@ def list_connections() -> pd.DataFrame:
         A pandas dataframe showing all available connections.
     """
 
-    df = pd.DataFrame(
-        columns=[
-            "Connection Id",
-            "Connection Name",
-            "Gateway Id",
-            "Connectivity Type",
-            "Connection Path",
-            "Connection Type",
-            "Privacy Level",
-            "Credential Type",
-            "Single Sign on Type",
-            "Connection Encyrption",
-            "Skip Test Connection",
-        ]
-    )
+    columns = {
+        "Connection Id": "string",
+        "Connection Name": "string",
+        "Gateway Id": "string",
+        "Connectivity Type": "string",
+        "Connection Path": "string",
+        "Connection Type": "string",
+        "Privacy Level": "string",
+        "Credential Type": "string",
+        "Single Sign on Type": "string",
+        "Connection Encyrption": "string",
+        "Skip Test Connection": "bool",
+    }
+    df = _create_dataframe(columns=columns)
 
     responses = _base_api(request="/v1/connections", uses_pagination=True)
 
@@ -181,11 +181,7 @@ def list_connections() -> pd.DataFrame:
 
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    column_map = {
-        "Skip Test Connection": "bool",
-    }
-
-    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -221,16 +217,15 @@ def list_item_connections(
         item_name=item_name, type=item_type, workspace=workspace_id
     )
 
-    df = pd.DataFrame(
-        columns=[
-            "Connection Name",
-            "Connection Id",
-            "Connectivity Type",
-            "Connection Type",
-            "Connection Path",
-            "Gateway Id",
-        ]
-    )
+    columns = {
+        "Connection Name": "string",
+        "Connection Id": "string",
+        "Connectivity Type": "string",
+        "Connection Type": "string",
+        "Connection Path": "string",
+        "Gateway Id": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     responses = _base_api(
         request=f"/v1/workspaces/{workspace_id}/items/{item_id}/connections",
@@ -262,15 +257,14 @@ def _list_supported_connection_types(
         gateway_id = _resolve_gateway_id(gateway)
         url += f"gatewayId={gateway_id}"
 
-    df = pd.DataFrame(
-        columns=[
-            "Connection Type",
-            "Creation Method",
-            "Supported Credential Types",
-            "Supported Connection Encryption Types",
-            "Supports Skip Test Connection",
-        ]
-    )
+    columns = {
+        "Connection Type": "string",
+        "Creation Method": "string",
+        "Supported Credential Types": "string",
+        "Supported Connection Encryption Types": "string",
+        "Supports Skip Test Connection": "bool",
+    }
+    df = _create_dataframe(columns=columns)
 
     url = url.rstrip("&")
     responses = _base_api(request=url, uses_pagination=True)
@@ -294,6 +288,8 @@ def _list_supported_connection_types(
 
     if records:
         df = pd.DataFrame(records)
+
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 

@@ -2,6 +2,8 @@ import sempy.fabric as fabric
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _base_api,
+    _create_dataframe,
+    _update_dataframe_datatypes,
 )
 import pandas as pd
 from typing import Optional
@@ -78,16 +80,15 @@ def list_warehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing the warehouses within a workspace.
     """
 
-    df = pd.DataFrame(
-        columns=[
-            "Warehouse Name",
-            "Warehouse Id",
-            "Description",
-            "Connection Info",
-            "Created Date",
-            "Last Updated Time",
-        ]
-    )
+    columns = {
+        "Warehouse Name": "string",
+        "Warehouse Id": "string",
+        "Description": "string",
+        "Connection Info": "string",
+        "Created Date": "datetime",
+        "Last Updated Time": "datetime",
+    }
+    df = _create_dataframe(columns=columns)
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
@@ -108,6 +109,8 @@ def list_warehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
                 "Last Updated Time": prop.get("lastUpdatedTime"),
             }
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 

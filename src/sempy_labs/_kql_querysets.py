@@ -5,6 +5,7 @@ from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _base_api,
+    _create_dataframe,
 )
 from uuid import UUID
 
@@ -28,13 +29,12 @@ def list_kql_querysets(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing the KQL querysets within a workspace.
     """
 
-    df = pd.DataFrame(
-        columns=[
-            "KQL Queryset Name",
-            "KQL Queryset Id",
-            "Description",
-        ]
-    )
+    columns = {
+        "KQL Queryset Name": "string",
+        "KQL Queryset Id": "string",
+        "Description": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 

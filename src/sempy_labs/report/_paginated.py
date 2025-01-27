@@ -5,6 +5,7 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _base_api,
     resolve_item_id,
+    _create_dataframe,
 )
 
 
@@ -30,17 +31,16 @@ def get_report_datasources(
         A pandas dataframe showing a list of data sources for the specified paginated report (RDL) from the specified workspace.
     """
 
-    df = pd.DataFrame(
-        columns=[
-            "Report Name",
-            "Report Id",
-            "Datasource Id",
-            "Datasource Type",
-            "Gateway Id",
-            "Server",
-            "Database",
-        ]
-    )
+    columns = {
+        "Report Name": "str",
+        "Report Id": "str",
+        "Datasource Id": "str",
+        "Datasource Type": "str",
+        "Gateway Id": "str",
+        "Server": "str",
+        "Database": "str",
+    }
+    df = _create_dataframe(columns=columns)
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     report_id = resolve_item_id(

@@ -6,6 +6,7 @@ from sempy_labs._helper_functions import (
     _base_api,
     _print_success,
     resolve_item_id,
+    _create_dataframe,
 )
 from uuid import UUID
 
@@ -29,7 +30,12 @@ def list_ml_experiments(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing the ML models within a workspace.
     """
 
-    df = pd.DataFrame(columns=["ML Experiment Name", "ML Experiment Id", "Description"])
+    columns = {
+        "ML Experiment Name": "string",
+        "ML Experiment Id": "string",
+        "Description": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 

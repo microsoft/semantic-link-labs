@@ -7,6 +7,7 @@ from sempy_labs._helper_functions import (
     _base_api,
     _print_success,
     resolve_item_id,
+    _create_dataframe,
 )
 from uuid import UUID
 
@@ -30,7 +31,12 @@ def list_data_pipelines(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing the data pipelines within a workspace.
     """
 
-    df = pd.DataFrame(columns=["Data Pipeline Name", "Data Pipeline ID", "Description"])
+    columns = {
+        "Data Pipeline Name": "string",
+        "Data Pipeline ID": "string",
+        "Description": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 

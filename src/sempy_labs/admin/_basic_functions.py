@@ -7,6 +7,7 @@ from sempy_labs._helper_functions import (
     _build_url,
     _update_dataframe_datatypes,
     _base_api,
+    _create_dataframe,
 )
 from sempy._utils._log import log
 import numpy as np
@@ -63,15 +64,14 @@ def list_workspaces(
         )
         del kwargs["skip"]
 
-    df = pd.DataFrame(
-        columns=[
-            "Id",
-            "Name",
-            "State",
-            "Type",
-            "Capacity Id",
-        ]
-    )
+    columns = {
+        "Id": "string",
+        "Name": "string",
+        "State": "string",
+        "Type": "string",
+        "Capacity Id": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     url = "/v1/admin/workspaces"
     params = {}
@@ -139,9 +139,15 @@ def list_capacities(
         A pandas dataframe showing the capacities and their properties.
     """
 
-    df = pd.DataFrame(
-        columns=["Capacity Id", "Capacity Name", "Sku", "Region", "State", "Admins"]
-    )
+    columns = {
+        "Capacity Id": "string",
+        "Capacity Name": "string",
+        "Sku": "string",
+        "Region": "string",
+        "State": "string",
+        "Admins": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     responses = _base_api(
         request="/v1.0/myorg/admin/capacities", client="fabric_sp", uses_pagination=True
@@ -310,16 +316,15 @@ def list_tenant_settings() -> pd.DataFrame:
         A pandas dataframe showing the tenant settings.
     """
 
-    df = pd.DataFrame(
-        columns=[
-            "Setting Name",
-            "Title",
-            "Enabled",
-            "Can Specify Security Groups",
-            "Tenant Setting Group",
-            "Enabled Security Groups",
-        ]
-    )
+    columns = {
+        "Setting Name": "string",
+        "Title": "string",
+        "Enabled": "bool",
+        "Can Specify Security Groups": "bool",
+        "Tenant Setting Group": "string",
+        "Enabled Security Groups": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     response = _base_api(request="/v1/admin/tenantsettings", client="fabric_sp")
 
@@ -334,12 +339,7 @@ def list_tenant_settings() -> pd.DataFrame:
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    column_map = {
-        "Enabled": "bool",
-        "Can Specify Security Groups": "bool",
-    }
-
-    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -364,20 +364,20 @@ def list_capacities_delegated_tenant_settings(
     pandas.DataFrame | dict
         A pandas dataframe showing a list of tenant setting overrides that override at the capacities.
     """
-    df = pd.DataFrame(
-        columns=[
-            "Capacity Id",
-            "Setting Name",
-            "Setting Title",
-            "Setting Enabled",
-            "Can Specify Security Groups",
-            "Enabled Security Groups",
-            "Tenant Setting Group",
-            "Tenant Setting Properties",
-            "Delegate to Workspace",
-            "Delegated From",
-        ]
-    )
+
+    columns = {
+        "Capacity Id": "string",
+        "Setting Name": "string",
+        "Setting Title": "string",
+        "Setting Enabled": "bool",
+        "Can Specify Security Groups": "bool",
+        "Enabled Security Groups": "string",
+        "Tenant Setting Group": "string",
+        "Tenant Setting Properties": "string",
+        "Delegate to Workspace": "bool",
+        "Delegated From": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     responses = _base_api(
         request="/v1/admin/capacities/delegatedTenantSettingOverrides",
@@ -411,12 +411,7 @@ def list_capacities_delegated_tenant_settings(
                         [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
                     )
 
-            column_map = {
-                "Enabled Security Groups": "bool",
-                "Can Specify Security Groups": "bool",
-                "Delegate to Workspace": "bool",
-            }
-            _update_dataframe_datatypes(dataframe=df, column_map=column_map)
+            _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
             return df
     else:
@@ -509,29 +504,29 @@ def list_datasets(
         A pandas dataframe showing a list of datasets for the organization.
     """
 
-    columns = [
-        "Dataset Id",
-        "Dataset Name",
-        "Web URL",
-        "Add Rows API Enabled",
-        "Configured By",
-        "Is Refreshable",
-        "Is Effective Identity Required",
-        "Is Effective Identity Roles Required",
-        "Target Storage Mode",
-        "Created Date",
-        "Content Provider Type",
-        "Create Report Embed URL",
-        "QnA Embed URL",
-        "Upstream Datasets",
-        "Users",
-        "Is In Place Sharing Enabled",
-        "Workspace Id",
-        "Auto Sync Read Only Replicas",
-        "Max Read Only Replicas",
-    ]
+    columns = {
+        "Dataset Id": "string",
+        "Dataset Name": "string",
+        "Web URL": "string",
+        "Add Rows API Enabled": "bool",
+        "Configured By": "string",
+        "Is Refreshable": "bool",
+        "Is Effective Identity Required": "bool",
+        "Is Effective Identity Roles Required": "bool",
+        "Target Storage Mode": "string",
+        "Created Date": "datetime",
+        "Content Provider Type": "string",
+        "Create Report Embed URL": "string",
+        "QnA Embed URL": "string",
+        "Upstream Datasets": "string",
+        "Users": "string",
+        "Is In Place Sharing Enabled": "bool",
+        "Workspace Id": "string",
+        "Auto Sync Read Only Replicas": "bool",
+        "Max Read Only Replicas": "int",
+    }
 
-    df = pd.DataFrame(columns=columns)
+    df = _create_dataframe(columns=columns)
 
     params = {}
     url = "/v1.0/myorg/admin/datasets"
@@ -581,20 +576,9 @@ def list_datasets(
         )
 
     if rows:
-        df = pd.DataFrame(rows, columns=columns)
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
-    column_map = {
-        "Add Rows API Enabled": "bool",
-        "Is Refreshable": "bool",
-        "Is Effective Identity Required": "bool",
-        "Is Effective Identity Roles Required": "bool",
-        "Is In Place Sharing Enabled": "bool",
-        "Auto Sync Read Only Replicas": "bool",
-        "Created Date": "datetime",
-        "Max Read Only Replicas": "int",
-    }
-
-    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -619,15 +603,15 @@ def list_access_entities(
     pandas.DataFrame
         A pandas dataframe showing a list of permission details for Fabric and Power BI items the specified user can access.
     """
-    df = pd.DataFrame(
-        columns=[
-            "Item Id",
-            "Item Name",
-            "Item Type",
-            "Permissions",
-            "Additional Permissions",
-        ]
-    )
+
+    columns = {
+        "Item Id": "string",
+        "Item Name": "string",
+        "Item Type": "string",
+        "Permissions": "string",
+        "Additional Permissions": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     responses = _base_api(
         request=f"/v1/admin/users/{user_email_address}/access",
@@ -675,16 +659,15 @@ def list_workspace_access_details(
     """
     (workspace_name, workspace_id) = _resolve_workspace_name_and_id(workspace)
 
-    df = pd.DataFrame(
-        columns=[
-            "User Id",
-            "User Name",
-            "User Type",
-            "Workspace Name",
-            "Workspace Id",
-            "Workspace Role",
-        ]
-    )
+    columns = {
+        "User Id": "string",
+        "User Name": "string",
+        "User Type": "string",
+        "Workspace Name": "string",
+        "Workspace Id": "string",
+        "Workspace Role": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     response = _base_api(
         request=f"/v1/admin/workspaces/{workspace_id}/users", client="fabric_sp"
@@ -744,48 +727,47 @@ def list_activity_events(
             f"{icons.red_dot} Start and End Times must be within the same UTC day. Please refer to the documentation here: https://learn.microsoft.com/rest/api/power-bi/admin/get-activity-events#get-audit-activity-events-within-a-time-window-and-for-a-specific-activity-type-and-user-id-example"
         )
 
-    df = pd.DataFrame(
-        columns=[
-            "Id",
-            "Record Type",
-            "Creation Time",
-            "Operation",
-            "Organization Id",
-            "User Type",
-            "User Key",
-            "Workload",
-            "Result Status",
-            "User Id",
-            "Client IP",
-            "User Agent",
-            "Activity",
-            "Workspace Name",
-            "Workspace Id",
-            "Object Id",
-            "Request Id",
-            "Object Type",
-            "Object Display Name",
-            "Experience",
-            "Refresh Enforcement Policy",
-            "Is Success",
-            "Activity Id",
-            "Item Name",
-            "Dataset Name",
-            "Report Name",
-            "Capacity Id",
-            "Capacity Name",
-            "App Name",
-            "Dataset Id",
-            "Report Id",
-            "Artifact Id",
-            "Artifact Name",
-            "Report Type",
-            "App Report Id",
-            "Distribution Method",
-            "Consumption Method",
-            "Artifact Kind",
-        ]
-    )
+    columns = {
+        "Id": "string",
+        "Record Type": "string",
+        "Creation Time": "datetime",
+        "Operation": "string",
+        "Organization Id": "string",
+        "User Type": "string",
+        "User Key": "string",
+        "Workload": "string",
+        "Result Status": "string",
+        "User Id": "string",
+        "Client IP": "string",
+        "User Agent": "string",
+        "Activity": "string",
+        "Workspace Name": "string",
+        "Workspace Id": "string",
+        "Object Id": "string",
+        "Request Id": "string",
+        "Object Type": "string",
+        "Object Display Name": "string",
+        "Experience": "string",
+        "Refresh Enforcement Policy": "string",
+        "Is Success": "bool",
+        "Activity Id": "string",
+        "Item Name": "string",
+        "Dataset Name": "string",
+        "Report Name": "string",
+        "Capacity Id": "string",
+        "Capacity Name": "string",
+        "App Name": "string",
+        "Dataset Id": "string",
+        "Report Id": "string",
+        "Artifact Id": "string",
+        "Artifact Name": "string",
+        "Report Type": "string",
+        "App Report Id": "string",
+        "Distribution Method": "string",
+        "Consumption Method": "string",
+        "Artifact Kind": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     response_json = {"activityEventEntities": []}
     url = f"/v1.0/myorg/admin/activityevents?startDateTime='{start_time}'&endDateTime='{end_time}'"
@@ -854,7 +836,7 @@ def list_activity_events(
             )
 
     if return_dataframe:
-        df["Creation Time"] = pd.to_datetime(df["Creation Time"])
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
         return df
     else:
         return response_json
@@ -886,9 +868,15 @@ def _list_capacities_meta() -> pd.DataFrame:
         A pandas dataframe showing the capacities and their properties
     """
 
-    df = pd.DataFrame(
-        columns=["Capacity Id", "Capacity Name", "Sku", "Region", "State", "Admins"]
-    )
+    columns = {
+        "Capacity Id": "string",
+        "Capacity Name": "string",
+        "Sku": "string",
+        "Region": "string",
+        "State": "string",
+        "Admins": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     responses = _base_api(
         request="/v1.0/myorg/admin/capacities", client="fabric_sp", uses_pagination=True
@@ -956,25 +944,25 @@ def list_reports(
         A pandas dataframe showing a list of reports for the organization.
     """
 
-    columns = [
-        "Report Id",
-        "Report Name",
-        "Type",
-        "Web URL",
-        "Embed URL",
-        "Dataset Id",
-        "Created Date",
-        "Modified Date",
-        "Created By",
-        "Modified By",
-        "Sensitivity Label Id",
-        "Users",
-        "Subscriptions",
-        "Workspace Id",
-        "Report Flags",
-    ]
+    columns = {
+        "Report Id": "string",
+        "Report Name": "string",
+        "Type": "string",
+        "Web URL": "string",
+        "Embed URL": "string",
+        "Dataset Id": "string",
+        "Created Date": "datetime_coerce",
+        "Modified Date": "datetime_coerce",
+        "Created By": "string",
+        "Modified By": "string",
+        "Sensitivity Label Id": "string",
+        "Users": "string",
+        "Subscriptions": "string",
+        "Workspace Id": "string",
+        "Report Flags": "int",
+    }
 
-    df = pd.DataFrame(columns=columns)
+    df = _create_dataframe(columns=columns)
 
     url = "/v1.0/myorg/admin/reports?"
     if top is not None:
@@ -1010,15 +998,9 @@ def list_reports(
         )
 
     if rows:
-        df = pd.DataFrame(rows, columns=columns)
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
-    column_map = {
-        "Report Flags": "int",
-        "Created Date": "datetime_coerce",
-        "Modified Date": "datetime_coerce",
-    }
-
-    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -1048,16 +1030,15 @@ def get_capacity_assignment_status(
 
     (workspace_name, workspace_id) = _resolve_workspace_name_and_id(workspace)
 
-    df = pd.DataFrame(
-        columns=[
-            "Status",
-            "Activity Id",
-            "Start Time",
-            "End Time",
-            "Capacity Id",
-            "Capacity Name",
-        ]
-    )
+    columns = {
+        "Status": "string",
+        "Activity Id": "string",
+        "Start Time": "datetime",
+        "End Time": "datetime",
+        "Capacity Id": "string",
+        "Capacity Name": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     response = _base_api(
         request=f"/v1.0/myorg/groups/{workspace_id}/CapacityAssignmentStatus",
@@ -1078,5 +1059,7 @@ def get_capacity_assignment_status(
     }
 
     df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
+
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df

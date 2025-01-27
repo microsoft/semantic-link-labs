@@ -5,12 +5,16 @@ import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 import requests
 import pandas as pd
-from sempy_labs._authentication import _get_headers, ServicePrincipalTokenProvider
+from sempy_labs._authentication import (
+    _get_headers,
+    ServicePrincipalTokenProvider,
+)
 from uuid import UUID
 from sempy_labs._helper_functions import (
     _is_valid_uuid,
     _update_dataframe_datatypes,
     _base_api,
+    _create_dataframe,
 )
 import sempy_labs._authentication as auth
 
@@ -217,7 +221,11 @@ def create_fabric_capacity(
 
 def list_vcores() -> pd.DataFrame:
 
-    df = pd.DataFrame(columns=["Total Purchased Cores", "Available Cores"])
+    columns = {
+        "Total Purchased Cores": "int",
+        "Available Cores": "int",
+    }
+    df = _create_dataframe(columns=columns)
 
     response = _base_api(request="capacities/vcores")
     response_json = response.json()
@@ -227,11 +235,7 @@ def list_vcores() -> pd.DataFrame:
     }
     df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    column_map = {
-        "Total Purchased Cores": "int",
-        "Available Cores": "int",
-    }
-    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -678,7 +682,13 @@ def list_skus_for_capacity(
         A pandas dataframe showing a list of eligible SKUs for a Microsoft Fabric resource.
     """
 
-    df = pd.DataFrame(columns=["Resource Type", "Sku", "Sku Tier"])
+    columns = {
+        "Resource Type": "string",
+        "Sku": "string",
+        "Sku Tier": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity}/skus?api-version=2023-11-01"
     response = _base_api(request=url, client="azure")
 
@@ -717,7 +727,12 @@ def list_skus(
         A pandas dataframe showing a list of eligible SKUs for Microsoft Fabric resource provider.
     """
 
-    df = pd.DataFrame(columns=["Sku", "Locations"])
+    columns = {
+        "Sku": "string",
+        "Locations": "str",
+    }
+    df = _create_dataframe(columns=columns)
+
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/providers/Microsoft.Fabric/skus?api-version=2023-11-01"
     response = _base_api(request=url, client="azure")
 
@@ -747,20 +762,20 @@ def list_subscriptions() -> pd.DataFrame:
         A pandas dataframe showing a list of all subscriptions for a tenant.
     """
 
-    df = pd.DataFrame(
-        columns=[
-            "Subscription Id",
-            "Subscription Name",
-            "Tenant Id",
-            "State",
-            "Location Placement Id",
-            "Quota Id",
-            "Spending Limit",
-            "Authorization Source",
-            "Managed By Tenants",
-            "Tags",
-        ]
-    )
+    columns = {
+        "Subscription Id": "string",
+        "Subscription Name": "string",
+        "Tenant Id": "string",
+        "State": "string",
+        "Location Placement Id": "string",
+        "Quota Id": "string",
+        "Spending Limit": "string",
+        "Authorization Source": "string",
+        "Managed by Tenants": "string",
+        "Tags": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
     url = "https://management.azure.com/subscriptions?api-version=2022-12-01"
     response = _base_api(request=url, client="azure")
 
@@ -805,20 +820,20 @@ def get_subscription(azure_subscription_id: str) -> pd.DataFrame:
         A pandas dataframe showing details of a specific subscription.
     """
 
-    df = pd.DataFrame(
-        columns=[
-            "Subscription Id",
-            "Subscription Name",
-            "Tenant Id",
-            "State",
-            "Location Placement Id",
-            "Quota Id",
-            "Spending Limit",
-            "Authorization Source",
-            "Managed By Tenants",
-            "Tags",
-        ]
-    )
+    columns = {
+        "Subscription Id": "string",
+        "Subscription Name": "string",
+        "Tenant Id": "string",
+        "State": "string",
+        "Location Placement Id": "string",
+        "Quota Id": "string",
+        "Spending Limit": "string",
+        "Authorization Source": "string",
+        "Managed by Tenants": "string",
+        "Tags": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}?api-version=2022-12-01"
 
     response = _base_api(request=url, client="azure")
@@ -879,18 +894,18 @@ def list_tenants() -> pd.DataFrame:
         A pandas dataframe showing a list of all tenants for your account.
     """
 
-    df = pd.DataFrame(
-        columns=[
-            "Tenant Id",
-            "Tenant Name",
-            "Country Code",
-            "Domains",
-            "Tenant Category",
-            "Default Domain",
-            "Tenant Type",
-            "Tenant Branding Logo Url",
-        ]
-    )
+    columns = {
+        "Tenant Id": "string",
+        "Tenant Name": "string",
+        "Country Code": "string",
+        "Domains": "string",
+        "Tenant Category": "string",
+        "Default Domain": "string",
+        "Tenant Type": "string",
+        "Tenant Branding Logo Url": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
     url = "https://management.azure.com/tenants?api-version=2022-12-01"
 
     response = _base_api(request=url, client="azure")
@@ -1028,31 +1043,31 @@ def list_storage_accounts(
 
     url += "/providers/Microsoft.Storage/storageAccounts?api-version=2023-05-01"
 
-    df = pd.DataFrame(
-        columns=[
-            "Storage Account Id",
-            "Storage Account Name",
-            "Kind",
-            "Location",
-            "Sku Name",
-            "Sku Tier",
-            "Is HNS Enabled",
-            "Creation Time",
-            "Web Endpoint",
-            "DFS Endpoint",
-            "Blob Endpoint",
-            "File Endpoint",
-            "Queue Endpoint",
-            "Table Endpoint",
-            "Primary Location",
-            "Provisioning State",
-            "Secondary Location",
-            "Status of Primary",
-            "Status of Secondary",
-            "Supports HTTPS Traffic Only",
-            "Tags",
-        ]
-    )
+    columns = {
+        "Storage Account Id": "string",
+        "Storage Account Name": "string",
+        "Kind": "string",
+        "Location": "string",
+        "Sku Name": "string",
+        "Sku Tier": "string",
+        "Is HNS Enabled": "bool",
+        "Creation Time": "datetime",
+        "Web Endpoint": "string",
+        "DFS Endpoint": "string",
+        "Blob Endpoint": "string",
+        "File Endpoint": "string",
+        "Queue Endpoint": "string",
+        "Table Endpoint": "string",
+        "Primary Location": "string",
+        "Provisioning State": "string",
+        "Secondary Location": "string",
+        "Status of Primary": "string",
+        "Status of Secondary": "string",
+        "Supports HTTPS Traffic Only": "bool",
+        "Tags": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
     response = _base_api(request=url, client="azure")
 
     for v in response.json().get("value", []):
@@ -1083,13 +1098,7 @@ def list_storage_accounts(
 
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    column_map = {
-        "Is HNS Enabled": "bool",
-        "Supports HTTPS Traffic Only": "bool",
-        "Creation Time": "datetime",
-    }
-
-    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -1165,7 +1174,13 @@ def list_resource_groups(
 
     url += "api-version=2021-04-01"
 
-    df = pd.DataFrame(columns=["Resource Group Name", "Location", "Tags"])
+    columns = {
+        "Resource Group Name": "string",
+        "Location": "string",
+        "Tags": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
     response = _base_api(request=url, client="azure")
 
     for v in response.json().get("value", []):

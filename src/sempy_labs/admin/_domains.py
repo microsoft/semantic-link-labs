@@ -5,6 +5,7 @@ from uuid import UUID
 from sempy_labs.admin._basic_functions import list_workspaces
 from sempy_labs._helper_functions import (
     _base_api,
+    _create_dataframe,
 )
 
 
@@ -51,15 +52,14 @@ def list_domains(non_empty_only: bool = False) -> pd.DataFrame:
         A pandas dataframe showing a list of the domains.
     """
 
-    df = pd.DataFrame(
-        columns=[
-            "Domain ID",
-            "Domain Name",
-            "Description",
-            "Parent Domain ID",
-            "Contributors Scope",
-        ]
-    )
+    columns = {
+        "Domain ID": "string",
+        "Domain Name": "string",
+        "Description": "string",
+        "Parent Domain ID": "string",
+        "Contributors Scope": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     url = "/v1/admin/domains"
     if non_empty_only:
@@ -101,7 +101,11 @@ def list_domain_workspaces(domain_name: str) -> pd.DataFrame:
 
     domain_id = resolve_domain_id(domain_name)
 
-    df = pd.DataFrame(columns=["Workspace ID", "Workspace Name"])
+    columns = {
+        "Workspace ID": "string",
+        "Workspace Name": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     response = _base_api(
         request=f"/v1/admin/domains/{domain_id}/workspaces", client="fabric_sp"

@@ -8,6 +8,7 @@ from sempy_labs._helper_functions import (
     resolve_dataset_name_and_id,
     _update_dataframe_datatypes,
     _base_api,
+    _create_dataframe,
 )
 import pandas as pd
 from typing import Optional
@@ -41,7 +42,13 @@ def get_object_level_security(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    df = pd.DataFrame(columns=["Role Name", "Object Type", "Table Name", "Object Name"])
+    columns = {
+        "Role Name": "string",
+        "Object Type": "string",
+        "Table Name": "string",
+        "Object Name": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     with connect_semantic_model(
         dataset=dataset_id, readonly=True, workspace=workspace_id
@@ -111,17 +118,17 @@ def list_tables(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    df = pd.DataFrame(
-        columns=[
-            "Name",
-            "Description",
-            "Hidden",
-            "Data Category",
-            "Type",
-            "Refresh Policy",
-            "Source Expression",
-        ]
-    )
+    columns = {
+        "Name": "string",
+        "Description": "string",
+        "Hidden": "bool",
+        "Data Category": "string",
+        "Type": "string",
+        "Refresh Policy": "bool",
+        "Source Expression": "string",
+    }
+
+    df = _create_dataframe(columns=columns)
 
     with connect_semantic_model(
         dataset=dataset_id, workspace=workspace_id, readonly=True
@@ -284,15 +291,14 @@ def list_annotations(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    df = pd.DataFrame(
-        columns=[
-            "Object Name",
-            "Parent Object Name",
-            "Object Type",
-            "Annotation Name",
-            "Annotation Value",
-        ]
-    )
+    columns = {
+        "Object Name": "string",
+        "Parent Object Name": "string",
+        "Object Type": "string",
+        "Annotation Name": "string",
+        "Annotation Value": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     with connect_semantic_model(
         dataset=dataset_id, readonly=True, workspace=workspace_id
@@ -611,18 +617,17 @@ def list_dashboards(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing the dashboards within a workspace.
     """
 
-    df = pd.DataFrame(
-        columns=[
-            "Dashboard ID",
-            "Dashboard Name",
-            "Read Only",
-            "Web URL",
-            "Embed URL",
-            "Data Classification",
-            "Users",
-            "Subscriptions",
-        ]
-    )
+    columns = {
+        "Dashboard ID": "string",
+        "Dashboard Name": "string",
+        "Read Only": "bool",
+        "Web URL": "string",
+        "Embed URL": "string",
+        "Data Classification": "string",
+        "Users": "string",
+        "Subscriptions": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
@@ -641,11 +646,7 @@ def list_dashboards(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    column_map = {
-        "Read Only": "bool",
-    }
-
-    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -667,18 +668,17 @@ def list_lakehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing the lakehouses within a workspace.
     """
 
-    df = pd.DataFrame(
-        columns=[
-            "Lakehouse Name",
-            "Lakehouse ID",
-            "Description",
-            "OneLake Tables Path",
-            "OneLake Files Path",
-            "SQL Endpoint Connection String",
-            "SQL Endpoint ID",
-            "SQL Endpoint Provisioning Status",
-        ]
-    )
+    columns = {
+        "Lakehouse Name": "string",
+        "Lakehouse ID": "string",
+        "Description": "string",
+        "OneLake Tables Path": "string",
+        "OneLake Files Path": "string",
+        "SQL Endpoint Connection String": "string",
+        "SQL Endpoint ID": "string",
+        "SQL Endpoint Provisioning Status": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
@@ -723,7 +723,12 @@ def list_sql_endpoints(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing the SQL endpoints within a workspace.
     """
 
-    df = pd.DataFrame(columns=["SQL Endpoint Id", "SQL Endpoint Name", "Description"])
+    columns = {
+        "SQL Endpoint Id": "string",
+        "SQL Endpoint Name": "string",
+        "Description": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
@@ -761,7 +766,12 @@ def list_datamarts(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing the datamarts within a workspace.
     """
 
-    df = pd.DataFrame(columns=["Datamart Name", "Datamart ID", "Description"])
+    columns = {
+        "Datamart Name": "string",
+        "Datamart ID": "string",
+        "Description": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
@@ -960,25 +970,24 @@ def list_kpis(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
+    columns = {
+        "Table Name": "string",
+        "Measure Name": "string",
+        "Target Expression": "string",
+        "Target Format String": "string",
+        "Target Description": "string",
+        "Status Expression": "string",
+        "Status Graphic": "string",
+        "Status Description": "string",
+        "Trend Expression": "string",
+        "Trend Graphic": "string",
+        "Trend Description": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
     with connect_semantic_model(
         dataset=dataset_id, workspace=workspace_id, readonly=True
     ) as tom:
-
-        df = pd.DataFrame(
-            columns=[
-                "Table Name",
-                "Measure Name",
-                "Target Expression",
-                "Target Format String",
-                "Target Description",
-                "Status Expression",
-                "Status Graphic",
-                "Status Description",
-                "Trend Expression",
-                "Trend Graphic",
-                "Trend Description",
-            ]
-        )
 
         for t in tom.model.Tables:
             for m in t.Measures:
@@ -1026,7 +1035,13 @@ def list_semantic_model_objects(
     """
     from sempy_labs.tom import connect_semantic_model
 
-    df = pd.DataFrame(columns=["Parent Name", "Object Name", "Object Type"])
+    columns = {
+        "Parent Name": "string",
+        "Object Name": "string",
+        "Object Type": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
     with connect_semantic_model(
         dataset=dataset, workspace=workspace, readonly=True
     ) as tom:
@@ -1196,23 +1211,22 @@ def list_shortcuts(
     else:
         lakehouse_id = resolve_lakehouse_id(lakehouse, workspace_id)
 
-    df = pd.DataFrame(
-        columns=[
-            "Shortcut Name",
-            "Shortcut Path",
-            "Source Type",
-            "Source Workspace Id",
-            "Source Workspace Name",
-            "Source Item Id",
-            "Source Item Name",
-            "Source Item Type",
-            "OneLake Path",
-            "Connection Id",
-            "Location",
-            "Bucket",
-            "SubPath",
-        ]
-    )
+    columns = {
+        "Shortcut Name": "string",
+        "Shortcut Path": "string",
+        "Source Type": "string",
+        "Source Workspace Id": "string",
+        "Source Workspace Name": "string",
+        "Source Item Id": "string",
+        "Source Item Name": "string",
+        "Source Item Type": "string",
+        "OneLake Path": "string",
+        "Connection Id": "string",
+        "Location": "string",
+        "Bucket": "string",
+        "SubPath": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     responses = _base_api(
         request=f"/v1/workspaces/{workspace_id}/items/{lakehouse_id}/shortcuts",
@@ -1281,9 +1295,15 @@ def list_capacities() -> pd.DataFrame:
         A pandas dataframe showing the capacities and their properties
     """
 
-    df = pd.DataFrame(
-        columns=["Id", "Display Name", "Sku", "Region", "State", "Admins"]
-    )
+    columns = {
+        "Id": "string",
+        "Display Name": "string",
+        "Sku": "string",
+        "Region": "string",
+        "State": "string",
+        "Admins": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     response = _base_api(request="/v1.0/myorg/capacities")
 
@@ -1396,17 +1416,16 @@ def list_report_semantic_model_objects(
     from sempy_labs.report import ReportWrapper
     from sempy_labs.tom import connect_semantic_model
 
-    dfRO = pd.DataFrame(
-        columns=[
-            "Report Name",
-            "Report Workspace Name",
-            "Table Name",
-            "Object Name",
-            "Object Type",
-            "Report Source",
-            "Report Source Object",
-        ]
-    )
+    columns = {
+        "Report Name": "string",
+        "Report Workspace Name": "string",
+        "Table Name": "string",
+        "Object Name": "string",
+        "Object Type": "string",
+        "Report Source": "string",
+        "Report Source Object": "string",
+    }
+    dfRO = _create_dataframe(columns=columns)
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)

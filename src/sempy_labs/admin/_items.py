@@ -10,6 +10,7 @@ from sempy_labs._helper_functions import (
     _is_valid_uuid,
     _build_url,
     _base_api,
+    _create_dataframe,
 )
 
 
@@ -103,22 +104,21 @@ def list_items(
         capacity = kwargs["capacity_name"]
         del kwargs["capacity_name"]
 
-    df = pd.DataFrame(
-        columns=[
-            "Item Id",
-            "Item Name",
-            "Type",
-            "Description",
-            "State",
-            "Last Updated Date",
-            "Creator Principal Id",
-            "Creator Principal Display Name",
-            "Creator Principal Type",
-            "Creator User Principal Name",
-            "Workspace Id",
-            "Capacity Id",
-        ]
-    )
+    columns = {
+        "Item Id": "string",
+        "Item Name": "string",
+        "Type": "string",
+        "Description": "string",
+        "State": "string",
+        "Last Updated Date": "string",
+        "Creator Principal Id": "string",
+        "Creator Principal Display Name": "string",
+        "Creator Principal Type": "string",
+        "Creator User Principal Name": "string",
+        "Workspace Id": "string",
+        "Capacity Id": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     params = {}
     url = "/v1/admin/items"
@@ -216,19 +216,18 @@ def list_item_access_details(
         item=item, type=type, workspace=workspace_name
     )
 
-    df = pd.DataFrame(
-        columns=[
-            "User Id",
-            "User Name",
-            "User Type",
-            "User Principal Name",
-            "Item Name",
-            "Item Type",
-            "Item Id",
-            "Permissions",
-            "Additional Permissions",
-        ]
-    )
+    columns = {
+        "User Id": "string",
+        "User Name": "string",
+        "User Type": "string",
+        "User Principal Name": "string",
+        "Item Name": "string",
+        "Item Type": "string",
+        "Item Id": "string",
+        "Permissions": "string",
+        "Additional Permissions": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     response = _base_api(
         request=f"/v1/admin/workspaces/{workspace_id}/items/{item_id}/users",

@@ -4,6 +4,8 @@ import pandas as pd
 from sempy_labs.admin._basic_functions import _resolve_workspace_name_and_id
 from sempy_labs._helper_functions import (
     _base_api,
+    _create_dataframe,
+    _update_dataframe_datatypes,
 )
 
 
@@ -18,22 +20,22 @@ def list_external_data_shares() -> pd.DataFrame:
     pandas.DataFrame
         A pandas dataframe showing a list of external data shares in the tenant.
     """
-    df = pd.DataFrame(
-        columns=[
-            "External Data Share Id",
-            "Paths",
-            "Creater Principal Id",
-            "Creater Principal Name",
-            "Creater Principal Type",
-            "Creater Principal UPN",
-            "Recipient UPN",
-            "Status",
-            "Expiration Time UTC",
-            "Workspace Id",
-            "Item Id",
-            "Invitation URL",
-        ]
-    )
+
+    columns = {
+        "External Data Share Id": "string",
+        "Paths": "string",
+        "Creater Principal Id": "string",
+        "Creater Principal Name": "string",
+        "Creater Principal Type": "string",
+        "Creater Principal UPN": "string",
+        "Recipient UPN": "string",
+        "Status": "string",
+        "Expiration Time UTC": "datetime",
+        "Workspace Id": "string",
+        "Item Id": "string",
+        "Invitation URL": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     response = _base_api(request="/v1/admin/items/externalDataShares")
 
@@ -56,8 +58,7 @@ def list_external_data_shares() -> pd.DataFrame:
 
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    date_time_columns = ["Expiration Time UTC"]
-    df[date_time_columns] = pd.to_datetime(df[date_time_columns])
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 

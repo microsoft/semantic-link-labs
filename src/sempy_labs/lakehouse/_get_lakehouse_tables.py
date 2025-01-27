@@ -9,6 +9,7 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_name_and_id,
     save_as_delta_table,
     _base_api,
+    _create_dataframe,
 )
 from sempy_labs.directlake._guardrails import (
     get_sku_size,
@@ -56,16 +57,15 @@ def get_lakehouse_tables(
         Shows the tables/columns within a lakehouse and their properties.
     """
 
-    df = pd.DataFrame(
-        columns=[
-            "Workspace Name",
-            "Lakehouse Name",
-            "Table Name",
-            "Format",
-            "Type",
-            "Location",
-        ]
-    )
+    columns = {
+        "Workspace Name": "string",
+        "Lakehouse Name": "string",
+        "Table Name": "string",
+        "Format": "string",
+        "Type": "string",
+        "Location": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(

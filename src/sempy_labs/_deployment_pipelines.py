@@ -3,6 +3,7 @@ from sempy_labs._helper_functions import (
     _is_valid_uuid,
     _base_api,
     _update_dataframe_datatypes,
+    _create_dataframe,
 )
 import sempy_labs._icons as icons
 from uuid import UUID
@@ -20,9 +21,13 @@ def list_deployment_pipelines() -> pd.DataFrame:
         A pandas dataframe showing a list of deployment pipelines the user can access.
     """
 
-    df = pd.DataFrame(
-        columns=["Deployment Pipeline Id", "Deployment Pipeline Name", "Description"]
-    )
+    columns = {
+        "Deployment Pipeline Id": "string",
+        "Deployment Pipeline Name": "string",
+        "Description": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
     responses = _base_api(
         request="/v1/deploymentPipelines",
         status_codes=200,
@@ -60,17 +65,16 @@ def list_deployment_pipeline_stages(deployment_pipeline: str | UUID) -> pd.DataF
 
     from sempy_labs._helper_functions import resolve_deployment_pipeline_id
 
-    df = pd.DataFrame(
-        columns=[
-            "Deployment Pipeline Stage Id",
-            "Deployment Pipeline Stage Name",
-            "Order",
-            "Description",
-            "Workspace Id",
-            "Workspace Name",
-            "Public",
-        ]
-    )
+    columns = {
+        "Deployment Pipeline Stage Id": "string",
+        "Deployment Pipeline Stage Name": "string",
+        "Order": "int",
+        "Description": "string",
+        "Workspace Id": "string",
+        "Workspace Name": "string",
+        "Public": "bool",
+    }
+    df = _create_dataframe(columns=columns)
 
     deployment_pipeline_id = resolve_deployment_pipeline_id(
         deployment_pipeline=deployment_pipeline
@@ -95,11 +99,7 @@ def list_deployment_pipeline_stages(deployment_pipeline: str | UUID) -> pd.DataF
             }
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    column_map = {
-        "Order": "int",
-        "Public": "bool",
-    }
-    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -128,16 +128,15 @@ def list_deployment_pipeline_stage_items(
 
     from sempy_labs._helper_functions import resolve_deployment_pipeline_id
 
-    df = pd.DataFrame(
-        columns=[
-            "Deployment Pipeline Stage Item Id",
-            "Deployment Pipeline Stage Item Name",
-            "Item Type",
-            "Source Item Id",
-            "Target Item Id",
-            "Last Deployment Time",
-        ]
-    )
+    columns = {
+        "Deployment Pipeline Stage Item Id": "string",
+        "Deployment Pipeline Stage Item Name": "string",
+        "Item Type": "string",
+        "Source Item Id": "string",
+        "Target Item Id": "string",
+        "Last Deployment Time": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     deployment_pipeline_id = resolve_deployment_pipeline_id(
         deployment_pipeline=deployment_pipeline

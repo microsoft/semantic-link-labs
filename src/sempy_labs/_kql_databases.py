@@ -5,6 +5,7 @@ from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _base_api,
+    _create_dataframe,
 )
 from uuid import UUID
 
@@ -28,17 +29,16 @@ def list_kql_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing the KQL databases within a workspace.
     """
 
-    df = pd.DataFrame(
-        columns=[
-            "KQL Database Name",
-            "KQL Database Id",
-            "Description",
-            "Parent Eventhouse Item Id",
-            "Query Service URI",
-            "Ingestion Service URI",
-            "Database Type",
-        ]
-    )
+    columns = {
+        "KQL Database Name": "string",
+        "KQL Database Id": "string",
+        "Description": "string",
+        "Parent Eventhouse Item Id": "string",
+        "Query Service URI": "string",
+        "Ingestion Service URI": "string",
+        "Database Type": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 

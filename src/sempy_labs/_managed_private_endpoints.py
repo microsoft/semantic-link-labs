@@ -6,6 +6,7 @@ from sempy_labs._helper_functions import (
     _is_valid_uuid,
     _base_api,
     _print_success,
+    _create_dataframe,
 )
 from uuid import UUID
 
@@ -89,17 +90,16 @@ def list_managed_private_endpoints(
         A pandas dataframe showing the managed private endpoints within a workspace.
     """
 
-    df = pd.DataFrame(
-        columns=[
-            "Managed Private Endpoint Name",
-            "Managed Private Endpoint Id",
-            "Target Private Link Resource Id",
-            "Provisioning State",
-            "Connection Status",
-            "Connection Description",
-            "Target Subresource Type",
-        ]
-    )
+    columns = {
+        "Managed Private Endpoint Name": "string",
+        "Managed Private Endpoint Id": "string",
+        "Target Private Link Resource Id": "string",
+        "Provisioning State": "string",
+        "Connection Status": "string",
+        "Connection Description": "string",
+        "Target Subresource Type": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 

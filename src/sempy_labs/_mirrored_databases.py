@@ -8,6 +8,7 @@ from sempy_labs._helper_functions import (
     _base_api,
     _print_success,
     resolve_item_id,
+    _create_dataframe,
 )
 import sempy_labs._icons as icons
 import base64
@@ -33,18 +34,17 @@ def list_mirrored_databases(workspace: Optional[str | UUID] = None) -> pd.DataFr
         A pandas dataframe showing the mirrored databases within a workspace.
     """
 
-    df = pd.DataFrame(
-        columns=[
-            "Mirrored Database Name",
-            "Mirrored Database Id",
-            "Description",
-            "OneLake Tables Path",
-            "SQL Endpoint Connection String",
-            "SQL Endpoint Id",
-            "Provisioning Status",
-            "Default Schema",
-        ]
-    )
+    columns = {
+        "Mirrored Database Name": "string",
+        "Mirrored Database Id": "string",
+        "Description": "string",
+        "OneLake Tables Path": "string",
+        "SQL Endpoint Connection String": "string",
+        "SQL Endpoint Id": "string",
+        "Provisioning Status": "string",
+        "Default Schema": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     responses = _base_api(
@@ -208,16 +208,15 @@ def get_tables_mirroring_status(
         uses_pagination=True,
     )
 
-    df = pd.DataFrame(
-        columns=[
-            "Source Schema Name",
-            "Source Table Name",
-            "Status",
-            "Processed Bytes",
-            "Processed Rows",
-            "Last Sync Date",
-        ]
-    )
+    columns = {
+        "Source Schema Name": "string",
+        "Source Table Name": "string",
+        "Status": "string",
+        "Processed Bytes": "int",
+        "Processed Rows": "int",
+        "Last Sync Date": "datetime",
+    }
+    df = _create_dataframe(columns=columns)
 
     for r in responses:
         for v in r.get("data", []):
@@ -233,12 +232,7 @@ def get_tables_mirroring_status(
 
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    column_map = {
-        "Processed Bytes": "int",
-        "Processed Rows": "int",
-        "Last Sync Date": "datetime",
-    }
-    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 

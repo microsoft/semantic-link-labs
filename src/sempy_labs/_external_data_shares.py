@@ -6,6 +6,7 @@ import sempy_labs._icons as icons
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _base_api,
+    _create_dataframe,
 )
 
 
@@ -127,22 +128,21 @@ def list_external_data_shares_in_item(
         item_name=item_name, type=item_type, workspace=workspace_id
     )
 
-    df = pd.DataFrame(
-        columns=[
-            "External Data Share Id",
-            "Paths",
-            "Creator Principal Id",
-            "Creater Principal Type",
-            "Recipient User Principal Name",
-            "Status",
-            "Expiration Time UTC",
-            "Workspace Id",
-            "Item Id",
-            "Item Name",
-            "Item Type",
-            "Invitation URL",
-        ]
-    )
+    columns = {
+        "External Data Share Id": "string",
+        "Paths": "string",
+        "Creator Principal Id": "string",
+        "Creator Principal Type": "string",
+        "Recipient User Principal Name": "string",
+        "Status": "string",
+        "Expiration Time UTC": "string",
+        "Workspace Id": "string",
+        "Item Id": "string",
+        "Item Name": "string",
+        "Item Type": "string",
+        "Invitation URL": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     responses = _base_api(
         request=f"/v1/workspaces/{workspace_id}/items/{item_id}/externalDataShares",

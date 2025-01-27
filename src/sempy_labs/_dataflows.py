@@ -5,6 +5,7 @@ from sempy_labs._helper_functions import (
     _is_valid_uuid,
     _update_dataframe_datatypes,
     _base_api,
+    _create_dataframe,
 )
 from typing import Optional, Tuple
 import sempy_labs._icons as icons
@@ -30,9 +31,14 @@ def list_dataflows(workspace: Optional[str | UUID] = None):
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    df = pd.DataFrame(
-        columns=["Dataflow Id", "Dataflow Name", "Configured By", "Users", "Generation"]
-    )
+    columns = {
+        "Dataflow Id": "string",
+        "Dataflow Name": "string",
+        "Configured By": "string",
+        "Users": "string",
+        "Generation": "int",
+    }
+    df = _create_dataframe(columns=columns)
 
     response = _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/dataflows")
 
@@ -51,11 +57,7 @@ def list_dataflows(workspace: Optional[str | UUID] = None):
     if data:
         df = pd.DataFrame(data)
 
-        column_map = {
-            "Generation": "int",
-        }
-
-        _update_dataframe_datatypes(dataframe=df, column_map=column_map)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -114,13 +116,12 @@ def list_dataflow_storage_accounts() -> pd.DataFrame:
         A pandas dataframe showing the accessible dataflow storage accounts.
     """
 
-    df = pd.DataFrame(
-        columns=[
-            "Dataflow Storage Account ID",
-            "Dataflow Storage Account Name",
-            "Enabled",
-        ]
-    )
+    columns = {
+        "Dataflow Storage Account ID": "string",
+        "Dataflow Storage Account Name": "string",
+        "Enabled": "bool",
+    }
+    df = _create_dataframe(columns=columns)
 
     response = _base_api(request="/v1.0/myorg/dataflowStorageAccounts")
 
@@ -132,11 +133,7 @@ def list_dataflow_storage_accounts() -> pd.DataFrame:
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    column_map = {
-        "Enabled": "bool",
-    }
-
-    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -169,18 +166,17 @@ def list_upstream_dataflows(
         dataflow=dataflow, workspace=workspace_id
     )
 
-    df = pd.DataFrame(
-        columns=[
-            "Dataflow Name",
-            "Dataflow Id",
-            "Workspace Name",
-            "Workspace Id",
-            "Upstream Dataflow Name",
-            "Upstream Dataflow Id",
-            "Upstream Workspace Name",
-            "Upstream Workspace Id",
-        ]
-    )
+    columns = {
+        "Dataflow Name": "string",
+        "Dataflow Id": "string",
+        "Workspace Name": "string",
+        "Workspace Id": "string",
+        "Upstream Dataflow Name": "string",
+        "Upstream Dataflow Id": "string",
+        "Upstream Workspace Name": "string",
+        "Upstream Workspace Id": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     def collect_upstreams(dataflow_id, dataflow_name, workspace_id, workspace_name):
         response = _base_api(

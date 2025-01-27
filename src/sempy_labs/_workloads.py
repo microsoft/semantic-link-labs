@@ -4,6 +4,7 @@ import sempy_labs._icons as icons
 from sempy_labs._helper_functions import (
     _update_dataframe_datatypes,
     _base_api,
+    _create_dataframe,
 )
 
 
@@ -27,9 +28,12 @@ def list_workloads(capacity_name: str) -> pd.DataFrame:
 
     from sempy_labs._helper_functions import resolve_capacity_id
 
-    df = pd.DataFrame(
-        columns=["Workload Name", "State", "Max Memory Percentage Set By User"]
-    )
+    columns = {
+        "Workload Name": "string",
+        "State": "string",
+        "Max Memory Percentage Set By User": "int",
+    }
+    df = _create_dataframe(columns=columns)
 
     capacity_id = resolve_capacity_id(capacity_name=capacity_name)
 
@@ -43,11 +47,7 @@ def list_workloads(capacity_name: str) -> pd.DataFrame:
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    column_map = {
-        "Max Memory Percentage Set By User": "int",
-    }
-
-    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 

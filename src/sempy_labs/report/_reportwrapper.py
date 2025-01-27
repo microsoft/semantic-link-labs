@@ -9,6 +9,7 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _update_dataframe_datatypes,
     _base_api,
+    _create_dataframe,
 )
 from typing import Optional, List
 import pandas as pd
@@ -21,6 +22,7 @@ import sempy_labs.report._report_helper as helper
 from sempy_labs._model_dependencies import get_measure_dependencies
 from jsonpath_ng.ext import parse
 import warnings
+import requests
 
 
 class ReportWrapper:
@@ -253,7 +255,13 @@ class ReportWrapper:
 
         helper.populate_custom_visual_display_names()
 
-        df = pd.DataFrame(columns=["Custom Visual Name", "Custom Visual Display Name"])
+        columns = {
+            "Custom Visual Name": "str",
+            "Custom Visual Display Name": "str",
+            "Used in Report": "bool",
+        }
+
+        df = _create_dataframe(columns=columns)
         rd = self.rdef
         rd_filt = rd[rd["path"] == "definition/report.json"]
         rptJson = _extract_json(rd_filt)
@@ -266,10 +274,7 @@ class ReportWrapper:
             self.list_visuals()["Type"]
         )
 
-        column_map = {
-            "Used in Report": "bool",
-        }
-        _update_dataframe_datatypes(dataframe=df, column_map=column_map)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
         return df
 
@@ -291,19 +296,18 @@ class ReportWrapper:
 
         rd_filt = self.rdef[self.rdef["path"] == "definition/report.json"]
 
-        df = pd.DataFrame(
-            columns=[
-                "Filter Name",
-                "Type",
-                "Table Name",
-                "Object Name",
-                "Object Type",
-                "Hidden",
-                "Locked",
-                "How Created",
-                "Used",
-            ]
-        )
+        columns = {
+            "Filter Name": "str",
+            "Type": "str",
+            "Table Name": "str",
+            "Object Name": "str",
+            "Object Type": "str",
+            "Hidden": "bool",
+            "Locked": "bool",
+            "How Created": "str",
+            "Used": "bool",
+        }
+        df = _create_dataframe(columns=columns)
 
         if len(rd_filt) == 1:
             rpt_json = _extract_json(rd_filt)
@@ -335,12 +339,7 @@ class ReportWrapper:
                             [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
                         )
 
-        column_map = {
-            "Hidden": "bool",
-            "Locked": "bool",
-            "Used": "bool",
-        }
-        _update_dataframe_datatypes(dataframe=df, column_map=column_map)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
         if extended:
             df = self._add_extended(dataframe=df)
@@ -363,24 +362,22 @@ class ReportWrapper:
             A pandas dataframe containing a list of all the page filters used in the report.
         """
 
-        rd = self.rdef
-        df = pd.DataFrame(
-            columns=[
-                "Page Name",
-                "Page Display Name",
-                "Filter Name",
-                "Type",
-                "Table Name",
-                "Object Name",
-                "Object Type",
-                "Hidden",
-                "Locked",
-                "How Created",
-                "Used",
-            ]
-        )
+        columns = {
+            "Page Name": "str",
+            "Page Display Name": "str",
+            "Filter Name": "str",
+            "Type": "str",
+            "Table Name": "str",
+            "Object Name": "str",
+            "Object Type": "str",
+            "Hidden": "bool",
+            "Locked": "bool",
+            "How Created": "str",
+            "Used": "bool",
+        }
+        df = _create_dataframe(columns=columns)
 
-        for _, r in rd.iterrows():
+        for _, r in self.rdef.iterrows():
             path = r["path"]
             payload = r["payload"]
             if path.endswith("/page.json"):
@@ -426,18 +423,12 @@ class ReportWrapper:
             lambda page_name: f"{helper.get_web_url(report=self._report, workspace=self._workspace_id)}/{page_name}"
         )
 
-        column_map = {
-            "Hidden": "bool",
-            "Locked": "bool",
-            "Used": "bool",
-        }
-        _update_dataframe_datatypes(dataframe=df, column_map=column_map)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
         if extended:
             df = self._add_extended(dataframe=df)
 
         return df
-        # return df.style.format({"Page URL": _make_clickable})
 
     def list_visual_filters(self, extended: bool = False) -> pd.DataFrame:
         """
@@ -455,26 +446,25 @@ class ReportWrapper:
             A pandas dataframe containing a list of all the visual filters used in the report.
         """
 
-        rd = self.rdef
-        df = pd.DataFrame(
-            columns=[
-                "Page Name",
-                "Page Display Name",
-                "Visual Name",
-                "Filter Name",
-                "Type",
-                "Table Name",
-                "Object Name",
-                "Object Type",
-                "Hidden",
-                "Locked",
-                "How Created",
-                "Used",
-            ]
-        )
+        columns = {
+            "Page Name": "str",
+            "Page Display Name": "str",
+            "Visual Name": "str",
+            "Filter Name": "str",
+            "Type": "str",
+            "Table Name": "str",
+            "Object Name": "str",
+            "Object Type": "str",
+            "Hidden": "bool",
+            "Locked": "bool",
+            "How Created": "str",
+            "Used": "bool",
+        }
+        df = _create_dataframe(columns=columns)
+
         page_mapping, visual_mapping = helper.visual_page_mapping(self)
 
-        for _, r in rd.iterrows():
+        for _, r in self.rdef.iterrows():
             path = r["path"]
             payload = r["payload"]
             if path.endswith("/visual.json"):
@@ -518,12 +508,7 @@ class ReportWrapper:
                                 ignore_index=True,
                             )
 
-        column_map = {
-            "Hidden": "bool",
-            "Locked": "bool",
-            "Used": "bool",
-        }
-        _update_dataframe_datatypes(dataframe=df, column_map=column_map)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
         if extended:
             df = self._add_extended(dataframe=df)
@@ -543,18 +528,16 @@ class ReportWrapper:
             A pandas dataframe containing a list of all modified visual interactions used in the report.
         """
 
-        rd = self.rdef
-        df = pd.DataFrame(
-            columns=[
-                "Page Name",
-                "Page Display Name",
-                "Source Visual Name",
-                "Target Visual Name",
-                "Type",
-            ]
-        )
+        columns = {
+            "Page Name": "str",
+            "Page Display Name": "str",
+            "Source Visual Name": "str",
+            "Target Visual Name": "str",
+            "Type": "str",
+        }
+        df = _create_dataframe(columns=columns)
 
-        for _, r in rd.iterrows():
+        for _, r in self.rdef.iterrows():
             file_path = r["path"]
             payload = r["payload"]
             if file_path.endswith("/page.json"):
@@ -591,31 +574,30 @@ class ReportWrapper:
             A pandas dataframe containing a list of all pages in the report.
         """
 
-        rd = self.rdef
-        df = pd.DataFrame(
-            columns=[
-                "File Path",
-                "Page Name",
-                "Page Display Name",
-                "Hidden",
-                "Active",
-                "Width",
-                "Height",
-                "Display Option",
-                "Type",
-                "Alignment",
-                "Drillthrough Target Page",
-                "Visual Count",
-                "Data Visual Count",
-                "Visible Visual Count",
-                "Page Filter Count",
-            ]
-        )
+        columns = {
+            "File Path": "str",
+            "Page Name": "str",
+            "Page Display Name": "str",
+            "Hidden": "bool",
+            "Active": "bool",
+            "Width": "int",
+            "Height": "int",
+            "Display Option": "str",
+            "Type": "str",
+            "Alignment": "str",
+            "Drillthrough Target Page": "bool",
+            "Visual Count": "int",
+            "Data Visual Count": "int",
+            "Visible Visual Count": "int",
+            "Page Filter Count": "int",
+            "Page URL": "str",
+        }
+        df = _create_dataframe(columns=columns)
 
         dfV = self.list_visuals()
 
-        page_rows = rd[rd["path"].str.endswith("/page.json")]
-        pages_row = rd[rd["path"] == "definition/pages/pages.json"]
+        page_rows = self.rdef[self.rdef["path"].str.endswith("/page.json")]
+        pages_row = self.rdef[self.rdef["path"] == "definition/pages/pages.json"]
 
         for _, r in page_rows.iterrows():
             file_path = r["path"]
@@ -647,9 +629,9 @@ class ReportWrapper:
             # )
 
             visual_count = len(
-                rd[
-                    rd["path"].str.endswith("/visual.json")
-                    & (rd["path"].str.startswith(page_prefix))
+                self.rdef[
+                    self.rdef["path"].str.endswith("/visual.json")
+                    & (self.rdef["path"].str.startswith(page_prefix))
                 ]
             )
             data_visual_count = len(
@@ -695,22 +677,11 @@ class ReportWrapper:
 
         df.loc[df["Page Name"] == activePage, "Active"] = True
 
-        column_map = {
-            "Width": "int",
-            "Height": "int",
-            "Page Filter Count": "int",
-            "Visual Count": "int",
-            "Visible Visual Count": "int",
-            "Data Visual Count": "int",
-            "Hidden": "bool",
-            "Active": "bool",
-            "Drillthrough Target Page": "bool",
-        }
-        _update_dataframe_datatypes(dataframe=df, column_map=column_map)
-
         df["Page URL"] = df["Page Name"].apply(
             lambda page_name: f"{helper.get_web_url(report=self._report, workspace=self._workspace_id)}/{page_name}"
         )
+
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
         return df
         # return df.style.format({"Page URL": _make_clickable})
@@ -725,39 +696,37 @@ class ReportWrapper:
             A pandas dataframe containing a list of all visuals in the report.
         """
 
-        rd = self.rdef
-        df = pd.DataFrame(
-            columns=[
-                "File Path",
-                "Page Name",
-                "Page Display Name",
-                "Visual Name",
-                "Type",
-                "Display Type",
-                "X",
-                "Y",
-                "Z",
-                "Width",
-                "Height",
-                "Tab Order",
-                "Hidden",
-                "Title",
-                "SubTitle",
-                "Custom Visual",
-                "Alt Text",
-                "Show Items With No Data",
-                "Divider",
-                "Slicer Type",
-                "Row SubTotals",
-                "Column SubTotals",
-                "Data Visual",
-                "Has Sparkline",
-                "Visual Filter Count",
-                "Data Limit",
-            ]
-        )
+        columns = {
+            "File Path": "str",
+            "Page Name": "str",
+            "Page Display Name": "str",
+            "Visual Name": "str",
+            "Type": "str",
+            "Display Type": "str",
+            "X": "float",
+            "Y": "float",
+            "Z": "int",
+            "Width": "float",
+            "Height": "float",
+            "Tab Order": "str",
+            "Hidden": "bool",
+            "Title": "str",
+            "SubTitle": "str",
+            "Custom Visual": "bool",
+            "Alt Text": "str",
+            "Show Items With No Data": "bool",
+            "Divider": "str",
+            "Slicer Type": "str",
+            "Row SubTotals": "bool",
+            "Column SubTotals": "bool",
+            "Data Visual": "bool",
+            "Has Sparkline": "bool",
+            "Visual Filter Count": "int",
+            "Data Limit": "int",
+        }
+        df = _create_dataframe(columns=columns)
 
-        rd_filt = rd[rd["path"] == "definition/report.json"]
+        rd_filt = self.rdef[self.rdef["path"] == "definition/report.json"]
         payload = rd_filt["payload"].iloc[0]
         rptJson = _extract_json(rd_filt)
         custom_visuals = rptJson.get("publicCustomVisuals", [])
@@ -779,7 +748,7 @@ class ReportWrapper:
 
             return any(key in all_keys for key in keys_to_check)
 
-        for _, r in rd.iterrows():
+        for _, r in self.rdef.iterrows():
             file_path = r["path"]
             payload = r["payload"]
             if file_path.endswith("/visual.json"):
@@ -940,25 +909,7 @@ class ReportWrapper:
         )
         df["Visual Object Count"] = df["Visual Object Count"].fillna(0).astype(int)
 
-        column_map = {
-            "X": "float",
-            "Y": "float",
-            "Width": "float",
-            "Height": "float",
-            "Z": "int",
-            "Visual Filter Count": "int",
-            "Data Limit": "int",
-            "Visual Object Count": "int",
-            "Hidden": "bool",
-            "Show Items With No Data": "bool",
-            "Custom Visual": "bool",
-            "Data Visual": "bool",
-            "Has Sparkline": "bool",
-            "Row SubTotals": "bool",
-            "Column SubTotals": "bool",
-        }
-
-        _update_dataframe_datatypes(dataframe=df, column_map=column_map)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
         return df
 
@@ -978,23 +929,22 @@ class ReportWrapper:
             A pandas dataframe containing a list of all semantic model objects used in each visual in the report.
         """
 
-        rd = self.rdef
         page_mapping, visual_mapping = helper.visual_page_mapping(self)
-        df = pd.DataFrame(
-            columns=[
-                "Page Name",
-                "Page Display Name",
-                "Visual Name",
-                "Table Name",
-                "Object Name",
-                "Object Type",
-                "Implicit Measure",
-                "Sparkline",
-                "Visual Calc",
-                "Format",
-                "Object Display Name",
-            ]
-        )
+
+        columns = {
+            "Page Name": "str",
+            "Page Display Name": "str",
+            "Visual Name": "str",
+            "Table Name": "str",
+            "Object Name": "str",
+            "Object Type": "str",
+            "Implicit Measure": "bool",
+            "Sparkline": "bool",
+            "Visual Calc": "bool",
+            "Format": "str",
+            "Object Display Name": "str",
+        }
+        df = _create_dataframe(columns=columns)
 
         def contains_key(data, keys_to_check):
             if isinstance(data, dict):
@@ -1050,7 +1000,7 @@ class ReportWrapper:
 
             return result
 
-        for _, r in rd.iterrows():
+        for _, r in self.rdef.iterrows():
             file_path = r["path"]
             payload = r["payload"]
             if file_path.endswith("/visual.json"):
@@ -1107,12 +1057,7 @@ class ReportWrapper:
         if extended:
             df = self._add_extended(dataframe=df)
 
-        column_map = {
-            "Implicit Measure": "bool",
-            "Sparkline": "bool",
-            "Visual Calc": "bool",
-        }
-        _update_dataframe_datatypes(dataframe=df, column_map=column_map)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
         return df
 
@@ -1135,16 +1080,15 @@ class ReportWrapper:
 
         from sempy_labs.tom import connect_semantic_model
 
-        df = pd.DataFrame(
-            columns=[
-                "Table Name",
-                "Object Name",
-                "Object Type",
-                "Report Source",
-                "Report Source Object",
-            ]
-        )
+        columns = {
+            "Table Name": "str",
+            "Object Name": "str",
+            "Object Type": "str",
+            "Report Source": "str",
+            "Report Source Object": "str",
+        }
 
+        df = _create_dataframe(columns=columns)
         rf = self.list_report_filters()
         pf = self.list_page_filters()
         vf = self.list_visual_filters()
@@ -1279,17 +1223,17 @@ class ReportWrapper:
         """
 
         rd = self.rdef
-        df = pd.DataFrame(
-            columns=[
-                "File Path",
-                "Bookmark Name",
-                "Bookmark Display Name",
-                "Page Name",
-                "Page Display Name",
-                "Visual Name",
-                "Visual Hidden",
-            ]
-        )
+
+        columns = {
+            "File Path": "str",
+            "Bookmark Name": "str",
+            "Bookmark Display Name": "str",
+            "Page Name": "str",
+            "Page Display Name": "str",
+            "Visual Name": "str",
+            "Visual Hidden": "bool",
+        }
+        df = _create_dataframe(columns=columns)
 
         bookmark_rows = rd[rd["path"].str.endswith(".bookmark.json")]
 
@@ -1342,10 +1286,7 @@ class ReportWrapper:
                         [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
                     )
 
-        column_map = {
-            "Visual Hidden": "bool",
-        }
-        _update_dataframe_datatypes(dataframe=df, column_map=column_map)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
         return df
 
@@ -1362,17 +1303,17 @@ class ReportWrapper:
             A pandas dataframe containing a list of all report-level measures in the report.
         """
 
-        df = pd.DataFrame(
-            columns=[
-                "Measure Name",
-                "Table Name",
-                "Expression",
-                "Data Type",
-                "Format String",
-            ]
-        )
-        rd = self.rdef
-        rd_filt = rd[rd["path"] == "definition/reportExtensions.json"]
+        columns = {
+            "Measure Name": "str",
+            "Table Name": "str",
+            "Expression": "str",
+            "Data Type": "str",
+            "Format String": "str",
+        }
+
+        df = _create_dataframe(columns=columns)
+
+        rd_filt = self.rdef[self.rdef["path"] == "definition/reportExtensions.json"]
 
         if len(rd_filt) == 1:
             payload = rd_filt["payload"].iloc[0]
@@ -1410,9 +1351,13 @@ class ReportWrapper:
             A pandas dataframe showing a list of report, page and visual annotations in the report.
         """
 
-        df = pd.DataFrame(
-            columns=["Type", "Object Name", "Annotation Name", "Annotation Value"]
-        )
+        columns = {
+            "Type": "str",
+            "Object Name": "str",
+            "Annotation Name": "str",
+            "Annotation Value": "str",
+        }
+        df = _create_dataframe(columns=columns)
 
         page_mapping, visual_mapping = helper.visual_page_mapping(self)
         for _, r in self.rdef.iterrows():
@@ -1477,8 +1422,6 @@ class ReportWrapper:
             Example for lakehouse: file_path = '/lakehouse/default/Files/CY23SU09.json'
             Example for web url: file_path = 'https://raw.githubusercontent.com/PowerBiDevCamp/FabricUserApiDemo/main/FabricUserApiDemo/DefinitionTemplates/Shared/Reports/StaticResources/SharedResources/BaseThemes/CY23SU08.json'
         """
-
-        import requests
 
         report_path = "definition/report.json"
         theme_version = "5.5.4"

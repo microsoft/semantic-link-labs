@@ -5,6 +5,7 @@ from sempy_labs._helper_functions import (
     resolve_dataset_name_and_id,
     _update_dataframe_datatypes,
     _base_api,
+    _create_dataframe,
 )
 from sempy._utils._log import log
 from typing import Optional, Tuple
@@ -65,23 +66,28 @@ def qso_sync_status(
         2 pandas dataframes showing the query scale-out sync status.
     """
 
-    df = pd.DataFrame(
-        columns=[
-            "Scale Out Status",
-            "Sync Start Time",
-            "Sync End Time",
-            "Commit Version",
-            "Commit Timestamp",
-            "Target Sync Version",
-            "Target Sync Timestamp",
-            "Trigger Reason",
-            "Min Active Read Version",
-            "Min Active Read Timestamp",
-        ]
-    )
-    dfRep = pd.DataFrame(
-        columns=["Replica ID", "Replica Type", "Replica Version", "Replica Timestamp"]
-    )
+    columns = {
+        "Scale Out Status": "string",
+        "Sync Start Time": "datetime",
+        "Sync End Time": "datetime",
+        "Commit Version": "int",
+        "Commit Timestamp": "datetime",
+        "Target Sync Version": "int",
+        "Target Sync Timestamp": "datetime",
+        "Trigger Reason": "string",
+        "Min Active Read Version": "int",
+        "Min Active Read Timestamp": "datetime",
+    }
+    df = _create_dataframe(columns=columns)
+
+    columns_rep = {
+        "Replica ID": "string",
+        "Replica Type": "string",
+        "Replica Version": "string",
+        "Replica Timestamp": "datetime",
+    }
+
+    dfRep = _create_dataframe(columns=columns_rep)
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
@@ -119,23 +125,8 @@ def qso_sync_status(
                 [dfRep, pd.DataFrame(new_data, index=[0])], ignore_index=True
             )
 
-        column_map = {
-            "Sync Start Time": "datetime",
-            "Sync End Time": "datetime",
-            "Commit Timestamp": "datetime",
-            "Target Sync Timestamp": "datetime",
-            "Min Active Read Timestamp": "datetime",
-            "Commit Version": "int",
-            "Target Sync Version": "int",
-            "Min Active Read Version": "int",
-        }
-
-        _update_dataframe_datatypes(dataframe=df, column_map=column_map)
-
-        column_map = {
-            "Replica Timestamp": "datetime",
-        }
-        _update_dataframe_datatypes(dataframe=dfRep, column_map=column_map)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
+        _update_dataframe_datatypes(dataframe=dfRep, column_map=columns_rep)
 
         return df, dfRep
     else:
@@ -347,15 +338,14 @@ def list_qso_settings(
     if dataset is not None:
         (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    df = pd.DataFrame(
-        columns=[
-            "Dataset Id",
-            "Dataset Name",
-            "Storage Mode",
-            "QSO Auto Sync Enabled",
-            "QSO Max Read Only Replicas",
-        ]
-    )
+    columns = {
+        "Dataset Id": "string",
+        "Dataset Name": "string",
+        "Storage Mode": "string",
+        "QSO Auto Sync Enabled": "bool",
+        "QSO Max Read Only Replicas": "int",
+    }
+    df = _create_dataframe(columns=columns)
 
     response = _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/datasets")
 
@@ -378,11 +368,7 @@ def list_qso_settings(
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    column_map = {
-        "QSO Auto Sync Enabled": "bool",
-        "QSO Max Read Only Replicas": "int",
-    }
-    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     if dataset is not None:
         df = df[df["Dataset Id"] == dataset_id]

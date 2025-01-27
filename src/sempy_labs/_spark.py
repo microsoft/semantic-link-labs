@@ -5,6 +5,7 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _update_dataframe_datatypes,
     _base_api,
+    _create_dataframe,
 )
 from uuid import UUID
 
@@ -30,21 +31,20 @@ def list_custom_pools(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    df = pd.DataFrame(
-        columns=[
-            "Custom Pool ID",
-            "Custom Pool Name",
-            "Type",
-            "Node Family",
-            "Node Size",
-            "Auto Scale Enabled",
-            "Auto Scale Min Node Count",
-            "Auto Scale Max Node Count",
-            "Dynamic Executor Allocation Enabled",
-            "Dynamic Executor Allocation Min Executors",
-            "Dynamic Executor Allocation Max Executors",
-        ]
-    )
+    columns = {
+        "Custom Pool ID": "string",
+        "Custom Pool Name": "string",
+        "Type": "string",
+        "Node Family": "string",
+        "Node Size": "string",
+        "Auto Scale Enabled": "bool",
+        "Auto Scale Min Node Count": "int",
+        "Auto Scale Max Node Count": "int",
+        "Dynamic Executor Allocation Enabled": "bool",
+        "Dynamic Executor Allocation Min Executors": "int",
+        "Dynamic Executor Allocation Max Executors": "int",
+    }
+    df = _create_dataframe(columns=columns)
 
     response = _base_api(request=f"/v1/workspaces/{workspace_id}/spark/pools")
 
@@ -68,16 +68,7 @@ def list_custom_pools(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    column_map = {
-        "Auto Scale Enabled": "bool",
-        "Dynamic Executor Allocation Enabled": "bool",
-        "Auto Scale Min Node Count": "int",
-        "Auto Scale Max Node Count": "int",
-        "Dynamic Executor Allocation Min Executors": "int",
-        "Dynamic Executor Allocation Max Executors": "int",
-    }
-
-    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
