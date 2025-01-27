@@ -302,7 +302,7 @@ def update_domain(
 
 
 def assign_domain_workspaces_by_capacities(
-    domain: Optional[str | UUID] = None,
+    domain: str | UUID,
     capacity_names: str | List[str],
     **kwargs,
 ):
@@ -370,7 +370,7 @@ def assign_domain_workspaces_by_capacities(
 
 
 def assign_domain_workspaces(
-    domain: Optional[str | UUID], workspace_names: str | List[str]
+    domain: str | UUID, workspace_names: str | List[str]
 ):
     """
     Assigns workspaces to the specified domain by workspace.
