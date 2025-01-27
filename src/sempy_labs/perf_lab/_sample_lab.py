@@ -20,6 +20,7 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     get_capacity_id,
     resolve_lakehouse_name_and_id,
+    resolve_dataset_name_and_id,
     create_abfss_path,
 )
 
@@ -337,8 +338,8 @@ def _get_sales_df(
 def _save_as_delta_table(
     dataframe: DataFrame,
     delta_table_name: str,
-    lakehouse_id: UUID,
-    workspace_id: UUID,
+    lakehouse: Optional [str | UUID] = None,
+    workspace: Optional [str | UUID] = None,
 ):
     """
     Saves a spark dataframe as a delta table in a Fabric lakehouse.
@@ -354,7 +355,12 @@ def _save_as_delta_table(
         Defaults to None which resolves to the lakehouse attached to the notebook.
     workspace : uuid.UUID
         The Fabric workspace ID where the specified lakehouse is located.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
     """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(lakehouse=lakehouse,workspace=workspace_id)
 
     filePath = create_abfss_path(
         lakehouse_id=lakehouse_id,
@@ -363,6 +369,46 @@ def _save_as_delta_table(
     )
     dataframe.write.mode("overwrite").format("delta").save(filePath)
     print(f"{icons.green_dot} Delta table '{delta_table_name}' created and {dataframe.count()} rows inserted.")
+
+def _read_delta_table(
+    delta_table_name: str,
+    lakehouse: Optional [str | UUID] = None,
+    workspace: Optional [str | UUID] = None,
+) -> DataFrame:
+    """
+    Returns a spark dataframe with the rows of a delta table in a Fabric lakehouse.
+
+    Parameters
+    ----------
+    delta_table_name : str
+        The name of the delta table.
+    lakehouse : uuid.UUID
+        The Fabric lakehouse ID.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    workspace : uuid.UUID
+        The Fabric workspace ID where the specified lakehouse is located.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    DataFrame
+        A Spark dataframe with the data from the specified delta table.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(lakehouse=lakehouse,workspace=workspace_id)
+
+    filePath = create_abfss_path(
+        lakehouse_id=lakehouse_id,
+        lakehouse_workspace_id=workspace_id,
+        delta_table_name=delta_table_name,
+    )
+    spark = SparkSession.builder \
+        .appName("PerfLabDeltaTableReader") \
+        .getOrCreate()
+    
+    return spark.read.format("delta").load(filePath)
 
 def provision_perf_lab_lakehouse(
     workspace: Optional[str | UUID] = None,
@@ -611,6 +657,9 @@ def provision_sample_semantic_model(
         dataset=semantic_model_name,
         lakehouse_tables=table_names,
         refresh=False)
+    
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(
+        dataset=semantic_model_name, workspace=workspace_id)
 
     print(f"{icons.in_progress} Adding final touches to Direct Lake semantic model '{semantic_model_name}' in workspace '{workspace_name}'.")
     with connect_semantic_model(dataset=semantic_model_name, workspace=workspace_id, readonly=False) as tom:
@@ -914,3 +963,5 @@ def provision_sample_semantic_model(
             columns=["Year","Month","Date"]
         )
         print(f"{icons.green_dot} Calendar hierarchy created.")
+
+        return (dataset_name, dataset_id)
