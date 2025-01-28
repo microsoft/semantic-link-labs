@@ -369,9 +369,7 @@ def assign_domain_workspaces_by_capacities(
     )
 
 
-def assign_domain_workspaces(
-    domain: str | UUID, workspace_names: str | List[str]
-):
+def assign_domain_workspaces(domain: str | UUID, workspace_names: str | List[str]):
     """
     Assigns workspaces to the specified domain by workspace.
 
