@@ -15,8 +15,8 @@ from azure.core.credentials import TokenCredential, AccessToken
 import urllib.parse
 import numpy as np
 from IPython.display import display, HTML
-import sempy_labs._authentication as auth
 import requests
+import sempy_labs._authentication as auth
 
 
 def _build_url(url: str, params: dict) -> str:
@@ -1485,12 +1485,12 @@ def _base_api(
         c = fabric.FabricRestClient()
     elif client == "fabric_sp":
         c = fabric.FabricRestClient(token_provider=auth.token_provider.get())
-    elif client == "azure":
+    elif client in ["azure", "graph"]:
         pass
     else:
         raise ValueError(f"{icons.red_dot} The '{client}' client is not supported.")
 
-    if client != "azure":
+    if client not in ["azure", "graph"]:
         if method == "get":
             response = c.get(request)
         elif method == "delete":
@@ -1504,9 +1504,12 @@ def _base_api(
         else:
             raise NotImplementedError
     else:
-        headers = _get_headers(auth.token_provider.get(), audience="azure")
+        headers = _get_headers(auth.token_provider.get(), audience=client)
         response = requests.request(
-            method.upper(), request, headers=headers, json=payload
+            method.upper(),
+            f"https://graph.microsoft.com/v1.0/{request}",
+            headers=headers,
+            json=payload,
         )
 
     if lro_return_json:
