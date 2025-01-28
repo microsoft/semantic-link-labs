@@ -1555,6 +1555,7 @@ def _update_dataframe_datatypes(dataframe: pd.DataFrame, column_map: dict):
             # This is for a special case in admin.list_reports where datetime itself does not work. Coerce fixes the issue.
             elif data_type == "datetime_coerce":
                 dataframe[column] = pd.to_datetime(dataframe[column], errors="coerce")
+            # This is for list_synonyms since the weight column is float and can have NaN values.
             elif data_type == "float_fillna":
                 dataframe[column] = dataframe[column].fillna(0).astype(float)
             elif data_type in ["str", "string"]:
