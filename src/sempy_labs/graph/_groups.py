@@ -375,8 +375,6 @@ def renew_group(group: str | UUID):
     ----------
     group : str | uuid.UUID
         The group name or ID.
-    token_provider : TokenProvider
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
     """
 
     group_id = resolve_group_id(group)

@@ -1,19 +1,17 @@
 import pandas as pd
 from uuid import UUID
-from sempy.fabric._token_provider import TokenProvider
-from sempy_labs.graph._util import _ms_graph_base
+from sempy_labs._helper_functions import (
+    _base_api,
+    _create_dataframe,
+    _update_dataframe_datatypes,
+)
 
 
-def list_teams(token_provider: TokenProvider) -> pd.DataFrame:
+def list_teams() -> pd.DataFrame:
     """
     Shows a list of teams and their properties.
 
     This is a wrapper function for the following API: `List teams <https://learn.microsoft.com/graph/api/teams-list>`_.
-
-    Parameters
-    ----------
-    token_provider : TokenProvider
-        The token provider for authentication, created by using the ServicePrincipalTokenProvider class.
 
     Returns
     -------
@@ -21,24 +19,24 @@ def list_teams(token_provider: TokenProvider) -> pd.DataFrame:
         A pandas dataframe showing a list of teams and their properties.
     """
 
-    result = _ms_graph_base(api_name="teams", token_provider=token_provider)
+    result = _base_api(request="teams", client="graph").json()
 
-    df = pd.DataFrame(
-        columns=[
-            "Team Id",
-            "Team Name",
-            "Description",
-            "Creation Date Time",
-            "Classification",
-            "Specialization",
-            "Visibility",
-            "Web Url",
-            "Archived",
-            "Favorite By Me",
-            "Discoverable By Me",
-            "Member Count",
-        ]
-    )
+    columns = {
+        "Team Id": "str",
+        "Team Name": "str",
+        "Description": "str",
+        "Creation Date Time": "datetime",
+        "Classification": "str",
+        "Specialization": "str",
+        "Visibility": "str",
+        "Web Url": "str",
+        "Archived": "bool",
+        "Favorite By Me": "bool",
+        "Discoverable By Me": "bool",
+        "Member Count": "int",
+    }
+
+    df = _create_dataframe(columns=columns)
 
     for v in result.get("value"):
         new_data = {
@@ -58,24 +56,28 @@ def list_teams(token_provider: TokenProvider) -> pd.DataFrame:
 
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    bool_cols = ["Archived", "Favorite By Me", "Discoverable By Me"]
-    df[bool_cols] = df[bool_cols].astype(bool)
-    df["Creation Date Time"] = pd.to_datetime(df["Creation Date Time"])
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
 
-def list_chats(user: str | UUID, token_provider: TokenProvider) -> pd.DataFrame:
+def list_chats(user: str | UUID) -> pd.DataFrame:
     """
     In progress...
     """
 
     from sempy_labs.graph._users import resolve_user_id
 
-    user_id = resolve_user_id(user=user, token_provider=token_provider)
-    result = _ms_graph_base(api_name=f"users/{user_id}/chats")
+    user_id = resolve_user_id(user=user)
+    result = _base_api(request=f"users/{user_id}/chats", client="graph").json()
 
-    df = pd.DataFrame(columns=["Chat Id", "Type", "Members"])
+    columns = {
+        "Chat Id": "str",
+        "Type": "str",
+        "Members": "str",
+    }
+
+    df = _create_dataframe(columns=columns)
 
     for v in result.get("value"):
         new_data = {
@@ -89,7 +91,7 @@ def list_chats(user: str | UUID, token_provider: TokenProvider) -> pd.DataFrame:
     return df
 
 
-def send_teams_message(chat_id: str, message: str, token_provider: TokenProvider):
+def send_teams_message(chat_id: str, message: str):
     """
     In progress...
     """
@@ -100,11 +102,10 @@ def send_teams_message(chat_id: str, message: str, token_provider: TokenProvider
         }
     }
 
-    _ms_graph_base(
-        api_name=f"chats/{chat_id}/messages",
-        token_provider=token_provider,
-        status_success_code=201,
-        return_json=False,
+    _base_api(
+        request=f"chats/{chat_id}/messages",
+        client="graph",
+        method="post",
         payload=payload,
-        call_type="post",
+        status_codes=201,
     )

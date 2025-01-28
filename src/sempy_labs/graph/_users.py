@@ -140,7 +140,7 @@ def send_mail(
         The email address of the CC recipients.
     """
 
-    user_id = resolve_user_id(user=user, token_provider=token_provider)
+    user_id = resolve_user_id(user=user)
 
     if isinstance(to_recipients, str):
         to_recipients = [to_recipients]
