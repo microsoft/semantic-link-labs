@@ -4100,26 +4100,26 @@ class TOMWrapper:
 
             def add_relationship(rel_key, table_name, t_name, o_name):
                 lm["Relationships"][rel_key] = {
-                        "Binding": {"ConceptualEntity": table_name},
-                        "State": "Generated",
-                        "Roles": {
-                            t_name: {"Target": {"Entity": t_name}},
-                            f"{t_name}.{o_name}": {
-                                "Target": {"Entity": f"{t_name}.{o_name}"}
-                            },
+                    "Binding": {"ConceptualEntity": table_name},
+                    "State": "Generated",
+                    "Roles": {
+                        t_name: {"Target": {"Entity": t_name}},
+                        f"{t_name}.{o_name}": {
+                            "Target": {"Entity": f"{t_name}.{o_name}"}
                         },
-                        "Phrasings": [
-                            {
-                                "Attribute": {
-                                    "Subject": {"Role": t_name},
-                                    "Object": {"Role": f"{t_name}.{o_name}"},
-                                },
-                                "State": "Generated",
-                                "Weight": 0.99,
-                                "ID": f"{t_name}_have_{o_name}",
-                            }
-                        ],
-                    }
+                    },
+                    "Phrasings": [
+                        {
+                            "Attribute": {
+                                "Subject": {"Role": t_name},
+                                "Object": {"Role": f"{t_name}.{o_name}"},
+                            },
+                            "State": "Generated",
+                            "Weight": 0.99,
+                            "ID": f"{t_name}_have_{o_name}",
+                        }
+                    ],
+                }
 
             if "Entities" not in lm:
                 lm["Entities"] = {}
@@ -4176,7 +4176,9 @@ class TOMWrapper:
         c = self.model.Cultures[culture_name]
         lm_content = c.LinguisticMetadata.Content
         if c is None:
-            raise ValueError(f"{icons.red_dot} No linguistic schema exists for the '{culture_name}' culture.")
+            raise ValueError(
+                f"{icons.red_dot} No linguistic schema exists for the '{culture_name}' culture."
+            )
         lm = json.loads(lm_content)
         if "Entities" in lm:
             for k, v in lm.get("Entities", []).items():
@@ -4241,7 +4243,9 @@ class TOMWrapper:
         c = self.model.Cultures[culture_name]
         lm_content = c.LinguisticMetadata.Content
         if c is None:
-            raise ValueError(f"{icons.red_dot} No linguistic schema exists for the '{culture_name}' culture.")
+            raise ValueError(
+                f"{icons.red_dot} No linguistic schema exists for the '{culture_name}' culture."
+            )
         lm = json.loads(lm_content)
         if "Entities" in lm:
             for k, v in lm.get("Entities", []).items():
@@ -4275,7 +4279,7 @@ class TOMWrapper:
                         new_term = {}
                         new_term[synonym_name] = {
                             "Type": "Noun",
-                            #"State": "Authored", 
+                            # "State": "Authored",
                             "LastModified": now,
                         }
                         if weight is not None:
@@ -4295,9 +4299,9 @@ class TOMWrapper:
         c = self.model.Cultures[culture_name]
         if c.LinguisticMetadata is not None:
             lm = json.loads(c.LinguisticMetadata.Content)
-            if 'DynamicImprovement' not in lm:
-                lm['DynamicImprovement'] = {}
-            lm['DynamicImprovement']['Schema'] = None
+            if "DynamicImprovement" not in lm:
+                lm["DynamicImprovement"] = {}
+            lm["DynamicImprovement"]["Schema"] = None
 
             c.LinguisticMetadata.Content = json.dumps(lm, indent=4)
 
@@ -4306,8 +4310,8 @@ class TOMWrapper:
         c = self.model.Cultures[culture_name]
         if c.LinguisticMetadata is not None:
             lm = json.loads(c.LinguisticMetadata.Content)
-            if 'DynamicImprovement' in lm:
-                del lm['DynamicImprovement']['Schema']
+            if "DynamicImprovement" in lm:
+                del lm["DynamicImprovement"]["Schema"]
 
             c.LinguisticMetadata.Content = json.dumps(lm, indent=4)
 

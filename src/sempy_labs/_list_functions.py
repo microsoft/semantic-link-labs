@@ -2597,11 +2597,13 @@ def list_synonyms(dataset: str, workspace: Optional[str] = None):
             "Synonym",
             "Type",
             "State",
+            "Source",
             "Weight",
             "Last Modified",
         ]
     )
 
+    rows = []
     with connect_semantic_model(
         dataset=dataset, workspace=workspace, readonly=True
     ) as tom:
@@ -2649,15 +2651,18 @@ def list_synonyms(dataset: str, workspace: Optional[str] = None):
                                 "Synonym": term,
                                 "Type": props.get("Type"),
                                 "State": props.get("State"),
+                                "Source": props.get('Source', {}).get('Agent'),
                                 "Weight": props.get("Weight"),
                                 "Last Modified": props.get("LastModified"),
                             }
-                            df = pd.concat(
-                                [df, pd.DataFrame(new_data, index=[0])],
-                                ignore_index=True,
-                            )
 
-    df["Weight"] = df["Weight"].fillna(0).astype(float)
-    df["Last Modified"] = pd.to_datetime(df["Last Modified"])
+                            # Skip concatenation if new_data is empty or invalid
+                            if any(new_data.values()):
+                                rows.append(new_data)
+
+    if rows:
+        df = pd.DataFrame(rows)
+        df["Weight"] = df["Weight"].fillna(0).astype(float)
+        df["Last Modified"] = pd.to_datetime(df["Last Modified"])
 
     return df
