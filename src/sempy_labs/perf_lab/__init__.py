@@ -36,8 +36,13 @@ from sempy_labs.perf_lab._simulated_etl import (
     _delete_reinsert_rows,
 )
 
+from sempy_labs.perf_lab._table_diagnostics import (
+    get_storage_table_column_segments,
+)
+
 
 __all__ = [
+    "get_storage_table_column_segments",
     "simulate_etl",
     "_delete_reinsert_rows",
     "_get_min_max_keys",
