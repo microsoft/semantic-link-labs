@@ -226,10 +226,7 @@ def list_group_owners(group: str | UUID) -> pd.DataFrame:
         A pandas dataframe showing a list of the owners of a group.
     """
 
-    if _is_valid_uuid(group):
-        group_id = group
-    else:
-        group_id = resolve_group_id(group)
+    group_id = resolve_group_id(group)
 
     result = _base_api(request=f"groups/{group_id}/owners", client="graph").json()
 
