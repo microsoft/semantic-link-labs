@@ -2651,7 +2651,7 @@ def list_synonyms(dataset: str, workspace: Optional[str] = None):
                                 "Synonym": term,
                                 "Type": props.get("Type"),
                                 "State": props.get("State"),
-                                "Source": props.get('Source', {}).get('Agent'),
+                                "Source": props.get("Source", {}).get("Agent"),
                                 "Weight": props.get("Weight"),
                                 "Last Modified": props.get("LastModified"),
                             }
