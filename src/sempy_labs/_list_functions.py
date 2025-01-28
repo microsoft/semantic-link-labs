@@ -10,10 +10,13 @@ from sempy_labs._helper_functions import (
     _base_api,
     _create_dataframe,
 )
+from sempy._utils._log import log
 import pandas as pd
 from typing import Optional
 import sempy_labs._icons as icons
 from uuid import UUID
+import json
+from collections import defaultdict
 
 
 def get_object_level_security(
@@ -1749,3 +1752,87 @@ def list_semantic_model_errors(
                     )
 
     return pd.DataFrame(error_rows)
+
+
+@log
+def list_synonyms(dataset: str | UUID, workspace: Optional[str] = None):
+
+    from sempy_labs.tom import connect_semantic_model
+
+    columns = {
+        "Culture Name": "string",
+        "Table Name": "string",
+        "Object Name": "string",
+        "Object Type": "string",
+        "Synonym": "string",
+        "Type": "string",
+        "State": "string",
+        "Source": "string",
+        "Weight": "float_fillna",
+        "Last Modified": "datetime",
+    }
+
+    df = _create_dataframe(columns=columns)
+
+    rows = []
+    with connect_semantic_model(
+        dataset=dataset, workspace=workspace, readonly=True
+    ) as tom:
+        for c in tom.model.Cultures:
+            if c.LinguisticMetadata is not None:
+                lm = json.loads(c.LinguisticMetadata.Content)
+                if "Entities" in lm:
+                    for _, v in lm.get("Entities", []).items():
+                        binding = v.get("Definition", {}).get("Binding", {})
+
+                        t_name = binding.get("ConceptualEntity")
+                        object_name = binding.get("ConceptualProperty")
+
+                        if object_name is None:
+                            object_type = "Table"
+                            object_name = t_name
+                        elif any(
+                            m.Name == object_name and m.Parent.Name == t_name
+                            for m in tom.all_measures()
+                        ):
+                            object_type = "Measure"
+                        elif any(
+                            m.Name == object_name and m.Parent.Name == t_name
+                            for m in tom.all_columns()
+                        ):
+                            object_type = "Column"
+                        elif any(
+                            m.Name == object_name and m.Parent.Name == t_name
+                            for m in tom.all_hierarchies()
+                        ):
+                            object_type = "Hierarchy"
+
+                        merged_terms = defaultdict(dict)
+                        for t in v.get("Terms", []):
+                            for term, properties in t.items():
+                                normalized_term = term.lower()
+                                merged_terms[normalized_term].update(properties)
+
+                        for term, props in merged_terms.items():
+                            new_data = {
+                                "Culture Name": lm.get("Language"),
+                                "Table Name": t_name,
+                                "Object Name": object_name,
+                                "Object Type": object_type,
+                                "Synonym": term,
+                                "Type": props.get("Type"),
+                                "State": props.get("State"),
+                                "Source": props.get("Source", {}).get("Agent"),
+                                "Weight": props.get("Weight"),
+                                "Last Modified": props.get("LastModified"),
+                            }
+
+                            # Skip concatenation if new_data is empty or invalid
+                            if any(new_data.values()):
+                                rows.append(new_data)
+
+    if rows:
+        df = pd.DataFrame(rows)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
+
+    return df

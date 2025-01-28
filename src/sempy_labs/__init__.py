@@ -224,6 +224,7 @@ from sempy_labs._list_functions import (
     update_item,
     list_server_properties,
     list_semantic_model_errors,
+    list_synonyms,
 )
 from sempy_labs._helper_functions import (
     convert_to_friendly_case,
@@ -497,4 +498,5 @@ __all__ = [
     "list_resource_groups",
     "get_resource_group",
     "service_principal_authentication",
+    "list_synonyms",
 ]
