@@ -3,7 +3,6 @@ import base64
 import json
 import sempy.fabric as fabric
 import sempy_labs._icons as icons
-from typing import Literal
 from sempy_labs.report._generate_report import get_report_definition
 from sempy_labs._generate_semantic_model import get_semantic_model_definition
 from sempy_labs._helper_functions import _is_valid_uuid
@@ -14,7 +13,7 @@ from sempy_labs.lakehouse import lakehouse_attached
 def save_report_as_pbip(
     report: str | UUID,
     workspace: str | UUID,
-    thin_or_thick: Literal["thick", "thin"] = "thick",
+    thick_report: bool = True,
     live_connect: bool = True,
 ):
     """
@@ -22,24 +21,19 @@ def save_report_as_pbip(
 
     Parameters
     ----------
-    report : str | UUID
-        Name or Id of the Power BI report.
-    workspace : str | UUID, default=None
-        The name of the Fabric workspace in which the report resides.
+    report : str | uuid.UUID
+        Name or ID of the Power BI report.
+    workspace : str | uuid.UUID, default=None
+        The name or ID of the Fabric workspace in which the report resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    thin_or_thick : str, default="thick"
-        Specifying 'thin' will save just the report, not the semantic model.
-        Specifing 'thick' will save both the report and underlying semantic model.
+    thick_report : bool, default=True
+        If set to True, saves the report and underlying semantic model.
+        If set to False, saves just the report.
     live_connect : bool, default=True
         If set to True, saves a .pbip live-connected to the workspace in the Power BI / Fabric service.
         If set to False, saves a .pbip with a local model, independent from the Power BI / Fabric service.
     """
-
-    if thin_or_thick not in ["thin", "thick"]:
-        raise ValueError(
-            f"{icons.red_dot} The parameter 'thin_or_thick' must be either 'thin or 'thick'."
-        )
 
     if not lakehouse_attached():
         raise ValueError(
@@ -131,7 +125,7 @@ def save_report_as_pbip(
                 json.dump(pbip, file, indent=indent)
 
     add_files(name=report_name, type="Report", object_workspace=report_workspace)
-    if thin_or_thick == "thick":
+    if thick_report:
         add_files(
             name=dataset_name, type="SemanticModel", object_workspace=dataset_workspace
         )
