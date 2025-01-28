@@ -217,3 +217,31 @@ def delete_shortcut(
     print(
         f"{icons.green_dot} The '{shortcut_name}' shortcut in the '{lakehouse}' within the '{workspace_name}' workspace has been deleted."
     )
+
+
+def reset_shortcut_cache(workspace: Optional[str | UUID]):
+    """
+    Deletes any cached files that were stored while reading from shortcuts.
+
+    This is a wrapper function for the following API: `OneLake Shortcuts - Reset Shortcut Cache <https://learn.microsoft.com/rest/api/fabric/core/onelake-shortcuts/reset-shortcut-cache>`_.
+
+    Parameters
+    ----------
+    workspace : str | uuid.UUID, default=None
+        The name or ID of the Fabric workspace.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/onelake/resetShortcutCache",
+        method="post",
+        lro_return_status_code=True,
+        status_codes=None,
+    )
+
+    print(
+        f"{icons.green_dot} The shortcut cache has been reset for the '{workspace_name}' workspace."
+    )
