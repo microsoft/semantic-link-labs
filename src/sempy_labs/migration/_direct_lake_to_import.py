@@ -56,6 +56,8 @@ def migrate_direct_lake_to_import(dataset: str | UUID, workspace: str | UUID):
                 # Remove Direct Lake partition
                 tom.remove_object(object=p)
 
+        tom.model.Model.DefaultMode = TOM.ModeType.Import
+
         # Check
         # for t in tom.model.Tables:
         #    if t.Partitions.Count == 1 and all(p.Mode == TOM.ModeType.Import for p in t.Partitions) and t.CalculationGroup is None:
