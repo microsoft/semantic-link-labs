@@ -13,14 +13,24 @@ from sempy_labs.perf_lab._sample_lab import (
     provision_perf_lab_lakehouse,
     provision_sample_delta_tables,
     provision_sample_semantic_model,
+    deprovision_perf_lab_lakehouses,
+    deprovision_perf_lab_models,
     PropertyBag,
 )
 
-from sempy_labs.perf_lab._init_test_cycle import (
+from sempy_labs.perf_lab._test_cycle import (
     _sample_queries,
-    _get_test_definitions_df,
+    _get_test_definitions,
+    _get_test_definitions_from_trace_events,
     _provision_test_models,
     _initialize_test_cycle,
+    _queries_toDict,
+    _tag_dax_queries,
+    _trace_dax_queries,
+    _get_query_name,
+    _warmup_test_models,
+    run_test_cycle,
+    _get_query_name,
 )
 
 from sempy_labs.perf_lab._simulated_etl import (
@@ -42,6 +52,8 @@ from sempy_labs.perf_lab._table_diagnostics import (
 
 
 __all__ = [
+    "run_test_cycle",
+    "_get_query_name",
     "get_storage_table_column_segments",
     "simulate_etl",
     "_delete_reinsert_rows",
@@ -54,7 +66,9 @@ __all__ = [
     "_filter_by_prefix",
     "get_source_tables",
     "_sample_queries",
-    "_get_test_definitions_df",
+    "_get_test_definitions",
+    "_get_test_definitions_from_trace_events",
+    "_warmup_test_models",
     "_provision_test_models",
     "_initialize_test_cycle",
     "_get_or_create_workspace",
@@ -71,5 +85,11 @@ __all__ = [
     "provision_perf_lab_lakehouse",
     "provision_sample_delta_tables",
     "provision_sample_semantic_model",
+    "deprovision_perf_lab_lakehouses",
+    "deprovision_perf_lab_models",
+    "_queries_toDict",
+    "_tag_dax_queries",
+    "_trace_dax_queries",
+    "_get_query_name",
     "PropertyBag",
 ]
