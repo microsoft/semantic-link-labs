@@ -5,7 +5,7 @@ import sempy_labs._icons as icons
 
 def migrate_direct_lake_to_import(dataset: str | UUID, workspace: str | UUID):
     """
-    Migrates a semantic model from Direct Lake mode to import mode.
+    Migrates a semantic model from Direct Lake mode to import mode. After running this function, you must go to the semantic model settings and update the cloud connection. Not doing so will result in an inablity to refresh/use the semantic model.
 
     Parameters
     ----------
