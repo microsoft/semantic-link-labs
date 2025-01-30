@@ -9,7 +9,7 @@ from sempy_labs._helper_functions import (
 )
 
 
-def list_graph_ql_apis(workspace: Optional[str | UUID]) -> pd.DataFrame:
+def list_graphql_apis(workspace: Optional[str | UUID]) -> pd.DataFrame:
     """
     Shows the Graph QL APIs within a workspace.
 
@@ -53,7 +53,7 @@ def list_graph_ql_apis(workspace: Optional[str | UUID]) -> pd.DataFrame:
     return df
 
 
-def create_graph_ql_api(
+def create_graphql_api(
     name: str, description: Optional[str] = None, workspace: Optional[str | UUID] = None
 ):
     """

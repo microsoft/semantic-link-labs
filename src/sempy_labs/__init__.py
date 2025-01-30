@@ -1,6 +1,6 @@
-from sempy_labs._graph_ql import (
-    list_graph_ql_apis,
-    create_graph_ql_api,
+from sempy_labs._graphQL import (
+    list_graphql_apis,
+    create_graphql_api,
 )
 from sempy_labs._job_scheduler import (
     list_item_job_instances,
@@ -503,6 +503,6 @@ __all__ = [
     "get_resource_group",
     "service_principal_authentication",
     "list_synonyms",
-    "list_graph_ql_apis",
-    "create_graph_ql_api",
+    "list_graphql_apis",
+    "create_graphql_api",
 ]
