@@ -15,6 +15,7 @@ from sempy_labs.admin._basic_functions import (
     list_access_entities,
     list_activity_events,
     get_capacity_assignment_status,
+    get_capacity_state,
 )
 from sempy_labs.admin._domains import (
     list_domains,
@@ -70,4 +71,5 @@ __all__ = [
     "list_reports",
     "get_capacity_assignment_status",
     "scan_workspaces",
+    "get_capacity_state",
 ]

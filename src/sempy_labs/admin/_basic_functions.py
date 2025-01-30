@@ -8,6 +8,7 @@ from sempy_labs._helper_functions import (
     _update_dataframe_datatypes,
     _base_api,
     _create_dataframe,
+    get_capacity_id,
 )
 from sempy._utils._log import log
 import numpy as np
@@ -1063,3 +1064,37 @@ def get_capacity_assignment_status(
     _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
+
+
+def get_capacity_state(capacity: Optional[str | UUID] = None):
+    """
+    Gets the state of a capacity.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    capacity : str | uuid.UUID, default=None
+        The capacity name or ID.
+        Defaults to None which resolves to the capacity of the attached lakehouse
+        or if no lakehouse is attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    str
+        The capacity state.
+    """
+
+    df = list_capacities()
+
+    if capacity is None:
+        capacity = get_capacity_id()
+    if _is_valid_uuid(capacity):
+        df_filt = df[df["Capacity Id"] == capacity]
+    else:
+        df_filt = df[df["Capacity Name"] == capacity]
+
+    if df_filt.empty:
+        raise ValueError(f"{icons.red_dot} The capacity '{capacity}' was not found.")
+
+    return df_filt["State"].iloc[0]
