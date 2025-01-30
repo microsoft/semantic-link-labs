@@ -4,6 +4,7 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     format_dax_object_name,
     resolve_dataset_name_and_id,
+    generate_guid,
 )
 from sempy_labs._model_dependencies import get_model_calc_dependencies
 from typing import Optional, List, Tuple
@@ -377,18 +378,11 @@ def dax_perf_test(
             )
             df = df[df[temp_column_name] != None]
             df = df.drop(columns=[temp_column_name])
-            # Step 2: Name queries per dictionary
-            # suffix = "_removeXXX"
-            # query_names_full = [
-            #    item for query in query_names for item in (f"{query}{suffix}", query)
-            # ]
-            # Step 3: Assign query names by group and convert to integer
-            # df["Query Name"] = (query_begin).cumsum()
-            # df["Query Name"] = df["Query Name"].where(query_begin, None).ffill()
-            # df["Query Name"] = pd.to_numeric(df["Query Name"], downcast="integer")
-            # Step 4: Map to full query names
-            # df["Query Name"] = df["Query Name"].map(lambda x: query_names_full[x - 1])
-            # df = df[~df["Query Name"].str.endswith(suffix)]
+
+            query_to_guid = {
+                name: generate_guid() for name in df["Query Name"].unique()
+            }
+            df["Query ID"] = df["Query Name"].map(query_to_guid)
 
     df = df.reset_index(drop=True)
 
