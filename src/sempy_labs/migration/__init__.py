@@ -18,6 +18,9 @@ from sempy_labs.migration._migration_validation import (
 from sempy_labs.migration._refresh_calc_tables import (
     refresh_calc_tables,
 )
+from sempy_labs.migration._direct_lake_to_import import (
+    migrate_direct_lake_to_import,
+)
 
 __all__ = [
     "create_pqt_file",
@@ -28,4 +31,5 @@ __all__ = [
     "migrate_tables_columns_to_semantic_model",
     "migration_validation",
     "refresh_calc_tables",
+    "migrate_direct_lake_to_import",
 ]
