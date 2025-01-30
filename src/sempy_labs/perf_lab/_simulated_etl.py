@@ -109,7 +109,7 @@ def get_source_tables(
         data_source_workspace = row['DatasourceWorkspace']
         data_source_type = row['DatasourceType']
 
-        # Skip this row if the data_source_type is invalud.
+        # Skip this row if the data_source_type is invalid.
         if not data_source_type == "Lakehouse":
             print(f"{icons.red_dot} Invalid data source type '{data_source_type}' detected. Ignoring this row. Please review your test definitions.")
             continue 
@@ -423,19 +423,19 @@ def _sliding_window_update(
 
 UpdateTableCallback = Callable[[PropertyBag, PropertyBag], None]
 def _delete_reinsert_rows(
-    table_info: Row,
+    source_table_info: Row,
     custom_properties: Optional[PropertyBag] = None
 ) -> None:
     """
     Deletes and reinserts rows in a Delta table and optimizes the Delta table between deletes and inserts.
     Parameters
     ----------
-    table_info: Row
+    source_table_info: Row
         A Spark DataFrame row with the following columns:
-        +----------+--------------------+--------------+---------------+----------------+-------------------+---------------+------------+----------+--------------+
-        | ModelName|      ModelWorkspace|ModelTableName| DatasourceName|  DatasourceType|DatasourceWorkspace|SourceTableName|SourceFormat|SourceType|SourceLocation|
-        +----------+--------------------+--------------+---------------+----------------+-------------------+---------------+------------+----------+--------------+
-    custom_properties: PropertyBag, default=None
+        +---------------+----------------+-------------------+---------------+--------------+
+        | DatasourceName|  DatasourceType|DatasourceWorkspace|SourceTableName|SourceLocation|
+        +---------------+----------------+-------------------+---------------+--------------+
+     custom_properties: PropertyBag, default=None
         A collection of property values specific to the callback function.
 
     Returns
@@ -486,7 +486,7 @@ def simulate_etl(
     None
     """
     if not update_function is None:
-        for row in source_tables_info.collect():
+        for row in source_tables_info.dropDuplicates(["SourceLocation", "DatasourceName", "DatasourceType", "DatasourceWorkspace", "SourceTableName"]).collect():
             update_function(row, update_properties)
     else:
             raise ValueError("Unable to process tables without an UpdateTableCallback. Please set the update_function parameter.")

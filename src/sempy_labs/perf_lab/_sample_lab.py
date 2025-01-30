@@ -372,6 +372,41 @@ def _save_as_delta_table(
     dataframe.write.mode("overwrite").format("delta").save(filePath)
     print(f"{icons.green_dot} Delta table '{delta_table_name}' created and {dataframe.count()} rows inserted.")
 
+def _insert_into_delta_table(
+    dataframe: DataFrame,
+    delta_table_name: str,
+    lakehouse: Optional [str | UUID] = None,
+    workspace: Optional [str | UUID] = None,
+):
+    """
+    Inserts a spark dataframe into a delta table in a Fabric lakehouse.
+
+    Parameters
+    ----------
+    dataframe : DataFrame
+        The spark dataframe to be inserted into a delta table.
+    delta_table_name : str
+        The name of the delta table.
+    lakehouse : uuid.UUID
+        The Fabric lakehouse ID.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    workspace : uuid.UUID
+        The Fabric workspace ID where the specified lakehouse is located.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(lakehouse=lakehouse,workspace=workspace_id)
+
+    filePath = create_abfss_path(
+        lakehouse_id=lakehouse_id,
+        lakehouse_workspace_id=workspace_id,
+        delta_table_name=delta_table_name,
+    )
+    dataframe.write.mode("append").format("delta").save(filePath)
+    print(f"{icons.green_dot} {dataframe.count()} rows inserted into Delta table '{delta_table_name}'.")
+
 def _read_delta_table(
     delta_table_name: str,
     lakehouse: Optional [str | UUID] = None,
