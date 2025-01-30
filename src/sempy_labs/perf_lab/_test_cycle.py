@@ -751,7 +751,7 @@ def run_test_cycle(
     tag: Optional[str] = None,
 ) -> Tuple[DataFrame, dict]:
     """
-    Runs each DAX query and returns the QueryBegin and QueryEnd trace events together with the query results.
+    Runs each DAX query and returns the traces events, such as QueryBegin and QueryEnd, together with the query results.
 
     Parameters
     ----------
