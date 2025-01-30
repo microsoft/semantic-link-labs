@@ -1,6 +1,7 @@
 import pandas as pd
 import datetime
 import sempy.fabric as fabric
+from typing import Dict
 import pyarrow.dataset as ds
 import pyarrow.parquet as pq
 from pyspark.sql import SparkSession
@@ -8,15 +9,16 @@ from sempy_labs._helper_functions import (
     _get_fabric_context_setting,
     resolve_lakehouse_name,
     save_as_delta_table,
-    _get_max_run_id,
+    _get_column_aggregate,
+    _create_dataframe,
+    _update_dataframe_datatypes,
 )
-from sempy_labs.lakehouse import get_lakehouse_tables
-from typing import Tuple
+from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 
 
 def delta_analyzer(
-    table_name: str, export: bool = False
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    table_name: str, approx_distinct_count: bool = True, export: bool = False
+) -> Dict[str, pd.DataFrame]:
     """
     Analyzes a delta table and shows the results in a set of 5 dataframes. The table analyzed must be in the lakehouse attached to the notebook.
 
@@ -24,13 +26,15 @@ def delta_analyzer(
     ----------
     table_name : str
         The delta table name.
+    approx_distinct_count: bool, default=True
+        If True, uses approx_count_distinct to calculate the cardinality of each column. If False, uses COUNT(DISTINCT) instead.
     export : bool, default=False
         If True, exports the resulting dataframes to delta tables in the lakehouse attached to the notebook.
 
     Returns
     -------
-    Tuple[pandas.DataFrame, pandas.DataFrame, pandas.DataFrame, pandas.DataFrame, pandas.DataFrame]
-        A pandas dataframe in HTML format showing semantic model objects which violated the best practice analyzer rules.
+    Dict[str, pandas.DataFrame]
+        A dictionary of pandas dataframes showing semantic model objects which violated the best practice analyzer rules.
     """
 
     prefix = "SLL_DeltaAnalyzer_"
@@ -42,18 +46,42 @@ def delta_analyzer(
     default_file_storage = _get_fabric_context_setting(name="fs.defaultFS")
     fs = default_file_storage.split("@")[-1][:-1]
 
+    parquet_file_df_columns = {
+        "ParquetFile": "string",
+        "RowCount": "int",
+        "RowGroups": "int",
+    }
+    row_group_df_columns = {
+        "ParquetFile": "string",
+        "RowGroupID": "int",
+        "RowCount": "int",
+        "CompressedSize": "int",
+        "UncompressedSize": "int",
+        "CompressionRatio": "float",
+    }
+    column_chunk_df_columns = {
+        "ParquetFile": "string",
+        "ColumnID": "int",
+        "ColumnName": "string",
+        "ColumnType": "string",
+        "CompressedSize": "int",
+        "UncompressedSize": "int",
+        "HasDict": "bool",
+        "DictOffset": "int",
+        "ValueCount": "int",
+        "Encodings": "string",
+    }
+
+    parquet_file_df = _create_dataframe(columns=parquet_file_df_columns)
+    row_group_df = _create_dataframe(columns=row_group_df_columns)
+    column_chunk_df = _create_dataframe(columns=column_chunk_df_columns)
+
     delta_table_path = f"Tables/{table_name}"
     path = f"abfss://{workspace_id}@{fs}/{lakehouse_id}/{delta_table_path}"
 
     spark = SparkSession.builder.getOrCreate()
     # delta_table = DeltaTable.forPath(spark, path)
     # detail_df = spark.sql(f"DESCRIBE DETAIL `{table_name}`").collect()[0]
-
-    def _get_distinct_count(table_name: str, column_name: str) -> int:
-
-        query = f"SELECT COUNT(DISTINCT({column_name})) FROM {table_name}"
-        dfSpark = spark.sql(query)
-        return dfSpark.collect()[0][0] or 0
 
     # num_files = detail_df.numFiles
     # size_in_bytes = detail_df.sizeInBytes
@@ -71,22 +99,6 @@ def delta_analyzer(
         else None
     )
 
-    parquet_file_df = pd.DataFrame(columns=["ParquetFile", "RowCount", "RowGroups"])
-    row_group_df = pd.DataFrame(columns=["ParquetFile", "RowGroupID", "RowCount"])
-    column_chunk_df = pd.DataFrame(
-        columns=[
-            "ParquetFile",
-            "ColumnID",
-            "ColumnName",
-            "ColumnType",
-            "CompressedSize",
-            "UncompressedSize",
-            "HasDict",
-            "DictOffset",
-            "ValueCount",
-            "Encodings",
-        ]
-    )
     for file_name in file_paths:
         parquet_file = pq.ParquetFile(
             f"/lakehouse/default/Tables/{table_name}/{file_name}"
@@ -148,9 +160,12 @@ def delta_analyzer(
                 "CompressionRatio": total_compressed_size / total_uncompressed_size,
             }
 
-            row_group_df = pd.concat(
-                [row_group_df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-            )
+            if not row_group_df.empty:
+                row_group_df = pd.concat(
+                    [row_group_df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                )
+            else:
+                row_group_df = pd.DataFrame(new_data, index=[0])
 
     avg_rows_per_row_group = row_count / row_groups
 
@@ -171,24 +186,13 @@ def delta_analyzer(
     )
 
     # Clean up data types
-    bool_cols = ["HasDict"]
-    int_cols = [
-        "CompressedSize",
-        "UncompressedSize",
-        "DictOffset",
-        "ValueCount",
-        "ColumnID",
-    ]
-    column_chunk_df[int_cols] = column_chunk_df[int_cols].astype(int)
-    column_chunk_df[bool_cols] = column_chunk_df[bool_cols].astype(bool)
-
-    int_cols = ["RowGroupID", "RowCount", "CompressedSize", "UncompressedSize"]
-    float_cols = ["CompressionRatio"]
-    row_group_df[int_cols] = row_group_df[int_cols].astype(int)
-    row_group_df[float_cols] = row_group_df[float_cols].astype(float)
-
-    int_cols = ["RowCount", "RowGroups"]
-    parquet_file_df[int_cols] = parquet_file_df[int_cols].astype(int)
+    _update_dataframe_datatypes(
+        dataframe=column_chunk_df, column_map=column_chunk_df_columns
+    )
+    _update_dataframe_datatypes(dataframe=row_group_df, column_map=row_group_df_columns)
+    _update_dataframe_datatypes(
+        dataframe=parquet_file_df, column_map=parquet_file_df_columns
+    )
 
     # Generate column dataframe
     column_df = column_chunk_df.groupby(
@@ -196,23 +200,36 @@ def delta_analyzer(
     ).agg({"CompressedSize": "sum", "UncompressedSize": "sum"})
 
     # Add distinct count to column_df
-    for i, r in column_df.iterrows():
+    for ind, r in column_df.iterrows():
         col_name = r["ColumnName"]
-        dc = _get_distinct_count(table_name=table_name, column_name=col_name)
+        if approx_distinct_count:
+            dc = _get_column_aggregate(
+                table_name=table_name,
+                column_name=col_name,
+                function="approx",
+                lakehouse=lakehouse_name,
+            )
+        else:
+            dc = _get_column_aggregate(
+                table_name=table_name,
+                column_name=col_name,
+                function="distinctcount",
+                lakehouse=lakehouse_name,
+            )
 
         if "Cardinality" not in column_df.columns:
             column_df["Cardinality"] = None
 
-        column_df.at[i, "Cardinality"] = dc
+        column_df.at[ind, "Cardinality"] = dc
 
     column_df["Cardinality"] = column_df["Cardinality"].astype(int)
     summary_df["TotalSize"] = column_df["CompressedSize"].sum()
 
     dataframes = {
         "Summary": summary_df,
-        "ParquetFiles": parquet_file_df,
-        "RowGroups": row_group_df,
-        "ColumnChunks": column_chunk_df,
+        "Parquet Files": parquet_file_df,
+        "Row Groups": row_group_df,
+        "Column Chunks": column_chunk_df,
         "Columns": column_df,
     }
 
@@ -224,12 +241,13 @@ def delta_analyzer(
         if len(dfL_filt) == 0:
             runId = 1
         else:
-            max_run_id = _get_max_run_id(
+            max_run_id = _get_column_aggregate(
                 lakehouse=lakehouse_name, table_name=save_table
             )
             runId = max_run_id + 1
 
     for name, df in dataframes.items():
+        name = name.replace(" ", "")
         cols = {
             "WorkspaceName": workspace_name,
             "LakehouseName": lakehouse_name,
@@ -250,4 +268,4 @@ def delta_analyzer(
                 write_mode="append",
             )
 
-    return (*dataframes.values(),)
+    return dataframes

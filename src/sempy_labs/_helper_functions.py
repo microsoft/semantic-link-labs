@@ -1214,16 +1214,33 @@ def generate_guid():
     return str(uuid.uuid4())
 
 
-def _get_max_run_id(lakehouse: str, table_name: str) -> int:
+def _get_column_aggregate(
+    table_name: str,
+    column_name: str = "RunId",
+    lakehouse: Optional[str] = None,
+    function: str = "max",
+    default_value: int = 0,
+    rsd: float = 0.05,
+) -> int:
 
     from pyspark.sql import SparkSession
 
     spark = SparkSession.builder.getOrCreate()
-    query = f"SELECT MAX(RunId) FROM {lakehouse}.{table_name}"
-    dfSpark = spark.sql(query)
-    max_run_id = dfSpark.collect()[0][0] or 0
+    function = function.upper()
 
-    return max_run_id
+    if lakehouse is None:
+        lakehouse = resolve_lakehouse_name()
+
+    if function in {"COUNTDISTINCT", "DISTINCTCOUNT"}:
+        query = f"SELECT COUNT(DISTINCT({column_name})) FROM {lakehouse}.{table_name}"
+    elif "APPROX" in function:
+        query = f"SELECT approx_count_distinct({column_name}, {rsd}) FROM {table_name}"
+    else:
+        query = f"SELECT {function}({column_name}) FROM {lakehouse}.{table_name}"
+
+    dfSpark = spark.sql(query)
+
+    return dfSpark.collect()[0][0] or default_value
 
 
 def _make_list_unique(my_list):
@@ -1432,3 +1449,54 @@ def _get_fabric_context_setting(name: str):
 def get_tenant_id():
 
     _get_fabric_context_setting(name="trident.tenant.id")
+
+
+def _create_dataframe(columns: dict) -> pd.DataFrame:
+
+    return pd.DataFrame(columns=list(columns.keys()))
+
+
+def _update_dataframe_datatypes(dataframe: pd.DataFrame, column_map: dict):
+    """
+    Updates the datatypes of columns in a pandas dataframe based on a column map.
+
+    Example:
+    {
+        "Order": "int",
+        "Public": "bool",
+    }
+    """
+
+    for column, data_type in column_map.items():
+        if column in dataframe.columns:
+            if data_type == "int":
+                dataframe[column] = dataframe[column].astype(int)
+            elif data_type == "bool":
+                dataframe[column] = dataframe[column].astype(bool)
+            elif data_type == "float":
+                dataframe[column] = dataframe[column].astype(float)
+            elif data_type == "datetime":
+                dataframe[column] = pd.to_datetime(dataframe[column])
+            # This is for a special case in admin.list_reports where datetime itself does not work. Coerce fixes the issue.
+            elif data_type == "datetime_coerce":
+                dataframe[column] = pd.to_datetime(dataframe[column], errors="coerce")
+            # This is for list_synonyms since the weight column is float and can have NaN values.
+            elif data_type == "float_fillna":
+                dataframe[column] = dataframe[column].fillna(0).astype(float)
+            elif data_type in ["str", "string"]:
+                dataframe[column] = dataframe[column].astype(str)
+            else:
+                raise NotImplementedError
+
+
+def _print_success(item_name, item_type, workspace_name, action="created"):
+    if action == "created":
+        print(
+            f"{icons.green_dot} The '{item_name}' {item_type} has been successfully created in the '{workspace_name}' workspace."
+        )
+    elif action == "deleted":
+        print(
+            f"{icons.green_dot} The '{item_name}' {item_type} has been successfully deleted from the '{workspace_name}' workspace."
+        )
+    else:
+        raise NotImplementedError
