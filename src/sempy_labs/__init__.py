@@ -1,6 +1,12 @@
 from sempy_labs._job_scheduler import (
     list_item_job_instances,
     list_item_schedules,
+    get_item_schedule,
+    create_item_schedule,
+    update_item_schedule,
+    get_item_job_instance,
+    cancel_item_job_instance,
+    run_on_demand_item_job,
 )
 from sempy_labs._gateways import (
     list_gateway_members,
@@ -499,4 +505,10 @@ __all__ = [
     "get_resource_group",
     "service_principal_authentication",
     "list_synonyms",
+    "get_item_schedule",
+    "create_item_schedule",
+    "update_item_schedule",
+    "get_item_job_instance",
+    "cancel_item_job_instance",
+    "run_on_demand_item_job",
 ]
