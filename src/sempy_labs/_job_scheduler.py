@@ -89,6 +89,8 @@ def list_item_job_instances(
     (item_name, item_id) = resolve_item_name_and_id(
         item=item, type=item_type, workspace=workspace
     )
+    if item_type is None:
+        item_type = resolve_item_type(item_id=item_id, workspace_id=workspace_id)
 
     columns = {
         "Job Instance Id": "string",
@@ -121,7 +123,7 @@ def list_item_job_instances(
                 "Job Instance Id": v.get("id"),
                 "Item Name": item_name,
                 "Item Id": v.get("itemId"),
-                "Item Type": type,
+                "Item Type": item_type,
                 "Job Type": v.get("jobType"),
                 "Invoke Type": v.get("invokeType"),
                 "Status": v.get("status"),
