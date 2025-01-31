@@ -329,12 +329,7 @@ def list_tenant_settings() -> pd.DataFrame:
 
     response = _base_api(request="/v1/admin/tenantsettings", client="fabric_sp")
 
-    if 'settingName' in response.json():
-        response_key = 'settingName'
-    else:
-        response_key = 'value'
-
-    for i in response.json().get(response_key, []):        
+    for i in response.json().get('value', []):        
         new_data = {
             "Setting Name": i.get("settingName"),
             "Title": i.get("title"),
