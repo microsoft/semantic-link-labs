@@ -176,3 +176,17 @@ class ConnectLakehouse(ConnectBase):
             timeout=timeout,
             endpoint_type="lakehouse",
         )
+
+class ConnectSQLDatabase(ConnectBase):
+    def __init__(
+        self,
+        sqldatabase: str,
+        workspace: Optional[Union[str, UUID]] = None,
+        timeout: Optional[int] = None,
+    ):
+        super().__init__(
+            name=sqldatabase,
+            workspace=workspace,
+            timeout=timeout,
+            endpoint_type="sqldatabase",
+        )
