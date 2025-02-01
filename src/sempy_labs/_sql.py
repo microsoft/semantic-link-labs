@@ -49,6 +49,10 @@ class ConnectBase:
             (resource_id, resource_name) = resolve_item_name_and_id(
                 item=item, type=endpoint_type.capitalize(), workspace=workspace_id
             )
+        if endpoint_type == "sqldatabase":
+            (resource_id, resource_name) = resolve_item_name_and_id(
+                item=item, type="SQLDatabase", workspace=workspace_id
+            )
         else:
             (resource_id, resource_name) = resolve_lakehouse_name_and_id(
                 lakehouse=item, workspace=workspace_id
@@ -61,6 +65,8 @@ class ConnectBase:
 
         if endpoint_type == "warehouse":
             tds_endpoint = response.json().get("properties", {}).get("connectionString")
+        if endpoint_type == "sqldatabase":
+            tds_endpoint = response.json().get("properties", {}).get("serverFqdn")
         else:
             tds_endpoint = (
                 response.json()
@@ -72,7 +78,10 @@ class ConnectBase:
         # Set up the connection string
         access_token = SynapseTokenProvider()()
         tokenstruct = _bytes2mswin_bstr(access_token.encode())
-        conn_str = f"DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={tds_endpoint};DATABASE={resource_name};Encrypt=Yes;"
+        if endpoint_type == "sqldatabase":
+            conn_str = f"DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={tds_endpoint};DATABASE={resource_name}-{resource_id};Encrypt=Yes;"
+        else:
+            conn_str = f"DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={tds_endpoint};DATABASE={resource_name};Encrypt=Yes;"
 
         if timeout is not None:
             conn_str += f"Connect Timeout={timeout};"
