@@ -50,6 +50,7 @@ class ConnectBase:
                 item=item, type=endpoint_type.capitalize(), workspace=workspace_id
             )
         if endpoint_type == "sqldatabase":
+            # SQLDatabase is has special case for resolving the name and id
             (resource_id, resource_name) = resolve_item_name_and_id(
                 item=item, type="SQLDatabase", workspace=workspace_id
             )
