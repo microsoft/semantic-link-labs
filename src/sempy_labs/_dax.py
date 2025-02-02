@@ -302,19 +302,62 @@ def dax_perf_test(
     from sempy_labs._refresh_semantic_model import refresh_semantic_model
     from sempy_labs._clear_cache import clear_cache
 
-    base_cols = ["EventClass", "EventSubclass", "CurrentTime", "NTUserName", "TextData"]
-    begin_cols = base_cols + ["StartTime"]
-    end_cols = base_cols + ["StartTime", "EndTime", "Duration", "CpuTime", "Success"]
-
     event_schema = {
-        "QueryBegin": begin_cols + ["ApplicationName"],
-        "QueryEnd": end_cols + ["ApplicationName"],
+        "QueryBegin": [
+            "EventClass",
+            "EventSubclass",
+            "CurrentTime",
+            "NTUserName",
+            "TextData",
+            "StartTime",
+            "ApplicationName",
+        ],
+        "QueryEnd": [
+            "EventClass",
+            "EventSubclass",
+            "CurrentTime",
+            "NTUserName",
+            "TextData",
+            "StartTime",
+            "EndTime",
+            "Duration",
+            "CpuTime",
+            "Success",
+            "ApplicationName",
+        ],
+        "VertiPaqSEQueryBegin": [
+            "EventClass",
+            "EventSubclass",
+            "CurrentTime",
+            "NTUserName",
+            "TextData",
+            "StartTime",
+        ],
+        "VertiPaqSEQueryEnd": [
+            "EventClass",
+            "EventSubclass",
+            "CurrentTime",
+            "NTUserName",
+            "TextData",
+            "StartTime",
+            "EndTime",
+            "Duration",
+            "CpuTime",
+            "Success",
+        ],
+        "VertiPaqSEQueryCacheMatch": [
+            "EventClass",
+            "EventSubclass",
+            "CurrentTime",
+            "NTUserName",
+            "TextData",
+        ],
     }
 
-    event_schema["VertiPaqSEQueryBegin"] = begin_cols
-    event_schema["VertiPaqSEQueryEnd"] = end_cols
-    event_schema["VertiPaqSEQueryCacheMatch"] = base_cols
+    # Add Execution Metrics
     event_schema["ExecutionMetrics"] = ["EventClass", "ApplicationName", "TextData"]
+    # Add DAX Query Plan
+    # event_schema["DAXQueryPlan"] = ["EventClass", "EventSubclass", "CurrentTime", "StartTime", "EndTime", "Duration", "CpuTime", "ApplicationName", "TextData"]
 
     query_results = {}
 
