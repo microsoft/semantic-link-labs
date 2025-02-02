@@ -46,11 +46,11 @@ class ConnectBase:
 
         # Resolve the appropriate ID and name (warehouse or lakehouse)
         if endpoint_type == "warehouse":
-            (resource_id, resource_name) = resolve_item_name_and_id(
+            (resource_name, resource_id) = resolve_item_name_and_id(
                 item=item, type=endpoint_type.capitalize(), workspace=workspace_id
             )
         else:
-            (resource_id, resource_name) = resolve_lakehouse_name_and_id(
+            (resource_name, resource_id) = resolve_lakehouse_name_and_id(
                 lakehouse=item, workspace=workspace_id
             )
 
@@ -146,7 +146,7 @@ class ConnectWarehouse(ConnectBase):
         timeout: Optional[int] = None,
     ):
         super().__init__(
-            name=warehouse,
+            item=warehouse,
             workspace=workspace,
             timeout=timeout,
             endpoint_type="warehouse",
@@ -161,7 +161,7 @@ class ConnectLakehouse(ConnectBase):
         timeout: Optional[int] = None,
     ):
         super().__init__(
-            name=lakehouse,
+            item=lakehouse,
             workspace=workspace,
             timeout=timeout,
             endpoint_type="lakehouse",
