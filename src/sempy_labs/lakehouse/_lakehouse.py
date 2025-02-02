@@ -174,7 +174,7 @@ def run_table_maintenance(
         The table(s) to run maintenance operations on.
     optimize : bool, default=False
         If True, the `OPTIMIZE <https://docs.delta.io/latest/optimizations-oss.html>`_ function will be run on the table(s).
-    v_order : boo, default=False
+    v_order : bool, default=False
         If True, v-order will be enabled for the table(s).
     vacuum : bool, default=False
         If True, the `VACUUM <https://docs.delta.io/latest/delta-utility.html#remove-files-no-longer-referenced-by-a-delta-table>`_ function will be run on the table(s).
