@@ -92,7 +92,7 @@ def list_sqldatabses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     responses = _base_api(
-        reqeust=f"/v1/workspaces/{workspace_id}/sqldatabases", uses_pagination=True
+        request=f"/v1/workspaces/{workspace_id}/sqldatabases", uses_pagination=True
     )
 
     for r in responses:
