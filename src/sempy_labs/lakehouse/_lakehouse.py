@@ -3,6 +3,7 @@ from tqdm.auto import tqdm
 from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
     resolve_workspace_name_and_id,
+    resolve_lakehouse_name_and_id,
     lro,
 )
 from typing import List, Optional, Union
