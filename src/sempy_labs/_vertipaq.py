@@ -164,6 +164,7 @@ def vertipaq_analyzer(
         dataset=dataset_id, extended=True, workspace=workspace_id
     )
 
+    artifact_type = None
     if is_direct_lake:
         artifact_type, lakehouse_name, lakehouse_id, lakehouse_workspace_id = (
             get_direct_lake_source(dataset=dataset_id, workspace=workspace_id)
