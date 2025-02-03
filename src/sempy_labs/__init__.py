@@ -1,7 +1,12 @@
+from sempy_labs._graphQL import (
+    list_graphql_apis,
+    create_graphql_api,
+)
 from sempy_labs._job_scheduler import (
     list_item_job_instances,
     list_item_schedules,
 )
+from sempy_labs._delta_analyzer import delta_analyzer
 from sempy_labs._gateways import (
     list_gateway_members,
     list_gateway_role_assigments,
@@ -199,6 +204,8 @@ from sempy_labs._dax import (
     evaluate_dax_impersonation,
     get_dax_query_dependencies,
     get_dax_query_memory_size,
+    # dax_perf_test,
+    # dax_perf_test_bulk,
 )
 from sempy_labs._generate_semantic_model import (
     create_blank_semantic_model,
@@ -224,6 +231,7 @@ from sempy_labs._list_functions import (
     update_item,
     list_server_properties,
     list_semantic_model_errors,
+    list_synonyms,
 )
 from sempy_labs._helper_functions import (
     convert_to_friendly_case,
@@ -497,4 +505,10 @@ __all__ = [
     "list_resource_groups",
     "get_resource_group",
     "service_principal_authentication",
+    "list_synonyms",
+    "list_graphql_apis",
+    "create_graphql_api",
+    "delta_analyzer",
+    # "dax_perf_test",
+    # "dax_perf_test_bulk",
 ]

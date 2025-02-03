@@ -4,14 +4,15 @@ from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_lakehouse_name,
+    _base_api,
+    resolve_item_id,
 )
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
 def download_report(
-    report: str,
+    report: str | UUID,
     file_name: Optional[str] = None,
     download_type: str = "LiveConnect",
     workspace: Optional[str | UUID] = None,
@@ -23,8 +24,8 @@ def download_report(
 
     Parameters
     ----------
-    report: str
-        Name of the report.
+    report: str | uuid.UUID
+        Name or ID of the report.
     file_name : str, default=None
         Name of the .pbix file to be saved.
         Defaults to None which resolves to the name of the report.
@@ -55,17 +56,11 @@ def download_report(
         )
 
     file_name = file_name or report
-    report_id = fabric.resolve_item_id(
-        item_name=report, type="Report", workspace=workspace_id
-    )
+    report_id = resolve_item_id(item=report, type="Report", workspace=workspace)
 
-    client = fabric.PowerBIRestClient()
-    response = client.get(
-        f"/v1.0/myorg/groups/{workspace_id}/reports/{report_id}/Export?downloadType={download_type}"
+    response = _base_api(
+        request=f"v1.0/myorg/groups/{workspace_id}/reports/{report_id}/Export?downloadType={download_type}"
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
 
     # Save file to the attached lakehouse
     with open(f"/lakehouse/default/Files/{file_name}.pbix", "wb") as file:

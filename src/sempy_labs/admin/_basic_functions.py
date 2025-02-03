@@ -2,17 +2,18 @@ import sempy.fabric as fabric
 from typing import Optional, List, Union, Tuple
 from uuid import UUID
 import sempy_labs._icons as icons
-from sempy.fabric.exceptions import FabricHTTPException
 from sempy_labs._helper_functions import (
-    pagination,
     _is_valid_uuid,
     _build_url,
+    _update_dataframe_datatypes,
+    _base_api,
+    _create_dataframe,
+    get_capacity_id,
 )
 from sempy._utils._log import log
 import numpy as np
 import pandas as pd
 from dateutil.parser import parse as dtparser
-import sempy_labs._authentication as auth
 
 
 @log
@@ -64,17 +65,14 @@ def list_workspaces(
         )
         del kwargs["skip"]
 
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
-
-    df = pd.DataFrame(
-        columns=[
-            "Id",
-            "Name",
-            "State",
-            "Type",
-            "Capacity Id",
-        ]
-    )
+    columns = {
+        "Id": "string",
+        "Name": "string",
+        "State": "string",
+        "Type": "string",
+        "Capacity Id": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     url = "/v1/admin/workspaces"
     params = {}
@@ -93,16 +91,10 @@ def list_workspaces(
 
     url = _build_url(url, params)
 
-    response = client.get(path_or_url=url)
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responsePaginated = pagination(client, response)
-
+    responses = _base_api(request=url, client="fabric_sp", uses_pagination=True)
     workspaces = []
 
-    for r in responsePaginated:
+    for r in responses:
         workspaces = workspaces + r.get("workspaces", [])
 
     if len(workspaces) > 0:
@@ -147,18 +139,20 @@ def list_capacities(
     pandas.DataFrame
         A pandas dataframe showing the capacities and their properties.
     """
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
 
-    df = pd.DataFrame(
-        columns=["Capacity Id", "Capacity Name", "Sku", "Region", "State", "Admins"]
+    columns = {
+        "Capacity Id": "string",
+        "Capacity Name": "string",
+        "Sku": "string",
+        "Region": "string",
+        "State": "string",
+        "Admins": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    responses = _base_api(
+        request="/v1.0/myorg/admin/capacities", client="fabric_sp", uses_pagination=True
     )
-
-    response = client.get("/v1.0/myorg/admin/capacities")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
 
     for r in responses:
         for i in r.get("value", []):
@@ -250,7 +244,7 @@ def assign_workspaces_to_capacity(
     batch_size = 999
     for i in range(0, len(workspaces), batch_size):
         batch = workspaces[i : i + batch_size].tolist()
-        request_body = {
+        payload = {
             "capacityMigrationAssignments": [
                 {
                     "targetCapacityObjectId": target_capacity_id.upper(),
@@ -259,15 +253,12 @@ def assign_workspaces_to_capacity(
             ]
         }
 
-        client = fabric.FabricRestClient()
-
-        response = client.post(
-            "/v1.0/myorg/admin/capacities/AssignWorkspaces",
-            json=request_body,
+        _base_api(
+            request="/v1.0/myorg/admin/capacities/AssignWorkspaces",
+            method="post",
+            payload=payload,
         )
 
-        if response.status_code != 200:
-            raise FabricHTTPException(response)
     print(
         f"{icons.green_dot} The workspaces have been assigned to the '{target_capacity}' capacity. A total of {len(workspaces)} were moved."
     )
@@ -300,15 +291,11 @@ def unassign_workspaces_from_capacity(
         )
 
     payload = {"workspacesToUnassign": workspacesIds}
-
-    client = fabric.PowerBIRestClient()
-    response = client.post(
-        "/v1.0/myorg/admin/capacities/UnassignWorkspaces",
-        json=payload,
+    _base_api(
+        request="/v1.0/myorg/admin/capacities/UnassignWorkspaces",
+        method="post",
+        payload=payload,
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
 
     print(
         f"{icons.green_dot} A total of {len(workspacesIds)} workspaces have been unassigned."
@@ -329,25 +316,20 @@ def list_tenant_settings() -> pd.DataFrame:
     pandas.DataFrame
         A pandas dataframe showing the tenant settings.
     """
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
 
-    response = client.get("/v1/admin/tenantsettings")
+    columns = {
+        "Setting Name": "string",
+        "Title": "string",
+        "Enabled": "bool",
+        "Can Specify Security Groups": "bool",
+        "Tenant Setting Group": "string",
+        "Enabled Security Groups": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    response = _base_api(request="/v1/admin/tenantsettings", client="fabric_sp")
 
-    df = pd.DataFrame(
-        columns=[
-            "Setting Name",
-            "Title",
-            "Enabled",
-            "Can Specify Security Groups",
-            "Tenant Setting Group",
-            "Enabled Security Groups",
-        ]
-    )
-
-    for i in response.json().get("tenantSettings", []):
+    for i in response.json().get("value", []):
         new_data = {
             "Setting Name": i.get("settingName"),
             "Title": i.get("title"),
@@ -358,8 +340,7 @@ def list_tenant_settings() -> pd.DataFrame:
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    bool_cols = ["Enabled", "Can Specify Security Groups"]
-    df[bool_cols] = df[bool_cols].astype(bool)
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -384,28 +365,26 @@ def list_capacities_delegated_tenant_settings(
     pandas.DataFrame | dict
         A pandas dataframe showing a list of tenant setting overrides that override at the capacities.
     """
-    df = pd.DataFrame(
-        columns=[
-            "Capacity Id",
-            "Setting Name",
-            "Setting Title",
-            "Setting Enabled",
-            "Can Specify Security Groups",
-            "Enabled Security Groups",
-            "Tenant Setting Group",
-            "Tenant Setting Properties",
-            "Delegate to Workspace",
-            "Delegated From",
-        ]
+
+    columns = {
+        "Capacity Id": "string",
+        "Setting Name": "string",
+        "Setting Title": "string",
+        "Setting Enabled": "bool",
+        "Can Specify Security Groups": "bool",
+        "Enabled Security Groups": "string",
+        "Tenant Setting Group": "string",
+        "Tenant Setting Properties": "string",
+        "Delegate to Workspace": "bool",
+        "Delegated From": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    responses = _base_api(
+        request="/v1/admin/capacities/delegatedTenantSettingOverrides",
+        client="fabric_sp",
+        uses_pagination=True,
     )
-
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
-    response = client.get("/v1/admin/capacities/delegatedTenantSettingOverrides")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
 
     if return_dataframe:
         for r in responses:
@@ -433,12 +412,7 @@ def list_capacities_delegated_tenant_settings(
                         [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
                     )
 
-            bool_cols = [
-                "Enabled Security Groups",
-                "Can Specify Security Groups",
-                "Delegate to Workspace",
-            ]
-            df[bool_cols] = df[bool_cols].astype(bool)
+            _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
             return df
     else:
@@ -481,10 +455,7 @@ def list_modified_workspaces(
     pandas.DataFrame
         A pandas dataframe showing a list of workspace IDs in the organization.
     """
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
-
     params = {}
-
     url = "/v1.0/myorg/admin/workspaces/modified"
 
     if modified_since is not None:
@@ -500,11 +471,7 @@ def list_modified_workspaces(
         params["excludePersonalWorkspaces"] = exclude_personal_workspaces
 
     url = _build_url(url, params)
-
-    response = client.get(url)
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    response = _base_api(request=url, client="fabric_sp")
 
     df = pd.DataFrame(response.json()).rename(columns={"id": "Workspace Id"})
 
@@ -538,31 +505,29 @@ def list_datasets(
         A pandas dataframe showing a list of datasets for the organization.
     """
 
-    columns = [
-        "Dataset Id",
-        "Dataset Name",
-        "Web URL",
-        "Add Rows API Enabled",
-        "Configured By",
-        "Is Refreshable",
-        "Is Effective Identity Required",
-        "Is Effective Identity Roles Required",
-        "Target Storage Mode",
-        "Created Date",
-        "Content Provider Type",
-        "Create Report Embed URL",
-        "QnA Embed URL",
-        "Upstream Datasets",
-        "Users",
-        "Is In Place Sharing Enabled",
-        "Workspace Id",
-        "Auto Sync Read Only Replicas",
-        "Max Read Only Replicas",
-    ]
+    columns = {
+        "Dataset Id": "string",
+        "Dataset Name": "string",
+        "Web URL": "string",
+        "Add Rows API Enabled": "bool",
+        "Configured By": "string",
+        "Is Refreshable": "bool",
+        "Is Effective Identity Required": "bool",
+        "Is Effective Identity Roles Required": "bool",
+        "Target Storage Mode": "string",
+        "Created Date": "datetime",
+        "Content Provider Type": "string",
+        "Create Report Embed URL": "string",
+        "QnA Embed URL": "string",
+        "Upstream Datasets": "string",
+        "Users": "string",
+        "Is In Place Sharing Enabled": "bool",
+        "Workspace Id": "string",
+        "Auto Sync Read Only Replicas": "bool",
+        "Max Read Only Replicas": "int",
+    }
 
-    df = pd.DataFrame(columns=columns)
-
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
+    df = _create_dataframe(columns=columns)
 
     params = {}
     url = "/v1.0/myorg/admin/datasets"
@@ -577,11 +542,7 @@ def list_datasets(
         params["$skip"] = skip
 
     url = _build_url(url, params)
-
-    response = client.get(url)
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    response = _base_api(request=url, client="fabric_sp")
 
     rows = []
     for v in response.json().get("value", []):
@@ -616,20 +577,9 @@ def list_datasets(
         )
 
     if rows:
-        df = pd.DataFrame(rows, columns=columns)
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
-    bool_cols = [
-        "Add Rows API Enabled",
-        "Is Refreshable",
-        "Is Effective Identity Required",
-        "Is Effective Identity Roles Required",
-        "Is In Place Sharing Enabled",
-        "Auto Sync Read Only Replicas",
-    ]
-    df[bool_cols] = df[bool_cols].astype(bool)
-
-    df["Created Date"] = pd.to_datetime(df["Created Date"])
-    df["Max Read Only Replicas"] = df["Max Read Only Replicas"].astype(int)
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -654,23 +604,21 @@ def list_access_entities(
     pandas.DataFrame
         A pandas dataframe showing a list of permission details for Fabric and Power BI items the specified user can access.
     """
-    df = pd.DataFrame(
-        columns=[
-            "Item Id",
-            "Item Name",
-            "Item Type",
-            "Permissions",
-            "Additional Permissions",
-        ]
+
+    columns = {
+        "Item Id": "string",
+        "Item Name": "string",
+        "Item Type": "string",
+        "Permissions": "string",
+        "Additional Permissions": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    responses = _base_api(
+        request=f"/v1/admin/users/{user_email_address}/access",
+        client="fabric_sp",
+        uses_pagination=True,
     )
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
-
-    response = client.get(f"/v1/admin/users/{user_email_address}/access")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
 
     for r in responses:
         for v in r.get("accessEntities", []):
@@ -712,22 +660,19 @@ def list_workspace_access_details(
     """
     (workspace_name, workspace_id) = _resolve_workspace_name_and_id(workspace)
 
-    df = pd.DataFrame(
-        columns=[
-            "User Id",
-            "User Name",
-            "User Type",
-            "Workspace Name",
-            "Workspace Id",
-            "Workspace Role",
-        ]
+    columns = {
+        "User Id": "string",
+        "User Name": "string",
+        "User Type": "string",
+        "Workspace Name": "string",
+        "Workspace Id": "string",
+        "Workspace Role": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    response = _base_api(
+        request=f"/v1/admin/workspaces/{workspace_id}/users", client="fabric_sp"
     )
-
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
-
-    response = client.get(f"/v1/admin/workspaces/{workspace_id}/users")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
 
     for v in response.json().get("accessDetails", []):
         new_data = {
@@ -783,51 +728,49 @@ def list_activity_events(
             f"{icons.red_dot} Start and End Times must be within the same UTC day. Please refer to the documentation here: https://learn.microsoft.com/rest/api/power-bi/admin/get-activity-events#get-audit-activity-events-within-a-time-window-and-for-a-specific-activity-type-and-user-id-example"
         )
 
-    df = pd.DataFrame(
-        columns=[
-            "Id",
-            "Record Type",
-            "Creation Time",
-            "Operation",
-            "Organization Id",
-            "User Type",
-            "User Key",
-            "Workload",
-            "Result Status",
-            "User Id",
-            "Client IP",
-            "User Agent",
-            "Activity",
-            "Workspace Name",
-            "Workspace Id",
-            "Object Id",
-            "Request Id",
-            "Object Type",
-            "Object Display Name",
-            "Experience",
-            "Refresh Enforcement Policy",
-            "Is Success",
-            "Activity Id",
-            "Item Name",
-            "Dataset Name",
-            "Report Name",
-            "Capacity Id",
-            "Capacity Name",
-            "App Name",
-            "Dataset Id",
-            "Report Id",
-            "Artifact Id",
-            "Artifact Name",
-            "Report Type",
-            "App Report Id",
-            "Distribution Method",
-            "Consumption Method",
-            "Artifact Kind",
-        ]
-    )
+    columns = {
+        "Id": "string",
+        "Record Type": "string",
+        "Creation Time": "datetime",
+        "Operation": "string",
+        "Organization Id": "string",
+        "User Type": "string",
+        "User Key": "string",
+        "Workload": "string",
+        "Result Status": "string",
+        "User Id": "string",
+        "Client IP": "string",
+        "User Agent": "string",
+        "Activity": "string",
+        "Workspace Name": "string",
+        "Workspace Id": "string",
+        "Object Id": "string",
+        "Request Id": "string",
+        "Object Type": "string",
+        "Object Display Name": "string",
+        "Experience": "string",
+        "Refresh Enforcement Policy": "string",
+        "Is Success": "bool",
+        "Activity Id": "string",
+        "Item Name": "string",
+        "Dataset Name": "string",
+        "Report Name": "string",
+        "Capacity Id": "string",
+        "Capacity Name": "string",
+        "App Name": "string",
+        "Dataset Id": "string",
+        "Report Id": "string",
+        "Artifact Id": "string",
+        "Artifact Name": "string",
+        "Report Type": "string",
+        "App Report Id": "string",
+        "Distribution Method": "string",
+        "Consumption Method": "string",
+        "Artifact Kind": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     response_json = {"activityEventEntities": []}
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
     url = f"/v1.0/myorg/admin/activityevents?startDateTime='{start_time}'&endDateTime='{end_time}'"
 
     conditions = []
@@ -839,12 +782,7 @@ def list_activity_events(
     if conditions:
         url += f"&$filter={f' and '.join(conditions)}"
 
-    response = client.get(url)
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
+    responses = _base_api(request=url, client="fabric_sp", uses_pagination=True)
 
     for r in responses:
         if return_dataframe:
@@ -899,7 +837,7 @@ def list_activity_events(
             )
 
     if return_dataframe:
-        df["Creation Time"] = pd.to_datetime(df["Creation Time"])
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
         return df
     else:
         return response_json
@@ -931,18 +869,19 @@ def _list_capacities_meta() -> pd.DataFrame:
         A pandas dataframe showing the capacities and their properties
     """
 
-    client = fabric.FabricRestClient()
+    columns = {
+        "Capacity Id": "string",
+        "Capacity Name": "string",
+        "Sku": "string",
+        "Region": "string",
+        "State": "string",
+        "Admins": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
-    df = pd.DataFrame(
-        columns=["Capacity Id", "Capacity Name", "Sku", "Region", "State", "Admins"]
+    responses = _base_api(
+        request="/v1.0/myorg/admin/capacities", client="fabric_sp", uses_pagination=True
     )
-
-    response = client.get("/v1.0/myorg/admin/capacities")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
 
     for r in responses:
         for i in r.get("value", []):
@@ -1006,25 +945,25 @@ def list_reports(
         A pandas dataframe showing a list of reports for the organization.
     """
 
-    columns = [
-        "Report Id",
-        "Report Name",
-        "Type",
-        "Web URL",
-        "Embed URL",
-        "Dataset Id",
-        "Created Date",
-        "Modified Date",
-        "Created By",
-        "Modified By",
-        "Sensitivity Label Id",
-        "Users",
-        "Subscriptions",
-        "Workspace Id",
-        "Report Flags",
-    ]
+    columns = {
+        "Report Id": "string",
+        "Report Name": "string",
+        "Type": "string",
+        "Web URL": "string",
+        "Embed URL": "string",
+        "Dataset Id": "string",
+        "Created Date": "datetime_coerce",
+        "Modified Date": "datetime_coerce",
+        "Created By": "string",
+        "Modified By": "string",
+        "Sensitivity Label Id": "string",
+        "Users": "string",
+        "Subscriptions": "string",
+        "Workspace Id": "string",
+        "Report Flags": "int",
+    }
 
-    df = pd.DataFrame(columns=columns)
+    df = _create_dataframe(columns=columns)
 
     url = "/v1.0/myorg/admin/reports?"
     if top is not None:
@@ -1035,14 +974,9 @@ def list_reports(
         url += f"$filter={filter}&"
 
     url.rstrip("$").rstrip("?")
-
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
-    response = client.get(url)
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
+    response = _base_api(request=url, client="fabric_sp")
     rows = []
+
     for v in response.json().get("value", []):
         rows.append(
             {
@@ -1065,13 +999,9 @@ def list_reports(
         )
 
     if rows:
-        df = pd.DataFrame(rows, columns=columns)
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
-    int_cols = ["Report Flags"]
-    df[int_cols] = df[int_cols].astype(int)
-
-    df["Created Date"] = pd.to_datetime(df["Created Date"], errors="coerce")
-    df["Modified Date"] = pd.to_datetime(df["Modified Date"], errors="coerce")
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -1101,23 +1031,20 @@ def get_capacity_assignment_status(
 
     (workspace_name, workspace_id) = _resolve_workspace_name_and_id(workspace)
 
-    df = pd.DataFrame(
-        columns=[
-            "Status",
-            "Activity Id",
-            "Start Time",
-            "End Time",
-            "Capacity Id",
-            "Capacity Name",
-        ]
+    columns = {
+        "Status": "string",
+        "Activity Id": "string",
+        "Start Time": "datetime",
+        "End Time": "datetime",
+        "Capacity Id": "string",
+        "Capacity Name": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    response = _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}/CapacityAssignmentStatus",
+        client="fabric_sp",
     )
-
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
-    response = client.get(f"/v1.0/myorg/groups/{workspace_id}/CapacityAssignmentStatus")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
     v = response.json()
     capacity_id = v.get("capacityId")
 
@@ -1134,4 +1061,40 @@ def get_capacity_assignment_status(
 
     df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
 
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+
     return df
+
+
+def get_capacity_state(capacity: Optional[str | UUID] = None):
+    """
+    Gets the state of a capacity.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    capacity : str | uuid.UUID, default=None
+        The capacity name or ID.
+        Defaults to None which resolves to the capacity of the attached lakehouse
+        or if no lakehouse is attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    str
+        The capacity state.
+    """
+
+    df = list_capacities()
+
+    if capacity is None:
+        capacity = get_capacity_id()
+    if _is_valid_uuid(capacity):
+        df_filt = df[df["Capacity Id"] == capacity]
+    else:
+        df_filt = df[df["Capacity Name"] == capacity]
+
+    if df_filt.empty:
+        raise ValueError(f"{icons.red_dot} The capacity '{capacity}' was not found.")
+
+    return df_filt["State"].iloc[0]

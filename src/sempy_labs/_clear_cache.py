@@ -4,12 +4,13 @@ from sempy_labs._helper_functions import (
     _get_adls_client,
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
+    _update_dataframe_datatypes,
+    _base_api,
 )
 from typing import Optional
 import sempy_labs._icons as icons
 from sempy._utils._log import log
 import pandas as pd
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
@@ -264,14 +265,10 @@ def list_backups(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing a list of backup files contained within a workspace's ADLS Gen2 storage account.
     """
 
-    client = fabric.PowerBIRestClient()
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    response = client.get(
-        f"/v1.0/myorg/resources?resourceType=StorageAccount&folderObjectId={workspace_id}"
+    response = _base_api(
+        request=f"/v1.0/myorg/resources?resourceType=StorageAccount&folderObjectId={workspace_id}"
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
 
     v = response.json().get("value", [])
     if not v:
@@ -334,6 +331,10 @@ def list_storage_account_files(
 
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    df["File Size"] = df["File Size"].astype(int)
+    column_map = {
+        "File Size": "int",
+    }
+
+    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     return df

@@ -3,6 +3,7 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
     resolve_lakehouse_id,
     resolve_workspace_name_and_id,
+    _base_api,
 )
 from typing import Optional
 import sempy_labs._icons as icons
@@ -71,37 +72,30 @@ def create_shortcut_onelake(
     if shortcut_name is None:
         shortcut_name = table_name
 
-    client = fabric.FabricRestClient()
-    tablePath = f"Tables/{table_name}"
+    table_path = f"Tables/{table_name}"
 
-    request_body = {
+    payload = {
         "path": "Tables",
         "name": shortcut_name.replace(" ", ""),
         "target": {
             "oneLake": {
                 "workspaceId": source_workspace_id,
                 "itemId": source_lakehouse_id,
-                "path": tablePath,
+                "path": table_path,
             }
         },
     }
 
-    try:
-        response = client.post(
-            f"/v1/workspaces/{destination_workspace_id}/items/{destination_lakehouse_id}/shortcuts",
-            json=request_body,
-        )
-        if response.status_code == 201:
-            print(
-                f"{icons.green_dot} The shortcut '{shortcut_name}' was created in the '{destination_lakehouse_name}' lakehouse within"
-                f" the '{destination_workspace_name} workspace. It is based on the '{table_name}' table in the '{source_lakehouse_name}' lakehouse within the '{source_workspace_name}' workspace."
-            )
-        else:
-            print(response.status_code)
-    except Exception as e:
-        raise ValueError(
-            f"{icons.red_dot} Failed to create a shortcut for the '{table_name}' table."
-        ) from e
+    _base_api(
+        request=f"/v1/workspaces/{destination_workspace_id}/items/{destination_lakehouse_id}/shortcuts",
+        payload=payload,
+        status_codes=201,
+        method="post",
+    )
+
+    print(
+        f"{icons.green_dot} The shortcut '{shortcut_name}' was created in the '{destination_lakehouse_name}' lakehouse within the '{destination_workspace_name} workspace. It is based on the '{table_name}' table in the '{source_lakehouse_name}' lakehouse within the '{source_workspace_name}' workspace."
+    )
 
 
 def create_shortcut(
@@ -222,4 +216,32 @@ def delete_shortcut(
         raise FabricHTTPException(response)
     print(
         f"{icons.green_dot} The '{shortcut_name}' shortcut in the '{lakehouse}' within the '{workspace_name}' workspace has been deleted."
+    )
+
+
+def reset_shortcut_cache(workspace: Optional[str | UUID]):
+    """
+    Deletes any cached files that were stored while reading from shortcuts.
+
+    This is a wrapper function for the following API: `OneLake Shortcuts - Reset Shortcut Cache <https://learn.microsoft.com/rest/api/fabric/core/onelake-shortcuts/reset-shortcut-cache>`_.
+
+    Parameters
+    ----------
+    workspace : str | uuid.UUID, default=None
+        The name or ID of the Fabric workspace.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/onelake/resetShortcutCache",
+        method="post",
+        lro_return_status_code=True,
+        status_codes=None,
+    )
+
+    print(
+        f"{icons.green_dot} The shortcut cache has been reset for the '{workspace_name}' workspace."
     )

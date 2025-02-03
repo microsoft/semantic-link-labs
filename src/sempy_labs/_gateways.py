@@ -1,14 +1,14 @@
-import sempy.fabric as fabric
 from sempy._utils._log import log
 import pandas as pd
 from typing import Optional
-from sempy.fabric.exceptions import FabricHTTPException
 from sempy_labs._helper_functions import (
-    pagination,
     _is_valid_uuid,
     resolve_capacity_id,
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
+    _update_dataframe_datatypes,
+    _base_api,
+    _create_dataframe,
 )
 from uuid import UUID
 import sempy_labs._icons as icons
@@ -27,28 +27,21 @@ def list_gateways() -> pd.DataFrame:
         A pandas dataframe showing a list of all gateways the user has permission for, including on-premises, on-premises (personal mode), and virtual network gateways.
     """
 
-    client = fabric.FabricRestClient()
-    response = client.get("/v1/gateways")
+    columns = {
+        "Gateway Name": "string",
+        "Gateway Id": "string",
+        "Type": "string",
+        "Public Key Exponent": "string",
+        "Public Key Modulus": "string",
+        "Version": "string",
+        "Number Of Member Gateways": "int",
+        "Load Balancing Setting": "string",
+        "Allow Cloud Connection Refresh": "bool",
+        "Allow Custom Connectors": "bool",
+    }
+    df = _create_dataframe(columns=columns)
 
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
-
-    df = pd.DataFrame(
-        columns=[
-            "Gateway Name",
-            "Gateway Id",
-            "Type",
-            "Public Key Exponent",
-            "Public Key Modulus",
-            "Version",
-            "Number Of Member Gateways",
-            "Load Balancing Setting",
-            "Allow Cloud Connection Refresh",
-            "Allow Custom Connectors",
-        ]
-    )
+    responses = _base_api(request="/v1/gateways", uses_pagination=True)
 
     for r in responses:
         for v in r.get("value", []):
@@ -67,10 +60,7 @@ def list_gateways() -> pd.DataFrame:
 
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    int_cols = ["Number Of Member Gateways"]
-    bool_cols = ["Allow Cloud Connection Refresh", "Allow Custom Connectors"]
-    df[bool_cols] = df[bool_cols].astype(bool)
-    df[int_cols] = df[int_cols].astype(int)
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -102,12 +92,7 @@ def delete_gateway(gateway: str | UUID):
     """
 
     gateway_id = _resolve_gateway_id(gateway)
-    client = fabric.FabricRestClient()
-    response = client.delete(f"/v1/gateways/{gateway_id}")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
+    _base_api(request=f"/v1/gateways/{gateway_id}", method="delete")
     print(f"{icons.green_dot} The '{gateway}' gateway has been deleted.")
 
 
@@ -128,16 +113,17 @@ def list_gateway_role_assigments(gateway: str | UUID) -> pd.DataFrame:
         A pandas dataframe showing a list of gateway role assignments.
     """
 
+    columns = {
+        "Gateway Role Assignment Id": "string",
+        "Principal Id": "string",
+        "Principal Type": "string",
+        "Role": "string",
+    }
+    df = _create_dataframe(columns=columns)
     gateway_id = _resolve_gateway_id(gateway)
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/gateways/{gateway_id}/roleAssignments")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    df = pd.DataFrame(columns=[])
-
-    responses = pagination(client, response)
+    responses = _base_api(
+        request=f"/v1/gateways/{gateway_id}/roleAssignments", uses_pagination=True
+    )
 
     for r in responses:
         for v in r.get("value", []):
@@ -153,7 +139,7 @@ def list_gateway_role_assigments(gateway: str | UUID) -> pd.DataFrame:
     return df
 
 
-def delete_gateway_role_assignment(gateway: str | UUID, role_assignement_id: UUID):
+def delete_gateway_role_assignment(gateway: str | UUID, role_assignment_id: UUID):
     """
     Delete the specified role assignment for the gateway.
 
@@ -163,21 +149,18 @@ def delete_gateway_role_assignment(gateway: str | UUID, role_assignement_id: UUI
     ----------
     gateway : str | uuid.UUID
         The gateway name or ID.
-    role_assignement_id : uuid.UUID
+    role_assignment_id : uuid.UUID
         The role assignment ID.
     """
 
     gateway_id = _resolve_gateway_id(gateway)
-    client = fabric.FabricRestClient()
-    response = client.delete(
-        f"/v1/gateways/{gateway_id}/roleAssignments/{role_assignement_id}"
+    _base_api(
+        request=f"/v1/gateways/{gateway_id}/roleAssignments/{role_assignment_id}",
+        method="delete",
     )
 
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
     print(
-        f"{icons.green_dot} The '{role_assignement_id}' role assignment for the '{gateway}' gateway has been deleted."
+        f"{icons.green_dot} The '{role_assignment_id}' role assignment for the '{gateway}' gateway has been deleted."
     )
 
 
@@ -217,12 +200,7 @@ def delete_gateway_member(gateway: str | UUID, gateway_member: str | UUID):
         gateway=gateway_id, gateway_member=gateway_member
     )
 
-    client = fabric.FabricRestClient()
-    response = client.delete(f"/v1/gateways/{gateway_id}/members/{member_id}")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
+    _base_api(request=f"/v1/gateways/{gateway_id}/members/{member_id}", method="delete")
     print(
         f"{icons.green_dot} The '{member_id}' member for the '{gateway}' gateway has been deleted."
     )
@@ -246,22 +224,18 @@ def list_gateway_members(gateway: str | UUID) -> pd.DataFrame:
     """
 
     gateway_id = _resolve_gateway_id(gateway)
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/gateways/{gateway_id}/members")
 
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    columns = {
+        "Member Id": "string",
+        "Member Name": "string",
+        "Public Key Exponent": "string",
+        "Public Key Modulus": "string",
+        "Version": "string",
+        "Enabled": "bool",
+    }
+    df = _create_dataframe(columns=columns)
 
-    df = pd.DataFrame(
-        columns=[
-            "Member Id",
-            "Member Name",
-            "Public Key Exponent",
-            "Public Key Modulus",
-            "Version",
-            "Enabled",
-        ]
-    )
+    response = _base_api(request=f"/v1/gateways/{gateway_id}/members")
 
     for v in response.json().get("value", []):
         new_data = {
@@ -275,8 +249,7 @@ def list_gateway_members(gateway: str | UUID) -> pd.DataFrame:
 
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    bool_cols = ["Enabled"]
-    df[bool_cols] = df[bool_cols].astype(bool)
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -316,8 +289,6 @@ def create_vnet_gateway(
         The name of the subnet.
     """
 
-    client = fabric.FabricRestClient()
-
     capacity_id = resolve_capacity_id(capacity)
     payload = {
         "type": "VirtualNetwork",
@@ -332,10 +303,8 @@ def create_vnet_gateway(
         "inactivityMinutesBeforeSleep": inactivity_minutes_before_sleep,
         "numberOfMemberGateways": number_of_member_gateways,
     }
-    response = client.post("/v1/gateways", json=payload)
 
-    if response.status_code != 201:
-        raise FabricHTTPException(response)
+    _base_api(request="/v1/gateways", method="post", payload=payload, status_codes=201)
 
     print(
         f"{icons.green_dot} The '{name}' gateway was created within the '{capacity}' capacity."
@@ -383,11 +352,7 @@ def update_on_premises_gateway(
 
     payload["type"] = "OnPremises"
 
-    client = fabric.FabricRestClient()
-    response = client.patch(f"/v1/gateways/{gateway_id}", json=payload)
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    _base_api(request=f"/v1/gateways/{gateway_id}", method="patch", payload=payload)
 
     print(f"{icons.green_dot} The '{gateway}' has been updated accordingly.")
 
@@ -434,12 +399,7 @@ def update_vnet_gateway(
 
     payload["type"] = "VirtualNetwork"
 
-    client = fabric.FabricRestClient()
-    response = client.patch(f"/v1/gateways/{gateway_id}", json=payload)
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
+    _base_api(request=f"/v1/gateways/{gateway_id}", method="patch", payload=payload)
     print(f"{icons.green_dot} The '{gateway}' has been updated accordingly.")
 
 
@@ -473,15 +433,11 @@ def bind_semantic_model_to_gateway(
         "gatewayObjectId": gateway_id,
     }
 
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/Default.BindToGateway",
-        json=payload,
+    _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/Default.BindToGateway",
+        method="post",
+        payload=payload,
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
     print(
         f"{icons.green_dot} The '{dataset_name}' semantic model within the '{workspace_name}' workspace has been binded to the '{gateway_id}' gateway."
     )

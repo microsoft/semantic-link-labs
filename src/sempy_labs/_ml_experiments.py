@@ -1,13 +1,13 @@
 import sempy.fabric as fabric
 import pandas as pd
-import sempy_labs._icons as icons
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
-    lro,
-    pagination,
+    _base_api,
+    _print_success,
+    resolve_item_id,
+    _create_dataframe,
 )
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
@@ -30,16 +30,20 @@ def list_ml_experiments(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing the ML models within a workspace.
     """
 
-    df = pd.DataFrame(columns=["ML Experiment Name", "ML Experiment Id", "Description"])
+    columns = {
+        "ML Experiment Name": "string",
+        "ML Experiment Id": "string",
+        "Description": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/mlExperiments")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
+    responses = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/mlExperiments",
+        status_codes=200,
+        uses_pagination=True,
+    )
 
     for r in responses:
         for v in r.get("value", []):
@@ -79,20 +83,23 @@ def create_ml_experiment(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    request_body = {"displayName": name}
+    payload = {"displayName": name}
 
     if description:
-        request_body["description"] = description
+        payload["description"] = description
 
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/mlExperiments", json=request_body
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/mlExperiments",
+        method="post",
+        json=payload,
+        status_codes=[201, 202],
+        lro_return_status_code=True,
     )
-
-    lro(client, response, status_codes=[201, 202])
-
-    print(
-        f"{icons.green_dot} The '{name}' ML experiment has been created within the '{workspace_name}' workspace."
+    _print_success(
+        item_name=name,
+        item_type="ML experiment",
+        workspace_name=workspace_name,
+        action="created",
     )
 
 
@@ -112,18 +119,11 @@ def delete_ml_experiment(name: str, workspace: Optional[str | UUID] = None):
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    item_id = fabric.resolve_item_id(
-        item_name=name, type="MLExperiment", workspace=workspace_id
-    )
-
-    client = fabric.FabricRestClient()
-    response = client.delete(f"/v1/workspaces/{workspace_id}/mlExperiments/{item_id}")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    print(
-        f"{icons.green_dot} The '{name}' ML experiment within the '{workspace_name}' workspace has been deleted."
+    item_id = resolve_item_id(item=name, type="MLExperiment", workspace=workspace)
+    fabric.delete_item(item_id=item_id, workspace=workspace)
+    _print_success(
+        item_name=name,
+        item_type="ML Experiment",
+        workspace_name=workspace,
+        action="deleted",
     )

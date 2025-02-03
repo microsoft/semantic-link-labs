@@ -12,6 +12,7 @@ from sempy_labs.admin._basic_functions import (
 from sempy_labs._helper_functions import (
     resolve_capacity_id,
     convert_to_alphanumeric_lowercase,
+    _base_api,
 )
 from sempy_labs._capacities import create_fabric_capacity
 
@@ -265,13 +266,9 @@ def migrate_capacity_settings(source_capacity: str, target_capacity: str):
 
     workloads_params = "capacityCustomParameters?workloadIds=ADM&workloadIds=CDSA&workloadIds=DMS&workloadIds=RsRdlEngine&workloadIds=ScreenshotEngine&workloadIds=AS&workloadIds=QES&workloadIds=DMR&workloadIds=ESGLake&workloadIds=NLS&workloadIds=lake&workloadIds=TIPS&workloadIds=Kusto&workloadIds=Lakehouse&workloadIds=SparkCore&workloadIds=DI&workloadIds=Notebook&workloadIds=ML&workloadIds=ES&workloadIds=Reflex&workloadIds=Must&workloadIds=dmh&workloadIds=PowerBI&workloadIds=HLS"
 
-    client = fabric.PowerBIRestClient()
-    response_get_source = client.get(
-        f"capacities/{source_capacity_id}/{workloads_params}"
+    response_get_source = _base_api(
+        request=f"capacities/{source_capacity_id}/{workloads_params}"
     )
-    if response_get_source.status_code != 200:
-        raise FabricHTTPException(response_get_source)
-
     response_source_json = response_get_source.json().get(
         "capacityCustomParameters", {}
     )
@@ -356,21 +353,18 @@ def migrate_disaster_recovery_settings(source_capacity: str, target_capacity: st
         )
     target_capacity_id = dfC_filt["Capacity Id"].iloc[0].upper()
 
-    client = fabric.PowerBIRestClient()
-    response_get_source = client.get(f"capacities/{source_capacity_id}/config")
-    if response_get_source.status_code != 200:
-        raise FabricHTTPException(response_get_source)
+    response_get_source = _base_api(request=f"capacities/{source_capacity_id}/config")
 
-    request_body = {}
+    payload = {}
     value = response_get_source.json()["bcdr"]["config"]
-    request_body["config"] = value
+    payload["config"] = value
 
-    response_put = client.put(
-        f"capacities/{target_capacity_id}/fabricbcdr", json=request_body
+    _base_api(
+        request=f"capacities/{target_capacity_id}/fabricbcdr",
+        payload=payload,
+        status_codes=202,
+        method="put",
     )
-
-    if response_put.status_code != 202:
-        raise FabricHTTPException(response_put)
     print(
         f"{icons.green_dot} The disaster recovery settings have been migrated from the '{source_capacity}' capacity to the '{target_capacity}' capacity."
     )
@@ -391,31 +385,28 @@ def migrate_access_settings(source_capacity: str, target_capacity: str):
 
     dfC = list_capacities()
     dfC_filt = dfC[dfC["Capacity Name"] == source_capacity]
-    if len(dfC_filt) == 0:
+    if dfC_filt.empty:
         raise ValueError(
             f"{icons.red_dot} The '{source_capacity}' capacity does not exist."
         )
     source_capacity_id = dfC_filt["Capacity Id"].iloc[0].upper()
     dfC_filt = dfC[dfC["Capacity Name"] == target_capacity]
-    if len(dfC_filt) == 0:
+    if dfC_filt.empty:
         raise ValueError(
             f"{icons.red_dot} The '{target_capacity}' capacity does not exist."
         )
     target_capacity_id = dfC_filt["Capacity Id"].iloc[0].upper()
 
-    client = fabric.PowerBIRestClient()
-    response_get_source = client.get(f"capacities/{source_capacity_id}")
-    if response_get_source.status_code != 200:
-        raise FabricHTTPException(response_get_source)
+    response_get_source = _base_api(request=f"capacities/{source_capacity_id}")
 
-    access_settings = response_get_source.json().get("access", {})
+    payload = response_get_source.json().get("access", {})
 
-    response_put = client.put(
-        f"capacities/{target_capacity_id}/access",
-        json=access_settings,
+    _base_api(
+        request=f"capacities/{target_capacity_id}/access",
+        method="put",
+        payload=payload,
+        status_codes=204,
     )
-    if response_put.status_code != 204:
-        raise FabricHTTPException(response_put)
 
     print(
         f"{icons.green_dot} The access settings have been migrated from the '{source_capacity}' capacity to the '{target_capacity}' capacity."
@@ -437,33 +428,28 @@ def migrate_notification_settings(source_capacity: str, target_capacity: str):
 
     dfC = list_capacities()
     dfC_filt = dfC[dfC["Capacity Name"] == source_capacity]
-    if len(dfC_filt) == 0:
+    if dfC_filt.empty:
         raise ValueError(
             f"{icons.red_dot} The '{source_capacity}' capacity does not exist."
         )
     source_capacity_id = dfC_filt["Capacity Id"].iloc[0].upper()
     dfC_filt = dfC[dfC["Capacity Name"] == target_capacity]
-    if len(dfC_filt) == 0:
+    if dfC_filt.empty:
         raise ValueError(
             f"{icons.red_dot} The '{target_capacity}' capacity does not exist."
         )
     target_capacity_id = dfC_filt["Capacity Id"].iloc[0].upper()
 
-    client = fabric.PowerBIRestClient()
-    response_get_source = client.get(f"capacities/{source_capacity_id}")
-    if response_get_source.status_code != 200:
-        raise FabricHTTPException(response_get_source)
+    response_get_source = _base_api(request=f"capacities/{source_capacity_id}")
 
-    notification_settings = response_get_source.json().get(
-        "capacityNotificationSettings", {}
-    )
+    payload = response_get_source.json().get("capacityNotificationSettings", {})
 
-    response_put = client.put(
-        f"capacities/{target_capacity_id}/notificationSettings",
-        json=notification_settings,
+    _base_api(
+        request=f"capacities/{target_capacity_id}/notificationSettings",
+        method="put",
+        payload=payload,
+        status_codes=204,
     )
-    if response_put.status_code != 204:
-        raise FabricHTTPException(response_put)
 
     print(
         f"{icons.green_dot} The notification settings have been migrated from the '{source_capacity}' capacity to the '{target_capacity}' capacity."
@@ -486,24 +472,20 @@ def migrate_delegated_tenant_settings(source_capacity: str, target_capacity: str
     dfC = list_capacities()
 
     dfC_filt = dfC[dfC["Capacity Name"] == source_capacity]
-    if len(dfC_filt) == 0:
+    if dfC_filt.empty:
         raise ValueError(
             f"{icons.red_dot} The '{source_capacity}' capacity does not exist."
         )
     source_capacity_id = dfC_filt["Capacity Id"].iloc[0].upper()
 
     dfC_filt = dfC[dfC["Capacity Name"] == target_capacity]
-    if len(dfC_filt) == 0:
+    if dfC_filt.empty:
         raise ValueError(
             f"{icons.red_dot} The '{target_capacity}' capacity does not exist."
         )
     target_capacity_id = dfC_filt["Capacity Id"].iloc[0].upper()
 
-    client = fabric.FabricRestClient()
-    response_get = client.get("v1/admin/capacities/delegatedTenantSettingOverrides")
-
-    if response_get.status_code != 200:
-        raise FabricHTTPException(response_get)
+    response_get = _base_api("v1/admin/capacities/delegatedTenantSettingOverrides")
 
     response_json = response_get.json().get("Overrides", [])
 
@@ -536,13 +518,11 @@ def migrate_delegated_tenant_settings(source_capacity: str, target_capacity: str
 
                 payload = {"featureSwitches": [feature_switch], "properties": []}
 
-                client = fabric.PowerBIRestClient()
-                response_put = client.put(
-                    f"metadata/tenantsettings/selfserve?capacityObjectId={target_capacity_id}",
-                    json=payload,
+                _base_api(
+                    request=f"metadata/tenantsettings/selfserve?capacityObjectId={target_capacity_id}",
+                    method="put",
+                    payload=payload,
                 )
-                if response_put.status_code != 200:
-                    raise FabricHTTPException(response_put)
 
                 print(
                     f"{icons.green_dot} The delegated tenant settings for the '{setting_name}' feature switch of the '{source_capacity}' capacity have been migrated to the '{target_capacity}' capacity."
@@ -566,21 +546,14 @@ def migrate_spark_settings(source_capacity: str, target_capacity: str):
 
     source_capacity_id = resolve_capacity_id(capacity_name=source_capacity)
     target_capacity_id = resolve_capacity_id(capacity_name=target_capacity)
-    client = fabric.PowerBIRestClient()
 
     # Get source capacity server dns
-    response = client.get(f"metadata/capacityInformation/{source_capacity_id}")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
+    response = _base_api(request=f"metadata/capacityInformation/{source_capacity_id}")
     source_server_dns = response.json().get("capacityDns")
     source_url = f"{source_server_dns}/webapi/capacities"
 
     # Get target capacity server dns
-    response = client.get(f"metadata/capacityInformation/{target_capacity_id}")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
+    response = _base_api(request=f"metadata/capacityInformation/{target_capacity_id}")
     target_server_dns = response.json().get("capacityDns")
     target_url = f"{target_server_dns}/webapi/capacities"
 
@@ -590,17 +563,11 @@ def migrate_spark_settings(source_capacity: str, target_capacity: str):
     put_url = f"{target_url}/{target_capacity_id}/{end_url}/content"
 
     # Get source capacity spark settings
-    response = client.get(get_url)
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
+    response = _base_api(request=get_url)
     payload = response.json().get("content")
 
     # Update target capacity spark settings
-    response_put = client.put(put_url, json=payload)
-
-    if response_put.status_code != 200:
-        raise FabricHTTPException(response_put)
+    _base_api(request=put_url, method="put", payload=payload)
     print(
         f"{icons.green_dot} The spark settings have been migrated from the '{source_capacity}' capacity to the '{target_capacity}' capacity."
     )
@@ -643,7 +610,7 @@ def migrate_fabric_trial_capacity(
     dfC = list_capacities()
     dfC_filt = dfC[dfC["Capacity Name"] == source_capacity]
 
-    if len(dfC_filt) == 0:
+    if dfC_filt.empty:
         raise ValueError(
             f"{icons.red_dot} The {source_capacity}' capacity does not exist."
         )

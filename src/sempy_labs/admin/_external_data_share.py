@@ -1,9 +1,12 @@
-import sempy.fabric as fabric
 from uuid import UUID
 import sempy_labs._icons as icons
-from sempy.fabric.exceptions import FabricHTTPException
 import pandas as pd
 from sempy_labs.admin._basic_functions import _resolve_workspace_name_and_id
+from sempy_labs._helper_functions import (
+    _base_api,
+    _create_dataframe,
+    _update_dataframe_datatypes,
+)
 
 
 def list_external_data_shares() -> pd.DataFrame:
@@ -17,28 +20,24 @@ def list_external_data_shares() -> pd.DataFrame:
     pandas.DataFrame
         A pandas dataframe showing a list of external data shares in the tenant.
     """
-    df = pd.DataFrame(
-        columns=[
-            "External Data Share Id",
-            "Paths",
-            "Creater Principal Id",
-            "Creater Principal Name",
-            "Creater Principal Type",
-            "Creater Principal UPN",
-            "Recipient UPN",
-            "Status",
-            "Expiration Time UTC",
-            "Workspace Id",
-            "Item Id",
-            "Invitation URL",
-        ]
-    )
 
-    client = fabric.FabricRestClient()
-    response = client.get("/v1/admin/items/externalDataShares")
+    columns = {
+        "External Data Share Id": "string",
+        "Paths": "string",
+        "Creater Principal Id": "string",
+        "Creater Principal Name": "string",
+        "Creater Principal Type": "string",
+        "Creater Principal UPN": "string",
+        "Recipient UPN": "string",
+        "Status": "string",
+        "Expiration Time UTC": "datetime",
+        "Workspace Id": "string",
+        "Item Id": "string",
+        "Invitation URL": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    response = _base_api(request="/v1/admin/items/externalDataShares")
 
     for i in response.json().get("value", []):
         cp = i.get("creatorPrincipal", {})
@@ -59,8 +58,7 @@ def list_external_data_shares() -> pd.DataFrame:
 
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    date_time_columns = ["Expiration Time UTC"]
-    df[date_time_columns] = pd.to_datetime(df[date_time_columns])
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -84,13 +82,10 @@ def revoke_external_data_share(
     """
     (workspace, workspace_id) = _resolve_workspace_name_and_id(workspace)
 
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/admin/workspaces/{workspace_id}/items/{item_id}/externalDataShares/{external_data_share_id}/revoke"
+    _base_api(
+        request=f"/v1/admin/workspaces/{workspace_id}/items/{item_id}/externalDataShares/{external_data_share_id}/revoke",
+        method="post",
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
 
     print(
         f"{icons.green_dot} The '{external_data_share_id}' external data share for the '{item_id}' item within the '{workspace}' workspace has been revoked."

@@ -3,11 +3,11 @@ from sempy_labs._helper_functions import (
     resolve_dataset_id,
     resolve_workspace_name_and_id,
     resolve_report_id,
+    _base_api,
 )
 from typing import Optional, List
 from sempy._utils._log import log
 import sempy_labs._icons as icons
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
@@ -46,8 +46,6 @@ def report_rebind(
     if dataset_workspace is None:
         dataset_workspace = report_workspace_name
 
-    client = fabric.PowerBIRestClient()
-
     if isinstance(report, str):
         report = [report]
 
@@ -55,16 +53,14 @@ def report_rebind(
         report_id = resolve_report_id(report=rpt, workspace=report_workspace_id)
         dataset_id = resolve_dataset_id(dataset=dataset, workspace=dataset_workspace)
 
-        # Prepare API
-        request_body = {"datasetId": dataset_id}
+        payload = {"datasetId": dataset_id}
 
-        response = client.post(
-            f"/v1.0/myorg/groups/{report_workspace_id}/reports/{report_id}/Rebind",
-            json=request_body,
+        _base_api(
+            request=f"v1.0/myorg/groups/{report_workspace_id}/reports/{report_id}/Rebind",
+            method="post",
+            json=payload,
         )
 
-        if response.status_code != 200:
-            raise FabricHTTPException(response)
         print(
             f"{icons.green_dot} The '{rpt}' report has been successfully rebinded to the '{dataset}' semantic model."
         )

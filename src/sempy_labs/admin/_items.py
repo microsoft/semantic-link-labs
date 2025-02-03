@@ -1,19 +1,17 @@
-import sempy.fabric as fabric
 import pandas as pd
 from typing import Optional, Tuple
 from uuid import UUID
 import sempy_labs._icons as icons
-from sempy.fabric.exceptions import FabricHTTPException
 from sempy_labs.admin._basic_functions import (
     _resolve_capacity_name_and_id,
     _resolve_workspace_name_and_id,
 )
 from sempy_labs._helper_functions import (
-    pagination,
     _is_valid_uuid,
     _build_url,
+    _base_api,
+    _create_dataframe,
 )
-import sempy_labs._authentication as auth
 
 
 def _resolve_item_id(
@@ -106,27 +104,23 @@ def list_items(
         capacity = kwargs["capacity_name"]
         del kwargs["capacity_name"]
 
-    df = pd.DataFrame(
-        columns=[
-            "Item Id",
-            "Item Name",
-            "Type",
-            "Description",
-            "State",
-            "Last Updated Date",
-            "Creator Principal Id",
-            "Creator Principal Display Name",
-            "Creator Principal Type",
-            "Creator User Principal Name",
-            "Workspace Id",
-            "Capacity Id",
-        ]
-    )
-
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
+    columns = {
+        "Item Id": "string",
+        "Item Name": "string",
+        "Type": "string",
+        "Description": "string",
+        "State": "string",
+        "Last Updated Date": "string",
+        "Creator Principal Id": "string",
+        "Creator Principal Display Name": "string",
+        "Creator Principal Type": "string",
+        "Creator User Principal Name": "string",
+        "Workspace Id": "string",
+        "Capacity Id": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     params = {}
-
     url = "/v1/admin/items"
 
     if capacity is not None:
@@ -143,12 +137,7 @@ def list_items(
 
     url = _build_url(url, params)
 
-    response = client.get(url)
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
+    responses = _base_api(request=url, client="fabric_sp", uses_pagination=True)
 
     for r in responses:
         for v in r.get("itemEntities", []):
@@ -222,31 +211,28 @@ def list_item_access_details(
             f"{icons.red_dot} The parameter 'item' and 'type' are mandatory."
         )
 
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
-
     workspace_name, workspace_id = _resolve_workspace_name_and_id(workspace)
     item_name, item_id = _resolve_item_name_and_id(
         item=item, type=type, workspace=workspace_name
     )
 
-    df = pd.DataFrame(
-        columns=[
-            "User Id",
-            "User Name",
-            "User Type",
-            "User Principal Name",
-            "Item Name",
-            "Item Type",
-            "Item Id",
-            "Permissions",
-            "Additional Permissions",
-        ]
+    columns = {
+        "User Id": "string",
+        "User Name": "string",
+        "User Type": "string",
+        "User Principal Name": "string",
+        "Item Name": "string",
+        "Item Type": "string",
+        "Item Id": "string",
+        "Permissions": "string",
+        "Additional Permissions": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    response = _base_api(
+        request=f"/v1/admin/workspaces/{workspace_id}/items/{item_id}/users",
+        client="fabric_sp",
     )
-
-    response = client.get(f"/v1/admin/workspaces/{workspace_id}/items/{item_id}/users")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
 
     for v in response.json().get("accessDetails", []):
         new_data = {

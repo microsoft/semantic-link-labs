@@ -1,11 +1,10 @@
-import sempy.fabric as fabric
 import pandas as pd
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
-    pagination,
+    _base_api,
+    _create_dataframe,
 )
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
@@ -28,21 +27,22 @@ def list_mirrored_warehouses(workspace: Optional[str | UUID] = None) -> pd.DataF
         A pandas dataframe showing the mirrored warehouses within a workspace.
     """
 
-    df = pd.DataFrame(
-        columns=["Mirrored Warehouse Name", "Mirrored Warehouse Id", "Description"]
-    )
+    columns = {
+        "Mirrored Warehouse Name": "string",
+        "Mirrored Warehouse Id": "string",
+        "Description": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/mirroredWarehouses")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-    responses = pagination(client, response)
+    responses = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/mirroredWarehouses",
+        status_codes=200,
+        uses_pagination=True,
+    )
 
     for r in responses:
         for v in r.get("value", []):
-
             new_data = {
                 "Mirrored Warehouse Name": v.get("displayName"),
                 "Mirrored Warehouse Id": v.get("id"),

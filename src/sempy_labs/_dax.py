@@ -4,12 +4,16 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     format_dax_object_name,
     resolve_dataset_name_and_id,
+    _base_api,
+    generate_guid,
 )
 from sempy_labs._model_dependencies import get_model_calc_dependencies
-from typing import Optional, List
+from typing import Optional, List, Tuple
 from sempy._utils._log import log
 from uuid import UUID
 from sempy_labs.directlake._warm_cache import _put_columns_into_memory
+import sempy_labs._icons as icons
+import time
 
 
 @log
@@ -47,15 +51,15 @@ def evaluate_dax_impersonation(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    request_body = {
+    payload = {
         "queries": [{"query": dax_query}],
         "impersonatedUserName": user_name,
     }
 
-    client = fabric.PowerBIRestClient()
-    response = client.post(
-        f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/executeQueries",
-        json=request_body,
+    response = _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/executeQueries",
+        method="post",
+        payload=payload,
     )
     data = response.json()["results"][0]["tables"]
     column_names = data[0]["rows"][0].keys()
@@ -257,3 +261,219 @@ def get_dax_query_memory_size(
     )
 
     return df["Total Size"].sum()
+
+
+@log
+def _dax_perf_test(
+    dataset: str,
+    dax_queries: dict,
+    clear_cache_before_run: bool = False,
+    refresh_type: Optional[str] = None,
+    rest_time: int = 2,
+    workspace: Optional[str] = None,
+) -> Tuple[pd.DataFrame, dict]:
+    """
+    Runs a performance test on a set of DAX queries.
+
+    Parameters
+    ----------
+    dataset : str
+        Name of the semantic model.
+    dax_queries : dict
+        The dax queries to run in a dictionary format. Here is an example:
+        {
+            "Sales Amount Test", """ """ EVALUATE SUMMARIZECOLUMNS("Sales Amount", [Sales Amount]) """ """,
+            "Order Quantity with Product", """ """ EVALUATE SUMMARIZECOLUMNS('Product'[Color], "Order Qty", [Order Qty]) """ """,
+        }
+    clear_cache_before_run : bool, default=False
+    refresh_type : str, default=None
+    rest_time : int, default=2
+        Rest time (in seconds) between the execution of each DAX query.
+    workspace : str, default=None
+        The Fabric workspace name.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    Tuple[pandas.DataFrame, dict]
+        A pandas dataframe showing the SQL profiler trace results of the DAX queries.
+        A dictionary of the query results in pandas dataframes.
+    """
+    from sempy_labs._refresh_semantic_model import refresh_semantic_model
+    from sempy_labs._clear_cache import clear_cache
+
+    event_schema = {
+        "QueryBegin": [
+            "EventClass",
+            "EventSubclass",
+            "CurrentTime",
+            "NTUserName",
+            "TextData",
+            "StartTime",
+            "ApplicationName",
+        ],
+        "QueryEnd": [
+            "EventClass",
+            "EventSubclass",
+            "CurrentTime",
+            "NTUserName",
+            "TextData",
+            "StartTime",
+            "EndTime",
+            "Duration",
+            "CpuTime",
+            "Success",
+            "ApplicationName",
+        ],
+        "VertiPaqSEQueryBegin": [
+            "EventClass",
+            "EventSubclass",
+            "CurrentTime",
+            "NTUserName",
+            "TextData",
+            "StartTime",
+        ],
+        "VertiPaqSEQueryEnd": [
+            "EventClass",
+            "EventSubclass",
+            "CurrentTime",
+            "NTUserName",
+            "TextData",
+            "StartTime",
+            "EndTime",
+            "Duration",
+            "CpuTime",
+            "Success",
+        ],
+        "VertiPaqSEQueryCacheMatch": [
+            "EventClass",
+            "EventSubclass",
+            "CurrentTime",
+            "NTUserName",
+            "TextData",
+        ],
+    }
+
+    # Add Execution Metrics
+    event_schema["ExecutionMetrics"] = ["EventClass", "ApplicationName", "TextData"]
+    # Add DAX Query Plan
+    # event_schema["DAXQueryPlan"] = ["EventClass", "EventSubclass", "CurrentTime", "StartTime", "EndTime", "Duration", "CpuTime", "ApplicationName", "TextData"]
+
+    query_results = {}
+
+    # Establish trace connection
+    with fabric.create_trace_connection(
+        dataset=dataset, workspace=workspace
+    ) as trace_connection:
+        with trace_connection.create_trace(event_schema) as trace:
+            trace.start()
+            print(f"{icons.in_progress} Starting performance testing...")
+            # Loop through DAX queries
+            for name, dax in dax_queries.items():
+
+                if clear_cache_before_run:
+                    clear_cache(dataset=dataset, workspace=workspace)
+                if refresh_type is not None:
+                    refresh_semantic_model(
+                        dataset=dataset, workspace=workspace, refresh_type=refresh_type
+                    )
+
+                # EVALUATE {1} is used to initate a warm cache
+                fabric.evaluate_dax(
+                    dataset=dataset, workspace=workspace, dax_string="""EVALUATE {1}"""
+                )
+                # Run DAX Query
+                result = fabric.evaluate_dax(
+                    dataset=dataset, workspace=workspace, dax_string=dax
+                )
+
+                # Add results to output
+                query_results[name] = result
+
+                time.sleep(rest_time)
+                print(f"{icons.green_dot} The '{name}' query has completed.")
+
+            df = trace.stop()
+            # Allow time to collect trace results
+            time.sleep(5)
+
+            # Step 1: Filter out unnecessary operations
+            query_names = list(dax_queries.keys())
+            df = df[
+                ~df["Application Name"].isin(["PowerBI", "PowerBIEIM"])
+                & (~df["Text Data"].str.startswith("EVALUATE {1}"))
+            ]
+            query_begin = df["Event Class"] == "QueryBegin"
+            temp_column_name = "QueryName_INT"
+            df = df.copy()
+            df[temp_column_name] = query_begin.cumsum()
+            df[temp_column_name] = (
+                df[temp_column_name]
+                .where(query_begin, None)  # Assign None to non-query begin rows
+                .ffill()  # Forward fill None values
+                .astype("Int64")  # Use pandas nullable integer type for numeric indices
+            )
+
+            df.loc[df[temp_column_name].notna(), "Query Name"] = (
+                df[temp_column_name]
+                .dropna()
+                .astype(int)
+                .map(lambda x: query_names[x - 1])
+            )
+            df = df[df[temp_column_name] != None]
+            df = df.drop(columns=[temp_column_name])
+
+            query_to_guid = {
+                name: generate_guid() for name in df["Query Name"].unique()
+            }
+            df["Query ID"] = df["Query Name"].map(query_to_guid)
+
+    df = df.reset_index(drop=True)
+
+    return df, query_results
+
+
+def _dax_perf_test_bulk(
+    mapping: dict,
+    clear_cache_before_run: bool = False,
+    refresh_type: Optional[str] = None,
+    rest_time: int = 2,
+):
+    """
+    mapping is something like this:
+
+    mapping = {
+        "Workspace1": {
+            "Dataset1": {
+                "Query1": "EVALUATE ...",
+                "Query2": "EVALUATE ...",
+            },
+            "Dataset2": {
+                "Query3": "EVALUATE ...",
+                "Query4": "EVALUATE ...",
+            }
+        },
+        "Workspace2": {
+            "Dataset3": {
+                "Query5": "EVALUATE ...",
+                "Query6": "EVALUATE ...",
+            },
+            "Dataset4": {
+                "Query7": "EVALUATE ...",
+                "Query8": "EVALUATE ...",
+            }
+        }
+    }
+    """
+
+    for workspace, datasets in mapping.items():
+        for dataset, queries in datasets.items():
+            _dax_perf_test(
+                dataset=dataset,
+                dax_queries=queries,
+                clear_cache_before_run=clear_cache_before_run,
+                refresh_type=refresh_type,
+                rest_time=rest_time,
+                workspace=workspace,
+            )

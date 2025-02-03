@@ -6,7 +6,9 @@ import numpy as np
 import time
 from sempy_labs.admin._basic_functions import list_workspaces
 from sempy._utils._log import log
-import sempy_labs._authentication as auth
+from sempy_labs._helper_functions import (
+    _base_api,
+)
 
 
 @log
@@ -54,8 +56,6 @@ def scan_workspaces(
         "misconfiguredDatasourceInstances": [],
     }
 
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
-
     if workspace is None:
         workspace = fabric.resolve_workspace_name()
 
@@ -72,25 +72,32 @@ def scan_workspaces(
     batch_size = 99
     for i in range(0, len(workspaces), batch_size):
         batch = workspaces[i : i + batch_size].tolist()
-        request_body = {"workspaces": batch}
+        payload = {"workspaces": batch}
 
-        response_clause = f"/v1.0/myorg/admin/workspaces/getInfo?lineage={lineage}&datasourceDetails={data_source_details}&datasetSchema={dataset_schema}&datasetExpressions={dataset_expressions}&getArtifactUsers={artifact_users}"
-        response = client.post(response_clause, json=request_body)
+        url = f"/v1.0/myorg/admin/workspaces/getInfo?lineage={lineage}&datasourceDetails={data_source_details}&datasetSchema={dataset_schema}&datasetExpressions={dataset_expressions}&getArtifactUsers={artifact_users}"
+        response = _base_api(
+            request=url,
+            method="post",
+            payload=payload,
+            status_codes=202,
+            client="fabric_sp",
+        )
 
-        if response.status_code != 202:
-            raise FabricHTTPException(response)
         scan_id = response.json()["id"]
         scan_status = response.json().get("status")
         while scan_status not in ["Succeeded", "Failed"]:
             time.sleep(1)
-            response = client.get(f"/v1.0/myorg/admin/workspaces/scanStatus/{scan_id}")
+            response = _base_api(
+                request=f"/v1.0/myorg/admin/workspaces/scanStatus/{scan_id}",
+                client="fabric_sp",
+            )
             scan_status = response.json().get("status")
         if scan_status == "Failed":
             raise FabricHTTPException(response)
-        response = client.get(f"/v1.0/myorg/admin/workspaces/scanResult/{scan_id}")
-        if response.status_code != 200:
-            raise FabricHTTPException(response)
-
+        response = _base_api(
+            request=f"/v1.0/myorg/admin/workspaces/scanResult/{scan_id}",
+            client="fabric_sp",
+        )
         responseJson = response.json()
 
         if "workspaces" in responseJson:

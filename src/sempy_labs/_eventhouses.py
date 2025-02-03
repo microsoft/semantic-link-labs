@@ -1,13 +1,13 @@
 import sempy.fabric as fabric
 import pandas as pd
-import sempy_labs._icons as icons
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
-    lro,
-    pagination,
+    _base_api,
+    _print_success,
+    resolve_item_id,
+    _create_dataframe,
 )
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
@@ -33,20 +33,23 @@ def create_eventhouse(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    request_body = {"displayName": name}
+    payload = {"displayName": name}
 
     if description:
-        request_body["description"] = description
+        payload["description"] = description
 
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/eventhouses", json=request_body
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/eventhouses",
+        method="post",
+        status_codes=[201, 202],
+        payload=payload,
+        lro_return_status_code=True,
     )
-
-    lro(client, response, status_codes=[201, 202])
-
-    print(
-        f"{icons.green_dot} The '{name}' eventhouse has been created within the '{workspace_name}' workspace."
+    _print_success(
+        item_name=name,
+        item_type="eventhouse",
+        workspace_name=workspace_name,
+        action="created",
     )
 
 
@@ -69,16 +72,18 @@ def list_eventhouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing the eventhouses within a workspace.
     """
 
-    df = pd.DataFrame(columns=["Eventhouse Name", "Eventhouse Id", "Description"])
+    columns = {
+        "Eventhouse Name": "string",
+        "Eventhouse Id": "string",
+        "Description": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/eventhouses")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
+    responses = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/eventhouses", uses_pagination=True
+    )
 
     for r in responses:
         for v in r.get("value", []):
@@ -109,17 +114,12 @@ def delete_eventhouse(name: str, workspace: Optional[str | UUID] = None):
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    item_id = resolve_item_id(item=name, type="Eventhouse", workspace=workspace)
 
-    item_id = fabric.resolve_item_id(
-        item_name=name, type="Eventhouse", workspace=workspace_id
-    )
-
-    client = fabric.FabricRestClient()
-    response = client.delete(f"/v1/workspaces/{workspace_id}/eventhouses/{item_id}")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    print(
-        f"{icons.green_dot} The '{name}' eventhouse within the '{workspace_name}' workspace has been deleted."
+    fabric.delete_item(item_id=item_id, workspace=workspace)
+    _print_success(
+        item_name=name,
+        item_type="eventhouse",
+        workspace_name=workspace_name,
+        action="deleted",
     )

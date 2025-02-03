@@ -3,10 +3,12 @@ import pandas as pd
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _is_valid_uuid,
+    _update_dataframe_datatypes,
+    _base_api,
+    _create_dataframe,
 )
 from typing import Optional, Tuple
 import sempy_labs._icons as icons
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
@@ -28,14 +30,17 @@ def list_dataflows(workspace: Optional[str | UUID] = None):
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    client = fabric.PowerBIRestClient()
-    response = client.get(f"/v1.0/myorg/groups/{workspace_id}/dataflows")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
 
-    df = pd.DataFrame(
-        columns=["Dataflow Id", "Dataflow Name", "Configured By", "Users", "Generation"]
-    )
+    columns = {
+        "Dataflow Id": "string",
+        "Dataflow Name": "string",
+        "Configured By": "string",
+        "Users": "string",
+        "Generation": "int",
+    }
+    df = _create_dataframe(columns=columns)
+
+    response = _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/dataflows")
 
     data = []  # Collect rows here
 
@@ -51,7 +56,8 @@ def list_dataflows(workspace: Optional[str | UUID] = None):
 
     if data:
         df = pd.DataFrame(data)
-        df["Generation"] = df["Generation"].astype(int)
+
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -85,16 +91,14 @@ def assign_workspace_to_dataflow_storage(
         )
 
     dataflow_storage_id = df_filt["Dataflow Storage Account ID"].iloc[0]
-    client = fabric.PowerBIRestClient()
+    payload = {"dataflowStorageId": dataflow_storage_id}
 
-    request_body = {"dataflowStorageId": dataflow_storage_id}
-
-    response = client.post(
-        f"/v1.0/myorg/groups/{workspace_id}/AssignToDataflowStorage", json=request_body
+    _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}/AssignToDataflowStorage",
+        method="post",
+        payload=payload,
     )
 
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
     print(
         f"{icons.green_dot} The '{dataflow_storage_account}' dataflow storage account has been assigned to the '{workspace_name}' workspacce."
     )
@@ -112,17 +116,14 @@ def list_dataflow_storage_accounts() -> pd.DataFrame:
         A pandas dataframe showing the accessible dataflow storage accounts.
     """
 
-    df = pd.DataFrame(
-        columns=[
-            "Dataflow Storage Account ID",
-            "Dataflow Storage Account Name",
-            "Enabled",
-        ]
-    )
-    client = fabric.PowerBIRestClient()
-    response = client.get("/v1.0/myorg/dataflowStorageAccounts")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    columns = {
+        "Dataflow Storage Account ID": "string",
+        "Dataflow Storage Account Name": "string",
+        "Enabled": "bool",
+    }
+    df = _create_dataframe(columns=columns)
+
+    response = _base_api(request="/v1.0/myorg/dataflowStorageAccounts")
 
     for v in response.json().get("value", []):
         new_data = {
@@ -132,7 +133,7 @@ def list_dataflow_storage_accounts() -> pd.DataFrame:
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    df["Enabled"] = df["Enabled"].astype(bool)
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -164,29 +165,23 @@ def list_upstream_dataflows(
     (dataflow_name, dataflow_id) = _resolve_dataflow_name_and_id(
         dataflow=dataflow, workspace=workspace_id
     )
-    client = fabric.PowerBIRestClient()
 
-    df = pd.DataFrame(
-        columns=[
-            "Dataflow Name",
-            "Dataflow Id",
-            "Workspace Name",
-            "Workspace Id",
-            "Upstream Dataflow Name",
-            "Upstream Dataflow Id",
-            "Upstream Workspace Name",
-            "Upstream Workspace Id",
-        ]
-    )
+    columns = {
+        "Dataflow Name": "string",
+        "Dataflow Id": "string",
+        "Workspace Name": "string",
+        "Workspace Id": "string",
+        "Upstream Dataflow Name": "string",
+        "Upstream Dataflow Id": "string",
+        "Upstream Workspace Name": "string",
+        "Upstream Workspace Id": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
-    def collect_upstreams(
-        client, dataflow_id, dataflow_name, workspace_id, workspace_name
-    ):
-        response = client.get(
-            f"/v1.0/myorg/groups/{workspace_id}/dataflows/{dataflow_id}/upstreamDataflows"
+    def collect_upstreams(dataflow_id, dataflow_name, workspace_id, workspace_name):
+        response = _base_api(
+            request=f"/v1.0/myorg/groups/{workspace_id}/dataflows/{dataflow_id}/upstreamDataflows"
         )
-        if response.status_code != 200:
-            raise FabricHTTPException(response)
 
         values = response.json().get("value", [])
         for v in values:
@@ -209,14 +204,13 @@ def list_upstream_dataflows(
             }
 
             collect_upstreams(
-                client,
                 tgt_dataflow_id,
                 tgt_dataflow_name,
                 tgt_workspace_id,
                 tgt_workspace_name,
             )
 
-    collect_upstreams(client, dataflow_id, dataflow_name, workspace_id, workspace_name)
+    collect_upstreams(dataflow_id, dataflow_name, workspace_id, workspace_name)
 
     return df
 
