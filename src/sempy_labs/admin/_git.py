@@ -1,11 +1,9 @@
-import sempy.fabric as fabric
-from sempy.fabric.exceptions import FabricHTTPException
 from sempy_labs._helper_functions import (
-    pagination,
+    _base_api,
+    _create_dataframe,
 )
 import pandas as pd
 from sempy_labs.admin._basic_functions import list_workspaces
-import sempy_labs._authentication as auth
 
 
 def list_git_connections() -> pd.DataFrame:
@@ -22,26 +20,23 @@ def list_git_connections() -> pd.DataFrame:
         A pandas dataframe showing a list of Git connections.
     """
 
-    client = fabric.FabricRestClient(token_provider=auth.token_provider.get())
-    response = client.get("/v1/admin/workspaces/discoverGitConnections")
+    columns = {
+        "Workspace Id": "string",
+        "Organization Name": "string",
+        "Owner Name": "string",
+        "Project Name": "string",
+        "Git Provider Type": "string",
+        "Repository Name": "string",
+        "Branch Name": "string",
+        "Directory Name": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
-    df = pd.DataFrame(
-        columns=[
-            "Workspace Id",
-            "Organization Name",
-            "Owner Name",
-            "Project Name",
-            "Git Provider Type",
-            "Repository Name",
-            "Branch Name",
-            "Directory Name",
-        ]
+    responses = _base_api(
+        request="/v1/admin/workspaces/discoverGitConnections",
+        client="fabric_sp",
+        uses_pagination=True,
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
 
     for r in responses:
         for v in r.get("value", []):

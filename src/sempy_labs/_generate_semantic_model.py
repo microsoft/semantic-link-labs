@@ -10,7 +10,7 @@ from sempy_labs._helper_functions import (
     resolve_dataset_name_and_id,
     _conv_b64,
     _decode_b64,
-    lro,
+    _base_api,
 )
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 import sempy_labs._icons as icons
@@ -145,18 +145,16 @@ def create_semantic_model_from_bim(
     dfI = fabric.list_datasets(workspace=workspace_id, mode="rest")
     dfI_filt = dfI[(dfI["Dataset Name"] == dataset)]
 
-    if len(dfI_filt) > 0:
+    if not dfI_filt.empty:
         raise ValueError(
             f"{icons.red_dot} The '{dataset}' semantic model already exists as a semantic model in the '{workspace_name}' workspace."
         )
 
-    client = fabric.FabricRestClient()
     defPBIDataset = {"version": "1.0", "settings": {}}
-
     payloadPBIDefinition = _conv_b64(defPBIDataset)
     payloadBim = _conv_b64(bim_file)
 
-    request_body = {
+    payload = {
         "displayName": dataset,
         "definition": {
             "parts": [
@@ -174,12 +172,13 @@ def create_semantic_model_from_bim(
         },
     }
 
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/semanticModels",
-        json=request_body,
+    _base_api(
+        request=f"v1/workspaces/{workspace_id}/semanticModels",
+        payload=payload,
+        method="post",
+        lro_return_status_code=True,
+        status_codes=[201, 202],
     )
-
-    lro(client, response, status_codes=[201, 202])
 
     print(
         f"{icons.green_dot} The '{dataset}' semantic model has been created within the '{workspace_name}' workspace."
@@ -210,13 +209,11 @@ def update_semantic_model_from_bim(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    client = fabric.FabricRestClient()
     defPBIDataset = {"version": "1.0", "settings": {}}
-
     payloadPBIDefinition = _conv_b64(defPBIDataset)
     payloadBim = _conv_b64(bim_file)
 
-    request_body = {
+    payload = {
         "displayName": dataset_name,
         "definition": {
             "parts": [
@@ -234,12 +231,13 @@ def update_semantic_model_from_bim(
         },
     }
 
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/semanticModels/{dataset_id}/updateDefinition",
-        json=request_body,
+    _base_api(
+        request=f"v1/workspaces/{workspace_id}/semanticModels/{dataset_id}/updateDefinition",
+        payload=payload,
+        method="post",
+        lro_return_status_code=True,
+        status_codes=None,
     )
-
-    lro(client, response, status_codes=[200, 202], return_status_code=True)
 
     print(
         f"{icons.green_dot} The '{dataset_name}' semantic model has been updated within the '{workspace_name}' workspace."
@@ -333,7 +331,6 @@ def get_semantic_model_bim(
     dataset: str | UUID,
     workspace: Optional[str | UUID] = None,
     save_to_file_name: Optional[str] = None,
-    lakehouse_workspace: Optional[str] = None,
 ) -> dict:
     """
     Extracts the Model.bim file for a given semantic model.
@@ -348,10 +345,6 @@ def get_semantic_model_bim(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     save_to_file_name : str, default=None
         If specified, saves the Model.bim as a file in the lakehouse attached to the notebook.
-    lakehouse_workspace : str, default=None
-        The Fabric workspace name in which the lakehouse attached to the workspace resides.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
 
     Returns
     -------
@@ -375,9 +368,7 @@ def get_semantic_model_bim(
                 f"{icons.red_dot} In order to save the model.bim file, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
             )
 
-        lakehouse_id = fabric.get_lakehouse_id()
-        lake_workspace = fabric.resolve_workspace_name()
-        lakehouse = resolve_lakehouse_name(lakehouse_id, lake_workspace)
+        lakehouse = resolve_lakehouse_name()
         folderPath = "/lakehouse/default/Files"
         fileExt = ".bim"
         if not save_to_file_name.endswith(fileExt):
@@ -437,11 +428,12 @@ def get_semantic_model_definition(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/semanticModels/{dataset_id}/getDefinition?format={format}",
+    result = _base_api(
+        request=f"v1/workspaces/{workspace_id}/semanticModels/{dataset_id}/getDefinition?format={format}",
+        method="post",
+        lro_return_json=True,
+        status_codes=None,
     )
-    result = lro(client, response).json()
 
     files = result["definition"]["parts"]
 

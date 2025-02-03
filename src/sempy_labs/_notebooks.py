@@ -7,8 +7,9 @@ import requests
 from sempy._utils._log import log
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
-    lro,
     _decode_b64,
+    _base_api,
+    resolve_item_id,
 )
 from sempy.fabric.exceptions import FabricHTTPException
 import os
@@ -22,15 +23,13 @@ def _get_notebook_definition_base(
 ) -> pd.DataFrame:
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    item_id = fabric.resolve_item_id(
-        item_name=notebook_name, type="Notebook", workspace=workspace_id
+    item_id = resolve_item_id(item=notebook_name, type="Notebook", workspace=workspace)
+    result = _base_api(
+        request=f"v1/workspaces/{workspace_id}/notebooks/{item_id}/getDefinition",
+        method="post",
+        lro_return_json=True,
+        status_codes=None,
     )
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"v1/workspaces/{workspace_id}/notebooks/{item_id}/getDefinition",
-    )
-
-    result = lro(client, response).json()
 
     return pd.json_normalize(result["definition"]["parts"])
 
@@ -185,10 +184,9 @@ def create_notebook(
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    client = fabric.FabricRestClient()
-    notebook_payload = base64.b64encode(notebook_content)
+    notebook_payload = base64.b64encode(notebook_content).decode("utf-8")
 
-    request_body = {
+    payload = {
         "displayName": name,
         "definition": {
             "format": "ipynb",
@@ -202,11 +200,15 @@ def create_notebook(
         },
     }
     if description is not None:
-        request_body["description"] = description
+        payload["description"] = description
 
-    response = client.post(f"v1/workspaces/{workspace_id}/notebooks", json=request_body)
-
-    lro(client, response, status_codes=[201, 202])
+    _base_api(
+        request=f"v1/workspaces/{workspace_id}/notebooks",
+        payload=payload,
+        method="post",
+        lro_return_status_code=True,
+        status_codes=[201, 202],
+    )
 
     print(
         f"{icons.green_dot} The '{name}' notebook was created within the '{workspace_name}' workspace."
@@ -232,15 +234,11 @@ def update_notebook_definition(
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    client = fabric.FabricRestClient()
     notebook_payload = base64.b64encode(notebook_content)
-    notebook_id = fabric.resolve_item_id(
-        item_name=name, type="Notebook", workspace=workspace_id
-    )
+    item_id = resolve_item_id(item=name, type="Notebook", workspace=workspace)
+    type = _get_notebook_type(notebook_name=name, workspace=workspace)
 
-    type = _get_notebook_type(notebook_name=name, workspace=workspace_id)
-
-    request_body = {
+    payload = {
         "definition": {
             "parts": [
                 {
@@ -252,12 +250,13 @@ def update_notebook_definition(
         },
     }
 
-    response = client.post(
-        f"v1/workspaces/{workspace_id}/notebooks/{notebook_id}/updateDefinition",
-        json=request_body,
+    _base_api(
+        request=f"v1/workspaces/{workspace_id}/notebooks/{item_id}/updateDefinition",
+        payload=payload,
+        method="post",
+        lro_return_status_code=True,
+        status_codes=None,
     )
-
-    lro(client, response, return_status_code=True)
 
     print(
         f"{icons.green_dot} The '{name}' notebook was updated within the '{workspace_name}' workspace."

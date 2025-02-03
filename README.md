@@ -58,7 +58,7 @@ Check out the video below for an introduction to Semantic Link, Semantic Link La
 * Notebooks
     * [Import a notebook from the web](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.import_notebook_from_web)    
 * APIs
-    * Wrapper functions for [Power BI](https://learn.microsoft.com/rest/api/power-bi/), [Fabric](https://learn.microsoft.com/rest/api/fabric/articles/using-fabric-apis), and [Azure](https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities?view=rest-microsoftfabric-2023-11-01) APIs
+    * Wrapper functions for [Power BI](https://learn.microsoft.com/rest/api/power-bi/), [Fabric](https://learn.microsoft.com/rest/api/fabric/articles/using-fabric-apis), [Azure](https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities?view=rest-microsoftfabric-2023-11-01), and [Microsoft Graph](https://learn.microsoft.com/graph/api/overview?view=graph-rest-1.0) APIs
 * Service Principal Authentication
     * Now supported using the [service_principal_authentication](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.service_principal_authentication) context manager for the [admin](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.admin.html) subpackage, Azure API wrapper functions, and [connect_semantic_model](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.tom.html#sempy_labs.tom.connect_semantic_model). See this [helper notebook](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb) for additional instructions.
 
@@ -88,7 +88,7 @@ for file_name, file_url in notebook_files.items():
 ## Once installed, run this code to import the library into your notebook
 ```python
 import sempy_labs as labs
-from sempy_labs import migration, directlake, admin
+from sempy_labs import migration, directlake, admin, graph
 from sempy_labs import lakehouse as lake
 from sempy_labs import report as rep
 from sempy_labs.tom import connect_semantic_model
@@ -118,8 +118,8 @@ An even better way to ensure the semantic-link-labs library is available in your
 2. Select your newly created environment within the 'Environment' drop down in the navigation bar at the top of the notebook
 
 ## Version History
-* [0.9.1](https://github.com/microsoft/semantic-link-labs/releases/tag/0.9.1) (January 22, 2024)
-* [0.9.0](https://github.com/microsoft/semantic-link-labs/releases/tag/0.9.0) (January 22, 2024)
+* [0.9.1](https://github.com/microsoft/semantic-link-labs/releases/tag/0.9.1) (January 22, 2025)
+* [0.9.0](https://github.com/microsoft/semantic-link-labs/releases/tag/0.9.0) (January 22, 2025)
 * [0.8.11](https://github.com/microsoft/semantic-link-labs/releases/tag/0.8.11) (December 19, 2024)
 * [0.8.10](https://github.com/microsoft/semantic-link-labs/releases/tag/0.8.10) (December 16, 2024)
 * [0.8.9](https://github.com/microsoft/semantic-link-labs/releases/tag/0.8.9) (December 4, 2024)
@@ -212,6 +212,62 @@ provided by the bot. You will only need to do this once across all repos using o
 This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
 For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
 contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
+
+## How to Contribute
+
+#### Initial setup
+1. Fork the Semantic Link Labs GitHub repository (Fork -> Create a new fork).
+2. Click on the green icon '<> Code' and copy the 'HTTPS' URL to the clipboard.
+3. Open Visual Studio Code.
+4. Select 'Clone Git Repository'.
+5. Paste the URL copied in step 2.
+6. Select 'Clone from URL'.
+7. Select/create a folder to map the cloned repository to your computer.
+8. When prompted to open the cloned repository, click 'Open'.
+9. Open the integrated terminal (View -> Terminal).
+10. Run the following code in the terminal to ensure a virtual environment exists.
+```python
+python -m venv venv
+```
+11. Run the following code in the terminal to activate the virtual environment.
+```python
+.\venv\Scripts\Activate.ps1
+```
+12. Run the following code in the terminal to install the build module.
+```
+pip install build
+```
+
+#### Branching
+When making changes, always create a new branch.
+
+1. Navigate to the Souce Control tab within Visual Studio Code.
+2. Click on the Source Control icon at the bottom left corner of the screen.
+3. Click 'Create new branch...'.
+4. Enter the branch name (i.e. yourusername/branchname).
+5. Click 'Enter'.
+
+#### Building the .whl file
+Running the following in the terminal in Visual Studio Code will create a .whl file in the 'dist' folder within your locally-cloned repository.
+
+```cli
+python -m build
+```
+
+#### Running and testing the .whl file
+1. Open a notebook in a Fabric workspace.
+2. Navigate to 'Resources' within the Explorer tab.
+3. Upload the .whl file here.
+4. Drag the .whl file into a notebook cell.
+5. Run the %pip install command generated by step 4.
+
+#### Submitting a Pull Request (PR)
+1. Within the 'Source Control' tab, commit your changes to the branch.
+2. Navigate to the [GitHub repo](https://github.com/microsoft/semantic-link-labs).
+3. A 'Create pull request' will appear at the top of the screen in green. Click it.
+4. Enter details into the description.
+5. Click 'Create'.
+
 
 ## Trademarks
 

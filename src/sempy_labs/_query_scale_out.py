@@ -3,11 +3,13 @@ import pandas as pd
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
+    _update_dataframe_datatypes,
+    _base_api,
+    _create_dataframe,
 )
 from sempy._utils._log import log
 from typing import Optional, Tuple
 import sempy_labs._icons as icons
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
@@ -31,13 +33,10 @@ def qso_sync(dataset: str | UUID, workspace: Optional[str | UUID] = None):
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    client = fabric.PowerBIRestClient()
-    response = client.post(
-        f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/queryScaleOut/sync"
+    _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/queryScaleOut/sync",
+        method="post",
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
     print(
         f"{icons.green_dot} QSO sync initiated for the '{dataset_name}' semantic model within the '{workspace_name}' workspace."
     )
@@ -67,34 +66,35 @@ def qso_sync_status(
         2 pandas dataframes showing the query scale-out sync status.
     """
 
-    df = pd.DataFrame(
-        columns=[
-            "Scale Out Status",
-            "Sync Start Time",
-            "Sync End Time",
-            "Commit Version",
-            "Commit Timestamp",
-            "Target Sync Version",
-            "Target Sync Timestamp",
-            "Trigger Reason",
-            "Min Active Read Version",
-            "Min Active Read Timestamp",
-        ]
-    )
-    dfRep = pd.DataFrame(
-        columns=["Replica ID", "Replica Type", "Replica Version", "Replica Timestamp"]
-    )
+    columns = {
+        "Scale Out Status": "string",
+        "Sync Start Time": "datetime",
+        "Sync End Time": "datetime",
+        "Commit Version": "int",
+        "Commit Timestamp": "datetime",
+        "Target Sync Version": "int",
+        "Target Sync Timestamp": "datetime",
+        "Trigger Reason": "string",
+        "Min Active Read Version": "int",
+        "Min Active Read Timestamp": "datetime",
+    }
+    df = _create_dataframe(columns=columns)
+
+    columns_rep = {
+        "Replica ID": "string",
+        "Replica Type": "string",
+        "Replica Version": "string",
+        "Replica Timestamp": "datetime",
+    }
+
+    dfRep = _create_dataframe(columns=columns_rep)
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    client = fabric.PowerBIRestClient()
-    response = client.get(
-        f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/queryScaleOut/syncStatus"
+    response = _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/queryScaleOut/syncStatus"
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
 
     o = response.json()
     sos = o.get("scaleOutStatus")
@@ -125,17 +125,8 @@ def qso_sync_status(
                 [dfRep, pd.DataFrame(new_data, index=[0])], ignore_index=True
             )
 
-        df["Sync Start Time"] = pd.to_datetime(df["Sync Start Time"])
-        df["Sync End Time"] = pd.to_datetime(df["Sync End Time"])
-        df["Commit Timestamp"] = pd.to_datetime(df["Commit Timestamp"])
-        df["Target Sync Timestamp"] = pd.to_datetime(df["Target Sync Timestamp"])
-        df["Min Active Read Timestamp"] = pd.to_datetime(
-            df["Min Active Read Timestamp"]
-        )
-        dfRep["Replica Timestamp"] = pd.to_datetime(dfRep["Replica Timestamp"])
-        df["Commit Version"] = df["Commit Version"].astype("int")
-        df["Target Sync Version"] = df["Target Sync Version"].astype("int")
-        df["Min Active Read Version"] = df["Min Active Read Version"].astype("int")
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
+        _update_dataframe_datatypes(dataframe=dfRep, column_map=columns_rep)
 
         return df, dfRep
     else:
@@ -170,14 +161,13 @@ def disable_qso(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    request_body = {"queryScaleOutSettings": {"maxReadOnlyReplicas": "0"}}
+    payload = {"queryScaleOutSettings": {"maxReadOnlyReplicas": "0"}}
 
-    client = fabric.PowerBIRestClient()
-    response = client.patch(
-        f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}", json=request_body
+    _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}",
+        method="patch",
+        payload=payload,
     )
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
 
     df = list_qso_settings(dataset=dataset_id, workspace=workspace_id)
 
@@ -233,7 +223,7 @@ def set_qso(
         disable_qso(dataset=dataset_id, workspace=workspace_id)
         return
 
-    request_body = {
+    payload = {
         "queryScaleOutSettings": {
             "autoSyncReadOnlyReplicas": auto_sync,
             "maxReadOnlyReplicas": max_read_only_replicas,
@@ -248,13 +238,11 @@ def set_qso(
             dataset=dataset_id, storage_format="Large", workspace=workspace_id
         )
 
-    client = fabric.PowerBIRestClient()
-    response = client.patch(
-        f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}",
-        json=request_body,
+    _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}",
+        method="patch",
+        payload=payload,
     )
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
 
     df = list_qso_settings(dataset=dataset_id, workspace=workspace_id)
     print(
@@ -296,9 +284,9 @@ def set_semantic_model_storage_format(
     storageFormats = ["Small", "Large"]
 
     if storage_format == "Large":
-        request_body = {"targetStorageMode": "PremiumFiles"}
+        payload = {"targetStorageMode": "PremiumFiles"}
     elif storage_format == "Small":
-        request_body = {"targetStorageMode": "Abf"}
+        payload = {"targetStorageMode": "Abf"}
     else:
         raise ValueError(
             f"{icons.red_dot} Invalid storage format value. Valid options: {storageFormats}."
@@ -313,12 +301,11 @@ def set_semantic_model_storage_format(
         )
         return
 
-    client = fabric.PowerBIRestClient()
-    response = client.patch(
-        f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}", json=request_body
+    _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}",
+        method="patch",
+        payload=payload,
     )
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
     print(
         f"{icons.green_dot} The semantic model storage format for the '{dataset_name}' semantic model within the '{workspace_name}' workspace has been set to '{storage_format}'."
     )
@@ -351,17 +338,16 @@ def list_qso_settings(
     if dataset is not None:
         (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    df = pd.DataFrame(
-        columns=[
-            "Dataset Id",
-            "Dataset Name",
-            "Storage Mode",
-            "QSO Auto Sync Enabled",
-            "QSO Max Read Only Replicas",
-        ]
-    )
-    client = fabric.PowerBIRestClient()
-    response = client.get(f"/v1.0/myorg/groups/{workspace_id}/datasets")
+    columns = {
+        "Dataset Id": "string",
+        "Dataset Name": "string",
+        "Storage Mode": "string",
+        "QSO Auto Sync Enabled": "bool",
+        "QSO Max Read Only Replicas": "int",
+    }
+    df = _create_dataframe(columns=columns)
+
+    response = _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/datasets")
 
     for v in response.json().get("value", []):
         tsm = v.get("targetStorageMode")
@@ -382,8 +368,7 @@ def list_qso_settings(
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    df["QSO Auto Sync Enabled"] = df["QSO Auto Sync Enabled"].astype("bool")
-    df["QSO Max Read Only Replicas"] = df["QSO Max Read Only Replicas"].astype("int")
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     if dataset is not None:
         df = df[df["Dataset Id"] == dataset_id]
@@ -411,7 +396,6 @@ def set_workspace_default_storage_format(
     # https://learn.microsoft.com/en-us/rest/api/power-bi/groups/update-group#defaultdatasetstorageformat
 
     storageFormats = ["Small", "Large"]
-
     storage_format = storage_format.capitalize()
 
     if storage_format not in storageFormats:
@@ -433,16 +417,14 @@ def set_workspace_default_storage_format(
         )
         return
 
-    request_body = {
+    payload = {
         "name": workspace_name,
         "defaultDatasetStorageFormat": storage_format,
     }
 
-    client = fabric.PowerBIRestClient()
-    response = client.patch(f"/v1.0/myorg/groups/{workspace_id}", json=request_body)
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}", method="patch", payload=payload
+    )
 
     print(
         f"{icons.green_dot} The default storage format for the '{workspace_name}' workspace has been updated to '{storage_format}."

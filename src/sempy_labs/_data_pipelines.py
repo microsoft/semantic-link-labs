@@ -1,14 +1,14 @@
 import sempy.fabric as fabric
 import pandas as pd
-import sempy_labs._icons as icons
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
-    lro,
-    pagination,
     _decode_b64,
+    _base_api,
+    _print_success,
+    resolve_item_id,
+    _create_dataframe,
 )
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
@@ -31,16 +31,18 @@ def list_data_pipelines(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing the data pipelines within a workspace.
     """
 
-    df = pd.DataFrame(columns=["Data Pipeline Name", "Data Pipeline ID", "Description"])
+    columns = {
+        "Data Pipeline Name": "string",
+        "Data Pipeline ID": "string",
+        "Description": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/dataPipelines")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
+    responses = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/dataPipelines", uses_pagination=True
+    )
 
     for r in responses:
         for v in r.get("value", []):
@@ -76,24 +78,27 @@ def create_data_pipeline(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    request_body = {"displayName": name}
+    payload = {"displayName": name}
 
     if description:
-        request_body["description"] = description
+        payload["description"] = description
 
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/dataPipelines", json=request_body
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/dataPipelines",
+        method="post",
+        payload=payload,
+        status_codes=[201, 202],
+        lro_return_status_code=True,
+    )
+    _print_success(
+        item_name=name,
+        item_type="data pipeline",
+        workspace_name=workspace_name,
+        action="created",
     )
 
-    lro(client, response, status_codes=[201, 202])
 
-    print(
-        f"{icons.green_dot} The '{name}' data pipeline has been created within the '{workspace_name}' workspace."
-    )
-
-
-def delete_data_pipeline(name: str, workspace: Optional[str | UUID] = None):
+def delete_data_pipeline(name: str | UUID, workspace: Optional[str | UUID] = None):
     """
     Deletes a Fabric data pipeline.
 
@@ -101,8 +106,8 @@ def delete_data_pipeline(name: str, workspace: Optional[str | UUID] = None):
 
     Parameters
     ----------
-    name: str
-        Name of the data pipeline.
+    name: str | uuid.UUID
+        Name or ID of the data pipeline.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -110,32 +115,27 @@ def delete_data_pipeline(name: str, workspace: Optional[str | UUID] = None):
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    item_id = resolve_item_id(item=name, type="DataPipeline", workspace=workspace)
 
-    item_id = fabric.resolve_item_id(
-        item_name=name, type="DataPipeline", workspace=workspace_id
-    )
-
-    client = fabric.FabricRestClient()
-    response = client.delete(f"/v1/workspaces/{workspace_id}/dataPipelines/{item_id}")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    print(
-        f"{icons.green_dot} The '{name}' data pipeline within the '{workspace_name}' workspace has been deleted."
+    fabric.delete_item(item_id=item_id, workspace=workspace)
+    _print_success(
+        item_name=name,
+        item_type="data pipeline",
+        workspace_name=workspace_name,
+        action="deleted",
     )
 
 
 def get_data_pipeline_definition(
-    name: str, workspace: Optional[str | UUID] = None, decode: bool = True
+    name: str | UUID, workspace: Optional[str | UUID] = None, decode: bool = True
 ) -> dict | pd.DataFrame:
     """
     Obtains the definition of a data pipeline.
 
     Parameters
     ----------
-    name : str
-        The name of the data pipeline.
+    name : str or uuid.UUID
+        The name or ID of the data pipeline.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -152,16 +152,14 @@ def get_data_pipeline_definition(
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    item_id = fabric.resolve_item_id(
-        item_name=name, type="DataPipeline", workspace=workspace_id
-    )
 
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/dataPipelines/{item_id}/getDefinition"
+    item_id = resolve_item_id(item=name, type="DataPipeline", workspace=workspace)
+    result = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/dataPipelines/{item_id}/getDefinition",
+        method="post",
+        lro_return_json=True,
+        status_codes=None,
     )
-    result = lro(client, response).json()
-
     df = pd.json_normalize(result["definition"]["parts"])
 
     if not decode:

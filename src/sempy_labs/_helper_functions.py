@@ -15,6 +15,8 @@ from azure.core.credentials import TokenCredential, AccessToken
 import urllib.parse
 import numpy as np
 from IPython.display import display, HTML
+import requests
+import sempy_labs._authentication as auth
 
 
 def _build_url(url: str, params: dict) -> str:
@@ -164,6 +166,16 @@ def resolve_report_name(report_id: UUID, workspace: Optional[str | UUID] = None)
     return fabric.resolve_item_name(
         item_id=report_id, type="Report", workspace=workspace
     )
+
+
+def resolve_item_id(
+    item: str | UUID, type: str, workspace: Optional[str] = None
+) -> UUID:
+
+    if _is_valid_uuid(item):
+        return item
+    else:
+        return fabric.resolve_item_id(item_name=item, type=type, workspace=workspace)
 
 
 def resolve_item_name_and_id(
@@ -719,7 +731,7 @@ def resolve_item_type(item_id: UUID, workspace: Optional[str | UUID] = None) -> 
 
     if dfI_filt.empty:
         raise ValueError(
-            f"Invalid 'item_id' parameter. The '{item_id}' item was not found in the '{workspace_name}' workspace."
+            f"{icons.red_dot} Invalid 'item_id' parameter. The '{item_id}' item was not found in the '{workspace_name}' workspace."
         )
     return dfI_filt["Type"].iloc[0]
 
@@ -849,7 +861,7 @@ def get_capacity_name(workspace: Optional[str | UUID] = None) -> str:
     capacity_id = get_capacity_id(workspace)
     dfC = fabric.list_capacities()
     dfC_filt = dfC[dfC["Id"] == capacity_id]
-    if len(dfC_filt) == 0:
+    if dfC_filt.empty:
         raise ValueError(
             f"{icons.red_dot} The '{capacity_id}' capacity Id does not exist."
         )
@@ -880,7 +892,7 @@ def resolve_capacity_name(capacity_id: Optional[UUID] = None) -> str:
     dfC = fabric.list_capacities()
     dfC_filt = dfC[dfC["Id"] == capacity_id]
 
-    if len(dfC_filt) == 0:
+    if dfC_filt.empty:
         raise ValueError(
             f"{icons.red_dot} The '{capacity_id}' capacity Id does not exist."
         )
@@ -911,7 +923,7 @@ def resolve_capacity_id(capacity_name: Optional[str] = None) -> UUID:
     dfC = fabric.list_capacities()
     dfC_filt = dfC[dfC["Display Name"] == capacity_name]
 
-    if len(dfC_filt) == 0:
+    if dfC_filt.empty:
         raise ValueError(
             f"{icons.red_dot} The '{capacity_name}' capacity does not exist."
         )
@@ -994,14 +1006,14 @@ def pagination(client, response):
     return responses
 
 
-def resolve_deployment_pipeline_id(deployment_pipeline: str) -> UUID:
+def resolve_deployment_pipeline_id(deployment_pipeline: str | UUID) -> UUID:
     """
     Obtains the Id for a given deployment pipeline.
 
     Parameters
     ----------
-    deployment_pipeline : str
-        The deployment pipeline name
+    deployment_pipeline : str | uuid.UUID
+        The deployment pipeline name or ID.
 
     Returns
     -------
@@ -1011,15 +1023,17 @@ def resolve_deployment_pipeline_id(deployment_pipeline: str) -> UUID:
 
     from sempy_labs._deployment_pipelines import list_deployment_pipelines
 
-    dfP = list_deployment_pipelines()
-    dfP_filt = dfP[dfP["Deployment Pipeline Name"] == deployment_pipeline]
-    if len(dfP_filt) == 0:
-        raise ValueError(
-            f"{icons.red_dot} The '{deployment_pipeline}' deployment pipeline is not valid."
-        )
-    deployment_pipeline_id = dfP_filt["Deployment Pipeline Id"].iloc[0]
+    if _is_valid_uuid(deployment_pipeline):
+        return deployment_pipeline
+    else:
 
-    return deployment_pipeline_id
+        dfP = list_deployment_pipelines()
+        dfP_filt = dfP[dfP["Deployment Pipeline Name"] == deployment_pipeline]
+        if len(dfP_filt) == 0:
+            raise ValueError(
+                f"{icons.red_dot} The '{deployment_pipeline}' deployment pipeline is not valid."
+            )
+        return dfP_filt["Deployment Pipeline Id"].iloc[0]
 
 
 class FabricTokenCredential(TokenCredential):
@@ -1224,20 +1238,29 @@ def generate_guid():
 
 
 def _get_column_aggregate(
-    lakehouse: str,
     table_name: str,
     column_name: str = "RunId",
+    lakehouse: Optional[str] = None,
     function: str = "max",
     default_value: int = 0,
+    rsd: float = 0.05,
 ) -> int:
 
     from pyspark.sql import SparkSession
 
     spark = SparkSession.builder.getOrCreate()
     function = function.upper()
-    query = f"SELECT {function}({column_name}) FROM {lakehouse}.{table_name}"
-    if "COUNT" in function and "DISTINCT" in function:
+
+    if lakehouse is None:
+        lakehouse = resolve_lakehouse_name()
+
+    if function in {"COUNTDISTINCT", "DISTINCTCOUNT"}:
         query = f"SELECT COUNT(DISTINCT({column_name})) FROM {lakehouse}.{table_name}"
+    elif "APPROX" in function:
+        query = f"SELECT approx_count_distinct({column_name}, {rsd}) FROM {table_name}"
+    else:
+        query = f"SELECT {function}({column_name}) FROM {lakehouse}.{table_name}"
+
     dfSpark = spark.sql(query)
 
     return dfSpark.collect()[0][0] or default_value
@@ -1446,3 +1469,121 @@ def _get_fabric_context_setting(name: str):
 def get_tenant_id():
 
     _get_fabric_context_setting(name="trident.tenant.id")
+
+
+def _base_api(
+    request: str,
+    client: str = "fabric",
+    method: str = "get",
+    payload: Optional[str] = None,
+    status_codes: Optional[int] = 200,
+    uses_pagination: bool = False,
+    lro_return_json: bool = False,
+    lro_return_status_code: bool = False,
+):
+
+    from sempy_labs._authentication import _get_headers
+
+    if (lro_return_json or lro_return_status_code) and status_codes is None:
+        status_codes = [200, 202]
+
+    if isinstance(status_codes, int):
+        status_codes = [status_codes]
+
+    if client == "fabric":
+        c = fabric.FabricRestClient()
+    elif client == "fabric_sp":
+        c = fabric.FabricRestClient(token_provider=auth.token_provider.get())
+    elif client in ["azure", "graph"]:
+        pass
+    else:
+        raise ValueError(f"{icons.red_dot} The '{client}' client is not supported.")
+
+    if client not in ["azure", "graph"]:
+        if method == "get":
+            response = c.get(request)
+        elif method == "delete":
+            response = c.delete(request)
+        elif method == "post":
+            response = c.post(request, json=payload)
+        elif method == "patch":
+            response = c.patch(request, json=payload)
+        elif method == "put":
+            response = c.put(request, json=payload)
+        else:
+            raise NotImplementedError
+    else:
+        headers = _get_headers(auth.token_provider.get(), audience=client)
+        response = requests.request(
+            method.upper(),
+            f"https://graph.microsoft.com/v1.0/{request}",
+            headers=headers,
+            json=payload,
+        )
+
+    if lro_return_json:
+        return lro(c, response, status_codes).json()
+    elif lro_return_status_code:
+        return lro(c, response, status_codes, return_status_code=True)
+    else:
+        if response.status_code not in status_codes:
+            raise FabricHTTPException(response)
+        if uses_pagination:
+            responses = pagination(c, response)
+            return responses
+        else:
+            return response
+
+
+def _create_dataframe(columns: dict) -> pd.DataFrame:
+
+    return pd.DataFrame(columns=list(columns.keys()))
+
+
+def _update_dataframe_datatypes(dataframe: pd.DataFrame, column_map: dict):
+    """
+    Updates the datatypes of columns in a pandas dataframe based on a column map.
+
+    Example:
+    {
+        "Order": "int",
+        "Public": "bool",
+    }
+    """
+
+    for column, data_type in column_map.items():
+        if column in dataframe.columns:
+            if data_type == "int":
+                dataframe[column] = dataframe[column].astype(int)
+            elif data_type == "bool":
+                dataframe[column] = dataframe[column].astype(bool)
+            elif data_type == "float":
+                dataframe[column] = dataframe[column].astype(float)
+            elif data_type == "datetime":
+                dataframe[column] = pd.to_datetime(dataframe[column])
+            # This is for a special case in admin.list_reports where datetime itself does not work. Coerce fixes the issue.
+            elif data_type == "datetime_coerce":
+                dataframe[column] = pd.to_datetime(dataframe[column], errors="coerce")
+            # This is for list_synonyms since the weight column is float and can have NaN values.
+            elif data_type == "float_fillna":
+                dataframe[column] = dataframe[column].fillna(0).astype(float)
+            # This is to avoid NaN values in integer columns (for delta analyzer)
+            elif data_type == "int_fillna":
+                dataframe[column] = dataframe[column].fillna(0).astype(int)
+            elif data_type in ["str", "string"]:
+                dataframe[column] = dataframe[column].astype(str)
+            else:
+                raise NotImplementedError
+
+
+def _print_success(item_name, item_type, workspace_name, action="created"):
+    if action == "created":
+        print(
+            f"{icons.green_dot} The '{item_name}' {item_type} has been successfully created in the '{workspace_name}' workspace."
+        )
+    elif action == "deleted":
+        print(
+            f"{icons.green_dot} The '{item_name}' {item_type} has been successfully deleted from the '{workspace_name}' workspace."
+        )
+    else:
+        raise NotImplementedError

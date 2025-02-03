@@ -5,9 +5,9 @@ from typing import Optional, List
 import sempy_labs._icons as icons
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
-    pagination,
+    _base_api,
+    _create_dataframe,
 )
-from sempy.fabric.exceptions import FabricHTTPException
 
 
 def create_external_data_share(
@@ -48,15 +48,12 @@ def create_external_data_share(
 
     payload = {"paths": paths, "recipient": {"userPrincipalName": recipient}}
 
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/items/{item_id}/externalDataShares",
-        json=payload,
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/items/{item_id}/externalDataShares",
+        method="post",
+        status_codes=201,
+        payload=payload,
     )
-
-    if response.status_code != 201:
-        raise FabricHTTPException(response)
-
     print(
         f"{icons.green_dot} An external data share was created for the '{item_name}' {item_type} within the '{workspace_name}' workspace for the {paths} paths."
     )
@@ -92,14 +89,10 @@ def revoke_external_data_share(
         item_name=item_name, type=item_type, workspace=workspace_id
     )
 
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/items/{item_id}/externalDataShares/{external_data_share_id}/revoke"
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/items/{item_id}/externalDataShares/{external_data_share_id}/revoke",
+        method="post",
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
     print(
         f"{icons.green_dot} The '{external_data_share_id}' external data share for the '{item_name}' {item_type} within the '{workspace_name}' workspace has been revoked."
     )
@@ -135,32 +128,26 @@ def list_external_data_shares_in_item(
         item_name=item_name, type=item_type, workspace=workspace_id
     )
 
-    client = fabric.FabricRestClient()
-    response = client.get(
-        f"/v1/workspaces/{workspace_id}/items/{item_id}/externalDataShares"
+    columns = {
+        "External Data Share Id": "string",
+        "Paths": "string",
+        "Creator Principal Id": "string",
+        "Creator Principal Type": "string",
+        "Recipient User Principal Name": "string",
+        "Status": "string",
+        "Expiration Time UTC": "string",
+        "Workspace Id": "string",
+        "Item Id": "string",
+        "Item Name": "string",
+        "Item Type": "string",
+        "Invitation URL": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    responses = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/items/{item_id}/externalDataShares",
+        uses_pagination=True,
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    df = pd.DataFrame(
-        columns=[
-            "External Data Share Id",
-            "Paths",
-            "Creator Principal Id",
-            "Creater Principal Type",
-            "Recipient User Principal Name",
-            "Status",
-            "Expiration Time UTC",
-            "Workspace Id",
-            "Item Id",
-            "Item Name",
-            "Item Type",
-            "Invitation URL",
-        ]
-    )
-
-    responses = pagination(client, response)
     dfs = []
 
     for r in responses:

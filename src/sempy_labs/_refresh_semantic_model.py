@@ -5,11 +5,12 @@ from sempy_labs._helper_functions import (
     _get_partition_map,
     _process_and_display_chart,
     resolve_dataset_name_and_id,
+    _update_dataframe_datatypes,
+    _base_api,
 )
 from typing import Any, List, Optional, Union
 from sempy._utils._log import log
 import sempy_labs._icons as icons
-from sempy.fabric.exceptions import FabricHTTPException
 import pandas as pd
 import warnings
 import ipywidgets as widgets
@@ -311,14 +312,10 @@ def cancel_dataset_refresh(
 
         request_id = rr_filt["Request Id"].iloc[0]
 
-    client = fabric.PowerBIRestClient()
-
-    response = client.delete(
-        f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/refreshes/{request_id}"
+    _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/refreshes/{request_id}",
+        method="delete",
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
     print(
         f"{icons.green_dot} The '{request_id}' refresh request for the '{dataset_name}' semantic model within the '{workspace_name}' workspace has been cancelled."
     )
@@ -365,9 +362,8 @@ def get_semantic_model_refresh_history(
         ]
     )
 
-    client = fabric.PowerBIRestClient()
-    response = client.get(
-        f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/refreshes"
+    response = _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/refreshes"
     )
     data = []
 
@@ -429,8 +425,10 @@ def get_semantic_model_refresh_history(
     # df[date_cols] = df[date_cols].apply(pd.to_datetime)
 
     if "Attempt Id" in df.columns:
-        df["Attempt Id"] = df["Attempt Id"].astype(int)
-        # date_cols = ["Attempt Start Time", "Attempt End Time"]
-        # df[date_cols] = df[date_cols].apply(pd.to_datetime)
+        column_map = {
+            "Attempt Id": "int",
+        }
+
+        _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     return df

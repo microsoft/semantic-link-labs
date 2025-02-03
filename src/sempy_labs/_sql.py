@@ -1,14 +1,13 @@
-import sempy.fabric as fabric
 import pandas as pd
 from typing import Optional, Union, List
 from sempy._utils._log import log
 import struct
 from itertools import chain, repeat
-from sempy.fabric.exceptions import FabricHTTPException
 from sempy_labs._helper_functions import (
     resolve_lakehouse_name_and_id,
     resolve_item_name_and_id,
     resolve_workspace_name_and_id,
+    _base_api,
 )
 from uuid import UUID
 
@@ -47,21 +46,18 @@ class ConnectBase:
 
         # Resolve the appropriate ID and name (warehouse or lakehouse)
         if endpoint_type == "warehouse":
-            (resource_id, resource_name) = resolve_item_name_and_id(
+            (resource_name, resource_id) = resolve_item_name_and_id(
                 item=item, type=endpoint_type.capitalize(), workspace=workspace_id
             )
         else:
-            (resource_id, resource_name) = resolve_lakehouse_name_and_id(
+            (resource_name, resource_id) = resolve_lakehouse_name_and_id(
                 lakehouse=item, workspace=workspace_id
             )
 
         # Get the TDS endpoint
-        client = fabric.FabricRestClient()
-        response = client.get(
-            f"v1/workspaces/{workspace_id}/{endpoint_type}s/{resource_id}"
+        response = _base_api(
+            request=f"v1/workspaces/{workspace_id}/{endpoint_type}s/{resource_id}"
         )
-        if response.status_code != 200:
-            raise FabricHTTPException(response)
 
         if endpoint_type == "warehouse":
             tds_endpoint = response.json().get("properties", {}).get("connectionString")
@@ -150,7 +146,7 @@ class ConnectWarehouse(ConnectBase):
         timeout: Optional[int] = None,
     ):
         super().__init__(
-            name=warehouse,
+            item=warehouse,
             workspace=workspace,
             timeout=timeout,
             endpoint_type="warehouse",
@@ -165,7 +161,7 @@ class ConnectLakehouse(ConnectBase):
         timeout: Optional[int] = None,
     ):
         super().__init__(
-            name=lakehouse,
+            item=lakehouse,
             workspace=workspace,
             timeout=timeout,
             endpoint_type="lakehouse",

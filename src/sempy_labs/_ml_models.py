@@ -1,13 +1,13 @@
 import sempy.fabric as fabric
 import pandas as pd
-import sempy_labs._icons as icons
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
-    lro,
-    pagination,
+    _base_api,
+    resolve_item_id,
+    _print_success,
+    _create_dataframe,
 )
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
@@ -30,16 +30,20 @@ def list_ml_models(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing the ML models within a workspace.
     """
 
-    df = pd.DataFrame(columns=["ML Model Name", "ML Model Id", "Description"])
+    columns = {
+        "ML Model Name": "string",
+        "ML Model Id": "string",
+        "Description": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/mlModels")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
+    responses = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/mlModels",
+        status_codes=200,
+        uses_pagination=True,
+    )
 
     for r in responses:
         for v in r.get("value", []):
@@ -79,22 +83,27 @@ def create_ml_model(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    request_body = {"displayName": name}
+    payload = {"displayName": name}
 
     if description:
-        request_body["description"] = description
+        payload["description"] = description
 
-    client = fabric.FabricRestClient()
-    response = client.post(f"/v1/workspaces/{workspace_id}/mlModels", json=request_body)
-
-    lro(client, response, status_codes=[201, 202])
-
-    print(
-        f"{icons.green_dot} The '{name}' ML model has been created within the '{workspace_name}' workspace."
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/mlModels",
+        method="post",
+        status_codes=[201, 202],
+        payload=payload,
+        lro_return_status_code=True,
+    )
+    _print_success(
+        item_name=name,
+        item_type="ML Model",
+        workspace_name=workspace_name,
+        action="created",
     )
 
 
-def delete_ml_model(name: str, workspace: Optional[str | UUID] = None):
+def delete_ml_model(name: str | UUID, workspace: Optional[str | UUID] = None):
     """
     Deletes a Fabric ML model.
 
@@ -102,26 +111,16 @@ def delete_ml_model(name: str, workspace: Optional[str | UUID] = None):
 
     Parameters
     ----------
-    name: str
-        Name of the ML model.
+    name: str | uuid.UUID
+        Name or ID of the ML model.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    item_id = fabric.resolve_item_id(
-        item_name=name, type="MLModel", workspace=workspace
-    )
-
-    client = fabric.FabricRestClient()
-    response = client.delete(f"/v1/workspaces/{workspace_id}/mlModels/{item_id}")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    print(
-        f"{icons.green_dot} The '{name}' ML model within the '{workspace_name}' workspace has been deleted."
+    item_id = resolve_item_id(item=name, type="MLModel", workspace=workspace)
+    fabric.delete_item(item_id=item_id, workspace=workspace)
+    _print_success(
+        item_name=name, item_type="ML Model", workspace_name=workspace, action="deleted"
     )

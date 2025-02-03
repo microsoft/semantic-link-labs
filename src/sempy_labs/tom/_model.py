@@ -9,6 +9,7 @@ from sempy_labs._helper_functions import (
     _make_list_unique,
     resolve_dataset_name_and_id,
     resolve_workspace_name_and_id,
+    _base_api,
 )
 from sempy_labs._list_functions import list_relationships
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
@@ -17,7 +18,6 @@ from contextlib import contextmanager
 from typing import List, Iterator, Optional, Union, TYPE_CHECKING
 from sempy._utils._log import log
 import sempy_labs._icons as icons
-from sempy.fabric.exceptions import FabricHTTPException
 import ast
 from uuid import UUID
 import sempy_labs._authentication as auth
@@ -4518,10 +4518,11 @@ class TOMWrapper:
                     "modelItems"
                 ].append(new_item)
 
-            client = fabric.FabricRestClient()
-            response = client.post("/explore/v202304/nl2nl/completions", json=payload)
-            if response.status_code != 200:
-                raise FabricHTTPException(response)
+            response = _base_api(
+                request="/explore/v202304/nl2nl/completions",
+                method="post",
+                payload=payload,
+            )
 
             for item in response.json().get("modelItems", []):
                 ms_name = item["urn"]

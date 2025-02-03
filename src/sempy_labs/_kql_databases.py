@@ -4,10 +4,9 @@ import sempy_labs._icons as icons
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
-    lro,
-    pagination,
+    _base_api,
+    _create_dataframe,
 )
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
@@ -30,26 +29,22 @@ def list_kql_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing the KQL databases within a workspace.
     """
 
-    df = pd.DataFrame(
-        columns=[
-            "KQL Database Name",
-            "KQL Database Id",
-            "Description",
-            "Parent Eventhouse Item Id",
-            "Query Service URI",
-            "Ingestion Service URI",
-            "Database Type",
-        ]
-    )
+    columns = {
+        "KQL Database Name": "string",
+        "KQL Database Id": "string",
+        "Description": "string",
+        "Parent Eventhouse Item Id": "string",
+        "Query Service URI": "string",
+        "Ingestion Service URI": "string",
+        "Database Type": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/kqlDatabases")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
+    responses = _base_api(
+        request=f"v1/workspaces/{workspace_id}/kqlDatabases", uses_pagination=True
+    )
 
     for r in responses:
         for v in r.get("value", []):
@@ -91,17 +86,18 @@ def create_kql_database(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    request_body = {"displayName": name}
+    payload = {"displayName": name}
 
     if description:
-        request_body["description"] = description
+        payload["description"] = description
 
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/kqlDatabases", json=request_body
+    _base_api(
+        request=f"v1/workspaces/{workspace_id}/kqlDatabases",
+        method="post",
+        payload=payload,
+        status_codes=[201, 202],
+        lro_return_status_code=True,
     )
-
-    lro(client, response, status_codes=[201, 202])
 
     print(
         f"{icons.green_dot} The '{name}' KQL database has been created within the '{workspace_name}' workspace."
@@ -129,13 +125,10 @@ def delete_kql_database(name: str, workspace: Optional[str | UUID] = None):
         item_name=name, type="KQLDatabase", workspace=workspace_id
     )
 
-    client = fabric.FabricRestClient()
-    response = client.delete(
-        f"/v1/workspaces/{workspace_id}/kqlDatabases/{kql_database_id}"
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/kqlDatabases/{kql_database_id}",
+        method="delete",
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
     print(
         f"{icons.green_dot} The '{name}' KQL database within the '{workspace_name}' workspace has been deleted."
     )

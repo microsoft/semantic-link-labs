@@ -15,14 +15,14 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
     language_validate,
     resolve_workspace_name_and_id,
-    lro,
     _decode_b64,
     resolve_dataset_id,
+    _update_dataframe_datatypes,
+    _base_api,
 )
 from typing import List, Optional, Union
 from sempy._utils._log import log
 import sempy_labs._icons as icons
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
@@ -57,12 +57,12 @@ def get_report_json(
     report_id = resolve_report_id(report=report, workspace=workspace_id)
     fmt = "PBIR-Legacy"
 
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/reports/{report_id}/getDefinition?format={fmt}"
+    result = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/reports/{report_id}/getDefinition?format={fmt}",
+        method="post",
+        lro_return_json=True,
+        status_codes=None,
     )
-
-    result = lro(client, response).json()
     df_items = pd.json_normalize(result["definition"]["parts"])
     df_items_filt = df_items[df_items["path"] == "report.json"]
     payload = df_items_filt["payload"].iloc[0]
@@ -284,7 +284,6 @@ def export_report(
         )
 
     reportId = dfI_filt["Id"].iloc[0]
-    client = fabric.PowerBIRestClient()
 
     if (
         export_format in ["BMP", "EMF", "GIF", "JPEG", "TIFF"]
@@ -362,31 +361,35 @@ def export_report(
         ]
 
     base_url = f"/v1.0/myorg/groups/{workspace_id}/reports/{reportId}"
-    response = client.post(f"{base_url}/ExportTo", json=request_body)
+    response = _base_api(
+        request=f"{base_url}/ExportTo",
+        method="post",
+        payload=request_body,
+        status_codes=202,
+    )
+    export_id = json.loads(response.content).get("id")
 
-    if response.status_code == 202:
+    get_status_url = f"{base_url}/exports/{export_id}"
+    response = _base_api(request=get_status_url, status_codes=[200, 202])
+    response_body = json.loads(response.content)
+    while response_body["status"] not in ["Succeeded", "Failed"]:
+        time.sleep(3)
+        response = _base_api(request=get_status_url, status_codes=[200, 202])
         response_body = json.loads(response.content)
-        export_id = response_body["id"]
-        response = client.get(f"{base_url}/exports/{export_id}")
-        response_body = json.loads(response.content)
-        while response_body["status"] not in ["Succeeded", "Failed"]:
-            time.sleep(3)
-            response = client.get(f"{base_url}/exports/{export_id}")
-            response_body = json.loads(response.content)
-        if response_body["status"] == "Failed":
-            raise ValueError(
-                f"{icons.red_dot} The export for the '{report}' report within the '{workspace_name}' workspace in the '{export_format}' format has failed."
-            )
-        else:
-            response = client.get(f"{base_url}/exports/{export_id}/file")
-            print(
-                f"{icons.in_progress} Saving the '{export_format}' export for the '{report}' report within the '{workspace_name}' workspace to the lakehouse..."
-            )
-            with open(filePath, "wb") as export_file:
-                export_file.write(response.content)
-            print(
-                f"{icons.green_dot} The '{export_format}' export for the '{report}' report within the '{workspace_name}' workspace has been saved to the following location: '{filePath}'."
-            )
+    if response_body["status"] == "Failed":
+        raise ValueError(
+            f"{icons.red_dot} The export for the '{report}' report within the '{workspace_name}' workspace in the '{export_format}' format has failed."
+        )
+    else:
+        response = _base_api(request=f"{get_status_url}/file")
+        print(
+            f"{icons.in_progress} Saving the '{export_format}' export for the '{report}' report within the '{workspace_name}' workspace to the lakehouse..."
+        )
+        with open(filePath, "wb") as export_file:
+            export_file.write(response.content)
+        print(
+            f"{icons.green_dot} The '{export_format}' export for the '{report}' report within the '{workspace_name}' workspace has been saved to the following location: '{filePath}'."
+        )
 
 
 def clone_report(
@@ -452,20 +455,17 @@ def clone_report(
             f"{icons.warning} The 'report' and 'cloned_report' parameters have the same value of '{report}. The 'workspace' and 'target_workspace' have the same value of '{workspace_name}'. Either the 'cloned_report' or the 'target_workspace' must be different from the original report."
         )
 
-    client = fabric.PowerBIRestClient()
-
-    request_body = {"name": cloned_report}
+    payload = {"name": cloned_report}
     if target_dataset is not None:
-        request_body["targetModelId"] = target_dataset_id
+        payload["targetModelId"] = target_dataset_id
     if target_workspace != workspace_name:
-        request_body["targetWorkspaceId"] = target_workspace_id
+        payload["targetWorkspaceId"] = target_workspace_id
 
-    response = client.post(
-        f"/v1.0/myorg/groups/{workspace_id}/reports/{reportId}/Clone", json=request_body
+    _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}/reports/{reportId}/Clone",
+        method="post",
+        payload=payload,
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
     print(
         f"{icons.green_dot} The '{report}' report has been successfully cloned as the '{cloned_report}' report within the '{target_workspace}' workspace."
     )
@@ -554,9 +554,14 @@ def list_report_pages(report: str, workspace: Optional[str | UUID] = None):
         }
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    df["Hidden"] = df["Hidden"].astype(bool)
-    intCol = ["Width", "Height", "Visual Count"]
-    df[intCol] = df[intCol].astype(int)
+    column_map = {
+        "Hidden": "bool",
+        "Width": "int",
+        "Height": "int",
+        "Visual Count": "int",
+    }
+
+    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
 
     return df
 

@@ -1,3 +1,4 @@
+import os
 import sempy.fabric
 from unittest.mock import patch
 from sempy_labs.tom import connect_semantic_model

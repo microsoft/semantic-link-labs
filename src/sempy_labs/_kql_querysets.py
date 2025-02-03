@@ -4,10 +4,9 @@ import sempy_labs._icons as icons
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
-    lro,
-    pagination,
+    _base_api,
+    _create_dataframe,
 )
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
@@ -30,22 +29,18 @@ def list_kql_querysets(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing the KQL querysets within a workspace.
     """
 
-    df = pd.DataFrame(
-        columns=[
-            "KQL Queryset Name",
-            "KQL Queryset Id",
-            "Description",
-        ]
-    )
+    columns = {
+        "KQL Queryset Name": "string",
+        "KQL Queryset Id": "string",
+        "Description": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/kqlQuerysets")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
+    responses = _base_api(
+        request=f"v1/workspaces/{workspace_id}/kqlQuerysets", uses_pagination=True
+    )
 
     for r in responses:
         for v in r.get("value", []):
@@ -81,17 +76,18 @@ def create_kql_queryset(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    request_body = {"displayName": name}
+    payload = {"displayName": name}
 
     if description:
-        request_body["description"] = description
+        payload["description"] = description
 
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"/v1/workspaces/{workspace_id}/kqlQuerysets", json=request_body
+    _base_api(
+        request=f"v1/workspaces/{workspace_id}/kqlQuerysets",
+        method="post",
+        payload=payload,
+        status_codes=[201, 202],
+        lro_return_status_code=True,
     )
-
-    lro(client, response, status_codes=[201, 202])
 
     print(
         f"{icons.green_dot} The '{name}' KQL queryset has been created within the '{workspace_name}' workspace."
@@ -119,13 +115,10 @@ def delete_kql_queryset(name: str, workspace: Optional[str | UUID] = None):
         item_name=name, type="KQLQueryset", workspace=workspace_id
     )
 
-    client = fabric.FabricRestClient()
-    response = client.delete(
-        f"/v1/workspaces/{workspace_id}/kqlQuerysets/{kql_database_id}"
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/kqlQuerysets/{kql_database_id}",
+        method="delete",
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
     print(
         f"{icons.green_dot} The '{name}' KQL queryset within the '{workspace_name}' workspace has been deleted."
     )

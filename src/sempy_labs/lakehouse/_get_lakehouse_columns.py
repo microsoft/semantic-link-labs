@@ -4,6 +4,7 @@ from sempy_labs._helper_functions import (
     format_dax_object_name,
     resolve_workspace_name_and_id,
     resolve_lakehouse_name_and_id,
+    _create_dataframe,
 )
 from typing import Optional
 from sempy._utils._log import log
@@ -35,16 +36,15 @@ def get_lakehouse_columns(
     from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
     from delta import DeltaTable
 
-    df = pd.DataFrame(
-        columns=[
-            "Workspace Name",
-            "Lakehouse Name",
-            "Table Name",
-            "Column Name",
-            "Full Column Name",
-            "Data Type",
-        ]
-    )
+    columns = {
+        "Workspace Name": "string",
+        "Lakehouse Name": "string",
+        "Table Name": "string",
+        "Column Name": "string",
+        "Full Column Name": "string",
+        "Data Type": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(

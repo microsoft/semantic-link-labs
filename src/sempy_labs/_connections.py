@@ -1,11 +1,12 @@
 import sempy.fabric as fabric
 import pandas as pd
-from sempy.fabric.exceptions import FabricHTTPException
 from typing import Optional
 from sempy_labs._helper_functions import (
-    pagination,
     _is_valid_uuid,
     resolve_workspace_name_and_id,
+    _update_dataframe_datatypes,
+    _base_api,
+    _create_dataframe,
 )
 from uuid import UUID
 import sempy_labs._icons as icons
@@ -25,13 +26,7 @@ def delete_connection(connection: str | UUID):
     """
 
     connection_id = _resolve_connection_id(connection)
-
-    client = fabric.FabricRestClient()
-    response = client.delete(f"/v1/connections/{connection_id}")
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
+    _base_api(request=f"/v1/connections/{connection_id}", method="delete")
     print(f"{icons.green_dot} The '{connection}' connection has been deleted.")
 
 
@@ -50,14 +45,10 @@ def delete_connection_role_assignment(connection: str | UUID, role_assignment_id
     """
 
     connection_id = _resolve_connection_id(connection)
-
-    client = fabric.FabricRestClient()
-    response = client.delete(
-        f"/v1/connections/{connection_id}/roleAssignments/{role_assignment_id}"
+    _base_api(
+        request=f"/v1/connections/{connection_id}/roleAssignments/{role_assignment_id}",
+        method="delete",
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
 
     print(
         f"{icons.green_dot} The '{role_assignment_id}' role assignment Id has been deleted from the '{connection}' connection."
@@ -99,22 +90,18 @@ def list_connection_role_assignments(connection: str | UUID) -> pd.DataFrame:
 
     connection_id = _resolve_connection_id(connection)
 
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/connections/{connection_id}/roleAssignments")
+    columns = {
+        "Connection Role Assignment Id": "string",
+        "Principal Id": "string",
+        "Principal Type": "string",
+        "Role": "string",
+    }
 
-    df = pd.DataFrame(
-        columns=[
-            "Connection Role Assignment Id",
-            "Principal Id",
-            "Principal Type",
-            "Role",
-        ]
+    df = _create_dataframe(columns=columns)
+
+    responses = _base_api(
+        request=f"/v1/connections/{connection_id}/roleAssignments", uses_pagination=True
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
 
     for r in responses:
         for v in r.get("value", []):
@@ -140,29 +127,23 @@ def list_connections() -> pd.DataFrame:
         A pandas dataframe showing all available connections.
     """
 
-    client = fabric.FabricRestClient()
-    response = client.get("/v1/connections")
+    columns = {
+        "Connection Id": "string",
+        "Connection Name": "string",
+        "Gateway Id": "string",
+        "Connectivity Type": "string",
+        "Connection Path": "string",
+        "Connection Type": "string",
+        "Privacy Level": "string",
+        "Credential Type": "string",
+        "Single Sign on Type": "string",
+        "Connection Encyrption": "string",
+        "Skip Test Connection": "bool",
+    }
+    df = _create_dataframe(columns=columns)
 
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    responses = _base_api(request="/v1/connections", uses_pagination=True)
 
-    responses = pagination(client, response)
-
-    df = pd.DataFrame(
-        columns=[
-            "Connection Id",
-            "Connection Name",
-            "Gateway Id",
-            "Connectivity Type",
-            "Connection Path",
-            "Connection Type",
-            "Privacy Level",
-            "Credential Type",
-            "Single Sign on Type",
-            "Connection Encyrption",
-            "Skip Test Connection",
-        ]
-    )
     for r in responses:
         for i in r.get("value", []):
             connection_details = i.get("connectionDetails", {})
@@ -199,8 +180,8 @@ def list_connections() -> pd.DataFrame:
             }
 
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-    bool_cols = ["Skip Test Connection"]
-    df[bool_cols] = df[bool_cols].astype(bool)
+
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -236,24 +217,20 @@ def list_item_connections(
         item_name=item_name, type=item_type, workspace=workspace_id
     )
 
-    client = fabric.FabricRestClient()
-    response = client.get(f"/v1/workspaces/{workspace_id}/items/{item_id}/connections")
+    columns = {
+        "Connection Name": "string",
+        "Connection Id": "string",
+        "Connectivity Type": "string",
+        "Connection Type": "string",
+        "Connection Path": "string",
+        "Gateway Id": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
-    df = pd.DataFrame(
-        columns=[
-            "Connection Name",
-            "Connection Id",
-            "Connectivity Type",
-            "Connection Type",
-            "Connection Path",
-            "Gateway Id",
-        ]
+    responses = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/items/{item_id}/connections",
+        uses_pagination=True,
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
 
     for r in responses:
         for v in r.get("value", []):
@@ -280,23 +257,17 @@ def _list_supported_connection_types(
         gateway_id = _resolve_gateway_id(gateway)
         url += f"gatewayId={gateway_id}"
 
-    df = pd.DataFrame(
-        columns=[
-            "Connection Type",
-            "Creation Method",
-            "Supported Credential Types",
-            "Supported Connection Encryption Types",
-            "Supports Skip Test Connection",
-        ]
-    )
+    columns = {
+        "Connection Type": "string",
+        "Creation Method": "string",
+        "Supported Credential Types": "string",
+        "Supported Connection Encryption Types": "string",
+        "Supports Skip Test Connection": "bool",
+    }
+    df = _create_dataframe(columns=columns)
 
     url = url.rstrip("&")
-    client = fabric.FabricRestClient()
-    response = client.get(url)
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    responses = pagination(client, response)
+    responses = _base_api(request=url, uses_pagination=True)
 
     records = []
     for r in responses:
@@ -317,6 +288,8 @@ def _list_supported_connection_types(
 
     if records:
         df = pd.DataFrame(records)
+
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -356,7 +329,7 @@ def create_cloud_connection(
         If True, skips the test connection.
     """
 
-    request_body = {
+    payload = {
         "connectivityType": "ShareableCloud",
         "displayName": name,
         "connectionDetails": {
@@ -388,11 +361,9 @@ def create_cloud_connection(
         },
     }
 
-    client = fabric.FabricRestClient()
-    response = client.post("/v1/connections", json=request_body)
-
-    if response.status_code != 201:
-        raise FabricHTTPException(response)
+    _base_api(
+        request="/v1/connections", method="post", payload=payload, status_codes=201
+    )
 
     print(f"{icons.green_dot} The '{name}' cloud connection has been created.")
 
@@ -436,7 +407,7 @@ def create_on_prem_connection(
 
     gateway_id = _resolve_gateway_id(gateway)
 
-    request_body = {
+    payload = {
         "connectivityType": "OnPremisesGateway",
         "gatewayId": gateway_id,
         "displayName": name,
@@ -468,11 +439,9 @@ def create_on_prem_connection(
         },
     }
 
-    client = fabric.FabricRestClient()
-    response = client.post("/v1/connections", json=request_body)
-
-    if response.status_code != 201:
-        raise FabricHTTPException(response)
+    _base_api(
+        request="/v1/connections", method="post", payload=payload, status_codes=201
+    )
 
     print(f"{icons.green_dot} The '{name}' on-prem connection has been created.")
 
@@ -517,7 +486,7 @@ def create_vnet_connection(
 
     gateway_id = _resolve_gateway_id(gateway)
 
-    request_body = {
+    payload = {
         "connectivityType": "VirtualNetworkGateway",
         "gatewayId": gateway_id,
         "displayName": name,
@@ -550,11 +519,9 @@ def create_vnet_connection(
         },
     }
 
-    client = fabric.FabricRestClient()
-    response = client.post("/v1/connections", json=request_body)
-
-    if response.status_code != 201:
-        raise FabricHTTPException(response)
+    _base_api(
+        request="/v1/connections", method="post", payload=payload, status_codes=201
+    )
 
     print(
         f"{icons.green_dot} The '{name}' virtual network gateway connection has been created."

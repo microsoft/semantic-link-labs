@@ -4,10 +4,10 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_id,
     resolve_warehouse_id,
     resolve_workspace_name_and_id,
+    _base_api,
 )
 from typing import Optional
 import sempy_labs._icons as icons
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
@@ -53,11 +53,10 @@ def generate_shared_expression(
     elif item_type == "Warehouse":
         item_id = resolve_warehouse_id(warehouse=item_name, workspace=workspace_id)
 
-    client = fabric.FabricRestClient()
     item_type_rest = f"{item_type.lower()}s"
-    response = client.get(f"/v1/workspaces/{workspace_id}/{item_type_rest}/{item_id}")
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    response = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/{item_type_rest}/{item_id}"
+    )
 
     prop = response.json().get("properties")
 

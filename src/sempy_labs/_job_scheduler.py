@@ -1,14 +1,13 @@
-import sempy.fabric as fabric
 from sempy._utils._log import log
 import pandas as pd
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_item_name_and_id,
-    pagination,
-    lro,
+    _update_dataframe_datatypes,
+    _base_api,
+    _create_dataframe,
 )
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 import sempy_labs._icons as icons
 
@@ -44,31 +43,25 @@ def list_item_job_instances(
         item=item, type=type, workspace=workspace
     )
 
-    client = fabric.FabricRestClient()
-    response = client.get(
-        f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/instances"
+    columns = {
+        "Job Instance Id": "string",
+        "Item Name": "string",
+        "Item Id": "string",
+        "Item Type": "string",
+        "Job Type": "string",
+        "Invoke Type": "string",
+        "Status": "string",
+        "Root Activity Id": "string",
+        "Start Time UTC": "datetime",
+        "End Time UTC": "string",
+        "Error Message": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    responses = _base_api(
+        request=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/instances",
+        uses_pagination=True,
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    df = pd.DataFrame(
-        columns=[
-            "Job Instance Id",
-            "Item Name",
-            "Item Id",
-            "Item Type",
-            "Job Type",
-            "Invoke Type",
-            "Status",
-            "Root Activity Id",
-            "Start Time UTC",
-            "End Time UTC",
-            "Failure Reason",
-        ]
-    )
-
-    responses = pagination(client, response)
 
     if not responses[0].get("value"):
         return df
@@ -94,6 +87,8 @@ def list_item_job_instances(
 
     if dfs:
         df = pd.concat(dfs, ignore_index=True)
+
+    df = _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -134,30 +129,25 @@ def list_item_schedules(
         item=item, type=type, workspace=workspace
     )
 
-    df = pd.DataFrame(
-        columns=[
-            "Job Schedule Id",
-            "Enabled",
-            "Created Date Time",
-            "Start Date Time",
-            "End Date Time",
-            "Local Time Zone Id",
-            "Type",
-            "Interval",
-            "Weekdays",
-            "Times",
-            "Owner Id",
-            "Owner Type",
-        ]
-    )
+    columns = {
+        "Job Schedule Id": "string",
+        "Enabled": "bool",
+        "Created Date Time": "datetime",
+        "Start Date Time": "datetime",
+        "End Date Time": "string",
+        "Local Time Zone Id": "string",
+        "Type": "string",
+        "Interval": "string",
+        "Weekdays": "string",
+        "Times": "string",
+        "Owner Id": "string",
+        "Owner Type": "string",
+    }
+    df = _create_dataframe(columns=columns)
 
-    client = fabric.FabricRestClient()
-    response = client.get(
-        f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/{job_type}/schedules"
+    response = _base_api(
+        request=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/{job_type}/schedules"
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
 
     for v in response.json().get("value", []):
         config = v.get("configuration", {})
@@ -179,9 +169,7 @@ def list_item_schedules(
 
         df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
-    df["Enabled"] = df["Enabled"].astype(bool)
-    df["Created Date Time"] = pd.to_datetime(df["Created Date Time"])
-    df["Start Date Time"] = pd.to_datetime(df["Start Date Time"])
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -217,11 +205,11 @@ def run_on_demand_item_job(
         item=item, type=type, workspace=workspace
     )
 
-    client = fabric.FabricRestClient()
-    response = client.post(
-        f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/instances?jobType={job_type}"
+    _base_api(
+        request=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/instances?jobType={job_type}",
+        method="post",
+        lro_return_status_code=True,
+        status_codes=202,
     )
-
-    lro(client, response, return_status_code=True)
 
     print(f"{icons.green_dot} The '{item_name}' {type.lower()} has been executed.")

@@ -1,11 +1,9 @@
-import sempy.fabric as fabric
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
-    lro,
+    _base_api,
 )
 from typing import Optional
 import sempy_labs._icons as icons
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
 
 
@@ -25,13 +23,12 @@ def provision_workspace_identity(workspace: Optional[str | UUID] = None):
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    client = fabric.FabricRestClient()
-    response = client.post(f"/v1/workspaces/{workspace_id}/provisionIdentity")
-
-    if response.status_code not in [200, 202]:
-        raise FabricHTTPException(response)
-
-    lro(client, response)
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/provisionIdentity",
+        method="post",
+        lro_return_status_code=True,
+        status_codes=None,
+    )
 
     print(
         f"{icons.green_dot} A workspace identity has been provisioned for the '{workspace_name}' workspace."
@@ -54,13 +51,12 @@ def deprovision_workspace_identity(workspace: Optional[str | UUID] = None):
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
-    client = fabric.FabricRestClient()
-    response = client.post(f"/v1/workspaces/{workspace_id}/deprovisionIdentity")
-
-    if response.status_code not in [200, 202]:
-        raise FabricHTTPException(response)
-
-    lro(client, response)
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/deprovisionIdentity",
+        method="post",
+        lro_return_status_code=True,
+        status_codes=None,
+    )
 
     print(
         f"{icons.green_dot} The workspace identity has been deprovisioned from the '{workspace_name}' workspace."
