@@ -123,9 +123,9 @@ def create_workspace_montiring_dashboard(
     workspace: Optional[str | UUID] = None,
 ):
     """
-    Creates a workspace monitoring dashboard.
+    Creates a workspace monitoring dashboard based on `this <https://github.com/microsoft/fabric-toolbox/tree/main/monitoring/workspace-monitoring-dashboards>`_ template.
 
-    This is a wrapper function for the following API: `Items - Create Workspace Monitoring Dashboard <https://learn.microsoft.com/rest/api/fabric/kqldatabase/items/create-workspace-monitoring-dashboard>`_.
+    This function requires the workspace to have workspace monitoring enabled.
 
     Parameters
     ----------
