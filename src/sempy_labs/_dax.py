@@ -378,6 +378,7 @@ def _dax_perf_test(
                         dataset=dataset, workspace=workspace, refresh_type=refresh_type
                     )
 
+                # EVALUATE {1} is used to initate a warm cache
                 fabric.evaluate_dax(
                     dataset=dataset, workspace=workspace, dax_string="""EVALUATE {1}"""
                 )

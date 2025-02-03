@@ -14,6 +14,8 @@ from sempy_labs._helper_functions import (
     _update_dataframe_datatypes,
 )
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
+from sempy_labs.lakehouse._lakehouse import lakehouse_attached
+import sempy_labs._icons as icons
 
 
 def delta_analyzer(
@@ -36,6 +38,11 @@ def delta_analyzer(
     Dict[str, pandas.DataFrame]
         A dictionary of pandas dataframes showing semantic model objects which violated the best practice analyzer rules.
     """
+
+    if not lakehouse_attached():
+        raise ValueError(
+            f"{icons.red_dot} No lakehouse is attached to this notebook. Please attach a lakehouse to the notebook before running the Delta Analyzer."
+        )
 
     prefix = "SLL_DeltaAnalyzer_"
     now = datetime.datetime.now()
