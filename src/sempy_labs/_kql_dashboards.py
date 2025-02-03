@@ -6,6 +6,7 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _base_api,
     _create_dataframe,
+    _conv_b64,
 )
 from uuid import UUID
 import requests
@@ -105,6 +106,8 @@ def create_kql_dashboard(
                 # }
             ],
         }
+
+    payload = _conv_b64(payload)
 
     _base_api(
         request=f"v1/workspaces/{workspace_id}/kqlDashboards",
