@@ -30,6 +30,7 @@ from sempy_labs.perf_lab._test_cycle import (
     _trace_dax_queries,
     _get_query_name,
     _warmup_test_models,
+    _refresh_test_models,
     run_test_cycle,
     _get_query_name,
 )
@@ -54,6 +55,7 @@ from sempy_labs.perf_lab._table_diagnostics import (
 
 __all__ = [
     "run_test_cycle",
+    "_refresh_test_models",
     "_get_query_name",
     "get_storage_table_column_segments",
     "simulate_etl",

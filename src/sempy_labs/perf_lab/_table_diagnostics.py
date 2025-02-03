@@ -12,7 +12,7 @@ import sempy_labs._icons as icons
 from typing import Optional, Callable, Tuple
 from uuid import UUID
 from sempy_labs.tom import connect_semantic_model
-from sempy_labs.perf_lab import PropertyBag
+from sempy_labs.perf_lab import _refresh_test_models
 
 from sempy_labs.lakehouse import get_lakehouse_tables
 from sempy_labs._helper_functions import (
@@ -22,7 +22,8 @@ from sempy_labs._helper_functions import (
 
 def get_storage_table_column_segments(
     test_cycle_definitions: DataFrame,
-    tables_info: DataFrame
+    tables_info: DataFrame,
+    refresh_type: str = "full",
 )->DataFrame:
     """
     Queries the INFO.STORAGETABLECOLUMNSEGMENTS DAX function for all model tables in the tables_info dataframe.
@@ -33,6 +34,11 @@ def get_storage_table_column_segments(
         A spark dataframe with test-cycle augmented test definitions, usually obtained by using the _initialize_test_cycle() function.
     tables_info : DataFrame
         A Spark dataframe with information about the model tables and source tables, usually obtained by using the get_source_tables() function.
+    refresh_type : str, Default = full
+        The type of processing to perform for each test semantic model before gathering column segment data.
+        Types align with the TMSL refresh command types: full, clearValues, calculate, dataOnly, automatic, and defragment. 
+        The add type isn't supported.
+        In addition, refresh_type can be set to clearValuesFull, which performs a clearValues refresh followed by a full refresh.
 
     Returns
     -------
@@ -40,6 +46,12 @@ def get_storage_table_column_segments(
         A Spark dataframe containing the data retrieved from the INFO.STORAGETABLECOLUMNSEGMENTS DAX function.
     """   
     spark = SparkSession.builder.getOrCreate()
+
+    if refresh_type is not None:
+        _refresh_test_models(
+            test_definitions = test_cycle_definitions,
+            refresh_type = refresh_type,
+        )
 
     # Initialize an empty DataFrame
     results_df = None

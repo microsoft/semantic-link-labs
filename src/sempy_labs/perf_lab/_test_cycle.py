@@ -743,6 +743,72 @@ def _warmup_test_models(
                 dax_string=row.QueryText)
         print(f"{icons.green_dot} {queries_df.count()} queries executed to warm up semantic model '{target_dataset}' in workspace '{target_workspace}'.")
 
+def _refresh_test_models(
+    test_definitions: DataFrame,
+    refresh_type: str = "full",
+) -> None:
+    """
+    Generate a unique test id and timestamp for the current test cycle and adds this information to the test_definitions dataframe.
+
+    Parameters
+    ----------
+    test_definitions : DataFrame
+        A spark dataframe with the query and semantic model definitions for a test cycle.
+        The test definitions dataframe must have the following columns.
+        +---------+---------------+-------------+
+        |QueryText|TargetWorkspace|TargetDataset|
+        +---------+---------------+-------------+
+    refresh_type : str, Default = full
+        The type of processing to perform for each test semantic model.
+        Types align with the TMSL refresh command types: full, clearValues, calculate, dataOnly, automatic, and defragment. 
+        The add type isn't supported.
+        In addition, refresh_type can be set to clearValuesFull, which performs a clearValues refresh followed by a full refresh.
+
+    Returns
+    -------
+    None
+    """
+    for row in test_definitions.dropDuplicates(['TargetWorkspace', 'TargetDataset']).collect():
+        target_dataset = row['TargetDataset']
+        target_workspace = row['TargetWorkspace']
+
+        # Skip this row if the target semantic model is not defined.
+        if target_dataset == "" or target_dataset is None:
+            print(f"{icons.red_dot} No test semantic model specifed as the target dataset. Ignoring this row. Please review your test definitions.")
+            continue
+
+        try:
+            (target_workspace_name, target_workspace_id) = resolve_workspace_name_and_id(workspace=target_workspace)
+        except:
+            print(f"{icons.red_dot} Unable to resolve workspace '{target_workspace}' for test semantic model '{target_dataset}'. Ignoring this row. Please review your test definitions.")
+            continue 
+
+        try:
+            (target_dataset_name, target_dataset_id) = resolve_dataset_name_and_id(dataset=target_dataset, workspace=target_workspace_id)
+        except:
+            print(f"{icons.red_dot} Unable to find the test semantic model '{target_dataset}' in workspace '{target_workspace}'. Ignoring this row. Please review your test definitions.")
+            continue 
+
+        if refresh_type is None:
+            print(f"{icons.red_dot} Unable to refresh test definitions because no refresh type was specified.")
+        elif refresh_type == "clearValuesFull":
+            # The refresh type 'clearValuesFull' requires 2 refresh_semantic_model calls
+            # 1. clearValues, 2. full
+            refresh_semantic_model( 
+                dataset=target_dataset_id, 
+                workspace=target_workspace_id, 
+                refresh_type="clearValues")
+            refresh_semantic_model( 
+                dataset=target_dataset_id, 
+                workspace=target_workspace_id, 
+                refresh_type="full")
+        else:
+            # The refresh type is supported by the refresh_semantic_model function.
+            refresh_semantic_model( 
+                dataset=target_dataset_id, 
+                workspace=target_workspace_id, 
+                refresh_type=refresh_type)
+
 def run_test_cycle(
     test_cycle_definitions: DataFrame,
     clear_query_cache: Optional[bool] = True,

@@ -446,16 +446,16 @@ def _delete_reinsert_rows(
     key_column = custom_properties.get_property("key_column")
 
     minmax = _get_min_max_keys(
-        table_info['SourceTableName'], 
-        table_info['SourceLocation'], 
+        source_table_info['SourceTableName'], 
+        source_table_info['SourceLocation'], 
         key_column)
 
     if not minmax == None:
          # Calculate the date id for the next (max+1) day for the new rows.
         new_date = datetime.strptime(str(minmax[1]), "%Y%m%d") + timedelta(days=1)     
         _sliding_window_update(
-                table_name=table_info['SourceTableName'],
-                table_path=table_info['SourceLocation'],
+                table_name=source_table_info['SourceTableName'],
+                table_path=source_table_info['SourceLocation'],
                 old_value= minmax[0],
                 new_value=int(new_date.strftime("%Y%m%d")),
                 key_column="DateID",
