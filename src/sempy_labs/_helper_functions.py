@@ -1483,6 +1483,9 @@ def _update_dataframe_datatypes(dataframe: pd.DataFrame, column_map: dict):
             # This is for list_synonyms since the weight column is float and can have NaN values.
             elif data_type == "float_fillna":
                 dataframe[column] = dataframe[column].fillna(0).astype(float)
+            # This is to avoid NaN values in integer columns (for delta analyzer)
+            elif data_type == "int_fillna":
+                dataframe[column] = dataframe[column].fillna(0).astype(int)
             elif data_type in ["str", "string"]:
                 dataframe[column] = dataframe[column].astype(str)
             else:

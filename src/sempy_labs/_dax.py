@@ -263,7 +263,7 @@ def get_dax_query_memory_size(
 
 
 @log
-def dax_perf_test(
+def _dax_perf_test(
     dataset: str,
     dax_queries: dict,
     clear_cache_before_run: bool = False,
@@ -432,7 +432,7 @@ def dax_perf_test(
     return df, query_results
 
 
-def dax_perf_test_bulk(
+def _dax_perf_test_bulk(
     mapping: dict,
     clear_cache_before_run: bool = False,
     refresh_type: Optional[str] = None,
@@ -467,7 +467,7 @@ def dax_perf_test_bulk(
 
     for workspace, datasets in mapping.items():
         for dataset, queries in datasets.items():
-            dax_perf_test(
+            _dax_perf_test(
                 dataset=dataset,
                 dax_queries=queries,
                 clear_cache_before_run=clear_cache_before_run,

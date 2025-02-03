@@ -67,7 +67,7 @@ def delta_analyzer(
         "CompressedSize": "int",
         "UncompressedSize": "int",
         "HasDict": "bool",
-        "DictOffset": "int",
+        "DictOffset": "int_fillna",
         "ValueCount": "int",
         "Encodings": "string",
     }
@@ -262,6 +262,7 @@ def delta_analyzer(
 
         if export:
             df["RunId"] = runId
+            df["RunId"] = df["RunId"].astype(int)
             save_as_delta_table(
                 dataframe=df,
                 delta_table_name=f"{prefix}{name}",
