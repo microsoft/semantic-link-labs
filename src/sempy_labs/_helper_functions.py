@@ -731,7 +731,7 @@ def resolve_item_type(item_id: UUID, workspace: Optional[str | UUID] = None) -> 
 
     if dfI_filt.empty:
         raise ValueError(
-            f"Invalid 'item_id' parameter. The '{item_id}' item was not found in the '{workspace_name}' workspace."
+            f"{icons.red_dot} Invalid 'item_id' parameter. The '{item_id}' item was not found in the '{workspace_name}' workspace."
         )
     return dfI_filt["Type"].iloc[0]
 
@@ -861,7 +861,7 @@ def get_capacity_name(workspace: Optional[str | UUID] = None) -> str:
     capacity_id = get_capacity_id(workspace)
     dfC = fabric.list_capacities()
     dfC_filt = dfC[dfC["Id"] == capacity_id]
-    if len(dfC_filt) == 0:
+    if dfC_filt.empty:
         raise ValueError(
             f"{icons.red_dot} The '{capacity_id}' capacity Id does not exist."
         )
@@ -892,7 +892,7 @@ def resolve_capacity_name(capacity_id: Optional[UUID] = None) -> str:
     dfC = fabric.list_capacities()
     dfC_filt = dfC[dfC["Id"] == capacity_id]
 
-    if len(dfC_filt) == 0:
+    if dfC_filt.empty:
         raise ValueError(
             f"{icons.red_dot} The '{capacity_id}' capacity Id does not exist."
         )
@@ -923,7 +923,7 @@ def resolve_capacity_id(capacity_name: Optional[str] = None) -> UUID:
     dfC = fabric.list_capacities()
     dfC_filt = dfC[dfC["Display Name"] == capacity_name]
 
-    if len(dfC_filt) == 0:
+    if dfC_filt.empty:
         raise ValueError(
             f"{icons.red_dot} The '{capacity_name}' capacity does not exist."
         )
@@ -1013,7 +1013,7 @@ def resolve_deployment_pipeline_id(deployment_pipeline: str | UUID) -> UUID:
     Parameters
     ----------
     deployment_pipeline : str | uuid.UUID
-        The deployment pipeline name
+        The deployment pipeline name or ID.
 
     Returns
     -------
@@ -1238,20 +1238,29 @@ def generate_guid():
 
 
 def _get_column_aggregate(
-    lakehouse: str,
     table_name: str,
     column_name: str = "RunId",
+    lakehouse: Optional[str] = None,
     function: str = "max",
     default_value: int = 0,
+    rsd: float = 0.05,
 ) -> int:
 
     from pyspark.sql import SparkSession
 
     spark = SparkSession.builder.getOrCreate()
     function = function.upper()
-    query = f"SELECT {function}({column_name}) FROM {lakehouse}.{table_name}"
-    if "COUNT" in function and "DISTINCT" in function:
+
+    if lakehouse is None:
+        lakehouse = resolve_lakehouse_name()
+
+    if function in {"COUNTDISTINCT", "DISTINCTCOUNT"}:
         query = f"SELECT COUNT(DISTINCT({column_name})) FROM {lakehouse}.{table_name}"
+    elif "APPROX" in function:
+        query = f"SELECT approx_count_distinct({column_name}, {rsd}) FROM {table_name}"
+    else:
+        query = f"SELECT {function}({column_name}) FROM {lakehouse}.{table_name}"
+
     dfSpark = spark.sql(query)
 
     return dfSpark.collect()[0][0] or default_value
@@ -1558,6 +1567,9 @@ def _update_dataframe_datatypes(dataframe: pd.DataFrame, column_map: dict):
             # This is for list_synonyms since the weight column is float and can have NaN values.
             elif data_type == "float_fillna":
                 dataframe[column] = dataframe[column].fillna(0).astype(float)
+            # This is to avoid NaN values in integer columns (for delta analyzer)
+            elif data_type == "int_fillna":
+                dataframe[column] = dataframe[column].fillna(0).astype(int)
             elif data_type in ["str", "string"]:
                 dataframe[column] = dataframe[column].astype(str)
             else:
