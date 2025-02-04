@@ -46,6 +46,7 @@ from sempy_labs.perf_lab._simulated_etl import (
     _sliding_window_update,
     simulate_etl,
     _delete_reinsert_rows,
+    UpdateTableCallback,
 )
 
 from sempy_labs.perf_lab._table_diagnostics import (
@@ -60,6 +61,7 @@ __all__ = [
     "get_storage_table_column_segments",
     "simulate_etl",
     "_delete_reinsert_rows",
+    "UpdateTableCallback",
     "_get_min_max_keys",
     "_insert_rows",
     "_delete_rows",

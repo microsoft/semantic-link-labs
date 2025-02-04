@@ -421,7 +421,7 @@ def _sliding_window_update(
 
     return updated_rows
 
-UpdateTableCallback = Callable[[PropertyBag, PropertyBag], None]
+UpdateTableCallback = Callable[[Row, PropertyBag], None]
 def _delete_reinsert_rows(
     source_table_info: Row,
     custom_properties: Optional[PropertyBag] = None
@@ -444,6 +444,7 @@ def _delete_reinsert_rows(
     """
 
     key_column = custom_properties.get_property("key_column")
+    optimize_table = custom_properties.get_property("Optimize")
 
     minmax = _get_min_max_keys(
         source_table_info['SourceTableName'], 
@@ -458,7 +459,8 @@ def _delete_reinsert_rows(
                 table_path=source_table_info['SourceLocation'],
                 old_value= minmax[0],
                 new_value=int(new_date.strftime("%Y%m%d")),
-                key_column="DateID",
+                key_column=key_column,
+                compress = optimize_table,
                 )
 
     return None
