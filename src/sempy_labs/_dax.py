@@ -104,6 +104,8 @@ def get_dax_query_dependencies(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
+    fabric.refresh_tom_cache(workspace=workspace)
+
     if isinstance(dax_string, str):
         dax_string = [dax_string]
 

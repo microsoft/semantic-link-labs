@@ -287,6 +287,8 @@ def measure_dependency_tree(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
+    fabric.refresh_tom_cache(workspace=workspace)
+
     dfM = fabric.list_measures(dataset=dataset_id, workspace=workspace_id)
     dfM_filt = dfM[dfM["Measure Name"] == measure_name]
 

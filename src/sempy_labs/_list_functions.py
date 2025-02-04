@@ -538,6 +538,8 @@ def list_columns(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
+    fabric.refresh_tom_cache(workspace=workspace)
+
     dfP = fabric.list_partitions(dataset=dataset_id, workspace=workspace_id)
 
     isDirectLake = any(r["Mode"] == "DirectLake" for i, r in dfP.iterrows())
@@ -884,6 +886,8 @@ def list_relationships(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+
+    fabric.refresh_tom_cache(workspace=workspace)
 
     dfR = fabric.list_relationships(dataset=dataset_id, workspace=workspace_id)
     dfR["From Object"] = format_dax_object_name(dfR["From Table"], dfR["From Column"])
@@ -1518,6 +1522,8 @@ def list_semantic_model_object_report_usage(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+
+    fabric.refresh_tom_cache(workspace=workspace)
 
     dfR = list_report_semantic_model_objects(dataset=dataset_id, workspace=workspace_id)
     usage_column_name = "Report Usage Count"

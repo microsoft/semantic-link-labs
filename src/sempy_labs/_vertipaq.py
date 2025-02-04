@@ -69,6 +69,8 @@ def vertipaq_analyzer(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
+    fabric.refresh_tom_cache(workspace=workspace)
+
     vertipaq_map = {
         "Model": {
             "Dataset Name": [icons.data_type_string, icons.no_format],

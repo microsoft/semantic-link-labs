@@ -51,6 +51,7 @@ def get_direct_lake_lakehouse(
     if artifact_type in ["Lakehouse", "Warehouse"]:
         return artifact_name, artifact_id
     else:
+        fabric.refresh_tom_cache(workspace=workspace)
         dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
         dfP_filt = dfP[dfP["Mode"] == "DirectLake"]
         if dfP_filt.empty:
