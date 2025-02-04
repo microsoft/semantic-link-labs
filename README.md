@@ -1,7 +1,7 @@
 # Semantic Link Labs
 
 [![PyPI version](https://badge.fury.io/py/semantic-link-labs.svg)](https://badge.fury.io/py/semantic-link-labs)
-[![Read The Docs](https://readthedocs.org/projects/semantic-link-labs/badge/?version=0.9.1&style=flat)](https://readthedocs.org/projects/semantic-link-labs/)
+[![Read The Docs](https://readthedocs.org/projects/semantic-link-labs/badge/?version=0.9.2&style=flat)](https://readthedocs.org/projects/semantic-link-labs/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Downloads](https://static.pepy.tech/badge/semantic-link-labs)](https://pepy.tech/project/semantic-link-labs)
 
@@ -39,6 +39,8 @@ Check out the video below for an introduction to Semantic Link, Semantic Link La
     * [Check why a Direct Lake semantic model would fallback to DirectQuery](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.directlake.html#sempy_labs.directlake.check_fallback_reason)
     * [View a measure dependency tree](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.measure_dependency_tree)
     * [View unique columns touched in a single (or multiple) DAX query(ies)](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.get_dax_query_dependencies)
+    * [Analyze delta tables for Direct Lake semantic models using Delta Analyzer](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Delta%20Analyzer.ipynb)
+    * [View synonyms from the linguistic schema](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.list_synonyms)
 * Reports
     * [Report Best Practice Analyzer (BPA)](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.report.html#sempy_labs.report.run_report_bpa)
     * [View report metadata](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Report%20Analysis.ipynb)
@@ -55,6 +57,7 @@ Check out the video below for an introduction to Semantic Link, Semantic Link La
     * [Optimize lakehouse tables](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.lakehouse.html#sempy_labs.lakehouse.optimize_lakehouse_tables)
     * [Vacuum lakehouse tables](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.lakehouse.html#sempy_labs.lakehouse.vacuum_lakehouse_tables)
     * [Create](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.lakehouse.html#sempy_labs.lakehouse.create_shortcut_onelake), [delete](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.lakehouse.html#sempy_labs.lakehouse.delete_shortcut), and [view shortcuts](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.list_shortcuts)
+    * [Analyze delta tables for Direct Lake semantic models using Delta Analyzer](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Delta%20Analyzer.ipynb)
 * Notebooks
     * [Import a notebook from the web](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.import_notebook_from_web)    
 * APIs
@@ -116,6 +119,7 @@ An even better way to ensure the semantic-link-labs library is available in your
 2. Select your newly created environment within the 'Environment' drop down in the navigation bar at the top of the notebook
 
 ## Version History
+* [0.9.2](https://github.com/microsoft/semantic-link-labs/releases/tag/0.9.2) (February 4, 2025)
 * [0.9.1](https://github.com/microsoft/semantic-link-labs/releases/tag/0.9.1) (January 22, 2025)
 * [0.9.0](https://github.com/microsoft/semantic-link-labs/releases/tag/0.9.0) (January 22, 2025)
 * [0.8.11](https://github.com/microsoft/semantic-link-labs/releases/tag/0.8.11) (December 19, 2024)
