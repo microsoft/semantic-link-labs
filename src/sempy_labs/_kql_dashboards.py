@@ -114,7 +114,7 @@ def create_kql_dashboard(
     )
 
 
-def create_workspace_montiring_dashboard(
+def create_workspace_monitoring_dashboard(
     name: str = "Fabric Workspace Monitoring Dashboard",
     workspace: Optional[str | UUID] = None,
 ):
