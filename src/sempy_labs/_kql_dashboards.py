@@ -7,6 +7,7 @@ from sempy_labs._helper_functions import (
     _base_api,
     _create_dataframe,
     _conv_b64,
+    generate_guid,
 )
 from uuid import UUID
 import requests
@@ -90,24 +91,16 @@ def create_kql_dashboard(
         payload["description"] = description
 
     if content:
-        # platform_payload = ''
         payload["definition"] = {
             "format": None,
             "parts": [
                 {
                     "path": "RealTimeDashboard.json",
-                    "payload": content,
+                    "payload": _conv_b64(content),
                     "payloadType": "InlineBase64",
                 },
-                # {
-                #    "path": ".platform",
-                #    "payload": platform_payload,
-                #    "payloadType": "InlineBase64"
-                # }
             ],
         }
-
-    payload = _conv_b64(payload)
 
     _base_api(
         request=f"v1/workspaces/{workspace_id}/kqlDashboards",
@@ -165,7 +158,7 @@ def create_workspace_montiring_dashboard(
             "clusterUri": cluster_uri,
             "database": database_id,
             "name": db_name,
-            "id": "b7d7ce56-c612-4d4f-ab1a-1a6f6212efd0",
+            "id": generate_guid(),
             "workspace": workspace_id,
         }
     ]
