@@ -1,8 +1,7 @@
 import pandas as pd
 import datetime
 from typing import Dict
-
-# import pyarrow.dataset as ds
+import pyarrow.dataset as ds
 import pyarrow.parquet as pq
 from delta import DeltaTable
 from pyspark.sql import SparkSession
@@ -110,21 +109,21 @@ def delta_analyzer(
     row_groups = 0
     max_rows_per_row_group = 0
     min_rows_per_row_group = float("inf")
-    dt = DeltaTable.forPath(spark, path)
+    # dt = DeltaTable.forPath(spark, path)
     # schema = dt.toDF().schema
-    is_vorder = False
-    if (
-        dt.detail()
-        .collect()[0]
-        .asDict()
-        .get("properties")
-        .get("delta.parquet.vorder.enabled")
-        == "true"
-    ):
-        is_vorder = True
+    # is_vorder = False
+    # if (
+    #    dt.detail()
+    #    .collect()[0]
+    #    .asDict()
+    #    .get("properties")
+    #    .get("delta.parquet.vorder.enabled")
+    #    == "true"
+    # ):
+    #    is_vorder = True
 
-    # schema = ds.dataset(table_path).schema.metadata
-    # is_vorder = any(b"vorder" in key for key in schema.keys())
+    schema = ds.dataset(table_path).schema.metadata
+    is_vorder = any(b"vorder" in key for key in schema.keys())
     # v_order_level = (
     #    int(schema.get(b"com.microsoft.parquet.vorder.level").decode("utf-8"))
     #    if is_vorder
