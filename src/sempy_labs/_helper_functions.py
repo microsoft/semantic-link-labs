@@ -1250,6 +1250,7 @@ def _get_column_aggregate(
 
     from pyspark.sql import SparkSession
     from pyspark.sql.functions import approx_count_distinct
+    from pyspark.sql import functions as F
 
     function = function.upper()
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -1260,7 +1261,7 @@ def _get_column_aggregate(
     df = spark.read.format("delta").load(path)
 
     if function in {"COUNTDISTINCT", "DISTINCTCOUNT"}:
-        result = df.selectExpr(f"COUNT(DISTINCT {column_name})")
+        result = df.select(F.count_distinct(F.col(column_name)))
     elif "APPROX" in function:
         result = df.select(approx_count_distinct(column_name))
     else:
