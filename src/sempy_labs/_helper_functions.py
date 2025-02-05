@@ -1591,3 +1591,10 @@ def _print_success(item_name, item_type, workspace_name, action="created"):
         )
     else:
         raise NotImplementedError
+
+
+def _pure_python_notebook() -> bool:
+
+    from sempy.fabric._environment import _on_jupyter
+
+    return _on_jupyter()
