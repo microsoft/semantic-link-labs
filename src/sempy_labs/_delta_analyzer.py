@@ -1,17 +1,19 @@
 import pandas as pd
 import datetime
-import sempy.fabric as fabric
 from typing import Dict
-import pyarrow.dataset as ds
+
+# import pyarrow.dataset as ds
 import pyarrow.parquet as pq
+from delta import DeltaTable
 from pyspark.sql import SparkSession
 from sempy_labs._helper_functions import (
-    _get_fabric_context_setting,
-    resolve_lakehouse_name,
+    create_abfss_path,
     save_as_delta_table,
     _get_column_aggregate,
     _create_dataframe,
     _update_dataframe_datatypes,
+    resolve_workspace_name_and_id,
+    resolve_lakehouse_name_and_id,
 )
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
@@ -19,10 +21,22 @@ import sempy_labs._icons as icons
 
 
 def delta_analyzer(
-    table_name: str, approx_distinct_count: bool = True, export: bool = False
+    table_name: str,
+    approx_distinct_count: bool = True,
+    export: bool = False,
 ) -> Dict[str, pd.DataFrame]:
     """
-    Analyzes a delta table and shows the results in a set of 5 dataframes. The table analyzed must be in the lakehouse attached to the notebook.
+    Analyzes a delta table and shows the results in dictionary containing a set of 5 dataframes. The table being analyzed must be in the lakehouse attached to the notebook.
+
+    The 5 dataframes returned by this function are:
+
+    * Summary
+    * Parquet Files
+    * Row Groups
+    * Column Chunks
+    * Columns
+
+    Read more about Delta Analyzer `here <https://github.com/microsoft/Analysis-Services/tree/master/DeltaAnalyzer>`_.
 
     Parameters
     ----------
@@ -46,12 +60,12 @@ def delta_analyzer(
 
     prefix = "SLL_DeltaAnalyzer_"
     now = datetime.datetime.now()
-    workspace_id = fabric.get_workspace_id()
-    workspace_name = fabric.resolve_workspace_name(workspace=workspace_id)
-    lakehouse_id = fabric.get_lakehouse_id()
-    lakehouse_name = resolve_lakehouse_name()
-    default_file_storage = _get_fabric_context_setting(name="fs.defaultFS")
-    fs = default_file_storage.split("@")[-1][:-1]
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace=None)
+    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+        lakehouse=None, workspace=None
+    )
+    path = create_abfss_path(lakehouse_id, workspace_id, table_name)
+    table_path = f"/lakehouse/default/Tables/{table_name}"
 
     parquet_file_df_columns = {
         "ParquetFile": "string",
@@ -83,33 +97,42 @@ def delta_analyzer(
     row_group_df = _create_dataframe(columns=row_group_df_columns)
     column_chunk_df = _create_dataframe(columns=column_chunk_df_columns)
 
-    delta_table_path = f"Tables/{table_name}"
-    path = f"abfss://{workspace_id}@{fs}/{lakehouse_id}/{delta_table_path}"
-
     spark = SparkSession.builder.getOrCreate()
     # delta_table = DeltaTable.forPath(spark, path)
     # detail_df = spark.sql(f"DESCRIBE DETAIL `{table_name}`").collect()[0]
 
     # num_files = detail_df.numFiles
     # size_in_bytes = detail_df.sizeInBytes
+
     latest_files = spark.read.format("delta").load(path).inputFiles()
     file_paths = [f.split("/")[-1] for f in latest_files]
     row_count = spark.table(table_name).count()
     row_groups = 0
     max_rows_per_row_group = 0
     min_rows_per_row_group = float("inf")
-    schema = ds.dataset(f"/lakehouse/default/Tables/{table_name}").schema.metadata
-    is_vorder = any(b"vorder" in key for key in schema.keys())
-    v_order_level = (
-        int(schema.get(b"com.microsoft.parquet.vorder.level").decode("utf-8"))
-        if is_vorder
-        else None
-    )
+    dt = DeltaTable.forPath(spark, path)
+    # schema = dt.toDF().schema
+    is_vorder = False
+    if (
+        dt.detail()
+        .collect()[0]
+        .asDict()
+        .get("properties")
+        .get("delta.parquet.vorder.enabled")
+        == "true"
+    ):
+        is_vorder = True
+
+    # schema = ds.dataset(table_path).schema.metadata
+    # is_vorder = any(b"vorder" in key for key in schema.keys())
+    # v_order_level = (
+    #    int(schema.get(b"com.microsoft.parquet.vorder.level").decode("utf-8"))
+    #    if is_vorder
+    #    else None
+    # )
 
     for file_name in file_paths:
-        parquet_file = pq.ParquetFile(
-            f"/lakehouse/default/Tables/{table_name}/{file_name}"
-        )
+        parquet_file = pq.ParquetFile(f"{table_path}/{file_name}")
         row_groups += parquet_file.num_row_groups
 
         # Generate rowgroup dataframe
@@ -187,7 +210,7 @@ def delta_analyzer(
                 "MinRowsPerRowGroup": min_rows_per_row_group,
                 "AvgRowsPerRowGroup": avg_rows_per_row_group,
                 "VOrderEnabled": is_vorder,
-                "VOrderLevel": v_order_level,
+                # "VOrderLevel": v_order_level,
             }
         ]
     )
@@ -245,7 +268,7 @@ def delta_analyzer(
     if export:
         dfL = get_lakehouse_tables()
         dfL_filt = dfL[dfL["Table Name"] == save_table]
-        if len(dfL_filt) == 0:
+        if dfL_filt.empty:
             runId = 1
         else:
             max_run_id = _get_column_aggregate(
@@ -257,7 +280,9 @@ def delta_analyzer(
         name = name.replace(" ", "")
         cols = {
             "WorkspaceName": workspace_name,
+            "WorkspaceId": workspace_id,
             "LakehouseName": lakehouse_name,
+            "LakehouseId": lakehouse_id,
             "TableName": table_name,
         }
         for i, (col, param) in enumerate(cols.items()):
@@ -274,6 +299,7 @@ def delta_analyzer(
                 dataframe=df,
                 delta_table_name=f"{prefix}{name}",
                 write_mode="append",
+                merge_schema=True,
             )
 
     return dataframes

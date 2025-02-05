@@ -38,9 +38,9 @@ def create_abfss_path(
 
     Parameters
     ----------
-    lakehouse_id : UUID
+    lakehouse_id : uuid.UUID
         ID of the Fabric lakehouse.
-    lakehouse_workspace_id : UUID
+    lakehouse_workspace_id : uuid.UUID
         ID of the Fabric workspace.
     delta_table_name : str
         Name of the delta table name.
@@ -51,7 +51,9 @@ def create_abfss_path(
         An abfss path which can be used to save/reference a delta table in a Fabric lakehouse.
     """
 
-    return f"abfss://{lakehouse_workspace_id}@onelake.dfs.fabric.microsoft.com/{lakehouse_id}/Tables/{delta_table_name}"
+    fp = _get_default_file_path()
+
+    return f"abfss://{lakehouse_workspace_id}@{fp}/{lakehouse_id}/Tables/{delta_table_name}"
 
 
 def _get_default_file_path() -> str:
@@ -256,7 +258,7 @@ def resolve_dataset_id(
 
     Returns
     -------
-    UUID
+    uuid.UUID
         The ID of the semantic model.
     """
 
@@ -792,7 +794,7 @@ def resolve_workspace_capacity(
 
     Returns
     -------
-    Tuple[UUID, str]
+    Tuple[uuid.UUID, str]
         capacity Id; capacity came.
     """
 
@@ -823,7 +825,7 @@ def get_capacity_id(workspace: Optional[str | UUID] = None) -> UUID:
 
     Returns
     -------
-    UUID
+    uuid.UUID
         The capacity Id.
     """
 
@@ -913,7 +915,7 @@ def resolve_capacity_id(capacity_name: Optional[str] = None) -> UUID:
 
     Returns
     -------
-    UUID
+    uuid.UUID
         The capacity Id.
     """
 
@@ -1223,7 +1225,7 @@ def resolve_notebook_id(notebook: str, workspace: Optional[str | UUID] = None) -
 
     Returns
     -------
-    UUID
+    uuid.UUID
         The notebook Id.
     """
 
@@ -1240,30 +1242,31 @@ def generate_guid():
 def _get_column_aggregate(
     table_name: str,
     column_name: str = "RunId",
-    lakehouse: Optional[str] = None,
+    lakehouse: Optional[str | UUID] = None,
+    workspace: Optional[str | UUID] = None,
     function: str = "max",
     default_value: int = 0,
-    rsd: float = 0.05,
 ) -> int:
 
     from pyspark.sql import SparkSession
+    from pyspark.sql.functions import approx_count_distinct
+
+    function = function.upper()
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    lakehouse_id = resolve_lakehouse_id(lakehouse, workspace)
+    path = create_abfss_path(lakehouse_id, workspace_id, table_name)
 
     spark = SparkSession.builder.getOrCreate()
-    function = function.upper()
-
-    if lakehouse is None:
-        lakehouse = resolve_lakehouse_name()
+    df = spark.read.format("delta").load(path)
 
     if function in {"COUNTDISTINCT", "DISTINCTCOUNT"}:
-        query = f"SELECT COUNT(DISTINCT({column_name})) FROM {lakehouse}.{table_name}"
+        result = df.selectExpr(f"COUNT(DISTINCT {column_name})")
     elif "APPROX" in function:
-        query = f"SELECT approx_count_distinct({column_name}, {rsd}) FROM {table_name}"
+        result = df.select(approx_count_distinct(column_name))
     else:
-        query = f"SELECT {function}({column_name}) FROM {lakehouse}.{table_name}"
+        result = df.selectExpr(f"{function}({column_name})")
 
-    dfSpark = spark.sql(query)
-
-    return dfSpark.collect()[0][0] or default_value
+    return result.collect()[0][0] or default_value
 
 
 def _make_list_unique(my_list):
