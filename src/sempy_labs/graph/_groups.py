@@ -14,10 +14,12 @@ def resolve_group_id(group: str | UUID) -> UUID:
     """
     Resolves the group ID from the group name or ID.
 
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     group : str | uuid.UUID
-        The group name.
+        The group name or ID.
 
     Returns
     -------
@@ -41,6 +43,8 @@ def list_groups() -> pd.DataFrame:
     Shows a list of groups and their properties.
 
     This is a wrapper function for the following API: `List groups <https://learn.microsoft.com/graph/api/group-list>`_.
+
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Returns
     -------
@@ -97,6 +101,8 @@ def _get_group(group_id: UUID) -> pd.DataFrame:
     Shows a list of groups and their properties.
 
     This is a wrapper function for the following API: `Get group <https://learn.microsoft.com/graph/api/group-get>`_.
+
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -158,6 +164,8 @@ def list_group_members(group: str | UUID) -> pd.DataFrame:
 
     This is a wrapper function for the following API: `List group members <https://learn.microsoft.com/graph/api/group-list-members>`_.
 
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     group : str | uuid.UUID
@@ -214,6 +222,8 @@ def list_group_owners(group: str | UUID) -> pd.DataFrame:
     Shows a list of the owners of a group.
 
     This is a wrapper function for the following API: `List group owners <https://learn.microsoft.com/graph/api/group-list-owners>`_.
+
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -331,6 +341,8 @@ def add_group_members(
 
     This is a wrapper function for the following API: `Add members <https://learn.microsoft.com/graph/api/group-post-members>`_.
 
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     group : str | uuid.UUID
@@ -351,6 +363,8 @@ def add_group_owners(
 
     This is a wrapper function for the following API: `Add owners <https://learn.microsoft.com/graph/api/group-post-owners>`_.
 
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     group : str | uuid.UUID
@@ -367,6 +381,8 @@ def renew_group(group: str | UUID):
     Renews the group.
 
     This is a wrapper function for the following API: `Renew group <https://learn.microsoft.com/graph/api/group-post-renew>`_.
+
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
