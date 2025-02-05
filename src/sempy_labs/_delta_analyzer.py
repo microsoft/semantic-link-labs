@@ -3,7 +3,6 @@ import datetime
 from typing import Dict
 import pyarrow.dataset as ds
 import pyarrow.parquet as pq
-from delta import DeltaTable
 from pyspark.sql import SparkSession
 from sempy_labs._helper_functions import (
     create_abfss_path,
