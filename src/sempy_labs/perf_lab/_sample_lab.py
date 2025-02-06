@@ -699,7 +699,7 @@ def provision_sample_semantic_model(
         dataset=semantic_model_name, workspace=workspace_id)
 
     print(f"{icons.in_progress} Adding final touches to Direct Lake semantic model '{semantic_model_name}' in workspace '{workspace_name}'.")
-    with connect_semantic_model(dataset=semantic_model_name, workspace=workspace_id, readonly=False) as tom:
+    with connect_semantic_model(dataset=semantic_model_name, workspace=workspace_id, readonly=True) as tom:
         # if the semantic_model_mode is OneLake
         # convert the data access expression in the model to Direct Lake on 
         if semantic_model_mode == semantic_model_modes[1]:
@@ -716,8 +716,7 @@ def provision_sample_semantic_model(
                 for p in t.Partitions:
                     p.Source.SchemaName = ""            
             
-        tom.model.SaveChanges()
-        print(f"{icons.green_dot} Direct Lake semantic model '{semantic_model_name}' converted to Direct Lake on OneLake mode.")
+        print(f"{icons.checked} Direct Lake semantic model '{semantic_model_name}' converted to Direct Lake on OneLake mode.")
 
         # Clean up table names and source lineage tags
         for t in tom.model.Tables:
@@ -737,8 +736,7 @@ def provision_sample_semantic_model(
             else:
                 t.set_Name(t.Name.capitalize())            
 
-        tom.model.SaveChanges()
-        print(f"{icons.green_dot} Table names updated.")
+        print(f"{icons.checked} Table names updated.")
 
         # Mark as date table and create relationships
         tom.mark_as_date_table(table_name="Date", column_name="Date")
@@ -780,8 +778,7 @@ def provision_sample_semantic_model(
             is_active=True
         )
 
-        tom.model.SaveChanges()
-        print(f"{icons.green_dot} Table relationships added.")
+        print(f"{icons.checked} Table relationships added.")
 
         # Mark measures
         tom.add_measure(
@@ -853,8 +850,7 @@ def provision_sample_semantic_model(
             display_folder = "Avg"
         )
 
-        tom.model.SaveChanges()
-        print(f"{icons.green_dot} Measures created.")
+        print(f"{icons.checked} Measures created.")
 
         # Update columns
         tom.update_column(
@@ -888,8 +884,7 @@ def provision_sample_semantic_model(
             format_string="mmm yyyy"
         )
 
-        tom.model.SaveChanges()
-        print(f"{icons.green_dot} Table columns updated.")
+        print(f"{icons.checked} Table columns updated.")
 
 
         # Add calc items and a hierarchy
@@ -992,16 +987,23 @@ def provision_sample_semantic_model(
             ordinal=9
         )
 
-        print(f"{icons.green_dot} Calculation items added.")
+        print(f"{icons.checked} Calculation items added.")
 
         tom.add_hierarchy(
             table_name="Date",
             hierarchy_name="Calendar",
             columns=["Year","Month","Date"]
         )
-        print(f"{icons.green_dot} Calendar hierarchy created.")
+        print(f"{icons.checked} Calendar hierarchy created.")
 
-        return (dataset_name, dataset_id)
+    refresh_semantic_model(
+        dataset=semantic_model_name, 
+        workspace=workspace_id,
+        retry_count = 3,
+    )
+
+    print(f"{icons.green_dot} Direct Lake semantic model '{semantic_model_name}' in workspace '{workspace_name}' fully provisioned and refreshed.")
+    return (dataset_name, dataset_id)
     
 def deprovision_perf_lab_lakehouses(
     test_definitions: DataFrame,
