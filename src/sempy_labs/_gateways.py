@@ -41,7 +41,9 @@ def list_gateways() -> pd.DataFrame:
     }
     df = _create_dataframe(columns=columns)
 
-    responses = _base_api(request="/v1/gateways", uses_pagination=True)
+    responses = _base_api(
+        request="/v1/gateways", client="fabric_sp", uses_pagination=True
+    )
 
     for r in responses:
         for v in r.get("value", []):
@@ -92,7 +94,7 @@ def delete_gateway(gateway: str | UUID):
     """
 
     gateway_id = _resolve_gateway_id(gateway)
-    _base_api(request=f"/v1/gateways/{gateway_id}", method="delete")
+    _base_api(request=f"/v1/gateways/{gateway_id}", client="fabric_sp", method="delete")
     print(f"{icons.green_dot} The '{gateway}' gateway has been deleted.")
 
 
@@ -122,7 +124,9 @@ def list_gateway_role_assigments(gateway: str | UUID) -> pd.DataFrame:
     df = _create_dataframe(columns=columns)
     gateway_id = _resolve_gateway_id(gateway)
     responses = _base_api(
-        request=f"/v1/gateways/{gateway_id}/roleAssignments", uses_pagination=True
+        request=f"/v1/gateways/{gateway_id}/roleAssignments",
+        client="fabric_sp",
+        uses_pagination=True,
     )
 
     for r in responses:
@@ -156,6 +160,7 @@ def delete_gateway_role_assignment(gateway: str | UUID, role_assignment_id: UUID
     gateway_id = _resolve_gateway_id(gateway)
     _base_api(
         request=f"/v1/gateways/{gateway_id}/roleAssignments/{role_assignment_id}",
+        client="fabric_sp",
         method="delete",
     )
 
@@ -200,7 +205,11 @@ def delete_gateway_member(gateway: str | UUID, gateway_member: str | UUID):
         gateway=gateway_id, gateway_member=gateway_member
     )
 
-    _base_api(request=f"/v1/gateways/{gateway_id}/members/{member_id}", method="delete")
+    _base_api(
+        request=f"/v1/gateways/{gateway_id}/members/{member_id}",
+        client="fabric_sp",
+        method="delete",
+    )
     print(
         f"{icons.green_dot} The '{member_id}' member for the '{gateway}' gateway has been deleted."
     )
@@ -235,7 +244,9 @@ def list_gateway_members(gateway: str | UUID) -> pd.DataFrame:
     }
     df = _create_dataframe(columns=columns)
 
-    response = _base_api(request=f"/v1/gateways/{gateway_id}/members")
+    response = _base_api(
+        request=f"/v1/gateways/{gateway_id}/members", client="fabric_sp"
+    )
 
     for v in response.json().get("value", []):
         new_data = {
@@ -304,7 +315,13 @@ def create_vnet_gateway(
         "numberOfMemberGateways": number_of_member_gateways,
     }
 
-    _base_api(request="/v1/gateways", method="post", payload=payload, status_codes=201)
+    _base_api(
+        request="/v1/gateways",
+        client="fabric_sp",
+        method="post",
+        payload=payload,
+        status_codes=201,
+    )
 
     print(
         f"{icons.green_dot} The '{name}' gateway was created within the '{capacity}' capacity."
@@ -352,7 +369,12 @@ def update_on_premises_gateway(
 
     payload["type"] = "OnPremises"
 
-    _base_api(request=f"/v1/gateways/{gateway_id}", method="patch", payload=payload)
+    _base_api(
+        request=f"/v1/gateways/{gateway_id}",
+        client="fabric_sp",
+        method="patch",
+        payload=payload,
+    )
 
     print(f"{icons.green_dot} The '{gateway}' has been updated accordingly.")
 
@@ -399,7 +421,12 @@ def update_vnet_gateway(
 
     payload["type"] = "VirtualNetwork"
 
-    _base_api(request=f"/v1/gateways/{gateway_id}", method="patch", payload=payload)
+    _base_api(
+        request=f"/v1/gateways/{gateway_id}",
+        client="fabric_sp",
+        method="patch",
+        payload=payload,
+    )
     print(f"{icons.green_dot} The '{gateway}' has been updated accordingly.")
 
 
@@ -435,6 +462,7 @@ def bind_semantic_model_to_gateway(
 
     _base_api(
         request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/Default.BindToGateway",
+        client="fabric_sp",
         method="post",
         payload=payload,
     )
