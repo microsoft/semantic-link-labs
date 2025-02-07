@@ -53,6 +53,9 @@ from sempy_labs.perf_lab._table_diagnostics import (
     get_storage_table_column_segments,
 )
 
+from sempy_labs.perf_lab._execution_tracker import (
+    ExecutionTracker,
+)
 
 __all__ = [
     "run_test_cycle",
@@ -98,4 +101,5 @@ __all__ = [
     "_trace_dax_queries",
     "_get_query_name",
     "PropertyBag",
+    "ExecutionTracker",
 ]

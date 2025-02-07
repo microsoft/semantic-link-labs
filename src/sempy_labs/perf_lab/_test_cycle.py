@@ -15,7 +15,7 @@ import re
 
 import sempy_labs._icons as icons
 from sempy_labs import deploy_semantic_model, clear_cache
-from sempy_labs.perf_lab import _get_or_create_workspace
+from sempy_labs.perf_lab import  _get_or_create_workspace
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
@@ -420,6 +420,8 @@ def _provision_test_models(
 
 def _initialize_test_cycle(
     test_definitions: DataFrame,
+    test_run_id: Optional[str] = None,
+    test_description: Optional[str] = None
 ) -> DataFrame:
     """
     Generate a unique test id and timestamp for the current test cycle and adds this information to the test_definitions dataframe.
@@ -432,6 +434,10 @@ def _initialize_test_cycle(
         +----------+----------+----------------+-------------+---------------+-------------+---------------+-------------------+--------------+
         | QueryId|   QueryText| MasterWorkspace|MasterDataset|TargetWorkspace|TargetDataset| DatasourceName|DatasourceWorkspace|DatasourceType|
         +----------+----------+----------------+-------------+---------------+-------------+---------------+-------------------+--------------+
+    test_run_id: str, Default = None
+        An optional id for the test run to be included in the test definitions.
+    test_description: str, Default = None
+        An optional description to be included in the test definitions.
 
     Returns
     -------
@@ -442,10 +448,13 @@ def _initialize_test_cycle(
         |QueryId|QueryText| MasterWorkspace|MasterDataset|TargetWorkspace|TargetDataset|DatasourceName|DatasourceWorkspace|DatasourceType|TestRunId|TestRunTimestamp|
         --------+---------+----------------+-------------+---------------+-------------+--------------+-------------------+--------------+---------+----------------+
     """
+    if test_run_id is None:
+        test_run_id = generate_guid()
 
     return test_definitions \
-        .withColumn("TestRunId", lit(generate_guid())) \
-        .withColumn("TestRunTimestamp", lit(datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+        .withColumn("TestRunId", lit(test_run_id)) \
+        .withColumn("TestRunTimestamp", lit(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))) \
+        .withColumn("TestRunDescription", lit(test_description))
 
 def _tag_dax_queries(
     query_dict: dict,
