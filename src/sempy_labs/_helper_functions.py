@@ -539,7 +539,7 @@ def save_as_delta_table(
         )
 
     dataframe.columns = dataframe.columns.str.replace(" ", "_")
-    spark = SparkSession.builder.getOrCreate()
+    spark = _create_spark_session()
 
     type_mapping = {
         "string": StringType(),
@@ -1248,7 +1248,6 @@ def _get_column_aggregate(
     default_value: int = 0,
 ) -> int:
 
-    from pyspark.sql import SparkSession
     from pyspark.sql.functions import approx_count_distinct
     from pyspark.sql import functions as F
 
@@ -1257,7 +1256,7 @@ def _get_column_aggregate(
     lakehouse_id = resolve_lakehouse_id(lakehouse, workspace)
     path = create_abfss_path(lakehouse_id, workspace_id, table_name)
 
-    spark = SparkSession.builder.getOrCreate()
+    spark = _create_spark_session()
     df = spark.read.format("delta").load(path)
 
     if function in {"COUNTDISTINCT", "DISTINCTCOUNT"}:
@@ -1598,3 +1597,36 @@ def _pure_python_notebook() -> bool:
     from sempy.fabric._environment import _on_jupyter
 
     return _on_jupyter()
+
+
+def _create_spark_session():
+
+    if _pure_python_notebook():
+        raise ValueError(
+            f"{icons.red_dot} This function is only available in a PySpark notebook."
+        )
+
+    from pyspark.sql import SparkSession
+
+    return SparkSession.builder.getOrCreate()
+
+
+def _read_delta_table(path: str) -> pd.DataFrame:
+
+    spark = _create_spark_session()
+
+    return spark.read.format("delta").load(path)
+
+
+def _delta_table_row_count(table_name: str) -> int:
+
+    spark = _create_spark_session()
+
+    return spark.table(table_name).count()
+
+
+def _run_spark_sql_query(query):
+
+    spark = _create_spark_session()
+
+    return spark.sql(query)

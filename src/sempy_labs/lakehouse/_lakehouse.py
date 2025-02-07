@@ -6,6 +6,7 @@ from sempy_labs._helper_functions import (
     _base_api,
     resolve_lakehouse_name_and_id,
     resolve_workspace_name_and_id,
+    _create_spark_session,
 )
 import sempy_labs._icons as icons
 import re
@@ -54,7 +55,6 @@ def optimize_lakehouse_tables(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    from pyspark.sql import SparkSession
     from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
     from delta import DeltaTable
 
@@ -69,7 +69,7 @@ def optimize_lakehouse_tables(
     else:
         tables_filt = lakeTablesDelta.copy()
 
-    spark = SparkSession.builder.getOrCreate()
+    spark = _create_spark_session()
 
     for _, r in (bar := tqdm(tables_filt.iterrows())):
         tableName = r["Table Name"]
@@ -122,7 +122,7 @@ def vacuum_lakehouse_tables(
     else:
         tables_filt = lakeTablesDelta.copy()
 
-    spark = SparkSession.builder.getOrCreate()
+    spark = _create_spark_session()
     spark.conf.set("spark.databricks.delta.vacuum.parallelDelete.enabled", "true")
 
     for _, r in (bar := tqdm(tables_filt.iterrows())):

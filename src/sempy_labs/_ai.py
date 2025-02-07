@@ -1,10 +1,13 @@
 import sempy
 import sempy.fabric as fabric
 import pandas as pd
-from pyspark.sql import SparkSession
 from typing import List, Optional, Union
 from IPython.display import display
 import sempy_labs._icons as icons
+from sempy_labs._helper_functions import (
+    _read_delta_table,
+    _run_spark_sql_query,
+)
 
 
 def optimize_semantic_model(dataset: str, workspace: Optional[str] = None):
@@ -186,13 +189,13 @@ def generate_aggs(
 
     query = query[:-1]
 
-    spark = SparkSession.builder.getOrCreate()
     fromTablePath = create_abfss_path(
         lakehouse_id=lakehouse_id,
         lakehouse_workspace_id=lakehouse_workspace_id,
         delta_table_name=lakeTName,
     )
-    df = spark.read.format("delta").load(fromTablePath)
+
+    df = _read_delta_table(fromTablePath)
     tempTableName = f"delta_table_{lakeTName}"
     df.createOrReplaceTempView(tempTableName)
     sqlQuery = f"{query} \n FROM {tempTableName} {groupBy}"
@@ -201,7 +204,7 @@ def generate_aggs(
     print(sqlQuery)
 
     # Save query to spark dataframe
-    spark_df = spark.sql(sqlQuery)
+    spark_df = _run_spark_sql_query(sqlQuery)
     f"\nCreating/updating the '{aggLakeTName}' table in the lakehouse..."
     # Write spark dataframe to delta table
     aggFilePath = create_abfss_path(
@@ -419,7 +422,7 @@ def generate_aggs(
 # dfP = fabric.list_partitions(dataset = dataset, workspace = workspace)
 # isDirectLake = any(r['Mode'] == 'DirectLake' for i, r in dfP.iterrows())
 
-# spark = SparkSession.builder.getOrCreate()
+# spark = _create_spark_session()
 # views = spark.sql(f"SHOW VIEWS IN {lakehouse}").collect()
 # for view in views:
 #    viewName = view['viewName']

@@ -9,9 +9,9 @@ from sempy_labs._helper_functions import (
     create_abfss_path,
     retry,
     generate_guid,
+    _create_spark_session,
 )
 from sempy_labs.tom import connect_semantic_model
-from pyspark.sql import SparkSession
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
@@ -98,7 +98,7 @@ def migrate_calc_tables_to_lakehouse(
     if killFunction:
         return
 
-    spark = SparkSession.builder.getOrCreate()
+    spark = _create_spark_session()
 
     if len(dfP_filt) == 0:
         print(

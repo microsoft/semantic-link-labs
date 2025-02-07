@@ -3,7 +3,6 @@ import datetime
 from typing import Dict
 import pyarrow.dataset as ds
 import pyarrow.parquet as pq
-from pyspark.sql import SparkSession
 from sempy_labs._helper_functions import (
     create_abfss_path,
     save_as_delta_table,
@@ -12,6 +11,8 @@ from sempy_labs._helper_functions import (
     _update_dataframe_datatypes,
     resolve_workspace_name_and_id,
     resolve_lakehouse_name_and_id,
+    _read_delta_table,
+    _delta_table_row_count,
 )
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
@@ -95,16 +96,15 @@ def delta_analyzer(
     row_group_df = _create_dataframe(columns=row_group_df_columns)
     column_chunk_df = _create_dataframe(columns=column_chunk_df_columns)
 
-    spark = SparkSession.builder.getOrCreate()
     # delta_table = DeltaTable.forPath(spark, path)
     # detail_df = spark.sql(f"DESCRIBE DETAIL `{table_name}`").collect()[0]
 
     # num_files = detail_df.numFiles
     # size_in_bytes = detail_df.sizeInBytes
 
-    latest_files = spark.read.format("delta").load(path).inputFiles()
+    latest_files = _read_delta_table(path).inputFiles()
     file_paths = [f.split("/")[-1] for f in latest_files]
-    row_count = spark.table(table_name).count()
+    row_count = _delta_table_row_count(table_name)
     row_groups = 0
     max_rows_per_row_group = 0
     min_rows_per_row_group = float("inf")

@@ -9,6 +9,7 @@ from sempy_labs._helper_functions import (
     _update_dataframe_datatypes,
     _base_api,
     _create_dataframe,
+    _run_spark_sql_query,
 )
 from sempy._utils._log import log
 import pandas as pd
@@ -584,14 +585,12 @@ def list_columns(
             query = f"{query} FROM {lakehouse}.{lakeTName}"
             sql_statements.append((table_name, query))
 
-            spark = SparkSession.builder.getOrCreate()
-
         for o in sql_statements:
             tName = o[0]
             query = o[1]
 
             # Run the query
-            df = spark.sql(query)
+            df = _run_spark_sql_query(query)
 
             for column in df.columns:
                 x = df.collect()[0][column]
