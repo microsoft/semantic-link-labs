@@ -26,7 +26,7 @@ def delete_connection(connection: str | UUID):
     """
 
     connection_id = _resolve_connection_id(connection)
-    _base_api(request=f"/v1/connections/{connection_id}", method="delete")
+    _base_api(request=f"/v1/connections/{connection_id}", client="fabric_sp", method="delete")
     print(f"{icons.green_dot} The '{connection}' connection has been deleted.")
 
 
@@ -47,6 +47,7 @@ def delete_connection_role_assignment(connection: str | UUID, role_assignment_id
     connection_id = _resolve_connection_id(connection)
     _base_api(
         request=f"/v1/connections/{connection_id}/roleAssignments/{role_assignment_id}",
+        client="fabric_sp",
         method="delete",
     )
 
@@ -100,7 +101,7 @@ def list_connection_role_assignments(connection: str | UUID) -> pd.DataFrame:
     df = _create_dataframe(columns=columns)
 
     responses = _base_api(
-        request=f"/v1/connections/{connection_id}/roleAssignments", uses_pagination=True
+        request=f"/v1/connections/{connection_id}/roleAssignments", client="fabric_sp", uses_pagination=True
     )
 
     for r in responses:
@@ -142,7 +143,7 @@ def list_connections() -> pd.DataFrame:
     }
     df = _create_dataframe(columns=columns)
 
-    responses = _base_api(request="/v1/connections", uses_pagination=True)
+    responses = _base_api(request="/v1/connections", client="fabric_sp", uses_pagination=True)
 
     for r in responses:
         for i in r.get("value", []):
@@ -229,6 +230,7 @@ def list_item_connections(
 
     responses = _base_api(
         request=f"/v1/workspaces/{workspace_id}/items/{item_id}/connections",
+        client="fabric_sp", 
         uses_pagination=True,
     )
 
@@ -267,7 +269,7 @@ def _list_supported_connection_types(
     df = _create_dataframe(columns=columns)
 
     url = url.rstrip("&")
-    responses = _base_api(request=url, uses_pagination=True)
+    responses = _base_api(request=url, client="fabric_sp", uses_pagination=True)
 
     records = []
     for r in responses:
@@ -362,7 +364,7 @@ def create_cloud_connection(
     }
 
     _base_api(
-        request="/v1/connections", method="post", payload=payload, status_codes=201
+        request="/v1/connections", client="fabric_sp", method="post", payload=payload, status_codes=201
     )
 
     print(f"{icons.green_dot} The '{name}' cloud connection has been created.")
@@ -440,7 +442,7 @@ def create_on_prem_connection(
     }
 
     _base_api(
-        request="/v1/connections", method="post", payload=payload, status_codes=201
+        request="/v1/connections", client="fabric_sp", method="post", payload=payload, status_codes=201
     )
 
     print(f"{icons.green_dot} The '{name}' on-prem connection has been created.")
@@ -520,7 +522,7 @@ def create_vnet_connection(
     }
 
     _base_api(
-        request="/v1/connections", method="post", payload=payload, status_codes=201
+        request="/v1/connections", client="fabric_sp", method="post", payload=payload, status_codes=201
     )
 
     print(
