@@ -456,6 +456,31 @@ def _initialize_test_cycle(
         .withColumn("TestRunTimestamp", lit(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))) \
         .withColumn("TestRunDescription", lit(test_description))
 
+def _get_test_cycle_id(
+    test_cycle_definitions: DataFrame,
+) -> DataFrame:
+    """
+    Generate a unique test id and timestamp for the current test cycle and adds this information to the test_definitions dataframe.
+
+    Parameters
+    ----------
+    test_cycle_definitions : DataFrame
+        A test cycle-initialized Spark dataframe containing the test definitions augmented with test cycle Id and timestamp.
+        The returned dataframe includes the following columns:
+        +-------+---------+----------------+-------------+---------------+-------------+--------------+-------------------+--------------+---------+----------------+
+        |QueryId|QueryText| MasterWorkspace|MasterDataset|TargetWorkspace|TargetDataset|DatasourceName|DatasourceWorkspace|DatasourceType|TestRunId|TestRunTimestamp|
+        --------+---------+----------------+-------------+---------------+-------------+--------------+-------------------+--------------+---------+----------------+
+
+    Returns
+    -------
+    str
+        Retrieves the first value of the TestRunId column from the test_cycle_definitions dataFrame as the id of the test cycle.
+     """
+    if test_cycle_definitions is None:
+        return None
+    else:
+        return test_cycle_definitions.select("TestRunId").first()[0]
+
 def _tag_dax_queries(
     query_dict: dict,
 ) -> List:

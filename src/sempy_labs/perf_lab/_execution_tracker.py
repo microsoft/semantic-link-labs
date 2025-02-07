@@ -28,7 +28,7 @@ class ExecutionTracker:
             Logs an event with the given status and message.
     """
 
-    def __init__(self, table_name, run_id = str(uuid.uuid4()), description=""):
+    def __init__(self, table_name, run_id = str(uuid.uuid4()), description = ""):
         """
         Initializes the ExecutionTracker with the specified table name.
 
@@ -94,3 +94,4 @@ class ExecutionTracker:
                                             ["StartTime", "EndTime", "Status", "FunctionName", "Message", "RunId", "Description"])
 
         _insert_into_delta_table(log_df, self.table_name)
+        
