@@ -1,6 +1,6 @@
 import pandas as pd
 import datetime
-from typing import Dict
+from typing import Dict, Optional
 import pyarrow.dataset as ds
 import pyarrow.parquet as pq
 from sempy_labs._helper_functions import (
@@ -17,15 +17,18 @@ from sempy_labs._helper_functions import (
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 import sempy_labs._icons as icons
+from uuid import UUID
 
 
 def delta_analyzer(
     table_name: str,
     approx_distinct_count: bool = True,
     export: bool = False,
+    lakehouse: Optional[str | UUID] = None,
+    workspace: Optional[str | UUID] = None,
 ) -> Dict[str, pd.DataFrame]:
     """
-    Analyzes a delta table and shows the results in dictionary containing a set of 5 dataframes. The table being analyzed must be in the lakehouse attached to the notebook.
+    Analyzes a delta table and shows the results in dictionary containing a set of 5 dataframes. If 'export' is set to True, the results will be saved to delta tables in the lakehouse attached to the notebook.
 
     The 5 dataframes returned by this function are:
 
@@ -45,26 +48,44 @@ def delta_analyzer(
         If True, uses approx_count_distinct to calculate the cardinality of each column. If False, uses COUNT(DISTINCT) instead.
     export : bool, default=False
         If True, exports the resulting dataframes to delta tables in the lakehouse attached to the notebook.
+    lakehouse : str | uuid.UUID, default=None
+        The Fabric lakehouse name or ID.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
 
     Returns
     -------
     Dict[str, pandas.DataFrame]
         A dictionary of pandas dataframes showing semantic model objects which violated the best practice analyzer rules.
     """
-
-    if not lakehouse_attached():
-        raise ValueError(
-            f"{icons.red_dot} No lakehouse is attached to this notebook. Please attach a lakehouse to the notebook before running the Delta Analyzer."
-        )
+    import notebookutils
 
     prefix = "SLL_DeltaAnalyzer_"
     now = datetime.datetime.now()
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace=None)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace=workspace)
     (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
-        lakehouse=None, workspace=None
+        lakehouse=lakehouse, workspace=workspace
     )
     path = create_abfss_path(lakehouse_id, workspace_id, table_name)
-    table_path = f"/lakehouse/default/Tables/{table_name}"
+    lake_path = create_abfss_path(lakehouse_id, workspace_id)
+    mounts = notebookutils.fs.mounts()
+    mount_point = f"/{workspace_name.replace(' ', '')}{lakehouse_name.replace(' ', '')}"
+    if not any(i.get("source") == lake_path for i in mounts):
+        # Mount lakehouse if not mounted
+        notebookutils.fs.mount(lake_path, mount_point)
+        print(
+            f"{icons.green_dot} Mounted the '{lakehouse_name}' lakehouse within the '{workspace_name}' to the notebook."
+        )
+
+    local_path = next(
+        i.get("localPath")
+        for i in notebookutils.fs.mounts()
+        if i.get("source") == lake_path
+    )
+    table_path = f"{local_path}/Tables/{table_name}"
 
     parquet_file_df_columns = {
         "ParquetFile": "string",
@@ -108,26 +129,9 @@ def delta_analyzer(
     row_groups = 0
     max_rows_per_row_group = 0
     min_rows_per_row_group = float("inf")
-    # dt = DeltaTable.forPath(spark, path)
-    # schema = dt.toDF().schema
-    # is_vorder = False
-    # if (
-    #    dt.detail()
-    #    .collect()[0]
-    #    .asDict()
-    #    .get("properties")
-    #    .get("delta.parquet.vorder.enabled")
-    #    == "true"
-    # ):
-    #    is_vorder = True
 
     schema = ds.dataset(table_path).schema.metadata
     is_vorder = any(b"vorder" in key for key in schema.keys())
-    # v_order_level = (
-    #    int(schema.get(b"com.microsoft.parquet.vorder.level").decode("utf-8"))
-    #    if is_vorder
-    #    else None
-    # )
 
     for file_name in file_paths:
         parquet_file = pq.ParquetFile(f"{table_path}/{file_name}")
@@ -264,6 +268,10 @@ def delta_analyzer(
     save_table = f"{prefix}Summary"
 
     if export:
+        if not lakehouse_attached():
+            raise ValueError(
+                f"{icons.red_dot} No lakehouse is attached to this notebook. Please attach a lakehouse to the notebook before running the Delta Analyzer."
+            )
         dfL = get_lakehouse_tables()
         dfL_filt = dfL[dfL["Table Name"] == save_table]
         if dfL_filt.empty:

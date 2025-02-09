@@ -31,7 +31,9 @@ def _build_url(url: str, params: dict) -> str:
 
 
 def create_abfss_path(
-    lakehouse_id: UUID, lakehouse_workspace_id: UUID, delta_table_name: str
+    lakehouse_id: UUID,
+    lakehouse_workspace_id: UUID,
+    delta_table_name: Optional[str] = None,
 ) -> str:
     """
     Creates an abfss path for a delta table in a Fabric lakehouse.
@@ -42,18 +44,22 @@ def create_abfss_path(
         ID of the Fabric lakehouse.
     lakehouse_workspace_id : uuid.UUID
         ID of the Fabric workspace.
-    delta_table_name : str
+    delta_table_name : str, default=None
         Name of the delta table name.
 
     Returns
     -------
     str
-        An abfss path which can be used to save/reference a delta table in a Fabric lakehouse.
+        An abfss path which can be used to save/reference a delta table in a Fabric lakehouse or lakehouse.
     """
 
     fp = _get_default_file_path()
+    path = f"abfss://{lakehouse_workspace_id}@{fp}/{lakehouse_id}"
 
-    return f"abfss://{lakehouse_workspace_id}@{fp}/{lakehouse_id}/Tables/{delta_table_name}"
+    if delta_table_name is not None:
+        path += f"/Tables/{delta_table_name}"
+
+    return path
 
 
 def _get_default_file_path() -> str:
