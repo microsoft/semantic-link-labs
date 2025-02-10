@@ -132,3 +132,21 @@ def delete_kql_database(name: str, workspace: Optional[str | UUID] = None):
     print(
         f"{icons.green_dot} The '{name}' KQL database within the '{workspace_name}' workspace has been deleted."
     )
+
+
+def _enable_workspace_montoring(workspace: Optional[str | UUID]):
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    from sempy_labs._eventhouses import list_eventhouses, create_eventhouse
+
+    df = list_eventhouses(workspace=workspace)
+    df_filt = df[df["Eventhouse Name"] == "Monitoring Eventhouse"]
+
+    if not df_filt.empty:
+        print(
+            f"{icons.info} Workspace monitoring is already enabled for the '{workspace_name}' workspace."
+        )
+        return
+
+    create_eventhouse(name="Monitoring Eventhouse", workspace=workspace, definition="")

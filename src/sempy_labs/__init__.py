@@ -75,6 +75,7 @@ from sempy_labs._eventhouses import (
     create_eventhouse,
     list_eventhouses,
     delete_eventhouse,
+    get_eventhouse_definition,
 )
 from sempy_labs._eventstreams import (
     list_eventstreams,
@@ -499,4 +500,5 @@ __all__ = [
     "delta_analyzer",
     # "dax_perf_test",
     # "dax_perf_test_bulk",
+    "get_eventhouse_definition",
 ]
