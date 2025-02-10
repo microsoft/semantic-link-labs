@@ -80,10 +80,9 @@ def delta_analyzer(
             f"{icons.green_dot} Mounted the '{lakehouse_name}' lakehouse within the '{workspace_name}' to the notebook."
         )
 
+    mounts = notebookutils.fs.mounts()
     local_path = next(
-        i.get("localPath")
-        for i in notebookutils.fs.mounts()
-        if i.get("source") == lake_path
+        i.get("localPath") for i in mounts if i.get("source") == lake_path
     )
     table_path = f"{local_path}/Tables/{table_name}"
 
@@ -240,6 +239,7 @@ def delta_analyzer(
                 column_name=col_name,
                 function="approx",
                 lakehouse=lakehouse_name,
+                workspace=workspace,
             )
         else:
             dc = _get_column_aggregate(
@@ -247,6 +247,7 @@ def delta_analyzer(
                 column_name=col_name,
                 function="distinctcount",
                 lakehouse=lakehouse_name,
+                workspace=workspace,
             )
 
         if "Cardinality" not in column_df.columns:
