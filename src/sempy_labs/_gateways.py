@@ -21,6 +21,8 @@ def list_gateways() -> pd.DataFrame:
 
     This is a wrapper function for the following API: `Gateways - List Gateways <https://learn.microsoft.com/rest/api/fabric/core/gateways/list-gateways>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Returns
     -------
     pandas.DataFrame
