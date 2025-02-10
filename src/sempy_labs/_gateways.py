@@ -87,6 +87,8 @@ def delete_gateway(gateway: str | UUID):
 
     This is a wrapper function for the following API: `Gateways - Delete Gateway <https://learn.microsoft.com/rest/api/fabric/core/gateways/delete-gateway>`_.
 
+    Service Principal Authentication is supported (see here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>_ for examples).
+
     Parameters
     ----------
     gateway : str | uuid.UUID
@@ -103,6 +105,8 @@ def list_gateway_role_assigments(gateway: str | UUID) -> pd.DataFrame:
     Returns a list of gateway role assignments.
 
     This is a wrapper function for the following API: `Gateways - List Gateway Role Assignments <https://learn.microsoft.com/rest/api/fabric/core/gateways/list-gateway-role-assignments>`_.
+
+    Service Principal Authentication is supported (see here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>_ for examples).
 
     Parameters
     ----------
@@ -149,6 +153,8 @@ def delete_gateway_role_assignment(gateway: str | UUID, role_assignment_id: UUID
 
     This is a wrapper function for the following API: `Gateways - Delete Gateway Role Assignment <https://learn.microsoft.com/rest/api/fabric/core/gateways/delete-gateway-role-assignment>`_.
 
+    Service Principal Authentication is supported (see here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>_ for examples).
+
     Parameters
     ----------
     gateway : str | uuid.UUID
@@ -192,6 +198,8 @@ def delete_gateway_member(gateway: str | UUID, gateway_member: str | UUID):
 
     This is a wrapper function for the following API: `Gateways - Delete Gateway Member <https://learn.microsoft.com/rest/api/fabric/core/gateways/delete-gateway-member>`_.
 
+    Service Principal Authentication is supported (see here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>_ for examples).
+
     Parameters
     ----------
     gateway : str | uuid.UUID
@@ -220,6 +228,8 @@ def list_gateway_members(gateway: str | UUID) -> pd.DataFrame:
     Lists gateway members of an on-premises gateway.
 
     This is a wrapper function for the following API: `Gateways - List Gateway Members <https://learn.microsoft.com/rest/api/fabric/core/gateways/list-gateway-members>`_.
+
+    Service Principal Authentication is supported (see here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>_ for examples).
 
     Parameters
     ----------
@@ -280,6 +290,8 @@ def create_vnet_gateway(
 
     This is a wrapper function for the following API: `Gateways - Create Gateway <https://learn.microsoft.com/rest/api/fabric/core/gateways/create-gateway>`_.
 
+    Service Principal Authentication is supported (see here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>_ for examples).
+
     Parameters
     ----------
     name : str
@@ -339,6 +351,8 @@ def update_on_premises_gateway(
 
     This is a wrapper function for the following API: `Gateways - Update Gateway <https://learn.microsoft.com/rest/api/fabric/core/gateways/update-gateway>`_.
 
+    Service Principal Authentication is supported (see here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>_ for examples).
+
     Parameters
     ----------
     gateway : str | uuid.UUID
@@ -390,6 +404,8 @@ def update_vnet_gateway(
 
     This is a wrapper function for the following API: `Gateways - Update Gateway <https://learn.microsoft.com/rest/api/fabric/core/gateways/update-gateway>`_.
 
+    Service Principal Authentication is supported (see here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>_ for examples).
+
     Parameters
     ----------
     gateway : str | uuid.UUID
@@ -437,6 +453,8 @@ def bind_semantic_model_to_gateway(
     Binds the specified dataset from the specified workspace to the specified gateway.
 
     This is a wrapper function for the following API: `Datasets - Bind To Gateway In Group <https://learn.microsoft.com/rest/api/power-bi/datasets/bind-to-gateway-in-group>`_.
+
+    Service Principal Authentication is supported (see here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>_ for examples).
 
     Parameters
     ----------

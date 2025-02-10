@@ -24,12 +24,14 @@ def scan_workspaces(
     workspace: Optional[str | List[str] | UUID | List[UUID]] = None,
 ) -> dict:
     """
-    Get the inventory and details of the tenant.
+    Gets the scan result for the specified scan.
 
     This is a wrapper function for the following APIs:
         `Admin - WorkspaceInfo PostWorkspaceInfo <https://learn.microsoft.com/en-gb/rest/api/power-bi/admin/workspace-info-post-workspace-info>`_.
         `Admin - WorkspaceInfo GetScanStatus <https://learn.microsoft.com/en-gb/rest/api/power-bi/admin/workspace-info-get-scan-status>`_.
         `Admin - WorkspaceInfo GetScanResult <https://learn.microsoft.com/en-gb/rest/api/power-bi/admin/workspace-info-get-scan-result>`_.
+
+    Service Principal Authentication is supported (see here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>_ for examples).
 
     Parameters
     ----------
@@ -38,17 +40,17 @@ def scan_workspaces(
     dataset_schema: bool = False
         Whether to return dataset schema (tables, columns and measures). If you set this parameter to true, you must fully enable metadata scanning in order for data to be returned. For more information, see Enable tenant settings for metadata scanning.
     dataset_expressions : bool, default=False
-        Whether to return data source details
+        Whether to return data source details.
     lineage : bool, default=False
         Whether to return lineage info (upstream dataflows, tiles, data source IDs)
     artifact_users : bool, default=False
-        Whether to return user details for a Power BI item (such as a report or a dashboard)
+        Whether to return user details for a Power BI item (such as a report or a dashboard).
     workspace : str | List[str] | UUID | List[UUID], default=None
-        The required workspace id(s) to be scanned. It supports a limit of 100 workspaces and only IDs in GUID format.
+        The required workspace name(s) or id(s) to be scanned. It supports a limit of 100 workspaces and only IDs in GUID format.
 
     Returns
     -------
-    dictionary
+    dict
         A json object with the scan result.
     """
 
@@ -70,7 +72,7 @@ def scan_workspaces(
         if _is_valid_uuid(w):
             workspace_list.append(w)
         else:
-            dfW = list_workspaces(workspace=w, token_provider=auth.token_provider.get())
+            dfW = list_workspaces(workspace=w)
             workspace_list = (
                 workspace_list + dfW[dfW["Name"].isin(workspace)]["Id"].tolist()
             )
@@ -122,6 +124,4 @@ def scan_workspaces(
 
     print(f"{icons.green_dot} Status: {scan_status}")
 
-    responseJson = response.json()
-
-    return responseJson
+    return response.json()
