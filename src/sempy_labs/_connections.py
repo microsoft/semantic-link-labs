@@ -19,6 +19,8 @@ def delete_connection(connection: str | UUID):
 
     This is a wrapper function for the following API: `Connections - Delete Connection <https://learn.microsoft.com/rest/api/fabric/core/connections/delete-connection>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     connection : str | uuid.UUID
@@ -26,7 +28,9 @@ def delete_connection(connection: str | UUID):
     """
 
     connection_id = _resolve_connection_id(connection)
-    _base_api(request=f"/v1/connections/{connection_id}", method="delete")
+    _base_api(
+        request=f"/v1/connections/{connection_id}", client="fabric_sp", method="delete"
+    )
     print(f"{icons.green_dot} The '{connection}' connection has been deleted.")
 
 
@@ -35,6 +39,8 @@ def delete_connection_role_assignment(connection: str | UUID, role_assignment_id
     Delete the specified role assignment for the connection.
 
     This is a wrapper function for the following API: `Connections - Delete Connection Role Assignment <https://learn.microsoft.com/rest/api/fabric/core/connections/delete-connection-role-assignment>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -47,6 +53,7 @@ def delete_connection_role_assignment(connection: str | UUID, role_assignment_id
     connection_id = _resolve_connection_id(connection)
     _base_api(
         request=f"/v1/connections/{connection_id}/roleAssignments/{role_assignment_id}",
+        client="fabric_sp",
         method="delete",
     )
 
@@ -77,6 +84,8 @@ def list_connection_role_assignments(connection: str | UUID) -> pd.DataFrame:
 
     This is a wrapper function for the following API: `Connections - List Connection Role Assignments <https://learn.microsoft.com/rest/api/fabric/core/connections/list-connection-role-assignments>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     connection : str | uuid.UUID
@@ -100,7 +109,9 @@ def list_connection_role_assignments(connection: str | UUID) -> pd.DataFrame:
     df = _create_dataframe(columns=columns)
 
     responses = _base_api(
-        request=f"/v1/connections/{connection_id}/roleAssignments", uses_pagination=True
+        request=f"/v1/connections/{connection_id}/roleAssignments",
+        client="fabric_sp",
+        uses_pagination=True,
     )
 
     for r in responses:
@@ -120,6 +131,8 @@ def list_connection_role_assignments(connection: str | UUID) -> pd.DataFrame:
 def list_connections() -> pd.DataFrame:
     """
     Lists all available connections.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Returns
     -------
@@ -142,7 +155,9 @@ def list_connections() -> pd.DataFrame:
     }
     df = _create_dataframe(columns=columns)
 
-    responses = _base_api(request="/v1/connections", uses_pagination=True)
+    responses = _base_api(
+        request="/v1/connections", client="fabric_sp", uses_pagination=True
+    )
 
     for r in responses:
         for i in r.get("value", []):
@@ -194,6 +209,8 @@ def list_item_connections(
 
     This is a wrapper function for the following API: `Items - List Item Connections <https://learn.microsoft.com/rest/api/fabric/core/items/list-item-connections>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     item_name : str
@@ -229,6 +246,7 @@ def list_item_connections(
 
     responses = _base_api(
         request=f"/v1/workspaces/{workspace_id}/items/{item_id}/connections",
+        client="fabric_sp",
         uses_pagination=True,
     )
 
@@ -267,7 +285,7 @@ def _list_supported_connection_types(
     df = _create_dataframe(columns=columns)
 
     url = url.rstrip("&")
-    responses = _base_api(request=url, uses_pagination=True)
+    responses = _base_api(request=url, client="fabric_sp", uses_pagination=True)
 
     records = []
     for r in responses:
@@ -308,6 +326,8 @@ def create_cloud_connection(
     Creates a shared cloud connection.
 
     This is a wrapper function for the following API: `Connections - Create Connection <https://learn.microsoft.com/rest/api/fabric/core/connections/create-connection>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -362,7 +382,11 @@ def create_cloud_connection(
     }
 
     _base_api(
-        request="/v1/connections", method="post", payload=payload, status_codes=201
+        request="/v1/connections",
+        client="fabric_sp",
+        method="post",
+        payload=payload,
+        status_codes=201,
     )
 
     print(f"{icons.green_dot} The '{name}' cloud connection has been created.")
@@ -382,6 +406,8 @@ def create_on_prem_connection(
     Creates an on-premises connection.
 
     This is a wrapper function for the following API: `Connections - Create Connection <https://learn.microsoft.com/rest/api/fabric/core/connections/create-connection>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -440,7 +466,11 @@ def create_on_prem_connection(
     }
 
     _base_api(
-        request="/v1/connections", method="post", payload=payload, status_codes=201
+        request="/v1/connections",
+        client="fabric_sp",
+        method="post",
+        payload=payload,
+        status_codes=201,
     )
 
     print(f"{icons.green_dot} The '{name}' on-prem connection has been created.")
@@ -461,6 +491,8 @@ def create_vnet_connection(
     Creates a virtual network gateway connection.
 
     This is a wrapper function for the following API: `Connections - Create Connection <https://learn.microsoft.com/rest/api/fabric/core/connections/create-connection>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -520,7 +552,11 @@ def create_vnet_connection(
     }
 
     _base_api(
-        request="/v1/connections", method="post", payload=payload, status_codes=201
+        request="/v1/connections",
+        client="fabric_sp",
+        method="post",
+        payload=payload,
+        status_codes=201,
     )
 
     print(
