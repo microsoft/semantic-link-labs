@@ -27,11 +27,11 @@ def scan_workspaces(
     Gets the scan result for the specified scan.
 
     This is a wrapper function for the following APIs:
-        `Admin - WorkspaceInfo PostWorkspaceInfo <https://learn.microsoft.com/en-gb/rest/api/power-bi/admin/workspace-info-post-workspace-info>`_.
-        `Admin - WorkspaceInfo GetScanStatus <https://learn.microsoft.com/en-gb/rest/api/power-bi/admin/workspace-info-get-scan-status>`_.
-        `Admin - WorkspaceInfo GetScanResult <https://learn.microsoft.com/en-gb/rest/api/power-bi/admin/workspace-info-get-scan-result>`_.
+        `Admin - WorkspaceInfo PostWorkspaceInfo <https://learn.microsoft.com/rest/api/power-bi/admin/workspace-info-post-workspace-info>`_.
+        `Admin - WorkspaceInfo GetScanStatus <https://learn.microsoft.com/rest/api/power-bi/admin/workspace-info-get-scan-status>`_.
+        `Admin - WorkspaceInfo GetScanResult <https://learn.microsoft.com/rest/api/power-bi/admin/workspace-info-get-scan-result>`_.
 
-    Service Principal Authentication is supported (see here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>_ for examples).
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -97,9 +97,6 @@ def scan_workspaces(
         client="fabric_sp",
     )
 
-    if response.status_code != 202:
-        raise FabricHTTPException(response)
-
     scan_id = response.json()["id"]
     scan_status = response.json().get("status")
 
@@ -118,9 +115,6 @@ def scan_workspaces(
         request=f"/v1.0/myorg/admin/workspaces/scanResult/{scan_id}",
         client="fabric_sp",
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
 
     print(f"{icons.green_dot} Status: {scan_status}")
 
