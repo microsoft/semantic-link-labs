@@ -28,7 +28,7 @@ jobs:
         shell: bash
 
       - name: Cache conda
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         env:
           # Increase this value to reset cache if environment.yml has not changed
           CACHE_NUMBER: 0
@@ -37,7 +37,7 @@ jobs:
           key:
             ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ steps.get-date.outputs.today }}-${{ hashFiles('environment.yml') }}
 
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v4
         with:
           auto-update-conda: true
           activate-environment: fabric
