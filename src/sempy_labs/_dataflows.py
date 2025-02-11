@@ -237,3 +237,32 @@ def _resolve_dataflow_name_and_id(
     dataflow_name = dfD_filt["Dataflow Name"].iloc[0]
 
     return dataflow_name, dataflow_id
+
+
+def get_dataflow_definition(workspace: str | UUID, dataflow: str | UUID) -> dict:
+    """
+    Retrieves the definition of a dataflow.
+
+    Parameters
+    ----------
+    workspace : str | uuid.UUID
+        The Fabric workspace name or ID.
+    dataflow : str | uuid.UUID
+        The dataflow name or ID.
+
+    Returns
+    -------
+    dict
+        The dataflow definition.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataflow_name, dataflow_id) = _resolve_dataflow_name_and_id(
+        dataflow=dataflow, workspace=workspace_id
+    )
+
+    response = _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}/dataflows/{dataflow_id}/definition"
+    )
+
+    return response.json()

@@ -155,7 +155,7 @@ def resolve_report_name(report_id: UUID, workspace: Optional[str | UUID] = None)
     report_id : uuid.UUID
         The name of the Power BI report.
     workspace : str | uuid.UUID, default=None
-        The Fabric workspace name or ID.
+        The Fabric workspace name.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -1591,3 +1591,36 @@ def _print_success(item_name, item_type, workspace_name, action="created"):
         )
     else:
         raise NotImplementedError
+
+
+def resolve_dataflow_id(
+    dataflow: str | UUID, workspace: Optional[str | UUID] = None
+) -> UUID:
+    """
+    Obtains the ID of the dataflow.
+
+    Parameters
+    ----------
+    dataflow : str | uuid.UUID
+        The name or ID of the dataflow.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    uuid.UUID
+        The ID of the dataflow.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    if _is_valid_uuid(dataflow):
+        dataflow_id = dataflow
+    else:
+        dataflow_id = fabric.resolve_item_id(
+            item_name=dataflow, type="Dataflow", workspace=workspace_id
+        )
+
+    return dataflow_id
