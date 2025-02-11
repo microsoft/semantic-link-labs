@@ -63,6 +63,12 @@ def delta_analyzer(
     """
     import notebookutils
 
+    display_toggle = notebookutils.common.configs.pandas_display
+
+    # Turn off notebookutils display
+    if display_toggle is True:
+        notebookutils.common.configs.pandas_display = False
+
     prefix = "SLL_DeltaAnalyzer_"
     now = datetime.datetime.now()
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace=workspace)
@@ -85,6 +91,9 @@ def delta_analyzer(
         i.get("localPath") for i in mounts if i.get("source") == lake_path
     )
     table_path = f"{local_path}/Tables/{table_name}"
+
+    # Set back to original value
+    notebookutils.common.configs.pandas_display = display_toggle
 
     parquet_file_df_columns = {
         "ParquetFile": "string",
