@@ -413,8 +413,6 @@ def assign_domain_workspaces(domain: str | UUID, workspace_names: str | List[str
         request=f"/v1/admin/domains/{domain_id}/assignWorkspaces",
         method="post",
         payload=payload,
-        lro_return_status_code=True,
-        status_codes=200,
     )
 
     print(
