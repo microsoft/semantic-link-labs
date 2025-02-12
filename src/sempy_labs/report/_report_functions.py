@@ -19,6 +19,7 @@ from sempy_labs._helper_functions import (
     resolve_dataset_id,
     _update_dataframe_datatypes,
     _base_api,
+    _create_spark_session,
 )
 from typing import List, Optional, Union
 from sempy._utils._log import log
@@ -726,7 +727,6 @@ def translate_report_titles(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
     from synapse.ml.services import Translate
-    from pyspark.sql import SparkSession
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
@@ -738,7 +738,7 @@ def translate_report_titles(
 
     reportJson = get_report_json(report=report, workspace=workspace_id)
     dfV = list_report_visuals(report=report, workspace=workspace_id)
-    spark = SparkSession.builder.getOrCreate()
+    spark = _create_spark_session()
     df = spark.createDataFrame(dfV)
     columnToTranslate = "Title"
 

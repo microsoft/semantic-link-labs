@@ -219,7 +219,7 @@ def delete_shortcut(
     )
 
 
-def reset_shortcut_cache(workspace: Optional[str | UUID]):
+def reset_shortcut_cache(workspace: Optional[str | UUID] = None):
     """
     Deletes any cached files that were stored while reading from shortcuts.
 

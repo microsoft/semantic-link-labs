@@ -1,6 +1,5 @@
 import sempy.fabric as fabric
 import pandas as pd
-from pyspark.sql import SparkSession
 import pyarrow.parquet as pq
 import datetime
 from sempy_labs._helper_functions import (
@@ -10,6 +9,7 @@ from sempy_labs._helper_functions import (
     save_as_delta_table,
     _base_api,
     _create_dataframe,
+    _create_spark_session,
 )
 from sempy_labs.directlake._guardrails import (
     get_sku_size,
@@ -112,7 +112,7 @@ def get_lakehouse_tables(
     if extended:
         sku_value = get_sku_size(workspace_id)
         guardrail = get_directlake_guardrails_for_sku(sku_value)
-        spark = SparkSession.builder.getOrCreate()
+        spark = _create_spark_session()
         df["Files"] = None
         df["Row Groups"] = None
         df["Table Size"] = None
