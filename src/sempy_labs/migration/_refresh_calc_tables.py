@@ -2,7 +2,6 @@ import sempy.fabric as fabric
 import pandas as pd
 import re
 from sempy_labs._helper_functions import retry
-from pyspark.sql import SparkSession
 from sempy_labs.tom import connect_semantic_model
 from typing import Optional
 from sempy._utils._log import log
@@ -11,6 +10,7 @@ from uuid import UUID
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
+    _create_spark_session,
 )
 
 
@@ -29,7 +29,7 @@ def refresh_calc_tables(dataset: str | UUID, workspace: Optional[str | UUID] = N
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    spark = SparkSession.builder.getOrCreate()
+    spark = _create_spark_session()
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
     icons.sll_tags.append("DirectLakeMigration")
