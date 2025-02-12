@@ -75,7 +75,7 @@ def model_bpa_rules(
                 "Check if dynamic row level security (RLS) is necessary",
                 lambda obj, tom: any(
                     re.search(
-                        pattern, re.escape(obj.FilterExpression), flags=re.IGNORECASE
+                        pattern, obj.FilterExpression, flags=re.IGNORECASE
                     )
                     for pattern in ["USERPRINCIPALNAME()", "USERNAME()"]
                 ),
@@ -228,12 +228,12 @@ def model_bpa_rules(
                 or obj.Expression.replace(" ", "").endswith("+0")
                 or re.search(
                     r"DIVIDE\s*\(\s*[^,]+,\s*[^,]+,\s*0\s*\)",
-                    re.escape(obj.Expression),
+                    obj.Expression,
                     flags=re.IGNORECASE,
                 )
                 or re.search(
                     r"IFERROR\s*\(\s*[^,]+,\s*0\s*\)",
-                    re.escape(obj.Expression),
+                    obj.Expression,
                     flags=re.IGNORECASE,
                 ),
                 "Adding 0 to a measure in order for it not to show a blank value may negatively impact performance.",
@@ -254,7 +254,7 @@ def model_bpa_rules(
                 "Reduce usage of calculated columns that use the RELATED function",
                 lambda obj, tom: obj.Type == TOM.ColumnType.Calculated
                 and re.search(
-                    r"related\s*\(", re.escape(obj.Expression), flags=re.IGNORECASE
+                    r"related\s*\(", obj.Expression, flags=re.IGNORECASE
                 ),
                 "Calculated columns do not compress as well as data columns and may cause longer processing times. As such, calculated columns should be avoided if possible. One scenario where they may be easier to avoid is if they use the RELATED function.",
                 "https://www.sqlbi.com/articles/storage-differences-between-calculated-columns-and-calculated-tables",
@@ -310,8 +310,8 @@ def model_bpa_rules(
                 "Warning",
                 "Date/calendar tables should be marked as a date table",
                 lambda obj, tom: (
-                    re.search(r"date", re.escape(obj.Name), flags=re.IGNORECASE)
-                    or re.search(r"calendar", re.escape(obj.Name), flags=re.IGNORECASE)
+                    re.search(r"date", obj.Name, flags=re.IGNORECASE)
+                    or re.search(r"calendar", obj.Name, flags=re.IGNORECASE)
                 )
                 and str(obj.DataCategory) != "Time",
                 "This rule looks for tables that contain the words 'date' or 'calendar' as they should likely be marked as a date table.",
@@ -422,7 +422,7 @@ def model_bpa_rules(
                         r"USERELATIONSHIP\s*\(\s*.+?(?=])\]\s*,\s*'*"
                         + re.escape(obj.Name)
                         + r"'*\[",
-                        re.escape(m.Expression),
+                        m.Expression,
                         flags=re.IGNORECASE,
                     )
                     for m in tom.all_measures()
@@ -437,7 +437,7 @@ def model_bpa_rules(
                 "Warning",
                 "Avoid using the IFERROR function",
                 lambda obj, tom: re.search(
-                    r"iferror\s*\(", re.escape(obj.Expression), flags=re.IGNORECASE
+                    r"iferror\s*\(", obj.Expression, flags=re.IGNORECASE
                 ),
                 "Avoid using the IFERROR function as it may cause performance degradation. If you are concerned about a divide-by-zero error, use the DIVIDE function as it naturally resolves such errors as blank (or you can customize what should be shown in case of such an error).",
                 "https://www.elegantbi.com/post/top10bestpractices",
@@ -448,7 +448,7 @@ def model_bpa_rules(
                 "Warning",
                 "Use the TREATAS function instead of INTERSECT for virtual relationships",
                 lambda obj, tom: re.search(
-                    r"intersect\s*\(", re.escape(obj.Expression), flags=re.IGNORECASE
+                    r"intersect\s*\(", obj.Expression, flags=re.IGNORECASE
                 ),
                 "The TREATAS function is more efficient and provides better performance than the INTERSECT function when used in virutal relationships.",
                 "https://www.sqlbi.com/articles/propagate-filters-using-treatas-in-dax",
@@ -460,7 +460,7 @@ def model_bpa_rules(
                 "The EVALUATEANDLOG function should not be used in production models",
                 lambda obj, tom: re.search(
                     r"evaluateandlog\s*\(",
-                    re.escape(obj.Expression),
+                    obj.Expression,
                     flags=re.IGNORECASE,
                 ),
                 "The EVALUATEANDLOG function is meant to be used only in development/test environments and should not be used in production models.",
@@ -482,8 +482,8 @@ def model_bpa_rules(
                 "Warning",
                 "No two measures should have the same definition",
                 lambda obj, tom: any(
-                    re.sub(r"\s+", "", re.escape(obj.Expression))
-                    == re.sub(r"\s+", "", re.escape(m.Expression))
+                    re.sub(r"\s+", "", obj.Expression)
+                    == re.sub(r"\s+", "", m.Expression)
                     and obj.Name != m.Name
                     for m in tom.all_measures()
                 ),
@@ -496,7 +496,7 @@ def model_bpa_rules(
                 "Avoid addition or subtraction of constant values to results of divisions",
                 lambda obj, tom: re.search(
                     r"DIVIDE\s*\((\s*.*?)\)\s*[+-]\s*1|\/\s*.*(?=[-+]\s*1)",
-                    re.escape(obj.Expression),
+                    obj.Expression,
                     flags=re.IGNORECASE,
                 ),
                 "Adding a constant value may lead to performance degradation.",
@@ -508,12 +508,12 @@ def model_bpa_rules(
                 "Avoid using '1-(x/y)' syntax",
                 lambda obj, tom: re.search(
                     r"[0-9]+\s*[-+]\s*[\(]*\s*SUM\s*\(\s*\'*[A-Za-z0-9 _]+\'*\s*\[[A-Za-z0-9 _]+\]\s*\)\s*/",
-                    re.escape(obj.Expression),
+                    obj.Expression,
                     flags=re.IGNORECASE,
                 )
                 or re.search(
                     r"[0-9]+\s*[-+]\s*DIVIDE\s*\(",
-                    re.escape(obj.Expression),
+                    obj.Expression,
                     flags=re.IGNORECASE,
                 ),
                 "Instead of using the '1-(x/y)' or '1+(x/y)' syntax to achieve a percentage calculation, use the basic DAX functions (as shown below). Using the improved syntax will generally improve the performance. The '1+/-...' syntax always returns a value whereas the solution without the '1+/-...' does not (as the value may be 'blank'). Therefore the '1+/-...' syntax may return more rows/columns which may result in a slower query speed.    Let's clarify with an example:    Avoid this: 1 - SUM ( 'Sales'[CostAmount] ) / SUM( 'Sales'[SalesAmount] )  Better: DIVIDE ( SUM ( 'Sales'[SalesAmount] ) - SUM ( 'Sales'[CostAmount] ), SUM ( 'Sales'[SalesAmount] ) )  Best: VAR x = SUM ( 'Sales'[SalesAmount] ) RETURN DIVIDE ( x - SUM ( 'Sales'[CostAmount] ), x )",
@@ -525,12 +525,12 @@ def model_bpa_rules(
                 "Filter measure values by columns, not tables",
                 lambda obj, tom: re.search(
                     r"CALCULATE\s*\(\s*[^,]+,\s*FILTER\s*\(\s*\'*[A-Za-z0-9 _]+\'*\s*,\s*\[[^\]]+\]",
-                    re.escape(obj.Expression),
+                    obj.Expression,
                     flags=re.IGNORECASE,
                 )
                 or re.search(
                     r"CALCULATETABLE\s*\(\s*[^,]*,\s*FILTER\s*\(\s*\'*[A-Za-z0-9 _]+\'*\s*,\s*\[",
-                    re.escape(obj.Expression),
+                    obj.Expression,
                     flags=re.IGNORECASE,
                 ),
                 "Instead of using this pattern FILTER('Table',[Measure]>Value) for the filter parameters of a CALCULATE or CALCULATETABLE function, use one of the options below (if possible). Filtering on a specific column will produce a smaller table for the engine to process, thereby enabling faster performance. Using the VALUES function or the ALL function depends on the desired measure result.\nOption 1: FILTER(VALUES('Table'[Column]),[Measure] > Value)\nOption 2: FILTER(ALL('Table'[Column]),[Measure] > Value)",
@@ -543,12 +543,12 @@ def model_bpa_rules(
                 "Filter column values with proper syntax",
                 lambda obj, tom: re.search(
                     r"CALCULATE\s*\(\s*[^,]+,\s*FILTER\s*\(\s*'*[A-Za-z0-9 _]+'*\s*,\s*'*[A-Za-z0-9 _]+'*\[[A-Za-z0-9 _]+\]",
-                    re.escape(obj.Expression),
+                    obj.Expression,
                     flags=re.IGNORECASE,
                 )
                 or re.search(
                     r"CALCULATETABLE\s*\([^,]*,\s*FILTER\s*\(\s*'*[A-Za-z0-9 _]+'*\s*,\s*'*[A-Za-z0-9 _]+'*\[[A-Za-z0-9 _]+\]",
-                    re.escape(obj.Expression),
+                    obj.Expression,
                     flags=re.IGNORECASE,
                 ),
                 "Instead of using this pattern FILTER('Table','Table'[Column]=\"Value\") for the filter parameters of a CALCULATE or CALCULATETABLE function, use one of the options below. As far as whether to use the KEEPFILTERS function, see the second reference link below.\nOption 1: KEEPFILTERS('Table'[Column]=\"Value\")\nOption 2: 'Table'[Column]=\"Value\"",
@@ -561,7 +561,7 @@ def model_bpa_rules(
                 "Use the DIVIDE function for division",
                 lambda obj, tom: re.search(
                     r"\]\s*\/(?!\/)(?!\*)\" or \"\)\s*\/(?!\/)(?!\*)",
-                    re.escape(obj.Expression),
+                    obj.Expression,
                     flags=re.IGNORECASE,
                 ),
                 'Use the DIVIDE  function instead of using "/". The DIVIDE function resolves divide-by-zero cases. As such, it is recommended to use to avoid errors.',
@@ -606,7 +606,7 @@ def model_bpa_rules(
                         + r"'*\["
                         + re.escape(obj.ToColumn.Name)
                         + r"\]",
-                        re.escape(m.Expression),
+                        m.Expression,
                         flags=re.IGNORECASE,
                     )
                     for m in tom.all_measures()
@@ -667,7 +667,7 @@ def model_bpa_rules(
                 "Warning",
                 "Provide format string for 'Date' columns",
                 lambda obj, tom: (
-                    re.search(r"date", re.escape(obj.Name), flags=re.IGNORECASE)
+                    re.search(r"date", obj.Name, flags=re.IGNORECASE)
                 )
                 and (obj.DataType == TOM.DataType.DateTime)
                 and (obj.FormatString != "mm/dd/yyyy"),
@@ -767,9 +767,9 @@ def model_bpa_rules(
                 "Info",
                 "Month (as a string) must be sorted",
                 lambda obj, tom: (
-                    re.search(r"month", re.escape(obj.Name), flags=re.IGNORECASE)
+                    re.search(r"month", obj.Name, flags=re.IGNORECASE)
                 )
-                and not (re.search(r"months", re.escape(obj.Name), flags=re.IGNORECASE))
+                and not (re.search(r"months", obj.Name, flags=re.IGNORECASE))
                 and (obj.DataType == TOM.DataType.String)
                 and len(str(obj.SortByColumn)) == 0,
                 "This rule highlights month columns which are strings and are not sorted. If left unsorted, they will sort alphabetically (i.e. April, August...). Make sure to sort such columns so that they sort properly (January, February, March...).",
@@ -789,7 +789,7 @@ def model_bpa_rules(
                 "Warning",
                 'Provide format string for "Month" columns',
                 lambda obj, tom: re.search(
-                    r"month", re.escape(obj.Name), flags=re.IGNORECASE
+                    r"month", obj.Name, flags=re.IGNORECASE
                 )
                 and obj.DataType == TOM.DataType.DateTime
                 and obj.FormatString != "MMMM yyyy",
@@ -829,7 +829,7 @@ def model_bpa_rules(
                 ["Table", "Column", "Measure", "Partition", "Hierarchy"],
                 "Warning",
                 "Object names must not contain special characters",
-                lambda obj, tom: re.search(r"[\t\r\n]", re.escape(obj.Name)),
+                lambda obj, tom: re.search(r"[\t\r\n]", obj.Name),
                 "Object names should not include tabs, line breaks, etc.",
             ),
         ],
