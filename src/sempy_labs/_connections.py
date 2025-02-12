@@ -149,8 +149,8 @@ def list_connections() -> pd.DataFrame:
         "Connection Type": "string",
         "Privacy Level": "string",
         "Credential Type": "string",
-        "Single Sign on Type": "string",
-        "Connection Encyrption": "string",
+        "Single Sign On Type": "string",
+        "Connection Encryption": "string",
         "Skip Test Connection": "bool",
     }
     df = _create_dataframe(columns=columns)
