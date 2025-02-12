@@ -3412,7 +3412,10 @@ class TOMWrapper:
                     if c.Name == obj.Name:
                         tableList.append(c.Parent.Name)
                 if (
-                    re.search(create_pattern(tableList, re.escape(obj.Name)), object.Expression)
+                    re.search(
+                        create_pattern(tableList, re.escape(obj.Name)),
+                        object.Expression,
+                    )
                     is not None
                 ):
                     yield obj
