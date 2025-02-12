@@ -1618,7 +1618,7 @@ def _create_spark_session():
     return SparkSession.builder.getOrCreate()
 
 
-def _read_delta_table(path: str) -> pd.DataFrame:
+def _read_delta_table(path: str):
 
     spark = _create_spark_session()
 
