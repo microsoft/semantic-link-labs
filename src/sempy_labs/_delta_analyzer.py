@@ -63,11 +63,11 @@ def delta_analyzer(
     """
     import notebookutils
 
-    display_toggle = notebookutils.common.configs.pandas_display
+    # display_toggle = notebookutils.common.configs.pandas_display
 
     # Turn off notebookutils display
-    if display_toggle is True:
-        notebookutils.common.configs.pandas_display = False
+    # if display_toggle is True:
+    #    notebookutils.common.configs.pandas_display = False
 
     prefix = "SLL_DeltaAnalyzer_"
     now = datetime.datetime.now()
@@ -93,7 +93,7 @@ def delta_analyzer(
     table_path = f"{local_path}/Tables/{table_name}"
 
     # Set back to original value
-    notebookutils.common.configs.pandas_display = display_toggle
+    # notebookutils.common.configs.pandas_display = display_toggle
 
     parquet_file_df_columns = {
         "ParquetFile": "string",
@@ -247,7 +247,7 @@ def delta_analyzer(
                 table_name=table_name,
                 column_name=col_name,
                 function="approx",
-                lakehouse=lakehouse_name,
+                lakehouse=lakehouse,
                 workspace=workspace,
             )
         else:
@@ -255,7 +255,7 @@ def delta_analyzer(
                 table_name=table_name,
                 column_name=col_name,
                 function="distinctcount",
-                lakehouse=lakehouse_name,
+                lakehouse=lakehouse,
                 workspace=workspace,
             )
 
@@ -288,7 +288,7 @@ def delta_analyzer(
             runId = 1
         else:
             max_run_id = _get_column_aggregate(
-                lakehouse=lakehouse_name, table_name=save_table
+                table_name=save_table,
             )
             runId = max_run_id + 1
 

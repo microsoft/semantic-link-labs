@@ -544,7 +544,7 @@ def save_as_delta_table(
             f"{icons.red_dot} Invalid 'delta_table_name'. Delta tables in the lakehouse cannot have spaces in their names."
         )
 
-    dataframe = dataframe.toDF(*[col.replace(" ", "_") for col in dataframe.columns])
+    dataframe.columns = [col.replace(" ", "_") for col in dataframe.columns]
 
     spark = _create_spark_session()
 
