@@ -106,14 +106,8 @@ from sempy_labs._clear_cache import (
     list_storage_account_files,
 )
 from sempy_labs._capacity_migration import (
-    migrate_spark_settings,
     migrate_workspaces,
     migrate_capacities,
-    migrate_notification_settings,
-    migrate_access_settings,
-    migrate_delegated_tenant_settings,
-    migrate_capacity_settings,
-    migrate_disaster_recovery_settings,
     migrate_fabric_trial_capacity,
 )
 from sempy_labs._capacities import (
@@ -310,7 +304,6 @@ __all__ = [
     "restore_semantic_model",
     "list_semantic_model_object_report_usage",
     "list_report_semantic_model_objects",
-    "migrate_spark_settings",
     "create_azure_storage_account",
     "delete_custom_pool",
     "clear_cache",
@@ -412,11 +405,6 @@ __all__ = [
     "migrate_workspaces",
     "migrate_capacities",
     "create_fabric_capacity",
-    "migrate_capacity_settings",
-    "migrate_disaster_recovery_settings",
-    "migrate_notification_settings",
-    "migrate_access_settings",
-    "migrate_delegated_tenant_settings",
     "convert_to_friendly_case",
     "list_mirrored_warehouses",
     "list_kql_databases",

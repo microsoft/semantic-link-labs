@@ -75,6 +75,8 @@ def migrate_tables_columns_to_semantic_model(
         item_name=lakehouse, item_type="Lakehouse", workspace=lakehouse_workspace
     )
 
+    fabric.refresh_tom_cache(workspace=workspace)
+
     dfC = fabric.list_columns(dataset=dataset, workspace=workspace)
     dfT = fabric.list_tables(dataset=dataset, workspace=workspace)
     dfT.rename(columns={"Type": "Table Type"}, inplace=True)

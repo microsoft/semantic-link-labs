@@ -1,28 +1,44 @@
 import pandas as pd
 import datetime
-import sempy.fabric as fabric
-from typing import Dict
+from typing import Dict, Optional
 import pyarrow.dataset as ds
 import pyarrow.parquet as pq
-from pyspark.sql import SparkSession
 from sempy_labs._helper_functions import (
-    _get_fabric_context_setting,
-    resolve_lakehouse_name,
+    create_abfss_path,
     save_as_delta_table,
     _get_column_aggregate,
     _create_dataframe,
     _update_dataframe_datatypes,
+    resolve_workspace_name_and_id,
+    resolve_lakehouse_name_and_id,
+    _read_delta_table,
+    _delta_table_row_count,
 )
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 import sempy_labs._icons as icons
+from uuid import UUID
 
 
 def delta_analyzer(
-    table_name: str, approx_distinct_count: bool = True, export: bool = False
+    table_name: str,
+    approx_distinct_count: bool = True,
+    export: bool = False,
+    lakehouse: Optional[str | UUID] = None,
+    workspace: Optional[str | UUID] = None,
 ) -> Dict[str, pd.DataFrame]:
     """
-    Analyzes a delta table and shows the results in a set of 5 dataframes. The table analyzed must be in the lakehouse attached to the notebook.
+    Analyzes a delta table and shows the results in dictionary containing a set of 5 dataframes. If 'export' is set to True, the results will be saved to delta tables in the lakehouse attached to the notebook.
+
+    The 5 dataframes returned by this function are:
+
+    * Summary
+    * Parquet Files
+    * Row Groups
+    * Column Chunks
+    * Columns
+
+    Read more about Delta Analyzer `here <https://github.com/microsoft/Analysis-Services/tree/master/DeltaAnalyzer>`_.
 
     Parameters
     ----------
@@ -32,26 +48,52 @@ def delta_analyzer(
         If True, uses approx_count_distinct to calculate the cardinality of each column. If False, uses COUNT(DISTINCT) instead.
     export : bool, default=False
         If True, exports the resulting dataframes to delta tables in the lakehouse attached to the notebook.
+    lakehouse : str | uuid.UUID, default=None
+        The Fabric lakehouse name or ID.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
 
     Returns
     -------
     Dict[str, pandas.DataFrame]
         A dictionary of pandas dataframes showing semantic model objects which violated the best practice analyzer rules.
     """
+    import notebookutils
 
-    if not lakehouse_attached():
-        raise ValueError(
-            f"{icons.red_dot} No lakehouse is attached to this notebook. Please attach a lakehouse to the notebook before running the Delta Analyzer."
-        )
+    # display_toggle = notebookutils.common.configs.pandas_display
+
+    # Turn off notebookutils display
+    # if display_toggle is True:
+    #    notebookutils.common.configs.pandas_display = False
 
     prefix = "SLL_DeltaAnalyzer_"
     now = datetime.datetime.now()
-    workspace_id = fabric.get_workspace_id()
-    workspace_name = fabric.resolve_workspace_name(workspace=workspace_id)
-    lakehouse_id = fabric.get_lakehouse_id()
-    lakehouse_name = resolve_lakehouse_name()
-    default_file_storage = _get_fabric_context_setting(name="fs.defaultFS")
-    fs = default_file_storage.split("@")[-1][:-1]
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace=workspace)
+    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+        lakehouse=lakehouse, workspace=workspace
+    )
+    path = create_abfss_path(lakehouse_id, workspace_id, table_name)
+    lake_path = create_abfss_path(lakehouse_id, workspace_id)
+    mounts = notebookutils.fs.mounts()
+    mount_point = f"/{workspace_name.replace(' ', '')}{lakehouse_name.replace(' ', '')}"
+    if not any(i.get("source") == lake_path for i in mounts):
+        # Mount lakehouse if not mounted
+        notebookutils.fs.mount(lake_path, mount_point)
+        print(
+            f"{icons.green_dot} Mounted the '{lakehouse_name}' lakehouse within the '{workspace_name}' to the notebook."
+        )
+
+    mounts = notebookutils.fs.mounts()
+    local_path = next(
+        i.get("localPath") for i in mounts if i.get("source") == lake_path
+    )
+    table_path = f"{local_path}/Tables/{table_name}"
+
+    # Set back to original value
+    # notebookutils.common.configs.pandas_display = display_toggle
 
     parquet_file_df_columns = {
         "ParquetFile": "string",
@@ -83,33 +125,24 @@ def delta_analyzer(
     row_group_df = _create_dataframe(columns=row_group_df_columns)
     column_chunk_df = _create_dataframe(columns=column_chunk_df_columns)
 
-    delta_table_path = f"Tables/{table_name}"
-    path = f"abfss://{workspace_id}@{fs}/{lakehouse_id}/{delta_table_path}"
-
-    spark = SparkSession.builder.getOrCreate()
     # delta_table = DeltaTable.forPath(spark, path)
     # detail_df = spark.sql(f"DESCRIBE DETAIL `{table_name}`").collect()[0]
 
     # num_files = detail_df.numFiles
     # size_in_bytes = detail_df.sizeInBytes
-    latest_files = spark.read.format("delta").load(path).inputFiles()
+
+    latest_files = _read_delta_table(path).inputFiles()
     file_paths = [f.split("/")[-1] for f in latest_files]
-    row_count = spark.table(table_name).count()
+    row_count = _delta_table_row_count(table_name)
     row_groups = 0
     max_rows_per_row_group = 0
     min_rows_per_row_group = float("inf")
-    schema = ds.dataset(f"/lakehouse/default/Tables/{table_name}").schema.metadata
+
+    schema = ds.dataset(table_path).schema.metadata
     is_vorder = any(b"vorder" in key for key in schema.keys())
-    v_order_level = (
-        int(schema.get(b"com.microsoft.parquet.vorder.level").decode("utf-8"))
-        if is_vorder
-        else None
-    )
 
     for file_name in file_paths:
-        parquet_file = pq.ParquetFile(
-            f"/lakehouse/default/Tables/{table_name}/{file_name}"
-        )
+        parquet_file = pq.ParquetFile(f"{table_path}/{file_name}")
         row_groups += parquet_file.num_row_groups
 
         # Generate rowgroup dataframe
@@ -187,7 +220,7 @@ def delta_analyzer(
                 "MinRowsPerRowGroup": min_rows_per_row_group,
                 "AvgRowsPerRowGroup": avg_rows_per_row_group,
                 "VOrderEnabled": is_vorder,
-                "VOrderLevel": v_order_level,
+                # "VOrderLevel": v_order_level,
             }
         ]
     )
@@ -214,14 +247,16 @@ def delta_analyzer(
                 table_name=table_name,
                 column_name=col_name,
                 function="approx",
-                lakehouse=lakehouse_name,
+                lakehouse=lakehouse,
+                workspace=workspace,
             )
         else:
             dc = _get_column_aggregate(
                 table_name=table_name,
                 column_name=col_name,
                 function="distinctcount",
-                lakehouse=lakehouse_name,
+                lakehouse=lakehouse,
+                workspace=workspace,
             )
 
         if "Cardinality" not in column_df.columns:
@@ -243,13 +278,17 @@ def delta_analyzer(
     save_table = f"{prefix}Summary"
 
     if export:
+        if not lakehouse_attached():
+            raise ValueError(
+                f"{icons.red_dot} No lakehouse is attached to this notebook. Please attach a lakehouse to the notebook before running the Delta Analyzer."
+            )
         dfL = get_lakehouse_tables()
         dfL_filt = dfL[dfL["Table Name"] == save_table]
-        if len(dfL_filt) == 0:
+        if dfL_filt.empty:
             runId = 1
         else:
             max_run_id = _get_column_aggregate(
-                lakehouse=lakehouse_name, table_name=save_table
+                table_name=save_table,
             )
             runId = max_run_id + 1
 
@@ -257,7 +296,9 @@ def delta_analyzer(
         name = name.replace(" ", "")
         cols = {
             "WorkspaceName": workspace_name,
+            "WorkspaceId": workspace_id,
             "LakehouseName": lakehouse_name,
+            "LakehouseId": lakehouse_id,
             "TableName": table_name,
         }
         for i, (col, param) in enumerate(cols.items()):
@@ -274,6 +315,7 @@ def delta_analyzer(
                 dataframe=df,
                 delta_table_name=f"{prefix}{name}",
                 write_mode="append",
+                merge_schema=True,
             )
 
     return dataframes

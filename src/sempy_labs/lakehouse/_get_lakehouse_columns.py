@@ -1,10 +1,10 @@
 import pandas as pd
-from pyspark.sql import SparkSession
 from sempy_labs._helper_functions import (
     format_dax_object_name,
     resolve_workspace_name_and_id,
     resolve_lakehouse_name_and_id,
     _create_dataframe,
+    _create_spark_session,
 )
 from typing import Optional
 from sempy._utils._log import log
@@ -51,7 +51,7 @@ def get_lakehouse_columns(
         lakehouse=lakehouse, workspace=workspace_id
     )
 
-    spark = SparkSession.builder.getOrCreate()
+    spark = _create_spark_session()
 
     tables = get_lakehouse_tables(
         lakehouse=lakehouse_id, workspace=workspace_id, extended=False, count_rows=False

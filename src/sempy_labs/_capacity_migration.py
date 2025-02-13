@@ -17,29 +17,29 @@ from sempy_labs._helper_functions import (
 from sempy_labs._capacities import create_fabric_capacity
 
 
-def migrate_settings(source_capacity: str, target_capacity: str):
+def _migrate_settings(source_capacity: str, target_capacity: str):
 
-    migrate_capacity_settings(
+    _migrate_capacity_settings(
         source_capacity=source_capacity,
         target_capacity=target_capacity,
     )
-    migrate_access_settings(
+    _migrate_access_settings(
         source_capacity=source_capacity,
         target_capacity=target_capacity,
     )
-    migrate_notification_settings(
+    _migrate_notification_settings(
         source_capacity=source_capacity,
         target_capacity=target_capacity,
     )
-    migrate_spark_settings(
+    _migrate_spark_settings(
         source_capacity=source_capacity,
         target_capacity=target_capacity,
     )
-    migrate_delegated_tenant_settings(
+    _migrate_delegated_tenant_settings(
         source_capacity=source_capacity,
         target_capacity=target_capacity,
     )
-    migrate_disaster_recovery_settings(
+    _migrate_disaster_recovery_settings(
         source_capacity=source_capacity,
         target_capacity=target_capacity,
     )
@@ -234,11 +234,11 @@ def migrate_capacities(
             )
 
             # Migrate settings to new capacity
-            # migrate_settings(source_capacity=cap_name, target_capacity=tgt_capacity)
+            # _migrate_settings(source_capacity=cap_name, target_capacity=tgt_capacity)
 
 
 @log
-def migrate_capacity_settings(source_capacity: str, target_capacity: str):
+def _migrate_capacity_settings(source_capacity: str, target_capacity: str):
     """
     This function migrates a capacity's settings to another capacity.
 
@@ -314,12 +314,12 @@ def migrate_capacity_settings(source_capacity: str, target_capacity: str):
                             "workloadCustomParameters"
                         ][setting_name] = setting_value
 
-    response_put = client.put(
-        f"capacities/{target_capacity_id}/{workloads_params}",
-        json=settings_json,
+    _base_api(
+        request=f"capacities/{target_capacity_id}/{workloads_params}",
+        method="put",
+        payload=settings_json,
+        status_codes=204,
     )
-    if response_put.status_code != 204:
-        raise FabricHTTPException(response_put)
 
     print(
         f"{icons.green_dot} The capacity settings have been migrated from the '{source_capacity}' capacity to the '{target_capacity}' capacity."
@@ -327,7 +327,7 @@ def migrate_capacity_settings(source_capacity: str, target_capacity: str):
 
 
 @log
-def migrate_disaster_recovery_settings(source_capacity: str, target_capacity: str):
+def _migrate_disaster_recovery_settings(source_capacity: str, target_capacity: str):
     """
     This function migrates a capacity's disaster recovery settings to another capacity.
 
@@ -371,7 +371,7 @@ def migrate_disaster_recovery_settings(source_capacity: str, target_capacity: st
 
 
 @log
-def migrate_access_settings(source_capacity: str, target_capacity: str):
+def _migrate_access_settings(source_capacity: str, target_capacity: str):
     """
     This function migrates the access settings from a source capacity to a target capacity.
 
@@ -414,7 +414,7 @@ def migrate_access_settings(source_capacity: str, target_capacity: str):
 
 
 @log
-def migrate_notification_settings(source_capacity: str, target_capacity: str):
+def _migrate_notification_settings(source_capacity: str, target_capacity: str):
     """
     This function migrates the notification settings from a source capacity to a target capacity.
 
@@ -457,7 +457,7 @@ def migrate_notification_settings(source_capacity: str, target_capacity: str):
 
 
 @log
-def migrate_delegated_tenant_settings(source_capacity: str, target_capacity: str):
+def _migrate_delegated_tenant_settings(source_capacity: str, target_capacity: str):
     """
     This function migrates the delegated tenant settings from a source capacity to a target capacity.
 
@@ -530,7 +530,7 @@ def migrate_delegated_tenant_settings(source_capacity: str, target_capacity: str
 
 
 @log
-def migrate_spark_settings(source_capacity: str, target_capacity: str):
+def _migrate_spark_settings(source_capacity: str, target_capacity: str):
     """
     This function migrates a capacity's spark settings to another capacity.
 
@@ -655,7 +655,7 @@ def migrate_fabric_trial_capacity(
     )
 
     # This migrates all the capacity settings
-    # migrate_settings(
+    # _migrate_settings(
     #    source_capacity=source_capacity,
     #    target_capacity=target_capacity,
     # )

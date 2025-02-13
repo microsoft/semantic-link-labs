@@ -2965,6 +2965,8 @@ class TOMWrapper:
 
         from sempy_labs._list_functions import list_tables
 
+        fabric.refresh_tom_cache(workspace=self._workspace_id)
+
         dfT = list_tables(
             dataset=self._dataset_id, workspace=self._workspace_id, extended=True
         )
@@ -3410,7 +3412,10 @@ class TOMWrapper:
                     if c.Name == obj.Name:
                         tableList.append(c.Parent.Name)
                 if (
-                    re.search(create_pattern(tableList, obj.Name), object.Expression)
+                    re.search(
+                        create_pattern(tableList, re.escape(obj.Name)),
+                        object.Expression,
+                    )
                     is not None
                 ):
                     yield obj

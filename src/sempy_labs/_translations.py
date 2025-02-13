@@ -5,6 +5,7 @@ from sempy._utils._log import log
 import sempy_labs._icons as icons
 from sempy_labs._helper_functions import (
     get_language_codes,
+    _create_spark_session,
 )
 from uuid import UUID
 
@@ -40,7 +41,6 @@ def translate_semantic_model(
 
     from synapse.ml.services import Translate
     from pyspark.sql.functions import col, flatten
-    from pyspark.sql import SparkSession
     from sempy_labs.tom import connect_semantic_model
 
     icons.sll_tags.append("TranslateSemanticModel")
@@ -145,7 +145,7 @@ def translate_semantic_model(
                 [df_prep, pd.DataFrame(new_data, index=[0])], ignore_index=True
             )
 
-        spark = SparkSession.builder.getOrCreate()
+        spark = _create_spark_session()
         df = spark.createDataFrame(df_prep)
 
         columns = ["Name", "Description", "Display Folder"]

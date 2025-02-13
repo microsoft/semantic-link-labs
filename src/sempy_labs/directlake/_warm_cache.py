@@ -48,6 +48,8 @@ def warm_direct_lake_cache_perspective(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
+    fabric.refresh_tom_cache(workspace=workspace)
+
     dfP = fabric.list_partitions(dataset=dataset_id, workspace=workspace_id)
     if not any(r["Mode"] == "DirectLake" for _, r in dfP.iterrows()):
         raise ValueError(

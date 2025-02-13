@@ -31,27 +31,35 @@ def _build_url(url: str, params: dict) -> str:
 
 
 def create_abfss_path(
-    lakehouse_id: UUID, lakehouse_workspace_id: UUID, delta_table_name: str
+    lakehouse_id: UUID,
+    lakehouse_workspace_id: UUID,
+    delta_table_name: Optional[str] = None,
 ) -> str:
     """
     Creates an abfss path for a delta table in a Fabric lakehouse.
 
     Parameters
     ----------
-    lakehouse_id : UUID
+    lakehouse_id : uuid.UUID
         ID of the Fabric lakehouse.
-    lakehouse_workspace_id : UUID
+    lakehouse_workspace_id : uuid.UUID
         ID of the Fabric workspace.
-    delta_table_name : str
+    delta_table_name : str, default=None
         Name of the delta table name.
 
     Returns
     -------
     str
-        An abfss path which can be used to save/reference a delta table in a Fabric lakehouse.
+        An abfss path which can be used to save/reference a delta table in a Fabric lakehouse or lakehouse.
     """
 
-    return f"abfss://{lakehouse_workspace_id}@onelake.dfs.fabric.microsoft.com/{lakehouse_id}/Tables/{delta_table_name}"
+    fp = _get_default_file_path()
+    path = f"abfss://{lakehouse_workspace_id}@{fp}/{lakehouse_id}"
+
+    if delta_table_name is not None:
+        path += f"/Tables/{delta_table_name}"
+
+    return path
 
 
 def _get_default_file_path() -> str:
@@ -256,7 +264,7 @@ def resolve_dataset_id(
 
     Returns
     -------
-    UUID
+    uuid.UUID
         The ID of the semantic model.
     """
 
@@ -536,8 +544,9 @@ def save_as_delta_table(
             f"{icons.red_dot} Invalid 'delta_table_name'. Delta tables in the lakehouse cannot have spaces in their names."
         )
 
-    dataframe.columns = dataframe.columns.str.replace(" ", "_")
-    spark = SparkSession.builder.getOrCreate()
+    dataframe.columns = [col.replace(" ", "_") for col in dataframe.columns]
+
+    spark = _create_spark_session()
 
     type_mapping = {
         "string": StringType(),
@@ -792,7 +801,7 @@ def resolve_workspace_capacity(
 
     Returns
     -------
-    Tuple[UUID, str]
+    Tuple[uuid.UUID, str]
         capacity Id; capacity came.
     """
 
@@ -823,7 +832,7 @@ def get_capacity_id(workspace: Optional[str | UUID] = None) -> UUID:
 
     Returns
     -------
-    UUID
+    uuid.UUID
         The capacity Id.
     """
 
@@ -913,7 +922,7 @@ def resolve_capacity_id(capacity_name: Optional[str] = None) -> UUID:
 
     Returns
     -------
-    UUID
+    uuid.UUID
         The capacity Id.
     """
 
@@ -1223,7 +1232,7 @@ def resolve_notebook_id(notebook: str, workspace: Optional[str | UUID] = None) -
 
     Returns
     -------
-    UUID
+    uuid.UUID
         The notebook Id.
     """
 
@@ -1240,30 +1249,31 @@ def generate_guid():
 def _get_column_aggregate(
     table_name: str,
     column_name: str = "RunId",
-    lakehouse: Optional[str] = None,
+    lakehouse: Optional[str | UUID] = None,
+    workspace: Optional[str | UUID] = None,
     function: str = "max",
     default_value: int = 0,
-    rsd: float = 0.05,
 ) -> int:
 
-    from pyspark.sql import SparkSession
+    from pyspark.sql.functions import approx_count_distinct
+    from pyspark.sql import functions as F
 
-    spark = SparkSession.builder.getOrCreate()
     function = function.upper()
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    lakehouse_id = resolve_lakehouse_id(lakehouse, workspace)
+    path = create_abfss_path(lakehouse_id, workspace_id, table_name)
 
-    if lakehouse is None:
-        lakehouse = resolve_lakehouse_name()
+    spark = _create_spark_session()
+    df = spark.read.format("delta").load(path)
 
     if function in {"COUNTDISTINCT", "DISTINCTCOUNT"}:
-        query = f"SELECT COUNT(DISTINCT({column_name})) FROM {lakehouse}.{table_name}"
+        result = df.select(F.count_distinct(F.col(column_name)))
     elif "APPROX" in function:
-        query = f"SELECT approx_count_distinct({column_name}, {rsd}) FROM {table_name}"
+        result = df.select(approx_count_distinct(column_name))
     else:
-        query = f"SELECT {function}({column_name}) FROM {lakehouse}.{table_name}"
+        result = df.selectExpr(f"{function}({column_name})")
 
-    dfSpark = spark.sql(query)
-
-    return dfSpark.collect()[0][0] or default_value
+    return result.collect()[0][0] or default_value
 
 
 def _make_list_unique(my_list):
@@ -1587,3 +1597,43 @@ def _print_success(item_name, item_type, workspace_name, action="created"):
         )
     else:
         raise NotImplementedError
+
+
+def _pure_python_notebook() -> bool:
+
+    from sempy.fabric._environment import _on_jupyter
+
+    return _on_jupyter()
+
+
+def _create_spark_session():
+
+    if _pure_python_notebook():
+        raise ValueError(
+            f"{icons.red_dot} This function is only available in a PySpark notebook."
+        )
+
+    from pyspark.sql import SparkSession
+
+    return SparkSession.builder.getOrCreate()
+
+
+def _read_delta_table(path: str):
+
+    spark = _create_spark_session()
+
+    return spark.read.format("delta").load(path)
+
+
+def _delta_table_row_count(table_name: str) -> int:
+
+    spark = _create_spark_session()
+
+    return spark.table(table_name).count()
+
+
+def _run_spark_sql_query(query):
+
+    spark = _create_spark_session()
+
+    return spark.sql(query)

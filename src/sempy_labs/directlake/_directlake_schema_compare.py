@@ -44,6 +44,8 @@ def direct_lake_schema_compare(
         )
         del kwargs["lakehouse_workspace"]
 
+    fabric.refresh_tom_cache(workspace=workspace)
+
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
