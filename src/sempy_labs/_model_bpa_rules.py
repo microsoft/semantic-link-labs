@@ -74,9 +74,7 @@ def model_bpa_rules(
                 "Info",
                 "Check if dynamic row level security (RLS) is necessary",
                 lambda obj, tom: any(
-                    re.search(
-                        pattern, obj.FilterExpression, flags=re.IGNORECASE
-                    )
+                    re.search(pattern, obj.FilterExpression, flags=re.IGNORECASE)
                     for pattern in ["USERPRINCIPALNAME()", "USERNAME()"]
                 ),
                 "Usage of dynamic row level security (RLS) can add memory and performance overhead. Please research the pros/cons of using it.",
@@ -253,9 +251,7 @@ def model_bpa_rules(
                 "Warning",
                 "Reduce usage of calculated columns that use the RELATED function",
                 lambda obj, tom: obj.Type == TOM.ColumnType.Calculated
-                and re.search(
-                    r"related\s*\(", obj.Expression, flags=re.IGNORECASE
-                ),
+                and re.search(r"related\s*\(", obj.Expression, flags=re.IGNORECASE),
                 "Calculated columns do not compress as well as data columns and may cause longer processing times. As such, calculated columns should be avoided if possible. One scenario where they may be easier to avoid is if they use the RELATED function.",
                 "https://www.sqlbi.com/articles/storage-differences-between-calculated-columns-and-calculated-tables",
             ),
@@ -666,9 +662,7 @@ def model_bpa_rules(
                 "Column",
                 "Warning",
                 "Provide format string for 'Date' columns",
-                lambda obj, tom: (
-                    re.search(r"date", obj.Name, flags=re.IGNORECASE)
-                )
+                lambda obj, tom: (re.search(r"date", obj.Name, flags=re.IGNORECASE))
                 and (obj.DataType == TOM.DataType.DateTime)
                 and (obj.FormatString != "mm/dd/yyyy"),
                 'Columns of type "DateTime" that have "Month" in their names should be formatted as "mm/dd/yyyy".',
@@ -766,9 +760,7 @@ def model_bpa_rules(
                 "Column",
                 "Info",
                 "Month (as a string) must be sorted",
-                lambda obj, tom: (
-                    re.search(r"month", obj.Name, flags=re.IGNORECASE)
-                )
+                lambda obj, tom: (re.search(r"month", obj.Name, flags=re.IGNORECASE))
                 and not (re.search(r"months", obj.Name, flags=re.IGNORECASE))
                 and (obj.DataType == TOM.DataType.String)
                 and len(str(obj.SortByColumn)) == 0,
@@ -788,9 +780,7 @@ def model_bpa_rules(
                 "Column",
                 "Warning",
                 'Provide format string for "Month" columns',
-                lambda obj, tom: re.search(
-                    r"month", obj.Name, flags=re.IGNORECASE
-                )
+                lambda obj, tom: re.search(r"month", obj.Name, flags=re.IGNORECASE)
                 and obj.DataType == TOM.DataType.DateTime
                 and obj.FormatString != "MMMM yyyy",
                 'Columns of type "DateTime" that have "Month" in their names should be formatted as "MMMM yyyy".',
