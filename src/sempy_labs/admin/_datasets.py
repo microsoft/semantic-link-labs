@@ -139,7 +139,7 @@ def list_dataset_users(dataset: str | UUID) -> pd.DataFrame:
     Parameters
     ----------
     dataset : str | uuid.UUID
-        The name or id of the dataset.
+        The name or ID of the dataset.
 
     Returns
     -------

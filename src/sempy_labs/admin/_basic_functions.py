@@ -138,9 +138,11 @@ def assign_workspaces_to_capacity(
     target_capacity : str | uuid.UUID, default=None
         The name of the target capacity.
     workspace : str | List[str] | uuid.UUID | List[uuid.UUID], default=None
-        The name or id of the workspace(s).
+        The name or ID of the workspace(s).
         Defaults to None which resolves to migrating all workspaces within the source capacity to the target capacity.
     """
+    from sempy_labs.admin._capacities import _resolve_capacity_name_and_id
+
     if target_capacity is None:
         raise ValueError(
             f"{icons.red_dot} The parameter 'target_capacity' is mandatory."
@@ -221,7 +223,7 @@ def unassign_workspaces_from_capacity(
     Parameters
     ----------
     workspaces : str | List[str] | uuid.UUID | List[uuid.UUID]
-        The Fabric workspace name(s) or id(s).
+        The workspace name(s) or ID(s).
     """
     if isinstance(workspaces, str):
         workspaces = [workspaces]
@@ -488,7 +490,7 @@ def list_workspace_access_details(
     Parameters
     ----------
     workspace : str | uuid.UUID, default=None
-        The Fabric workspace name or id.
+        The workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -545,3 +547,61 @@ def _resolve_workspace_name_and_id(
             )
 
     return workspace_name, workspace_id
+
+
+def list_workspace_users(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
+    """
+    Shows a list of users that have access to the specified workspace.
+
+    This is a wrapper function for the following API: `Admin - Groups GetGroupUsersAsAdmin <https://learn.microsoft.com/rest/api/power-bi/admin/groups-get-group-users-as-admin>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of users that have access to the specified workspace.
+    """
+
+    (workspace_name, workspace_id) = _resolve_workspace_name_and_id(workspace)
+
+    columns = {
+        "User Name": "string",
+        "Email Address": "string",
+        "Group User Access Right": "string",
+        "Identifier": "string",
+        "Graph Id": "string",
+        "Principal Type": "string",
+    }
+
+    df = _create_dataframe(columns=columns)
+
+    url = f"/v1.0/myorg/admin/groups/{workspace_id}/users"
+    response = _base_api(request=url, client="fabric_sp")
+
+    rows = []
+    for v in response.json().get("value", []):
+        rows.append(
+            {
+                "User Name": v.get("displayName"),
+                "Email Address": v.get("emailAddress"),
+                "Group User Access Right": v.get("groupUserAccessRight"),
+                "Identifier": v.get("identifier"),
+                "Graph Id": v.get("graphId"),
+                "Principal Type": v.get("principalType"),
+            }
+        )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+
+    return df

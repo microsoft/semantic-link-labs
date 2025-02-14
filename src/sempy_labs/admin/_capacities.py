@@ -111,7 +111,7 @@ def get_capacity_assignment_status(
     Parameters
     ----------
     workspace : str | uuid.UUID, default=None
-        The Fabric workspace name or id.
+        The workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
 
@@ -207,7 +207,7 @@ def list_capacities(
     Parameters
     ----------
     capacity : str | uuid.UUID, default=None
-        Capacity name or id to filter.
+        The capacity name or ID to filter. If None, all capacities are returned.
 
     Returns
     -------

@@ -31,6 +31,7 @@ from sempy_labs.admin._basic_functions import (
     list_tenant_settings,
     list_capacities_delegated_tenant_settings,
     list_access_entities,
+    list_workspace_users,
 )
 from sempy_labs.admin._domains import (
     list_domains,
@@ -92,4 +93,5 @@ __all__ = [
     "list_dataset_users",
     "list_report_users",
     "patch_capacity",
+    "list_workspace_users",
 ]

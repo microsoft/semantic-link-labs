@@ -120,7 +120,7 @@ def list_report_users(report: str | UUID) -> pd.DataFrame:
     Parameters
     ----------
     report : str | uuid.UUID
-        The name or id of the report.
+        The name or ID of the report.
 
     Returns
     -------

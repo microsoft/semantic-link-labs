@@ -99,7 +99,7 @@ def list_app_users(app: str | UUID) -> pd.DataFrame:
     Parameters
     ----------
     app : str | uuid.UUID
-        The name or id of the app.
+        The name or ID of the app.
 
     Returns
     -------
