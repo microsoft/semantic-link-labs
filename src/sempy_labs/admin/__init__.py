@@ -1,3 +1,18 @@
+from sempy_labs.admin._datasets import (
+    list_datasets,
+    list_dataset_users,
+)
+from sempy_labs.admin._apps import (
+    list_apps,
+    list_app_users,
+)
+from sempy_labs.admin._reports import (
+    list_reports,
+    list_report_users,
+)
+from sempy_labs.admin._activities import (
+    list_activity_events,
+)
 from sempy_labs.admin._scanner import (
     scan_workspaces,
 )
@@ -7,13 +22,10 @@ from sempy_labs.admin._basic_functions import (
     list_workspaces,
     list_workspace_access_details,
     list_modified_workspaces,
-    list_datasets,
-    list_reports,
     list_capacities,
     list_tenant_settings,
     list_capacities_delegated_tenant_settings,
     list_access_entities,
-    list_activity_events,
     get_capacity_assignment_status,
     get_capacity_state,
 )
@@ -72,4 +84,8 @@ __all__ = [
     "get_capacity_assignment_status",
     "scan_workspaces",
     "get_capacity_state",
+    "list_apps",
+    "list_app_users",
+    "list_dataset_users",
+    "list_report_users",
 ]
