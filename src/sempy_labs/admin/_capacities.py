@@ -26,7 +26,6 @@ def patch_capacity(capacity: str | UUID, tenant_key_id: UUID):
         The name or ID of the capacity.
     tenant_key_id : str
         The ID of the encryption key.
-
     """
 
     (capacity_name, capacity_id) = _resolve_capacity_name_and_id(capacity)
