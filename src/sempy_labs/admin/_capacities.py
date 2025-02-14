@@ -10,9 +10,6 @@ from sempy_labs._helper_functions import (
     _is_valid_uuid,
     get_capacity_id,
 )
-from sempy_labs.admin._basic_functions import (
-    _resolve_workspace_name_and_id,
-)
 
 
 def patch_capacity(capacity: str | UUID, tenant_key_id: UUID):
@@ -123,6 +120,7 @@ def get_capacity_assignment_status(
     pandas.DataFrame
         A pandas dataframe showing the status of the assignment-to-capacity operation for the specified workspace.
     """
+    from sempy_labs.admin._basic_functions import _resolve_workspace_name_and_id
 
     (workspace_name, workspace_id) = _resolve_workspace_name_and_id(workspace)
 

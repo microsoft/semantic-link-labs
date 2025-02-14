@@ -13,7 +13,6 @@ from sempy._utils._log import log
 import numpy as np
 import pandas as pd
 from dateutil.parser import parse as dtparser
-from sempy_labs.admin._capacities import _resolve_capacity_name_and_id
 
 
 @log
@@ -47,6 +46,9 @@ def list_workspaces(
     pandas.DataFrame
         A pandas dataframe showing a list of workspaces for the organization.
     """
+
+    from sempy_labs.admin._capacities import _resolve_capacity_name_and_id
+
     if "filter" in kwargs:
         print(
             "The 'filter' parameter has been deprecated. Please remove this parameter from the function going forward."
