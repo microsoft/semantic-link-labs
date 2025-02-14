@@ -1,3 +1,9 @@
+from sempy_labs._kql_dashboards import (
+    list_kql_dashboards,
+    create_kql_dashboard,
+    delete_kql_dashboard,
+    create_workspace_monitoring_dashboard,
+)
 from sempy_labs._graphQL import (
     list_graphql_apis,
     create_graphql_api,
@@ -499,4 +505,8 @@ __all__ = [
     "delta_analyzer",
     # "dax_perf_test",
     # "dax_perf_test_bulk",
+    "list_kql_dashboards",
+    "create_kql_dashboard",
+    "delete_kql_dashboard",
+    "create_workspace_monitoring_dashboard",
 ]
