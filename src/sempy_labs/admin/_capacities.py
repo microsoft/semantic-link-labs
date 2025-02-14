@@ -1,5 +1,8 @@
 import pandas as pd
 from uuid import UUID
+import sempy_labs._icons as icons
+from typing import Optional, Tuple
+from sempy._utils._log import log
 from sempy_labs._helper_functions import (
     _base_api,
     _create_dataframe,
@@ -7,8 +10,6 @@ from sempy_labs._helper_functions import (
     _is_valid_uuid,
     get_capacity_id,
 )
-import sempy_labs._icons as icons
-from typing import Optional, Tuple
 from sempy_labs.admin._basic_functions import (
     _resolve_workspace_name_and_id,
 )

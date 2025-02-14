@@ -13,6 +13,7 @@ from sempy._utils._log import log
 import numpy as np
 import pandas as pd
 from dateutil.parser import parse as dtparser
+from sempy_labs.admin._capacities import _resolve_capacity_name_and_id
 
 
 @log

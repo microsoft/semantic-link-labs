@@ -1,14 +1,16 @@
 import pandas as pd
 from typing import Optional
+from dateutil.parser import parse as dtparser
+from sempy._utils._log import log
 from sempy_labs._helper_functions import (
     _base_api,
     _create_dataframe,
     _update_dataframe_datatypes,
 )
 import sempy_labs._icons as icons
-from dateutil.parser import parse as dtparser
 
 
+@log
 def list_activity_events(
     start_time: str,
     end_time: str,
