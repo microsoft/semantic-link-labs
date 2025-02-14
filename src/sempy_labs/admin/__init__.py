@@ -16,18 +16,21 @@ from sempy_labs.admin._activities import (
 from sempy_labs.admin._scanner import (
     scan_workspaces,
 )
+from sempy_labs.admin._capacities import (
+    patch_capacity,
+    list_capacities,
+    get_capacity_assignment_status,
+    get_capacity_state,
+)
 from sempy_labs.admin._basic_functions import (
     assign_workspaces_to_capacity,
     unassign_workspaces_from_capacity,
     list_workspaces,
     list_workspace_access_details,
     list_modified_workspaces,
-    list_capacities,
     list_tenant_settings,
     list_capacities_delegated_tenant_settings,
     list_access_entities,
-    get_capacity_assignment_status,
-    get_capacity_state,
 )
 from sempy_labs.admin._domains import (
     list_domains,
@@ -88,4 +91,5 @@ __all__ = [
     "list_app_users",
     "list_dataset_users",
     "list_report_users",
+    "patch_capacity",
 ]

@@ -2,10 +2,11 @@ import sempy.fabric as fabric
 from typing import Optional, List
 from sempy._utils._log import log
 import sempy_labs._icons as icons
-from sempy.fabric.exceptions import FabricHTTPException
 from sempy_labs._workspaces import assign_workspace_to_capacity
-from sempy_labs.admin._basic_functions import (
+from sempy_labs.admin import (
     assign_workspaces_to_capacity,
+)
+from sempy_labs.admin._capacities import (
     _list_capacities_meta,
     list_capacities,
 )
