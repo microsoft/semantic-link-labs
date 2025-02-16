@@ -4162,7 +4162,7 @@ class TOMWrapper:
     def delete_synonym(
         self,
         culture: str,
-        object: Union["TOM.Table", "TOM.Column", "TOM.Measure", "TOM.Hierarchy"],
+        object: Union["TOM.Table", "TOM.Column"],
         synonym_name: str,
     ):
 
@@ -4173,54 +4173,67 @@ class TOMWrapper:
                 f"{icons.red_dot} The '{culture}' culture does not exist within the semantic model."
             )
 
-        deleted = False
+        if object.ObjectType not in [TOM.ObjectType.Table, TOM.ObjectType.Column]:
+            raise ValueError(
+                f"{icons.red_dot} This function only supports tables or columns."
+            )
 
         c = self.model.Cultures[culture]
         lm_content = c.LinguisticMetadata.Content
-
         lm = json.loads(lm_content)
+
         if "Entities" not in lm:
             print(
                 f"{icons.warning} There is no linguistic schema for the '{culture}' culture."
             )
             return
 
-        for _, v in lm.get("Entities", []).items():
-            binding = v.get("Definition", {}).get("Binding", {})
+        (obj, syn_exists) = self._get_synonym_info(
+            lm=lm, object=object, synonym_name=synonym_name
+        )
 
-            t_name = binding.get("ConceptualEntity")
-            object_name = binding.get("ConceptualProperty")
+        # Mark the synonym as deleted if it exists
+        if obj is not None and syn_exists:
+            lm["Entities"][obj]["Terms"][synonym_name]["State"] = "Deleted"
 
-            if object.ObjectType == TOM.ObjectType.Table:
-                object_name = None
-                table_name = object.Name
-                obj = table_name
-            elif object.ObjectType in [
-                TOM.ObjectType.Column,
-                TOM.ObjectType.Hierarchy,
-            ]:
-                object_name = object.Name
-                table_name = object.Parent.Name
-                obj = format_dax_object_name(table_name, object_name)
-            elif object.ObjectType == TOM.ObjectType.Measure:
-                object_name = object.Name
-                table_name = object.Parent.Name
-                obj = object.Name
-            else:
-                raise ValueError(
-                    f"{icons.red_dot} This function only supports adding synonyms for tables, columns, measures or hierarchies."
-                )
-
-            if table_name == t_name and object_name == t_name:
-                for term in v["Terms"]:
-                    if synonym_name in term:
-                        term[synonym_name]["State"] = "Deleted"
-                        deleted is True
-        if deleted:
             c.LinguisticMetadata.Content = json.dumps(lm, indent=4)
             print(
-                f"{icons.green_dot} The '{synonym_name}' synonym was marked as status 'Deleted' for the {obj} {str(object.ObjectType).lower()}."
+                f"{icons.green_dot} The '{synonym_name}' synonym was marked as status 'Deleted' for the '{object.Name}' object."
             )
+        else:
+            print(
+                f"{icons.info} The '{synonym_name}' synonym does not exist for the '{object.Name}' object."
+            )
+
+    def _get_synonym_info(
+        lm: dict, object: Union["TOM.Table", "TOM.Column"], synonym_name: str
+    ):
+
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        object_type = object.ObjectType
+        obj = None
+        syn_exists = False
+
+        for key, v in lm.get("Entities", []).items():
+            binding = v.get("Definition", {}).get("Binding", {})
+            t_name = binding.get("ConceptualEntity")
+            o_name = binding.get("ConceptualProperty")
+
+            if object_type == TOM.ObjectType.Table:
+                if t_name == object.Name and o_name is None:
+                    obj = key
+                    for term in v.get("Terms", []):
+                        if synonym_name in term:
+                            syn_exists = True
+            elif object_type == TOM.ObjectType.Column:
+                if t_name == object.Parent.Name and o_name == object.Name:
+                    obj = key
+                    for term in v.get("Terms", []):
+                        if synonym_name in term:
+                            syn_exists = True
+
+        return obj, syn_exists
 
     def set_synonym(
         self,
@@ -4244,48 +4257,28 @@ class TOMWrapper:
                 f"{icons.red_dot} This function only supports adding synonyms for tables or columns."
             )
 
-        validate_weight(weight)
-
         # Add base linguistic schema in case it does not yet exist
         self._add_linguistic_schema(culture=culture)
 
-        now = datetime.now(timezone.utc).isoformat(timespec="milliseconds") + "Z"
+        # Extract linguistic metadata content
         c = self.model.Cultures[culture]
         lm_content = c.LinguisticMetadata.Content
         lm = json.loads(lm_content)
 
-        if "Entities" not in lm:
-            print(
-                f"{icons.warning} There is no linguistic schema for the '{culture}' culture."
-            )
-            return
-
+        # Generate synonym dictionary
+        validate_weight(weight)
+        now = datetime.now(timezone.utc).isoformat(timespec="milliseconds") + "Z"
         syn_dict = {"Type": "Noun", "State": "Authored", "LastModified": now}
         if weight is not None:
             syn_dict["Weight"] = weight
 
         updated = False
-        obj = None
-        syn_exists = False
 
-        for key, v in lm.get("Entities", []).items():
-            binding = v.get("Definition", {}).get("Binding", {})
-            t_name = binding.get("ConceptualEntity")
-            o_name = binding.get("ConceptualProperty")
+        (obj, syn_exists) = self._get_synonym_info(
+            lm=lm, object=object, synonym_name=synonym_name
+        )
 
-            if object_type == TOM.ObjectType.Table:
-                if t_name == object.Name and o_name is None:
-                    obj = key
-                    for term in v.get("Terms", []):
-                        if synonym_name in term:
-                            syn_exists = True
-            elif object_type == TOM.ObjectType.Column:
-                if t_name == object.Parent.Name and o_name == object.Name:
-                    obj = key
-                    for term in v.get("Terms", []):
-                        if synonym_name in term:
-                            syn_exists = True
-
+        # Update linguistic metadata content
         if obj is None:
             lm["Entities"][obj] = {
                 "Definition": {"Binding": {}},
