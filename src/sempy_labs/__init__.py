@@ -1,3 +1,6 @@
+from sempy_labs._semantic_models import (
+    get_semantic_model_refresh_schedule,
+)
 from sempy_labs._graphQL import (
     list_graphql_apis,
     create_graphql_api,
@@ -499,4 +502,5 @@ __all__ = [
     "delta_analyzer",
     # "dax_perf_test",
     # "dax_perf_test_bulk",
+    "get_semantic_model_refresh_schedule",
 ]
