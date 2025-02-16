@@ -2985,19 +2985,19 @@ class TOMWrapper:
 
         for t in self.model.Tables:
             dfT_filt = dfT[dfT["Name"] == t.Name]
-            if len(dfT_filt) > 0:
+            if not dfT_filt.empty:
                 row = dfT_filt.iloc[0]
                 rowCount = str(row["Row Count"])
                 totalSize = str(row["Total Size"])
                 self.set_annotation(object=t, name="Vertipaq_RowCount", value=rowCount)
                 self.set_annotation(
-                    object=t, name="Vertipaq_TableSize", value=totalSize
+                    object=t, name="Vertipaq_TotalSize", value=totalSize
                 )
             for c in t.Columns:
                 dfC_filt = dfC[
                     (dfC["Table Name"] == t.Name) & (dfC["Column Name"] == c.Name)
                 ]
-                if len(dfC_filt) > 0:
+                if not dfC_filt.empty:
                     row = dfC_filt.iloc[0]
                     totalSize = str(row["Total Size"])
                     dataSize = str(row["Data Size"])
@@ -3023,7 +3023,7 @@ class TOMWrapper:
                 dfP_filt = dfP[
                     (dfP["Table Name"] == t.Name) & (dfP["Partition Name"] == p.Name)
                 ]
-                if len(dfP_filt) > 0:
+                if not dfP_filt.empty:
                     row = dfP_filt.iloc[0]
                     recordCount = str(row["Record Count"])
                     segmentCount = str(row["Segment Count"])
@@ -3041,14 +3041,14 @@ class TOMWrapper:
                 dfH_filt = dfH[
                     (dfH["Table Name"] == t.Name) & (dfH["Hierarchy Name"] == h.Name)
                 ]
-                if len(dfH_filt) > 0:
+                if not dfH_filt.empty:
                     usedSize = str(dfH_filt["Used Size"].iloc[0])
                     self.set_annotation(
                         object=h, name="Vertipaq_UsedSize", value=usedSize
                     )
         for r in self.model.Relationships:
             dfR_filt = dfR[dfR["Relationship Name"] == r.Name]
-            if len(dfR_filt) > 0:
+            if not dfR_filt.empty:
                 relSize = str(dfR_filt["Used Size"].iloc[0])
                 self.set_annotation(object=r, name="Vertipaq_UsedSize", value=relSize)
         try:
@@ -3201,12 +3201,12 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        objType = object.ObjectType
+        if object.ObjectType not in [TOM.ObjectType.Table, TOM.ObjectType.Column]:
+            raise ValueError(
+                f"{icons.red_dot} The 'object' parameter must be a Table or Column object."
+            )
 
-        if objType == TOM.ObjectType.Column:
-            result = self.get_annotation_value(object=object, name="Vertipaq_TotalSize")
-        elif objType == TOM.ObjectType.Table:
-            result = self.get_annotation_value(object=object, name="Vertipaq_TotalSize")
+        result = self.get_annotation_value(object=object, name="Vertipaq_TotalSize")
 
         return int(result) if result is not None else 0
 
