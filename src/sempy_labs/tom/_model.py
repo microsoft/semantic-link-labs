@@ -4073,7 +4073,7 @@ class TOMWrapper:
                 isCalcTable = True
         return isCalcTable
 
-    def _add_linguistic_schema(self, culture_name: str):
+    def _add_linguistic_schema(self, culture: str):
 
         import Microsoft.AnalysisServices.Tabular as TOM
 
@@ -4082,7 +4082,7 @@ class TOMWrapper:
         # TODO: 'in' vs 'has' in relationships
         # TODO: 'SemanticSlots' in relationships
 
-        c = self.model.Cultures[culture_name]
+        c = self.model.Cultures[culture]
         if c.LinguisticMetadata is not None:
             lm = json.loads(c.LinguisticMetadata.Content)
 
@@ -4157,32 +4157,32 @@ class TOMWrapper:
             #        rel_key = f"{t_name}_has_{o_name}"
             #        add_relationship(rel_key, table_name, t_name, o_name)
 
-            self.model.Cultures[culture_name].LinguisticMetadata.Content = json.dumps(
-                lm
-            )
+            self.model.Cultures[culture].LinguisticMetadata.Content = json.dumps(lm)
 
     def delete_synonym(
         self,
-        culture_name: str,
+        culture: str,
         object: Union["TOM.Table", "TOM.Column", "TOM.Measure", "TOM.Hierarchy"],
         synonym_name: str,
     ):
 
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        if not any(c.Name == culture_name for c in self.model.Cultures):
+        if not any(c.Name == culture for c in self.model.Cultures):
             raise ValueError(
-                f"{icons.red_dot} The '{culture_name}' culture does not exist within the semantic model."
+                f"{icons.red_dot} The '{culture}' culture does not exist within the semantic model."
             )
 
         deleted = False
 
-        c = self.model.Cultures[culture_name]
+        c = self.model.Cultures[culture]
         lm_content = c.LinguisticMetadata.Content
 
         lm = json.loads(lm_content)
         if "Entities" not in lm:
-            print(f"{icons.warning} There is no linguistic schema for the '{culture_name}' culture.")
+            print(
+                f"{icons.warning} There is no linguistic schema for the '{culture}' culture."
+            )
             return
 
         for _, v in lm.get("Entities", []).items():
@@ -4222,85 +4222,111 @@ class TOMWrapper:
                 f"{icons.green_dot} The '{synonym_name}' synonym was marked as status 'Deleted' for the {obj} {str(object.ObjectType).lower()}."
             )
 
-    def add_synonym(
+    def set_synonym(
         self,
-        culture_name: str,
-        object: Union["TOM.Table", "TOM.Column", "TOM.Measure", "TOM.Hierarchy"],
+        culture: str,
+        object: Union["TOM.Table", "TOM.Column"],
         synonym_name: str,
         weight: Optional[Decimal] = None,
     ):
 
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        if not any(c.Name == culture_name for c in self.model.Cultures):
+        object_type = object.ObjectType
+
+        if not any(c.Name == culture for c in self.model.Cultures):
             raise ValueError(
-                f"{icons.red_dot} The '{culture_name}' culture does not exist within the semantic model."
+                f"{icons.red_dot} The '{culture}' culture does not exist within the semantic model."
+            )
+
+        if object_type not in [TOM.ObjectType.Table, TOM.ObjectType.Column]:
+            raise ValueError(
+                f"{icons.red_dot} This function only supports adding synonyms for tables or columns."
             )
 
         validate_weight(weight)
 
-        added = False
         # Add base linguistic schema in case it does not yet exist
-        self._add_linguistic_schema(culture_name=culture_name)
+        self._add_linguistic_schema(culture=culture)
 
         now = datetime.now(timezone.utc).isoformat(timespec="milliseconds") + "Z"
-        c = self.model.Cultures[culture_name]
+        c = self.model.Cultures[culture]
         lm_content = c.LinguisticMetadata.Content
         lm = json.loads(lm_content)
 
         if "Entities" not in lm:
-            print(f"{icons.warning} There is no linguistic schema for the '{culture_name}' culture.")
+            print(
+                f"{icons.warning} There is no linguistic schema for the '{culture}' culture."
+            )
             return
 
-        for _, v in lm.get("Entities", []).items():
-            binding = v.get("Definition", {}).get("Binding", {})
+        syn_dict = {"Type": "Noun", "State": "Authored", "LastModified": now}
+        if weight is not None:
+            syn_dict["Weight"] = weight
 
+        updated = False
+        obj = None
+        syn_exists = False
+
+        for key, v in lm.get("Entities", []).items():
+            binding = v.get("Definition", {}).get("Binding", {})
             t_name = binding.get("ConceptualEntity")
             o_name = binding.get("ConceptualProperty")
 
-            if object.ObjectType == TOM.ObjectType.Table:
-                object_name = None
-                table_name = object.Name
-                obj = table_name
-            elif object.ObjectType in [
-                TOM.ObjectType.Column,
-                TOM.ObjectType.Hierarchy,
-            ]:
-                object_name = object.Name
-                table_name = object.Parent.Name
-                obj = format_dax_object_name(table_name, object_name)
-            elif object.ObjectType == TOM.ObjectType.Measure:
-                object_name = object.Name
-                table_name = object.Parent.Name
-                obj = object.Name
+            if object_type == TOM.ObjectType.Table:
+                if t_name == object.Name and o_name is None:
+                    obj = key
+                    for term in v.get("Terms", []):
+                        if synonym_name in term:
+                            syn_exists = True
+            elif object_type == TOM.ObjectType.Column:
+                if t_name == object.Parent.Name and o_name == object.Name:
+                    obj = key
+                    for term in v.get("Terms", []):
+                        if synonym_name in term:
+                            syn_exists = True
+
+        if obj is None:
+            lm["Entities"][obj] = {
+                "Definition": {"Binding": {}},
+                "State": "Authored",
+                "Terms": [
+                    {synonym_name: syn_dict},
+                ],
+            }
+            if object_type == TOM.ObjectType.Table:
+                lm["Entities"][obj]["Definition"]["Binding"][
+                    "ConceptualEntity"
+                ] = object.Name
             else:
-                raise ValueError(
-                    f"{icons.red_dot} This function only supports adding synonyms for tables, columns, measures or hierarchies."
+                lm["Entities"][obj]["Definition"]["Binding"][
+                    "ConceptualEntity"
+                ] = object.Parent.Name
+                lm["Entities"][obj]["Definition"]["Binding"][
+                    "ConceptualProperty"
+                ] = object.Name
+            updated = True
+        elif not syn_exists:
+            lm["Entities"][obj]["Terms"].append({synonym_name: syn_dict})
+            updated = True
+        else:
+            lm["Entities"][obj]["Terms"][synonym_name] = syn_dict
+            updated = True
+
+        if updated:
+            c.LinguisticMetadata.Content = json.dumps(lm, indent=4)
+            if object_type == TOM.ObjectType.Table:
+                print(
+                    f"{icons.green_dot} The '{synonym_name}' synonym was added for the '{object.Name}' table."
+                )
+            else:
+                print(
+                    f"{icons.green_dot} The '{synonym_name}' synonym was added for the '{object.Parent.Name}'[{object.Name}] column."
                 )
 
-            if table_name == t_name and object_name == o_name:
-                if not any(synonym_name in term for term in v["Terms"]):
-                    new_term = {}
-                    new_term[synonym_name] = {
-                        "Type": "Noun",
-                        # "State": "Authored",
-                        "LastModified": now,
-                    }
-                    if weight is not None:
-                        new_term[synonym_name]["Weight"] = weight
+    def lock_linguistic_schema(self, culture: str):
 
-                    v["Terms"].append(new_term)
-                    added is True
-
-        if added:
-            c.LinguisticMetadata.Content = json.dumps(lm, indent=4)
-            print(
-                f"{icons.green_dot} The '{synonym_name}' synonym was added for the {obj} {str(object.ObjectType).lower()}."
-            )
-
-    def lock_linguistic_schema(self, culture_name: str):
-
-        c = self.model.Cultures[culture_name]
+        c = self.model.Cultures[culture]
         if c.LinguisticMetadata is not None:
             lm = json.loads(c.LinguisticMetadata.Content)
             if "DynamicImprovement" not in lm:
@@ -4309,9 +4335,9 @@ class TOMWrapper:
 
             c.LinguisticMetadata.Content = json.dumps(lm, indent=4)
 
-    def unlock_linguistic_schema(self, culture_name: str):
+    def unlock_linguistic_schema(self, culture: str):
 
-        c = self.model.Cultures[culture_name]
+        c = self.model.Cultures[culture]
         if c.LinguisticMetadata is not None:
             lm = json.loads(c.LinguisticMetadata.Content)
             if "DynamicImprovement" in lm:
@@ -4319,16 +4345,16 @@ class TOMWrapper:
 
             c.LinguisticMetadata.Content = json.dumps(lm, indent=4)
 
-    def export_linguistic_schema(self, culture_name: str, file_path: str):
+    def export_linguistic_schema(self, culture: str, file_path: str):
 
         if not lakehouse_attached():
             raise ValueError(
                 f"{icons.red_dot} A lakehouse must be attached to the notebook in order to export a linguistic schema."
             )
 
-        if not any(c.Name == culture_name for c in self.model.Cultures):
+        if not any(c.Name == culture for c in self.model.Cultures):
             raise ValueError(
-                f"{icons.red_dot} The '{culture_name}' culture does not exist within the semantic model."
+                f"{icons.red_dot} The '{culture}' culture does not exist within the semantic model."
             )
 
         folderPath = "/lakehouse/default/Files"
@@ -4337,14 +4363,14 @@ class TOMWrapper:
             file_path = f"{file_path}{fileExt}"
 
         for c in self.model.Cultures:
-            if c.Name == culture_name:
+            if c.Name == culture:
                 lm = json.loads(c.LinguisticMetadata.Content)
                 filePath = os.path.join(folderPath, file_path)
                 with open(filePath, "w") as json_file:
                     json.dump(lm, json_file, indent=4)
 
                 print(
-                    f"{icons.green_dot} The linguistic schema for the '{culture_name}' culture was saved as the '{file_path}' file within the lakehouse attached to this notebook."
+                    f"{icons.green_dot} The linguistic schema for the '{culture}' culture was saved as the '{file_path}' file within the lakehouse attached to this notebook."
                 )
 
     def import_linguistic_schema(self, file_path: str):
