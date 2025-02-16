@@ -3,6 +3,7 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
     resolve_lakehouse_id,
     resolve_workspace_name_and_id,
+    resolve_lakehouse_name_and_id,
     _base_api,
 )
 from typing import Optional
@@ -18,6 +19,8 @@ def create_shortcut_onelake(
     destination_lakehouse: str,
     destination_workspace: Optional[str | UUID] = None,
     shortcut_name: Optional[str] = None,
+    source_folder: str = "Tables",
+    destination_folder: str = "Tables",
 ):
     """
     Creates a `shortcut <https://learn.microsoft.com/fabric/onelake/onelake-shortcuts>`_ to a delta table in OneLake.
@@ -40,14 +43,29 @@ def create_shortcut_onelake(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     shortcut_name : str, default=None
         The name of the shortcut 'table' to be created. This defaults to the 'table_name' parameter value.
+    source_folder : str, default="Tables"
+        A string representing the full path to the table/file in the source lakehouse.
+    destination_folder: str, default="Tables"
+        A string representing the full path where the shortcut is created, including either "Files" or "Tables".
     """
+
+    if not (source_folder.startswith("Files") or source_folder.startswith("Tables")):
+        raise ValueError(
+            f"{icons.red_dot} The 'source_folder' parameter must be either 'Files' or 'Tables'."
+        )
+    if not (
+        destination_folder.startswith("Files")
+        or destination_folder.startswith("Tables")
+    ):
+        raise ValueError(
+            f"{icons.red_dot} The 'destination_folder' parameter must be either 'Files' or 'Tables'."
+        )
 
     (source_workspace_name, source_workspace_id) = resolve_workspace_name_and_id(
         source_workspace
     )
-    source_lakehouse_id = resolve_lakehouse_id(source_lakehouse, source_workspace_id)
-    source_lakehouse_name = fabric.resolve_item_name(
-        item_id=source_lakehouse_id, type="Lakehouse", workspace=source_workspace_id
+    (source_lakehouse_name, source_lakehouse_id) = resolve_lakehouse_name_and_id(
+        lakehouse=source_lakehouse, workspace=source_workspace
     )
 
     if destination_workspace is None:
@@ -59,29 +77,25 @@ def create_shortcut_onelake(
             destination_workspace_name
         )
 
-    destination_workspace_id = fabric.resolve_workspace_id(destination_workspace)
-    destination_lakehouse_id = resolve_lakehouse_id(
-        destination_lakehouse, destination_workspace
-    )
-    destination_lakehouse_name = fabric.resolve_item_name(
-        item_id=destination_lakehouse_id,
-        type="Lakehouse",
-        workspace=destination_workspace_id,
+    (destination_lakehouse_name, destination_lakehouse_id) = (
+        resolve_lakehouse_name_and_id(
+            lakehouse=destination_lakehouse, workspace=destination_workspace_id
+        )
     )
 
     if shortcut_name is None:
         shortcut_name = table_name
 
-    table_path = f"Tables/{table_name}"
+    source_path = f"{source_folder}/{table_name}"
 
     payload = {
-        "path": "Tables",
+        "path": destination_folder,
         "name": shortcut_name.replace(" ", ""),
         "target": {
             "oneLake": {
                 "workspaceId": source_workspace_id,
                 "itemId": source_lakehouse_id,
-                "path": table_path,
+                "path": source_path,
             }
         },
     }
