@@ -3,7 +3,6 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
     resolve_lakehouse_id,
     resolve_workspace_name_and_id,
-    resolve_lakehouse_name_and_id,
     _base_api,
 )
 from typing import Optional
@@ -64,8 +63,9 @@ def create_shortcut_onelake(
     (source_workspace_name, source_workspace_id) = resolve_workspace_name_and_id(
         source_workspace
     )
-    (source_lakehouse_name, source_lakehouse_id) = resolve_lakehouse_name_and_id(
-        lakehouse=source_lakehouse, workspace=source_workspace
+    source_lakehouse_id = resolve_lakehouse_id(source_lakehouse, source_workspace_id)
+    source_lakehouse_name = fabric.resolve_item_name(
+        item_id=source_lakehouse_id, type="Lakehouse", workspace=source_workspace_id
     )
 
     if destination_workspace is None:
@@ -77,10 +77,14 @@ def create_shortcut_onelake(
             destination_workspace_name
         )
 
-    (destination_lakehouse_name, destination_lakehouse_id) = (
-        resolve_lakehouse_name_and_id(
-            lakehouse=destination_lakehouse, workspace=destination_workspace_id
-        )
+    destination_workspace_id = fabric.resolve_workspace_id(destination_workspace)
+    destination_lakehouse_id = resolve_lakehouse_id(
+        destination_lakehouse, destination_workspace
+    )
+    destination_lakehouse_name = fabric.resolve_item_name(
+        item_id=destination_lakehouse_id,
+        type="Lakehouse",
+        workspace=destination_workspace_id,
     )
 
     if shortcut_name is None:
