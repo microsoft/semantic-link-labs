@@ -41,6 +41,7 @@ Check out the video below for an introduction to Semantic Link, Semantic Link La
     * [View unique columns touched in a single (or multiple) DAX query(ies)](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.get_dax_query_dependencies)
     * [Analyze delta tables for Direct Lake semantic models using Delta Analyzer](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Delta%20Analyzer.ipynb)
     * [View synonyms from the linguistic schema](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.list_synonyms)
+    * [Add](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.tom.html#sempy_labs.tom.TOMWrapper.add_incremental_refresh_policy), [update](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.tom.html#sempy_labs.tom.TOMWrapper.update_incremental_refresh_policy) and [view](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.tom.html#sempy_labs.tom.TOMWrapper.show_incremental_refresh_policy) an incremental refresh policy.
 * Reports
     * [Report Best Practice Analyzer (BPA)](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.report.html#sempy_labs.report.run_report_bpa)
     * [View report metadata](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Report%20Analysis.ipynb)
