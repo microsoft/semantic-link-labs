@@ -346,69 +346,6 @@ def resume_fabric_capacity(
 
     print(f"{icons.green_dot} The '{capacity_name}' capacity has been resumed.")
 
-@log
-def get_fabric_capacity_status(
-    capacity_name: str,
-    azure_subscription_id: str,
-    resource_group: str,
-    **kwargs,
-) -> str:
-    """
-    Retrieves the current status (state) of a Fabric capacity.
-    
-    This is a wrapper function for the following API:
-    GET Fabric Capacities - Get: 
-    https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities/get?view=rest-microsoftfabric-2023-11-01
-
-    Service Principal Authentication is required (see Service Principal examples).
-
-    Parameters
-    ----------
-    capacity_name : str
-        The name of the Fabric capacity.
-    azure_subscription_id : str
-        The Azure subscription ID.
-    resource_group : str
-        The resource group in which the Fabric capacity exists.
-    **kwargs:
-        Additional keyword arguments for authentication (e.g., key_vault_uri, key_vault_tenant_id,
-        key_vault_client_id, key_vault_client_secret).
-
-    Returns
-    -------
-    str
-        The current state of the Fabric capacity (e.g., "Active", "Paused").
-    """
-    token_provider = auth.token_provider.get()
-    if token_provider is None:
-        token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
-            key_vault_uri=kwargs["key_vault_uri"],
-            key_vault_tenant_id=kwargs["key_vault_tenant_id"],
-            key_vault_client_id=kwargs["key_vault_client_id"],
-            key_vault_client_secret=kwargs["key_vault_client_secret"],
-        )
-        print(
-            f"{icons.info} Please use the 'token_provider' parameter instead of the key vault parameters within this function as the key vault parameters have been deprecated."
-        )
-    headers = _get_headers(token_provider, audience="azure")
-    url = (
-        f"https://management.azure.com/subscriptions/{azure_subscription_id}"
-        f"/resourceGroups/{resource_group}"
-        f"/providers/Microsoft.Fabric/capacities/{capacity_name}?api-version={icons.azure_api_version}"
-    )
-
-    response = requests.get(url, headers=headers)
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    capacity_data = response.json()
-    current_state = capacity_data.get("properties", {}).get("state")
-    if current_state is None:
-        print(f"{icons.yellow_dot} Unable to determine the state of the '{capacity_name}' capacity.")
-        return "Unknown"
-
-    print(f"{icons.green_dot} The '{capacity_name}' capacity is currently '{current_state}'.")
-    return current_state
 
 @log
 def delete_embedded_capacity(
