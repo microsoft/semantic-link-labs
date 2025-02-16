@@ -14,7 +14,7 @@ dirs = {
     sempy_labs.lakehouse: 'lake',
     sempy_labs.migration: 'migration',
     sempy_labs.report: 'rep',
-    TOMWrapper: 'tom',
+    TOMWrapper: 'tom', 
 }
 
 markdown_content = """
