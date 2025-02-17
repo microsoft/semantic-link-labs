@@ -89,8 +89,8 @@ def list_item_job_instances(
     (item_name, item_id) = resolve_item_name_and_id(
         item=item, type=type, workspace=workspace
     )
-    if item_type is None:
-        item_type = resolve_item_type(item_id=item_id, workspace_id=workspace_id)
+    if type is None:
+        type = resolve_item_type(item_id=item_id, workspace_id=workspace_id)
 
     columns = {
         "Job Instance Id": "string",
@@ -123,7 +123,7 @@ def list_item_job_instances(
                 "Job Instance Id": v.get("id"),
                 "Item Name": item_name,
                 "Item Id": v.get("itemId"),
-                "Item Type": item_type,
+                "Item Type": type,
                 "Job Type": v.get("jobType"),
                 "Invoke Type": v.get("invokeType"),
                 "Status": v.get("status"),
@@ -256,8 +256,8 @@ def run_on_demand_item_job(
     (item_name, item_id) = resolve_item_name_and_id(
         item=item, type=type, workspace=workspace
     )
-    if item_type is None:
-        item_type = resolve_item_type(item_id=item_id, workspace_id=workspace_id)
+    if type is None:
+        type = resolve_item_type(item_id=item_id, workspace_id=workspace_id)
 
     response = _base_api(
         request=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/instances?jobType={job_type}",
@@ -265,7 +265,7 @@ def run_on_demand_item_job(
         status_codes=202,
     )
 
-    print(f"{icons.green_dot} The '{item_name}' {item_type.lower()} has been executed.")
+    print(f"{icons.green_dot} The '{item_name}' {type.lower()} has been executed.")
     job_instance_id = response.headers.get("Location").split("/")[-1]
     return job_instance_id
 
