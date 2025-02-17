@@ -3,8 +3,10 @@ from typing import Optional, Tuple
 from uuid import UUID
 import sempy_labs._icons as icons
 from sempy_labs.admin._basic_functions import (
-    _resolve_capacity_name_and_id,
     _resolve_workspace_name_and_id,
+)
+from sempy_labs.admin._capacities import (
+    _resolve_capacity_name_and_id,
 )
 from sempy_labs._helper_functions import (
     _is_valid_uuid,
