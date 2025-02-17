@@ -18,6 +18,8 @@ def create_shortcut_onelake(
     destination_lakehouse: str,
     destination_workspace: Optional[str | UUID] = None,
     shortcut_name: Optional[str] = None,
+    source_path: str = "Tables",
+    destination_path: str = "Tables",
 ):
     """
     Creates a `shortcut <https://learn.microsoft.com/fabric/onelake/onelake-shortcuts>`_ to a delta table in OneLake.
@@ -40,7 +42,22 @@ def create_shortcut_onelake(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     shortcut_name : str, default=None
         The name of the shortcut 'table' to be created. This defaults to the 'table_name' parameter value.
+    source_path : str, default="Tables"
+        A string representing the full path to the table/file in the source lakehouse, including either "Files" or "Tables". Examples: Tables/FolderName/SubFolderName; Files/FolderName/SubFolderName.
+    destination_path: str, default="Tables"
+        A string representing the full path where the shortcut is created, including either "Files" or "Tables". Examples: Tables/FolderName/SubFolderName; Files/FolderName/SubFolderName.
     """
+
+    if not (source_path.startswith("Files") or source_path.startswith("Tables")):
+        raise ValueError(
+            f"{icons.red_dot} The 'source_path' parameter must be either 'Files' or 'Tables'."
+        )
+    if not (
+        destination_path.startswith("Files") or destination_path.startswith("Tables")
+    ):
+        raise ValueError(
+            f"{icons.red_dot} The 'destination_path' parameter must be either 'Files' or 'Tables'."
+        )
 
     (source_workspace_name, source_workspace_id) = resolve_workspace_name_and_id(
         source_workspace
@@ -72,16 +89,16 @@ def create_shortcut_onelake(
     if shortcut_name is None:
         shortcut_name = table_name
 
-    table_path = f"Tables/{table_name}"
+    source_full_path = f"{source_path}/{table_name}"
 
     payload = {
-        "path": "Tables",
+        "path": destination_path,
         "name": shortcut_name.replace(" ", ""),
         "target": {
             "oneLake": {
                 "workspaceId": source_workspace_id,
                 "itemId": source_lakehouse_id,
-                "path": table_path,
+                "path": source_full_path,
             }
         },
     }
@@ -178,6 +195,7 @@ def create_shortcut(
 
 def delete_shortcut(
     shortcut_name: str,
+    shortcut_path: str = "Tables",
     lakehouse: Optional[str] = None,
     workspace: Optional[str | UUID] = None,
 ):
@@ -190,6 +208,8 @@ def delete_shortcut(
     ----------
     shortcut_name : str
         The name of the shortcut.
+    shortcut_path : str = "Tables"
+        The path of the shortcut to be deleted. Must start with either "Files" or "Tables". Examples: Tables/FolderName/SubFolderName; Files/FolderName/SubFolderName.
     lakehouse : str, default=None
         The Fabric lakehouse name in which the shortcut resides.
         Defaults to None which resolves to the lakehouse attached to the notebook.
@@ -209,7 +229,7 @@ def delete_shortcut(
 
     client = fabric.FabricRestClient()
     response = client.delete(
-        f"/v1/workspaces/{workspace_id}/items/{lakehouse_id}/shortcuts/Tables/{shortcut_name}"
+        f"/v1/workspaces/{workspace_id}/items/{lakehouse_id}/shortcuts/{shortcut_path}/{shortcut_name}"
     )
 
     if response.status_code != 200:
