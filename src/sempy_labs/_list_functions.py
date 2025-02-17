@@ -1774,7 +1774,7 @@ def list_synonyms(dataset: str | UUID, workspace: Optional[str] = None):
         "State": "string",
         "Source": "string",
         "Weight": "float_fillna",
-        "Last Modified": "datetime",
+        "Last Modified": "string",
     }
 
     df = _create_dataframe(columns=columns)
@@ -1815,8 +1815,7 @@ def list_synonyms(dataset: str | UUID, workspace: Optional[str] = None):
                         merged_terms = defaultdict(dict)
                         for t in v.get("Terms", []):
                             for term, properties in t.items():
-                                normalized_term = term.lower()
-                                merged_terms[normalized_term].update(properties)
+                                merged_terms[term].update(properties)
 
                         for term, props in merged_terms.items():
                             new_data = {
