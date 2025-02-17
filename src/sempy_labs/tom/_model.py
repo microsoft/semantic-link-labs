@@ -4205,6 +4205,7 @@ class TOMWrapper:
                 f"{icons.info} The '{synonym_name}' synonym does not exist for the '{object.Name}' object."
             )
 
+    @staticmethod
     def _get_synonym_info(
         lm: dict, object: Union["TOM.Table", "TOM.Column"], synonym_name: str
     ):
