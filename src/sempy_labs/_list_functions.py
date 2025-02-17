@@ -1774,7 +1774,7 @@ def list_synonyms(dataset: str | UUID, workspace: Optional[str] = None):
         "State": "string",
         "Source": "string",
         "Weight": "float_fillna",
-        "Last Modified": "datetime",
+        "Last Modified": "string",
     }
 
     df = _create_dataframe(columns=columns)
