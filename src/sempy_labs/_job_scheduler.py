@@ -60,7 +60,7 @@ def __create_item_schedule_payload(
 @log
 def list_item_job_instances(
     item: str | UUID,
-    item_type: Optional[str] = None,
+    type: Optional[str] = None,
     workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
@@ -72,7 +72,7 @@ def list_item_job_instances(
     ----------
     item : str | uuid.UUID
         The item name or ID.
-    item_type : str, default=None
+    type : str, default=None
         The `item type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_ is required when specifying the item name instead of the item id.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID used by the lakehouse.
@@ -87,7 +87,7 @@ def list_item_job_instances(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (item_name, item_id) = resolve_item_name_and_id(
-        item=item, type=item_type, workspace=workspace
+        item=item, type=type, workspace=workspace
     )
     if item_type is None:
         item_type = resolve_item_type(item_id=item_id, workspace_id=workspace_id)
@@ -145,7 +145,7 @@ def list_item_job_instances(
 @log
 def list_item_schedules(
     item: str | UUID,
-    item_type: Optional[str] = None,
+    type: Optional[str] = None,
     job_type: str = None,
     workspace: Optional[str | UUID] = None,
 ) -> pd.DataFrame:
@@ -158,7 +158,7 @@ def list_item_schedules(
     ----------
     item : str | uuid.UUID
         The item name or ID.
-    item_type : str, default=None
+    type : str, default=None
         The `item type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_ is required when specifying the item name instead of the item id.
     job_type : str, default=None
         The job type. Available options: "Pipeline", "RunNotebook", "CopyJob", "sparkjob".
@@ -175,7 +175,7 @@ def list_item_schedules(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (item_name, item_id) = resolve_item_name_and_id(
-        item=item, type=item_type, workspace=workspace
+        item=item, type=type, workspace=workspace
     )
 
     columns = {
@@ -225,7 +225,7 @@ def list_item_schedules(
 @log
 def run_on_demand_item_job(
     item: str | UUID,
-    item_type: Optional[str] = None,
+    type: Optional[str] = None,
     job_type: str = None,
     workspace: Optional[str | UUID] = None,
 ) -> UUID:
@@ -238,7 +238,7 @@ def run_on_demand_item_job(
     ----------
     item : str | uuid.UUID
         The item name or ID
-    item_type : str, default=None
+    type : str, default=None
         The `item type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_ is required when specifying the item name instead of the item id.
     job_type : str, default=None
         The job type. Available options: "Pipeline", "RunNotebook", "CopyJob", "sparkjob".
@@ -254,7 +254,7 @@ def run_on_demand_item_job(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (item_name, item_id) = resolve_item_name_and_id(
-        item=item, type=item_type, workspace=workspace
+        item=item, type=type, workspace=workspace
     )
     if item_type is None:
         item_type = resolve_item_type(item_id=item_id, workspace_id=workspace_id)
@@ -274,7 +274,7 @@ def run_on_demand_item_job(
 def get_item_schedule(
     item: str | UUID,
     schedule_id: str | UUID,
-    item_type: Optional[str] = None,
+    type: Optional[str] = None,
     job_type: str = None,
     workspace: Optional[str | UUID] = None,
 ) -> pd.DataFrame:
@@ -289,7 +289,7 @@ def get_item_schedule(
         The item name or ID.
     schedule_id : str | uuid.UUID
         The schedule ID.
-    item_type : str, default=None
+    type : str, default=None
         The `item type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_ is required when specifying the item name instead of the item id.
     job_type : str, default=None
         The job type. Available options: "Pipeline", "RunNotebook", "CopyJob", "sparkjob".
@@ -306,7 +306,7 @@ def get_item_schedule(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (item_name, item_id) = resolve_item_name_and_id(
-        item=item, type=item_type, workspace=workspace
+        item=item, type=type, workspace=workspace
     )
 
     columns = {
@@ -354,7 +354,7 @@ def get_item_schedule(
 @log
 def create_item_schedule(
     item: str | UUID,
-    item_type: Optional[str] = None,
+    type: Optional[str] = None,
     job_type: str = None,
     workspace: Optional[str | UUID] = None,
     start_date_time: str = None,
@@ -375,7 +375,7 @@ def create_item_schedule(
     ----------
     item : str | uuid.UUID
         The item name or ID.
-    item_type : str, default=None
+    type : str, default=None
         The `item type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_ is required when specifying the item name instead of the item id.
     schedule_config_type : str, default=None
         The schedule configuration type. Available options: "Cron", "Daily", "Weekly"
@@ -420,7 +420,7 @@ def create_item_schedule(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (item_name, item_id) = resolve_item_name_and_id(
-        item=item, type=item_type, workspace=workspace
+        item=item, type=type, workspace=workspace
     )
 
     response = _base_api(
@@ -443,7 +443,7 @@ def create_item_schedule(
 def update_item_schedule(
     item: str | UUID,
     schedule_id: str | UUID,
-    item_type: Optional[str] = None,
+    type: Optional[str] = None,
     job_type: str = None,
     workspace: Optional[str | UUID] = None,
     start_date_time: str = None,
@@ -466,7 +466,7 @@ def update_item_schedule(
         The item name or ID
     schedule_id : str | uuid.UUID
         The schedule ID.
-    item_type : str, default=None
+    type : str, default=None
         The `item type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_ is required when specifying the item name instead of the item id.
     schedule_config_type : str, default=None
         The schedule configuration type. Available options: "Cron", "Daily", "Weekly"
@@ -507,7 +507,7 @@ def update_item_schedule(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (item_name, item_id) = resolve_item_name_and_id(
-        item=item, type=item_type, workspace=workspace
+        item=item, type=type, workspace=workspace
     )
 
     _base_api(
@@ -524,7 +524,7 @@ def update_item_schedule(
 def get_item_job_instance(
     item: str | UUID,
     job_instance_id: str | UUID,
-    item_type: Optional[str] = None,
+    type: Optional[str] = None,
     workspace: Optional[str | UUID] = None,
 ) -> pd.DataFrame:
     """
@@ -538,7 +538,7 @@ def get_item_job_instance(
         The item name or ID
     job_instance_id : str | uuid.UUID
         The job instance ID.
-    item_type : str, default=None
+    type : str, default=None
         The `item type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_ is required when specifying the item name instead of the item id.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID used by the lakehouse.
@@ -553,7 +553,7 @@ def get_item_job_instance(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (item_name, item_id) = resolve_item_name_and_id(
-        item=item, type=item_type, workspace=workspace
+        item=item, type=type, workspace=workspace
     )
 
     columns = {
@@ -581,7 +581,7 @@ def get_item_job_instance(
         "Job Instance Id": v.get("id"),
         "Item Name": item_name,
         "Item Id": v.get("itemId"),
-        "Item Type": item_type,
+        "Item Type": type,
         "Job Type": v.get("jobType"),
         "Invoke Type": v.get("invokeType"),
         "Status": v.get("status"),
@@ -599,7 +599,7 @@ def get_item_job_instance(
 def cancel_item_job_instance(
     item: str | UUID,
     job_instance_id: str | UUID,
-    item_type: Optional[str] = None,
+    type: Optional[str] = None,
     workspace: Optional[str | UUID] = None,
 ):
     """
@@ -613,7 +613,7 @@ def cancel_item_job_instance(
         The item name or ID
     job_instance_id : str | uuid.UUID
         The job instance ID.
-    item_type : str, default=None
+    type : str, default=None
         The `item type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_ is required when specifying the item name instead of the item id.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID used by the lakehouse.
@@ -623,7 +623,7 @@ def cancel_item_job_instance(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (item_name, item_id) = resolve_item_name_and_id(
-        item=item, type=item_type, workspace=workspace
+        item=item, type=type, workspace=workspace
     )
 
     _base_api(
