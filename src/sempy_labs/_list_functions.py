@@ -1247,18 +1247,30 @@ def list_shortcuts(
             eds = tgt.get("externalDataShare", {})
             amazons3 = tgt.get("amazonS3", {})
             adlsgen2 = tgt.get("adlsGen2", {})
-            dataverse = tgt.get('dataverse', {})
+            dataverse = tgt.get("dataverse", {})
             connection_id = (
                 s3_compat.get("connectionId")
                 or gcs.get("connectionId")
                 or eds.get("connectionId")
-                or amazons3.get('connectionId')
-                or adlsgen2.get('connectionId')
-                or dataverse.get('connectionId')
+                or amazons3.get("connectionId")
+                or adlsgen2.get("connectionId")
+                or dataverse.get("connectionId")
                 or None
             )
-            location = s3_compat.get("location") or gcs.get("location") or amazons3.get("location") or adlsgen2.get("location") or None
-            sub_path = s3_compat.get("subpath") or gcs.get("subpath") or amazons3.get("location") or adlsgen2.get("subpath") or None
+            location = (
+                s3_compat.get("location")
+                or gcs.get("location")
+                or amazons3.get("location")
+                or adlsgen2.get("location")
+                or None
+            )
+            sub_path = (
+                s3_compat.get("subpath")
+                or gcs.get("subpath")
+                or amazons3.get("location")
+                or adlsgen2.get("subpath")
+                or None
+            )
             source_workspace_id = tgt.get("oneLake", {}).get("workspaceId")
             source_item_id = tgt.get("oneLake", {}).get("itemId")
             source_workspace_name = (
