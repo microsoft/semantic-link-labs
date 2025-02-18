@@ -1637,3 +1637,11 @@ def _run_spark_sql_query(query):
     spark = _create_spark_session()
 
     return spark.sql(query)
+
+
+def _validate_weight(weight: float):
+
+    if weight is not None and (weight <= 0 or weight >= 1):
+        raise ValueError(
+            f"{icons.red_dot} Invalid weight parameter. Weight must be a value between 0 and 1."
+        )
