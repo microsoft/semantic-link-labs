@@ -264,7 +264,7 @@ def get_git_connection(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     return df
 
 
-def initialize_git_connection(workspace: Optional[str | UUID] = None) -> str:
+def initialize_git_connection(workspace: Optional[str | UUID] = None, initialization_strategy: Optional[str] = 'None') -> str:
     """
     Initializes a connection for a workspace that is connected to Git.
 
@@ -276,6 +276,11 @@ def initialize_git_connection(workspace: Optional[str | UUID] = None) -> str:
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    initialization_strategy : str
+        Defines the strategy required for an initialization process when content 
+        exists on both the remote side and the workspace side. 
+        Additional strategies may be added over time.
+        Supported options: PreferWorkspace, PreferRemote or None (default)
 
     Returns
     -------
@@ -285,8 +290,14 @@ def initialize_git_connection(workspace: Optional[str | UUID] = None) -> str:
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
+
+    payload = {
+        "initializationStrategy": initialization_strategy
+    }
+
     response_json = _base_api(
         request=f"/v1/workspaces/{workspace_id}/git/initializeConnection",
+        payload=payload,
         method="post",
         lro_return_json=True,
         status_codes=None,
