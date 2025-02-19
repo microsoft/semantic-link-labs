@@ -252,6 +252,7 @@ def deploy_semantic_model(
     target_workspace: Optional[str | UUID] = None,
     refresh_target_dataset: bool = True,
     overwrite: bool = False,
+    perspective: Optional[str] = None,
 ):
     """
     Deploys a semantic model based on an existing semantic model.
@@ -274,6 +275,8 @@ def deploy_semantic_model(
         If set to True, this will initiate a full refresh of the target semantic model in the target workspace.
     overwrite : bool, default=False
         If set to True, overwrites the existing semantic model in the workspace if it exists.
+    perspective : str, default=None
+        Set this to the name of a perspective in the model and it will reduce the deployed model down to the tables/columns/measures/hierarchies within that perspective.
     """
 
     (source_workspace_name, source_workspace_id) = resolve_workspace_name_and_id(
@@ -307,7 +310,24 @@ def deploy_semantic_model(
             f"{icons.warning} The '{target_dataset}' semantic model already exists within the '{target_workspace_name}' workspace. The 'overwrite' parameter is set to False so the source semantic model was not deployed to the target destination."
         )
 
-    bim = get_semantic_model_bim(dataset=source_dataset, workspace=source_workspace_id)
+    if perspective is not None:
+
+        from sempy_labs.tom import connect_semantic_model
+
+        with connect_semantic_model(dataset=source_dataset, workspace=source_workspace, readonly=True) as tom:
+            if not any(p.Name == perspective for p in tom.model.Perspectives):
+                raise ValueError(f"{icons.red_dot} The '{perspective}' is not a valid perspective in the '{source_dataset}' semantic model within the '{source_workspace}' workspace.")
+
+            for t in tom.model.Tables:
+                if not tom.in_perspective(object=t, perspective_name=perspective):
+                    tom.remove_object(object=t)
+                else:
+                    for attr in ["Columns", "Measures", "Hierarchies"]:
+                        for obj in getattr(t, attr):
+                            if not tom.in_perspective(object=obj, perspective_name=perspective):
+                                tom.remove_object(object=obj)
+    else:
+        bim = get_semantic_model_bim(dataset=source_dataset, workspace=source_workspace_id)
 
     # Create the semantic model if the model does not exist
     if dfD_filt.empty:
