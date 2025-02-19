@@ -4867,18 +4867,23 @@ class TOMWrapper:
             lm["Entities"][obj]["Terms"].append({synonym_name: syn_dict})
             updated = True
         else:
-            lm["Entities"][obj]["Terms"][synonym_name] = syn_dict
+            for term in lm["Entities"][obj]["Terms"]:
+                if term == synonym_name:
+                    lm["Entities"][obj]["Terms"][term] = syn_dict
             updated = True
+
+        if "State" in lm["Entities"][obj]:
+            del lm["Entities"][obj]["State"]
 
         if updated:
             c.LinguisticMetadata.Content = json.dumps(lm, indent=4)
             if object_type == TOM.ObjectType.Table:
                 print(
-                    f"{icons.green_dot} The '{synonym_name}' synonym was added for the '{object.Name}' table."
+                    f"{icons.green_dot} The '{synonym_name}' synonym was set for the '{object.Name}' table."
                 )
             else:
                 print(
-                    f"{icons.green_dot} The '{synonym_name}' synonym was added for the '{object.Parent.Name}'[{object.Name}] column."
+                    f"{icons.green_dot} The '{synonym_name}' synonym was set for the '{object.Parent.Name}'[{object.Name}] column."
                 )
 
     def delete_synonym(
