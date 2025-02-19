@@ -12,7 +12,7 @@ import sempy_labs._icons as icons
 
 
 def list_apps(
-    top: Optional[int] = None,
+    top: Optional[int] = 1000,
     skip: Optional[int] = None,
 ) -> pd.DataFrame:
     """
@@ -24,7 +24,7 @@ def list_apps(
 
     Parameters
     ----------
-    top : int, default=None
+    top : int, default=1000
         Returns only the first n results.
     skip : int, default=None
         Skips the first n results.
@@ -48,8 +48,7 @@ def list_apps(
     params = {}
     url = "/v1.0/myorg/admin/apps"
 
-    if top is not None:
-        params["$top"] = top
+    params["$top"] = top
 
     if skip is not None:
         params["$skip"] = skip
