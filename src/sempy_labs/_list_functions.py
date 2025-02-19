@@ -1239,40 +1239,27 @@ def list_shortcuts(
         uses_pagination=True,
     )
 
+    sources = ["s3Compatible", "googleCloudStorage", "externalDataShare", "amazonS3", "adlsGen2", "dataverse"]
+    sources_locpath = ["s3Compatible", "googleCloudStorage", "amazonS3", "adlsGen2"]
+
     for r in responses:
         for i in r.get("value", []):
             tgt = i.get("target", {})
-            s3_compat = tgt.get("s3Compatible", {})
-            gcs = tgt.get("googleCloudStorage", {})
-            eds = tgt.get("externalDataShare", {})
-            amazons3 = tgt.get("amazonS3", {})
-            adlsgen2 = tgt.get("adlsGen2", {})
-            dataverse = tgt.get("dataverse", {})
-            connection_id = (
-                s3_compat.get("connectionId")
-                or gcs.get("connectionId")
-                or eds.get("connectionId")
-                or amazons3.get("connectionId")
-                or adlsgen2.get("connectionId")
-                or dataverse.get("connectionId")
-                or None
+            one_lake = tgt.get("oneLake", {})
+            connection_id = next(
+                (tgt.get(source, {}).get("connectionId") for source in sources if tgt.get(source)), 
+                None
             )
-            location = (
-                s3_compat.get("location")
-                or gcs.get("location")
-                or amazons3.get("location")
-                or adlsgen2.get("location")
-                or None
+            location = next(
+                (tgt.get(source, {}).get("location") for source in sources_locpath if tgt.get(source)), 
+                None
             )
-            sub_path = (
-                s3_compat.get("subpath")
-                or gcs.get("subpath")
-                or amazons3.get("location")
-                or adlsgen2.get("subpath")
-                or None
+            sub_path = next(
+                (tgt.get(source, {}).get("subpath") for source in sources_locpath if tgt.get(source)), 
+                None
             )
-            source_workspace_id = tgt.get("oneLake", {}).get("workspaceId")
-            source_item_id = tgt.get("oneLake", {}).get("itemId")
+            source_workspace_id = one_lake.get("workspaceId")
+            source_item_id = one_lake.get("itemId")
             source_workspace_name = (
                 fabric.resolve_workspace_name(source_workspace_id)
                 if source_workspace_id is not None
@@ -1298,10 +1285,10 @@ def list_shortcuts(
                     if source_item_id is not None
                     else None
                 ),
-                "OneLake Path": tgt.get("oneLake", {}).get("path"),
+                "OneLake Path": one_lake.get("path"),
                 "Connection Id": connection_id,
                 "Location": location,
-                "Bucket": s3_compat.get("bucket"),
+                "Bucket": tgt.get("s3Compatible", {}).get("bucket"),
                 "SubPath": sub_path,
             }
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
