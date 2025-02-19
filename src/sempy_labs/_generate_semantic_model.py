@@ -312,11 +312,18 @@ def deploy_semantic_model(
 
     if perspective is not None:
 
+        import sempy
+        sempy.fabric._client._utils._init_analysis_services()
+        import Microsoft.AnalysisServices.Tabular as TOM
         from sempy_labs.tom import connect_semantic_model
 
-        with connect_semantic_model(dataset=source_dataset, workspace=source_workspace, readonly=True) as tom:
+        with connect_semantic_model(
+            dataset=source_dataset, workspace=source_workspace, readonly=True
+        ) as tom:
             if not any(p.Name == perspective for p in tom.model.Perspectives):
-                raise ValueError(f"{icons.red_dot} The '{perspective}' is not a valid perspective in the '{source_dataset}' semantic model within the '{source_workspace}' workspace.")
+                raise ValueError(
+                    f"{icons.red_dot} The '{perspective}' is not a valid perspective in the '{source_dataset}' semantic model within the '{source_workspace}' workspace."
+                )
 
             for t in tom.model.Tables:
                 if not tom.in_perspective(object=t, perspective_name=perspective):
@@ -324,10 +331,27 @@ def deploy_semantic_model(
                 else:
                     for attr in ["Columns", "Measures", "Hierarchies"]:
                         for obj in getattr(t, attr):
-                            if not tom.in_perspective(object=obj, perspective_name=perspective):
+                            if not tom.in_perspective(
+                                object=obj, perspective_name=perspective
+                            ):
                                 tom.remove_object(object=obj)
+
+            # Remove relationships which are no longer valid
+            column_list = [c for c in tom.all_columns()]
+
+            for r in tom.model.Relationships:
+                if r.FromColumn not in column_list or r.ToColumn not in column_list:
+                    tom.remove_object(object=r)
+
+            bim = (
+                json.loads(TOM.JsonScripter.ScriptCreate(tom.model.Database))
+                .get("create")
+                .get("database")
+            )
     else:
-        bim = get_semantic_model_bim(dataset=source_dataset, workspace=source_workspace_id)
+        bim = get_semantic_model_bim(
+            dataset=source_dataset, workspace=source_workspace_id
+        )
 
     # Create the semantic model if the model does not exist
     if dfD_filt.empty:
