@@ -11,7 +11,6 @@ from sempy_labs._helper_functions import (
     _convert_data_type,
     resolve_dataset_name_and_id,
     resolve_workspace_name_and_id,
-    _base_api,
 )
 
 
