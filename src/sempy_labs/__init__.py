@@ -1,5 +1,6 @@
 from sempy_labs._semantic_models import (
     get_semantic_model_refresh_schedule,
+    enable_semantic_model_scheduled_refresh,
 )
 from sempy_labs._graphQL import (
     list_graphql_apis,
@@ -505,4 +506,5 @@ __all__ = [
     # "dax_perf_test_bulk",
     "get_semantic_model_refresh_schedule",
     "get_eventhouse_definition",
+    "enable_semantic_model_scheduled_refresh",
 ]
