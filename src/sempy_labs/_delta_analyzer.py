@@ -13,6 +13,7 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_name_and_id,
     _read_delta_table,
     _delta_table_row_count,
+    _mount,
 )
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
@@ -76,20 +77,7 @@ def delta_analyzer(
         lakehouse=lakehouse, workspace=workspace
     )
     path = create_abfss_path(lakehouse_id, workspace_id, table_name)
-    lake_path = create_abfss_path(lakehouse_id, workspace_id)
-    mounts = notebookutils.fs.mounts()
-    mount_point = f"/{workspace_name.replace(' ', '')}{lakehouse_name.replace(' ', '')}"
-    if not any(i.get("source") == lake_path for i in mounts):
-        # Mount lakehouse if not mounted
-        notebookutils.fs.mount(lake_path, mount_point)
-        print(
-            f"{icons.green_dot} Mounted the '{lakehouse_name}' lakehouse within the '{workspace_name}' to the notebook."
-        )
-
-    mounts = notebookutils.fs.mounts()
-    local_path = next(
-        i.get("localPath") for i in mounts if i.get("source") == lake_path
-    )
+    local_path = _mount(lakehouse=lakehouse, workspace=workspace)
     table_path = f"{local_path}/Tables/{table_name}"
 
     # Set back to original value
