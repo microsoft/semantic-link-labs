@@ -51,7 +51,7 @@ class ConnectBase:
             )
         if endpoint_type == "sqldatabase":
             # SQLDatabase is has special case for resolving the name and id
-            (resource_id, resource_name) = resolve_item_name_and_id(
+            (resource_name, resource_id) = resolve_item_name_and_id(
                 item=item, type="SQLDatabase", workspace=workspace_id
             )
         else:
@@ -180,12 +180,12 @@ class ConnectLakehouse(ConnectBase):
 class ConnectSQLDatabase(ConnectBase):
     def __init__(
         self,
-        sqldatabase: str,
+        sql_database: str,
         workspace: Optional[Union[str, UUID]] = None,
         timeout: Optional[int] = None,
     ):
         super().__init__(
-            name=sqldatabase,
+            item=sql_database,
             workspace=workspace,
             timeout=timeout,
             endpoint_type="sqldatabase",
