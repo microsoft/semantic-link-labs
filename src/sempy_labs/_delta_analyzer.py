@@ -1,9 +1,12 @@
 import pandas as pd
 import re
 import datetime
+import os
+from uuid import UUID
 from typing import Dict, Optional
 import pyarrow.dataset as ds
 import pyarrow.parquet as pq
+from delta import DeltaTable
 from sempy_labs._helper_functions import (
     create_abfss_path,
     save_as_delta_table,
@@ -17,12 +20,31 @@ from sempy_labs._helper_functions import (
     _mount,
     _create_spark_session,
 )
+from sempy._utils._log import log
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 import sempy_labs._icons as icons
-from uuid import UUID
 
 
+def get_parquet_file_infos(path):
+
+    import notebookutils
+
+    files = []
+    items = notebookutils.fs.ls(path)
+    for item in items:
+        if item.isDir:
+            # Ignore the _delta_log directory
+            if "_delta_log" not in item.path:
+                files.extend(get_parquet_file_infos(item.path))
+        else:
+            # Filter out non-Parquet files and files with size 0
+            if item.path.endswith('.parquet') and item.size > 0:
+                files.append((item.path, item.size))
+    return files
+
+
+@log
 def delta_analyzer(
     table_name: str,
     approx_distinct_count: bool = True,
@@ -80,6 +102,7 @@ def delta_analyzer(
     path = create_abfss_path(lakehouse_id, workspace_id, table_name)
     local_path = _mount(lakehouse=lakehouse, workspace=workspace)
     table_path = f"{local_path}/Tables/{table_name}"
+    delta_table_path = create_abfss_path(lakehouse_id, workspace_id, table_name)
 
     # Set back to original value
     # notebookutils.common.configs.pandas_display = display_toggle
@@ -114,14 +137,6 @@ def delta_analyzer(
     row_group_df = _create_dataframe(columns=row_group_df_columns)
     column_chunk_df = _create_dataframe(columns=column_chunk_df_columns)
 
-    # delta_table = DeltaTable.forPath(spark, path)
-    # detail_df = spark.sql(f"DESCRIBE DETAIL `{table_name}`").collect()[0]
-
-    # num_files = detail_df.numFiles
-    # size_in_bytes = detail_df.sizeInBytes
-
-    latest_files = _read_delta_table(path).inputFiles()
-    file_paths = [f.split("/")[-1] for f in latest_files]
     row_count = _delta_table_row_count(table_name)
     row_groups = 0
     max_rows_per_row_group = 0
@@ -130,8 +145,31 @@ def delta_analyzer(
     schema = ds.dataset(table_path).schema.metadata
     is_vorder = any(b"vorder" in key for key in schema.keys())
 
-    for file_name in file_paths:
-        parquet_file = pq.ParquetFile(f"{table_path}/{file_name}")
+    # Get the common details of the Delta table
+    spark = _create_spark_session()
+    delta_table = DeltaTable.forPath(spark, delta_table_path)
+    table_details = delta_table.detail().collect()[0].asDict()
+    # created_at = table_details.get("createdAt")
+    # last_modified = table_details.get("lastModified")
+    # partition_columns = table_details.get("partitionColumns")
+    # clustering_columns = table_details.get("clusteringColumns")
+    num_latest_files = table_details.get("numFiles", 0)
+    # size_in_bytes = table_details.get("sizeInBytes")
+    # min_reader_version = table_details.get("minReaderVersion")
+    # min_writer_version = table_details.get("minWriterVersion")
+
+    latest_files = _read_delta_table(path).inputFiles()
+    # file_paths = [f.split("/")[-1] for f in latest_files]
+    all_parquet_files = get_parquet_file_infos(delta_table_path)
+    common_file_paths = set([file_info[0] for file_info in all_parquet_files]).intersection(set(latest_files))
+    latest_version_files = [file_info for file_info in all_parquet_files if file_info[0] in common_file_paths]
+
+    for file_path, file_size in latest_version_files:
+        file_name = os.path.basename(file_path)
+        relative_path = file_path.split("Tables/")[1]
+        file_system_path = f"{local_path}/Tables/{relative_path}"
+        parquet_file = pq.ParquetFile(file_system_path)
+
         row_groups += parquet_file.num_row_groups
 
         # Generate rowgroup dataframe
@@ -204,7 +242,7 @@ def delta_analyzer(
             {
                 "RowCount": row_count,
                 "RowGroups": row_groups,
-                "ParquetFiles": len(file_paths),
+                "ParquetFiles": num_latest_files,
                 "MaxRowsPerRowGroup": max_rows_per_row_group,
                 "MinRowsPerRowGroup": min_rows_per_row_group,
                 "AvgRowsPerRowGroup": avg_rows_per_row_group,
@@ -310,6 +348,7 @@ def delta_analyzer(
     return dataframes
 
 
+@log
 def get_delta_table_history(table_name: str, lakehouse: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
     """
@@ -332,7 +371,6 @@ def get_delta_table_history(table_name: str, lakehouse: Optional[str | UUID] = N
     pandas.DataFrame
         A dataframe showing the history of the delta table.
     """
-    from delta import DeltaTable
 
     def camel_to_title(text):
         return re.sub(r'([a-z])([A-Z])', r'\1 \2', text).title()
