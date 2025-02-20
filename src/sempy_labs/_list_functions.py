@@ -9,6 +9,7 @@ from sempy_labs._helper_functions import (
     _update_dataframe_datatypes,
     _base_api,
     _create_dataframe,
+    _run_spark_sql_query,
 )
 from sempy._utils._log import log
 import pandas as pd
@@ -538,6 +539,8 @@ def list_columns(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
+    fabric.refresh_tom_cache(workspace=workspace)
+
     dfP = fabric.list_partitions(dataset=dataset_id, workspace=workspace_id)
 
     isDirectLake = any(r["Mode"] == "DirectLake" for i, r in dfP.iterrows())
@@ -582,14 +585,12 @@ def list_columns(
             query = f"{query} FROM {lakehouse}.{lakeTName}"
             sql_statements.append((table_name, query))
 
-            spark = SparkSession.builder.getOrCreate()
-
         for o in sql_statements:
             tName = o[0]
             query = o[1]
 
             # Run the query
-            df = spark.sql(query)
+            df = _run_spark_sql_query(query)
 
             for column in df.columns:
                 x = df.collect()[0][column]
@@ -884,6 +885,8 @@ def list_relationships(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+
+    fabric.refresh_tom_cache(workspace=workspace)
 
     dfR = fabric.list_relationships(dataset=dataset_id, workspace=workspace_id)
     dfR["From Object"] = format_dax_object_name(dfR["From Table"], dfR["From Column"])
@@ -1236,22 +1239,27 @@ def list_shortcuts(
         uses_pagination=True,
     )
 
+    sources = ["s3Compatible", "googleCloudStorage", "externalDataShare", "amazonS3", "adlsGen2", "dataverse"]
+    sources_locpath = ["s3Compatible", "googleCloudStorage", "amazonS3", "adlsGen2"]
+
     for r in responses:
         for i in r.get("value", []):
             tgt = i.get("target", {})
-            s3_compat = tgt.get("s3Compatible", {})
-            gcs = tgt.get("googleCloudStorage", {})
-            eds = tgt.get("externalDataShare", {})
-            connection_id = (
-                s3_compat.get("connectionId")
-                or gcs.get("connectionId")
-                or eds.get("connectionId")
-                or None
+            one_lake = tgt.get("oneLake", {})
+            connection_id = next(
+                (tgt.get(source, {}).get("connectionId") for source in sources if tgt.get(source)), 
+                None
             )
-            location = s3_compat.get("location") or gcs.get("location") or None
-            sub_path = s3_compat.get("subpath") or gcs.get("subpath") or None
-            source_workspace_id = tgt.get("oneLake", {}).get("workspaceId")
-            source_item_id = tgt.get("oneLake", {}).get("itemId")
+            location = next(
+                (tgt.get(source, {}).get("location") for source in sources_locpath if tgt.get(source)), 
+                None
+            )
+            sub_path = next(
+                (tgt.get(source, {}).get("subpath") for source in sources_locpath if tgt.get(source)), 
+                None
+            )
+            source_workspace_id = one_lake.get("workspaceId")
+            source_item_id = one_lake.get("itemId")
             source_workspace_name = (
                 fabric.resolve_workspace_name(source_workspace_id)
                 if source_workspace_id is not None
@@ -1277,10 +1285,10 @@ def list_shortcuts(
                     if source_item_id is not None
                     else None
                 ),
-                "OneLake Path": tgt.get("oneLake", {}).get("path"),
+                "OneLake Path": one_lake.get("path"),
                 "Connection Id": connection_id,
                 "Location": location,
-                "Bucket": s3_compat.get("bucket"),
+                "Bucket": tgt.get("s3Compatible", {}).get("bucket"),
                 "SubPath": sub_path,
             }
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
@@ -1518,6 +1526,8 @@ def list_semantic_model_object_report_usage(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+
+    fabric.refresh_tom_cache(workspace=workspace)
 
     dfR = list_report_semantic_model_objects(dataset=dataset_id, workspace=workspace_id)
     usage_column_name = "Report Usage Count"
@@ -1769,7 +1779,7 @@ def list_synonyms(dataset: str | UUID, workspace: Optional[str] = None):
         "State": "string",
         "Source": "string",
         "Weight": "float_fillna",
-        "Last Modified": "datetime",
+        "Last Modified": "string",
     }
 
     df = _create_dataframe(columns=columns)

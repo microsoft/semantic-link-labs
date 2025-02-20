@@ -38,6 +38,8 @@ def list_unused_objects_in_reports(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
+    fabric.refresh_tom_cache(workspace=workspace)
+
     dfR = _list_all_report_semantic_model_objects(
         dataset=dataset_id, workspace=workspace_id
     )

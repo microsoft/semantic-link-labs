@@ -91,7 +91,7 @@ def create_ml_experiment(
     _base_api(
         request=f"/v1/workspaces/{workspace_id}/mlExperiments",
         method="post",
-        json=payload,
+        payload=payload,
         status_codes=[201, 202],
         lro_return_status_code=True,
     )

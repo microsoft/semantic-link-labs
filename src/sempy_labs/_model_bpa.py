@@ -14,6 +14,7 @@ from sempy_labs._helper_functions import (
     get_language_codes,
     _get_column_aggregate,
     resolve_workspace_name_and_id,
+    _create_spark_session,
 )
 from sempy_labs.lakehouse import get_lakehouse_tables, lakehouse_attached
 from sempy_labs.tom import connect_semantic_model
@@ -181,7 +182,6 @@ def run_model_bpa(
             def translate_using_spark(rule_file):
 
                 from synapse.ml.services import Translate
-                from pyspark.sql import SparkSession
 
                 rules_temp = rule_file.copy()
                 rules_temp = rules_temp.drop(["Expression", "URL", "Severity"], axis=1)
@@ -195,7 +195,7 @@ def run_model_bpa(
                     ]
                 )
 
-                spark = SparkSession.builder.getOrCreate()
+                spark = _create_spark_session()
                 dfRules = spark.createDataFrame(rules_temp, schema)
 
                 columns = ["Category", "Rule Name", "Description"]

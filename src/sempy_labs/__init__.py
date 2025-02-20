@@ -1,3 +1,7 @@
+from sempy_labs._semantic_models import (
+    get_semantic_model_refresh_schedule,
+    enable_semantic_model_scheduled_refresh,
+)
 from sempy_labs._graphQL import (
     list_graphql_apis,
     create_graphql_api,
@@ -6,6 +10,7 @@ from sempy_labs._job_scheduler import (
     list_item_job_instances,
     list_item_schedules,
 )
+from sempy_labs._delta_analyzer import delta_analyzer
 from sempy_labs._gateways import (
     list_gateway_members,
     list_gateway_role_assigments,
@@ -74,6 +79,7 @@ from sempy_labs._eventhouses import (
     create_eventhouse,
     list_eventhouses,
     delete_eventhouse,
+    get_eventhouse_definition,
 )
 from sempy_labs._eventstreams import (
     list_eventstreams,
@@ -105,14 +111,8 @@ from sempy_labs._clear_cache import (
     list_storage_account_files,
 )
 from sempy_labs._capacity_migration import (
-    migrate_spark_settings,
     migrate_workspaces,
     migrate_capacities,
-    migrate_notification_settings,
-    migrate_access_settings,
-    migrate_delegated_tenant_settings,
-    migrate_capacity_settings,
-    migrate_disaster_recovery_settings,
     migrate_fabric_trial_capacity,
 )
 from sempy_labs._capacities import (
@@ -203,6 +203,8 @@ from sempy_labs._dax import (
     evaluate_dax_impersonation,
     get_dax_query_dependencies,
     get_dax_query_memory_size,
+    # dax_perf_test,
+    # dax_perf_test_bulk,
 )
 from sempy_labs._generate_semantic_model import (
     create_blank_semantic_model,
@@ -307,7 +309,6 @@ __all__ = [
     "restore_semantic_model",
     "list_semantic_model_object_report_usage",
     "list_report_semantic_model_objects",
-    "migrate_spark_settings",
     "create_azure_storage_account",
     "delete_custom_pool",
     "clear_cache",
@@ -409,11 +410,6 @@ __all__ = [
     "migrate_workspaces",
     "migrate_capacities",
     "create_fabric_capacity",
-    "migrate_capacity_settings",
-    "migrate_disaster_recovery_settings",
-    "migrate_notification_settings",
-    "migrate_access_settings",
-    "migrate_delegated_tenant_settings",
     "convert_to_friendly_case",
     "list_mirrored_warehouses",
     "list_kql_databases",
@@ -505,4 +501,10 @@ __all__ = [
     "list_synonyms",
     "list_graphql_apis",
     "create_graphql_api",
+    "delta_analyzer",
+    # "dax_perf_test",
+    # "dax_perf_test_bulk",
+    "get_semantic_model_refresh_schedule",
+    "get_eventhouse_definition",
+    "enable_semantic_model_scheduled_refresh",
 ]

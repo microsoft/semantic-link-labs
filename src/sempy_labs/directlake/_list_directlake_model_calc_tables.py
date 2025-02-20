@@ -50,6 +50,7 @@ def list_direct_lake_model_calc_tables(
                 f"{icons.red_dot} The '{dataset}' semantic model is not in Direct Lake mode."
             )
         else:
+            fabric.refresh_tom_cache(workspace=workspace)
             dfA = fabric.list_annotations(dataset=dataset_id, workspace=workspace_id)
             dfT = list_tables(dataset_id, workspace_id)
             dfA_filt = dfA[

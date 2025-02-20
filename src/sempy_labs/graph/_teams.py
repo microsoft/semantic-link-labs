@@ -13,6 +13,8 @@ def list_teams() -> pd.DataFrame:
 
     This is a wrapper function for the following API: `List teams <https://learn.microsoft.com/graph/api/teams-list>`_.
 
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Returns
     -------
     pandas.DataFrame
@@ -33,7 +35,7 @@ def list_teams() -> pd.DataFrame:
         "Archived": "bool",
         "Favorite By Me": "bool",
         "Discoverable By Me": "bool",
-        "Member Count": "int",
+        "Member Count": "int_fillna",
     }
 
     df = _create_dataframe(columns=columns)

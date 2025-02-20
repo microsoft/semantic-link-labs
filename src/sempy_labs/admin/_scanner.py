@@ -2,12 +2,14 @@ import sempy.fabric as fabric
 from typing import Optional, List
 from uuid import UUID
 from sempy.fabric.exceptions import FabricHTTPException
-import numpy as np
 import time
+import sempy_labs._icons as icons
 from sempy_labs.admin._basic_functions import list_workspaces
 from sempy._utils._log import log
 from sempy_labs._helper_functions import (
     _base_api,
+    _is_valid_uuid,
+    _build_url,
 )
 
 
@@ -39,22 +41,17 @@ def scan_workspaces(
     dataset_expressions : bool, default=False
         Whether to return data source details.
     lineage : bool, default=False
-        Whether to return lineage info (upstream dataflows, tiles, data source IDs).
+        Whether to return lineage info (upstream dataflows, tiles, data source IDs)
     artifact_users : bool, default=False
         Whether to return user details for a Power BI item (such as a report or a dashboard).
-    workspace : str | List[str] | uuid.UUID | List[uuid.UUID], default=None
-        The required workspace name(s) or id(s) to be scanned
+    workspace : str | List[str] | UUID | List[UUID], default=None
+        The required workspace name(s) or id(s) to be scanned. It supports a limit of 100 workspaces and only IDs in GUID format.
 
     Returns
     -------
     dict
         A json object with the scan result.
     """
-    scan_result = {
-        "workspaces": [],
-        "datasourceInstances": [],
-        "misconfiguredDatasourceInstances": [],
-    }
 
     if workspace is None:
         workspace = fabric.resolve_workspace_name()
@@ -62,55 +59,62 @@ def scan_workspaces(
     if isinstance(workspace, str):
         workspace = [workspace]
 
+    if len(workspace) > 100:
+        print(
+            f"{icons.yellow_dot} More than 100 workspaces where provided. Truncating to the fist 100."
+        )
+        workspace = workspace[:100]
+
     workspace_list = []
 
-    dfW = list_workspaces()
-    workspace_list = dfW[dfW["Name"].isin(workspace)]["Id"].tolist()
-    workspace_list = workspace_list + dfW[dfW["Id"].isin(workspace)]["Id"].tolist()
+    for w in workspace:
+        if _is_valid_uuid(w):
+            workspace_list.append(w)
+        else:
+            dfW = list_workspaces(workspace=w)
+            workspace_list = (
+                workspace_list + dfW[dfW["Name"].isin(workspace)]["Id"].tolist()
+            )
 
-    workspaces = np.array(workspace_list)
-    batch_size = 99
-    for i in range(0, len(workspaces), batch_size):
-        batch = workspaces[i : i + batch_size].tolist()
-        payload = {"workspaces": batch}
+    url = "/v1.0/myorg/admin/workspaces/getInfo"
+    params = {}
+    params["lineage"] = lineage
+    params["datasourceDetails"] = data_source_details
+    params["datasetSchema"] = dataset_schema
+    params["datasetExpressions"] = dataset_expressions
+    params["getArtifactUsers"] = artifact_users
 
-        url = f"/v1.0/myorg/admin/workspaces/getInfo?lineage={lineage}&datasourceDetails={data_source_details}&datasetSchema={dataset_schema}&datasetExpressions={dataset_expressions}&getArtifactUsers={artifact_users}"
+    url = _build_url(url, params)
+
+    payload = {"workspaces": workspace_list}
+
+    response = _base_api(
+        request=url,
+        method="post",
+        payload=payload,
+        status_codes=202,
+        client="fabric_sp",
+    )
+
+    scan_id = response.json()["id"]
+    scan_status = response.json().get("status")
+
+    while scan_status not in ["Succeeded", "Failed"]:
+        time.sleep(1)
         response = _base_api(
-            request=url,
-            method="post",
-            payload=payload,
-            status_codes=202,
+            request=f"/v1.0/myorg/admin/workspaces/scanStatus/{scan_id}",
             client="fabric_sp",
         )
-
-        scan_id = response.json()["id"]
         scan_status = response.json().get("status")
-        while scan_status not in ["Succeeded", "Failed"]:
-            time.sleep(1)
-            response = _base_api(
-                request=f"/v1.0/myorg/admin/workspaces/scanStatus/{scan_id}",
-                client="fabric_sp",
-            )
-            scan_status = response.json().get("status")
-        if scan_status == "Failed":
-            raise FabricHTTPException(response)
-        response = _base_api(
-            request=f"/v1.0/myorg/admin/workspaces/scanResult/{scan_id}",
-            client="fabric_sp",
-        )
-        responseJson = response.json()
 
-        if "workspaces" in responseJson:
-            scan_result["workspaces"].extend(responseJson["workspaces"])
+    if scan_status == "Failed":
+        raise FabricHTTPException(response)
 
-        if "datasourceInstances" in responseJson:
-            scan_result["datasourceInstances"].extend(
-                responseJson["datasourceInstances"]
-            )
+    response = _base_api(
+        request=f"/v1.0/myorg/admin/workspaces/scanResult/{scan_id}",
+        client="fabric_sp",
+    )
 
-        if "misconfiguredDatasourceInstances" in responseJson:
-            scan_result["misconfiguredDatasourceInstances"].extend(
-                responseJson["misconfiguredDatasourceInstances"]
-            )
+    print(f"{icons.green_dot} Status: {scan_status}")
 
-    return scan_result
+    return response.json()

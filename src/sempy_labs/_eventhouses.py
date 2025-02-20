@@ -7,12 +7,18 @@ from sempy_labs._helper_functions import (
     _print_success,
     resolve_item_id,
     _create_dataframe,
+    _conv_b64,
+    _decode_b64,
 )
 from uuid import UUID
+import sempy_labs._icons as icons
 
 
 def create_eventhouse(
-    name: str, description: Optional[str] = None, workspace: Optional[str | UUID] = None
+    name: str,
+    definition: Optional[dict],
+    description: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
 ):
     """
     Creates a Fabric eventhouse.
@@ -23,6 +29,8 @@ def create_eventhouse(
     ----------
     name: str
         Name of the eventhouse.
+    definition : dict
+        The definition (EventhouseProperties.json) of the eventhouse.
     description : str, default=None
         A description of the environment.
     workspace : str | uuid.UUID, default=None
@@ -37,6 +45,20 @@ def create_eventhouse(
 
     if description:
         payload["description"] = description
+
+    if definition is not None:
+        if not isinstance(definition, dict):
+            raise ValueError(f"{icons.red_dot} The definition must be a dictionary.")
+
+        payload["definition"] = {
+            "parts": [
+                {
+                    "path": "EventhouseProperties.json",
+                    "payload": _conv_b64(definition),
+                    "payloadType": "InlineBase64",
+                }
+            ]
+        }
 
     _base_api(
         request=f"/v1/workspaces/{workspace_id}/eventhouses",
@@ -123,3 +145,50 @@ def delete_eventhouse(name: str, workspace: Optional[str | UUID] = None):
         workspace_name=workspace_name,
         action="deleted",
     )
+
+
+def get_eventhouse_definition(
+    eventhouse: str | UUID,
+    workspace: Optional[str | UUID] = None,
+    return_dataframe: bool = False,
+) -> dict | pd.DataFrame:
+    """
+    Gets the eventhouse definition.
+
+    This is a wrapper function for the following API: `Items - Get Eventhouse Definition <https://learn.microsoft.com/rest/api/fabric/eventhouse/items/get-eventhouse-definition>`_.
+
+    Parameters
+    ----------
+    eventhouse : str
+        Name of the eventhouse.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID in which the eventhouse resides.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    return_dataframe : bool, default=False
+        If True, returns a dataframe. If False, returns a json dictionary.
+
+    Returns
+    -------
+    dict | pandas.DataFrame
+        The eventhouse definition in .json format or as a pandas dataframe.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    item_id = resolve_item_id(item=eventhouse, type="Eventhouse", workspace=workspace)
+
+    result = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/eventhouses/{item_id}/getDefinition",
+        method="post",
+        status_codes=None,
+        lro_return_json=True,
+    )
+
+    df = pd.json_normalize(result["definition"]["parts"])
+
+    if return_dataframe:
+        return df
+    else:
+        df_filt = df[df["path"] == "EventhouseProperties.json"]
+        payload = df_filt["payload"].iloc[0]
+        return _decode_b64(payload)
