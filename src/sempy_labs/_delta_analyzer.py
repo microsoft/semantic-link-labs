@@ -6,7 +6,6 @@ from uuid import UUID
 from typing import Dict, Optional
 import pyarrow.dataset as ds
 import pyarrow.parquet as pq
-from delta import DeltaTable
 from sempy_labs._helper_functions import (
     create_abfss_path,
     save_as_delta_table,
@@ -86,6 +85,7 @@ def delta_analyzer(
     Dict[str, pandas.DataFrame]
         A dictionary of pandas dataframes showing semantic model objects which violated the best practice analyzer rules.
     """
+    from delta import DeltaTable
 
     # display_toggle = notebookutils.common.configs.pandas_display
 
@@ -371,6 +371,7 @@ def get_delta_table_history(table_name: str, lakehouse: Optional[str | UUID] = N
     pandas.DataFrame
         A dataframe showing the history of the delta table.
     """
+    from delta import DeltaTable
 
     def camel_to_title(text):
         return re.sub(r'([a-z])([A-Z])', r'\1 \2', text).title()
