@@ -512,7 +512,6 @@ def save_as_delta_table(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    from pyspark.sql import SparkSession
     from pyspark.sql.types import (
         StringType,
         IntegerType,

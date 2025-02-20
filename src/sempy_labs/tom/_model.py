@@ -1748,6 +1748,7 @@ class TOMWrapper:
             "TOM.Table", "TOM.Column", "TOM.Measure", "TOM.Hierarchy", "TOM.Level"
         ],
         language: str,
+        property: str = "Name",
     ):
         """
         Removes an object's `translation <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.culture?view=analysisservices-dotnet>`_ value.
@@ -1758,13 +1759,28 @@ class TOMWrapper:
             An object (i.e. table/column/measure) within a semantic model.
         language : str
             The language code.
+        property : str, default="Name"
+            The property to set. Options: 'Name', 'Description', 'Display Folder'.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        o = object.Model.Cultures[language].ObjectTranslations[
-            object, TOM.TranslatedProperty.Caption
-        ]
-        object.Model.Cultures[language].ObjectTranslations.Remove(o)
+        if property in ["Caption", "Name"]:
+            prop = TOM.TranslatedProperty.Caption
+        elif property == "Description":
+            prop = TOM.TranslatedProperty.Description
+        else:
+            prop = TOM.TranslatedProperty.DisplayFolder
+
+        if property == "DisplayFolder" and object.ObjectType not in [
+            TOM.ObjectType.Table,
+            TOM.ObjectType.Column,
+            TOM.ObjectType.Measure,
+            TOM.ObjectType.Hierarchy,
+        ]:
+            pass
+        else:
+            o = object.Model.Cultures[language].ObjectTranslations[object, prop]
+            object.Model.Cultures[language].ObjectTranslations.Remove(o)
 
     def remove_object(self, object):
         """
@@ -1779,6 +1795,8 @@ class TOMWrapper:
 
         objType = object.ObjectType
 
+        properties = ["Name", "Description", "DisplayFolder"]
+
         # Have to remove translations and perspectives on the object before removing it.
         if objType in [
             TOM.ObjectType.Table,
@@ -1789,7 +1807,10 @@ class TOMWrapper:
         ]:
             for lang in object.Model.Cultures:
                 try:
-                    self.remove_translation(object=object, language=lang.Name)
+                    for property in properties:
+                        self.remove_translation(
+                            object=object, language=lang.Name, property=property
+                        )
                 except Exception:
                     pass
         if objType in [
