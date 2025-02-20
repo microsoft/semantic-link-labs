@@ -1239,7 +1239,14 @@ def list_shortcuts(
         uses_pagination=True,
     )
 
-    sources = ["s3Compatible", "googleCloudStorage", "externalDataShare", "amazonS3", "adlsGen2", "dataverse"]
+    sources = [
+        "s3Compatible",
+        "googleCloudStorage",
+        "externalDataShare",
+        "amazonS3",
+        "adlsGen2",
+        "dataverse",
+    ]
     sources_locpath = ["s3Compatible", "googleCloudStorage", "amazonS3", "adlsGen2"]
 
     for r in responses:
@@ -1247,16 +1254,28 @@ def list_shortcuts(
             tgt = i.get("target", {})
             one_lake = tgt.get("oneLake", {})
             connection_id = next(
-                (tgt.get(source, {}).get("connectionId") for source in sources if tgt.get(source)), 
-                None
+                (
+                    tgt.get(source, {}).get("connectionId")
+                    for source in sources
+                    if tgt.get(source)
+                ),
+                None,
             )
             location = next(
-                (tgt.get(source, {}).get("location") for source in sources_locpath if tgt.get(source)), 
-                None
+                (
+                    tgt.get(source, {}).get("location")
+                    for source in sources_locpath
+                    if tgt.get(source)
+                ),
+                None,
             )
             sub_path = next(
-                (tgt.get(source, {}).get("subpath") for source in sources_locpath if tgt.get(source)), 
-                None
+                (
+                    tgt.get(source, {}).get("subpath")
+                    for source in sources_locpath
+                    if tgt.get(source)
+                ),
+                None,
             )
             source_workspace_id = one_lake.get("workspaceId")
             source_item_id = one_lake.get("itemId")
