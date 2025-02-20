@@ -1,0 +1,69 @@
+name: Semantic Link Labs
+
+on: [push]
+
+permissions:
+  contents: write          # This is required for actions/checkout@v1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: | 
+            8.0.x
+
+      - name: Get Date
+        id: get-date
+        run: echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Cache conda
+        uses: actions/cache@v3
+        env:
+          # Increase this value to reset cache if environment.yml has not changed
+          CACHE_NUMBER: 0
+        with:
+          path: ~/conda_pkgs_dir
+          key:
+            ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ steps.get-date.outputs.today }}-${{ hashFiles('environment.yml') }}
+
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          activate-environment: fabric
+          python-version: "3.10"
+          environment-file: environment.yml
+          channel-priority: strict
+
+      - name: Install package
+        shell: bash -el {0}
+        run: |
+          conda info
+          pip install -e .
+
+      # - name: Lint with flake8
+      #   shell: bash -el {0}
+      #   run: |
+      #     flake8 sempy_labs tests --count --show-source --statistics
+      #   continue-on-error: false
+
+      # - name: Lint with mypy
+      #   shell: bash -el {0}
+      #   run: |
+      #     mypy sempy_labs tests
+      #   continue-on-error: false
+
+      - name: Test with pytest
+        shell: bash -el {0}
+        run: |
+          pytest -s tests/

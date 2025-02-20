@@ -1,0 +1,14 @@
+semantic-link-sempy
+sphinx_rtd_theme
+pandas==2.0.3
+numpy<2.0.0 # 2.0.0 breaks the build
+# pyspark==3.5.0
+azure-identity==1.16.1
+azure-keyvault-secrets
+azure-storage-file-datalake==12.3.1
+azure-storage-blob>=12.9.0
+anytree
+IPython
+polib
+powerbiclient
+jsonpath_ng

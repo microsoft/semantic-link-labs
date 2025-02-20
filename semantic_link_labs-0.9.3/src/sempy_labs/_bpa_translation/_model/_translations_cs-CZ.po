@@ -1,0 +1,943 @@
+#
+msgid ""
+msgstr ""
+"Language: cs-CZ\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# rule_name
+msgid "Do not use floating point data types"
+msgstr "Nepoužívejte datové typy s plovoucí desetinnou čárkou"
+
+# rule_name
+msgid "Avoid using calculated columns"
+msgstr "Vyhněte se použití počítaných sloupců"
+
+# rule_name
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "Kontrola, zda jsou obousměrné relace a relace N:N platné"
+
+# rule_name
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "Kontrola, jestli je nutné dynamické zabezpečení na úrovni řádků (RLS)"
+
+# rule_name
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Vyhněte se používání relací M:N v tabulkách používaných pro dynamické "
+"zabezpečení na úrovni řádků"
+
+# rule_name
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Relace N:N by měly být jednosměrné"
+
+# rule_name
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Nastavte IsAvailableInMdx na false u sloupců bez atributů"
+
+# rule_name
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Nastavení vlastnosti \"Definice pokrytí dat\" v oddílu DirectQuery hybridní "
+"tabulky"
+
+# rule_name
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Duální režim je relevantní pro tabulky dimenzí pouze v případě, že se pro "
+"odpovídající tabulku faktů používá DirectQuery"
+
+# rule_name
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Nastavení tabulek dimenzí do duálního režimu namísto importu při použití "
+"DirectQuery v tabulkách faktů"
+
+# rule_name
+msgid "Minimize Power Query transformations"
+msgstr "Minimalizace transformací Power Query"
+
+# rule_name
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Zvažte hvězdicové schéma místo architektury sněhové vločky"
+
+# rule_name
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Vyhněte se používání zobrazení při použití režimu Přímé jezero"
+
+# rule_name
+msgid "Avoid adding 0 to a measure"
+msgstr "Vyhněte se přidání 0 do míry"
+
+# rule_name
+msgid "Reduce usage of calculated tables"
+msgstr "Omezte využití počítaných tabulek"
+
+# rule_name
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "Omezit používání počítaných sloupců, které používají funkci RELATED"
+
+# rule_name
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Vyhněte se nadměrným obousměrným vztahům nebo relacím N:N"
+
+# rule_name
+msgid "Remove auto-date table"
+msgstr "Odebrat tabulku automatického data"
+
+# rule_name
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"Tabulky kalendářních dat a kalendářů by měly být označeny jako tabulka "
+"kalendářních dat"
+
+# rule_name
+msgid "Large tables should be partitioned"
+msgstr "Velké tabulky by měly být rozdělené na oddíly"
+
+# rule_name
+msgid "Limit row level security (RLS) logic"
+msgstr "Logika omezení zabezpečení na úrovni řádků (RLS)"
+
+# rule_name
+msgid "Model should have a date table"
+msgstr "Model by měl mít tabulku kalendářních dat"
+
+# rule_name
+msgid "Calculation items must have an expression"
+msgstr "Položky výpočtu musí mít výraz"
+
+# rule_name
+msgid "Relationship columns should be of the same data type"
+msgstr "Sloupce relací by měly být stejného datového typu"
+
+# rule_name
+msgid "Data columns must have a source column"
+msgstr "Datové sloupce musí mít zdrojový sloupec"
+
+# rule_name
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Nastavte IsAvailableInMdx na true u potřebných sloupců"
+
+# rule_name
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"Vyhněte se funkci USERELATIONSHIP a zabezpečení na úrovni řádků ve stejné "
+"tabulce"
+
+# rule_name
+msgid "Avoid using the IFERROR function"
+msgstr "Vyhněte se použití funkce IFERROR"
+
+# rule_name
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "Pro virtuální vztahy použijte funkci TREATAS místo funkce INTERSECT"
+
+# rule_name
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "Funkce EVALUATEANDLOG by neměla být používána v produkčních modelech"
+
+# rule_name
+msgid "Measures should not be direct references of other measures"
+msgstr "Opatření by neměla být přímými odkazy na jiná opatření"
+
+# rule_name
+msgid "No two measures should have the same definition"
+msgstr "Žádné dvě míry by neměly mít stejnou definici"
+
+# rule_name
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr ""
+"Vyhněte se sčítání nebo odečítání konstantních hodnot k výsledkům dělení"
+
+# rule_name
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Vyhněte se použití syntaxe '1-(x/y)'"
+
+# rule_name
+msgid "Filter measure values by columns, not tables"
+msgstr "Filtrování hodnot měr podle sloupců, ne podle tabulek"
+
+# rule_name
+msgid "Filter column values with proper syntax"
+msgstr "Filtrujte hodnoty sloupců se správnou syntaxí"
+
+# rule_name
+msgid "Use the DIVIDE function for division"
+msgstr "Použití funkce DĚLIT pro dělení"
+
+# rule_name
+msgid "Column references should be fully qualified"
+msgstr "Odkazy na sloupce by měly být plně kvalifikované"
+
+# rule_name
+msgid "Measure references should be unqualified"
+msgstr "Odkazy na opatření by měly být bez výhrad"
+
+# rule_name
+msgid "Inactive relationships that are never activated"
+msgstr "Neaktivní vztahy, které se nikdy neaktivují"
+
+# rule_name
+msgid "Remove unnecessary columns"
+msgstr "Odstranění nepotřebných sloupců"
+
+# rule_name
+msgid "Remove unnecessary measures"
+msgstr "Odstraňte nepotřebná opatření"
+
+# rule_name
+msgid "Ensure tables have relationships"
+msgstr "Zajistěte, aby tabulky měly vztahy"
+
+# rule_name
+msgid "Calculation groups with no calculation items"
+msgstr "Skupiny výpočtů bez položek výpočtu"
+
+# rule_name
+msgid "Visible objects with no description"
+msgstr "Viditelné objekty bez popisu"
+
+# rule_name
+msgid "Provide format string for 'Date' columns"
+msgstr "Zadejte formátovací řetězec pro sloupce \"Date\""
+
+# rule_name
+msgid "Do not summarize numeric columns"
+msgstr "Nevytvářet souhrn číselných sloupců"
+
+# rule_name
+msgid "Provide format string for measures"
+msgstr "Poskytnutí formátovacího řetězce pro míry"
+
+# rule_name
+msgid "Add data category for columns"
+msgstr "Přidání datové kategorie pro sloupce"
+
+# rule_name
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Procenta by měla být formátována s oddělovači tisíců a 1 desetinnou čárkou"
+
+# rule_name
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Celá čísla by měla být formátována s oddělovači tisíců a bez desetinných "
+"míst"
+
+# rule_name
+msgid "Hide foreign keys"
+msgstr "Skrýt cizí klíče"
+
+# rule_name
+msgid "Mark primary keys"
+msgstr "Označení primárních klíčů"
+
+# rule_name
+msgid "Month (as a string) must be sorted"
+msgstr "Month (jako řetězec) musí být seřazen"
+
+# rule_name
+msgid "Relationship columns should be of integer data type"
+msgstr "Sloupce relací by měly být celočíselného datového typu"
+
+# rule_name
+msgid "Provide format string for \"Month\" columns"
+msgstr "Zadejte formátovací řetězec pro sloupce \"Měsíc\"."
+
+# rule_name
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Formátování sloupců příznaků jako řetězců hodnot Ano/Ne"
+
+# rule_name
+msgid "Objects should not start or end with a space"
+msgstr "Objekty by neměly začínat ani končit mezerou"
+
+# rule_name
+msgid "First letter of objects must be capitalized"
+msgstr "První písmeno objektů musí být velké"
+
+# rule_name
+msgid "Object names must not contain special characters"
+msgstr "Názvy objektů nesmí obsahovat speciální znaky"
+
+# category
+msgid "Do not use floating point data types"
+msgstr "Představení"
+
+# category
+msgid "Avoid using calculated columns"
+msgstr "Představení"
+
+# category
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr "Představení"
+
+# category
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr "Představení"
+
+# category
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr "Představení"
+
+# category
+msgid "Many-to-many relationships should be single-direction"
+msgstr "Představení"
+
+# category
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr "Představení"
+
+# category
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr "Představení"
+
+# category
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr "Představení"
+
+# category
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr "Představení"
+
+# category
+msgid "Minimize Power Query transformations"
+msgstr "Představení"
+
+# category
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr "Představení"
+
+# category
+msgid "Avoid using views when using Direct Lake mode"
+msgstr "Představení"
+
+# category
+msgid "Avoid adding 0 to a measure"
+msgstr "Představení"
+
+# category
+msgid "Reduce usage of calculated tables"
+msgstr "Představení"
+
+# category
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr "Představení"
+
+# category
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr "Představení"
+
+# category
+msgid "Remove auto-date table"
+msgstr "Představení"
+
+# category
+msgid "Date/calendar tables should be marked as a date table"
+msgstr "Představení"
+
+# category
+msgid "Large tables should be partitioned"
+msgstr "Představení"
+
+# category
+msgid "Limit row level security (RLS) logic"
+msgstr "Představení"
+
+# category
+msgid "Model should have a date table"
+msgstr "Představení"
+
+# category
+msgid "Calculation items must have an expression"
+msgstr "Prevence chyb"
+
+# category
+msgid "Relationship columns should be of the same data type"
+msgstr "Prevence chyb"
+
+# category
+msgid "Data columns must have a source column"
+msgstr "Prevence chyb"
+
+# category
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr "Prevence chyb"
+
+# category
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr "Prevence chyb"
+
+# category
+msgid "Avoid using the IFERROR function"
+msgstr "Výrazy jazyka DAX"
+
+# category
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr "Výrazy jazyka DAX"
+
+# category
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr "Výrazy jazyka DAX"
+
+# category
+msgid "Measures should not be direct references of other measures"
+msgstr "Výrazy jazyka DAX"
+
+# category
+msgid "No two measures should have the same definition"
+msgstr "Výrazy jazyka DAX"
+
+# category
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "Výrazy jazyka DAX"
+
+# category
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr "Výrazy jazyka DAX"
+
+# category
+msgid "Filter measure values by columns, not tables"
+msgstr "Výrazy jazyka DAX"
+
+# category
+msgid "Filter column values with proper syntax"
+msgstr "Výrazy jazyka DAX"
+
+# category
+msgid "Use the DIVIDE function for division"
+msgstr "Výrazy jazyka DAX"
+
+# category
+msgid "Column references should be fully qualified"
+msgstr "Výrazy jazyka DAX"
+
+# category
+msgid "Measure references should be unqualified"
+msgstr "Výrazy jazyka DAX"
+
+# category
+msgid "Inactive relationships that are never activated"
+msgstr "Výrazy jazyka DAX"
+
+# category
+msgid "Remove unnecessary columns"
+msgstr "Údržba"
+
+# category
+msgid "Remove unnecessary measures"
+msgstr "Údržba"
+
+# category
+msgid "Ensure tables have relationships"
+msgstr "Údržba"
+
+# category
+msgid "Calculation groups with no calculation items"
+msgstr "Údržba"
+
+# category
+msgid "Visible objects with no description"
+msgstr "Údržba"
+
+# category
+msgid "Provide format string for 'Date' columns"
+msgstr "Formátování"
+
+# category
+msgid "Do not summarize numeric columns"
+msgstr "Formátování"
+
+# category
+msgid "Provide format string for measures"
+msgstr "Formátování"
+
+# category
+msgid "Add data category for columns"
+msgstr "Formátování"
+
+# category
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr "Formátování"
+
+# category
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr "Formátování"
+
+# category
+msgid "Hide foreign keys"
+msgstr "Formátování"
+
+# category
+msgid "Mark primary keys"
+msgstr "Formátování"
+
+# category
+msgid "Month (as a string) must be sorted"
+msgstr "Formátování"
+
+# category
+msgid "Relationship columns should be of integer data type"
+msgstr "Formátování"
+
+# category
+msgid "Provide format string for \"Month\" columns"
+msgstr "Formátování"
+
+# category
+msgid "Format flag columns as Yes/No value strings"
+msgstr "Formátování"
+
+# category
+msgid "Objects should not start or end with a space"
+msgstr "Formátování"
+
+# category
+msgid "First letter of objects must be capitalized"
+msgstr "Formátování"
+
+# category
+msgid "Object names must not contain special characters"
+msgstr "Konvence"
+
+# description
+msgid "Do not use floating point data types"
+msgstr ""
+"Je třeba se vyhnout datovému typu \"Double\" s plovoucí desetinnou čárkou, "
+"protože může v určitých scénářích vést k nepředvídatelným chybám "
+"zaokrouhlení a snížení výkonu. Tam, kde je to vhodné, použijte \"Int64\" "
+"nebo \"Decimal\" (ale všimněte si, že \"Decimal\" je omezen na 4 číslice za "
+"znaménkem desetinné čárky)."
+
+# description
+msgid "Avoid using calculated columns"
+msgstr ""
+"Počítané sloupce se nekomprimují tak dobře jako datové sloupce, takže "
+"zabírají více paměti. Také zpomalují dobu zpracování jak pro tabulku, tak "
+"pro přepočet procesu. Přeneste logiku počítaných sloupců do svého datového "
+"skladu a proměňte tyto počítané sloupce na datové sloupce."
+
+# description
+msgid "Check if bi-directional and many-to-many relationships are valid"
+msgstr ""
+"https://www.sqlbi.com/articles/bidirectional-relationships-and-ambiguity-in-"
+"dax"
+
+# description
+msgid "Check if dynamic row level security (RLS) is necessary"
+msgstr ""
+"Použití dynamického zabezpečení na úrovni řádků (RLS) může zvýšit režii "
+"paměti a výkonu. Prozkoumejte prosím klady/zápory jeho používání."
+
+# description
+msgid ""
+"Avoid using many-to-many relationships on tables used for dynamic row level "
+"security"
+msgstr ""
+"Použití relací M:N v tabulkách, které používají dynamické zabezpečení na "
+"úrovni řádků, může způsobit vážné snížení výkonu dotazů. Problémy s výkonem "
+"tohoto modelu se zhoršují při vločkování více relací M:N proti tabulce, "
+"která obsahuje zabezpečení na úrovni řádků. Místo toho použijte jeden ze "
+"vzorů uvedených v článku níže, kde tabulka dimenzí s jednou dimenzí souvisí "
+"s tabulkou zabezpečení."
+
+# description
+msgid "Set IsAvailableInMdx to false on non-attribute columns"
+msgstr ""
+"Aby se urychlila doba zpracování a šetřila paměť po zpracování, neměly by "
+"být vytvářeny hierarchie atributů pro sloupce, které klienti MDX nikdy "
+"nepoužívají k vytváření řezů. Jinými slovy, všechny skryté sloupce, které se"
+" nepoužívají jako sloupce Seřadit podle nebo na které se neodkazuje v "
+"uživatelských hierarchiích, by měly mít vlastnost IsAvailableInMdx "
+"nastavenou na false. Vlastnost IsAvailableInMdx není relevantní pro modely "
+"Direct Lake."
+
+# description
+msgid ""
+"Set 'Data Coverage Definition' property on the DirectQuery partition of a "
+"hybrid table"
+msgstr ""
+"Nastavení vlastnosti Definice pokrytí dat může vést k lepšímu výkonu, "
+"protože modul ví, kdy se může dotazovat pouze na část importu tabulky a kdy "
+"je třeba zadat dotaz na část tabulky DirectQuery."
+
+# description
+msgid ""
+"Dual mode is only relevant for dimension tables if DirectQuery is used for "
+"the corresponding fact table"
+msgstr ""
+"Duální režim používejte pouze pro tabulky dimenzí/oddíly, kde je v "
+"DirectQuery odpovídající tabulka faktů. Použití duálního režimu za jiných "
+"okolností (tj. zbytek modelu je v režimu importu) může vést k problémům s "
+"výkonem, zejména pokud je počet taktů v modelu vysoký."
+
+# description
+msgid ""
+"Set dimensions tables to dual mode instead of import when using DirectQuery "
+"on fact tables"
+msgstr ""
+"Při použití DirectQuery by měly být tabulky dimenzí nastaveny na duální "
+"režim, aby se zlepšil výkon dotazů."
+
+# description
+msgid "Minimize Power Query transformations"
+msgstr ""
+"Minimalizujte transformace Power Query, abyste zlepšili výkon zpracování "
+"modelu. Pokud je to možné, je osvědčeným postupem přesměrovat tyto "
+"transformace do datového skladu. Zkontrolujte také, zda ve vašem modelu "
+"nedochází k posouvání dotazů. Další informace o skládání dotazů naleznete v "
+"článku níže."
+
+# description
+msgid "Consider a star-schema instead of a snowflake architecture"
+msgstr ""
+"Obecně lze říci, že hvězdicové schéma je optimální architekturou pro "
+"tabulkové modely. V tomto případě existují platné případy pro použití "
+"přístupu sněhové vločky. Zkontrolujte svůj model a zvažte přechod na "
+"architekturu hvězdicového schématu."
+
+# description
+msgid "Avoid using views when using Direct Lake mode"
+msgstr ""
+"V režimu Direct Lake se zobrazení vždy vrátí zpět do DirectQuery. Chcete-li "
+"tedy dosáhnout nejlepšího výkonu, použijte místo pohledů tabulky lakehouse."
+
+# description
+msgid "Avoid adding 0 to a measure"
+msgstr ""
+"Přidání 0 do míry, aby se v ní nezobrazovala prázdná hodnota, může mít "
+"negativní vliv na výkon."
+
+# description
+msgid "Reduce usage of calculated tables"
+msgstr ""
+"Migrujte logiku počítaných tabulek do datového skladu. Spoléhání se na "
+"vypočtené tabulky povede k technickému dluhu a potenciálním odchylkám, pokud"
+" máte na platformě více modelů."
+
+# description
+msgid "Reduce usage of calculated columns that use the RELATED function"
+msgstr ""
+"Počítané sloupce se nekomprimují tak dobře jako datové sloupce a mohou "
+"způsobit delší dobu zpracování. Proto je třeba se pokud možno vyhnout "
+"počítaným sloupcům. Jedním ze scénářů, kdy se jim lze snáze vyhnout, je, "
+"pokud použijí funkci SOUVISEJÍCÍ."
+
+# description
+msgid "Avoid excessive bi-directional or many-to-many relationships"
+msgstr ""
+"Omezte používání vztahů b-di a M:N. Toto pravidlo označí model, pokud je "
+"více než 30 % relací bi-di nebo M:N."
+
+# description
+msgid "Remove auto-date table"
+msgstr ""
+"Nepoužívejte tabulky s automatickým datováním. Nezapomeňte vypnout tabulku "
+"automatického data v nastavení v Power BI Desktopu. Tím se ušetří paměťové "
+"prostředky."
+
+# description
+msgid "Date/calendar tables should be marked as a date table"
+msgstr ""
+"Toto pravidlo hledá tabulky, které obsahují slova \"datum\" nebo "
+"\"kalendář\", protože by pravděpodobně měly být označeny jako tabulka "
+"kalendářních dat."
+
+# description
+msgid "Large tables should be partitioned"
+msgstr ""
+"Velké tabulky by měly být rozděleny na oddíly, aby se optimalizovalo "
+"zpracování. To není relevantní pro sémantické modely v režimu Direct Lake, "
+"protože mohou mít pouze jeden oddíl na tabulku."
+
+# description
+msgid "Limit row level security (RLS) logic"
+msgstr ""
+"Pokuste se zjednodušit jazyk DAX používaný pro zabezpečení na úrovni řádků. "
+"Využití funkcí v rámci tohoto pravidla může být pravděpodobně přeneseno na "
+"nadřazené systémy (datový sklad)."
+
+# description
+msgid "Model should have a date table"
+msgstr ""
+"Obecně lze říci, že modely by obecně měly mít tabulku kalendářních dat. "
+"Modely, které nemají tabulku kalendářních dat, obecně nevyužívají funkce, "
+"jako je časové měřítko, nebo nemusí mít správně strukturovanou architekturu."
+
+# description
+msgid "Calculation items must have an expression"
+msgstr "Položky výpočtu musí mít výraz. Bez výrazu nezobrazí žádné hodnoty."
+
+# description
+msgid "Relationship columns should be of the same data type"
+msgstr ""
+"Sloupce použité v relaci by měly být stejného datového typu. V ideálním "
+"případě budou mít celočíselný datový typ (viz související pravidlo "
+"'[Formátování] Sloupce vztahu by měly být celočíselného datového typu'). "
+"Sloupce v rámci relace, které jsou různých datových typů, mohou vést k "
+"různým problémům."
+
+# description
+msgid "Data columns must have a source column"
+msgstr ""
+"Datové sloupce musí mít zdrojový sloupec. Datový sloupec bez zdrojového "
+"sloupce způsobí chybu při zpracování modelu."
+
+# description
+msgid "Set IsAvailableInMdx to true on necessary columns"
+msgstr ""
+"Abyste se vyhnuli chybám, ujistěte se, že jsou hierarchie atributů povoleny,"
+" pokud se sloupec používá k řazení jiného sloupce, používá se v hierarchii, "
+"používá se ve variantách nebo je řazen podle jiného sloupce. Vlastnost "
+"IsAvailableInMdx není relevantní pro modely Direct Lake."
+
+# description
+msgid "Avoid the USERELATIONSHIP function and RLS against the same table"
+msgstr ""
+"Funkci USERELATIONSHIP nelze použít pro tabulku, která také využívá "
+"zabezpečení na úrovni řádků (RLS). To vygeneruje chybu při použití konkrétní"
+" míry ve vizuálu. Toto pravidlo zvýrazní tabulku, která se používá ve funkci"
+" USERELATIONSHIP a také v zabezpečení na úrovni řádků."
+
+# description
+msgid "Avoid using the IFERROR function"
+msgstr ""
+"Nepoužívejte funkci IFERROR, protože může způsobit snížení výkonu. Pokud vás"
+" znepokojuje chyba dělení nulou, použijte funkci DIVIDE, protože ta "
+"přirozeně řeší takové chyby jako prázdné (nebo si můžete přizpůsobit, co se "
+"má zobrazit v případě takové chyby)."
+
+# description
+msgid ""
+"Use the TREATAS function instead of INTERSECT for virtual relationships"
+msgstr ""
+"Funkce TREATAS je efektivnější a poskytuje lepší výkon než funkce INTERSECT "
+"při použití ve virtuálních vztazích."
+
+# description
+msgid "The EVALUATEANDLOG function should not be used in production models"
+msgstr ""
+"Funkce EVALUATEANDLOG je určena pouze k použití ve vývojových/testovacích "
+"prostředích a neměla by se používat v produkčních modelech."
+
+# description
+msgid "Measures should not be direct references of other measures"
+msgstr ""
+"Toto pravidlo označuje opatření, která jsou pouze odkazem na jiné opatření. "
+"Jako příklad si představme model se dvěma měřítky: [MeasureA] a [MeasureB]. "
+"Toto pravidlo by se aktivovalo pro OpatřeníB, pokud by DAX Opatření B byl "
+"MěřítkoB:=[OpatřeníA]. Taková duplicitní opatření by měla být odstraněna."
+
+# description
+msgid "No two measures should have the same definition"
+msgstr ""
+"Je třeba se vyhnout dvěma mírám s různými názvy a definovaným stejným "
+"výrazem DAX, aby se snížila redundance."
+
+# description
+msgid ""
+"Avoid addition or subtraction of constant values to results of divisions"
+msgstr "Přidání konstantní hodnoty může vést ke snížení výkonu."
+
+# description
+msgid "Avoid using '1-(x/y)' syntax"
+msgstr ""
+"Místo použití syntaxe \"1-(x/y)\" nebo \"1+(x/y)\" k dosažení výpočtu "
+"procent použijte základní funkce jazyka DAX (jak je znázorněno níže). "
+"Použití vylepšené syntaxe obecně zlepší výkon. \"1+/-...\" Syntaxe vždy "
+"vrací hodnotu, zatímco řešení bez '1+/-...' ne (protože hodnota může být "
+"\"prázdná\"). Proto je funkce \"1+/-...\" Syntaxe může vracet více řádků "
+"nebo sloupců, což může mít za následek nižší rychlost dotazu.    Ukažme si "
+"to na příkladu: Vyhněte se tomuto: 1 - SUM ( 'Sales'[CostAmount] ) / SUM( "
+"'Sales'[SalesAmount] ) Lepší: DIVIDE ( SUM ( 'Sales'[SalesAmount] ) - SUM ( "
+"'Sales'[CostAmount] ), SUM ( 'Sales'[SalesAmount] ) ) Nejlepší: VAR x = SUM "
+"( 'Sales'[SalesAmount] ) RETURN DIVIDE ( x - SUM ( 'Sales'[CostAmount] ), x "
+")"
+
+# description
+msgid "Filter measure values by columns, not tables"
+msgstr ""
+"Namísto použití tohoto vzoru FILTER('Table',[Measure]>Value) pro parametry filtru funkce CALCULATE nebo CALCULATETABLE použijte jednu z níže uvedených možností (pokud je to možné). Filtrováním podle konkrétního sloupce se vytvoří menší tabulka, kterou bude modul zpracovávat, což umožní rychlejší výkon. Použití funkce VALUES nebo funkce ALL závisí na požadovaném výsledku měření.\n"
+"Možnost 1: FILTER(VALUES('Tabulka'[Sloupec]),[Míra] > Hodnota)\n"
+"Možnost 2: FILTER(ALL('Tabulka'[Sloupec]),[Míra] > Hodnota)"
+
+# description
+msgid "Filter column values with proper syntax"
+msgstr ""
+"Namísto použití tohoto vzoru FILTER('Table','Table'[Column]=\"Value\") pro parametry filtru funkce CALCULATE nebo CALCULATETABLE použijte jednu z níže uvedených možností. Pokud jde o to, zda použít funkci KEEPFILTERS, podívejte se na druhý referenční odkaz níže.\n"
+"Možnost 1: KEEPFILTERS('Tabulka'[Sloupec]=\"Hodnota\")\n"
+"Možnost 2: 'Tabulka'[Sloupec]=\"Hodnota\""
+
+# description
+msgid "Use the DIVIDE function for division"
+msgstr ""
+"Místo použití znaku \"/\" použijte funkci DIVIDE. Funkce DIVIDE řeší případy"
+" dělení nulou. Proto se doporučuje používat, aby se předešlo chybám."
+
+# description
+msgid "Column references should be fully qualified"
+msgstr ""
+"Použití plně kvalifikovaných odkazů na sloupce usnadňuje rozlišení mezi "
+"odkazy na sloupce a ukazatele a také pomáhá vyhnout se určitým chybám. Při "
+"odkazování na sloupec v jazyce DAX nejprve zadejte název tabulky a poté "
+"zadejte název sloupce v hranatých závorkách."
+
+# description
+msgid "Measure references should be unqualified"
+msgstr ""
+"Použití nekvalifikovaných odkazů na míry usnadňuje rozlišení mezi odkazy na "
+"sloupce a ukazatele a také pomáhá vyhnout se určitým chybám. Při odkazování "
+"na míru pomocí jazyka DAX nezadávejte název tabulky. Používejte pouze název "
+"taktu v hranatých závorkách."
+
+# description
+msgid "Inactive relationships that are never activated"
+msgstr ""
+"Neaktivní vztahy se aktivují pomocí funkce USERELATIONSHIP. Pokud se "
+"prostřednictvím této funkce v žádné míře neodkazuje na neaktivní vztah, "
+"vztah se nepoužije. Je třeba určit, zda vztah není nutný, nebo jej aktivovat"
+" pomocí tohoto způsobu."
+
+# description
+msgid "Remove unnecessary columns"
+msgstr ""
+"Skryté sloupce, na které neodkazují žádné výrazy jazyka DAX, vztahy, úrovně "
+"hierarchie nebo vlastnosti Seřadit podle, by měly být odebrány."
+
+# description
+msgid "Remove unnecessary measures"
+msgstr ""
+"Skryté míry, na které neodkazují žádné výrazy jazyka DAX, by měly být "
+"odebrány, aby bylo možné je udržovat."
+
+# description
+msgid "Ensure tables have relationships"
+msgstr ""
+"Toto pravidlo zvýrazňuje tabulky, které nejsou připojeny k žádné jiné "
+"tabulce v modelu se vztahem."
+
+# description
+msgid "Calculation groups with no calculation items"
+msgstr "Skupiny výpočtů nemají žádnou funkci, pokud nemají položky výpočtu."
+
+# description
+msgid "Visible objects with no description"
+msgstr ""
+"Přidejte k objektům popisy. Tyto popisy se zobrazí po najetí myší na seznam "
+"polí v Power BI Desktopu. Kromě toho můžete tyto popisy využít k vytvoření "
+"automatizovaného datového slovníku."
+
+# description
+msgid "Provide format string for 'Date' columns"
+msgstr ""
+"Sloupce typu \"DateTime\", které mají v názvu \"Month\", by měly být "
+"formátovány jako \"mm/dd/rrrr\"."
+
+# description
+msgid "Do not summarize numeric columns"
+msgstr ""
+"Číselné sloupce (celočíselné, desítkové, dvojité) by měly mít vlastnost "
+"SummarizeBy nastavenou na hodnotu \"Žádné\", aby nedocházelo k náhodnému "
+"sečtení v Power BI (místo toho vytvořte míry)."
+
+# description
+msgid "Provide format string for measures"
+msgstr ""
+"Viditelné míry by měly mít přiřazenou vlastnost formátovacího řetězce."
+
+# description
+msgid "Add data category for columns"
+msgstr "Přidejte vlastnost Kategorie dat pro příslušné sloupce."
+
+# description
+msgid ""
+"Percentages should be formatted with thousands separators and 1 decimal"
+msgstr ""
+"Pro lepší uživatelský zážitek by měly být míry percengage formátovány se "
+"znaménkem \"%\"."
+
+# description
+msgid ""
+"Whole numbers should be formatted with thousands separators and no decimals"
+msgstr ""
+"Pro lepší uživatelský zážitek by měla být celá čísla formátována čárkami."
+
+# description
+msgid "Hide foreign keys"
+msgstr ""
+"Cizí klíče by měly být vždy skryté, protože by je neměli používat koncoví "
+"uživatelé."
+
+# description
+msgid "Mark primary keys"
+msgstr ""
+"Nastavte vlastnost 'Key' na 'True' pro sloupce primárního klíče ve "
+"vlastnostech sloupce."
+
+# description
+msgid "Month (as a string) must be sorted"
+msgstr ""
+"Toto pravidlo zvýrazňuje sloupce měsíců, které jsou řetězce a nejsou "
+"seřazeny. Pokud je necháte neseřadit, seřadí se abecedně (tj. duben, "
+"srpen...). Nezapomeňte tyto sloupce seřadit tak, aby se seřadily správně "
+"(leden, únor, březen...)."
+
+# description
+msgid "Relationship columns should be of integer data type"
+msgstr ""
+"Osvědčeným postupem je, aby sloupce relace byly celočíselného datového typu."
+" To platí nejen pro datové sklady, ale také pro datové modelování."
+
+# description
+msgid "Provide format string for \"Month\" columns"
+msgstr ""
+"Sloupce typu \"DateTime\", které mají v názvu \"Měsíc\", by měly být "
+"formátovány jako \"MMMM rrrr\"."
+
+# description
+msgid "Format flag columns as Yes/No value strings"
+msgstr ""
+"Příznaky musí být správně naformátovány jako Ano/Ne, protože je to "
+"čitelnější než použití celočíselných hodnot 0/1."
+
+# description
+msgid "Objects should not start or end with a space"
+msgstr ""
+"Objekty by neměly začínat ani končit mezerou. To se obvykle děje náhodou a "
+"je obtížné to najít."
+
+# description
+msgid "First letter of objects must be capitalized"
+msgstr ""
+"První písmeno názvu objektu by mělo být psáno velkými písmeny, aby byla "
+"zachována profesionální kvalita."
+
+# description
+msgid "Object names must not contain special characters"
+msgstr "Názvy objektů by neměly obsahovat tabulátory, zalomení řádků atd."

@@ -1,0 +1,173 @@
+import pandas as pd
+import sempy_labs._icons as icons
+from typing import Optional
+from sempy_labs._helper_functions import (
+    resolve_workspace_name_and_id,
+    _is_valid_uuid,
+    _base_api,
+    _print_success,
+    _create_dataframe,
+)
+from uuid import UUID
+
+
+def create_managed_private_endpoint(
+    name: str,
+    target_private_link_resource_id: UUID,
+    target_subresource_type: str,
+    request_message: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Creates a managed private endpoint.
+
+    This is a wrapper function for the following API: `Managed Private Endpoints - Create Workspace Managed Private Endpoint <https://learn.microsoft.com/rest/api/fabric/core/managed-private-endpoints/create-workspace-managed-private-endpoint>`.
+
+    Parameters
+    ----------
+    name: str
+        Name of the managed private endpoint.
+    target_private_link_resource_id: uuid.UUID
+        Resource Id of data source for which private endpoint needs to be created.
+    target_subresource_type : str
+        Sub-resource pointing to Private-link resoure.
+    request_message : str, default=None
+        Message to approve private endpoint request. Should not be more than 140 characters.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    request_body = {
+        "name": name,
+        "targetPrivateLinkResourceId": target_private_link_resource_id,
+        "targetSubresourceType": target_subresource_type,
+    }
+
+    if request_message is not None:
+        if len(request_message) > 140:
+            raise ValueError(
+                f"{icons.red_dot} The request message cannot be more than 140 characters."
+            )
+        request_body["requestMessage"] = request_message
+
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/managedPrivateEndpoints",
+        method="post",
+        status_codes=[201, 202],
+        payload=request_body,
+        lro_return_status_code=True,
+    )
+    _print_success(
+        item_name=name,
+        item_type="managed private endpoint",
+        workspace_name=workspace_name,
+        action="created",
+    )
+
+
+def list_managed_private_endpoints(
+    workspace: Optional[str | UUID] = None,
+) -> pd.DataFrame:
+    """
+    Shows the managed private endpoints within a workspace.
+
+    This is a wrapper function for the following API: `Managed Private Endpoints - List Workspace Managed Private Endpoints <https://learn.microsoft.com/rest/api/fabric/core/managed-private-endpoints/list-workspace-managed-private-endpoints>`.
+
+    Parameters
+    ----------
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the managed private endpoints within a workspace.
+    """
+
+    columns = {
+        "Managed Private Endpoint Name": "string",
+        "Managed Private Endpoint Id": "string",
+        "Target Private Link Resource Id": "string",
+        "Provisioning State": "string",
+        "Connection Status": "string",
+        "Connection Description": "string",
+        "Target Subresource Type": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    responses = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/managedPrivateEndpoints",
+        uses_pagination=True,
+        status_codes=200,
+    )
+
+    for r in responses:
+        for v in r.get("value", []):
+            conn = v.get("connectionState", {})
+            new_data = {
+                "Managed Private Endpoint Name": v.get("name"),
+                "Managed Private Endpoint Id": v.get("id"),
+                "Target Private Link Resource Id": v.get("targetPrivateLinkResourceId"),
+                "Provisioning State": v.get("provisioningState"),
+                "Connection Status": conn.get("status"),
+                "Connection Description": conn.get("description"),
+                "Target Subresource Type": v.get("targetSubresourceType"),
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    return df
+
+
+def delete_managed_private_endpoint(
+    managed_private_endpoint: str | UUID, workspace: Optional[str | UUID] = None
+):
+    """
+    Deletes a Fabric managed private endpoint.
+
+    This is a wrapper function for the following API: `Managed Private Endpoints - Delete Workspace Managed Private Endpoint <https://learn.microsoft.com/rest/api/fabric/core/managed-private-endpoints/delete-workspace-managed-private-endpoint>`.
+
+    Parameters
+    ----------
+    managed_private_endpoint: str | uuid.UUID
+        Name or ID of the managed private endpoint.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    if _is_valid_uuid(managed_private_endpoint):
+        item_id = managed_private_endpoint
+    else:
+        df = list_managed_private_endpoints(workspace=workspace)
+        df_filt = df[df["Managed Private Endpoint Name"] == managed_private_endpoint]
+
+        if df_filt.empty:
+            raise ValueError(
+                f"{icons.red_dot} The '{managed_private_endpoint}' managed private endpoint does not exist within the '{workspace_name}' workspace."
+            )
+
+        item_id = df_filt["Managed Private Endpoint Id"].iloc[0]
+
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/managedPrivateEndpoints/{item_id}",
+        method="delete",
+        status_codes=200,
+    )
+
+    _print_success(
+        item_name=managed_private_endpoint,
+        item_type="managed private endpoint",
+        workspace_name=workspace_name,
+        action="deleted",
+    )
