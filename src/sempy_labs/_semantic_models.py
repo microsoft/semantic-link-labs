@@ -69,7 +69,9 @@ def get_semantic_model_refresh_schedule(
 
 
 def enable_semantic_model_scheduled_refresh(
-    dataset: str | UUID, workspace: Optional[str | UUID] = None, enable: bool = True,
+    dataset: str | UUID,
+    workspace: Optional[str | UUID] = None,
+    enable: bool = True,
 ):
     """
     Enables the scheduled refresh for the specified dataset from the specified workspace.
@@ -91,18 +93,18 @@ def enable_semantic_model_scheduled_refresh(
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace)
 
     df = get_semantic_model_refresh_schedule(dataset=dataset, workspace=workspace)
-    status = df['Enabled'].iloc[0]
+    status = df["Enabled"].iloc[0]
 
     if enable and status:
-        print(f"{icons.info} Scheduled refresh for the '{dataset_name}' within the '{workspace_name}' workspace is already enabled.")
+        print(
+            f"{icons.info} Scheduled refresh for the '{dataset_name}' within the '{workspace_name}' workspace is already enabled."
+        )
     elif not enable and not status:
-        print(f"{icons.info} Scheduled refresh for the '{dataset_name}' within the '{workspace_name}' workspace is already disabled.")
+        print(
+            f"{icons.info} Scheduled refresh for the '{dataset_name}' within the '{workspace_name}' workspace is already disabled."
+        )
     else:
-        payload = {
-            "value": {
-                "enabled": enable
-            }
-        }
+        payload = {"value": {"enabled": enable}}
 
         _base_api(
             request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/refreshSchedule",
@@ -110,4 +112,6 @@ def enable_semantic_model_scheduled_refresh(
             payload=payload,
         )
 
-        print(f"{icons.green_dot} Scheduled refresh for the '{dataset_name}' within the '{workspace_name}' workspace has been enabled.")
+        print(
+            f"{icons.green_dot} Scheduled refresh for the '{dataset_name}' within the '{workspace_name}' workspace has been enabled."
+        )
