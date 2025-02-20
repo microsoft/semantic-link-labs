@@ -313,7 +313,6 @@ def deploy_semantic_model(
     if perspective is not None:
 
         import sempy
-
         sempy.fabric._client._utils._init_analysis_services()
         import Microsoft.AnalysisServices.Tabular as TOM
         from sempy_labs.tom import connect_semantic_model
