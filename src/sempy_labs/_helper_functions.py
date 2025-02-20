@@ -29,27 +29,42 @@ def _build_url(url: str, params: dict) -> str:
 
 
 def create_abfss_path(
-    lakehouse_id: UUID, lakehouse_workspace_id: UUID, delta_table_name: str
+    lakehouse_id: UUID,
+    lakehouse_workspace_id: UUID,
+    delta_table_name: Optional[str] = None,
 ) -> str:
     """
     Creates an abfss path for a delta table in a Fabric lakehouse.
 
     Parameters
     ----------
-    lakehouse_id : UUID
+    lakehouse_id : uuid.UUID
         ID of the Fabric lakehouse.
-    lakehouse_workspace_id : UUID
+    lakehouse_workspace_id : uuid.UUID
         ID of the Fabric workspace.
-    delta_table_name : str
+    delta_table_name : str, default=None
         Name of the delta table name.
 
     Returns
     -------
     str
-        An abfss path which can be used to save/reference a delta table in a Fabric lakehouse.
+        An abfss path which can be used to save/reference a delta table in a Fabric lakehouse or lakehouse.
     """
 
-    return f"abfss://{lakehouse_workspace_id}@onelake.dfs.fabric.microsoft.com/{lakehouse_id}/Tables/{delta_table_name}"
+    fp = _get_default_file_path()
+    path = f"abfss://{lakehouse_workspace_id}@{fp}/{lakehouse_id}"
+
+    if delta_table_name is not None:
+        path += f"/Tables/{delta_table_name}"
+
+    return path
+
+
+def _get_default_file_path() -> str:
+
+    default_file_storage = _get_fabric_context_setting(name="fs.defaultFS")
+
+    return default_file_storage.split("@")[-1][:-1]
 
 
 def format_dax_object_name(table: str, column: str) -> str:
@@ -579,6 +594,32 @@ def resolve_workspace_name_and_id(workspace: Optional[str] = None) -> Tuple[str,
         workspace_id = fabric.resolve_workspace_id(workspace)
 
     return str(workspace), str(workspace_id)
+
+
+def resolve_lakehouse_name_and_id(
+    lakehouse: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None
+) -> Tuple[str, UUID]:
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    type = "Lakehouse"
+
+    if lakehouse is None:
+        lakehouse_id = fabric.get_lakehouse_id()
+        lakehouse_name = fabric.resolve_item_name(
+            item_id=lakehouse_id, type=type, workspace=workspace_id
+        )
+    elif _is_valid_uuid(lakehouse):
+        lakehouse_id = lakehouse
+        lakehouse_name = fabric.resolve_item_name(
+            item_id=lakehouse_id, type=type, workspace=workspace_id
+        )
+    else:
+        lakehouse_name = lakehouse
+        lakehouse_id = fabric.resolve_item_id(
+            item_name=lakehouse, type=type, workspace=workspace_id
+        )
+
+    return lakehouse_name, lakehouse_id
 
 
 def _extract_json(dataframe: pd.DataFrame) -> dict:
@@ -1352,3 +1393,40 @@ def _is_valid_uuid(
         return True
     except ValueError:
         return False
+
+
+def _get_fabric_context_setting(name: str):
+
+    from synapse.ml.internal_utils.session_utils import get_fabric_context
+
+    return get_fabric_context().get(name)
+
+
+def _mount(lakehouse, workspace) -> str:
+    """
+    Mounts a lakehouse to a notebook if it is not already mounted. Returns the local path to the lakehouse.
+    """
+
+    import notebookutils
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace=workspace)
+    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+        lakehouse=lakehouse, workspace=workspace
+    )
+
+    lake_path = create_abfss_path(lakehouse_id, workspace_id)
+    mounts = notebookutils.fs.mounts()
+    mount_point = f"/{workspace_name.replace(' ', '')}{lakehouse_name.replace(' ', '')}"
+    if not any(i.get("source") == lake_path for i in mounts):
+        # Mount lakehouse if not mounted
+        notebookutils.fs.mount(lake_path, mount_point)
+        print(
+            f"{icons.green_dot} Mounted the '{lakehouse_name}' lakehouse within the '{workspace_name}' to the notebook."
+        )
+
+    mounts = notebookutils.fs.mounts()
+    local_path = next(
+        i.get("localPath") for i in mounts if i.get("source") == lake_path
+    )
+
+    return local_path

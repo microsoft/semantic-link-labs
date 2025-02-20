@@ -5,16 +5,23 @@ import sempy.fabric as fabric
 import sempy_labs._icons as icons
 from sempy_labs.report._generate_report import get_report_definition
 from sempy_labs._generate_semantic_model import get_semantic_model_definition
-from sempy_labs._helper_functions import _is_valid_uuid
+from sempy_labs._helper_functions import (
+    _is_valid_uuid,
+    _mount,
+)
 from uuid import UUID
-from sempy_labs.lakehouse import lakehouse_attached
+from sempy._utils._log import log
+from typing import Optional
 
 
+@log
 def save_report_as_pbip(
     report: str | UUID,
     workspace: str | UUID,
     thick_report: bool = True,
     live_connect: bool = True,
+    lakehouse: Optional[str | UUID] = None,
+    lakehouse_workspace: Optional[str | UUID] = None,
 ):
     """
     Saves a report as a .pbip file to the default lakehouse attached to the notebook.
@@ -33,16 +40,20 @@ def save_report_as_pbip(
     live_connect : bool, default=True
         If set to True, saves a .pbip live-connected to the workspace in the Power BI / Fabric service.
         If set to False, saves a .pbip with a local model, independent from the Power BI / Fabric service.
+    lakehouse : str | uuid.UUID, default=None
+        The Fabric lakehouse name or ID. This will be the lakehouse to which the report is saved.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    lakehouse_workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    if not lakehouse_attached():
-        raise ValueError(
-            f"{icons.red_dot} A lakehouse must be attached to the notebook. Please attach a lakehouse to the notebook."
-        )
-
-    save_location = "/lakehouse/default/Files"
     report_workspace = fabric.resolve_workspace_name(workspace)
     indent = 2
+
+    local_path = _mount(lakehouse=lakehouse, workspace=lakehouse_workspace)
+    save_location = f"{local_path}/Files"
 
     # Find semantic model info
     dfR = fabric.list_reports(workspace=report_workspace)
