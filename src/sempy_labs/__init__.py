@@ -10,7 +10,10 @@ from sempy_labs._job_scheduler import (
     list_item_job_instances,
     list_item_schedules,
 )
-from sempy_labs._delta_analyzer import delta_analyzer
+from sempy_labs._delta_analyzer import (
+    delta_analyzer,
+    get_delta_table_history,
+)
 from sempy_labs._gateways import (
     list_gateway_members,
     list_gateway_role_assigments,
@@ -507,4 +510,5 @@ __all__ = [
     "get_semantic_model_refresh_schedule",
     "get_eventhouse_definition",
     "enable_semantic_model_scheduled_refresh",
+    "get_delta_table_history",
 ]

@@ -1,4 +1,5 @@
 import pandas as pd
+import re
 import datetime
 from typing import Dict, Optional
 import pyarrow.dataset as ds
@@ -14,6 +15,7 @@ from sempy_labs._helper_functions import (
     _read_delta_table,
     _delta_table_row_count,
     _mount,
+    _create_spark_session,
 )
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
@@ -62,7 +64,6 @@ def delta_analyzer(
     Dict[str, pandas.DataFrame]
         A dictionary of pandas dataframes showing semantic model objects which violated the best practice analyzer rules.
     """
-    import notebookutils
 
     # display_toggle = notebookutils.common.configs.pandas_display
 
@@ -307,3 +308,47 @@ def delta_analyzer(
             )
 
     return dataframes
+
+
+def get_delta_table_history(table_name: str, lakehouse: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None) -> pd.DataFrame:
+
+    """
+    Returns the history of a delta table as a pandas dataframe.
+
+    Parameters
+    ----------
+    table_name : str
+        The delta table name.
+    lakehouse : str | uuid.UUID, default=None
+        The Fabric lakehouse name or ID.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A dataframe showing the history of the delta table.
+    """
+    from delta import DeltaTable
+
+    def camel_to_title(text):
+        return re.sub(r'([a-z])([A-Z])', r'\1 \2', text).title()
+
+    spark = _create_spark_session()
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace=workspace)
+    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+        lakehouse=lakehouse, workspace=workspace
+    )
+    path = create_abfss_path(lakehouse_id, workspace_id, table_name)
+    delta_table = DeltaTable.forPath(spark, path)
+    delta_table = DeltaTable.forPath(spark, path)
+    df = delta_table.history().toPandas()
+
+    df.rename(columns=lambda col: camel_to_title(col), inplace=True)
+
+    return df
+
+

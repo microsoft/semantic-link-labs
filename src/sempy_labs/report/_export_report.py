@@ -5,7 +5,6 @@ import time
 from sempy_labs._helper_functions import (
     generate_embedded_filter,
     resolve_workspace_name_and_id,
-    resolve_lakehouse_name_and_id,
     _base_api,
     _mount,
 )
