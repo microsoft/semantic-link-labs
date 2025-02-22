@@ -1,5 +1,6 @@
 import sempy.fabric as fabric
 from sempy_labs._helper_functions import (
+    resolve_item_id,
     resolve_lakehouse_name,
     resolve_lakehouse_id,
     resolve_workspace_name_and_id,
@@ -13,7 +14,8 @@ from uuid import UUID
 
 def create_shortcut_onelake(
     table_name: str,
-    source_lakehouse: str,
+    source_item: str | UUID,
+    source_item_type: str,
     source_workspace: str | UUID,
     destination_lakehouse: str,
     destination_workspace: Optional[str | UUID] = None,
@@ -30,10 +32,12 @@ def create_shortcut_onelake(
     ----------
     table_name : str
         The table name for which a shortcut will be created.
-    source_lakehouse : str
-        The Fabric lakehouse in which the table resides.
+    source_item : str | uuid.UUID
+        The source Fabric data store item in which the table resides. Can be either the Name or ID of the item.
+    source_item_type: str
+        The source Fabric data store item type. Options are 'Lakehouse', 'Warehouse', 'MirroredDatabase', 'SQLDatabase', and 'KQLDatabase'.
     source_workspace : str | uuid.UUID
-        The name or ID of the Fabric workspace in which the source lakehouse exists.
+        The name or ID of the Fabric workspace in which the source data store exists.
     destination_lakehouse : str
         The Fabric lakehouse in which the shortcut will be created.
     destination_workspace : str | uuid.UUID, default=None
@@ -58,13 +62,21 @@ def create_shortcut_onelake(
         raise ValueError(
             f"{icons.red_dot} The 'destination_path' parameter must be either 'Files' or 'Tables'."
         )
+    if not (
+        source_item_type
+        in ["Lakehouse", "Warehouse", "MirroredDatabase", "SQLDatabase", "KQLDatabase"]
+    ):
+        raise ValueError(
+            f"{icons.red_dot} The 'source_item_type' parameter must be 'Lakehouse', 'Warehouse', 'MirroredDatabase', 'SQLDatabase', or 'KQLDatabase'"
+        )
 
     (source_workspace_name, source_workspace_id) = resolve_workspace_name_and_id(
         source_workspace
     )
-    source_lakehouse_id = resolve_lakehouse_id(source_lakehouse, source_workspace_id)
-    source_lakehouse_name = fabric.resolve_item_name(
-        item_id=source_lakehouse_id, type="Lakehouse", workspace=source_workspace_id
+
+    source_item_id = resolve_item_id(source_item, source_workspace_id)
+    source_item_name = fabric.resolve_item_name(
+        item_id=source_item_id, type=source_item_type, workspace=source_workspace_id
     )
 
     if destination_workspace is None:
@@ -97,7 +109,7 @@ def create_shortcut_onelake(
         "target": {
             "oneLake": {
                 "workspaceId": source_workspace_id,
-                "itemId": source_lakehouse_id,
+                "itemId": source_item_id,
                 "path": source_full_path,
             }
         },
@@ -111,7 +123,7 @@ def create_shortcut_onelake(
     )
 
     print(
-        f"{icons.green_dot} The shortcut '{shortcut_name}' was created in the '{destination_lakehouse_name}' lakehouse within the '{destination_workspace_name} workspace. It is based on the '{table_name}' table in the '{source_lakehouse_name}' lakehouse within the '{source_workspace_name}' workspace."
+        f"{icons.green_dot} The shortcut '{shortcut_name}' was created in the '{destination_lakehouse_name}' lakehouse within the '{destination_workspace_name} workspace. It is based on the '{table_name}' table in the '{source_item_name}' {source_item_type} within the '{source_workspace_name}' workspace."
     )
 
 
