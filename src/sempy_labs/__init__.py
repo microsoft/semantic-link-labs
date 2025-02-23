@@ -163,6 +163,7 @@ from sempy_labs._notebooks import (
 from sempy_labs._sql import (
     ConnectWarehouse,
     ConnectLakehouse,
+    ConnectSQLDatabase,
 )
 from sempy_labs._workspace_identity import (
     provision_workspace_identity,
