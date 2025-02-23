@@ -139,7 +139,6 @@ def delta_analyzer(
     row_group_df = _create_dataframe(columns=row_group_df_columns)
     column_chunk_df = _create_dataframe(columns=column_chunk_df_columns)
 
-    row_count = _delta_table_row_count(table_name)
     row_groups = 0
     max_rows_per_row_group = 0
     min_rows_per_row_group = float("inf")
@@ -151,7 +150,11 @@ def delta_analyzer(
     spark = _create_spark_session()
 
     from delta import DeltaTable
+
     delta_table = DeltaTable.forPath(spark, delta_table_path)
+    table_df = delta_table.toDF()
+    # total_partition_count = table_df.rdd.getNumPartitions()
+    row_count = table_df.count()
     table_details = delta_table.detail().collect()[0].asDict()
     # created_at = table_details.get("createdAt")
     # last_modified = table_details.get("lastModified")
@@ -174,6 +177,7 @@ def delta_analyzer(
         if file_info[0] in common_file_paths
     ]
 
+    # Loop through the parquet files
     for file_path, file_size in latest_version_files:
         file_name = os.path.basename(file_path)
         relative_path = file_path.split("Tables/")[1]
@@ -193,6 +197,7 @@ def delta_analyzer(
             [parquet_file_df, pd.DataFrame(new_data, index=[0])], ignore_index=True
         )
 
+        # Loop through the row groups
         for i in range(parquet_file.num_row_groups):
             row_group = parquet_file.metadata.row_group(i)
             num_rows = row_group.num_rows
@@ -203,6 +208,7 @@ def delta_analyzer(
             total_compressed_size = 0
             total_uncompressed_size = 0
 
+            # Loop through the columns
             if column_stats:
                 for j in range(row_group.num_columns):
                     column_chunk = row_group.column(j)
@@ -405,6 +411,7 @@ def get_delta_table_history(
     path = create_abfss_path(lakehouse_id, workspace_id, table_name)
 
     from delta import DeltaTable
+
     delta_table = DeltaTable.forPath(spark, path)
     delta_table = DeltaTable.forPath(spark, path)
     df = delta_table.history().toPandas()
