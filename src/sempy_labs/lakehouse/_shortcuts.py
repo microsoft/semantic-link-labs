@@ -14,15 +14,16 @@ from uuid import UUID
 
 def create_shortcut_onelake(
     table_name: str,
-    source_item: str | UUID,
-    source_item_type: str,
     source_workspace: str | UUID,
     destination_lakehouse: str,
     destination_workspace: Optional[str | UUID] = None,
     shortcut_name: Optional[str] = None,
+    source_item: str | UUID = None,
+    source_item_type: str = "Lakehouse",
     source_path: str = "Tables",
     destination_path: str = "Tables",
-):
+    **kwargs,
+):   
     """
     Creates a `shortcut <https://learn.microsoft.com/fabric/onelake/onelake-shortcuts>`_ to a delta table in OneLake.
 
@@ -32,10 +33,6 @@ def create_shortcut_onelake(
     ----------
     table_name : str
         The table name for which a shortcut will be created.
-    source_item : str | uuid.UUID
-        The source Fabric data store item in which the table resides. Can be either the Name or ID of the item.
-    source_item_type: str
-        The source Fabric data store item type. Options are 'Lakehouse', 'Warehouse', 'MirroredDatabase', 'SQLDatabase', and 'KQLDatabase'.
     source_workspace : str | uuid.UUID
         The name or ID of the Fabric workspace in which the source data store exists.
     destination_lakehouse : str
@@ -46,11 +43,23 @@ def create_shortcut_onelake(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     shortcut_name : str, default=None
         The name of the shortcut 'table' to be created. This defaults to the 'table_name' parameter value.
+    source_item : str | uuid.UUID, default=None
+        The source Fabric data store item in which the table resides. Can be either the Name or ID of the item.
+    source_item_type: str, default="Lakehouse"
+        The source Fabric data store item type. Options are 'Lakehouse', 'Warehouse', 'MirroredDatabase', 'SQLDatabase', and 'KQLDatabase'.
     source_path : str, default="Tables"
         A string representing the full path to the table/file in the source lakehouse, including either "Files" or "Tables". Examples: Tables/FolderName/SubFolderName; Files/FolderName/SubFolderName.
     destination_path: str, default="Tables"
         A string representing the full path where the shortcut is created, including either "Files" or "Tables". Examples: Tables/FolderName/SubFolderName; Files/FolderName/SubFolderName.
     """
+
+    if source_item is None:
+        if "source_lakehouse" in kwargs:
+            source_item = kwargs.get("source_lakehouse")
+        else:
+            raise ValueError(
+                f"{icons.red_dot} The 'source_item' parameter must be provided."
+            )
 
     if not (source_path.startswith("Files") or source_path.startswith("Tables")):
         raise ValueError(
