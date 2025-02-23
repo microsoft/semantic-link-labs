@@ -11,6 +11,7 @@ from sempy_labs._helper_functions import (
     _conv_b64,
     _decode_b64,
     _base_api,
+    _mount,
 )
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 import sempy_labs._icons as icons
@@ -368,16 +369,16 @@ def get_semantic_model_bim(
                 f"{icons.red_dot} In order to save the model.bim file, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
             )
 
-        lakehouse = resolve_lakehouse_name()
-        folderPath = "/lakehouse/default/Files"
-        fileExt = ".bim"
-        if not save_to_file_name.endswith(fileExt):
-            save_to_file_name = f"{save_to_file_name}{fileExt}"
-        filePath = os.path.join(folderPath, save_to_file_name)
-        with open(filePath, "w") as json_file:
+        local_path = _mount()
+        save_folder = f"{local_path}/Files"
+        file_ext = ".bim"
+        if not save_to_file_name.endswith(file_ext):
+            save_to_file_name = f"{save_to_file_name}{file_ext}"
+        file_path = os.path.join(save_folder, save_to_file_name)
+        with open(file_path, "w") as json_file:
             json.dump(bimJson, json_file, indent=4)
         print(
-            f"{icons.green_dot} The {fileExt} file for the '{dataset_name}' semantic model has been saved to the '{lakehouse}' in this location: '{filePath}'.\n\n"
+            f"{icons.green_dot} The {file_ext} file for the '{dataset_name}' semantic model has been saved to the lakehouse attached to the notebook within: 'Files/{save_to_file_name}'.\n\n"
         )
 
     return bimJson

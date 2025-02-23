@@ -6,6 +6,7 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
     _base_api,
     resolve_item_id,
+    _mount,
 )
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from uuid import UUID
@@ -63,7 +64,9 @@ def download_report(
     )
 
     # Save file to the attached lakehouse
-    with open(f"/lakehouse/default/Files/{file_name}.pbix", "wb") as file:
+    local_path = _mount()
+    save_file = f"{local_path}/Files/{file_name}.pbix"
+    with open(save_file, "wb") as file:
         file.write(response.content)
 
     print(
