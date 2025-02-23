@@ -1748,6 +1748,7 @@ class TOMWrapper:
             "TOM.Table", "TOM.Column", "TOM.Measure", "TOM.Hierarchy", "TOM.Level"
         ],
         language: str,
+        property: str = "Name",
     ):
         """
         Removes an object's `translation <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.culture?view=analysisservices-dotnet>`_ value.
@@ -1758,13 +1759,28 @@ class TOMWrapper:
             An object (i.e. table/column/measure) within a semantic model.
         language : str
             The language code.
+        property : str, default="Name"
+            The property to set. Options: 'Name', 'Description', 'Display Folder'.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        o = object.Model.Cultures[language].ObjectTranslations[
-            object, TOM.TranslatedProperty.Caption
-        ]
-        object.Model.Cultures[language].ObjectTranslations.Remove(o)
+        if property in ["Caption", "Name"]:
+            prop = TOM.TranslatedProperty.Caption
+        elif property == "Description":
+            prop = TOM.TranslatedProperty.Description
+        else:
+            prop = TOM.TranslatedProperty.DisplayFolder
+
+        if property == "DisplayFolder" and object.ObjectType not in [
+            TOM.ObjectType.Table,
+            TOM.ObjectType.Column,
+            TOM.ObjectType.Measure,
+            TOM.ObjectType.Hierarchy,
+        ]:
+            pass
+        else:
+            o = object.Model.Cultures[language].ObjectTranslations[object, prop]
+            object.Model.Cultures[language].ObjectTranslations.Remove(o)
 
     def remove_object(self, object):
         """
@@ -1779,6 +1795,8 @@ class TOMWrapper:
 
         objType = object.ObjectType
 
+        properties = ["Name", "Description", "DisplayFolder"]
+
         # Have to remove translations and perspectives on the object before removing it.
         if objType in [
             TOM.ObjectType.Table,
@@ -1789,7 +1807,10 @@ class TOMWrapper:
         ]:
             for lang in object.Model.Cultures:
                 try:
-                    self.remove_translation(object=object, language=lang.Name)
+                    for property in properties:
+                        self.remove_translation(
+                            object=object, language=lang.Name, property=property
+                        )
                 except Exception:
                     pass
         if objType in [
@@ -2965,6 +2986,8 @@ class TOMWrapper:
 
         from sempy_labs._list_functions import list_tables
 
+        fabric.refresh_tom_cache(workspace=self._workspace_id)
+
         dfT = list_tables(
             dataset=self._dataset_id, workspace=self._workspace_id, extended=True
         )
@@ -2983,19 +3006,19 @@ class TOMWrapper:
 
         for t in self.model.Tables:
             dfT_filt = dfT[dfT["Name"] == t.Name]
-            if len(dfT_filt) > 0:
+            if not dfT_filt.empty:
                 row = dfT_filt.iloc[0]
                 rowCount = str(row["Row Count"])
                 totalSize = str(row["Total Size"])
                 self.set_annotation(object=t, name="Vertipaq_RowCount", value=rowCount)
                 self.set_annotation(
-                    object=t, name="Vertipaq_TableSize", value=totalSize
+                    object=t, name="Vertipaq_TotalSize", value=totalSize
                 )
             for c in t.Columns:
                 dfC_filt = dfC[
                     (dfC["Table Name"] == t.Name) & (dfC["Column Name"] == c.Name)
                 ]
-                if len(dfC_filt) > 0:
+                if not dfC_filt.empty:
                     row = dfC_filt.iloc[0]
                     totalSize = str(row["Total Size"])
                     dataSize = str(row["Data Size"])
@@ -3021,7 +3044,7 @@ class TOMWrapper:
                 dfP_filt = dfP[
                     (dfP["Table Name"] == t.Name) & (dfP["Partition Name"] == p.Name)
                 ]
-                if len(dfP_filt) > 0:
+                if not dfP_filt.empty:
                     row = dfP_filt.iloc[0]
                     recordCount = str(row["Record Count"])
                     segmentCount = str(row["Segment Count"])
@@ -3039,14 +3062,14 @@ class TOMWrapper:
                 dfH_filt = dfH[
                     (dfH["Table Name"] == t.Name) & (dfH["Hierarchy Name"] == h.Name)
                 ]
-                if len(dfH_filt) > 0:
+                if not dfH_filt.empty:
                     usedSize = str(dfH_filt["Used Size"].iloc[0])
                     self.set_annotation(
                         object=h, name="Vertipaq_UsedSize", value=usedSize
                     )
         for r in self.model.Relationships:
             dfR_filt = dfR[dfR["Relationship Name"] == r.Name]
-            if len(dfR_filt) > 0:
+            if not dfR_filt.empty:
                 relSize = str(dfR_filt["Used Size"].iloc[0])
                 self.set_annotation(object=r, name="Vertipaq_UsedSize", value=relSize)
         try:
@@ -3199,12 +3222,12 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        objType = object.ObjectType
+        if object.ObjectType not in [TOM.ObjectType.Table, TOM.ObjectType.Column]:
+            raise ValueError(
+                f"{icons.red_dot} The 'object' parameter must be a Table or Column object."
+            )
 
-        if objType == TOM.ObjectType.Column:
-            result = self.get_annotation_value(object=object, name="Vertipaq_TotalSize")
-        elif objType == TOM.ObjectType.Table:
-            result = self.get_annotation_value(object=object, name="Vertipaq_TotalSize")
+        result = self.get_annotation_value(object=object, name="Vertipaq_TotalSize")
 
         return int(result) if result is not None else 0
 
@@ -3410,7 +3433,10 @@ class TOMWrapper:
                     if c.Name == obj.Name:
                         tableList.append(c.Parent.Name)
                 if (
-                    re.search(create_pattern(tableList, obj.Name), object.Expression)
+                    re.search(
+                        create_pattern(tableList, re.escape(obj.Name)),
+                        object.Expression,
+                    )
                     is not None
                 ):
                     yield obj

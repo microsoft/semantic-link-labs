@@ -6,7 +6,6 @@ import os
 import shutil
 import datetime
 import warnings
-from pyspark.sql import SparkSession
 from sempy_labs._helper_functions import (
     format_dax_object_name,
     resolve_lakehouse_name,
@@ -15,6 +14,7 @@ from sempy_labs._helper_functions import (
     _get_column_aggregate,
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
+    _create_spark_session,
 )
 from sempy_labs._list_functions import list_relationships, list_tables
 from sempy_labs.lakehouse import lakehouse_attached, get_lakehouse_tables
@@ -68,6 +68,8 @@ def vertipaq_analyzer(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+
+    fabric.refresh_tom_cache(workspace=workspace)
 
     vertipaq_map = {
         "Model": {
@@ -163,9 +165,12 @@ def vertipaq_analyzer(
     dfP = fabric.list_partitions(
         dataset=dataset_id, extended=True, workspace=workspace_id
     )
-    artifact_type, lakehouse_name, lakehouse_id, lakehouse_workspace_id = (
-        get_direct_lake_source(dataset=dataset_id, workspace=workspace_id)
-    )
+
+    artifact_type = None
+    if is_direct_lake:
+        artifact_type, lakehouse_name, lakehouse_id, lakehouse_workspace_id = (
+            get_direct_lake_source(dataset=dataset_id, workspace=workspace_id)
+        )
 
     dfR["Missing Rows"] = 0
     dfR["Missing Rows"] = dfR["Missing Rows"].astype(int)
@@ -192,7 +197,7 @@ def vertipaq_analyzer(
                 )
 
             sql_statements = []
-            spark = SparkSession.builder.getOrCreate()
+            spark = _create_spark_session()
             # Loop through tables
             for lakeTName in dfC_flt["Query"].unique():
                 query = "SELECT "
@@ -270,7 +275,7 @@ def vertipaq_analyzer(
             dfR.rename(columns={"Source": "To Lake Column"}, inplace=True)
             dfR.drop(columns=["Column Object"], inplace=True)
 
-            spark = SparkSession.builder.getOrCreate()
+            spark = _create_spark_session()
             for i, r in dfR.iterrows():
                 fromTable = r["From Lake Table"]
                 fromColumn = r["From Lake Column"]

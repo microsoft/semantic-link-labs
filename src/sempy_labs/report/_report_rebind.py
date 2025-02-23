@@ -58,7 +58,7 @@ def report_rebind(
         _base_api(
             request=f"v1.0/myorg/groups/{report_workspace_id}/reports/{report_id}/Rebind",
             method="post",
-            json=payload,
+            payload=payload,
         )
 
         print(

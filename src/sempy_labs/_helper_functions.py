@@ -31,27 +31,35 @@ def _build_url(url: str, params: dict) -> str:
 
 
 def create_abfss_path(
-    lakehouse_id: UUID, lakehouse_workspace_id: UUID, delta_table_name: str
+    lakehouse_id: UUID,
+    lakehouse_workspace_id: UUID,
+    delta_table_name: Optional[str] = None,
 ) -> str:
     """
     Creates an abfss path for a delta table in a Fabric lakehouse.
 
     Parameters
     ----------
-    lakehouse_id : UUID
+    lakehouse_id : uuid.UUID
         ID of the Fabric lakehouse.
-    lakehouse_workspace_id : UUID
+    lakehouse_workspace_id : uuid.UUID
         ID of the Fabric workspace.
-    delta_table_name : str
+    delta_table_name : str, default=None
         Name of the delta table name.
 
     Returns
     -------
     str
-        An abfss path which can be used to save/reference a delta table in a Fabric lakehouse.
+        An abfss path which can be used to save/reference a delta table in a Fabric lakehouse or lakehouse.
     """
 
-    return f"abfss://{lakehouse_workspace_id}@onelake.dfs.fabric.microsoft.com/{lakehouse_id}/Tables/{delta_table_name}"
+    fp = _get_default_file_path()
+    path = f"abfss://{lakehouse_workspace_id}@{fp}/{lakehouse_id}"
+
+    if delta_table_name is not None:
+        path += f"/Tables/{delta_table_name}"
+
+    return path
 
 
 def _get_default_file_path() -> str:
@@ -256,7 +264,7 @@ def resolve_dataset_id(
 
     Returns
     -------
-    UUID
+    uuid.UUID
         The ID of the semantic model.
     """
 
@@ -504,7 +512,6 @@ def save_as_delta_table(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    from pyspark.sql import SparkSession
     from pyspark.sql.types import (
         StringType,
         IntegerType,
@@ -536,8 +543,9 @@ def save_as_delta_table(
             f"{icons.red_dot} Invalid 'delta_table_name'. Delta tables in the lakehouse cannot have spaces in their names."
         )
 
-    dataframe.columns = dataframe.columns.str.replace(" ", "_")
-    spark = SparkSession.builder.getOrCreate()
+    dataframe.columns = [col.replace(" ", "_") for col in dataframe.columns]
+
+    spark = _create_spark_session()
 
     type_mapping = {
         "string": StringType(),
@@ -731,7 +739,7 @@ def resolve_item_type(item_id: UUID, workspace: Optional[str | UUID] = None) -> 
 
     if dfI_filt.empty:
         raise ValueError(
-            f"Invalid 'item_id' parameter. The '{item_id}' item was not found in the '{workspace_name}' workspace."
+            f"{icons.red_dot} Invalid 'item_id' parameter. The '{item_id}' item was not found in the '{workspace_name}' workspace."
         )
     return dfI_filt["Type"].iloc[0]
 
@@ -792,7 +800,7 @@ def resolve_workspace_capacity(
 
     Returns
     -------
-    Tuple[UUID, str]
+    Tuple[uuid.UUID, str]
         capacity Id; capacity came.
     """
 
@@ -823,7 +831,7 @@ def get_capacity_id(workspace: Optional[str | UUID] = None) -> UUID:
 
     Returns
     -------
-    UUID
+    uuid.UUID
         The capacity Id.
     """
 
@@ -861,7 +869,7 @@ def get_capacity_name(workspace: Optional[str | UUID] = None) -> str:
     capacity_id = get_capacity_id(workspace)
     dfC = fabric.list_capacities()
     dfC_filt = dfC[dfC["Id"] == capacity_id]
-    if len(dfC_filt) == 0:
+    if dfC_filt.empty:
         raise ValueError(
             f"{icons.red_dot} The '{capacity_id}' capacity Id does not exist."
         )
@@ -892,7 +900,7 @@ def resolve_capacity_name(capacity_id: Optional[UUID] = None) -> str:
     dfC = fabric.list_capacities()
     dfC_filt = dfC[dfC["Id"] == capacity_id]
 
-    if len(dfC_filt) == 0:
+    if dfC_filt.empty:
         raise ValueError(
             f"{icons.red_dot} The '{capacity_id}' capacity Id does not exist."
         )
@@ -913,7 +921,7 @@ def resolve_capacity_id(capacity_name: Optional[str] = None) -> UUID:
 
     Returns
     -------
-    UUID
+    uuid.UUID
         The capacity Id.
     """
 
@@ -923,7 +931,7 @@ def resolve_capacity_id(capacity_name: Optional[str] = None) -> UUID:
     dfC = fabric.list_capacities()
     dfC_filt = dfC[dfC["Display Name"] == capacity_name]
 
-    if len(dfC_filt) == 0:
+    if dfC_filt.empty:
         raise ValueError(
             f"{icons.red_dot} The '{capacity_name}' capacity does not exist."
         )
@@ -1013,7 +1021,7 @@ def resolve_deployment_pipeline_id(deployment_pipeline: str | UUID) -> UUID:
     Parameters
     ----------
     deployment_pipeline : str | uuid.UUID
-        The deployment pipeline name
+        The deployment pipeline name or ID.
 
     Returns
     -------
@@ -1223,7 +1231,7 @@ def resolve_notebook_id(notebook: str, workspace: Optional[str | UUID] = None) -
 
     Returns
     -------
-    UUID
+    uuid.UUID
         The notebook Id.
     """
 
@@ -1238,23 +1246,33 @@ def generate_guid():
 
 
 def _get_column_aggregate(
-    lakehouse: str,
     table_name: str,
     column_name: str = "RunId",
+    lakehouse: Optional[str | UUID] = None,
+    workspace: Optional[str | UUID] = None,
     function: str = "max",
     default_value: int = 0,
 ) -> int:
 
-    from pyspark.sql import SparkSession
+    from pyspark.sql.functions import approx_count_distinct
+    from pyspark.sql import functions as F
 
-    spark = SparkSession.builder.getOrCreate()
     function = function.upper()
-    query = f"SELECT {function}({column_name}) FROM {lakehouse}.{table_name}"
-    if "COUNT" in function and "DISTINCT" in function:
-        query = f"SELECT COUNT(DISTINCT({column_name})) FROM {lakehouse}.{table_name}"
-    dfSpark = spark.sql(query)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    lakehouse_id = resolve_lakehouse_id(lakehouse, workspace)
+    path = create_abfss_path(lakehouse_id, workspace_id, table_name)
 
-    return dfSpark.collect()[0][0] or default_value
+    spark = _create_spark_session()
+    df = spark.read.format("delta").load(path)
+
+    if function in {"COUNTDISTINCT", "DISTINCTCOUNT"}:
+        result = df.select(F.count_distinct(F.col(column_name)))
+    elif "APPROX" in function:
+        result = df.select(approx_count_distinct(column_name))
+    else:
+        result = df.selectExpr(f"{function}({column_name})")
+
+    return result.collect()[0][0] or default_value
 
 
 def _make_list_unique(my_list):
@@ -1558,6 +1576,9 @@ def _update_dataframe_datatypes(dataframe: pd.DataFrame, column_map: dict):
             # This is for list_synonyms since the weight column is float and can have NaN values.
             elif data_type == "float_fillna":
                 dataframe[column] = dataframe[column].fillna(0).astype(float)
+            # This is to avoid NaN values in integer columns (for delta analyzer)
+            elif data_type == "int_fillna":
+                dataframe[column] = dataframe[column].fillna(0).astype(int)
             elif data_type in ["str", "string"]:
                 dataframe[column] = dataframe[column].astype(str)
             else:
@@ -1575,3 +1596,73 @@ def _print_success(item_name, item_type, workspace_name, action="created"):
         )
     else:
         raise NotImplementedError
+
+
+def _pure_python_notebook() -> bool:
+
+    from sempy.fabric._environment import _on_jupyter
+
+    return _on_jupyter()
+
+
+def _create_spark_session():
+
+    if _pure_python_notebook():
+        raise ValueError(
+            f"{icons.red_dot} This function is only available in a PySpark notebook."
+        )
+
+    from pyspark.sql import SparkSession
+
+    return SparkSession.builder.getOrCreate()
+
+
+def _read_delta_table(path: str):
+
+    spark = _create_spark_session()
+
+    return spark.read.format("delta").load(path)
+
+
+def _delta_table_row_count(table_name: str) -> int:
+
+    spark = _create_spark_session()
+
+    return spark.table(table_name).count()
+
+
+def _run_spark_sql_query(query):
+
+    spark = _create_spark_session()
+
+    return spark.sql(query)
+
+
+def _mount(lakehouse, workspace) -> str:
+    """
+    Mounts a lakehouse to a notebook if it is not already mounted. Returns the local path to the lakehouse.
+    """
+
+    import notebookutils
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace=workspace)
+    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+        lakehouse=lakehouse, workspace=workspace
+    )
+
+    lake_path = create_abfss_path(lakehouse_id, workspace_id)
+    mounts = notebookutils.fs.mounts()
+    mount_point = f"/{workspace_name.replace(' ', '')}{lakehouse_name.replace(' ', '')}"
+    if not any(i.get("source") == lake_path for i in mounts):
+        # Mount lakehouse if not mounted
+        notebookutils.fs.mount(lake_path, mount_point)
+        print(
+            f"{icons.green_dot} Mounted the '{lakehouse_name}' lakehouse within the '{workspace_name}' to the notebook."
+        )
+
+    mounts = notebookutils.fs.mounts()
+    local_path = next(
+        i.get("localPath") for i in mounts if i.get("source") == lake_path
+    )
+
+    return local_path

@@ -13,6 +13,8 @@ def resolve_user_id(user: str | UUID) -> UUID:
     """
     Resolves the user ID from the user principal name or ID.
 
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     user : str | uuid.UUID
@@ -36,6 +38,8 @@ def get_user(user: str | UUID) -> pd.DataFrame:
     Shows properties of a given user.
 
     This is a wrapper function for the following API: `Get a user <https://learn.microsoft.com/graph/api/user-get>`_.
+
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -71,6 +75,8 @@ def list_users() -> pd.DataFrame:
     Shows a list of users and their properties.
 
     This is a wrapper function for the following API: `List users <https://learn.microsoft.com/graph/api/user-list>`_.
+
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Returns
     -------
@@ -119,12 +125,15 @@ def send_mail(
     subject: str,
     to_recipients: str | List[str],
     content: str,
+    content_type: str = "Text",
     cc_recipients: str | List[str] = None,
 ):
     """
     Sends an email to the specified recipients.
 
     This is a wrapper function for the following API: `user: sendMail <https://learn.microsoft.com/graph/api/user-sendmail>`_.
+
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -136,9 +145,16 @@ def send_mail(
         The email address of the recipients.
     content : str
         The email content.
+    content_type : str, default="Text"
+        The email content type. Options: "Text" or "HTML".
     cc_recipients : str | List[str], default=None
         The email address of the CC recipients.
     """
+
+    if content_type.lower() == "html":
+        content_type = "HTML"
+    else:
+        content_type = "Text"
 
     user_id = resolve_user_id(user=user)
 
@@ -162,7 +178,7 @@ def send_mail(
         "message": {
             "subject": subject,
             "body": {
-                "contentType": "Text",
+                "contentType": content_type,
                 "content": content,
             },
             "toRecipients": to_email_addresses,

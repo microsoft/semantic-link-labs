@@ -54,6 +54,7 @@ def migrate_calc_tables_to_semantic_model(
         )
 
     workspace = fabric.resolve_workspace_name(workspace)
+    fabric.refresh_tom_cache(workspace=workspace)
 
     if new_dataset_workspace is None:
         new_dataset_workspace = workspace

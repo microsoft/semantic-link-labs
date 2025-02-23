@@ -319,7 +319,7 @@ def assign_domain_workspaces_by_capacities(
         The capacity names.
     """
 
-    from sempy_labs.admin import list_capacities
+    from sempy_labs.admin._capacities import list_capacities
 
     if "domain_name" in kwargs:
         domain = kwargs["domain_name"]
@@ -413,8 +413,6 @@ def assign_domain_workspaces(domain: str | UUID, workspace_names: str | List[str
         request=f"/v1/admin/domains/{domain_id}/assignWorkspaces",
         method="post",
         payload=payload,
-        lro_return_status_code=True,
-        status_codes=200,
     )
 
     print(

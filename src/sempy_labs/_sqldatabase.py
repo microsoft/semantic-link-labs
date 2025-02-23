@@ -61,7 +61,7 @@ from uuid import UUID
 #     )
 
 
-def list_sqldatabses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
+def _list_sql_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the databses within a workspace.
 
@@ -80,12 +80,16 @@ def list_sqldatabses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
 
     columns = {
-        "SQLDatabase Name": "string",
-        "SQLDatabase Id": "string",
+        "SQL Database Name": "string",
+        "SQL Database Id": "string",
         "Description": "string",
+        "Connection Type": "string",
         "Connection Info": "string",
+        "Database Name": "string",
+        "Server FQDN": "string",
+        "Provisioning Status": "string",
         "Created Date": "datetime",
-        "Last Updated Time": "datetime",
+        "Last Updated Time UTC": "datetime",
     }
     df = _create_dataframe(columns=columns)
 
@@ -100,12 +104,16 @@ def list_sqldatabses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
             prop = v.get("properties", {})
 
             new_data = {
-                "Warehouse Name": v.get("displayName"),
-                "Warehouse Id": v.get("id"),
+                "SQL Database Name": v.get("displayName"),
+                "SQL Database Id": v.get("id"),
                 "Description": v.get("description"),
+                "Connection Type": v.get("type"),
                 "Connection Info": prop.get("connectionInfo"),
+                "Database Name": prop.get("databaseName"),
+                "Server FQDN": prop.get("serverFqdn"),
+                "Provisioning Status": prop.get("provisioningState"),
                 "Created Date": prop.get("createdDate"),
-                "Last Updated Time": prop.get("lastUpdatedTime"),
+                "Last Updated Time UTC": prop.get("lastUpdatedTimeUtc"),
             }
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
@@ -145,15 +153,15 @@ def list_sqldatabses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 #     )
 
 
-def get_sqldatabase_tables(
-    sqldatabase: str | UUID, workspace: Optional[str | UUID] = None
+def get_sql_database_tables(
+    sql_database: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
     Shows a list of the tables in the Fabric SQLDabatse. This function is based on INFORMATION_SCHEMA.TABLES.
 
     Parameters
     ----------
-    sqldatabase : str | uuid.UUID
+    sql_database : str | uuid.UUID
         Name or ID of the Fabric SQLDabatase.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
@@ -168,7 +176,7 @@ def get_sqldatabase_tables(
 
     from sempy_labs._sql import ConnectSQLDatabase
 
-    with ConnectSQLDatabase(sqldatabase=sqldatabase, workspace=workspace) as sql:
+    with ConnectSQLDatabase(sql_database=sql_database, workspace=workspace) as sql:
         df = sql.query(
             """
         SELECT TABLE_SCHEMA AS [Schema], TABLE_NAME AS [Table Name], TABLE_TYPE AS [Table Type]
@@ -180,15 +188,15 @@ def get_sqldatabase_tables(
     return df
 
 
-def get_sqldatabase_columns(
-    sqldatabase: str | UUID, workspace: Optional[str | UUID] = None
+def get_sql_database_columns(
+    sql_database: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
     Shows a list of the columns in each table within the Fabric SQLDabatase. This function is based on INFORMATION_SCHEMA.COLUMNS.
 
     Parameters
     ----------
-    sqldatabase : str | uuid.UUID
+    sql_database : str | uuid.UUID
         Name or ID of the Fabric SQLDabatase.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
@@ -203,7 +211,7 @@ def get_sqldatabase_columns(
 
     from sempy_labs._sql import ConnectSQLDatabase
 
-    with ConnectSQLDatabase(sqldatabase=sqldatabase, workspace=workspace) as sql:
+    with ConnectSQLDatabase(sql_database=sql_database, workspace=workspace) as sql:
         df = sql.query(
             """
         SELECT t.TABLE_SCHEMA AS [Schema], t.TABLE_NAME AS [Table Name], c.COLUMN_NAME AS [Column Name], c.DATA_TYPE AS [Data Type], c.IS_NULLABLE AS [Is Nullable], c.CHARACTER_MAXIMUM_LENGTH AS [Character Max Length]

@@ -416,7 +416,7 @@ def model_bpa_rules(
                 lambda obj, tom: any(
                     re.search(
                         r"USERELATIONSHIP\s*\(\s*.+?(?=])\]\s*,\s*'*"
-                        + obj.Name
+                        + re.escape(obj.Name)
                         + r"'*\[",
                         m.Expression,
                         flags=re.IGNORECASE,
@@ -455,7 +455,9 @@ def model_bpa_rules(
                 "Warning",
                 "The EVALUATEANDLOG function should not be used in production models",
                 lambda obj, tom: re.search(
-                    r"evaluateandlog\s*\(", obj.Expression, flags=re.IGNORECASE
+                    r"evaluateandlog\s*\(",
+                    obj.Expression,
+                    flags=re.IGNORECASE,
                 ),
                 "The EVALUATEANDLOG function is meant to be used only in development/test environments and should not be used in production models.",
                 "https://pbidax.wordpress.com/2022/08/16/introduce-the-dax-evaluateandlog-function",
@@ -592,13 +594,13 @@ def model_bpa_rules(
                 and not any(
                     re.search(
                         r"USERELATIONSHIP\s*\(\s*\'*"
-                        + obj.FromTable.Name
+                        + re.escape(obj.FromTable.Name)
                         + r"'*\["
-                        + obj.FromColumn.Name
+                        + re.escape(obj.FromColumn.Name)
                         + r"\]\s*,\s*'*"
-                        + obj.ToTable.Name
+                        + re.escape(obj.ToTable.Name)
                         + r"'*\["
-                        + obj.ToColumn.Name
+                        + re.escape(obj.ToColumn.Name)
                         + r"\]",
                         m.Expression,
                         flags=re.IGNORECASE,
