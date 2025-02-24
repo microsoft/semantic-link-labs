@@ -297,6 +297,7 @@ __all__ = [
     "resolve_warehouse_id",
     "ConnectWarehouse",
     "ConnectLakehouse",
+    "ConnectSQLDatabase",
     "update_semantic_model_from_bim",
     "list_connections",
     "get_semantic_model_size",
