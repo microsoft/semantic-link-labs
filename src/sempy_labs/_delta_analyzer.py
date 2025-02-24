@@ -291,16 +291,16 @@ def delta_analyzer(
         for ind, r in column_df.iterrows():
             col_name = r["Column Name"]
             if approx_distinct_count:
-                function = 'approx'
+                function = "approx"
             else:
-                function = 'distinctcount'
+                function = "distinctcount"
             dc = _get_column_aggregate(
-                    table_name=table_name,
-                    column_name=col_name,
-                    function=function,
-                    lakehouse=lakehouse,
-                    workspace=workspace,
-                )
+                table_name=table_name,
+                column_name=col_name,
+                function=function,
+                lakehouse=lakehouse,
+                workspace=workspace,
+            )
 
             if "Cardinality" not in column_df.columns:
                 column_df["Cardinality"] = None

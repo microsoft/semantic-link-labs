@@ -1,6 +1,6 @@
 from sempy._utils._log import log
 import pandas as pd
-from typing import Optional
+from typing import Optional, List
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_item_name_and_id,
@@ -189,7 +189,7 @@ def run_on_demand_item_job(
     Parameters
     ----------
     item : str | uuid.UUID
-        The item name or ID
+        The item name or ID.
     type : str, default=None
         The item `type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_. If specifying the item name as the item, the item type is required.
     job_type : str, default="DefaultJob"
@@ -213,3 +213,226 @@ def run_on_demand_item_job(
     )
 
     print(f"{icons.green_dot} The '{item_name}' {type.lower()} has been executed.")
+
+
+def create_item_schedule_cron(
+    item: str | UUID,
+    type: str,
+    start_date_time: str,
+    end_date_time: str,
+    local_time_zone: str,
+    job_type: str = "DefaultJob",
+    interval: int = 10,
+    enabled: bool = True,
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Create a new schedule for an item based on a `chronological time <https://learn.microsoft.com/rest/api/fabric/core/job-scheduler/create-item-schedule?tabs=HTTP#cronscheduleconfig>`_.
+
+    This is a wrapper function for the following API: `Job Scheduler - Create Item Schedule <https://learn.microsoft.com/rest/api/fabric/core/job-scheduler/create-item-schedule>`_.
+
+    Parameters
+    ----------
+    item : str | uuid.UUID
+        The item name or ID.
+    type : str
+        The item `type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_. If specifying the item name as the item, the item type is required.
+    start_date_time: str
+        The start date and time of the schedule. Example: "2024-04-28T00:00:00".
+    end_date_time: str
+        The end date and time of the schedule. Must be later than the start_date_time. Example: "2024-04-30T23:59:00".
+    local_time_zone: str
+        The `time zone <https://learn.microsoft.com/windows-hardware/manufacture/desktop/default-time-zones?view=windows-11>`_ of the schedule. Example: "Central Standard Time".
+    job_type : str, default="DefaultJob"
+        The job type.
+    interval: int, default=10
+        The schedule interval (in minutes).
+    enabled: bool, default=True
+        Whether the schedule is enabled.
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (item_name, item_id) = resolve_item_name_and_id(
+        item=item, type=type, workspace=workspace
+    )
+
+    payload = {
+        "enabled": enabled,
+        "configuration": {
+            "startDateTime": start_date_time,
+            "endDateTime": end_date_time,
+            "localTimeZoneId": local_time_zone,
+            "type": "Cron",
+            "interval": interval,
+        },
+    }
+
+    _base_api(
+        request=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/{job_type}/schedules",
+        method="post",
+        payload=payload,
+        status_codes=201,
+    )
+
+    print(
+        f"{icons.green_dot} The schedule for the '{item_name}' {type.lower()} has been created."
+    )
+
+
+def create_item_schedule_daily(
+    item: str | UUID,
+    type: str,
+    start_date_time: str,
+    end_date_time: str,
+    local_time_zone: str,
+    times: List[str],
+    job_type: str = "DefaultJob",
+    enabled: bool = True,
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Create a new daily schedule for an item.
+
+    This is a wrapper function for the following API: `Job Scheduler - Create Item Schedule <https://learn.microsoft.com/rest/api/fabric/core/job-scheduler/create-item-schedule>`_.
+
+    Parameters
+    ----------
+    item : str | uuid.UUID
+        The item name or ID.
+    type : str
+        The item `type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_. If specifying the item name as the item, the item type is required.
+    start_date_time: str
+        The start date and time of the schedule. Example: "2024-04-28T00:00:00".
+    end_date_time: str
+        The end date and time of the schedule. Must be later than the start_date_time. Example: "2024-04-30T23:59:00".
+    local_time_zone: str
+        The `time zone <https://learn.microsoft.com/windows-hardware/manufacture/desktop/default-time-zones?view=windows-11>`_ of the schedule. Example: "Central Standard Time".
+    times : List[str]
+        A list of time slots in hh:mm format, at most 100 elements are allowed. Example: ["00:00", "12:00"].
+    job_type : str, default="DefaultJob"
+        The job type.
+    enabled: bool, default=True
+        Whether the schedule is enabled.
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (item_name, item_id) = resolve_item_name_and_id(
+        item=item, type=type, workspace=workspace
+    )
+
+    payload = {
+        "enabled": enabled,
+        "configuration": {
+            "startDateTime": start_date_time,
+            "endDateTime": end_date_time,
+            "localTimeZoneId": local_time_zone,
+            "type": "Daily",
+            "times": times,
+        },
+    }
+
+    _base_api(
+        request=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/{job_type}/schedules",
+        method="post",
+        payload=payload,
+        status_codes=201,
+    )
+
+    print(
+        f"{icons.green_dot} The schedule for the '{item_name}' {type.lower()} has been created."
+    )
+
+
+def create_item_schedule_weekly(
+    item: str | UUID,
+    type: str,
+    start_date_time: str,
+    end_date_time: str,
+    local_time_zone: str,
+    times: List[str],
+    weekdays: List[str],
+    job_type: str = "DefaultJob",
+    enabled: bool = True,
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Create a new daily schedule for an item.
+
+    This is a wrapper function for the following API: `Job Scheduler - Create Item Schedule <https://learn.microsoft.com/rest/api/fabric/core/job-scheduler/create-item-schedule>`_.
+
+    Parameters
+    ----------
+    item : str | uuid.UUID
+        The item name or ID.
+    type : str
+        The item `type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_. If specifying the item name as the item, the item type is required.
+    start_date_time: str
+        The start date and time of the schedule. Example: "2024-04-28T00:00:00".
+    end_date_time: str
+        The end date and time of the schedule. Must be later than the start_date_time. Example: "2024-04-30T23:59:00".
+    local_time_zone: str
+        The `time zone <https://learn.microsoft.com/windows-hardware/manufacture/desktop/default-time-zones?view=windows-11>`_ of the schedule. Example: "Central Standard Time".
+    times : List[str]
+        A list of time slots in hh:mm format, at most 100 elements are allowed. Example: ["00:00", "12:00"].
+    weekdays : List[str]
+        A list of weekdays. Example: ["Monday", "Tuesday"].
+    job_type : str, default="DefaultJob"
+        The job type.
+    enabled: bool, default=True
+        Whether the schedule is enabled.
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (item_name, item_id) = resolve_item_name_and_id(
+        item=item, type=type, workspace=workspace
+    )
+
+    weekday_list = [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+    ]
+    for weekday in weekdays:
+        if weekday not in weekday_list:
+            raise ValueError(
+                f"{icons.red_dot} Invalid weekday: {weekday}. Must be one of {weekday_list}."
+            )
+
+    payload = {
+        "enabled": enabled,
+        "configuration": {
+            "startDateTime": start_date_time,
+            "endDateTime": end_date_time,
+            "localTimeZoneId": local_time_zone,
+            "type": "Weekly",
+            "times": times,
+            "weekdays": weekdays,
+        },
+    }
+
+    _base_api(
+        request=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/{job_type}/schedules",
+        method="post",
+        payload=payload,
+        status_codes=201,
+    )
+
+    print(
+        f"{icons.green_dot} The schedule for the '{item_name}' {type.lower()} has been created."
+    )

@@ -9,6 +9,9 @@ from sempy_labs._graphQL import (
 from sempy_labs._job_scheduler import (
     list_item_job_instances,
     list_item_schedules,
+    create_item_schedule_cron,
+    create_item_schedule_daily,
+    create_item_schedule_weekly,
 )
 from sempy_labs._delta_analyzer import (
     delta_analyzer,
@@ -519,4 +522,7 @@ __all__ = [
     "get_delta_table_history",
     "get_sql_database_columns",
     "get_sql_database_tables",
+    "create_item_schedule_cron",
+    "create_item_schedule_daily",
+    "create_item_schedule_weekly",
 ]
