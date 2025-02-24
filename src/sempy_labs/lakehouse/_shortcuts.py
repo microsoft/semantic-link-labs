@@ -1,6 +1,6 @@
 import sempy.fabric as fabric
 from sempy_labs._helper_functions import (
-    resolve_item_id,
+    resolve_item_name_and_id,
     resolve_lakehouse_name,
     resolve_lakehouse_id,
     resolve_workspace_name_and_id,
@@ -23,7 +23,7 @@ def create_shortcut_onelake(
     source_path: str = "Tables",
     destination_path: str = "Tables",
     **kwargs,
-):   
+):
     """
     Creates a `shortcut <https://learn.microsoft.com/fabric/onelake/onelake-shortcuts>`_ to a delta table in OneLake.
 
@@ -83,9 +83,8 @@ def create_shortcut_onelake(
         source_workspace
     )
 
-    source_item_id = resolve_item_id(source_item, source_workspace_id)
-    source_item_name = fabric.resolve_item_name(
-        item_id=source_item_id, type=source_item_type, workspace=source_workspace_id
+    (source_item_name, source_item_id) = resolve_item_name_and_id(
+        item=source_item, type=source_item_type, workspace=source_workspace_id
     )
 
     if destination_workspace is None:
@@ -98,13 +97,8 @@ def create_shortcut_onelake(
         )
 
     destination_workspace_id = fabric.resolve_workspace_id(destination_workspace)
-    destination_lakehouse_id = resolve_lakehouse_id(
-        destination_lakehouse, destination_workspace
-    )
-    destination_lakehouse_name = fabric.resolve_item_name(
-        item_id=destination_lakehouse_id,
-        type="Lakehouse",
-        workspace=destination_workspace_id,
+    (destination_lakehouse_name, destination_lakehouse_id) = resolve_item_name_and_id(
+        item=destination_lakehouse, type="Lakehouse", workspace=destination_workspace_id
     )
 
     if shortcut_name is None:
