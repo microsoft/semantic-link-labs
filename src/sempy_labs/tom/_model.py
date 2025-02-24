@@ -2,6 +2,7 @@ import sempy
 import sempy.fabric as fabric
 import pandas as pd
 import re
+import json
 from datetime import datetime
 from sempy_labs._helper_functions import (
     format_dax_object_name,
@@ -4698,6 +4699,183 @@ class TOMWrapper:
                     f"{icons.yellow_dot} '{m}' is not a member of the '{role_name}' role."
                 )
 
+    def get_bim(self) -> dict:
+        """
+        Retrieves the .bim file for the semantic model.
+
+        Returns
+        -------
+        dict
+            The .bim file.
+        """
+
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        return (
+            json.loads(TOM.JsonScripter.ScriptCreate(self.model.Database))
+            .get("create")
+            .get("database")
+        )
+
+    def _reduce_model(self, perspective_name: str):
+        """
+        Reduces a model's objects based on a perspective. Adds the dependent objects within a perspective to that perspective.
+        """
+
+        from sempy_labs._model_dependencies import get_model_calc_dependencies
+
+        fabric.refresh_tom_cache(workspace=self._workspace_id)
+        dfP = fabric.list_perspectives(
+            dataset=self._dataset_id, workspace=self._workspace_id
+        )
+        dfP = dfP[dfP["Perspective Name"] == perspective_name]
+        if dfP.empty:
+            raise ValueError(
+                f"{icons.red_dot} The '{perspective_name}' is not a valid perspective in the '{self._dataset_name}' semantic model within the '{self._workspace_name}' workspace."
+            )
+
+        dep = get_model_calc_dependencies(
+            dataset=self._dataset_id, workspace=self._workspace_id
+        )
+        dep_filt = dep[
+            dep["Object Type"].isin(
+                [
+                    "Rows Allowed",
+                    "Measure",
+                    "Calc Item",
+                    "Calc Column",
+                    "Calc Table",
+                    "Hierarchy",
+                ]
+            )
+        ]
+
+        tables = dfP[dfP["Object Type"] == "Table"]["Table Name"].tolist()
+        measures = dfP[dfP["Object Type"] == "Measure"]["Object Name"].tolist()
+        columns = dfP[dfP["Object Type"] == "Column"][["Table Name", "Object Name"]]
+        cols = [
+            f"'{row[0]}'[{row[1]}]"
+            for row in columns.itertuples(index=False, name=None)
+        ]
+        hierarchies = dfP[dfP["Object Type"] == "Hierarchy"][
+            ["Table Name", "Object Name"]
+        ]
+        hier = [
+            f"'{row[0]}'[{row[1]}]"
+            for row in hierarchies.itertuples(index=False, name=None)
+        ]
+        filt = dep_filt[
+            (dep_filt["Object Type"].isin(["Rows Allowed", "Calc Item"]))
+            | (dep_filt["Object Type"] == "Measure")
+            & (dep_filt["Object Name"].isin(measures))
+            | (dep_filt["Object Type"] == "Calc Table")
+            & (dep_filt["Object Name"].isin(tables))
+            | (
+                (dep_filt["Object Type"].isin(["Calc Column"]))
+                & (
+                    dep_filt.apply(
+                        lambda row: f"'{row['Table Name']}'[{row['Object Name']}]",
+                        axis=1,
+                    ).isin(cols)
+                )
+            )
+            | (
+                (dep_filt["Object Type"].isin(["Hierarchy"]))
+                & (
+                    dep_filt.apply(
+                        lambda row: f"'{row['Table Name']}'[{row['Object Name']}]",
+                        axis=1,
+                    ).isin(hier)
+                )
+            )
+        ]
+
+        result_df = pd.DataFrame(columns=["Table Name", "Object Name", "Object Type"])
+
+        for _, r in filt.iterrows():
+            added = False
+            obj_type = r["Referenced Object Type"]
+            table_name = r["Referenced Table"]
+            object_name = r["Referenced Object"]
+            if obj_type in ["Column", "Attribute Hierarchy"]:
+                obj = self.model.Tables[table_name].Columns[object_name]
+                if not self.in_perspective(
+                    object=obj, perspective_name=perspective_name
+                ):
+                    self.add_to_perspective(
+                        object=obj, perspective_name=perspective_name
+                    )
+                    added = True
+            elif obj_type == "Measure":
+                obj = self.model.Tables[table_name].Measures[object_name]
+                if not self.in_perspective(
+                    object=obj, perspective_name=perspective_name
+                ):
+                    self.add_to_perspective(
+                        object=obj, perspective_name=perspective_name
+                    )
+                    added = True
+            elif obj_type == "Table":
+                obj = self.model.Tables[table_name]
+                if not self.in_perspective(
+                    object=obj, perspective_name=perspective_name
+                ):
+                    self.add_to_perspective(
+                        object=obj, perspective_name=perspective_name
+                    )
+                    added = True
+            if added:
+                new_data = {
+                    "Table Name": table_name,
+                    "Object Name": object_name,
+                    "Object Type": obj_type,
+                }
+
+                result_df = pd.concat(
+                    [result_df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                )
+
+        # Reduce model...
+
+        # Remove unnecessary relationships
+        for r in self.model.Relationships:
+            if (
+                not self.in_perspective(
+                    object=r.FromTable, perspective_name=perspective_name
+                )
+            ) or (
+                not self.in_perspective(
+                    object=r.ToTable, perspective_name=perspective_name
+                )
+            ):
+                self.remove_object(object=r)
+
+        # Ensure relationships in reduced model have base columns
+        for r in self.model.Relationships:
+            if not self.in_perspective(r.FromColumn, perspective_name=perspective_name):
+                self.add_to_perspective(
+                    object=r.FromColumn, perspective_name=perspective_name
+                )
+            if not self.in_perspective(r.ToColumn, perspective_name=perspective_name):
+                self.add_to_perspective(
+                    object=r.ToColumn, perspective_name=perspective_name
+                )
+
+        # Remove objects not in the perspective
+        for t in self.model.Tables:
+            if not self.in_perspective(object=t, perspective_name=perspective_name):
+                self.remove_object(object=t)
+            else:
+                for attr in ["Columns", "Measures", "Hierarchies"]:
+                    for obj in getattr(t, attr):
+                        if not self.in_perspective(
+                            object=obj, perspective_name=perspective_name
+                        ):
+                            self.remove_object(object=obj)
+
+        # Return the objects added to the perspective based on dependencies
+        return result_df.drop_duplicates()
+
     def close(self):
 
         if not self._readonly and self.model is not None:
@@ -4787,6 +4965,7 @@ def connect_semantic_model(
         If connecting to Azure Analysis Services, enter the workspace parameter in the following format: 'asazure://<region>.asazure.windows.net/<server_name>'.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+
     Returns
     -------
     typing.Iterator[TOMWrapper]
