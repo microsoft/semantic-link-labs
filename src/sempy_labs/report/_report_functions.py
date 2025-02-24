@@ -10,7 +10,6 @@ from sempy_labs.report._generate_report import update_report_from_reportjson
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from sempy_labs._helper_functions import (
     resolve_report_id,
-    resolve_lakehouse_name,
     language_validate,
     resolve_workspace_name_and_id,
     _decode_b64,
@@ -18,6 +17,7 @@ from sempy_labs._helper_functions import (
     _update_dataframe_datatypes,
     _base_api,
     _create_spark_session,
+    _mount,
 )
 from typing import List, Optional, Union
 from sempy._utils._log import log
@@ -74,18 +74,16 @@ def get_report_json(
                 f"{icons.red_dot} In order to save the report.json file, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
             )
 
-        lakehouse_id = fabric.get_lakehouse_id()
-        lake_workspace = fabric.resolve_workspace_name()
-        lakehouse = resolve_lakehouse_name(lakehouse_id, lake_workspace)
-        folderPath = "/lakehouse/default/Files"
-        fileExt = ".json"
-        if not save_to_file_name.endswith(fileExt):
-            save_to_file_name = f"{save_to_file_name}{fileExt}"
-        filePath = os.path.join(folderPath, save_to_file_name)
-        with open(filePath, "w") as json_file:
+        local_path = _mount()
+        save_folder = f"{local_path}/Files"
+        file_ext = ".json"
+        if not save_to_file_name.endswith(file_ext):
+            save_to_file_name = f"{save_to_file_name}{file_ext}"
+        file_path = os.path.join(save_folder, save_to_file_name)
+        with open(file_path, "w") as json_file:
             json.dump(report_json, json_file, indent=4)
         print(
-            f"{icons.green_dot} The report.json file for the '{report}' report has been saved to the '{lakehouse}' in this location: '{filePath}'.\n\n"
+            f"{icons.green_dot} The report.json file for the '{report}' report has been saved to the lakehouse attached to this notebook in this location: Files/'{save_to_file_name}'.\n\n"
         )
 
     return report_json
