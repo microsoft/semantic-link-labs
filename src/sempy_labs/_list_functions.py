@@ -1371,7 +1371,7 @@ def list_reports_using_semantic_model(
         & (dfR["Dataset Workspace Id"] == workspace_id)
     ][["Name", "Id"]]
     dfR_filt.rename(columns={"Name": "Report Name", "Id": "Report Id"}, inplace=True)
-    dfR_filt["Report Worskpace Name"] = workspace_name
+    dfR_filt["Report Workspace Name"] = workspace_name
     dfR_filt["Report Workspace Id"] = workspace_id
 
     return dfR_filt
