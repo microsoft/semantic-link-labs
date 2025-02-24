@@ -65,7 +65,7 @@ def _list_sql_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the databses within a workspace.
 
-    
+
     Parameters
     ----------
     workspace : str | uuid.UUID, default=None
@@ -120,6 +120,7 @@ def _list_sql_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
+
 
 ## Still debugging the deletion of an sql database
 # def delete_warehouse(name: str, workspace: Optional[str | UUID] = None):

@@ -165,6 +165,10 @@ from sempy_labs._sql import (
     ConnectLakehouse,
     ConnectSQLDatabase,
 )
+from sempy_labs._sqldatabase import (
+    get_sql_database_columns,
+    get_sql_database_tables,
+)
 from sempy_labs._workspace_identity import (
     provision_workspace_identity,
     deprovision_workspace_identity,
@@ -509,4 +513,6 @@ __all__ = [
     "get_semantic_model_refresh_schedule",
     "get_eventhouse_definition",
     "enable_semantic_model_scheduled_refresh",
+    "get_sql_database_columns",
+    "get_sql_database_tables",
 ]
