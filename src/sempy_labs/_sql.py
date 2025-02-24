@@ -34,9 +34,9 @@ def _bytes2mswin_bstr(value: bytes) -> bytes:
 class ConnectBase:
     def __init__(
         self,
-        item: str,
+        item: str | UUID,
         workspace: Optional[Union[str, UUID]] = None,
-        timeout: Optional[int] = 10,
+        timeout: Optional[int] = None,
         endpoint_type: str = "warehouse",
     ):
         from sempy.fabric._token_provider import SynapseTokenProvider
@@ -151,10 +151,24 @@ class ConnectBase:
 class ConnectWarehouse(ConnectBase):
     def __init__(
         self,
-        warehouse: str,
+        warehouse: str | UUID,
         workspace: Optional[Union[str, UUID]] = None,
-        timeout: Optional[int] = None,
+        timeout: int = 30,
     ):
+        """
+        Run a SQL or T-SQL query against a Fabric Warehouse.
+
+        Parameters
+        ----------
+        warehouse : str | uuid.UUID
+            The name or ID of the Fabric warehouse.
+        workspace : str | uuid.UUID, default=None
+            The name or ID of the workspace.
+            Defaults to None which resolves to the workspace of the attached lakehouse
+            or if no lakehouse attached, resolves to the workspace of the notebook.
+        timeout : int, default=30
+            The timeout for the connection in seconds.
+        """
         super().__init__(
             item=warehouse,
             workspace=workspace,
@@ -166,10 +180,24 @@ class ConnectWarehouse(ConnectBase):
 class ConnectLakehouse(ConnectBase):
     def __init__(
         self,
-        lakehouse: str,
+        lakehouse: str | UUID,
         workspace: Optional[Union[str, UUID]] = None,
-        timeout: Optional[int] = None,
+        timeout: int = 30,
     ):
+        """
+        Run a SQL or T-SQL query against a Fabric lakehouse.
+
+        Parameters
+        ----------
+        lakehouse : str | uuid.UUID
+            The name or ID of the Fabric lakehouse.
+        workspace : str | uuid.UUID, default=None
+            The name or ID of the workspace.
+            Defaults to None which resolves to the workspace of the attached lakehouse
+            or if no lakehouse attached, resolves to the workspace of the notebook.
+        timeout : int, default=30
+            The timeout for the connection in seconds.
+        """
         super().__init__(
             item=lakehouse,
             workspace=workspace,
@@ -181,10 +209,24 @@ class ConnectLakehouse(ConnectBase):
 class ConnectSQLDatabase(ConnectBase):
     def __init__(
         self,
-        sql_database: str,
+        sql_database: str | UUID,
         workspace: Optional[Union[str, UUID]] = None,
-        timeout: Optional[int] = None,
+        timeout: int = 30,
     ):
+        """
+        Run a SQL or T-SQL query against a Fabric SQL database.
+
+        Parameters
+        ----------
+        sql_database : str | uuid.UUID
+            The name or ID of the Fabric SQL database.
+        workspace : str | uuid.UUID, default=None
+            The name or ID of the workspace.
+            Defaults to None which resolves to the workspace of the attached lakehouse
+            or if no lakehouse attached, resolves to the workspace of the notebook.
+        timeout : int, default=30
+            The timeout for the connection in seconds.
+        """
         super().__init__(
             item=sql_database,
             workspace=workspace,
