@@ -15,7 +15,6 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_lakehouse_name_and_id,
     _read_delta_table,
-    _delta_table_row_count,
     _mount,
     _create_spark_session,
 )
@@ -110,28 +109,28 @@ def delta_analyzer(
     # notebookutils.common.configs.pandas_display = display_toggle
 
     parquet_file_df_columns = {
-        "ParquetFile": "string",
-        "RowCount": "int",
-        "RowGroups": "int",
+        "Parquet File": "string",
+        "Row Count": "int",
+        "Row Groups": "int",
     }
     row_group_df_columns = {
-        "ParquetFile": "string",
-        "RowGroupID": "int",
-        "RowCount": "int",
-        "CompressedSize": "int",
-        "UncompressedSize": "int",
-        "CompressionRatio": "float",
+        "Parquet File": "string",
+        "Row Group ID": "int",
+        "Row Count": "int",
+        "Compressed Size": "int",
+        "Uncompressed Size": "int",
+        "Compression Ratio": "float",
     }
     column_chunk_df_columns = {
-        "ParquetFile": "string",
-        "ColumnID": "int",
-        "ColumnName": "string",
-        "ColumnType": "string",
-        "CompressedSize": "int",
-        "UncompressedSize": "int",
-        "HasDict": "bool",
-        "DictOffset": "int_fillna",
-        "ValueCount": "int",
+        "Parquet File": "string",
+        "Column ID": "int",
+        "Column Name": "string",
+        "Column Type": "string",
+        "Compressed Size": "int",
+        "Uncompressed Size": "int",
+        "Has Dict": "bool",
+        "Dict Offset": "int_fillna",
+        "Value Count": "int",
         "Encodings": "string",
     }
 
@@ -188,9 +187,9 @@ def delta_analyzer(
 
         # Generate rowgroup dataframe
         new_data = {
-            "ParquetFile": file_name,
-            "RowCount": parquet_file.metadata.num_rows,
-            "RowGroups": parquet_file.num_row_groups,
+            "Parquet File": file_name,
+            "Row Count": parquet_file.metadata.num_rows,
+            "Row Groups": parquet_file.num_row_groups,
         }
 
         parquet_file_df = pd.concat(
@@ -217,15 +216,15 @@ def delta_analyzer(
 
                     # Generate Column Chunk Dataframe
                     new_data = {
-                        "ParquetFile": file_name,
-                        "ColumnID": j,
-                        "ColumnName": column_chunk.path_in_schema,
-                        "ColumnType": column_chunk.physical_type,
-                        "CompressedSize": column_chunk.total_compressed_size,
-                        "UncompressedSize": column_chunk.total_uncompressed_size,
-                        "HasDict": column_chunk.has_dictionary_page,
-                        "DictOffset": column_chunk.dictionary_page_offset,
-                        "ValueCount": column_chunk.num_values,
+                        "Parquet File": file_name,
+                        "Column ID": j,
+                        "Column Name": column_chunk.path_in_schema,
+                        "Column Type": column_chunk.physical_type,
+                        "Compressed Size": column_chunk.total_compressed_size,
+                        "Uncompressed Size": column_chunk.total_uncompressed_size,
+                        "Has Dict": column_chunk.has_dictionary_page,
+                        "Dict Offset": column_chunk.dictionary_page_offset,
+                        "Value Count": column_chunk.num_values,
                         "Encodings": str(column_chunk.encodings),
                     }
 
@@ -236,12 +235,12 @@ def delta_analyzer(
 
             # Generate rowgroup dataframe
             new_data = {
-                "ParquetFile": file_name,
-                "RowGroupID": i + 1,
-                "RowCount": num_rows,
-                "CompressedSize": total_compressed_size,
-                "UncompressedSize": total_uncompressed_size,
-                "CompressionRatio": (
+                "Parquet File": file_name,
+                "Row Group ID": i + 1,
+                "Row Count": num_rows,
+                "Compressed Size": total_compressed_size,
+                "Uncompressed Size": total_uncompressed_size,
+                "Compression Ratio": (
                     total_compressed_size / total_uncompressed_size
                     if column_stats
                     else 0
@@ -261,13 +260,13 @@ def delta_analyzer(
     summary_df = pd.DataFrame(
         [
             {
-                "RowCount": row_count,
-                "RowGroups": row_groups,
-                "ParquetFiles": num_latest_files,
-                "MaxRowsPerRowGroup": max_rows_per_row_group,
-                "MinRowsPerRowGroup": min_rows_per_row_group,
-                "AvgRowsPerRowGroup": avg_rows_per_row_group,
-                "VOrderEnabled": is_vorder,
+                "Row Count": row_count,
+                "Row Groups": row_groups,
+                "Parquet Files": num_latest_files,
+                "Max Rows Per Row Group": max_rows_per_row_group,
+                "Min Rows Per Row Group": min_rows_per_row_group,
+                "Avg Rows Per Row Group": avg_rows_per_row_group,
+                "VOrder Enabled": is_vorder,
                 # "VOrderLevel": v_order_level,
             }
         ]
@@ -285,25 +284,20 @@ def delta_analyzer(
             dataframe=column_chunk_df, column_map=column_chunk_df_columns
         )
         column_df = column_chunk_df.groupby(
-            ["ColumnName", "ColumnType"], as_index=False
-        ).agg({"CompressedSize": "sum", "UncompressedSize": "sum"})
+            ["Column Name", "Column Type"], as_index=False
+        ).agg({"Compressed Size": "sum", "Uncompressed Size": "sum"})
 
         # Add distinct count to column_df
         for ind, r in column_df.iterrows():
-            col_name = r["ColumnName"]
+            col_name = r["Column Name"]
             if approx_distinct_count:
-                dc = _get_column_aggregate(
-                    table_name=table_name,
-                    column_name=col_name,
-                    function="approx",
-                    lakehouse=lakehouse,
-                    workspace=workspace,
-                )
+                function = 'approx'
             else:
-                dc = _get_column_aggregate(
+                function = 'distinctcount'
+            dc = _get_column_aggregate(
                     table_name=table_name,
                     column_name=col_name,
-                    function="distinctcount",
+                    function=function,
                     lakehouse=lakehouse,
                     workspace=workspace,
                 )
@@ -314,7 +308,7 @@ def delta_analyzer(
             column_df.at[ind, "Cardinality"] = dc
 
         column_df["Cardinality"] = column_df["Cardinality"].astype(int)
-        summary_df["TotalSize"] = column_df["CompressedSize"].sum()
+        summary_df["Total Size"] = column_df["Compressed Size"].sum()
 
     dataframes = {
         "Summary": summary_df,
@@ -346,11 +340,11 @@ def delta_analyzer(
     for name, df in dataframes.items():
         name = name.replace(" ", "")
         cols = {
-            "WorkspaceName": workspace_name,
-            "WorkspaceId": workspace_id,
-            "LakehouseName": lakehouse_name,
-            "LakehouseId": lakehouse_id,
-            "TableName": table_name,
+            "Workspace Name": workspace_name,
+            "Workspace Id": workspace_id,
+            "Lakehouse Name": lakehouse_name,
+            "Lakehouse Id": lakehouse_id,
+            "Table Name": table_name,
         }
         for i, (col, param) in enumerate(cols.items()):
             df[col] = param
@@ -360,8 +354,8 @@ def delta_analyzer(
         df["Timestamp"] = pd.to_datetime(df["Timestamp"])
 
         if export:
-            df["RunId"] = runId
-            df["RunId"] = df["RunId"].astype(int)
+            df["Run Id"] = runId
+            df["Run Id"] = df["Run Id"].astype(int)
             save_as_delta_table(
                 dataframe=df,
                 delta_table_name=f"{prefix}{name}",
