@@ -1666,3 +1666,40 @@ def _mount(lakehouse, workspace) -> str:
     )
 
     return local_path
+
+
+def find_transitive_incoming_relationships(
+    df, table_name, degree=1, visited=None, results=None
+):
+    """
+    Given a DataFrame containing relationships and a table name,
+    return all relationships where the table appears in the 'To Table' column,
+    considering transitive relationships (snowflake schema).
+
+    Adds a 'Degree' column to indicate the number of hops from the target table.
+    """
+    if visited is None:
+        visited = set()
+    if results is None:
+        results = []
+
+    # Avoid infinite loops
+    if table_name in visited:
+        return pd.DataFrame(results, columns=list(df.columns) + ["Degree"])
+
+    visited.add(table_name)
+
+    # Find direct incoming relationships
+    direct_rels = df[df["To Table"] == table_name].copy()
+    direct_rels["Degree"] = degree  # Assign current degree
+
+    # Append direct relationships to results
+    results.extend(direct_rels.values.tolist())
+
+    # Recursively find indirect relationships for the 'From Table' columns
+    for from_table in direct_rels["From Table"].unique():
+        find_transitive_incoming_relationships(
+            df, from_table, degree + 1, visited, results
+        )
+
+    return pd.DataFrame(results, columns=list(df.columns) + ["Degree"])

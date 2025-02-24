@@ -36,7 +36,7 @@ class ConnectBase:
         self,
         item: str,
         workspace: Optional[Union[str, UUID]] = None,
-        timeout: Optional[int] = None,
+        timeout: Optional[int] = 10,
         endpoint_type: str = "warehouse",
     ):
         from sempy.fabric._token_provider import SynapseTokenProvider

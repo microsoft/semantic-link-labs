@@ -1667,6 +1667,47 @@ class TOMWrapper:
                 object.Parent.Name
             ].PerspectiveHierarchies.Remove(ph)
 
+    def _is_perspective_full(self, perspective_name: str) -> bool:
+        """
+        Indicates whether a perspective contains all the objects in the model.
+        """
+
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        result = True
+
+        if not any(p.Name == perspective_name for p in self.model.Perspectives):
+            raise ValueError(
+                f"{icons.red_dot} The '{perspective_name}' perspective does not exist."
+            )
+
+        p = self.model.Perspectives[perspective_name]
+        for pt in p.PerspectiveTables:
+            columns_persp = sum(1 for pc in pt.PerspectiveColumns)
+            columns = sum(
+                1
+                for t in self.model.Tables
+                for c in t.Columns
+                if t.Name == pt.Name and c.Type != TOM.ColumnType.RowNumber
+            )
+
+            measures = sum(1 for m in self.all_measures() if m.Parent.Name == pt.Name)
+            measures_persp = sum(1 for pm in pt.PerspectiveMeasures)
+
+            hierarchies = sum(
+                1 for m in self.all_hierarchies() if m.Parent.Name == pt.Name
+            )
+            hierarchies_persp = sum(1 for pm in pt.PerspectiveHierarchies)
+
+            if (
+                not (columns_persp == columns)
+                and (measures == measures_persp)
+                and (hierarchies == hierarchies_persp)
+            ):
+                result = False
+
+        return result
+
     def set_translation(
         self,
         object: Union[
