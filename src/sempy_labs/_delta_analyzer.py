@@ -22,6 +22,7 @@ from sempy._utils._log import log
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 import sempy_labs._icons as icons
+from tqdm.auto import tqdm
 
 
 def get_parquet_file_infos(path):
@@ -176,9 +177,14 @@ def delta_analyzer(
         if file_info[0] in common_file_paths
     ]
 
-    # Loop through the parquet files
-    for file_path, file_size in latest_version_files:
+    for idx, (file_path, file_size) in enumerate(
+        bar := tqdm(latest_version_files), start=1
+    ):
         file_name = os.path.basename(file_path)
+        bar.set_description(
+            f"Analyzing the '{file_name}' parquet file ({idx}/{num_latest_files})..."
+        )
+
         relative_path = file_path.split("Tables/")[1]
         file_system_path = f"{local_path}/Tables/{relative_path}"
         parquet_file = pq.ParquetFile(file_system_path)
