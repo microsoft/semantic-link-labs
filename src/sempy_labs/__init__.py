@@ -1,3 +1,9 @@
+from sempy_labs._mounted_data_factories import (
+    list_mounted_data_factories,
+    get_mounted_data_factory_definition,
+    delete_mounted_data_factory,
+)
+
 from sempy_labs._semantic_models import (
     get_semantic_model_refresh_schedule,
     enable_semantic_model_scheduled_refresh,
@@ -519,4 +525,7 @@ __all__ = [
     "get_delta_table_history",
     "get_sql_database_columns",
     "get_sql_database_tables",
+    "list_mounted_data_factories",
+    "get_mounted_data_factory_definition",
+    "delete_mounted_data_factory",
 ]
