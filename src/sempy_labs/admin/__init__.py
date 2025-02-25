@@ -30,6 +30,7 @@ from sempy_labs.admin._tenant import (
     list_workspaces_tenant_settings_overrides,
     list_capacity_tenant_settings_overrides,
     list_capacities_delegated_tenant_settings,
+    list_domain_tenant_settings_overrides,
 )
 from sempy_labs.admin._basic_functions import (
     assign_workspaces_to_capacity,
@@ -107,4 +108,5 @@ __all__ = [
     "list_workspaces_tenant_settings_overrides",
     "list_capacity_tenant_settings_overrides",
     "list_capacities_delegated_tenant_settings",
+    "list_domain_tenant_settings_overrides",
 ]

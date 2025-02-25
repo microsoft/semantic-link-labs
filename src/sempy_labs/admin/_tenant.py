@@ -429,3 +429,61 @@ def list_workspaces_tenant_settings_overrides() -> pd.DataFrame:
     _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
+
+
+@log
+def list_domain_tenant_settings_overrides() -> pd.DataFrame:
+    """
+    Shows a list of domain delegation setting overrides.
+
+    This is a wrapper function for the following API: `Tenants - List Domains Tenant Settings Overrides <https://learn.microsoft.com/rest/api/fabric/admin/tenants/list-domains-tenant-settings-overrides>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of domain delegation setting overrides.
+    """
+
+    columns = {
+        "Setting Name": "string",
+        "Title": "string",
+        "Enabled": "bool",
+        "Can Specify Security Groups": "bool",
+        "Enabled Security Groups": "string",
+        "Tenant Setting Group": "string",
+        "Delegated To Workspace": "bool",
+        "Delegated From": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    responses = _base_api(
+        request="/v1/admin/domains/delegatedTenantSettingOverrides",
+        client="fabric_sp",
+        uses_pagination=True,
+    )
+
+    for r in responses:
+        for v in r.get("value", []):
+            for setting in v.get("tenantSettings", []):
+                new_data = {
+                    "Setting Name": setting.get("settingName"),
+                    "Title": setting.get("title"),
+                    "Enabled": setting.get("enabled"),
+                    "Can Specify Security Groups": setting.get(
+                        "canSpecifySecurityGroups"
+                    ),
+                    "Enabled Security Groups": [
+                        setting.get("enabledSecurityGroups", [])
+                    ],
+                    "Tenant Setting Group": setting.get("tenantSettingGroup"),
+                    "Delegated To Workspace": setting.get("delegateToWorkspace"),
+                    "Delegated From": setting.get("delegatedFrom"),
+                }
+
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+
+    return df
