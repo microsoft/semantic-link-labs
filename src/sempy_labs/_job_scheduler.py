@@ -399,6 +399,7 @@ def create_item_schedule_weekly(
         item=item, type=type, workspace=workspace
     )
 
+    weekdays = [w.capitalize() for w in weekdays]
     weekday_list = [
         "Sunday",
         "Monday",
