@@ -235,6 +235,18 @@ def update_capacity_tenant_setting_override(
 
 @log
 def list_workspaces_tenant_settings_overrides() -> pd.DataFrame:
+    """
+    Shows a list of workspace delegation setting overrides.
+
+    This is a wrapper function for the following API: `Tenants - List Workspaces Tenant Settings Overrides <https://learn.microsoft.com/rest/api/fabric/admin/tenants/list-workspaces-tenant-settings-overrides>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of workspace delegation setting overrides.
+    """
 
     columns = {
         "Setting Name": "string",
