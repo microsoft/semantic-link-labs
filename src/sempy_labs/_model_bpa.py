@@ -280,6 +280,7 @@ def run_model_bpa(
                 lambda obj: format_dax_object_name(obj.Parent.Name, obj.Name),
             ),
             "Table": (tom.model.Tables, lambda obj: obj.Name),
+            "Calculated Table": (tom.all_calculated_tables(), lambda obj: obj.Name),
             "Role": (tom.model.Roles, lambda obj: obj.Name),
             "Model": (tom.model, lambda obj: obj.Model.Name),
             "Calculation Item": (
@@ -322,6 +323,10 @@ def run_model_bpa(
                     x = [nm(obj) for obj in tom.all_hierarchies() if expr(obj, tom)]
                 elif scope == "Table":
                     x = [nm(obj) for obj in tom.model.Tables if expr(obj, tom)]
+                elif scope == "Calculated Table":
+                    x = [
+                        nm(obj) for obj in tom.all_calculated_tables() if expr(obj, tom)
+                    ]
                 elif scope == "Relationship":
                     x = [nm(obj) for obj in tom.model.Relationships if expr(obj, tom)]
                 elif scope == "Role":

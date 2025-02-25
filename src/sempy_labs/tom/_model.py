@@ -3281,9 +3281,14 @@ class TOMWrapper:
 
         if objType == TOM.ObjectType.Table:
             objParentName = objName
+            object_types = ["Table", "Calc Table"]
+        elif objType == TOM.ObjectType.Column:
+            object_types = ["Column", "Calc Column"]
+        else:
+            object_types = [str(objType)]
 
         fil = dependencies[
-            (dependencies["Object Type"] == str(objType))
+            (dependencies["Object Type"].isin(object_types))
             & (dependencies["Table Name"] == objParentName)
             & (dependencies["Object Name"] == objName)
         ]
@@ -3389,11 +3394,20 @@ class TOMWrapper:
             dependencies["Object Name"] == dependencies["Parent Node"]
         ]
 
+        if object.ObjectType == TOM.ObjectType.Measure:
+            expr = object.Expression
+        elif object.ObjectType == TOM.ObjectType.Table:
+            part = next(p for p in object.Partitions)
+            if part.SourceType != TOM.PartitionSourceType.Calculated:
+                return
+            expr = part.Source.Expression
+        else:
+            return
+
         for obj in self.depends_on(object=object, dependencies=dependencies):
             if obj.ObjectType == TOM.ObjectType.Measure:
-                if (f"{obj.Parent.Name}[{obj.Name}]" in object.Expression) or (
-                    format_dax_object_name(obj.Parent.Name, obj.Name)
-                    in object.Expression
+                if (f"{obj.Parent.Name}[{obj.Name}]" in expr) or (
+                    format_dax_object_name(obj.Parent.Name, obj.Name) in expr
                 ):
                     yield obj
 
@@ -3427,6 +3441,16 @@ class TOMWrapper:
             combined_pattern = "".join(patterns) + re.escape(f"[{b}]")
             return combined_pattern
 
+        if object.ObjectType == TOM.ObjectType.Measure:
+            expr = object.Expression
+        elif object.ObjectType == TOM.ObjectType.Table:
+            part = next(p for p in object.Partitions)
+            if part.SourceType != TOM.PartitionSourceType.Calculated:
+                return
+            expr = part.Source.Expression
+        else:
+            return
+
         for obj in self.depends_on(object=object, dependencies=dependencies):
             if obj.ObjectType == TOM.ObjectType.Column:
                 tableList = []
@@ -3436,7 +3460,7 @@ class TOMWrapper:
                 if (
                     re.search(
                         create_pattern(tableList, re.escape(obj.Name)),
-                        object.Expression,
+                        expr,
                     )
                     is not None
                 ):

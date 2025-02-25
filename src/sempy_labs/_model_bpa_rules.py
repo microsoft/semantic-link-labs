@@ -565,7 +565,7 @@ def model_bpa_rules(
             ),
             (
                 "DAX Expressions",
-                "Measure",
+                ["Measure", "Calculated Table"],
                 "Error",
                 "Column references should be fully qualified",
                 lambda obj, tom: any(
@@ -576,7 +576,7 @@ def model_bpa_rules(
             ),
             (
                 "DAX Expressions",
-                "Measure",
+                ["Measure", "Calculated Table"],
                 "Error",
                 "Measure references should be unqualified",
                 lambda obj, tom: any(
