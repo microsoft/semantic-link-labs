@@ -55,6 +55,138 @@ def list_tenant_settings() -> pd.DataFrame:
 
 
 @log
+def list_capacity_tenant_settings_overrides(
+    capacity: Optional[str | UUID] = None,
+    return_dataframe: bool = True,
+) -> pd.DataFrame | dict:
+    """
+    Returns list of tenant setting overrides that override at the capacities.
+
+    This is a wrapper function for the following API: `Tenants - List Capacities Tenant Settings Overrides <https://learn.microsoft.com/rest/api/fabric/admin/tenants/list-capacities-tenant-settings-overrides>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    capacity : str | uuid.UUID, default=None
+        The capacity name or ID.
+        Defaults to None which resolves to showing all capacities.
+    return_dataframe : bool, default=True
+        If True, returns a dataframe. If False, returns a dictionary.
+
+    Returns
+    -------
+    pandas.DataFrame | dict
+        A pandas dataframe showing a list of tenant setting overrides that override at the capacities.
+    """
+
+    columns = {
+        "Capacity Id": "string",
+        "Setting Name": "string",
+        "Setting Title": "string",
+        "Setting Enabled": "bool",
+        "Can Specify Security Groups": "bool",
+        "Enabled Security Groups": "string",
+        "Tenant Setting Group": "string",
+        "Tenant Setting Properties": "string",
+        "Delegate to Workspace": "bool",
+        "Delegated From": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    if capacity is None:
+        responses = _base_api(
+            request="/v1/admin/capacities/delegatedTenantSettingOverrides",
+            client="fabric_sp",
+            uses_pagination=True,
+        )
+    else:
+        (capacity_name, capacity_id) = _resolve_capacity_name_and_id(capacity=capacity)
+        responses = _base_api(
+            request=f"/v1/admin/capacities/{capacity_id}/delegatedTenantSettingOverrides",
+            client="fabric_sp",
+            uses_pagination=True,
+        )
+
+    def create_new_data(setting, capacity_id=None):
+        return {
+            "Capacity Id": capacity_id or setting.get("id"),
+            "Setting Name": setting.get("settingName"),
+            "Setting Title": setting.get("title"),
+            "Setting Enabled": setting.get("enabled"),
+            "Can Specify Security Groups": setting.get("canSpecifySecurityGroups"),
+            "Enabled Security Groups": setting.get("enabledSecurityGroups", []),
+            "Tenant Setting Group": setting.get("tenantSettingGroup"),
+            "Tenant Setting Properties": setting.get("properties", []),
+            "Delegate to Workspace": setting.get("delegateToWorkspace"),
+            "Delegated From": setting.get("delegatedFrom"),
+        }
+
+    def process_responses(responses, capacity_id=None, return_dataframe=False):
+        data = []
+
+        for r in responses:
+            if capacity_id is None:
+                # If capacity_id is None, we access 'Overrides' -> 'tenantSettings'
+                for override in r.get("overrides", []):
+                    tenant_settings = override.get("tenantSettings", [])
+                    for setting in tenant_settings:
+                        data.append(create_new_data(setting))  # No capacity_id needed here
+            else:
+                # If capacity_id is provided, we access 'value' directly for tenantSettings
+                for setting in r.get("value", []):
+                    data.append(create_new_data(setting, capacity_id))  # Use provided capacity_id
+
+        if return_dataframe:
+            df = pd.DataFrame(data)
+            _update_dataframe_datatypes(dataframe=df, column_map=columns)
+            return df
+        else:
+            key = "overrides" if capacity_id is None else "value"
+            continuation_uri = r.get("continuationUri", "")
+            continuation_token = r.get("continuationToken", "")
+
+            return {
+                key: data,
+                "continuationUri": continuation_uri,
+                "continuationToken": continuation_token,
+            }
+
+    # Main logic
+    if capacity is None:
+        return process_responses(responses, return_dataframe=True) if return_dataframe else process_responses(responses)
+    else:
+        return process_responses(responses, capacity_id=capacity_id, return_dataframe=True) if return_dataframe else process_responses(responses, capacity_id=capacity_id)
+
+
+@log
+def list_capacities_delegated_tenant_settings(
+    return_dataframe: bool = True,
+) -> pd.DataFrame | dict:
+    """
+    Returns list of tenant setting overrides that override at the capacities.
+
+    NOTE: This function is to be deprecated. Please use the `list_capacity_tenant_settings_overrides` function instead.
+
+    This is a wrapper function for the following API: `Tenants - List Capacities Tenant Settings Overrides <https://learn.microsoft.com/rest/api/fabric/admin/tenants/list-capacities-tenant-settings-overrides>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    return_dataframe : bool, default=True
+        If True, returns a dataframe. If False, returns a dictionary.
+
+    Returns
+    -------
+    pandas.DataFrame | dict
+        A pandas dataframe showing a list of tenant setting overrides that override at the capacities.
+    """
+
+    list_capacity_tenant_settings_overrides(return_dataframe=return_dataframe)
+
+
+@log
 def delete_capacity_tenant_setting_override(capacity: str | UUID, tenant_setting: str):
     """
     Remove given tenant setting override for given capacity Id.
