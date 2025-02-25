@@ -92,21 +92,17 @@ def list_capacity_tenant_settings_overrides(
         "Delegate to Workspace": "bool",
         "Delegated From": "string",
     }
-    df = _create_dataframe(columns=columns)
 
     if capacity is None:
-        responses = _base_api(
-            request="/v1/admin/capacities/delegatedTenantSettingOverrides",
-            client="fabric_sp",
-            uses_pagination=True,
-        )
+        url = "/v1/admin/capacities/delegatedTenantSettingOverrides"
     else:
-        (capacity_name, capacity_id) = _resolve_capacity_name_and_id(capacity=capacity)
-        responses = _base_api(
-            request=f"/v1/admin/capacities/{capacity_id}/delegatedTenantSettingOverrides",
-            client="fabric_sp",
-            uses_pagination=True,
-        )
+        (_, capacity_id) = _resolve_capacity_name_and_id(capacity=capacity)
+        url = f"/v1/admin/capacities/{capacity_id}/delegatedTenantSettingOverrides"
+    responses = _base_api(
+        request=url,
+        client="fabric_sp",
+        uses_pagination=True,
+    )
 
     def create_new_data(setting, capacity_id=None):
         return {
@@ -124,6 +120,7 @@ def list_capacity_tenant_settings_overrides(
 
     def process_responses(responses, capacity_id=None, return_dataframe=False):
         data = []
+        df = _create_dataframe(columns=columns)
 
         for r in responses:
             if capacity_id is None:
@@ -131,15 +128,20 @@ def list_capacity_tenant_settings_overrides(
                 for override in r.get("overrides", []):
                     tenant_settings = override.get("tenantSettings", [])
                     for setting in tenant_settings:
-                        data.append(create_new_data(setting))  # No capacity_id needed here
+                        data.append(
+                            create_new_data(setting)
+                        )  # No capacity_id needed here
             else:
                 # If capacity_id is provided, we access 'value' directly for tenantSettings
                 for setting in r.get("value", []):
-                    data.append(create_new_data(setting, capacity_id))  # Use provided capacity_id
+                    data.append(
+                        create_new_data(setting, capacity_id)
+                    )  # Use provided capacity_id
 
         if return_dataframe:
-            df = pd.DataFrame(data)
-            _update_dataframe_datatypes(dataframe=df, column_map=columns)
+            if data:
+                df = pd.DataFrame(data)
+                _update_dataframe_datatypes(dataframe=df, column_map=columns)
             return df
         else:
             key = "overrides" if capacity_id is None else "value"
@@ -154,9 +156,17 @@ def list_capacity_tenant_settings_overrides(
 
     # Main logic
     if capacity is None:
-        return process_responses(responses, return_dataframe=True) if return_dataframe else process_responses(responses)
+        return (
+            process_responses(responses, return_dataframe=True)
+            if return_dataframe
+            else process_responses(responses)
+        )
     else:
-        return process_responses(responses, capacity_id=capacity_id, return_dataframe=True) if return_dataframe else process_responses(responses, capacity_id=capacity_id)
+        return (
+            process_responses(responses, capacity_id=capacity_id, return_dataframe=True)
+            if return_dataframe
+            else process_responses(responses, capacity_id=capacity_id)
+        )
 
 
 @log
