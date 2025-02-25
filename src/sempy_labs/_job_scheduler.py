@@ -222,7 +222,7 @@ def create_item_schedule_cron(
     end_date_time: str,
     local_time_zone: str,
     job_type: str = "DefaultJob",
-    interval: int = 10,
+    interval_minutes: int = 10,
     enabled: bool = True,
     workspace: Optional[str | UUID] = None,
 ):
@@ -245,7 +245,7 @@ def create_item_schedule_cron(
         The `time zone <https://learn.microsoft.com/windows-hardware/manufacture/desktop/default-time-zones?view=windows-11>`_ of the schedule. Example: "Central Standard Time".
     job_type : str, default="DefaultJob"
         The job type.
-    interval: int, default=10
+    interval_minutes: int, default=10
         The schedule interval (in minutes).
     enabled: bool, default=True
         Whether the schedule is enabled.
@@ -267,7 +267,7 @@ def create_item_schedule_cron(
             "endDateTime": end_date_time,
             "localTimeZoneId": local_time_zone,
             "type": "Cron",
-            "interval": interval,
+            "interval": interval_minutes,
         },
     }
 
