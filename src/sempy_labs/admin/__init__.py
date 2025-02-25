@@ -22,13 +22,18 @@ from sempy_labs.admin._capacities import (
     get_capacity_assignment_status,
     get_capacity_state,
 )
+from sempy_labs.admin._tenant import (
+    list_tenant_settings,
+    delete_capacity_tenant_setting_override,
+    update_tenant_setting,
+    update_capacity_tenant_setting_override,
+)
 from sempy_labs.admin._basic_functions import (
     assign_workspaces_to_capacity,
     unassign_workspaces_from_capacity,
     list_workspaces,
     list_workspace_access_details,
     list_modified_workspaces,
-    list_tenant_settings,
     list_capacities_delegated_tenant_settings,
     list_access_entities,
     list_workspace_users,
@@ -94,4 +99,7 @@ __all__ = [
     "list_report_users",
     "patch_capacity",
     "list_workspace_users",
+    "delete_capacity_tenant_setting_override",
+    "update_tenant_setting",
+    "update_capacity_tenant_setting_override",
 ]

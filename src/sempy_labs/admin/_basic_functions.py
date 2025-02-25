@@ -249,49 +249,6 @@ def unassign_workspaces_from_capacity(
     )
 
 
-@log
-def list_tenant_settings() -> pd.DataFrame:
-    """
-    Lists all tenant settings.
-
-    This is a wrapper function for the following API: `Tenants - List Tenant Settings <https://learn.microsoft.com/rest/api/fabric/admin/tenants/list-tenant-settings>`_.
-
-    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
-
-    Returns
-    -------
-    pandas.DataFrame
-        A pandas dataframe showing the tenant settings.
-    """
-
-    columns = {
-        "Setting Name": "string",
-        "Title": "string",
-        "Enabled": "bool",
-        "Can Specify Security Groups": "bool",
-        "Tenant Setting Group": "string",
-        "Enabled Security Groups": "string",
-    }
-    df = _create_dataframe(columns=columns)
-
-    response = _base_api(request="/v1/admin/tenantsettings", client="fabric_sp")
-
-    for i in response.json().get("value", []):
-        new_data = {
-            "Setting Name": i.get("settingName"),
-            "Title": i.get("title"),
-            "Enabled": i.get("enabled"),
-            "Can Specify Security Groups": i.get("canSpecifySecurityGroups"),
-            "Tenant Setting Group": i.get("tenantSettingGroup"),
-            "Enabled Security Groups": [i.get("enabledSecurityGroups", [])],
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
-
-    return df
-
-
 def list_capacities_delegated_tenant_settings(
     return_dataframe: bool = True,
 ) -> pd.DataFrame | dict:
