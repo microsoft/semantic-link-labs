@@ -3275,22 +3275,28 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        objType = object.ObjectType
-        objName = object.Name
-        objParentName = object.Parent.Name
+        obj_type = object.ObjectType
+        obj_name = object.Name
 
-        if objType == TOM.ObjectType.Table:
-            objParentName = objName
-            object_types = ["Table", "Calc Table"]
-        elif objType == TOM.ObjectType.Column:
-            object_types = ["Column", "Calc Column"]
+        if object.ObjectType == TOM.ObjectType.CalculationItem:
+            obj_parent_name = object.Parent.Table.Name
         else:
-            object_types = [str(objType)]
+            obj_parent_name = object.Parent.Name
+
+        if obj_type == TOM.ObjectType.Table:
+            obj_parent_name = obj_name
+            object_types = ["Table", "Calc Table"]
+        elif obj_type == TOM.ObjectType.Column:
+            object_types = ["Column", "Calc Column"]
+        elif obj_type == TOM.ObjectType.CalculationItem:
+            object_types = ["Calculation Item"]
+        else:
+            object_types = [str(obj_type)]
 
         fil = dependencies[
             (dependencies["Object Type"].isin(object_types))
-            & (dependencies["Table Name"] == objParentName)
-            & (dependencies["Object Name"] == objName)
+            & (dependencies["Table Name"] == obj_parent_name)
+            & (dependencies["Object Name"] == obj_name)
         ]
         meas = (
             fil[fil["Referenced Object Type"] == "Measure"]["Referenced Object"]
@@ -3379,7 +3385,7 @@ class TOMWrapper:
 
         valid_objects = [
             TOM.ObjectType.Measure,
-            TOM.OBjectType.Table,
+            TOM.ObjectType.Table,
             TOM.ObjectType.Column,
             TOM.ObjectType.CalculationItem,
         ]
