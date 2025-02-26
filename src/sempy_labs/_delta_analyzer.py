@@ -1,6 +1,6 @@
 import pandas as pd
 import re
-import datetime
+from datetime import datetime
 import os
 from uuid import UUID
 from typing import Dict, Optional
@@ -51,6 +51,7 @@ def delta_analyzer(
     lakehouse: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
     column_stats: bool = True,
+    skip_cardinality: bool = True,
 ) -> Dict[str, pd.DataFrame]:
     """
     Analyzes a delta table and shows the results in dictionary containing a set of 5 dataframes. If 'export' is set to True, the results will be saved to delta tables in the lakehouse attached to the notebook.
@@ -82,12 +83,18 @@ def delta_analyzer(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     column_stats : bool, default=True
         If True, collects data about column chunks and columns. If False, skips that step and only returns the other 3 dataframes.
+    skip_cardinality : bool, default=True
+        If True, skips the cardinality calculation for each column. If False, calculates the cardinality for each column.
 
     Returns
     -------
     Dict[str, pandas.DataFrame]
         A dictionary of pandas dataframes showing semantic model objects which violated the best practice analyzer rules.
     """
+
+    # Must calculate column stats if calculating cardinality
+    if not skip_cardinality:
+        column_stats = True
 
     # display_toggle = notebookutils.common.configs.pandas_display
 
@@ -96,7 +103,7 @@ def delta_analyzer(
     #    notebookutils.common.configs.pandas_display = False
 
     prefix = "SLL_DeltaAnalyzer_"
-    now = datetime.datetime.now()
+    now = datetime.now()
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace=workspace)
     (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=workspace
@@ -110,19 +117,28 @@ def delta_analyzer(
     # notebookutils.common.configs.pandas_display = display_toggle
 
     parquet_file_df_columns = {
+        # "Dataset": "string",
         "Parquet File": "string",
         "Row Count": "int",
         "Row Groups": "int",
+        "Created By": "string",
+        "Total Table Rows": "int",
+        "Total Table Row Groups": "int",
     }
     row_group_df_columns = {
+        # "Dataset": "string",
         "Parquet File": "string",
         "Row Group ID": "int",
         "Row Count": "int",
         "Compressed Size": "int",
         "Uncompressed Size": "int",
         "Compression Ratio": "float",
+        "Total Table Rows": "int",
+        "Ratio Of Total Table Rows": "float",
+        "Total Table Row Groups": "int",
     }
     column_chunk_df_columns = {
+        # "Dataset": "string",
         "Parquet File": "string",
         "Column ID": "int",
         "Column Name": "string",
@@ -133,6 +149,8 @@ def delta_analyzer(
         "Dict Offset": "int_fillna",
         "Value Count": "int",
         "Encodings": "string",
+        "Statistics": "string",
+        "Primative Type": "string",
     }
 
     parquet_file_df = _create_dataframe(columns=parquet_file_df_columns)
@@ -193,9 +211,13 @@ def delta_analyzer(
 
         # Generate rowgroup dataframe
         new_data = {
+            # "Dataset": "Parquet Files",
             "Parquet File": file_name,
             "Row Count": parquet_file.metadata.num_rows,
             "Row Groups": parquet_file.num_row_groups,
+            "Created By": parquet_file.metadata.created_by,
+            "Total Table Rows": -1,
+            "Total Table Row Groups": -1,
         }
 
         parquet_file_df = pd.concat(
@@ -222,6 +244,7 @@ def delta_analyzer(
 
                     # Generate Column Chunk Dataframe
                     new_data = {
+                        # "Dataset": "Column Chunks",
                         "Parquet File": file_name,
                         "Column ID": j,
                         "Column Name": column_chunk.path_in_schema,
@@ -232,6 +255,8 @@ def delta_analyzer(
                         "Dict Offset": column_chunk.dictionary_page_offset,
                         "Value Count": column_chunk.num_values,
                         "Encodings": str(column_chunk.encodings),
+                        "Statistics": column_chunk.statistics,
+                        "PrimativeType": column_chunk.physical_type,
                     }
 
                     column_chunk_df = pd.concat(
@@ -241,6 +266,7 @@ def delta_analyzer(
 
             # Generate rowgroup dataframe
             new_data = {
+                # "Dataset": "Row Groups",
                 "Parquet File": file_name,
                 "Row Group ID": i + 1,
                 "Row Count": num_rows,
@@ -251,6 +277,8 @@ def delta_analyzer(
                     if column_stats
                     else 0
                 ),
+                "Total Table Rows": -1,
+                "Total Table Row Groups": -1,
             }
 
             if not row_group_df.empty:
@@ -266,6 +294,7 @@ def delta_analyzer(
     summary_df = pd.DataFrame(
         [
             {
+                # "Dataset": "Summary",
                 "Row Count": row_count,
                 "Row Groups": row_groups,
                 "Parquet Files": num_latest_files,
@@ -294,27 +323,49 @@ def delta_analyzer(
         ).agg({"Compressed Size": "sum", "Uncompressed Size": "sum"})
 
         # Add distinct count to column_df
-        for ind, r in column_df.iterrows():
-            col_name = r["Column Name"]
-            if approx_distinct_count:
-                function = "approx"
-            else:
-                function = "distinctcount"
-            dc = _get_column_aggregate(
-                table_name=table_name,
-                column_name=col_name,
-                function=function,
-                lakehouse=lakehouse,
-                workspace=workspace,
-            )
+        if not skip_cardinality:
+            for ind, r in column_df.iterrows():
+                col_name = r["Column Name"]
+                if approx_distinct_count:
+                    function = "approx"
+                else:
+                    function = "distinctcount"
+                dc = _get_column_aggregate(
+                    table_name=table_name,
+                    column_name=col_name,
+                    function=function,
+                    lakehouse=lakehouse,
+                    workspace=workspace,
+                )
 
-            if "Cardinality" not in column_df.columns:
-                column_df["Cardinality"] = None
+                if "Cardinality" not in column_df.columns:
+                    column_df["Cardinality"] = None
 
-            column_df.at[ind, "Cardinality"] = dc
+                column_df.at[ind, "Cardinality"] = dc
 
-        column_df["Cardinality"] = column_df["Cardinality"].astype(int)
         summary_df["Total Size"] = column_df["Compressed Size"].sum()
+
+    parquet_file_df["Total Table Rows"] = parquet_file_df["Row Count"].sum()
+    parquet_file_df["Total Table Row Groups"] = parquet_file_df["Row Groups"].sum()
+
+    row_group_df["Total Table Rows"] = parquet_file_df["Row Count"].sum()
+    row_group_df["Total Table Row Groups"] = parquet_file_df["Row Groups"].sum()
+    total_rows = row_group_df["Row Count"].sum()
+    row_group_df["Ratio Of Total Table Rows"] = (
+        row_group_df["Row Count"] / total_rows * 100.0
+    )
+
+    if column_stats:
+        column_df["Total Table Rows"] = parquet_file_df["Row Count"].sum()
+        column_df["Table Size"] = column_df["Compressed Size"].sum()
+        column_df["Size Percent Of Table"] = (
+            column_df["Compressed Size"] / column_df["Table Size"] * 100.0
+        )
+    if not skip_cardinality and column_stats:
+        column_df["Cardinality"] = column_df["Cardinality"].fillna(0).astype(int)
+        column_df["Cardinality Of Total Rows"] = (
+            column_df["Cardinality"] / column_df["Total Table Rows"] * 100.0
+        )
 
     dataframes = {
         "Summary": summary_df,
@@ -362,6 +413,8 @@ def delta_analyzer(
         if export:
             df["Run Id"] = runId
             df["Run Id"] = df["Run Id"].astype(int)
+
+            df.columns = df.columns.str.replace(" ", "")
             save_as_delta_table(
                 dataframe=df,
                 delta_table_name=f"{prefix}{name}",
@@ -412,7 +465,6 @@ def get_delta_table_history(
 
     from delta import DeltaTable
 
-    delta_table = DeltaTable.forPath(spark, path)
     delta_table = DeltaTable.forPath(spark, path)
     df = delta_table.history().toPandas()
 
