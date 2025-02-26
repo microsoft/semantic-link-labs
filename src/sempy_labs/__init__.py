@@ -11,6 +11,7 @@ from sempy_labs._job_scheduler import (
     list_item_schedules,
 )
 from sempy_labs._delta_analyzer import delta_analyzer
+from sempy_labs._delta_analyzer import delta_analyzer_history
 from sempy_labs._gateways import (
     list_gateway_members,
     list_gateway_role_assigments,
