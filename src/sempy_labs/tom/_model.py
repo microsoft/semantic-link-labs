@@ -3370,6 +3370,41 @@ class TOMWrapper:
             if t.Name in tbls:
                 yield t
 
+    def _get_expression(self, object):
+        """
+        Helper function to get the expression for any given TOM object.
+        """
+
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        valid_objects = [
+            TOM.ObjectType.Measure,
+            TOM.OBjectType.Table,
+            TOM.ObjectType.Column,
+            TOM.ObjectType.CalculationItem,
+        ]
+
+        if object.ObjectType not in valid_objects:
+            raise ValueError(
+                f"{icons.red_dot} The 'object' parameter must be one of these types: {valid_objects}."
+            )
+
+        if object.ObjectType == TOM.ObjectType.Measure:
+            expr = object.Expression
+        elif object.ObjectType == TOM.ObjectType.Table:
+            part = next(p for p in object.Partitions)
+            if part.SourceType == TOM.PartitionSourceType.Calculated:
+                expr = part.Source.Expression
+        elif object.ObjectType == TOM.ObjectType.Column:
+            if object.Type == TOM.ColumnType.Calculated:
+                expr = object.Expression
+        elif object.ObjectType == TOM.ObjectType.CalculationItem:
+            expr = object.Expression
+        else:
+            return
+
+        return expr
+
     def fully_qualified_measures(
         self, object: "TOM.Measure", dependencies: pd.DataFrame
     ):
@@ -3394,15 +3429,7 @@ class TOMWrapper:
             dependencies["Object Name"] == dependencies["Parent Node"]
         ]
 
-        if object.ObjectType == TOM.ObjectType.Measure:
-            expr = object.Expression
-        elif object.ObjectType == TOM.ObjectType.Table:
-            part = next(p for p in object.Partitions)
-            if part.SourceType != TOM.PartitionSourceType.Calculated:
-                return
-            expr = part.Source.Expression
-        else:
-            return
+        expr = self._get_expression(object=object)
 
         for obj in self.depends_on(object=object, dependencies=dependencies):
             if obj.ObjectType == TOM.ObjectType.Measure:
@@ -3411,7 +3438,7 @@ class TOMWrapper:
                 ):
                     yield obj
 
-    def unqualified_columns(self, object: "TOM.Column", dependencies: pd.DataFrame):
+    def unqualified_columns(self, object, dependencies: pd.DataFrame):
         """
         Obtains all unqualified column references for a given object.
 
@@ -3433,6 +3460,8 @@ class TOMWrapper:
             dependencies["Object Name"] == dependencies["Parent Node"]
         ]
 
+        expr = self._get_expression(object=object)
+
         def create_pattern(tableList, b):
             patterns = [
                 r"(?<!" + re.escape(table) + r")(?<!'" + re.escape(table) + r"')"
@@ -3440,16 +3469,6 @@ class TOMWrapper:
             ]
             combined_pattern = "".join(patterns) + re.escape(f"[{b}]")
             return combined_pattern
-
-        if object.ObjectType == TOM.ObjectType.Measure:
-            expr = object.Expression
-        elif object.ObjectType == TOM.ObjectType.Table:
-            part = next(p for p in object.Partitions)
-            if part.SourceType != TOM.PartitionSourceType.Calculated:
-                return
-            expr = part.Source.Expression
-        else:
-            return
 
         for obj in self.depends_on(object=object, dependencies=dependencies):
             if obj.ObjectType == TOM.ObjectType.Column:
