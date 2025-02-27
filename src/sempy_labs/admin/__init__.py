@@ -1,3 +1,6 @@
+from sempy_labs.admin._shared import (
+    list_widely_shared_artifacts,
+)
 from sempy_labs.admin._datasets import (
     list_datasets,
     list_dataset_users,
@@ -94,4 +97,5 @@ __all__ = [
     "list_report_users",
     "patch_capacity",
     "list_workspace_users",
+    "list_widely_shared_artifacts",
 ]
