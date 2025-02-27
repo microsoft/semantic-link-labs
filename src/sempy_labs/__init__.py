@@ -193,6 +193,8 @@ from sempy_labs._git import (
     connect_workspace_to_azure_dev_ops,
     connect_workspace_to_github,
     disconnect_workspace_from_git,
+    get_my_git_credentials,
+    update_my_git_credentials,
 )
 from sempy_labs._dataflows import (
     list_dataflow_storage_accounts,
@@ -525,4 +527,6 @@ __all__ = [
     "create_item_schedule_cron",
     "create_item_schedule_daily",
     "create_item_schedule_weekly",
+    "get_my_git_credentials",
+    "update_my_git_credentials",
 ]

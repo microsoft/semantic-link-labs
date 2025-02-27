@@ -4,6 +4,7 @@ from typing import Optional, List
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _base_api,
+    _create_dataframe,
 )
 from uuid import UUID
 
@@ -432,3 +433,87 @@ def update_from_git(
     print(
         f"{icons.green_dot} The '{workspace_name}' workspace has been updated with commits pushed to the connected branch."
     )
+
+
+def get_my_git_credentials(
+    workspace: Optional[str | UUID] = None,
+) -> pd.DataFrame:
+    """
+    Returns the user's Git credentials configuration details.
+
+    This is a wrapper function for the following API: `Git - Get My Git Credentials <https://learn.microsoft.com/rest/api/fabric/core/git/get-my-git-credentials>`_.
+
+    Parameters
+    ----------
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the user's Git credentials configuration details.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    columns = {
+        "Source": "string",
+    }
+
+    df = _create_dataframe(columns)
+
+    response = _base_api(request=f"/v1/workspaces/{workspace_id}/git/myGitCredentials")
+
+    r = response.json()
+    new_data = {
+        "Source": r.get("source"),
+        "Connection Id": r.get("connectionId"),
+    }
+    df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    return df
+
+
+def update_my_git_credentials(
+    source: str,
+    connection_id: Optional[UUID] = None,
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Updates the user's Git credentials configuration details.
+
+    This is a wrapper function for the following API: `Git - Update My Git Credentials <https://learn.microsoft.com/rest/api/fabric/core/git/update-my-git-credentials>`_.
+
+    Parameters
+    ----------
+    source : str
+        The Git credentials source. Valid options: 'Automatic', 'ConfiguredConnection', 'None'.
+    connection_id : UUID, default=None
+        The object ID of the connection. Valid only for the 'ConfiguredConnection' source.
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    if source == "ConfiguredConnection" and connection_id is None:
+        raise ValueError(
+            f"{icons.red_dot} The 'ConfiguredConnection' source requires a connection_id."
+        )
+
+    payload = {
+        "source": source,
+    }
+
+    if connection_id is not None:
+        payload["connectionId"] = connection_id
+
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/git/myGitCredentials", method="patch", payload=payload,
+    )
+
+    print(f"{icons.green_dot} The user's Git credentials have been updated accordingly.")
