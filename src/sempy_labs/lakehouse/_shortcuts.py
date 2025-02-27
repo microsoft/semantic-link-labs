@@ -67,16 +67,9 @@ def create_shortcut_onelake(
         item_id=source_lakehouse_id, type="Lakehouse", workspace=source_workspace_id
     )
 
-    if destination_workspace is None:
-        destination_workspace_name = source_workspace_name
-        destination_workspace_id = source_workspace_id
-    else:
-        destination_workspace_name = destination_workspace
-        destination_workspace_id = fabric.resolve_workspace_id(
-            destination_workspace_name
-        )
-
-    destination_workspace_id = fabric.resolve_workspace_id(destination_workspace)
+    (destination_workspace_name, destination_workspace_id) = resolve_workspace_name_and_id(
+        destination_workspace
+    )
     destination_lakehouse_id = resolve_lakehouse_id(
         destination_lakehouse, destination_workspace
     )
@@ -111,7 +104,7 @@ def create_shortcut_onelake(
     )
 
     print(
-        f"{icons.green_dot} The shortcut '{shortcut_name}' was created in the '{destination_lakehouse_name}' lakehouse within the '{destination_workspace_name} workspace. It is based on the '{table_name}' table in the '{source_lakehouse_name}' lakehouse within the '{source_workspace_name}' workspace."
+        f"{icons.green_dot} The shortcut '{shortcut_name}' was created in the '{destination_lakehouse_name}' lakehouse within the '{destination_workspace_name}' workspace. It is based on the '{table_name}' table in the '{source_lakehouse_name}' lakehouse within the '{source_workspace_name}' workspace."
     )
 
 
