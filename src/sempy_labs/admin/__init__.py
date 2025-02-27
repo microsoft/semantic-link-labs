@@ -1,3 +1,6 @@
+from sempy_labs.admin._shared import (
+    list_widely_shared_artifacts,
+)
 from sempy_labs.admin._datasets import (
     list_datasets,
     list_dataset_users,
@@ -22,14 +25,22 @@ from sempy_labs.admin._capacities import (
     get_capacity_assignment_status,
     get_capacity_state,
 )
+from sempy_labs.admin._tenant import (
+    list_tenant_settings,
+    delete_capacity_tenant_setting_override,
+    update_tenant_setting,
+    update_capacity_tenant_setting_override,
+    list_workspaces_tenant_settings_overrides,
+    list_capacity_tenant_settings_overrides,
+    list_capacities_delegated_tenant_settings,
+    list_domain_tenant_settings_overrides,
+)
 from sempy_labs.admin._basic_functions import (
     assign_workspaces_to_capacity,
     unassign_workspaces_from_capacity,
     list_workspaces,
     list_workspace_access_details,
     list_modified_workspaces,
-    list_tenant_settings,
-    list_capacities_delegated_tenant_settings,
     list_access_entities,
     list_workspace_users,
 )
@@ -94,4 +105,12 @@ __all__ = [
     "list_report_users",
     "patch_capacity",
     "list_workspace_users",
+    "list_widely_shared_artifacts",
+    "delete_capacity_tenant_setting_override",
+    "update_tenant_setting",
+    "update_capacity_tenant_setting_override",
+    "list_workspaces_tenant_settings_overrides",
+    "list_capacity_tenant_settings_overrides",
+    "list_capacities_delegated_tenant_settings",
+    "list_domain_tenant_settings_overrides",
 ]
