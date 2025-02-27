@@ -1236,8 +1236,19 @@ def list_shortcuts(
         "Location": "string",
         "Bucket": "string",
         "SubPath": "string",
+        "Source Properties Raw": "string",
     }
     df = _create_dataframe(columns=columns)
+
+    # To improve performance create a dataframe to cache all items for a given workspace 
+    itm_clms = {
+        'Id': "string",
+        'Display Name': "string",
+        'Description': "string",
+        'Type': "string",
+        'Workspace Id': "string",
+    }
+    source_items_df = _create_dataframe(columns=itm_clms)
 
     params = ""
     if path != None:
@@ -1248,76 +1259,59 @@ def list_shortcuts(
         uses_pagination=True,
     )
 
-    sources = [
-        "s3Compatible",
-        "googleCloudStorage",
-        "externalDataShare",
-        "amazonS3",
-        "adlsGen2",
-        "dataverse",
-    ]
-    sources_locpath = ["s3Compatible", "googleCloudStorage", "amazonS3", "adlsGen2"]
+    sources = {
+        "AdlsGen2": "adlsGen2",
+        "AmazonS3": "amazonS3",
+        "Dataverse": "dataverse",
+        "ExternalDataShare": "externalDataShare",
+        "GoogleCloudStorage": "googleCloudStorage",
+        "OneLake": "oneLake",
+        "S3Compatible": "s3Compatible",
+    }
 
     for r in responses:
         for i in r.get("value", []):
             tgt = i.get("target", {})
-            one_lake = tgt.get("oneLake", {})
-            connection_id = next(
-                (
-                    tgt.get(source, {}).get("connectionId")
-                    for source in sources
-                    if tgt.get(source)
-                ),
-                None,
-            )
-            location = next(
-                (
-                    tgt.get(source, {}).get("location")
-                    for source in sources_locpath
-                    if tgt.get(source)
-                ),
-                None,
-            )
-            sub_path = next(
-                (
-                    tgt.get(source, {}).get("subpath")
-                    for source in sources_locpath
-                    if tgt.get(source)
-                ),
-                None,
-            )
-            source_workspace_id = one_lake.get("workspaceId")
-            source_item_id = one_lake.get("itemId")
+            tgt_type = tgt.get("type")
+            connection_id = tgt.get(sources.get(tgt_type), {}).get("connectionId")
+            location = tgt.get(sources.get(tgt_type), {}).get("location")
+            sub_path = tgt.get(sources.get(tgt_type), {}).get("subpath")
+            source_workspace_id = tgt.get(sources.get(tgt_type), {}).get("workspaceId")
+            source_item_id = tgt.get(sources.get(tgt_type), {}).get("itemId")
+            bucket = tgt.get(sources.get(tgt_type), {}).get("bucket")
             source_workspace_name = (
                 fabric.resolve_workspace_name(source_workspace_id)
                 if source_workspace_id is not None
                 else None
             )
+            # Cache and use it to getitem type and name 
+            source_item_type = None
+            source_item_name = None
+            dfI = source_items_df[source_items_df["Workspace Id"] == source_workspace_id]
+            if dfI.empty:
+                dfI = fabric.list_items(workspace=source_workspace_id)
+                source_items_df = pd.concat([source_items_df, dfI], ignore_index=True)
+                
+            dfI_filt = dfI[dfI["Id"] == source_item_id]
+            if not dfI_filt.empty:
+                source_item_type = dfI_filt["Type"].iloc[0]
+                source_item_name = dfI_filt["Display Name"].iloc[0]
 
             new_data = {
                 "Shortcut Name": i.get("name"),
                 "Shortcut Path": i.get("path"),
-                "Source Type": tgt.get("type"),
+                "Source Type": tgt_type,
                 "Source Workspace Id": source_workspace_id,
                 "Source Workspace Name": source_workspace_name,
                 "Source Item Id": source_item_id,
-                "Source Item Name": (
-                    fabric.resolve_item_name(
-                        source_item_id, workspace=source_workspace_name
-                    )
-                    if source_item_id is not None
-                    else None
-                ),
-                "Source Item Type": (
-                    resolve_item_type(source_item_id, workspace=source_workspace_name)
-                    if source_item_id is not None
-                    else None
-                ),
-                "OneLake Path": one_lake.get("path"),
+                "Source Item Name": source_item_name,
+                "Source Item Type": source_item_type,
+                "OneLake Path": tgt.get(sources.get('oneLake'), {}).get("path"),
                 "Connection Id": connection_id,
                 "Location": location,
-                "Bucket": tgt.get("s3Compatible", {}).get("bucket"),
+                "Bucket": bucket,
                 "SubPath": sub_path,
+                "Source Properties Raw": str(tgt),
             }
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
