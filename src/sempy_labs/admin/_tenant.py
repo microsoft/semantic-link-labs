@@ -378,7 +378,7 @@ def update_capacity_tenant_setting_override(
 @log
 def list_workspaces_tenant_settings_overrides() -> pd.DataFrame:
     """
-    Shows a list of workspace delegation setting overrides.
+    Shows a list of workspace delegation setting overrides. In order to run this function, you must enable the workspace's delegated OneLake settings. To do this, navigate to the workspace, Workspace Settings -> Delegated Settings -> OneLake settings -> Set to 'On'.
 
     This is a wrapper function for the following API: `Tenants - List Workspaces Tenant Settings Overrides <https://learn.microsoft.com/rest/api/fabric/admin/tenants/list-workspaces-tenant-settings-overrides>`_.
 
