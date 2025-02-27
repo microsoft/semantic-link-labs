@@ -1189,7 +1189,9 @@ def list_semantic_model_objects(
 
 
 def list_shortcuts(
-    lakehouse: Optional[str] = None, workspace: Optional[str | UUID] = None
+    lakehouse: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
+    path: Optional[str] = None
 ) -> pd.DataFrame:
     """
     Shows all shortcuts which exist in a Fabric lakehouse and their properties.
@@ -1203,6 +1205,9 @@ def list_shortcuts(
         The name or ID of the Fabric workspace in which lakehouse resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    path: str, default=None
+        The path within lakehouse where to look for shortcuts. If provied, must start with either "Files" or "Tables". Examples: Tables/FolderName/SubFolderName; Files/FolderName/SubFolderName.
+        Defaults to None which will retun all shortcuts on the given lakehouse
 
     Returns
     -------
@@ -1234,8 +1239,12 @@ def list_shortcuts(
     }
     df = _create_dataframe(columns=columns)
 
+    params = ""
+    if path != None:
+        params = f"?parentPath={path}"
+
     responses = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/items/{lakehouse_id}/shortcuts",
+        request=f"/v1/workspaces/{workspace_id}/items/{lakehouse_id}/shortcuts{params}",
         uses_pagination=True,
     )
 
