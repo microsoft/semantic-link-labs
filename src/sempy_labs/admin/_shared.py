@@ -50,7 +50,9 @@ def list_widely_shared_artifacts(
     )
 
     responses = _base_api(
-        request=f"/v1.0/myorg/admin/widelySharedArtifacts/{api}", client="fabric_sp", uses_pagination=True,
+        request=f"/v1.0/myorg/admin/widelySharedArtifacts/{api}",
+        client="fabric_sp",
+        uses_pagination=True,
     )
 
     for r in responses:
