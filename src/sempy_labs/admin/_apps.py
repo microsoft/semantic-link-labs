@@ -40,7 +40,7 @@ def list_apps(
         "App Id": "string",
         "Description": "string",
         "Published By": "string",
-        "Last Update": "datetime",
+        "Last Update": "datetime_coerce",
     }
 
     df = _create_dataframe(columns=columns)

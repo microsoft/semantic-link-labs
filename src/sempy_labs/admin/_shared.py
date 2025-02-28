@@ -50,11 +50,13 @@ def list_widely_shared_artifacts(
     )
 
     responses = _base_api(
-        request=f"/v1.0/myorg/admin/widelySharedArtifacts/{api}", client="fabric_sp"
+        request=f"/v1.0/myorg/admin/widelySharedArtifacts/{api}",
+        client="fabric_sp",
+        uses_pagination=True,
     )
 
     for r in responses:
-        for v in r.get("value", []):
+        for v in r.get("ArtifactAccessEntities", []):
             sharer = v.get("sharer", {})
             new_data = {
                 "Artifact Id": v.get("artifactId"),
