@@ -45,18 +45,14 @@ class ConnectBase:
         (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
         # Resolve the appropriate ID and name (warehouse or lakehouse)
-        if endpoint_type == "warehouse":
-            (resource_name, resource_id) = resolve_item_name_and_id(
-                item=item, type=endpoint_type.capitalize(), workspace=workspace_id
-            )
         if endpoint_type == "sqldatabase":
             # SQLDatabase is has special case for resolving the name and id
             (resource_name, resource_id) = resolve_item_name_and_id(
                 item=item, type="SQLDatabase", workspace=workspace_id
             )
         else:
-            (resource_name, resource_id) = resolve_lakehouse_name_and_id(
-                lakehouse=item, workspace=workspace_id
+            (resource_name, resource_id) = resolve_item_name_and_id(
+                item=item, workspace=workspace_id, type=endpoint_type.capitalize()
             )
 
         # Get the TDS endpoint
