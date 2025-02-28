@@ -2,7 +2,6 @@ import sempy.fabric as fabric
 from typing import Optional, List
 from uuid import UUID
 from sempy.fabric.exceptions import FabricHTTPException
-import numpy as np
 import time
 import sempy_labs._icons as icons
 from sempy_labs.admin._basic_functions import list_workspaces

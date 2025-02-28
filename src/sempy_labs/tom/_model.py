@@ -2,6 +2,7 @@ import sempy
 import sempy.fabric as fabric
 import pandas as pd
 import re
+import json
 from datetime import datetime
 from sempy_labs._helper_functions import (
     format_dax_object_name,
@@ -1748,6 +1749,7 @@ class TOMWrapper:
             "TOM.Table", "TOM.Column", "TOM.Measure", "TOM.Hierarchy", "TOM.Level"
         ],
         language: str,
+        property: str = "Name",
     ):
         """
         Removes an object's `translation <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.culture?view=analysisservices-dotnet>`_ value.
@@ -1758,13 +1760,28 @@ class TOMWrapper:
             An object (i.e. table/column/measure) within a semantic model.
         language : str
             The language code.
+        property : str, default="Name"
+            The property to set. Options: 'Name', 'Description', 'Display Folder'.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        o = object.Model.Cultures[language].ObjectTranslations[
-            object, TOM.TranslatedProperty.Caption
-        ]
-        object.Model.Cultures[language].ObjectTranslations.Remove(o)
+        if property in ["Caption", "Name"]:
+            prop = TOM.TranslatedProperty.Caption
+        elif property == "Description":
+            prop = TOM.TranslatedProperty.Description
+        else:
+            prop = TOM.TranslatedProperty.DisplayFolder
+
+        if property == "DisplayFolder" and object.ObjectType not in [
+            TOM.ObjectType.Table,
+            TOM.ObjectType.Column,
+            TOM.ObjectType.Measure,
+            TOM.ObjectType.Hierarchy,
+        ]:
+            pass
+        else:
+            o = object.Model.Cultures[language].ObjectTranslations[object, prop]
+            object.Model.Cultures[language].ObjectTranslations.Remove(o)
 
     def remove_object(self, object):
         """
@@ -1779,6 +1796,8 @@ class TOMWrapper:
 
         objType = object.ObjectType
 
+        properties = ["Name", "Description", "DisplayFolder"]
+
         # Have to remove translations and perspectives on the object before removing it.
         if objType in [
             TOM.ObjectType.Table,
@@ -1789,7 +1808,10 @@ class TOMWrapper:
         ]:
             for lang in object.Model.Cultures:
                 try:
-                    self.remove_translation(object=object, language=lang.Name)
+                    for property in properties:
+                        self.remove_translation(
+                            object=object, language=lang.Name, property=property
+                        )
                 except Exception:
                     pass
         if objType in [
@@ -2985,19 +3007,19 @@ class TOMWrapper:
 
         for t in self.model.Tables:
             dfT_filt = dfT[dfT["Name"] == t.Name]
-            if len(dfT_filt) > 0:
+            if not dfT_filt.empty:
                 row = dfT_filt.iloc[0]
                 rowCount = str(row["Row Count"])
                 totalSize = str(row["Total Size"])
                 self.set_annotation(object=t, name="Vertipaq_RowCount", value=rowCount)
                 self.set_annotation(
-                    object=t, name="Vertipaq_TableSize", value=totalSize
+                    object=t, name="Vertipaq_TotalSize", value=totalSize
                 )
             for c in t.Columns:
                 dfC_filt = dfC[
                     (dfC["Table Name"] == t.Name) & (dfC["Column Name"] == c.Name)
                 ]
-                if len(dfC_filt) > 0:
+                if not dfC_filt.empty:
                     row = dfC_filt.iloc[0]
                     totalSize = str(row["Total Size"])
                     dataSize = str(row["Data Size"])
@@ -3023,7 +3045,7 @@ class TOMWrapper:
                 dfP_filt = dfP[
                     (dfP["Table Name"] == t.Name) & (dfP["Partition Name"] == p.Name)
                 ]
-                if len(dfP_filt) > 0:
+                if not dfP_filt.empty:
                     row = dfP_filt.iloc[0]
                     recordCount = str(row["Record Count"])
                     segmentCount = str(row["Segment Count"])
@@ -3041,14 +3063,14 @@ class TOMWrapper:
                 dfH_filt = dfH[
                     (dfH["Table Name"] == t.Name) & (dfH["Hierarchy Name"] == h.Name)
                 ]
-                if len(dfH_filt) > 0:
+                if not dfH_filt.empty:
                     usedSize = str(dfH_filt["Used Size"].iloc[0])
                     self.set_annotation(
                         object=h, name="Vertipaq_UsedSize", value=usedSize
                     )
         for r in self.model.Relationships:
             dfR_filt = dfR[dfR["Relationship Name"] == r.Name]
-            if len(dfR_filt) > 0:
+            if not dfR_filt.empty:
                 relSize = str(dfR_filt["Used Size"].iloc[0])
                 self.set_annotation(object=r, name="Vertipaq_UsedSize", value=relSize)
         try:
@@ -3201,12 +3223,12 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        objType = object.ObjectType
+        if object.ObjectType not in [TOM.ObjectType.Table, TOM.ObjectType.Column]:
+            raise ValueError(
+                f"{icons.red_dot} The 'object' parameter must be a Table or Column object."
+            )
 
-        if objType == TOM.ObjectType.Column:
-            result = self.get_annotation_value(object=object, name="Vertipaq_TotalSize")
-        elif objType == TOM.ObjectType.Table:
-            result = self.get_annotation_value(object=object, name="Vertipaq_TotalSize")
+        result = self.get_annotation_value(object=object, name="Vertipaq_TotalSize")
 
         return int(result) if result is not None else 0
 
@@ -3253,17 +3275,28 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        objType = object.ObjectType
-        objName = object.Name
-        objParentName = object.Parent.Name
+        obj_type = object.ObjectType
+        obj_name = object.Name
 
-        if objType == TOM.ObjectType.Table:
-            objParentName = objName
+        if object.ObjectType == TOM.ObjectType.CalculationItem:
+            obj_parent_name = object.Parent.Table.Name
+        else:
+            obj_parent_name = object.Parent.Name
+
+        if obj_type == TOM.ObjectType.Table:
+            obj_parent_name = obj_name
+            object_types = ["Table", "Calc Table"]
+        elif obj_type == TOM.ObjectType.Column:
+            object_types = ["Column", "Calc Column"]
+        elif obj_type == TOM.ObjectType.CalculationItem:
+            object_types = ["Calculation Item"]
+        else:
+            object_types = [str(obj_type)]
 
         fil = dependencies[
-            (dependencies["Object Type"] == str(objType))
-            & (dependencies["Table Name"] == objParentName)
-            & (dependencies["Object Name"] == objName)
+            (dependencies["Object Type"].isin(object_types))
+            & (dependencies["Table Name"] == obj_parent_name)
+            & (dependencies["Object Name"] == obj_name)
         ]
         meas = (
             fil[fil["Referenced Object Type"] == "Measure"]["Referenced Object"]
@@ -3343,6 +3376,41 @@ class TOMWrapper:
             if t.Name in tbls:
                 yield t
 
+    def _get_expression(self, object):
+        """
+        Helper function to get the expression for any given TOM object.
+        """
+
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        valid_objects = [
+            TOM.ObjectType.Measure,
+            TOM.ObjectType.Table,
+            TOM.ObjectType.Column,
+            TOM.ObjectType.CalculationItem,
+        ]
+
+        if object.ObjectType not in valid_objects:
+            raise ValueError(
+                f"{icons.red_dot} The 'object' parameter must be one of these types: {valid_objects}."
+            )
+
+        if object.ObjectType == TOM.ObjectType.Measure:
+            expr = object.Expression
+        elif object.ObjectType == TOM.ObjectType.Table:
+            part = next(p for p in object.Partitions)
+            if part.SourceType == TOM.PartitionSourceType.Calculated:
+                expr = part.Source.Expression
+        elif object.ObjectType == TOM.ObjectType.Column:
+            if object.Type == TOM.ColumnType.Calculated:
+                expr = object.Expression
+        elif object.ObjectType == TOM.ObjectType.CalculationItem:
+            expr = object.Expression
+        else:
+            return
+
+        return expr
+
     def fully_qualified_measures(
         self, object: "TOM.Measure", dependencies: pd.DataFrame
     ):
@@ -3367,15 +3435,16 @@ class TOMWrapper:
             dependencies["Object Name"] == dependencies["Parent Node"]
         ]
 
+        expr = self._get_expression(object=object)
+
         for obj in self.depends_on(object=object, dependencies=dependencies):
             if obj.ObjectType == TOM.ObjectType.Measure:
-                if (f"{obj.Parent.Name}[{obj.Name}]" in object.Expression) or (
-                    format_dax_object_name(obj.Parent.Name, obj.Name)
-                    in object.Expression
+                if (f"{obj.Parent.Name}[{obj.Name}]" in expr) or (
+                    format_dax_object_name(obj.Parent.Name, obj.Name) in expr
                 ):
                     yield obj
 
-    def unqualified_columns(self, object: "TOM.Column", dependencies: pd.DataFrame):
+    def unqualified_columns(self, object, dependencies: pd.DataFrame):
         """
         Obtains all unqualified column references for a given object.
 
@@ -3397,6 +3466,8 @@ class TOMWrapper:
             dependencies["Object Name"] == dependencies["Parent Node"]
         ]
 
+        expr = self._get_expression(object=object)
+
         def create_pattern(tableList, b):
             patterns = [
                 r"(?<!" + re.escape(table) + r")(?<!'" + re.escape(table) + r"')"
@@ -3414,7 +3485,7 @@ class TOMWrapper:
                 if (
                     re.search(
                         create_pattern(tableList, re.escape(obj.Name)),
-                        object.Expression,
+                        expr,
                     )
                     is not None
                 ):
@@ -4677,6 +4748,183 @@ class TOMWrapper:
                     f"{icons.yellow_dot} '{m}' is not a member of the '{role_name}' role."
                 )
 
+    def get_bim(self) -> dict:
+        """
+        Retrieves the .bim file for the semantic model.
+
+        Returns
+        -------
+        dict
+            The .bim file.
+        """
+
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        return (
+            json.loads(TOM.JsonScripter.ScriptCreate(self.model.Database))
+            .get("create")
+            .get("database")
+        )
+
+    def _reduce_model(self, perspective_name: str):
+        """
+        Reduces a model's objects based on a perspective. Adds the dependent objects within a perspective to that perspective.
+        """
+
+        from sempy_labs._model_dependencies import get_model_calc_dependencies
+
+        fabric.refresh_tom_cache(workspace=self._workspace_id)
+        dfP = fabric.list_perspectives(
+            dataset=self._dataset_id, workspace=self._workspace_id
+        )
+        dfP = dfP[dfP["Perspective Name"] == perspective_name]
+        if dfP.empty:
+            raise ValueError(
+                f"{icons.red_dot} The '{perspective_name}' is not a valid perspective in the '{self._dataset_name}' semantic model within the '{self._workspace_name}' workspace."
+            )
+
+        dep = get_model_calc_dependencies(
+            dataset=self._dataset_id, workspace=self._workspace_id
+        )
+        dep_filt = dep[
+            dep["Object Type"].isin(
+                [
+                    "Rows Allowed",
+                    "Measure",
+                    "Calc Item",
+                    "Calc Column",
+                    "Calc Table",
+                    "Hierarchy",
+                ]
+            )
+        ]
+
+        tables = dfP[dfP["Object Type"] == "Table"]["Table Name"].tolist()
+        measures = dfP[dfP["Object Type"] == "Measure"]["Object Name"].tolist()
+        columns = dfP[dfP["Object Type"] == "Column"][["Table Name", "Object Name"]]
+        cols = [
+            f"'{row[0]}'[{row[1]}]"
+            for row in columns.itertuples(index=False, name=None)
+        ]
+        hierarchies = dfP[dfP["Object Type"] == "Hierarchy"][
+            ["Table Name", "Object Name"]
+        ]
+        hier = [
+            f"'{row[0]}'[{row[1]}]"
+            for row in hierarchies.itertuples(index=False, name=None)
+        ]
+        filt = dep_filt[
+            (dep_filt["Object Type"].isin(["Rows Allowed", "Calc Item"]))
+            | (dep_filt["Object Type"] == "Measure")
+            & (dep_filt["Object Name"].isin(measures))
+            | (dep_filt["Object Type"] == "Calc Table")
+            & (dep_filt["Object Name"].isin(tables))
+            | (
+                (dep_filt["Object Type"].isin(["Calc Column"]))
+                & (
+                    dep_filt.apply(
+                        lambda row: f"'{row['Table Name']}'[{row['Object Name']}]",
+                        axis=1,
+                    ).isin(cols)
+                )
+            )
+            | (
+                (dep_filt["Object Type"].isin(["Hierarchy"]))
+                & (
+                    dep_filt.apply(
+                        lambda row: f"'{row['Table Name']}'[{row['Object Name']}]",
+                        axis=1,
+                    ).isin(hier)
+                )
+            )
+        ]
+
+        result_df = pd.DataFrame(columns=["Table Name", "Object Name", "Object Type"])
+
+        for _, r in filt.iterrows():
+            added = False
+            obj_type = r["Referenced Object Type"]
+            table_name = r["Referenced Table"]
+            object_name = r["Referenced Object"]
+            if obj_type in ["Column", "Attribute Hierarchy"]:
+                obj = self.model.Tables[table_name].Columns[object_name]
+                if not self.in_perspective(
+                    object=obj, perspective_name=perspective_name
+                ):
+                    self.add_to_perspective(
+                        object=obj, perspective_name=perspective_name
+                    )
+                    added = True
+            elif obj_type == "Measure":
+                obj = self.model.Tables[table_name].Measures[object_name]
+                if not self.in_perspective(
+                    object=obj, perspective_name=perspective_name
+                ):
+                    self.add_to_perspective(
+                        object=obj, perspective_name=perspective_name
+                    )
+                    added = True
+            elif obj_type == "Table":
+                obj = self.model.Tables[table_name]
+                if not self.in_perspective(
+                    object=obj, perspective_name=perspective_name
+                ):
+                    self.add_to_perspective(
+                        object=obj, perspective_name=perspective_name
+                    )
+                    added = True
+            if added:
+                new_data = {
+                    "Table Name": table_name,
+                    "Object Name": object_name,
+                    "Object Type": obj_type,
+                }
+
+                result_df = pd.concat(
+                    [result_df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                )
+
+        # Reduce model...
+
+        # Remove unnecessary relationships
+        for r in self.model.Relationships:
+            if (
+                not self.in_perspective(
+                    object=r.FromTable, perspective_name=perspective_name
+                )
+            ) or (
+                not self.in_perspective(
+                    object=r.ToTable, perspective_name=perspective_name
+                )
+            ):
+                self.remove_object(object=r)
+
+        # Ensure relationships in reduced model have base columns
+        for r in self.model.Relationships:
+            if not self.in_perspective(r.FromColumn, perspective_name=perspective_name):
+                self.add_to_perspective(
+                    object=r.FromColumn, perspective_name=perspective_name
+                )
+            if not self.in_perspective(r.ToColumn, perspective_name=perspective_name):
+                self.add_to_perspective(
+                    object=r.ToColumn, perspective_name=perspective_name
+                )
+
+        # Remove objects not in the perspective
+        for t in self.model.Tables:
+            if not self.in_perspective(object=t, perspective_name=perspective_name):
+                self.remove_object(object=t)
+            else:
+                for attr in ["Columns", "Measures", "Hierarchies"]:
+                    for obj in getattr(t, attr):
+                        if not self.in_perspective(
+                            object=obj, perspective_name=perspective_name
+                        ):
+                            self.remove_object(object=obj)
+
+        # Return the objects added to the perspective based on dependencies
+        return result_df.drop_duplicates()
+
     def close(self):
 
         if not self._readonly and self.model is not None:
@@ -4766,6 +5014,7 @@ def connect_semantic_model(
         If connecting to Azure Analysis Services, enter the workspace parameter in the following format: 'asazure://<region>.asazure.windows.net/<server_name>'.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+
     Returns
     -------
     typing.Iterator[TOMWrapper]

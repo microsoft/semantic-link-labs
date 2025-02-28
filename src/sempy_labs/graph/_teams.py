@@ -35,7 +35,7 @@ def list_teams() -> pd.DataFrame:
         "Archived": "bool",
         "Favorite By Me": "bool",
         "Discoverable By Me": "bool",
-        "Member Count": "int",
+        "Member Count": "int_fillna",
     }
 
     df = _create_dataframe(columns=columns)

@@ -319,7 +319,7 @@ def assign_domain_workspaces_by_capacities(
         The capacity names.
     """
 
-    from sempy_labs.admin import list_capacities
+    from sempy_labs.admin._capacities import list_capacities
 
     if "domain_name" in kwargs:
         domain = kwargs["domain_name"]

@@ -1,3 +1,7 @@
+from sempy_labs._semantic_models import (
+    get_semantic_model_refresh_schedule,
+    enable_semantic_model_scheduled_refresh,
+)
 from sempy_labs._graphQL import (
     list_graphql_apis,
     create_graphql_api,
@@ -5,8 +9,14 @@ from sempy_labs._graphQL import (
 from sempy_labs._job_scheduler import (
     list_item_job_instances,
     list_item_schedules,
+    create_item_schedule_cron,
+    create_item_schedule_daily,
+    create_item_schedule_weekly,
 )
-from sempy_labs._delta_analyzer import delta_analyzer
+from sempy_labs._delta_analyzer import (
+    delta_analyzer,
+    get_delta_table_history,
+)
 from sempy_labs._gateways import (
     list_gateway_members,
     list_gateway_role_assigments,
@@ -75,6 +85,7 @@ from sempy_labs._eventhouses import (
     create_eventhouse,
     list_eventhouses,
     delete_eventhouse,
+    get_eventhouse_definition,
 )
 from sempy_labs._eventstreams import (
     list_eventstreams,
@@ -158,6 +169,11 @@ from sempy_labs._notebooks import (
 from sempy_labs._sql import (
     ConnectWarehouse,
     ConnectLakehouse,
+    ConnectSQLDatabase,
+)
+from sempy_labs._sqldatabase import (
+    get_sql_database_columns,
+    get_sql_database_tables,
 )
 from sempy_labs._workspace_identity import (
     provision_workspace_identity,
@@ -291,6 +307,7 @@ __all__ = [
     "resolve_warehouse_id",
     "ConnectWarehouse",
     "ConnectLakehouse",
+    "ConnectSQLDatabase",
     "update_semantic_model_from_bim",
     "list_connections",
     "get_semantic_model_size",
@@ -499,4 +516,13 @@ __all__ = [
     "delta_analyzer",
     # "dax_perf_test",
     # "dax_perf_test_bulk",
+    "get_semantic_model_refresh_schedule",
+    "get_eventhouse_definition",
+    "enable_semantic_model_scheduled_refresh",
+    "get_delta_table_history",
+    "get_sql_database_columns",
+    "get_sql_database_tables",
+    "create_item_schedule_cron",
+    "create_item_schedule_daily",
+    "create_item_schedule_weekly",
 ]

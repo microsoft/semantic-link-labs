@@ -125,6 +125,7 @@ def send_mail(
     subject: str,
     to_recipients: str | List[str],
     content: str,
+    content_type: str = "Text",
     cc_recipients: str | List[str] = None,
 ):
     """
@@ -144,9 +145,16 @@ def send_mail(
         The email address of the recipients.
     content : str
         The email content.
+    content_type : str, default="Text"
+        The email content type. Options: "Text" or "HTML".
     cc_recipients : str | List[str], default=None
         The email address of the CC recipients.
     """
+
+    if content_type.lower() == "html":
+        content_type = "HTML"
+    else:
+        content_type = "Text"
 
     user_id = resolve_user_id(user=user)
 
@@ -170,7 +178,7 @@ def send_mail(
         "message": {
             "subject": subject,
             "body": {
-                "contentType": "Text",
+                "contentType": content_type,
                 "content": content,
             },
             "toRecipients": to_email_addresses,

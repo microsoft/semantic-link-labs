@@ -14,7 +14,6 @@ from sempy_labs.report._download_report import download_report
 from sempy_labs.report._report_functions import (
     get_report_json,
     # report_dependency_tree,
-    export_report,
     clone_report,
     launch_report,
     # translate_report_titles
@@ -25,6 +24,9 @@ from sempy_labs.report._report_rebind import (
 )
 from sempy_labs.report._report_bpa_rules import report_bpa_rules
 from sempy_labs.report._report_bpa import run_report_bpa
+from sempy_labs.report._export_report import (
+    export_report,
+)
 
 __all__ = [
     "create_report_from_reportjson",

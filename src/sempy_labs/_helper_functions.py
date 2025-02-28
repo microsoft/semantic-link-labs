@@ -512,7 +512,6 @@ def save_as_delta_table(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    from pyspark.sql import SparkSession
     from pyspark.sql.types import (
         StringType,
         IntegerType,
@@ -1637,3 +1636,33 @@ def _run_spark_sql_query(query):
     spark = _create_spark_session()
 
     return spark.sql(query)
+
+
+def _mount(lakehouse, workspace) -> str:
+    """
+    Mounts a lakehouse to a notebook if it is not already mounted. Returns the local path to the lakehouse.
+    """
+
+    import notebookutils
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace=workspace)
+    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+        lakehouse=lakehouse, workspace=workspace
+    )
+
+    lake_path = create_abfss_path(lakehouse_id, workspace_id)
+    mounts = notebookutils.fs.mounts()
+    mount_point = f"/{workspace_name.replace(' ', '')}{lakehouse_name.replace(' ', '')}"
+    if not any(i.get("source") == lake_path for i in mounts):
+        # Mount lakehouse if not mounted
+        notebookutils.fs.mount(lake_path, mount_point)
+        print(
+            f"{icons.green_dot} Mounted the '{lakehouse_name}' lakehouse within the '{workspace_name}' to the notebook."
+        )
+
+    mounts = notebookutils.fs.mounts()
+    local_path = next(
+        i.get("localPath") for i in mounts if i.get("source") == lake_path
+    )
+
+    return local_path

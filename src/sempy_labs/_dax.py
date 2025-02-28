@@ -62,9 +62,23 @@ def evaluate_dax_impersonation(
         payload=payload,
     )
     data = response.json()["results"][0]["tables"]
-    column_names = data[0]["rows"][0].keys()
-    data_rows = [row.values() for item in data for row in item["rows"]]
-    df = pd.DataFrame(data_rows, columns=column_names)
+
+    # Get all possible column names from all rows because null columns aren't returned
+    all_columns = set()
+    for item in data:
+        for row in item["rows"]:
+            all_columns.update(row.keys())
+
+    # Create rows with all columns, filling missing values with None
+    rows = []
+    for item in data:
+        for row in item["rows"]:
+            # Create a new row with all columns, defaulting to None
+            new_row = {col: row.get(col) for col in all_columns}
+            rows.append(new_row)
+
+    # Create DataFrame from the processed rows
+    df = pd.DataFrame(rows)
 
     return df
 
