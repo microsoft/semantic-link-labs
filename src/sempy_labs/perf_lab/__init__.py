@@ -1,14 +1,9 @@
 from sempy_labs.perf_lab._sample_lab import (
-    _get_or_create_workspace,
-    _get_or_create_lakehouse,
     _get_dates_df,
     _get_geography_df,
     _get_product_categories_df,
     _get_measure_table_df,
     _get_sales_df,
-    _save_as_delta_table,
-    _insert_into_delta_table,
-    _read_delta_table,
     _get_sample_tables_property_bag,
     _generate_onelake_shared_expression,
     provision_perf_lab_lakehouse,
@@ -16,7 +11,6 @@ from sempy_labs.perf_lab._sample_lab import (
     provision_sample_semantic_model,
     deprovision_perf_lab_lakehouses,
     deprovision_perf_lab_models,
-    PropertyBag,
 )
 
 from sempy_labs.perf_lab._test_cycle import (
@@ -81,16 +75,11 @@ __all__ = [
     "_provision_test_models",
     "_initialize_test_cycle",
     "_get_test_cycle_id",
-    "_get_or_create_workspace",
-    "_get_or_create_lakehouse",
     "_get_product_categories_df",
     "_get_dates_df",
     "_get_geography_df",
     "_get_measure_table_df",
     "_get_sales_df",
-    "_save_as_delta_table",
-    "_insert_into_delta_table",
-    "_read_delta_table",
     "_get_sample_tables_property_bag",
     "_generate_onelake_shared_expression",
     "provision_perf_lab_lakehouse",
@@ -102,6 +91,5 @@ __all__ = [
     "_tag_dax_queries",
     "_trace_dax_queries",
     "_get_query_name",
-    "PropertyBag",
     "ExecutionTracker",
 ]

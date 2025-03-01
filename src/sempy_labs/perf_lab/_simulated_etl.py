@@ -12,7 +12,6 @@ import sempy_labs._icons as icons
 from typing import Optional, Callable, Tuple
 from uuid import UUID
 from sempy_labs.tom import connect_semantic_model
-from sempy_labs.perf_lab import PropertyBag
 
 from sempy_labs.lakehouse import get_lakehouse_tables
 from sempy_labs._helper_functions import (
@@ -20,11 +19,11 @@ from sempy_labs._helper_functions import (
     resolve_dataset_name_and_id,
 )
 
-FilterCallback = Callable[[str, str, PropertyBag], bool]
+FilterCallback = Callable[[str, str, dict], bool]
 def _filter_by_prefix(
     table_name: str, 
     source_table_name: str, 
-    filter_properties: Optional[PropertyBag] = None
+    filter_properties: Optional[dict] = None
 ) -> bool:
     """
     Returns a boolean to indicate if the table info should be included in the source table list (True) or not (False).
@@ -35,9 +34,9 @@ def _filter_by_prefix(
         The name of the table in a semantic model.
     table_name : str
         The name of the table in a data source.
-    filter_properties: PropertyBag, default=None
-        A collection of property values specific to the filter_function function to aid in the filtering decision.
-        The _is_sales_table sample function does not use the filter_properties.
+    filter_properties: dict, default=None
+        An arbirary dictionary of key/value pairs that the provision_perf_lab_lakehouse function passes to the table_generator function.
+        The _filter_by_prefix sample function expects to find a 'Prefix' key in the filter_properties.
 
     Returns
     -------
@@ -49,11 +48,11 @@ def _filter_by_prefix(
         return False
 
     return source_table_name.startswith(
-        filter_properties.get_property("Prefix"))
+        filter_properties["Prefix"])
 
 def get_source_tables(
     test_definitions: DataFrame,
-    filter_properties: Optional[PropertyBag] = None,
+    filter_properties: Optional[dict] = None,
     filter_function: Optional[FilterCallback] = None
 ) -> DataFrame:
     """
@@ -67,9 +66,9 @@ def get_source_tables(
         +----------+----------+----------------+-------------+---------------+-------------+---------------+-------------------+--------------+
         | QueryId|   QueryText| MasterWorkspace|MasterDataset|TargetWorkspace|TargetDataset| DatasourceName|DatasourceWorkspace|DatasourceType|
         +----------+----------+----------------+-------------+---------------+-------------+---------------+-------------------+--------------+
-    filter_properties: PropertyBag, default=None
-        A collection of property values that the _get_source_tables() function passes to the filter_function function.
-        The properties in the property bag are specific to the filter_function function passed into the _get_source_tables() function.        
+    filter_properties: dict, default=None
+        A dictionary of key/value pairs that the _get_source_tables() function passes to the filter_function function.
+        The key/value pairs in the dictionary are specific to the filter_function function passed into the _get_source_tables() function.        
     filter_function
         A callback function to which source Delta tables to include in the dataframe returned to the caller.
 
@@ -421,10 +420,10 @@ def _sliding_window_update(
 
     return updated_rows
 
-UpdateTableCallback = Callable[[Row, PropertyBag], None]
+UpdateTableCallback = Callable[[Row, dict], None]
 def _delete_reinsert_rows(
     source_table_info: Row,
-    custom_properties: Optional[PropertyBag] = None
+    custom_properties: Optional[dict] = None
 ) -> None:
     """
     Deletes and reinserts rows in a Delta table and optimizes the Delta table between deletes and inserts.
@@ -435,16 +434,16 @@ def _delete_reinsert_rows(
         +---------------+----------------+-------------------+---------------+--------------+
         | DatasourceName|  DatasourceType|DatasourceWorkspace|SourceTableName|SourceLocation|
         +---------------+----------------+-------------------+---------------+--------------+
-     custom_properties: PropertyBag, default=None
-        A collection of property values specific to the callback function.
+     custom_properties: dict, default=None
+        A dictionary of key/value pairs specific to the callback function.
 
     Returns
     -------
     None
     """
 
-    key_column = custom_properties.get_property("key_column")
-    optimize_table = custom_properties.get_property("Optimize")
+    key_column = custom_properties["key_column"]
+    optimize_table = custom_properties["Optimize"]
 
     minmax = _get_min_max_keys(
         source_table_info['SourceTableName'], 
@@ -467,7 +466,7 @@ def _delete_reinsert_rows(
 
 def simulate_etl(
     source_tables_info: DataFrame,
-    update_properties: Optional[PropertyBag] = None,
+    update_properties: Optional[dict] = None,
     update_function: Optional[UpdateTableCallback] = None
 ) -> None:
     """
@@ -477,9 +476,9 @@ def simulate_etl(
     ----------
     source_tables_info : DataFrame
         A spark dataframe with information about the model tables and source tables, usually obtained by using the get_source_tables() function.
-    update_properties: PropertyBag, Default=None
-        A collection of property values that the simulate_etl() function passes to the update_function callback.
-        The properties in the property bag are specific to the update_function implementation.
+    update_properties: dict, Default=None
+        A dictionary of key/value pairs that the simulate_etl() function passes to the update_function callback.
+        The key/value pairs in the dictionary are specific to the update_function implementation.
     update_function: UpdateTableCallback, Default=None
         A callback function to process each source table.
 
@@ -493,4 +492,5 @@ def simulate_etl(
     else:
             raise ValueError("Unable to process tables without an UpdateTableCallback. Please set the update_function parameter.")
     
+    print(f"{icons.green_dot} ETL processing completed.")
     return None

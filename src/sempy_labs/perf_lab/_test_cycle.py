@@ -15,13 +15,13 @@ import re
 
 import sempy_labs._icons as icons
 from sempy_labs import deploy_semantic_model, clear_cache
-from sempy_labs.perf_lab import  _get_or_create_workspace
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_lakehouse_name_and_id,
     resolve_dataset_name_and_id,
     generate_guid,
+    _get_or_create_workspace
 )
 _sample_queries = [
 ("Total Sales (Card)", """EVALUATE
@@ -55,7 +55,7 @@ SUMMARIZE(
 SUMMARIZE(
     Sales,
 	Geography[Country],
-    "Total Profit", [Profit]
+    "Total Profit", VALUE([Profit])
 )"""),
 # ----------------------------
 ("Monthly Sales Trends (Line Chart)", """EVALUATE
@@ -75,10 +75,10 @@ EVALUATE
 SUMMARIZECOLUMNS(
     'date'[Monthly] ,
     TREATAS({DATE(2023,1,1),DATE(2023,2,1),DATE(2023,3,1)} , 'Date'[Monthly] ) ,
-    "Sales" , [Sum of Quantity],
-    "Sales PM" ,  [Sum of Quantity PM],
-    "Sales PM Delta", [Sum of Quantity PM Delta] ,
-    "Sales PM % " , [Sum of Quantity PM %]
+    "Sales" , VALUE([Sum of Quantity]),
+    "Sales PM" ,  VALUE([Sum of Quantity PM]),
+    "Sales PM Delta", VALUE([Sum of Quantity PM Delta]),
+    "Sales PM % " , VALUE([Sum of Quantity PM %])
 )
 
 ORDER BY [Monthly]"""),
@@ -92,9 +92,9 @@ EVALUATE
 SUMMARIZECOLUMNS(
     'Date'[Monthly],
     TREATAS({DATE(2023,1,1)} , 'Date'[Monthly] ),
-    "Sales" , [Sum of Sales],
-    "Sales YTD" , [Sum of Sales YTD],
-    "Sales QTD" , [Sum of Sales QTD]
+    "Sales" , VALUE([Sum of Sales]),
+    "Sales YTD" , VALUE([Sum of Sales YTD]),
+    "Sales QTD" , VALUE([Sum of Sales QTD])
 )
 ORDER BY [Monthly] """),
 # ----------------------------

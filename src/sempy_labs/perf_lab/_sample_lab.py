@@ -24,144 +24,11 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_name_and_id,
     resolve_dataset_name_and_id,
     create_abfss_path,
+    _get_or_create_workspace,
+    _get_or_create_lakehouse,
+    _save_as_delta_table
 )
-
-class PropertyBag:
-    def __init__(self):
-        self._properties = {}
-
-    def add_property(self, key, value):
-        self._properties[key] = value
-
-    def remove_property(self, key):
-        if key in self._properties:
-            del self._properties[key]
-
-    def get_property(self, key):
-        return self._properties.get(key, None)
-
-    def has_property(self, key):
-        return key in self._properties
-
-    def __str__(self):
-        return str(self._properties)
-
-
-def _get_or_create_workspace(
-    workspace: Optional[str | UUID] = None,
-    capacity_id: Optional[UUID] = None,
-    description: Optional[str] = None,
-) -> Tuple[str, UUID]:
-    """
-    Creates a workspace on a Fabric capacity to host perf lab resources.
-
-    Parameters
-    ----------
-    workspace : str | uuid.UUID, default=None
-        The Fabric workspace name or ID.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
-    capacity_id : uuid.UUID, default=None
-        The ID of the capacity on which to place the new workspace.
-        Defaults to None which resolves to the capacity of the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the capacity of the workspace of the notebook.
-    description : str, default=None
-        The optional description of the workspace.
-        Defaults to None which leaves the description blank.    
-    Returns
-    -------
-    Tuple[str, UUID]
-        A tuple holding the name and ID of the workspace.
-    """
-
-    try:
-        # If the workspace already exist, return the resolved name and ID.
-        (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-        print(f"{icons.green_dot} Workspace '{workspace_name}' already exists. Skipping workspace creation.")
-        return (workspace_name,workspace_id)
-
-    except WorkspaceNotFoundException:
-        # Otherwise create a new workspace.
-        try:
-            # But only if a human-friendly name was provided. If it's a Guid, raise an exception.
-            UUID(workspace)
-            raise ValueError("For new workspaces, the workspace parameter must be string, not a Guid. Please provide a workspace name.")
-        except ValueError:
-            # OK, it's not a Guid. But also make sure the workspace parameter isn't empty.
-            if workspace == "" or workspace is None:
-                raise ValueError("For new workspaces, the workspace parameter cannot be None or empty. Please provide a workspace name.")
-
-        # Get the capacity id from the attached lakehouse or notebook workspace if no ID was provided.
-        if capacity_id is None:
-            capacity_id = get_capacity_id()
-
-        # Provision the new workspace and return the workspace info.
-        workspace_id = fabric.create_workspace(display_name=workspace, capacity_id=capacity_id, description=description)
-        (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace_id)
-        print(f"{icons.green_dot} Workspace '{workspace_name}' created.")
-        return (workspace,workspace_id)
-    
-def _get_or_create_lakehouse(
-    lakehouse: Optional[str | UUID] = None,
-    workspace: Optional[str | UUID] = None,
-    description: Optional[str] = None,
-) -> Tuple[str, UUID]:
-    """
-    Creates or retrieves a Fabric lakehouse.
-
-    Parameters
-    ----------
-    lakehouse : str | uuid.UUID, default=None
-        The name or ID of the lakehouse.
-        Defaults to None which resolves to the lakehouse attached to the notebook.
-    workspace : str | uuid.UUID, default=None
-        The Fabric workspace name or ID where the lakehouse is located.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
-    description : str, default=None
-        The optional description for the lakehouse.
-        Defaults to None which leaves the description blank.    
-    Returns
-    -------
-    Tuple[str, UUID]
-        A tuple holding the name and ID of the lakehouse.
-    """
-
-    # Treat empty strings as None.
-    if lakehouse == "":
-       lakehouse = None 
-    if workspace == "":
-       workspace = None 
-    
-    # Make sure the workspace exists. Raises WorkspaceNotFoundException otherwise.
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    try:
-        # Raises a ValueError if there's no lakehouse with the specified name in the workspace.
-        (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
-            lakehouse=lakehouse, workspace=workspace_id
-        )
-        
-        # Otherwise, return the name and id of the existing lakehouse.
-        print(f"{icons.green_dot} Lakehouse '{lakehouse_name}' already exists. Skipping lakehouse creation.")
-        return (lakehouse_name, lakehouse_id)
-    except ValueError:
-        # If there is no existing lakehouse, check that the lakehouse name is valid so that we can create one.
-        try:
-            # But only if a human-friendly name was provided. If it's a Guid, raise an exception.
-            UUID(lakehouse)
-            raise ValueError("For new lakehouses, the lakehouse parameter must be string, not a Guid. Please provide a lakehouse name.")
-        except:
-            # OK, it's not a Guid. Also check that the lakehouse name is not blank.
-            if lakehouse is None:
-                raise ValueError("For new lakehouses, the lakehouse parameter cannot be None or empty. Please provide a lakehouse name.")
-
-    lakehouse_id = fabric.create_lakehouse(display_name=lakehouse, workspace=workspace_id, description=description)
-    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
-            lakehouse=lakehouse_id, workspace=workspace_id )
-    print(f"{icons.green_dot} Lakehouse '{lakehouse_name}' created.")
-    return (lakehouse, lakehouse_id)
-
+   
 def _get_product_categories_df() -> DataFrame:
     """
     Generates sample data for a productcategory table.
@@ -336,122 +203,11 @@ def _get_sales_df(
         .withColumn('Sales', (rand(seed=seed*4)*1000+1).cast('int')) \
         .withColumn('Costs', (rand(seed=seed+45)*100+1).cast('int'))
 
-
-def _save_as_delta_table(
-    dataframe: DataFrame,
-    delta_table_name: str,
-    lakehouse: Optional [str | UUID] = None,
-    workspace: Optional [str | UUID] = None,
-):
-    """
-    Saves a spark dataframe as a delta table in a Fabric lakehouse.
-
-    Parameters
-    ----------
-    dataframe : DataFrame
-        The spark dataframe to be saved as a delta table.
-    delta_table_name : str
-        The name of the delta table.
-    lakehouse : uuid.UUID
-        The Fabric lakehouse ID.
-        Defaults to None which resolves to the lakehouse attached to the notebook.
-    workspace : uuid.UUID
-        The Fabric workspace ID where the specified lakehouse is located.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
-    """
-
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(lakehouse=lakehouse,workspace=workspace_id)
-
-    filePath = create_abfss_path(
-        lakehouse_id=lakehouse_id,
-        lakehouse_workspace_id=workspace_id,
-        delta_table_name=delta_table_name,
-    )
-    dataframe.write.mode("overwrite").format("delta").save(filePath)
-    print(f"{icons.green_dot} Delta table '{delta_table_name}' created and {dataframe.count()} rows inserted.")
-
-def _insert_into_delta_table(
-    dataframe: DataFrame,
-    delta_table_name: str,
-    lakehouse: Optional [str | UUID] = None,
-    workspace: Optional [str | UUID] = None,
-):
-    """
-    Inserts a spark dataframe into a delta table in a Fabric lakehouse.
-
-    Parameters
-    ----------
-    dataframe : DataFrame
-        The spark dataframe to be inserted into a delta table.
-    delta_table_name : str
-        The name of the delta table.
-    lakehouse : uuid.UUID
-        The Fabric lakehouse ID.
-        Defaults to None which resolves to the lakehouse attached to the notebook.
-    workspace : uuid.UUID
-        The Fabric workspace ID where the specified lakehouse is located.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
-    """
-
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(lakehouse=lakehouse,workspace=workspace_id)
-
-    filePath = create_abfss_path(
-        lakehouse_id=lakehouse_id,
-        lakehouse_workspace_id=workspace_id,
-        delta_table_name=delta_table_name,
-    )
-    dataframe.write.mode("append").format("delta").save(filePath)
-    print(f"{icons.green_dot} {dataframe.count()} rows inserted into Delta table '{delta_table_name}'.")
-
-def _read_delta_table(
-    delta_table_name: str,
-    lakehouse: Optional [str | UUID] = None,
-    workspace: Optional [str | UUID] = None,
-) -> DataFrame:
-    """
-    Returns a spark dataframe with the rows of a delta table in a Fabric lakehouse.
-
-    Parameters
-    ----------
-    delta_table_name : str
-        The name of the delta table.
-    lakehouse : uuid.UUID
-        The Fabric lakehouse ID.
-        Defaults to None which resolves to the lakehouse attached to the notebook.
-    workspace : uuid.UUID
-        The Fabric workspace ID where the specified lakehouse is located.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-    DataFrame
-        A Spark dataframe with the data from the specified delta table.
-    """
-
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(lakehouse=lakehouse,workspace=workspace_id)
-
-    filePath = create_abfss_path(
-        lakehouse_id=lakehouse_id,
-        lakehouse_workspace_id=workspace_id,
-        delta_table_name=delta_table_name,
-    )
-    spark = SparkSession.builder \
-        .appName("PerfLabDeltaTableReader") \
-        .getOrCreate()
-    
-    return spark.read.format("delta").load(filePath)
-
 def provision_perf_lab_lakehouse(
     workspace: Optional[str | UUID] = None,
     capacity_id: Optional[UUID] = None,
     lakehouse: Optional[str | UUID] = None,
-    table_properties: Optional[PropertyBag] = None,
+    table_properties: Optional[dict] = None,
     table_generator: Optional[Callable] = None,
 )  -> Tuple[UUID, UUID]:
     """
@@ -470,9 +226,9 @@ def provision_perf_lab_lakehouse(
     lakehouse : str | uuid.UUID, default=None
         The name or ID of the lakehouse.
         Defaults to None which resolves to the lakehouse attached to the notebook.
-    table_properties: PropertyBag, default=None
-        A collection of property values that the provision_perf_lab_lakehouse function passes to the table_generator function.
-        The properties in the property bag are specific to the table_generator function.
+    table_properties: dict, default=None
+        A dictionary of property values that the provision_perf_lab_lakehouse function passes to the table_generator function.
+        The keys and values in the dictionary are specific to the table_generator function.
     table_generator
         A callback function to generate and persist the actual Delta tables in the lakehouse.
 
@@ -506,7 +262,7 @@ def _get_sample_tables_property_bag(
     years: Optional[int] = 4,
     fact_rows_in_millions: Optional[int] = 100,
     num_fact_tables: Optional[int] = 1,        
-) -> PropertyBag:
+) -> dict:
     """
     Generates a property bag for the provision_sample_delta_tables function.
 
@@ -527,23 +283,23 @@ def _get_sample_tables_property_bag(
 
     Returns
     -------
-    PropertyBag
-        A property bag wrapping the parameters passed into this function.
+    dict
+        A dictionary wrapping the parameters passed into this function.
 
     """
 
-    property_bag = PropertyBag()
-    property_bag.add_property("start_date", start_date)
-    property_bag.add_property("years", years)
-    property_bag.add_property("fact_rows_in_millions", fact_rows_in_millions)
-    property_bag.add_property("num_fact_tables", num_fact_tables)
+    property_bag = {}
+    property_bag["start_date"] = start_date
+    property_bag["years"] = years
+    property_bag["fact_rows_in_millions"] = fact_rows_in_millions
+    property_bag["num_fact_tables"] = num_fact_tables
    
     return property_bag
 
 def provision_sample_delta_tables(
     workspace_id: UUID,
     lakehouse_id: UUID,
-    table_properties: Optional[PropertyBag] = None,
+    table_properties: Optional[dict] = None,
 ):
     """
     Generates sample data for a date table.
@@ -554,15 +310,15 @@ def provision_sample_delta_tables(
         The Fabric workspace ID where the lakehouse is located.
     lakehouse_id : uuid.UUID
         The ID of the lakehouse where the delta tables should be added.
-    table_properties: PropertyBag, default=None
-        An arbirary collection of property values that the provision_perf_lab_lakehouse function passes to the table_generator function.
-        The properties in the property bag are specific to the table_generator function.
+    table_properties: dict, default=None
+        An arbirary dictionary of key/value pairs that the provision_perf_lab_lakehouse function passes to the table_generator function.
+        The key/value pairs in the dictionary are specific to the table_generator function.
     """
 
-    start_date = table_properties.get_property('start_date')
-    years = table_properties.get_property('years')
-    fact_rows_in_millions = table_properties.get_property('fact_rows_in_millions')
-    num_fact_tables = table_properties.get_property('num_fact_tables')        
+    start_date = table_properties['start_date']
+    years = table_properties['years']
+    fact_rows_in_millions = table_properties['fact_rows_in_millions']
+    num_fact_tables = table_properties['num_fact_tables']        
 
         
     # Generate and persist the sample Delta tables in the lakehouse.
@@ -642,6 +398,7 @@ def provision_sample_semantic_model(
     lakehouse: str | UUID,
     semantic_model_name: str,
     semantic_model_mode: Optional[str] = "OneLake",
+    overwrite: Optional[bool] = False,
 ) -> Tuple[str, UUID]:
     """
     Creates a semantic model in Direct Lake mode in the specified workspace using the specified lakehouse as the data source.
@@ -660,6 +417,8 @@ def provision_sample_semantic_model(
         If a model with the same name already exists, the function fails with a ValueException due to a naming conflict. 
     semantic_model_mode : str, Default = OneLake. Options: 'SQL', 'OneLake'.
         An optional parameter to specify the mode of the semantic model. Two modes are supported: SQL and OneLake. By default, the function generates a Direct Lake model in OneLake mode.
+    overwrite : bool, default=False
+        If set to True, overwrites the existing semantic model if it already exists.
     Returns
     -------
     Tuple[str, UUID]
@@ -693,13 +452,14 @@ def provision_sample_semantic_model(
         lakehouse=lakehouse_name,
         dataset=semantic_model_name,
         lakehouse_tables=table_names,
+        overwrite=overwrite,
         refresh=False)
     
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(
         dataset=semantic_model_name, workspace=workspace_id)
 
     print(f"{icons.in_progress} Adding final touches to Direct Lake semantic model '{semantic_model_name}' in workspace '{workspace_name}'.")
-    with connect_semantic_model(dataset=semantic_model_name, workspace=workspace_id, readonly=True) as tom:
+    with connect_semantic_model(dataset=semantic_model_name, workspace=workspace_id, readonly=False) as tom:
         # if the semantic_model_mode is OneLake
         # convert the data access expression in the model to Direct Lake on 
         if semantic_model_mode == semantic_model_modes[1]:
@@ -995,6 +755,9 @@ def provision_sample_semantic_model(
             columns=["Year","Month","Date"]
         )
         print(f"{icons.checked} Calendar hierarchy created.")
+
+        # Clear the _tables_added list to avoid an unnecessary table refresh.
+        tom._tables_added.clear()
 
     refresh_semantic_model(
         dataset=semantic_model_name, 

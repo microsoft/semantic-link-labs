@@ -3,7 +3,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import current_timestamp, lit
 import uuid
 import traceback
-from sempy_labs.perf_lab import _insert_into_delta_table
+from sempy_labs._helper_functions import _insert_into_delta_table
 
 class ExecutionTracker:
     """
