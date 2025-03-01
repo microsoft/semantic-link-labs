@@ -1,7 +1,7 @@
 import pandas as pd
 import sempy.fabric as fabric
 from sempy_labs._list_functions import list_tables
-
+from sempy.fabric.exceptions import WorkspaceNotFoundException
 from pyspark.sql import DataFrame, SparkSession, Row
 from delta.tables import DeltaTable
 from pyspark.sql.types import StructType, StructField, StringType
@@ -19,6 +19,9 @@ from sempy_labs._helper_functions import (
     resolve_dataset_name_and_id,
 )
 
+from sempy_labs.perf_lab._test_suite import TestSuite
+
+
 FilterCallback = Callable[[str, str, dict], bool]
 def _filter_by_prefix(
     table_name: str, 
@@ -31,8 +34,8 @@ def _filter_by_prefix(
     Parameters
     ----------
     table_name : str
-        The name of the table in a semantic model.
-    table_name : str
+        The name of the table in a semantic model. This sample function doesn't use this parameter, but it still needs to be present.
+    source_table_name : str
         The name of the table in a data source.
     filter_properties: dict, default=None
         An arbirary dictionary of key/value pairs that the provision_perf_lab_lakehouse function passes to the table_generator function.
@@ -51,7 +54,7 @@ def _filter_by_prefix(
         filter_properties["Prefix"])
 
 def get_source_tables(
-    test_definitions: DataFrame,
+    test_suite: TestSuite,
     filter_properties: Optional[dict] = None,
     filter_function: Optional[FilterCallback] = None
 ) -> DataFrame:
@@ -60,12 +63,8 @@ def get_source_tables(
 
     Parameters
     ----------
-    test_definitions : DataFrame
-        A spark dataframe with test definitions for a test cycle.
-        The test definitions dataframe must have the following columns.
-        +----------+----------+----------------+-------------+---------------+-------------+---------------+-------------------+--------------+
-        | QueryId|   QueryText| MasterWorkspace|MasterDataset|TargetWorkspace|TargetDataset| DatasourceName|DatasourceWorkspace|DatasourceType|
-        +----------+----------+----------------+-------------+---------------+-------------+---------------+-------------------+--------------+
+    test_suite : TestSuite
+        A TestSuite object with the test definitions.
     filter_properties: dict, default=None
         A dictionary of key/value pairs that the _get_source_tables() function passes to the filter_function function.
         The key/value pairs in the dictionary are specific to the filter_function function passed into the _get_source_tables() function.        
@@ -82,9 +81,7 @@ def get_source_tables(
         +----------+--------------------+--------------+---------------+----------------+-------------------+---------------+------------+----------+--------------+
     """
 
-    spark = SparkSession.builder \
-        .appName("PerfLabApp") \
-        .getOrCreate()
+    spark = SparkSession.builder.getOrCreate()
 
     # A table to return the source tables in a Spark dataframe.
     schema = StructType([
@@ -101,7 +98,7 @@ def get_source_tables(
     ])
     rows = []
 
-    for row in test_definitions.dropDuplicates(['TargetWorkspace', 'TargetDataset','DatasourceName','DatasourceWorkspace','DatasourceType']).collect():
+    for row in test_suite.to_df().dropDuplicates(['TargetWorkspace', 'TargetDataset','DatasourceName','DatasourceWorkspace','DatasourceType']).collect():
         target_dataset = row['TargetDataset']
         target_workspace = row['TargetWorkspace']
         data_source_name = row['DatasourceName']
@@ -114,24 +111,24 @@ def get_source_tables(
             continue 
 
         # Skip this row if the target semantic model is not defined.
-        if target_dataset == "" or target_dataset is None:
+        if not target_dataset:
             print(f"{icons.red_dot} No test semantic model specifed as the target dataset. Ignoring this row. Please review your test definitions.")
             continue
 
         # Skip this row if the data_source_name is not defined.
-        if data_source_name == "" or data_source_name is None:
+        if not data_source_name:
             print(f"{icons.red_dot} No data source found for test semantic model '{target_dataset}'. Ignoring this row. Please review your test definitions.")
             continue
 
         try:
             (target_workspace_name, target_workspace_id) = resolve_workspace_name_and_id(workspace=target_workspace)
-        except:
+        except (WorkspaceNotFoundException, ValueError):
             print(f"{icons.red_dot} Unable to resolve workspace '{target_workspace}' for test semantic model '{target_dataset}'. Ignoring this row. Please review your test definitions.")
             continue 
 
         try:
             (target_dataset_name, target_dataset_id) = resolve_dataset_name_and_id(dataset=target_dataset, workspace=target_workspace_id)
-        except:
+        except (WorkspaceNotFoundException, ValueError):
             (target_dataset_name, target_dataset_id) = (target_dataset, None)
 
         dfD = fabric.list_datasets(workspace=target_workspace_name, mode="rest")

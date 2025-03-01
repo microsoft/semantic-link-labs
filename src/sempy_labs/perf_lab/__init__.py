@@ -52,6 +52,11 @@ from sempy_labs.perf_lab._execution_tracker import (
     ExecutionTracker,
 )
 
+from sempy_labs.perf_lab._test_suite import (
+    TestDefinition,
+    TestSuite,
+)
+
 __all__ = [
     "run_test_cycle",
     "_refresh_test_models",
@@ -92,4 +97,6 @@ __all__ = [
     "_trace_dax_queries",
     "_get_query_name",
     "ExecutionTracker",
+    "TestDefinition",
+    "TestSuite",
 ]

@@ -1,10 +1,9 @@
 import pandas as pd
-import time
 import notebookutils
 
 from pyspark.sql import SparkSession
 from pyspark.sql import DataFrame
-from pyspark.sql.functions import col, last_day, dayofweek, year, month, date_format, rand, randn, expr
+from pyspark.sql.functions import col, last_day, dayofweek, year, month, date_format, rand, expr
 from typing import Optional, Tuple, Callable
 from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
@@ -12,23 +11,25 @@ from uuid import UUID
 
 import sempy.fabric as fabric
 import sempy_labs._icons as icons
-from sempy.fabric.exceptions import WorkspaceNotFoundException, FabricHTTPException
-from sempy_labs import migration, directlake, admin
+from sempy.fabric.exceptions import FabricHTTPException
 from sempy_labs import lakehouse as lh
 
-from sempy_labs import refresh_semantic_model
+from sempy_labs import refresh_semantic_model, directlake
 from sempy_labs.tom import connect_semantic_model
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
-    get_capacity_id,
     resolve_lakehouse_name_and_id,
     resolve_dataset_name_and_id,
-    create_abfss_path,
     _get_or_create_workspace,
     _get_or_create_lakehouse,
     _save_as_delta_table
 )
-   
+
+from sempy_labs.perf_lab._test_suite import (
+    TestSuite,
+    TestDefinition
+)
+
 def _get_product_categories_df() -> DataFrame:
     """
     Generates sample data for a productcategory table.
@@ -74,7 +75,7 @@ def _get_dates_df(
         raise ValueError("Years must be greater than 0.")
 
     # Make sure the dates are valid
-    if start_date is None or start_date == "":
+    if not start_date:
        start_date = date.today() - relativedelta(years=years)
     else:
         if isinstance(start_date, str):
@@ -184,7 +185,7 @@ def _get_sales_df(
         raise ValueError("The number of rows in millions must be greater than 0.")
 
     # Make sure the start_date is valid
-    if start_date is None or start_date == "":
+    if not start_date:
        start_date = date.today() - relativedelta(years=years)
     else:
         if isinstance(start_date, str):
@@ -769,7 +770,7 @@ def provision_sample_semantic_model(
     return (dataset_name, dataset_id)
     
 def deprovision_perf_lab_lakehouses(
-    test_definitions: DataFrame,
+    test_suite: TestSuite,
 )->None:
     """
     Deprovisions lakehouses listed in the test definitions.
@@ -778,14 +779,14 @@ def deprovision_perf_lab_lakehouses(
 
     Parameters
     ----------
-    test_definitions : DataFrame
-        A spark dataframe with the semantic model and data source definitions, such as the a dataframe returned by the _get_test_definitions_df() function.
+    test_suite : TestSuite
+        A TestSuite object with the semantic model and data source definitions, such as the a test suite returned by the _get_test_definitions_df() function.
 
     Returns
     -------
     None
     """
-
+    test_definitions = test_suite.to_df()
     lakehouses_df = test_definitions \
         .filter(test_definitions["DatasourceType"] == "Lakehouse"). \
         dropDuplicates(['DatasourceName', 'DatasourceWorkspace'])
@@ -804,7 +805,7 @@ def deprovision_perf_lab_lakehouses(
         print(f"{icons.red_dot} No lakehouses found in the test definitions.")
 
 def deprovision_perf_lab_models(
-    test_definitions: DataFrame,
+    test_suite: TestSuite,
     masters_and_clones: Optional[bool]=False
 )->None:
     """
@@ -812,8 +813,8 @@ def deprovision_perf_lab_models(
 
     Parameters
     ----------
-    test_definitions : DataFrame
-        A spark dataframe with the semantic model and data source definitions, such as the a dataframe returned by the _get_test_definitions_df() function.
+    test_suite : TestSuite
+        A TestSuite object with the semantic model and data source definitions, such as the a test suite returned by the _get_test_definitions_df() function.
     masters_and_clones : bool, Default = False
         A flag indicating if master semantic models should be deleted together with their test model clones.
 
@@ -821,7 +822,7 @@ def deprovision_perf_lab_models(
     -------
     None
     """
-
+    test_definitions = test_suite.to_df()
     masters_df = test_definitions.dropDuplicates(['MasterDataset', 'MasterWorkspace'])
     if masters_and_clones and masters_df.count() > 0:
         print(f"{icons.in_progress} Deleting '{masters_df.count()}' master semantic models.")

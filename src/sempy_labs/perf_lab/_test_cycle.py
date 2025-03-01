@@ -23,6 +23,11 @@ from sempy_labs._helper_functions import (
     generate_guid,
     _get_or_create_workspace
 )
+from sempy_labs.perf_lab._test_suite import (
+    TestSuite,
+    TestDefinition
+)
+
 _sample_queries = [
 ("Total Sales (Card)", """EVALUATE
 SUMMARIZE(
@@ -111,7 +116,7 @@ def _get_test_definitions(
     data_source_workspace: Optional[str | UUID] = None,
     data_source_type: Optional[str] = "Lakehouse",
 
-) -> DataFrame:
+) -> TestSuite:
     """
     Generates a spark dataframe with test definitions.
 
@@ -148,8 +153,8 @@ def _get_test_definitions(
 
     Returns
     -------
-    DataFrame
-        A Spark dataframe for the test definitions table.
+    TestSuite
+        A TestSuite object with the test definitions.
     """
     # Parameter validation
     if data_source_type != "Lakehouse":
@@ -165,7 +170,7 @@ def _get_test_definitions(
     except:
         (target_dataset_name, target_dataset_id) = (target_dataset, None)
 
-    if master_dataset == "" or master_dataset is None:
+    if not master_dataset:
         (master_dataset_name, master_dataset_id) = (None, None)
         (master_workspace_name, master_workspace_id) = (None, None)
     else:
@@ -176,50 +181,37 @@ def _get_test_definitions(
     (data_source_name, data_source_id) = resolve_lakehouse_name_and_id(lakehouse=data_source, workspace=data_source_workspace_id)
 
 
-    spark = SparkSession.builder \
-        .appName("PerfLabGenerator") \
-        .getOrCreate()
+    spark = SparkSession.builder.getOrCreate()
 
-    # A table to return the test definitions in the form of a spark dataframe.
-    schema = StructType([
-        StructField("QueryId", StringType(), nullable=False),
-        StructField("QueryText", StringType(), nullable=False),
-        StructField("MasterWorkspace", StringType(), nullable=True),
-        StructField("MasterDataset", StringType(), nullable=True),
-        StructField("TargetWorkspace", StringType(), nullable=True),
-        StructField("TargetDataset", StringType(), nullable=False),
-        StructField("DatasourceName", StringType(), nullable=True),
-        StructField("DatasourceWorkspace", StringType(), nullable=True),
-        StructField("DatasourceType", StringType(), nullable=True),
-    ])
-
-    data = []
+    test_suite = TestSuite()
     for i in range(len(dax_queries)):
         q = dax_queries[i]
-        if isinstance(q, str):
-            data.append((
-                f"Q{i}",
-                q,
-                master_workspace_name,
-                master_dataset_name,
-                target_workspace_name,
-                target_dataset_name,
-                data_source_name,
-                data_source_workspace_name,
-                data_source_type))
+        if isinstance(q, str):          
+            test_suite.add_test_definition(
+                TestDefinition(
+                    QueryId=f"Q{i}", 
+                    QueryText=q, 
+                    MasterWorkspace = master_workspace_name,
+                    MasterDataset = master_dataset_name,
+                    TargetWorkspace = target_workspace_name,
+                    TargetDataset= target_dataset_name,
+                    DatasourceName = data_source_name,
+                    DatasourceWorkspace = data_source_workspace_name,
+                    DatasourceType = data_source_type))
         elif isinstance(q, tuple):
-            data.append((
-                q[0],
-                q[1],
-                master_workspace_name,
-                master_dataset_name,
-                target_workspace_name,
-                target_dataset_name,
-                data_source_name,
-                data_source_workspace_name,
-                data_source_type))
-
-    return spark.createDataFrame(data, schema=schema)
+            test_suite.add_test_definition(
+                TestDefinition(
+                    QueryId=q[0], 
+                    QueryText=q[1], 
+                    MasterWorkspace = master_workspace_name,
+                    MasterDataset = master_dataset_name,
+                    TargetWorkspace = target_workspace_name,
+                    TargetDataset= target_dataset_name,
+                    DatasourceName = data_source_name,
+                    DatasourceWorkspace = data_source_workspace_name,
+                    DatasourceType = data_source_type))
+            
+    return test_suite
 
 
 def _get_test_definitions_from_trace_events(
@@ -231,7 +223,7 @@ def _get_test_definitions_from_trace_events(
     data_source_workspace: Optional[str | UUID] = None,
     data_source_type: Optional[str] = "Lakehouse",
     timeout: Optional[int] = 300,
-) -> DataFrame:
+) -> TestSuite:
     """
         Generates a spark dataframe with test definitions.
 
@@ -266,8 +258,8 @@ def _get_test_definitions_from_trace_events(
 
     Returns
     -------
-    DataFrame
-        A Spark dataframe for the test definitions table.
+    TestSuite
+        A TestSuite object with the test definitions.
     """
 
    # Parameter validation
@@ -279,7 +271,7 @@ def _get_test_definitions_from_trace_events(
     except:
         (target_workspace_name, target_workspace_id) = (target_workspace, None)
 
-    if master_dataset == "" or master_dataset is None:
+    if not master_dataset:
         (master_dataset_name, master_dataset_id) = (None, None)
         (master_workspace_name, master_workspace_id) = (None, None)
     else:
@@ -296,22 +288,7 @@ def _get_test_definitions_from_trace_events(
         "QueryEnd": ["TextData"],
     }
 
-    # A table to return the test definitions in the form of a spark dataframe.
-    schema = StructType([
-        StructField("QueryId", StringType(), nullable=False),
-        StructField("QueryText", StringType(), nullable=False),
-        StructField("MasterWorkspace", StringType(), nullable=True),
-        StructField("MasterDataset", StringType(), nullable=True),
-        StructField("TargetWorkspace", StringType(), nullable=True),
-        StructField("TargetDataset", StringType(), nullable=False),
-        StructField("DatasourceName", StringType(), nullable=True),
-        StructField("DatasourceWorkspace", StringType(), nullable=True),
-        StructField("DatasourceType", StringType(), nullable=True),
-    ])
-
-    data = []
-    test_definitions = None
-
+    test_suite = TestSuite()
     with fabric.create_trace_connection(dataset=master_dataset_id, workspace=master_workspace_id) as trace_connection:
         with trace_connection.create_trace(event_schema) as trace:
             trace.start()
@@ -341,21 +318,22 @@ def _get_test_definitions_from_trace_events(
             for _, row in df.iterrows():
                 if row['Text Data'].find("""{"Stop"}""") == -1:
                     i += 1
-                    data.append((
-                        f"Q{i}",
-                        row['Text Data'].replace("\n\n", "\n"),
-                        master_workspace_name,
-                        master_dataset_name,
-                        target_workspace_name,
-                        f"{target_dataset_prefix}_{i}",
-                        data_source_name,
-                        data_source_workspace_name,
-                        data_source_type))
+                    test_suite.add_test_definition(
+                        TestDefinition(
+                            QueryId=f"Q{i}", 
+                            QueryText=row['Text Data'].replace("\n\n", "\n"), 
+                            MasterWorkspace = master_workspace_name,
+                            MasterDataset = master_dataset_name,
+                            TargetWorkspace = target_workspace_name,
+                            TargetDataset= f"{target_dataset_prefix}_{i}",
+                            DatasourceName = data_source_name,
+                            DatasourceWorkspace = data_source_workspace_name,
+                            DatasourceType = data_source_type))
 
-    return spark.createDataFrame(data, schema=schema)
+    return test_suite
 
 def _provision_test_models( 
-    test_definitions: DataFrame,
+    test_suite: TestSuite,
     capacity_id: Optional[UUID] = None,
     refresh_clone: Optional[bool] = True,
     ):
@@ -364,12 +342,8 @@ def _provision_test_models(
 
     Parameters
     ----------
-    test_definitions : DataFrame
-        A spark dataframe with the query, semantic model, and data source definitions for a test cycle.
-        The test definitions dataframe must have the following columns.
-        +----------+----------+----------------+-------------+---------------+-------------+---------------+-------------------+--------------+
-        | QueryId|   QueryText| MasterWorkspace|MasterDataset|TargetWorkspace|TargetDataset| DatasourceName|DatasourceWorkspace|DatasourceType|
-        +----------+----------+----------------+-------------+---------------+-------------+---------------+-------------------+--------------+
+    test_suite : TestSuite
+        A TestSuite object with the test definitions.
     capacity_id : uuid.UUID, default=None
         The ID of the capacity on which to place new workspaces.
         Defaults to None which resolves to the capacity of the workspace of the attached lakehouse
@@ -379,15 +353,14 @@ def _provision_test_models(
 
     """
 
-    for row in test_definitions.dropDuplicates(['MasterWorkspace','MasterDataset','TargetWorkspace', 'TargetDataset']).collect():
+    for row in test_suite.to_df().dropDuplicates(['MasterWorkspace','MasterDataset','TargetWorkspace', 'TargetDataset']).collect():
         master_dataset = row['MasterDataset']
         master_workspace = row['MasterWorkspace']
         target_dataset = row['TargetDataset']
         target_workspace = row['TargetWorkspace']
 
-        # Skip this row if master and target are not defined.
-        if master_dataset == "" or master_dataset is None \
-            or target_dataset == "" or target_dataset is None:
+        # Skip this row if master or target are not defined.
+        if not master_dataset or not target_dataset:
             continue
 
         # Make sure the target_workspace exists.
@@ -419,21 +392,17 @@ def _provision_test_models(
             print(f"{icons.green_dot} The test semantic model '{target_dataset}' already exists in the workspace '{target_workspace_name}'.")
 
 def _initialize_test_cycle(
-    test_definitions: DataFrame,
+    test_suite: TestSuite,
     test_run_id: Optional[str] = None,
     test_description: Optional[str] = None
-) -> DataFrame:
+) -> TestSuite:
     """
     Generate a unique test id and timestamp for the current test cycle and adds this information to the test_definitions dataframe.
 
     Parameters
     ----------
-    test_definitions : DataFrame
-        A spark dataframe with the query, semantic model, and data source definitions for a test cycle.
-        The test definitions dataframe must have the following columns.
-        +----------+----------+----------------+-------------+---------------+-------------+---------------+-------------------+--------------+
-        | QueryId|   QueryText| MasterWorkspace|MasterDataset|TargetWorkspace|TargetDataset| DatasourceName|DatasourceWorkspace|DatasourceType|
-        +----------+----------+----------------+-------------+---------------+-------------+---------------+-------------------+--------------+
+    test_suite : TestSuite
+        A TestSuite object with the test definitions.
     test_run_id: str, Default = None
         An optional id for the test run to be included in the test definitions.
     test_description: str, Default = None
@@ -441,9 +410,9 @@ def _initialize_test_cycle(
 
     Returns
     -------
-    DataFrame
-        A test cycle-initialized Spark dataframe containing the test definitions augmented with test cycle Id and timestamp.
-        The returned dataframe includes the following columns:
+    TestSuite
+        A test cycle-initialized TestSuite object containing the test definitions augmented with test cycle Id and timestamp.
+        The returned test definitions include the following columns:
         +-------+---------+----------------+-------------+---------------+-------------+--------------+-------------------+--------------+---------+----------------+
         |QueryId|QueryText| MasterWorkspace|MasterDataset|TargetWorkspace|TargetDataset|DatasourceName|DatasourceWorkspace|DatasourceType|TestRunId|TestRunTimestamp|
         --------+---------+----------------+-------------+---------------+-------------+--------------+-------------------+--------------+---------+----------------+
@@ -451,22 +420,23 @@ def _initialize_test_cycle(
     if test_run_id is None:
         test_run_id = generate_guid()
 
-    return test_definitions \
-        .withColumn("TestRunId", lit(test_run_id)) \
-        .withColumn("TestRunTimestamp", lit(datetime.now().strftime('%Y-%m-%d %H:%M:%S'))) \
-        .withColumn("TestRunDescription", lit(test_description))
+    test_suite.add_field("TestRunId", test_run_id)
+    test_suite.add_field("TestRunTimestamp", datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    test_suite.add_field("TestRunDescription", test_description)
+
+    return test_suite
 
 def _get_test_cycle_id(
-    test_cycle_definitions: DataFrame,
-) -> DataFrame:
+    test_cycle_definitions: TestSuite,
+) -> str:
     """
     Generate a unique test id and timestamp for the current test cycle and adds this information to the test_definitions dataframe.
 
     Parameters
     ----------
-    test_cycle_definitions : DataFrame
-        A test cycle-initialized Spark dataframe containing the test definitions augmented with test cycle Id and timestamp.
-        The returned dataframe includes the following columns:
+    test_cycle_definitions : TestSuite
+        A test cycle-initialized TestSuite object containing the test definitions augmented with test cycle Id and timestamp.
+        The test definitions must have a TestRunId filed, but typically includes all the following fields:
         +-------+---------+----------------+-------------+---------------+-------------+--------------+-------------------+--------------+---------+----------------+
         |QueryId|QueryText| MasterWorkspace|MasterDataset|TargetWorkspace|TargetDataset|DatasourceName|DatasourceWorkspace|DatasourceType|TestRunId|TestRunTimestamp|
         --------+---------+----------------+-------------+---------------+-------------+--------------+-------------------+--------------+---------+----------------+
@@ -717,7 +687,7 @@ def _queries_toDict(
     Parameters
     ----------
     test_definitions : DataFrame
-        A Spark dataframe with test definitions.
+        A Spark dataframe with QueryId and QueryText columns.
 
     Returns
     -------
@@ -729,16 +699,16 @@ def _queries_toDict(
     return {row: row for row in rows}
 
 def _warmup_test_models(
-     test_definitions: DataFrame,
+     test_suite: TestSuite,
 ) -> None:
     """
     Generate a unique test id and timestamp for the current test cycle and adds this information to the test_definitions dataframe.
 
     Parameters
     ----------
-    test_definitions : DataFrame
-        A spark dataframe with the query and semantic model definitions for a test cycle.
-        The test definitions dataframe must have the following columns.
+    test_suite: TestSuite
+        A TestSuite object with the test definitions.
+        The test definitions must have the following fields.
         +---------+---------------+-------------+
         |QueryText|TargetWorkspace|TargetDataset|
         +---------+---------------+-------------+
@@ -746,12 +716,12 @@ def _warmup_test_models(
     -------
     None
     """
-    for row in test_definitions.dropDuplicates(['TargetWorkspace', 'TargetDataset']).collect():
+    for row in test_suite.to_df().dropDuplicates(['TargetWorkspace', 'TargetDataset']).collect():
         target_dataset = row['TargetDataset']
         target_workspace = row['TargetWorkspace']
 
         # Skip this row if the target semantic model is not defined.
-        if target_dataset == "" or target_dataset is None:
+        if not target_dataset:
             print(f"{icons.red_dot} No test semantic model specifed as the target dataset. Ignoring this row. Please review your test definitions.")
             continue
 
@@ -768,7 +738,7 @@ def _warmup_test_models(
             continue 
 
         # Filter the DataFrame and select the QueryText column
-        df = test_definitions
+        df = test_suite.to_df()
         queries_df = df.filter((df.TargetWorkspace == target_workspace) & (df.TargetDataset == target_dataset)).select("QueryText")
         for row in queries_df.collect():
             fabric.evaluate_dax(
@@ -778,7 +748,7 @@ def _warmup_test_models(
         print(f"{icons.green_dot} {queries_df.count()} queries executed to warm up semantic model '{target_dataset}' in workspace '{target_workspace}'.")
 
 def _refresh_test_models(
-    test_definitions: DataFrame,
+    test_suite: TestSuite,
     refresh_type: str = "full",
 ) -> None:
     """
@@ -786,9 +756,9 @@ def _refresh_test_models(
 
     Parameters
     ----------
-    test_definitions : DataFrame
-        A spark dataframe with the query and semantic model definitions for a test cycle.
-        The test definitions dataframe must have the following columns.
+    test_suite : TestSuite
+        A TestSuite object with the test definitions.
+        The test definitions must have the following fields.
         +---------+---------------+-------------+
         |QueryText|TargetWorkspace|TargetDataset|
         +---------+---------------+-------------+
@@ -802,12 +772,13 @@ def _refresh_test_models(
     -------
     None
     """
+    test_definitions = test_suite.to_df()
     for row in test_definitions.dropDuplicates(['TargetWorkspace', 'TargetDataset']).collect():
         target_dataset = row['TargetDataset']
         target_workspace = row['TargetWorkspace']
 
         # Skip this row if the target semantic model is not defined.
-        if target_dataset == "" or target_dataset is None:
+        if not target_dataset:
             print(f"{icons.red_dot} No test semantic model specifed as the target dataset. Ignoring this row. Please review your test definitions.")
             continue
 
@@ -844,7 +815,7 @@ def _refresh_test_models(
                 refresh_type=refresh_type)
 
 def run_test_cycle(
-    test_cycle_definitions: DataFrame,
+    test_cycle_definitions: TestSuite,
     clear_query_cache: Optional[bool] = True,
     refresh_type: Optional[str] = None,
     trace_timeout: Optional[int] = 60,
@@ -855,8 +826,8 @@ def run_test_cycle(
 
     Parameters
     ----------
-    test_cycle_definitions : DataFrame
-        A spark dataframe with test-cycle augmented test definitions, usually obtained by using the _initialize_test_cycle() function.
+    test_cycle_definitions : TestSuite
+        A TestSuite object with test-cycle augmented test definitions, usually obtained by using the _initialize_test_cycle() function.
     clear_query_cache : bool, Default = True
         Clear the query cache before running each query.
     refresh_type : str, Default = None
@@ -880,14 +851,15 @@ def run_test_cycle(
     """
 
     cycle_results_tuple = (None, {})
-    for row in test_cycle_definitions.dropDuplicates(['TargetWorkspace', 'TargetDataset', 'TestRunId', 'TestRunTimestamp']).collect():
+    test_cycle_definitions_df = test_cycle_definitions.to_df()
+    for row in test_cycle_definitions_df.dropDuplicates(['TargetWorkspace', 'TargetDataset', 'TestRunId', 'TestRunTimestamp']).collect():
         target_dataset = row['TargetDataset']
         target_workspace = row['TargetWorkspace']
         test_run_id = row['TestRunId']
         test_run_timestamp = row['TestRunTimestamp']
 
         # Skip this row if the target semantic model is not defined.
-        if target_dataset == "" or target_dataset is None:
+        if not target_dataset:
             print(f"{icons.red_dot} The target dataset info is missing. Ignoring this row. Please review your test definitions.")
             continue
 
@@ -924,9 +896,9 @@ def run_test_cycle(
 
         # Run all queries that use the current target semantic model,
         # and then merge the results with the overall cycle results.
-        queries_df = test_cycle_definitions.filter(
-            (test_cycle_definitions.TargetWorkspace == target_workspace) \
-            & (test_cycle_definitions.TargetDataset == target_dataset))
+        queries_df = test_cycle_definitions_df.filter(
+            (test_cycle_definitions_df.TargetWorkspace == target_workspace) \
+            & (test_cycle_definitions_df.TargetDataset == target_dataset))
 
         (trace_df, query_results) = _trace_dax_queries(
             dataset=target_dataset_name,
