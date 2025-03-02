@@ -1543,6 +1543,7 @@ class TOMWrapper:
         self,
         object: Union["TOM.Table", "TOM.Column", "TOM.Measure", "TOM.Hierarchy"],
         perspective_name: str,
+        include_all: bool = True,
     ):
         """
         Adds an object to a `perspective <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.perspective?view=analysisservices-dotnet>`_.
@@ -1553,6 +1554,8 @@ class TOMWrapper:
             An object (i.e. table/column/measure) within a semantic model.
         perspective_name : str
             Name of the perspective.
+        include_all : bool, default=True
+            Relevant to tables only, if set to True, includes all columns, measures, and hierarchies within that table in the perspective.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
@@ -1578,6 +1581,8 @@ class TOMWrapper:
 
         if objectType == TOM.ObjectType.Table:
             pt = TOM.PerspectiveTable()
+            if include_all:
+                pt.IncludeAll = True
             pt.Table = object
             object.Model.Perspectives[perspective_name].PerspectiveTables.Add(pt)
         elif objectType == TOM.ObjectType.Column:
@@ -4852,7 +4857,7 @@ class TOMWrapper:
                     object=obj, perspective_name=perspective_name
                 ):
                     self.add_to_perspective(
-                        object=obj, perspective_name=perspective_name
+                        object=obj, perspective_name=perspective_name, include_all=False
                     )
                     added = True
             elif obj_type == "Measure":
@@ -4861,7 +4866,7 @@ class TOMWrapper:
                     object=obj, perspective_name=perspective_name
                 ):
                     self.add_to_perspective(
-                        object=obj, perspective_name=perspective_name
+                        object=obj, perspective_name=perspective_name, include_all=False
                     )
                     added = True
             elif obj_type == "Table":
@@ -4870,7 +4875,7 @@ class TOMWrapper:
                     object=obj, perspective_name=perspective_name
                 ):
                     self.add_to_perspective(
-                        object=obj, perspective_name=perspective_name
+                        object=obj, perspective_name=perspective_name, include_all=False
                     )
                     added = True
             if added:
