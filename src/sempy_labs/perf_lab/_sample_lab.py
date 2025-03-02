@@ -258,7 +258,7 @@ def provision_perf_lab_lakehouse(
         
     return(workspace_id, lakehouse_id)
 
-def _get_sample_tables_property_bag(
+def _get_sales_sample_tables_property_bag(
     start_date: Optional[str | date] = None,
     years: Optional[int] = 4,
     fact_rows_in_millions: Optional[int] = 100,
@@ -297,7 +297,7 @@ def _get_sample_tables_property_bag(
    
     return property_bag
 
-def provision_sample_delta_tables(
+def provision_sales_sample_delta_tables(
     workspace_id: UUID,
     lakehouse_id: UUID,
     table_properties: Optional[dict] = None,
