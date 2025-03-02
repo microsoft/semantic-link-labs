@@ -543,8 +543,6 @@ def save_as_delta_table(
             f"{icons.red_dot} Invalid 'delta_table_name'. Delta tables in the lakehouse cannot have spaces in their names."
         )
 
-    dataframe.columns = [col.replace(" ", "_") for col in dataframe.columns]
-
     spark = _create_spark_session()
 
     type_mapping = {
@@ -562,6 +560,7 @@ def save_as_delta_table(
     }
 
     if isinstance(dataframe, pd.DataFrame):
+        dataframe.columns = [col.replace(" ", "_") for col in dataframe.columns]
         if schema is None:
             spark_df = spark.createDataFrame(dataframe)
         else:
@@ -573,6 +572,9 @@ def save_as_delta_table(
             )
             spark_df = spark.createDataFrame(dataframe, schema_map)
     else:
+        for col_name in dataframe.columns:
+            new_name = col_name.replace(" ", "_")
+            dataframe = dataframe.withColumnRenamed(col_name, new_name)
         spark_df = dataframe
 
     filePath = create_abfss_path(
