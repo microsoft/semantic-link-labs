@@ -84,9 +84,11 @@ def create_shortcut_onelake(
 
     source_full_path = f"{source_path}/{table_name}"
 
+    actual_shortcut_name = shortcut_name.replace(" ", "")
+
     payload = {
         "path": destination_path,
-        "name": shortcut_name.replace(" ", ""),
+        "name": actual_shortcut_name,
         "target": {
             "oneLake": {
                 "workspaceId": source_workspace_id,
@@ -95,6 +97,38 @@ def create_shortcut_onelake(
             }
         },
     }
+
+    from sempy_labs._list_functions import list_shortcuts
+
+    dfL = list_shortcuts(
+        lakehouse=destination_lakehouse_id, workspace=destination_workspace_id
+    )
+
+    # Check if the same shortcut exists
+    dfL_filt = dfL[
+        (dfL["Shortcut Name"] == actual_shortcut_name)
+        & (dfL["Shortcut Path"] == destination_path)
+        & (dfL["OneLake Path"] == source_full_path)
+        & (dfL["Source Item Type"] == "Lakehouse")
+        & (dfL["Source Workspace Id"] == source_workspace_id)
+        & (dfL["Source Item Id"] == source_lakehouse_id)
+    ]
+    if not dfL_filt.empty:
+        print(
+            f"{icons.info} The '{shortcut_name}' shortcut already exists in the '{destination_lakehouse_name}' lakehouse within the '{destination_workspace_name}' workspace and is pointed to the same artifact."
+        )
+        return
+
+    # Check if the same shortcut exists but pointe to a different location
+    dfL_filt2 = dfL[
+        (dfL["Shortcut Name"] == actual_shortcut_name)
+        & (dfL["Shortcut Path"] == destination_path)
+    ]
+    if not dfL_filt2.empty:
+        print(
+            f"{icons.info} The '{shortcut_name}' shortcut already exists in the '{destination_lakehouse_name}' lakehouse within the '{destination_workspace_name}' workspace but is pointed to a different artifact."
+        )
+        return
 
     _base_api(
         request=f"/v1/workspaces/{destination_workspace_id}/items/{destination_lakehouse_id}/shortcuts",
