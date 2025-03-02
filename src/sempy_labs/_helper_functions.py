@@ -908,13 +908,13 @@ def resolve_capacity_name(capacity_id: Optional[UUID] = None) -> str:
     return dfC_filt["Display Name"].iloc[0]
 
 
-def resolve_capacity_id(capacity_name: Optional[str] = None) -> UUID:
+def resolve_capacity_id(capacity_name: Optional[str | UUID] = None) -> UUID:
     """
     Obtains the capacity Id for a given capacity name.
 
     Parameters
     ----------
-    capacity_name : str, default=None
+    capacity_name : str | uuid.UUID, default=None
         The capacity name.
         Defaults to None which resolves to the capacity id of the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the capacity name of the workspace of the notebook.
@@ -927,6 +927,8 @@ def resolve_capacity_id(capacity_name: Optional[str] = None) -> UUID:
 
     if capacity_name is None:
         return get_capacity_id()
+    if _is_valid_uuid(capacity_name):
+        return capacity_name
 
     dfC = fabric.list_capacities()
     dfC_filt = dfC[dfC["Display Name"] == capacity_name]
