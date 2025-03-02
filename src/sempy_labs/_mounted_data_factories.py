@@ -34,7 +34,7 @@ def list_mounted_data_factories(
     Returns
     -------
     pandas.DataFrame
-        A pandas dataframe showing a list of mounted data factories from the specified workspace. 
+        A pandas dataframe showing a list of mounted data factories from the specified workspace.
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
