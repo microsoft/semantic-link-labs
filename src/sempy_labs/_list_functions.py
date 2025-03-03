@@ -1217,6 +1217,8 @@ def list_shortcuts(
 
     from sempy_labs.lakehouse._shortcuts import list_shortcuts
 
+    print(f"{icons.warning} This function has been moved to the lakehouse subpackage. Please repoint your code to use that location.")
+
     return list_shortcuts(lakehouse=lakehouse, workspace=workspace, path=path)
 
 
