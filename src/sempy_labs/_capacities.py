@@ -460,7 +460,9 @@ def update_fabric_capacity(
         return
 
     payload = _add_sll_tag(payload, tags)
-    _base_api(request=url, client="azure", method="patch", payload=payload, status_codes=202)
+    _base_api(
+        request=url, client="azure", method="patch", payload=payload, status_codes=202
+    )
 
     print(
         f"{icons.green_dot} The '{capacity_name}' capacity has been updated accordingly."
@@ -500,7 +502,9 @@ def check_fabric_capacity_name_availablility(
 
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/providers/Microsoft.Fabric/locations/{region}/checkNameAvailability?api-version={icons.azure_api_version}"
 
-    response = _base_api(request=url, client="azure", method="post", payload=payload, status_codes=202)
+    response = _base_api(
+        request=url, client="azure", method="post", payload=payload, status_codes=202
+    )
 
     return bool(response.json().get("nameAvailable"))
 

@@ -940,9 +940,7 @@ def resolve_capacity_id(capacity: Optional[str | UUID] = None, **kwargs) -> UUID
     dfC_filt = dfC[dfC["Display Name"] == capacity]
 
     if dfC_filt.empty:
-        raise ValueError(
-            f"{icons.red_dot} The '{capacity}' capacity does not exist."
-        )
+        raise ValueError(f"{icons.red_dot} The '{capacity}' capacity does not exist.")
 
     return dfC_filt["Id"].iloc[0]
 
@@ -1531,7 +1529,7 @@ def _base_api(
             raise NotImplementedError
     else:
         headers = _get_headers(auth.token_provider.get(), audience=client)
-        if client == 'graph':
+        if client == "graph":
             url = f"https://graph.microsoft.com/v1.0/{request}"
         else:
             url == request

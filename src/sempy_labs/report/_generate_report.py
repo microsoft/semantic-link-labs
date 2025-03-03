@@ -178,7 +178,9 @@ def update_report_from_reportjson(
 
 
 def get_report_definition(
-    report: str | UUID, workspace: Optional[str | UUID] = None, return_dataframe: bool = True
+    report: str | UUID,
+    workspace: Optional[str | UUID] = None,
+    return_dataframe: bool = True,
 ) -> pd.DataFrame | dict:
     """
     Gets the collection of definition files of a report.
