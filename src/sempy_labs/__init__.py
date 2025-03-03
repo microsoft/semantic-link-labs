@@ -1,3 +1,9 @@
+from sempy_labs._mounted_data_factories import (
+    list_mounted_data_factories,
+    get_mounted_data_factory_definition,
+    delete_mounted_data_factory,
+)
+
 from sempy_labs._semantic_models import (
     get_semantic_model_refresh_schedule,
     enable_semantic_model_scheduled_refresh,
@@ -529,4 +535,7 @@ __all__ = [
     "create_item_schedule_weekly",
     "get_my_git_credentials",
     "update_my_git_credentials",
+    "list_mounted_data_factories",
+    "get_mounted_data_factory_definition",
+    "delete_mounted_data_factory",
 ]
