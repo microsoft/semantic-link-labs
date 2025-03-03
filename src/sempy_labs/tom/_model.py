@@ -4765,17 +4765,20 @@ class TOMWrapper:
 
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        return (
+        bim = (
             json.loads(TOM.JsonScripter.ScriptCreate(self.model.Database))
             .get("create")
             .get("database")
         )
+
+        return bim
 
     def _reduce_model(self, perspective_name: str):
         """
         Reduces a model's objects based on a perspective. Adds the dependent objects within a perspective to that perspective.
         """
 
+        import Microsoft.AnalysisServices.Tabular as TOM
         from sempy_labs._model_dependencies import get_model_calc_dependencies
 
         fabric.refresh_tom_cache(workspace=self._workspace_id)
@@ -4922,7 +4925,9 @@ class TOMWrapper:
             else:
                 for attr in ["Columns", "Measures", "Hierarchies"]:
                     for obj in getattr(t, attr):
-                        if not self.in_perspective(
+                        if attr == 'Columns' and obj.Type == TOM.ColumnType.RowNumber:
+                            pass
+                        elif not self.in_perspective(
                             object=obj, perspective_name=perspective_name
                         ):
                             self.remove_object(object=obj)
