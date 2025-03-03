@@ -16,6 +16,7 @@ from sempy_labs._helper_functions import (
     _base_api,
 )
 from sempy_labs._capacities import create_fabric_capacity
+from uuid import UUID
 
 
 def _migrate_settings(source_capacity: str, target_capacity: str):
@@ -531,7 +532,7 @@ def _migrate_delegated_tenant_settings(source_capacity: str, target_capacity: st
 
 
 @log
-def _migrate_spark_settings(source_capacity: str, target_capacity: str):
+def _migrate_spark_settings(source_capacity: str | UUID, target_capacity: str | UUID):
     """
     This function migrates a capacity's spark settings to another capacity.
 
@@ -539,14 +540,14 @@ def _migrate_spark_settings(source_capacity: str, target_capacity: str):
 
     Parameters
     ----------
-    source_capacity : str
+    source_capacity : str | uuid.UUID
         Name of the source capacity.
-    target_capacity : str
+    target_capacity : str | uuid.UUID
         Name of the target capacity.
     """
 
-    source_capacity_id = resolve_capacity_id(capacity_name=source_capacity)
-    target_capacity_id = resolve_capacity_id(capacity_name=target_capacity)
+    source_capacity_id = resolve_capacity_id(capacity=source_capacity)
+    target_capacity_id = resolve_capacity_id(capacity=target_capacity)
 
     # Get source capacity server dns
     response = _base_api(request=f"metadata/capacityInformation/{source_capacity_id}")

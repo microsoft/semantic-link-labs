@@ -204,7 +204,7 @@ def add_user_to_workspace(
 
 
 def assign_workspace_to_capacity(
-    capacity_name: str, workspace: Optional[str | UUID] = None
+    capacity: str | UUID, workspace: Optional[str | UUID] = None, **kwargs,
 ):
     """
     Assigns a workspace to a capacity.
@@ -213,16 +213,22 @@ def assign_workspace_to_capacity(
 
     Parameters
     ----------
-    capacity_name : str
-        The name of the capacity.
+    capacity : str | uuid.UUID
+        The name or ID of the capacity.
     workspace : str | uuid.UUID, default=None
         The name or ID of the Fabric workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
+    if "capacity_name" in kwargs:
+        capacity = kwargs["capacity_name"]
+        print(
+            f"{icons.warning} The 'capacity_name' parameter is deprecated. Please use 'capacity' instead."
+        )
+
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    capacity_id = resolve_capacity_id(capacity_name=capacity_name)
+    capacity_id = resolve_capacity_id(capacity=capacity)
 
     payload = {"capacityId": capacity_id}
 
@@ -233,7 +239,7 @@ def assign_workspace_to_capacity(
         status_codes=[200, 202],
     )
     print(
-        f"{icons.green_dot} The '{workspace_name}' workspace has been assigned to the '{capacity_name}' capacity."
+        f"{icons.green_dot} The '{workspace_name}' workspace has been assigned to the '{capacity}' capacity."
     )
 
 
