@@ -4925,7 +4925,7 @@ class TOMWrapper:
             else:
                 for attr in ["Columns", "Measures", "Hierarchies"]:
                     for obj in getattr(t, attr):
-                        if attr == 'Columns' and obj.Type == TOM.ColumnType.RowNumber:
+                        if attr == "Columns" and obj.Type == TOM.ColumnType.RowNumber:
                             pass
                         elif not self.in_perspective(
                             object=obj, perspective_name=perspective_name

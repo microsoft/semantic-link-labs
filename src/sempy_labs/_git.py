@@ -513,7 +513,11 @@ def update_my_git_credentials(
         payload["connectionId"] = connection_id
 
     _base_api(
-        request=f"/v1/workspaces/{workspace_id}/git/myGitCredentials", method="patch", payload=payload,
+        request=f"/v1/workspaces/{workspace_id}/git/myGitCredentials",
+        method="patch",
+        payload=payload,
     )
 
-    print(f"{icons.green_dot} The user's Git credentials have been updated accordingly.")
+    print(
+        f"{icons.green_dot} The user's Git credentials have been updated accordingly."
+    )
