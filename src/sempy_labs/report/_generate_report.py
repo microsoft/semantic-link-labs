@@ -178,7 +178,7 @@ def update_report_from_reportjson(
 
 
 def get_report_definition(
-    report: str, workspace: Optional[str | UUID] = None, return_dataframe: bool = True
+    report: str | UUID, workspace: Optional[str | UUID] = None, return_dataframe: bool = True
 ) -> pd.DataFrame | dict:
     """
     Gets the collection of definition files of a report.
@@ -187,8 +187,8 @@ def get_report_definition(
 
     Parameters
     ----------
-    report : str
-        Name of the report.
+    report : str | uuid.UUID
+        Name or ID of the report.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID in which the report resides.
         Defaults to None which resolves to the workspace of the attached lakehouse

@@ -343,7 +343,7 @@ def create_vnet_gateway(
 
 
 def update_on_premises_gateway(
-    gateway: str,
+    gateway: str | UUID,
     allow_cloud_connection_refresh: Optional[bool] = None,
     allow_custom_connectors: Optional[bool] = None,
     load_balancing_setting: Optional[str] = None,
@@ -396,7 +396,7 @@ def update_on_premises_gateway(
 
 
 def update_vnet_gateway(
-    gateway: str,
+    gateway: str | UUID,
     capacity: str | UUID,
     inactivity_minutes_before_sleep: Optional[int] = None,
     number_of_member_gateways: Optional[int] = None,
