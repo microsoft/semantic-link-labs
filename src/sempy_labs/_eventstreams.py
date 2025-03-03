@@ -96,7 +96,7 @@ def create_eventstream(
     )
 
 
-def delete_eventstream(name: str | UUID, workspace: Optional[str | UUID] = None):
+def delete_eventstream(eventstream: str | UUID, workspace: Optional[str | UUID] = None):
     """
     Deletes a Fabric eventstream.
 
@@ -104,7 +104,7 @@ def delete_eventstream(name: str | UUID, workspace: Optional[str | UUID] = None)
 
     Parameters
     ----------
-    name: str | uuid.UUID
+    eventstream: str | uuid.UUID
         Name or ID of the eventstream.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
@@ -113,11 +113,11 @@ def delete_eventstream(name: str | UUID, workspace: Optional[str | UUID] = None)
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    item_id = resolve_item_id(item=name, type="Eventstream", workspace=workspace)
+    item_id = resolve_item_id(item=eventstream, type="Eventstream", workspace=workspace)
 
     fabric.delete_item(item_id=item_id, workspace=workspace)
     _print_success(
-        item_name=name,
+        item_name=eventstream,
         item_type="eventstream",
         workspace_name=workspace_name,
         action="deleted",

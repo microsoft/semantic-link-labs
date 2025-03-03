@@ -4,6 +4,7 @@ from sempy_labs._helper_functions import (
     _base_api,
     _create_dataframe,
     _update_dataframe_datatypes,
+    resolve_item_id,
 )
 import pandas as pd
 from typing import Optional
@@ -115,7 +116,7 @@ def list_warehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     return df
 
 
-def delete_warehouse(name: str, workspace: Optional[str | UUID] = None):
+def delete_warehouse(name: str | UUID, workspace: Optional[str | UUID] = None):
     """
     Deletes a Fabric warehouse.
 
@@ -123,8 +124,8 @@ def delete_warehouse(name: str, workspace: Optional[str | UUID] = None):
 
     Parameters
     ----------
-    name: str
-        Name of the warehouse.
+    name: str | uuid.UUID
+        Name or ID of the warehouse.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -132,14 +133,8 @@ def delete_warehouse(name: str, workspace: Optional[str | UUID] = None):
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    item_id = fabric.resolve_item_id(
-        item_name=name, type="Warehouse", workspace=workspace_id
-    )
-
-    _base_api(
-        request=f"/v1/workspaces/{workspace_id}/warehouses/{item_id}", method="delete"
-    )
+    item_id = resolve_item_id(item=name, type="Warehouse", workspace=workspace_id)
+    fabric.delete_item(item_id=item_id, workspace=workspace)
 
     print(
         f"{icons.green_dot} The '{name}' warehouse within the '{workspace_name}' workspace has been deleted."
