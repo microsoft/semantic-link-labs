@@ -4,11 +4,13 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_id,
     resolve_workspace_name_and_id,
     _base_api,
+    _create_dataframe,
 )
 from typing import Optional
 import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
+import pandas as pd
 
 
 def create_shortcut_onelake(
@@ -258,3 +260,136 @@ def reset_shortcut_cache(workspace: Optional[str | UUID] = None):
     print(
         f"{icons.green_dot} The shortcut cache has been reset for the '{workspace_name}' workspace."
     )
+
+
+def list_shortcuts(
+    lakehouse: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
+    path: Optional[str] = None,
+) -> pd.DataFrame:
+    """
+    Shows all shortcuts which exist in a Fabric lakehouse and their properties.
+
+    Parameters
+    ----------
+    lakehouse : str, default=None
+        The Fabric lakehouse name.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    workspace : str | uuid.UUID, default=None
+        The name or ID of the Fabric workspace in which lakehouse resides.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    path: str, default=None
+        The path within lakehouse where to look for shortcuts. If provied, must start with either "Files" or "Tables". Examples: Tables/FolderName/SubFolderName; Files/FolderName/SubFolderName.
+        Defaults to None which will retun all shortcuts on the given lakehouse
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing all the shortcuts which exist in the specified lakehouse.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    if lakehouse is None:
+        lakehouse_id = fabric.get_lakehouse_id()
+    else:
+        lakehouse_id = resolve_lakehouse_id(lakehouse, workspace_id)
+
+    columns = {
+        "Shortcut Name": "string",
+        "Shortcut Path": "string",
+        "Source Type": "string",
+        "Source Workspace Id": "string",
+        "Source Workspace Name": "string",
+        "Source Item Id": "string",
+        "Source Item Name": "string",
+        "Source Item Type": "string",
+        "OneLake Path": "string",
+        "Connection Id": "string",
+        "Location": "string",
+        "Bucket": "string",
+        "SubPath": "string",
+        "Source Properties Raw": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    # To improve performance create a dataframe to cache all items for a given workspace
+    itm_clms = {
+        "Id": "string",
+        "Display Name": "string",
+        "Description": "string",
+        "Type": "string",
+        "Workspace Id": "string",
+    }
+    source_items_df = _create_dataframe(columns=itm_clms)
+
+    url = f"/v1/workspaces/{workspace_id}/items/{lakehouse_id}/shortcuts"
+
+    if path is not None:
+        url += f"?parentPath={path}"
+
+    responses = _base_api(
+        request=url,
+        uses_pagination=True,
+    )
+
+    sources = {
+        "AdlsGen2": "adlsGen2",
+        "AmazonS3": "amazonS3",
+        "Dataverse": "dataverse",
+        "ExternalDataShare": "externalDataShare",
+        "GoogleCloudStorage": "googleCloudStorage",
+        "OneLake": "oneLake",
+        "S3Compatible": "s3Compatible",
+    }
+
+    for r in responses:
+        for i in r.get("value", []):
+            tgt = i.get("target", {})
+            tgt_type = tgt.get("type")
+            connection_id = tgt.get(sources.get(tgt_type), {}).get("connectionId")
+            location = tgt.get(sources.get(tgt_type), {}).get("location")
+            sub_path = tgt.get(sources.get(tgt_type), {}).get("subpath")
+            source_workspace_id = tgt.get(sources.get(tgt_type), {}).get("workspaceId")
+            source_item_id = tgt.get(sources.get(tgt_type), {}).get("itemId")
+            bucket = tgt.get(sources.get(tgt_type), {}).get("bucket")
+            source_workspace_name = (
+                fabric.resolve_workspace_name(source_workspace_id)
+                if source_workspace_id is not None
+                else None
+            )
+            # Cache and use it to getitem type and name
+            source_item_type = None
+            source_item_name = None
+            dfI = source_items_df[
+                source_items_df["Workspace Id"] == source_workspace_id
+            ]
+            if dfI.empty:
+                dfI = fabric.list_items(workspace=source_workspace_id)
+                source_items_df = pd.concat([source_items_df, dfI], ignore_index=True)
+
+            dfI_filt = dfI[dfI["Id"] == source_item_id]
+            if not dfI_filt.empty:
+                source_item_type = dfI_filt["Type"].iloc[0]
+                source_item_name = dfI_filt["Display Name"].iloc[0]
+
+            new_data = {
+                "Shortcut Name": i.get("name"),
+                "Shortcut Path": i.get("path"),
+                "Source Type": tgt_type,
+                "Source Workspace Id": source_workspace_id,
+                "Source Workspace Name": source_workspace_name,
+                "Source Item Id": source_item_id,
+                "Source Item Name": source_item_name,
+                "Source Item Type": source_item_type,
+                "OneLake Path": tgt.get(sources.get("oneLake"), {}).get("path"),
+                "Connection Id": connection_id,
+                "Location": location,
+                "Bucket": bucket,
+                "SubPath": sub_path,
+                "Source Properties Raw": str(tgt),
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    return df

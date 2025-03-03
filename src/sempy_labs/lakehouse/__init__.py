@@ -12,6 +12,7 @@ from sempy_labs.lakehouse._shortcuts import (
     create_shortcut_onelake,
     delete_shortcut,
     reset_shortcut_cache,
+    list_shortcuts,
 )
 
 __all__ = [
@@ -25,4 +26,5 @@ __all__ = [
     "vacuum_lakehouse_tables",
     "reset_shortcut_cache",
     "run_table_maintenance",
+    "list_shortcuts",
 ]
