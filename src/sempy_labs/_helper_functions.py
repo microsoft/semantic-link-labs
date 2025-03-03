@@ -270,14 +270,7 @@ def resolve_dataset_id(
         The ID of the semantic model.
     """
 
-    if _is_valid_uuid(dataset):
-        dataset_id = dataset
-    else:
-        dataset_id = fabric.resolve_item_id(
-            item_name=dataset, type="SemanticModel", workspace=workspace
-        )
-
-    return dataset_id
+    return resolve_item_id(item=dataset, type="SemanticModel", workspace=workspace)
 
 
 def resolve_dataset_name(
@@ -645,7 +638,7 @@ def resolve_workspace_name_and_id(
 
     Returns
     -------
-    str, str
+    str, uuid.UUID
         The name and ID of the Fabric workspace.
     """
 
