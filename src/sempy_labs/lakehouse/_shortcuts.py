@@ -65,7 +65,7 @@ def create_shortcut_onelake(
         source_workspace
     )
     (source_lakehouse_name, source_lakehouse_id) = resolve_lakehouse_name_and_id(
-        lakehouse=source_lakehouse, workpsace=source_workspace_id
+        lakehouse=source_lakehouse, workspace=source_workspace_id
     )
 
     (destination_workspace_name, destination_workspace_id) = (
@@ -73,7 +73,7 @@ def create_shortcut_onelake(
     )
     (destination_lakehouse_name, destination_lakehouse_id) = (
         resolve_lakehouse_name_and_id(
-            lakehouse=destination_lakehouse, workpsace=destination_workspace_id
+            lakehouse=destination_lakehouse, workspace=destination_workspace_id
         )
     )
 
