@@ -130,14 +130,16 @@ def create_relationship_name(
     )
 
 
-def resolve_report_id(report: str, workspace: Optional[str | UUID] = None) -> UUID:
+def resolve_report_id(
+    report: str | UUID, workspace: Optional[str | UUID] = None
+) -> UUID:
     """
     Obtains the ID of the Power BI report.
 
     Parameters
     ----------
-    report : str
-        The name of the Power BI report.
+    report : str | uuid.UUID
+        The name or ID of the Power BI report.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -145,11 +147,11 @@ def resolve_report_id(report: str, workspace: Optional[str | UUID] = None) -> UU
 
     Returns
     -------
-    UUID
+    uuid.UUID
         The ID of the Power BI report.
     """
 
-    return fabric.resolve_item_id(item_name=report, type="Report", workspace=workspace)
+    return resolve_item_id(item=report, type="Report", workspace=workspace)
 
 
 def resolve_report_name(report_id: UUID, workspace: Optional[str | UUID] = None) -> str:
@@ -937,9 +939,7 @@ def resolve_capacity_id(capacity: Optional[str | UUID] = None, **kwargs) -> UUID
     dfC_filt = dfC[dfC["Display Name"] == capacity]
 
     if dfC_filt.empty:
-        raise ValueError(
-            f"{icons.red_dot} The '{capacity}' capacity does not exist."
-        )
+        raise ValueError(f"{icons.red_dot} The '{capacity}' capacity does not exist.")
 
     return dfC_filt["Id"].iloc[0]
 
@@ -1102,12 +1102,7 @@ def resolve_warehouse_id(
         The warehouse Id.
     """
 
-    if _is_valid_uuid(warehouse):
-        return warehouse
-    else:
-        return fabric.resolve_item_id(
-            item_name=warehouse, type="Warehouse", workspace=workspace
-        )
+    return resolve_item_id(item=warehouse, type="Warehouse", workspace=workspace)
 
 
 def get_language_codes(languages: str | List[str]):
@@ -1167,14 +1162,14 @@ def convert_to_alphanumeric_lowercase(input_string):
 
 
 def resolve_environment_id(
-    environment: str, workspace: Optional[str | UUID] = None
+    environment: str | UUID, workspace: Optional[str | UUID] = None
 ) -> UUID:
     """
     Obtains the environment Id for a given environment.
 
     Parameters
     ----------
-    environment: str
+    environment: str | uuid.UUID
         Name of the environment.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID in which the semantic model resides.
@@ -1183,13 +1178,11 @@ def resolve_environment_id(
 
     Returns
     -------
-    UUID
+    uuid.UUID
         The environment Id.
     """
 
-    return fabric.resolve_item_id(
-        item_name=environment, type="Environment", workspace=workspace
-    )
+    return resolve_item_id(item=environment, type="Environment", workspace=workspace)
 
 
 def _make_clickable(val):
@@ -1221,14 +1214,16 @@ def convert_to_friendly_case(text: str) -> str:
     return text
 
 
-def resolve_notebook_id(notebook: str, workspace: Optional[str | UUID] = None) -> UUID:
+def resolve_notebook_id(
+    notebook: str | UUID, workspace: Optional[str | UUID] = None
+) -> UUID:
     """
     Obtains the notebook Id for a given notebook.
 
     Parameters
     ----------
-    notebook: str
-        Name of the notebook.
+    notebook: str | uuid.UUID
+        Name or ID of the notebook.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID in which the semantic model resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -1240,9 +1235,7 @@ def resolve_notebook_id(notebook: str, workspace: Optional[str | UUID] = None) -
         The notebook Id.
     """
 
-    return fabric.resolve_item_id(
-        item_name=notebook, type="Notebook", workspace=workspace
-    )
+    return resolve_item_id(item=notebook, type="Notebook", workspace=workspace)
 
 
 def generate_guid():

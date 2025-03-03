@@ -204,7 +204,9 @@ def add_user_to_workspace(
 
 
 def assign_workspace_to_capacity(
-    capacity: str | UUID, workspace: Optional[str | UUID] = None, **kwargs,
+    capacity: str | UUID,
+    workspace: Optional[str | UUID] = None,
+    **kwargs,
 ):
     """
     Assigns a workspace to a capacity.
