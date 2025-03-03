@@ -314,7 +314,7 @@ def create_vnet_gateway(
         The name of the subnet.
     """
 
-    capacity_id = resolve_capacity_id(capacity)
+    capacity_id = resolve_capacity_id(capacity=capacity)
     payload = {
         "type": "VirtualNetwork",
         "displayName": name,
@@ -425,7 +425,7 @@ def update_vnet_gateway(
     payload = {}
 
     if capacity is not None:
-        capacity_id = resolve_capacity_id(capacity)
+        capacity_id = resolve_capacity_id(capacity=capacity)
         payload["capacityId"] = capacity_id
     if inactivity_minutes_before_sleep is not None:
         payload["inactivityMinutesBeforeSleep"] = inactivity_minutes_before_sleep

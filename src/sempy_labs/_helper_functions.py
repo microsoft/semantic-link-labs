@@ -908,14 +908,14 @@ def resolve_capacity_name(capacity_id: Optional[UUID] = None) -> str:
     return dfC_filt["Display Name"].iloc[0]
 
 
-def resolve_capacity_id(capacity_name: Optional[str | UUID] = None) -> UUID:
+def resolve_capacity_id(capacity: Optional[str | UUID] = None, **kwargs) -> UUID:
     """
     Obtains the capacity Id for a given capacity name.
 
     Parameters
     ----------
-    capacity_name : str | uuid.UUID, default=None
-        The capacity name.
+    capacity : str | uuid.UUID, default=None
+        The capacity name or ID.
         Defaults to None which resolves to the capacity id of the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the capacity name of the workspace of the notebook.
 
@@ -925,17 +925,20 @@ def resolve_capacity_id(capacity_name: Optional[str | UUID] = None) -> UUID:
         The capacity Id.
     """
 
-    if capacity_name is None:
+    if "capacity_name" in kwargs:
+        capacity = kwargs["capacity_name"]
+
+    if capacity is None:
         return get_capacity_id()
-    if _is_valid_uuid(capacity_name):
-        return capacity_name
+    if _is_valid_uuid(capacity):
+        return capacity
 
     dfC = fabric.list_capacities()
-    dfC_filt = dfC[dfC["Display Name"] == capacity_name]
+    dfC_filt = dfC[dfC["Display Name"] == capacity]
 
     if dfC_filt.empty:
         raise ValueError(
-            f"{icons.red_dot} The '{capacity_name}' capacity does not exist."
+            f"{icons.red_dot} The '{capacity}' capacity does not exist."
         )
 
     return dfC_filt["Id"].iloc[0]
