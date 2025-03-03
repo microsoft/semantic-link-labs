@@ -6,6 +6,7 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _base_api,
     _create_dataframe,
+    resolve_item_id,
 )
 from uuid import UUID
 
@@ -104,7 +105,9 @@ def create_kql_database(
     )
 
 
-def delete_kql_database(name: str, workspace: Optional[str | UUID] = None):
+def delete_kql_database(
+    kql_database: str | UUID, workspace: Optional[str | UUID] = None
+):
     """
     Deletes a KQL database.
 
@@ -112,8 +115,8 @@ def delete_kql_database(name: str, workspace: Optional[str | UUID] = None):
 
     Parameters
     ----------
-    name: str
-        Name of the KQL database.
+    kql_database: str | uuid.UUID
+        Name or ID of the KQL database.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -121,14 +124,11 @@ def delete_kql_database(name: str, workspace: Optional[str | UUID] = None):
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    kql_database_id = fabric.resolve_item_id(
-        item_name=name, type="KQLDatabase", workspace=workspace_id
+    item_id = resolve_item_id(
+        item=kql_database, type="KQLDatabase", workspace=workspace_id
     )
+    fabric.delete_item(item_id=item_id, workspace=workspace_id)
 
-    _base_api(
-        request=f"/v1/workspaces/{workspace_id}/kqlDatabases/{kql_database_id}",
-        method="delete",
-    )
     print(
-        f"{icons.green_dot} The '{name}' KQL database within the '{workspace_name}' workspace has been deleted."
+        f"{icons.green_dot} The '{kql_database}' KQL database within the '{workspace_name}' workspace has been deleted."
     )

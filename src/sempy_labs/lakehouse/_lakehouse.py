@@ -35,7 +35,7 @@ def lakehouse_attached() -> bool:
 @log
 def optimize_lakehouse_tables(
     tables: Optional[Union[str, List[str]]] = None,
-    lakehouse: Optional[str] = None,
+    lakehouse: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
 ):
     """
@@ -46,8 +46,8 @@ def optimize_lakehouse_tables(
     tables : str | List[str], default=None
         The table(s) to optimize.
         Defaults to None which resovles to optimizing all tables within the lakehouse.
-    lakehouse : str, default=None
-        The Fabric lakehouse.
+    lakehouse : str | uuid.UUID, default=None
+        The Fabric lakehouse name or ID.
         Defaults to None which resolves to the lakehouse attached to the notebook.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID used by the lakehouse.
@@ -82,7 +82,7 @@ def optimize_lakehouse_tables(
 @log
 def vacuum_lakehouse_tables(
     tables: Optional[Union[str, List[str]]] = None,
-    lakehouse: Optional[str] = None,
+    lakehouse: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
     retain_n_hours: Optional[int] = None,
 ):
@@ -93,8 +93,8 @@ def vacuum_lakehouse_tables(
     ----------
     tables : str | List[str] | None
         The table(s) to vacuum. If no tables are specified, all tables in the lakehouse will be optimized.
-    lakehouse : str, default=None
-        The Fabric lakehouse.
+    lakehouse : str | uuid.UUID, default=None
+        The Fabric lakehouse name or ID.
         Defaults to None which resolves to the lakehouse attached to the notebook.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID used by the lakehouse.
@@ -107,7 +107,6 @@ def vacuum_lakehouse_tables(
         The default retention period is 168 hours (7 days) unless manually configured via table properties.
     """
 
-    from pyspark.sql import SparkSession
     from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
     from delta import DeltaTable
 

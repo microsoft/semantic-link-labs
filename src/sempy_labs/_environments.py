@@ -1,3 +1,4 @@
+import sempy.fabric as fabric
 import pandas as pd
 import sempy_labs._icons as icons
 from typing import Optional
@@ -6,6 +7,7 @@ from sempy_labs._helper_functions import (
     _base_api,
     _print_success,
     _create_dataframe,
+    resolve_item_id,
 )
 from uuid import UUID
 
@@ -98,7 +100,7 @@ def list_environments(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     return df
 
 
-def delete_environment(environment: str, workspace: Optional[str | UUID] = None):
+def delete_environment(environment: str | UUID, workspace: Optional[str | UUID] = None):
     """
     Deletes a Fabric environment.
 
@@ -106,25 +108,20 @@ def delete_environment(environment: str, workspace: Optional[str | UUID] = None)
 
     Parameters
     ----------
-    environment: str
-        Name of the environment.
+    environment: str | uuid.UUID
+        Name or ID of the environment.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    from sempy_labs._helper_functions import resolve_environment_id
-
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    environment_id = resolve_environment_id(
-        environment=environment, workspace=workspace_id
+    item_id = resolve_item_id(
+        item=environment, type="Environment", workspace=workspace_id
     )
+    fabric.delete_item(item_id=item_id, workspace=workspace_id)
 
-    _base_api(
-        request=f"/v1/workspaces/{workspace_id}/environments/{environment_id}",
-        method="delete",
-    )
     _print_success(
         item_name=environment,
         item_type="environment",
@@ -133,7 +130,9 @@ def delete_environment(environment: str, workspace: Optional[str | UUID] = None)
     )
 
 
-def publish_environment(environment: str, workspace: Optional[str | UUID] = None):
+def publish_environment(
+    environment: str | UUID, workspace: Optional[str | UUID] = None
+):
     """
     Publishes a Fabric environment.
 
@@ -141,23 +140,21 @@ def publish_environment(environment: str, workspace: Optional[str | UUID] = None
 
     Parameters
     ----------
-    environment: str
-        Name of the environment.
+    environment: str | uuid.UUID
+        Name or ID of the environment.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    from sempy_labs._helper_functions import resolve_environment_id
-
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    environment_id = resolve_environment_id(
-        environment=environment, workspace=workspace_id
+    item_id = resolve_item_id(
+        item=environment, type="Environment", workspace=workspace_id
     )
 
     _base_api(
-        request=f"/v1/workspaces/{workspace_id}/environments/{environment_id}/staging/publish",
+        request=f"/v1/workspaces/{workspace_id}/environments/{item_id}/staging/publish",
         method="post",
         lro_return_status_code=True,
         status_codes=None,

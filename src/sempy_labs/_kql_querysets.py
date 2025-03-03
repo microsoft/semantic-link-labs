@@ -6,6 +6,7 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _base_api,
     _create_dataframe,
+    resolve_item_id,
 )
 from uuid import UUID
 
@@ -94,7 +95,9 @@ def create_kql_queryset(
     )
 
 
-def delete_kql_queryset(name: str, workspace: Optional[str | UUID] = None):
+def delete_kql_queryset(
+    kql_queryset: str | UUID, workspace: Optional[str | UUID] = None
+):
     """
     Deletes a KQL queryset.
 
@@ -102,8 +105,8 @@ def delete_kql_queryset(name: str, workspace: Optional[str | UUID] = None):
 
     Parameters
     ----------
-    name: str
-        Name of the KQL queryset.
+    kql_queryset: str | uuid.UUID
+        Name or ID of the KQL queryset.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -111,14 +114,10 @@ def delete_kql_queryset(name: str, workspace: Optional[str | UUID] = None):
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    kql_database_id = fabric.resolve_item_id(
-        item_name=name, type="KQLQueryset", workspace=workspace_id
+    item_id = resolve_item_id(
+        item=kql_queryset, type="KQLQueryset", workspace=workspace_id
     )
-
-    _base_api(
-        request=f"/v1/workspaces/{workspace_id}/kqlQuerysets/{kql_database_id}",
-        method="delete",
-    )
+    fabric.delete_item(item_id=item_id, workspace=workspace_id)
     print(
-        f"{icons.green_dot} The '{name}' KQL queryset within the '{workspace_name}' workspace has been deleted."
+        f"{icons.green_dot} The '{kql_queryset}' KQL queryset within the '{workspace_name}' workspace has been deleted."
     )
