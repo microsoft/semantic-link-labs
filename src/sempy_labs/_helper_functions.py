@@ -176,6 +176,37 @@ def resolve_report_name(report_id: UUID, workspace: Optional[str | UUID] = None)
     )
 
 
+def delete_item(
+    item: str | UUID, type: str, workspace: Optional[str | UUID] = None
+) -> None:
+    """
+    Deletes an item from a Fabric workspace.
+
+    Parameters
+    ----------
+    item : str | uuid.UUID
+        The name or ID of the item to be deleted.
+    type : str
+        The type of the item to be deleted.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    from sempy_labs._utils import item_types
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (item_name, item_id) = resolve_item_name_and_id(item, type, workspace_id)
+    item_type = item_types.get(type).lower()
+
+    fabric.delete_item(item_id=item_id, workspace=workspace_id)
+
+    print(
+        f"{icons.green_dot} The '{item_name}' {item_type} has been successfully deleted from the '{workspace_name}' workspace."
+    )
+
+
 def resolve_item_id(
     item: str | UUID, type: str, workspace: Optional[str] = None
 ) -> UUID:

@@ -1,4 +1,3 @@
-import sempy.fabric as fabric
 import pandas as pd
 from typing import Optional
 from sempy_labs._helper_functions import (
@@ -8,6 +7,7 @@ from sempy_labs._helper_functions import (
     _print_success,
     resolve_item_id,
     _create_dataframe,
+    delete_item,
 )
 from uuid import UUID
 
@@ -114,16 +114,7 @@ def delete_data_pipeline(name: str | UUID, workspace: Optional[str | UUID] = Non
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    item_id = resolve_item_id(item=name, type="DataPipeline", workspace=workspace)
-
-    fabric.delete_item(item_id=item_id, workspace=workspace)
-    _print_success(
-        item_name=name,
-        item_type="data pipeline",
-        workspace_name=workspace_name,
-        action="deleted",
-    )
+    delete_item(item=name, type="DataPipeline", workspace=workspace)
 
 
 def get_data_pipeline_definition(

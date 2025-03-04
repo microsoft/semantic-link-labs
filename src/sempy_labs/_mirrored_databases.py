@@ -1,4 +1,3 @@
-import sempy.fabric as fabric
 import pandas as pd
 from typing import Optional
 from sempy_labs._helper_functions import (
@@ -9,6 +8,7 @@ from sempy_labs._helper_functions import (
     _print_success,
     resolve_item_id,
     _create_dataframe,
+    delete_item,
 )
 import sempy_labs._icons as icons
 import base64
@@ -128,16 +128,7 @@ def delete_mirrored_database(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    item_id = resolve_item_id(
-        item=mirrored_database, type="MirroredDatabase", workspace=workspace
-    )
-    fabric.delete_item(item_id=item_id, workspace=workspace)
-    _print_success(
-        item_name=mirrored_database,
-        item_type="mirrored database",
-        workspace_name=workspace,
-    )
-
+    delete_item(item=mirrored_database, type="MirroredDatabase", workspace=workspace)
 
 def get_mirroring_status(
     mirrored_database: str | UUID, workspace: Optional[str | UUID] = None

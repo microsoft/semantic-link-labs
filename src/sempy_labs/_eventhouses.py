@@ -1,4 +1,3 @@
-import sempy.fabric as fabric
 import pandas as pd
 from typing import Optional
 from sempy_labs._helper_functions import (
@@ -9,6 +8,7 @@ from sempy_labs._helper_functions import (
     _create_dataframe,
     _conv_b64,
     _decode_b64,
+    delete_item,
 )
 from uuid import UUID
 import sempy_labs._icons as icons
@@ -135,16 +135,7 @@ def delete_eventhouse(name: str, workspace: Optional[str | UUID] = None):
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    item_id = resolve_item_id(item=name, type="Eventhouse", workspace=workspace)
-
-    fabric.delete_item(item_id=item_id, workspace=workspace)
-    _print_success(
-        item_name=name,
-        item_type="eventhouse",
-        workspace_name=workspace_name,
-        action="deleted",
-    )
+    delete_item(item=name, type="Eventhouse", workspace=workspace)
 
 
 def get_eventhouse_definition(

@@ -1,11 +1,10 @@
-import sempy.fabric as fabric
 import pandas as pd
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _base_api,
     _print_success,
-    resolve_item_id,
+    delete_item,
     _create_dataframe,
 )
 from uuid import UUID
@@ -112,13 +111,4 @@ def delete_eventstream(eventstream: str | UUID, workspace: Optional[str | UUID] 
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    item_id = resolve_item_id(item=eventstream, type="Eventstream", workspace=workspace)
-
-    fabric.delete_item(item_id=item_id, workspace=workspace)
-    _print_success(
-        item_name=eventstream,
-        item_type="eventstream",
-        workspace_name=workspace_name,
-        action="deleted",
-    )
+    delete_item(item=eventstream, type="Eventstream", workspace=workspace)

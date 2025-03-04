@@ -1,11 +1,10 @@
-import sempy.fabric as fabric
 import pandas as pd
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _base_api,
     _print_success,
-    resolve_item_id,
+    delete_item,
     _create_dataframe,
 )
 from uuid import UUID
@@ -119,11 +118,4 @@ def delete_ml_experiment(name: str, workspace: Optional[str | UUID] = None):
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    item_id = resolve_item_id(item=name, type="MLExperiment", workspace=workspace)
-    fabric.delete_item(item_id=item_id, workspace=workspace)
-    _print_success(
-        item_name=name,
-        item_type="ML Experiment",
-        workspace_name=workspace,
-        action="deleted",
-    )
+    delete_item(item=name, type="MLExperiment", workspace=workspace)

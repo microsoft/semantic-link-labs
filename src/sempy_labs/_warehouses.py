@@ -1,10 +1,9 @@
-import sempy.fabric as fabric
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _base_api,
     _create_dataframe,
     _update_dataframe_datatypes,
-    resolve_item_id,
+    delete_item,
 )
 import pandas as pd
 from typing import Optional
@@ -132,13 +131,7 @@ def delete_warehouse(name: str | UUID, workspace: Optional[str | UUID] = None):
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    item_id = resolve_item_id(item=name, type="Warehouse", workspace=workspace_id)
-    fabric.delete_item(item_id=item_id, workspace=workspace)
-
-    print(
-        f"{icons.green_dot} The '{name}' warehouse within the '{workspace_name}' workspace has been deleted."
-    )
+    delete_item(item=name, type="Warehouse", workspace=workspace)
 
 
 def get_warehouse_tables(

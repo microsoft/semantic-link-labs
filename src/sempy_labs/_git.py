@@ -127,7 +127,7 @@ def connect_workspace_to_github(
 
 def disconnect_workspace_from_git(workspace: Optional[str | UUID] = None):
     """
-    Disconnects a workpsace from a git repository.
+    Disconnects a workspace from a git repository.
 
     This is a wrapper function for the following API: `Git - Disconnect <https://learn.microsoft.com/rest/api/fabric/core/git/disconnect>`_.
 

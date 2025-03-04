@@ -1,4 +1,3 @@
-import sempy.fabric as fabric
 import pandas as pd
 import json
 from typing import Optional
@@ -9,8 +8,7 @@ from sempy_labs._helper_functions import (
     _update_dataframe_datatypes,
     resolve_item_id,
     _decode_b64,
-    _print_success,
-    resolve_item_name_and_id,
+    delete_item,
 )
 
 from uuid import UUID
@@ -131,12 +129,4 @@ def delete_mounted_data_factory(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (item_name, item_id) = resolve_item_name_and_id(
-        item=mounted_data_factory, type="MountedDataFactory", workspace=workspace
-    )
-
-    fabric.delete_item(item_id=item_id, type="MountedDataFactory", workspace=workspace)
-
-    _print_success(
-        item_name=item_name, item_type="Mounted Data Factory", action="deleted"
-    )
+    delete_item(item=mounted_data_factory, type="MountedDataFactory", workspace=workspace)

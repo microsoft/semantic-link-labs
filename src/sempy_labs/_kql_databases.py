@@ -1,4 +1,3 @@
-import sempy.fabric as fabric
 import pandas as pd
 import sempy_labs._icons as icons
 from typing import Optional
@@ -6,7 +5,7 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _base_api,
     _create_dataframe,
-    resolve_item_id,
+    delete_item,
 )
 from uuid import UUID
 
@@ -123,12 +122,4 @@ def delete_kql_database(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    item_id = resolve_item_id(
-        item=kql_database, type="KQLDatabase", workspace=workspace_id
-    )
-    fabric.delete_item(item_id=item_id, workspace=workspace_id)
-
-    print(
-        f"{icons.green_dot} The '{kql_database}' KQL database within the '{workspace_name}' workspace has been deleted."
-    )
+    delete_item(item=kql_database, type="KQLDatabase", workspace=workspace)

@@ -1,4 +1,3 @@
-import sempy.fabric as fabric
 import pandas as pd
 import sempy_labs._icons as icons
 from typing import Optional
@@ -8,6 +7,7 @@ from sempy_labs._helper_functions import (
     _print_success,
     _create_dataframe,
     resolve_item_id,
+    delete_item,
 )
 from uuid import UUID
 
@@ -116,18 +116,7 @@ def delete_environment(environment: str | UUID, workspace: Optional[str | UUID] 
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    item_id = resolve_item_id(
-        item=environment, type="Environment", workspace=workspace_id
-    )
-    fabric.delete_item(item_id=item_id, workspace=workspace_id)
-
-    _print_success(
-        item_name=environment,
-        item_type="environment",
-        workspace_name=workspace_name,
-        action="deleted",
-    )
+    delete_item(item=environment, type="Environment", workspace=workspace)
 
 
 def publish_environment(
