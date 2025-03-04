@@ -7,6 +7,7 @@ from sempy_labs._helper_functions import (
 )
 from typing import List, Optional
 from sempy_labs.graph._users import resolve_user_id
+import sempy_labs._icons as icons
 
 
 def list_teams() -> pd.DataFrame:
@@ -158,7 +159,11 @@ def create_teams_chat(members: List[str | UUID], title: Optional[str] = None):
         The title of the chat. Only applicable to group chats (more than 2 members).
     """
 
-    if len(members) <= 2:
+    if len(members) < 2:
+        raise ValueError(
+            f"{icons.red_dot} At least two members are required to create a chat."
+        )
+    elif len(members) == 2:
         chat_type = "oneOnOne"
     else:
         chat_type = "group"
@@ -194,7 +199,9 @@ def create_teams_chat(members: List[str | UUID], title: Optional[str] = None):
     )
 
 
-def get_teams_chat_members(chat_id: UUID, user: Optional[str | UUID] = None) -> pd.DataFrame:
+def get_teams_chat_members(
+    chat_id: UUID, user: Optional[str | UUID] = None
+) -> pd.DataFrame:
     """
     Shows a list of teams chat members.
 
@@ -255,7 +262,7 @@ def get_teams_chat_members(chat_id: UUID, user: Optional[str | UUID] = None) -> 
 
 def list_teams_chat_members(user: str | UUID) -> pd.DataFrame:
     """
-    Shows the members for each teams chat for a given user
+    Shows the members for each teams chat for a given user.
 
     Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
@@ -263,11 +270,11 @@ def list_teams_chat_members(user: str | UUID) -> pd.DataFrame:
     ----------
     user : str | uuid.UUID
         The user name or ID.
-    
+
     Returns
     -------
     pandas.DataFrame
-        A pandas dataframe showing a list of teams chat members.
+        A pandas dataframe showing the members for each teams chat for a given user.
     """
 
     columns = {
