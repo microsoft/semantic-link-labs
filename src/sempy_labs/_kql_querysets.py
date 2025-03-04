@@ -81,7 +81,7 @@ def create_kql_queryset(
 
 
 def delete_kql_queryset(
-    kql_queryset: str | UUID, workspace: Optional[str | UUID] = None
+    kql_queryset: str | UUID, workspace: Optional[str | UUID] = None, **kwargs
 ):
     """
     Deletes a KQL queryset.
@@ -97,5 +97,11 @@ def delete_kql_queryset(
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
+
+    if "name" in kwargs:
+        kql_queryset = kwargs["name"]
+        print(
+            f"{icons.warning} The 'name' parameter is deprecated. Please use 'kql_queryset' instead."
+        )
 
     delete_item(item=kql_queryset, type="KQLQueryset", workspace=workspace)

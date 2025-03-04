@@ -8,6 +8,7 @@ from sempy_labs._helper_functions import (
     create_item,
 )
 from uuid import UUID
+import sempy_labs._icons as icons
 
 
 def list_kql_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
@@ -90,7 +91,9 @@ def create_kql_database(
 
 
 def delete_kql_database(
-    kql_database: str | UUID, workspace: Optional[str | UUID] = None
+    kql_database: str | UUID,
+    workspace: Optional[str | UUID] = None,
+    **kwargs,
 ):
     """
     Deletes a KQL database.
@@ -106,5 +109,11 @@ def delete_kql_database(
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
+
+    if "name" in kwargs:
+        kql_database = kwargs["name"]
+        print(
+            f"{icons.warning} The 'name' parameter is deprecated. Please use 'kql_database' instead."
+        )
 
     delete_item(item=kql_database, type="KQLDatabase", workspace=workspace)

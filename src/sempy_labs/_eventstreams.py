@@ -8,6 +8,7 @@ from sempy_labs._helper_functions import (
     create_item,
 )
 from uuid import UUID
+import sempy_labs._icons as icons
 
 
 def list_eventstreams(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
@@ -78,7 +79,9 @@ def create_eventstream(
     )
 
 
-def delete_eventstream(eventstream: str | UUID, workspace: Optional[str | UUID] = None):
+def delete_eventstream(
+    eventstream: str | UUID, workspace: Optional[str | UUID] = None, **kwargs
+):
     """
     Deletes a Fabric eventstream.
 
@@ -93,5 +96,11 @@ def delete_eventstream(eventstream: str | UUID, workspace: Optional[str | UUID] 
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
+
+    if "name" in kwargs:
+        eventstream = kwargs["name"]
+        print(
+            f"{icons.warning} The 'name' parameter is deprecated. Please use 'eventstream' instead."
+        )
 
     delete_item(item=eventstream, type="Eventstream", workspace=workspace)
