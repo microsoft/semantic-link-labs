@@ -115,7 +115,7 @@ def send_teams_message(chat_id: str, message: str):
     """
     Sends a teams message.
 
-    This is a wrapper function for the following API: `List teams <>`_.
+    This is a wrapper function for the following API: `Send message in a chat <https://learn.microsoft.com/graph/api/chat-post-messages>`_.
 
     Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
@@ -201,6 +201,19 @@ def get_teams_chat_members(chat_id: UUID, user: Optional[str | UUID] = None) -> 
     This is a wrapper function for the following API: `List chat members <https://learn.microsoft.com/graph/api/chatmembers-list>`_.
 
     Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    chat_id : uuid.UUID
+        The chat ID.
+    user : str | uuid.UUID, default=None
+        The user name or ID.
+        If specified, shows the members for a given user.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of teams chat members.
     """
 
     if user is None:
@@ -245,6 +258,16 @@ def list_teams_chat_members(user: str | UUID) -> pd.DataFrame:
     Shows the members for each teams chat for a given user
 
     Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    user : str | uuid.UUID
+        The user name or ID.
+    
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of teams chat members.
     """
 
     columns = {
