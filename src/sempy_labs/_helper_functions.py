@@ -275,7 +275,7 @@ def get_item_definition(
     path = item_types.get(type)[2]
 
     url = f"/v1/workspaces/{workspace_id}/{item_type_url}/{item_id}/getDefinition"
-    if format is not None:
+    if format:
         url += f"?format={format}"
 
     result = _base_api(
