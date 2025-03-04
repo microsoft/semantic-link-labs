@@ -129,4 +129,6 @@ def delete_mounted_data_factory(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    delete_item(item=mounted_data_factory, type="MountedDataFactory", workspace=workspace)
+    delete_item(
+        item=mounted_data_factory, type="MountedDataFactory", workspace=workspace
+    )

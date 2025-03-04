@@ -3,12 +3,12 @@ from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _base_api,
-    _print_success,
     resolve_item_id,
     _create_dataframe,
     _conv_b64,
     _decode_b64,
     delete_item,
+    create_item,
 )
 from uuid import UUID
 import sempy_labs._icons as icons
@@ -39,18 +39,11 @@ def create_eventhouse(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    if definition is not None and not isinstance(definition, dict):
+        raise ValueError(f"{icons.red_dot} The definition must be a dictionary.")
 
-    payload = {"displayName": name}
-
-    if description:
-        payload["description"] = description
-
-    if definition is not None:
-        if not isinstance(definition, dict):
-            raise ValueError(f"{icons.red_dot} The definition must be a dictionary.")
-
-        payload["definition"] = {
+    definition_payload = (
+        {
             "parts": [
                 {
                     "path": "EventhouseProperties.json",
@@ -59,19 +52,16 @@ def create_eventhouse(
                 }
             ]
         }
-
-    _base_api(
-        request=f"/v1/workspaces/{workspace_id}/eventhouses",
-        method="post",
-        status_codes=[201, 202],
-        payload=payload,
-        lro_return_status_code=True,
+        if definition is not None
+        else None
     )
-    _print_success(
-        item_name=name,
-        item_type="eventhouse",
-        workspace_name=workspace_name,
-        action="created",
+
+    create_item(
+        name=name,
+        type="Eventhouse",
+        workspace=workspace,
+        description=description,
+        definition=definition_payload,
     )
 
 

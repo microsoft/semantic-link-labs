@@ -198,12 +198,63 @@ def delete_item(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (item_name, item_id) = resolve_item_name_and_id(item, type, workspace_id)
-    item_type = item_types.get(type).lower()
+    item_type = item_types.get(type)[0].lower()
 
     fabric.delete_item(item_id=item_id, workspace=workspace_id)
 
     print(
         f"{icons.green_dot} The '{item_name}' {item_type} has been successfully deleted from the '{workspace_name}' workspace."
+    )
+
+
+def create_item(
+    name: str,
+    type: str,
+    description: Optional[str] = None,
+    definition: Optional[dict] = None,
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Creates an item in a Fabric workspace.
+
+    Parameters
+    ----------
+    name : str
+        The name of the item to be created.
+    type : str
+        The type of the item to be created.
+    description : str, default=None
+        A description of the item to be created.
+    definition : dict, default=None
+        The definition of the item to be created.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+    from sempy_labs._utils import item_types
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    item_type = item_types.get(type)[0].lower()
+    item_type_url = item_types.get(type)[1]
+
+    payload = {
+        "displayName": name,
+    }
+    if description:
+        payload["description"] = description
+    if definition:
+        payload["definition"] = definition
+
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/{item_type_url}",
+        method="post",
+        payload=payload,
+        status_codes=[201, 202],
+        lro_return_status_code=True,
+    )
+    print(
+        f"{icons.green_dot} The '{name}' {item_type} has been successfully created within the in the '{workspace_name}' workspace."
     )
 
 

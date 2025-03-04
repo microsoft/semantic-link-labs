@@ -4,10 +4,10 @@ from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _base_api,
-    _print_success,
     _create_dataframe,
     resolve_item_id,
     delete_item,
+    create_item,
 )
 from uuid import UUID
 
@@ -34,25 +34,11 @@ def create_environment(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    payload = {"displayName": environment}
-
-    if description:
-        payload["description"] = description
-
-    _base_api(
-        request="/v1/workspaces/{workspace_id}/environments",
-        method="post",
-        payload=payload,
-        status_codes=[201, 202],
-        lro_return_status_code=True,
-    )
-    _print_success(
-        item_name=environment,
-        item_type="environment",
-        workspace_name=workspace_name,
-        action="created",
+    create_item(
+        name=environment,
+        description=description,
+        type="Environment",
+        workspace=workspace,
     )
 
 

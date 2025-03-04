@@ -9,6 +9,7 @@ from sempy_labs._helper_functions import (
     resolve_item_id,
     _create_dataframe,
     delete_item,
+    create_item,
 )
 import sempy_labs._icons as icons
 import base64
@@ -92,21 +93,8 @@ def create_mirrored_database(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    payload = {"displayName": name}
-
-    if description:
-        payload["description"] = description
-
-    _base_api(
-        request=f"/v1/workspaces/{workspace_id}/mirroredDatabases",
-        status_codes=201,
-        method="post",
-        payload=payload,
-    )
-    _print_success(
-        item_name=name, item_type="mirrored database", workspace_name=workspace_name
+    create_item(
+        name=name, description=description, type="MirroredDatabase", workspace=workspace
     )
 
 
@@ -129,6 +117,7 @@ def delete_mirrored_database(
     """
 
     delete_item(item=mirrored_database, type="MirroredDatabase", workspace=workspace)
+
 
 def get_mirroring_status(
     mirrored_database: str | UUID, workspace: Optional[str | UUID] = None

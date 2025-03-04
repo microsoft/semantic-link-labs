@@ -4,8 +4,8 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _base_api,
     delete_item,
-    _print_success,
     _create_dataframe,
+    create_item,
 )
 from uuid import UUID
 
@@ -80,26 +80,7 @@ def create_ml_model(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    payload = {"displayName": name}
-
-    if description:
-        payload["description"] = description
-
-    _base_api(
-        request=f"/v1/workspaces/{workspace_id}/mlModels",
-        method="post",
-        status_codes=[201, 202],
-        payload=payload,
-        lro_return_status_code=True,
-    )
-    _print_success(
-        item_name=name,
-        item_type="ML Model",
-        workspace_name=workspace_name,
-        action="created",
-    )
+    create_item(name=name, description=description, type="MLModel", workspace=workspace)
 
 
 def delete_ml_model(name: str | UUID, workspace: Optional[str | UUID] = None):
