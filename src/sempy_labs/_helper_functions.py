@@ -1653,7 +1653,7 @@ def _base_api(
         if client == "graph":
             url = f"https://graph.microsoft.com/v1.0/{request}"
         else:
-            url == request
+            url = request
         response = requests.request(
             method.upper(),
             url,
