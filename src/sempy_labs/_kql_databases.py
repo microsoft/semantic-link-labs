@@ -65,7 +65,7 @@ def list_kql_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     return df
 
 
-def create_kql_database(
+def _create_kql_database(
     name: str, description: Optional[str] = None, workspace: Optional[str | UUID] = None
 ):
     """

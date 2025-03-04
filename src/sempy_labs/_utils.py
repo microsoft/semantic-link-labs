@@ -1,6 +1,6 @@
 item_types = {
     "Dashboard": ["Dashboard", "dashboards"],
-    "DataPipeline": ["DataPipeline", "dataPipelines"],
+    "DataPipeline": ["Data Pipeline", "dataPipelines"],
     "Datamart": ["Datamart", "datamarts"],
     "Environment": ["Environment", "environments"],
     "Eventhouse": ["Eventhouse", "eventhouses"],

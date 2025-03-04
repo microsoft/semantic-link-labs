@@ -105,7 +105,7 @@ from sempy_labs._kql_querysets import (
 )
 from sempy_labs._kql_databases import (
     list_kql_databases,
-    create_kql_database,
+    # create_kql_database,
     delete_kql_database,
 )
 from sempy_labs._mirrored_warehouses import list_mirrored_warehouses
@@ -435,7 +435,7 @@ __all__ = [
     "convert_to_friendly_case",
     "list_mirrored_warehouses",
     "list_kql_databases",
-    "create_kql_database",
+    # "create_kql_database",
     "delete_kql_database",
     "create_eventhouse",
     "list_eventhouses",
