@@ -1652,8 +1652,10 @@ def _base_api(
         headers = _get_headers(auth.token_provider.get(), audience=client)
         if client == "graph":
             url = f"https://graph.microsoft.com/v1.0/{request}"
-        else:
+        elif client == "azure":
             url = request
+        else:
+            raise NotImplementedError
         response = requests.request(
             method.upper(),
             url,
