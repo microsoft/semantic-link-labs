@@ -9,6 +9,7 @@ from sempy_labs._helper_functions import (
     _decode_b64,
     delete_item,
     create_item,
+    get_item_definition,
 )
 from uuid import UUID
 import sempy_labs._icons as icons
@@ -155,21 +156,9 @@ def get_eventhouse_definition(
         The eventhouse definition in .json format or as a pandas dataframe.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    item_id = resolve_item_id(item=eventhouse, type="Eventhouse", workspace=workspace)
-
-    result = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/eventhouses/{item_id}/getDefinition",
-        method="post",
-        status_codes=None,
-        lro_return_json=True,
+    return get_item_definition(
+        item=eventhouse,
+        type="Eventhouse",
+        workspace=workspace,
+        return_dataframe=return_dataframe,
     )
-
-    df = pd.json_normalize(result["definition"]["parts"])
-
-    if return_dataframe:
-        return df
-    else:
-        df_filt = df[df["path"] == "EventhouseProperties.json"]
-        payload = df_filt["payload"].iloc[0]
-        return _decode_b64(payload)

@@ -11,6 +11,7 @@ from sempy_labs._helper_functions import (
     _update_dataframe_datatypes,
     _base_api,
     resolve_item_id,
+    get_item_definition,
 )
 import sempy_labs._icons as icons
 from sempy._utils._log import log
@@ -200,24 +201,13 @@ def get_report_definition(
 
     Returns
     -------
-    pandas.DataFrame | dict
+    pandas.DataFrame
         The collection of report definition files within a pandas dataframe.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    report_id = resolve_item_id(item=report, type="Report", workspace=workspace)
-
-    result = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/reports/{report_id}/getDefinition",
-        method="post",
-        lro_return_json=True,
-        status_codes=None,
+    return get_item_definition(
+        item=report, type="Report", workspace=workspace, return_dataframe=True
     )
-
-    if return_dataframe:
-        return pd.json_normalize(result["definition"]["parts"])
-    else:
-        return result
 
 
 @log

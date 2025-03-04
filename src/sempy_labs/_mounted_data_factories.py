@@ -9,6 +9,7 @@ from sempy_labs._helper_functions import (
     resolve_item_id,
     _decode_b64,
     delete_item,
+    get_item_definition,
 )
 
 from uuid import UUID
@@ -87,27 +88,11 @@ def get_mounted_data_factory_definition(
         The 'mountedDataFactory-content.json' file from the mounted data factory definition.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    item_id = resolve_item_id(
-        item=mounted_data_factory, type="MountedDataFactory", workspace=workspace
-    )
-    path = "mountedDataFactory-content.json"
-
-    result = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/mountedDataFactories/{item_id}/getDefinition",
-        method="post",
-        lro_return_json=True,
-        status_codes=None,
-    )
-
-    return json.loads(
-        _decode_b64(
-            next(
-                p.get("payload")
-                for p in result["definition"]["parts"]
-                if p.get("path") == path
-            )
-        )
+    return get_item_definition(
+        item=mounted_data_factory,
+        type="MountedDataFactory",
+        workspace=workspace,
+        return_dataframe=False,
     )
 
 

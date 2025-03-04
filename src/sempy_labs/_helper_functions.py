@@ -258,6 +258,45 @@ def create_item(
     )
 
 
+def get_item_definition(
+    item: str | UUID,
+    type: str,
+    workspace: Optional[str | UUID] = None,
+    format: Optional[str] = None,
+    return_dataframe: bool = True,
+    decode: bool = True,
+):
+
+    from sempy_labs._utils import item_types
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    item_id = resolve_item_id(item, type, workspace_id)
+    item_type_url = item_types.get(type)[1]
+    path = item_types.get(type)[2]
+
+    url = f"/v1/workspaces/{workspace_id}/{item_type_url}/{item_id}/getDefinition"
+    if format is not None:
+        url += f"?format={format}"
+
+    result = _base_api(
+        request=url,
+        method="post",
+        status_codes=None,
+        lro_return_json=True,
+    )
+
+    if return_dataframe:
+        return pd.json_normalize(result["definition"]["parts"])
+
+    value = next(
+        p.get("payload") for p in result["definition"]["parts"] if p.get("path") == path
+    )
+    if decode:
+        json.loads(_decode_b64(value))
+    else:
+        return value
+
+
 def resolve_item_id(
     item: str | UUID, type: str, workspace: Optional[str] = None
 ) -> UUID:

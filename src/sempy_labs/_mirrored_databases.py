@@ -5,11 +5,11 @@ from sempy_labs._helper_functions import (
     _decode_b64,
     _update_dataframe_datatypes,
     _base_api,
-    _print_success,
     resolve_item_id,
     _create_dataframe,
     delete_item,
     create_item,
+    get_item_definition,
 )
 import sempy_labs._icons as icons
 import base64
@@ -287,7 +287,7 @@ def get_mirrored_database_definition(
     mirrored_database: str | UUID,
     workspace: Optional[str | UUID] = None,
     decode: bool = True,
-) -> str:
+) -> dict:
     """
     Obtains the mirrored database definition.
 
@@ -307,31 +307,17 @@ def get_mirrored_database_definition(
 
     Returns
     -------
-    str
+    dict
         The mirrored database definition.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    item_id = resolve_item_id(
-        item=mirrored_database, type="MirroredDatabase", workspace=workspace
+    return get_item_definition(
+        item=mirrored_database,
+        type="MirroredDatabase",
+        workspace=workspace,
+        return_dataframe=False,
+        decode=decode,
     )
-    result = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/mirroredDatabases/{item_id}/getDefinition",
-        method="post",
-        status_codes=200,
-        lro_return_json=True,
-    )
-
-    df_items = pd.json_normalize(result["definition"]["parts"])
-    df_items_filt = df_items[df_items["path"] == "mirroredDatabase.json"]
-    payload = df_items_filt["payload"].iloc[0]
-
-    if decode:
-        result = _decode_b64(payload)
-    else:
-        result = payload
-
-    return result
 
 
 def update_mirrored_database_definition(
