@@ -479,7 +479,7 @@ def generate_embedded_filter(filter: str) -> str:
 
 
 def save_as_delta_table(
-    dataframe: 'pandas.DataFrame' | 'pyspark.sql.DataFrame',
+    dataframe,
     delta_table_name: str,
     write_mode: str,
     merge_schema: bool = False,
@@ -542,25 +542,23 @@ def save_as_delta_table(
             f"{icons.red_dot} Invalid 'delta_table_name'. Delta tables in the lakehouse cannot have spaces in their names."
         )
 
-    dataframe.columns = [col.replace(" ", "_") for col in dataframe.columns]
-
-    spark = _create_spark_session()
-
-    type_mapping = {
-        "string": StringType(),
-        "str": StringType(),
-        "integer": IntegerType(),
-        "int": IntegerType(),
-        "float": FloatType(),
-        "date": DateType(),
-        "bool": BooleanType(),
-        "boolean": BooleanType(),
-        "long": LongType(),
-        "double": DoubleType(),
-        "timestamp": TimestampType(),
-    }
-
     if isinstance(dataframe, pd.DataFrame):
+        spark = _create_spark_session()
+
+        type_mapping = {
+            "string": StringType(),
+            "str": StringType(),
+            "integer": IntegerType(),
+            "int": IntegerType(),
+            "float": FloatType(),
+            "date": DateType(),
+            "bool": BooleanType(),
+            "boolean": BooleanType(),
+            "long": LongType(),
+            "double": DoubleType(),
+            "timestamp": TimestampType(),
+        }
+
         if schema is None:
             spark_df = spark.createDataFrame(dataframe)
         else:
@@ -573,6 +571,9 @@ def save_as_delta_table(
             spark_df = spark.createDataFrame(dataframe, schema_map)
     else:
         spark_df = dataframe
+
+    # Replace spaces with underscores in column names
+    spark_df = spark_df.toDF(*[col.replace(" ", "_") for col in spark_df.columns])
 
     filePath = create_abfss_path(
         lakehouse_id=lakehouse_id,
@@ -1740,8 +1741,8 @@ def _get_or_create_workspace(
 
     # Check if the DataFrame is not empty
     if not dfW.empty:
-        workspace_name = dfW.iloc[0]['workspace_name']
-        workspace_id = dfW.iloc[0]['workspace_id']
+        workspace_name = dfW.iloc[0]['Name']
+        workspace_id = dfW.iloc[0]['Id']
         print(f"{icons.green_dot} Workspace '{workspace_name}' with ID '{workspace_id}' already exists. Skipping workspace creation.")
         return (workspace_name, workspace_id)
     else:
