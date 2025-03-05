@@ -4,7 +4,7 @@ import json
 import base64
 import time
 import uuid
-from sempy.fabric.exceptions import FabricHTTPException, WorkspaceNotFoundException
+from sempy.fabric.exceptions import FabricHTTPException
 import pandas as pd
 from functools import wraps
 import datetime
@@ -17,7 +17,6 @@ import numpy as np
 from IPython.display import display, HTML
 import requests
 import sempy_labs._authentication as auth
-from pyspark.sql import DataFrame
 
 def _build_url(url: str, params: dict) -> str:
     """
@@ -480,7 +479,7 @@ def generate_embedded_filter(filter: str) -> str:
 
 
 def save_as_delta_table(
-    dataframe,
+    dataframe: 'pandas.DataFrame' | 'pyspark.sql.DataFrame',
     delta_table_name: str,
     write_mode: str,
     merge_schema: bool = False,
@@ -489,12 +488,12 @@ def save_as_delta_table(
     workspace: Optional[str | UUID] = None,
 ):
     """
-    Saves a pandas dataframe as a delta table in a Fabric lakehouse.
+    Saves a Pandas or PySpark dataframe as a delta table in a Fabric lakehouse.
 
     Parameters
     ----------
-    dataframe : pandas.DataFrame
-        The dataframe to be saved as a delta table.
+    dataframe : pandas.DataFrame | pyspark.sql.DataFrame
+        The Pandas or PySpark dataframe to be saved as a delta table.
     delta_table_name : str
         The name of the delta table.
     write_mode : str
@@ -1621,28 +1620,31 @@ def _read_delta_table(
     path: str,
     lakehouse: Optional [str | UUID] = None,
     workspace: Optional [str | UUID] = None,
-) -> DataFrame:
+) -> 'pyspark.sql.DataFrame':
     """
     Returns a spark dataframe with the rows of a delta table in a Fabric lakehouse.
 
     Parameters
     ----------
     path : str
-        The path or name of the delta table.
+        The abfss path or name of the delta table.
     lakehouse : uuid.UUID
-        The Fabric lakehouse ID.
+        The Fabric lakehouse ID. 
         Defaults to None which resolves to the lakehouse attached to the notebook.
+        Ignored if an abfss path was provided in the path parameter.
     workspace : uuid.UUID
         The Fabric workspace ID where the specified lakehouse is located.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+        Ignored if an abfss path was provided in the path parameter.
 
     Returns
     -------
     DataFrame
-        A Spark dataframe with the data from the specified delta table.
+        A PySpark dataframe with the data from the specified delta table.
     """
     from urllib.parse import urlparse
+    from pyspark.sql import DataFrame
 
     spark = _create_spark_session()
     
@@ -1706,7 +1708,7 @@ def _mount(lakehouse, workspace) -> str:
 
 def _get_or_create_workspace(
     workspace: Optional[str | UUID] = None,
-    capacity_id: Optional[UUID] = None,
+    capacity: Optional[str | UUID] = None,
     description: Optional[str] = None,
 ) -> Tuple[str, UUID]:
     """
@@ -1718,8 +1720,8 @@ def _get_or_create_workspace(
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    capacity_id : uuid.UUID, default=None
-        The ID of the capacity on which to place the new workspace.
+    capacity : str | uuid.UUID, default=None
+        The name or ID of the capacity on which to place the new workspace.
         Defaults to None which resolves to the capacity of the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the capacity of the workspace of the notebook.
     description : str, default=None
@@ -1727,33 +1729,40 @@ def _get_or_create_workspace(
         Defaults to None which leaves the description blank.    
     Returns
     -------
-    Tuple[str, UUID]
+    Tuple[str, uuid.UUID]
         A tuple holding the name and ID of the workspace.
     """
+    import urllib.parse
 
-    try:
-        # If the workspace already exist, return the resolved name and ID.
-        (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-        print(f"{icons.green_dot} Workspace '{workspace_name}' already exists. Skipping workspace creation.")
-        return (workspace_name,workspace_id)
+    # URL-encode the workspace name
+    filter_condition = urllib.parse.quote(workspace)
+    dfW = fabric.list_workspaces(filter=f"name eq '{filter_condition}'")
 
-    except WorkspaceNotFoundException:
+    # Check if the DataFrame is not empty
+    if not dfW.empty:
+        workspace_name = dfW.iloc[0]['workspace_name']
+        workspace_id = dfW.iloc[0]['workspace_id']
+        print(f"{icons.green_dot} Workspace '{workspace_name}' with ID '{workspace_id}' already exists. Skipping workspace creation.")
+        return (workspace_name, workspace_id)
+    else:
         # Otherwise create a new workspace.
-        try:
+        if _is_valid_uuid(workspace):
             # But only if a human-friendly name was provided. If it's a Guid, raise an exception.
-            UUID(workspace)
             raise ValueError("For new workspaces, the workspace parameter must be string, not a Guid. Please provide a workspace name.")
-        except ValueError:
-            # OK, it's not a Guid. But also make sure the workspace parameter isn't empty.
-            if workspace == "" or workspace is None:
-                raise ValueError("For new workspaces, the workspace parameter cannot be None or empty. Please provide a workspace name.")
+        elif not workspace:
+            # And also make sure the workspace parameter isn't empty.
+            raise ValueError("For new workspaces, the workspace parameter cannot be None or empty. Please provide a workspace name.")
 
-        # Get the capacity id from the attached lakehouse or notebook workspace if no ID was provided.
-        if capacity_id is None:
-            capacity_id = get_capacity_id()
+        if _is_valid_uuid(capacity):
+            capacity_id = capacity
+        else:
+            # Get the capacity id from capacity name 
+            # or use the attached lakehouse or notebook workspace if no name was provided.
+            capacity_id =  resolve_capacity_id(capacity_name = capacity)
 
         # Provision the new workspace and return the workspace info.
-        workspace_id = fabric.create_workspace(display_name=workspace, capacity_id=capacity_id, description=description)
+        workspace_id = fabric.create_workspace(
+            display_name=workspace, capacity_id=capacity_id, description=description)
         (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace_id)
         print(f"{icons.green_dot} Workspace '{workspace_name}' created.")
         return (workspace,workspace_id)
@@ -1780,7 +1789,7 @@ def _get_or_create_lakehouse(
         Defaults to None which leaves the description blank.    
     Returns
     -------
-    Tuple[str, UUID]
+    Tuple[str, uuid.UUID]
         A tuple holding the name and ID of the lakehouse.
     """
    
@@ -1814,74 +1823,3 @@ def _get_or_create_lakehouse(
             lakehouse=lakehouse_id, workspace=workspace_id )
     print(f"{icons.green_dot} Lakehouse '{lakehouse_name}' created.")
     return (lakehouse, lakehouse_id)
-
-
-def _save_as_delta_table(
-    dataframe: DataFrame,
-    delta_table_name: str,
-    lakehouse: Optional [str | UUID] = None,
-    workspace: Optional [str | UUID] = None,
-):
-    """
-    Saves a spark dataframe as a delta table in a Fabric lakehouse.
-
-    Parameters
-    ----------
-    dataframe : DataFrame
-        The spark dataframe to be saved as a delta table.
-    delta_table_name : str
-        The name of the delta table.
-    lakehouse : uuid.UUID
-        The Fabric lakehouse ID.
-        Defaults to None which resolves to the lakehouse attached to the notebook.
-    workspace : uuid.UUID
-        The Fabric workspace ID where the specified lakehouse is located.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
-    """
-
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(lakehouse=lakehouse,workspace=workspace_id)
-
-    filePath = create_abfss_path(
-        lakehouse_id=lakehouse_id,
-        lakehouse_workspace_id=workspace_id,
-        delta_table_name=delta_table_name,
-    )
-    dataframe.write.mode("overwrite").format("delta").save(filePath)
-    print(f"{icons.green_dot} Delta table '{delta_table_name}' created and {dataframe.count()} rows inserted.")
-
-def _insert_into_delta_table(
-    dataframe: DataFrame,
-    delta_table_name: str,
-    lakehouse: Optional [str | UUID] = None,
-    workspace: Optional [str | UUID] = None,
-):
-    """
-    Inserts a spark dataframe into a delta table in a Fabric lakehouse.
-
-    Parameters
-    ----------
-    dataframe : DataFrame
-        The spark dataframe to be inserted into a delta table.
-    delta_table_name : str
-        The name of the delta table.
-    lakehouse : uuid.UUID
-        The Fabric lakehouse ID.
-        Defaults to None which resolves to the lakehouse attached to the notebook.
-    workspace : uuid.UUID
-        The Fabric workspace ID where the specified lakehouse is located.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
-    """
-
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(lakehouse=lakehouse,workspace=workspace_id)
-
-    filePath = create_abfss_path(
-        lakehouse_id=lakehouse_id,
-        lakehouse_workspace_id=workspace_id,
-        delta_table_name=delta_table_name,
-    )
-    dataframe.write.mode("append").format("delta").save(filePath)
-    print(f"{icons.green_dot} {dataframe.count()} rows inserted into Delta table '{delta_table_name}'.")
