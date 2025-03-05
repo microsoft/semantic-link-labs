@@ -274,6 +274,18 @@ python -m build
 4. Enter details into the description.
 5. Click 'Create'.
 
+#### Code Formatting
+We use [black](github.com/psf/black) formatting as a code formatting standard. Make sure to run 'black' formatting on your code before submitting a pull request.
+
+Run this code to install black
+```cli
+pip install black
+```
+
+Run this code to format your code using black
+```cli
+python -m black src
+```
 
 ## Trademarks
 

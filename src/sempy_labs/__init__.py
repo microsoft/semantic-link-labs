@@ -105,7 +105,7 @@ from sempy_labs._kql_querysets import (
 )
 from sempy_labs._kql_databases import (
     list_kql_databases,
-    create_kql_database,
+    # create_kql_database,
     delete_kql_database,
 )
 from sempy_labs._mirrored_warehouses import list_mirrored_warehouses
@@ -234,6 +234,9 @@ from sempy_labs._generate_semantic_model import (
     update_semantic_model_from_bim,
     get_semantic_model_definition,
 )
+from sempy_labs._dashboards import (
+    list_dashboards,
+)
 from sempy_labs._list_functions import (
     list_reports_using_semantic_model,
     list_semantic_model_object_report_usage,
@@ -242,7 +245,6 @@ from sempy_labs._list_functions import (
     list_shortcuts,
     get_object_level_security,
     list_capacities,
-    list_dashboards,
     list_datamarts,
     list_lakehouses,
     list_sql_endpoints,
@@ -433,7 +435,7 @@ __all__ = [
     "convert_to_friendly_case",
     "list_mirrored_warehouses",
     "list_kql_databases",
-    "create_kql_database",
+    # "create_kql_database",
     "delete_kql_database",
     "create_eventhouse",
     "list_eventhouses",

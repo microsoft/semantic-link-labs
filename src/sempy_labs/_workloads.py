@@ -31,6 +31,9 @@ def list_workloads(capacity: str | UUID, **kwargs) -> pd.DataFrame:
 
     if "capacity_name" in kwargs:
         capacity = kwargs["capacity_name"]
+        print(
+            f"{icons.warning} The 'capacity_name' parameter is deprecated. Please use 'capacity' instead."
+        )
 
     columns = {
         "Workload Name": "string",
@@ -85,6 +88,9 @@ def patch_workload(
 
     if "capacity_name" in kwargs:
         capacity = kwargs["capacity_name"]
+        print(
+            f"{icons.warning} The 'capacity_name' parameter is deprecated. Please use 'capacity' instead."
+        )
 
     capacity_id = resolve_capacity_id(capacity=capacity)
 

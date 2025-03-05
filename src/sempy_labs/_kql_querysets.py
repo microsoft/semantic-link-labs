@@ -1,4 +1,3 @@
-import sempy.fabric as fabric
 import pandas as pd
 import sempy_labs._icons as icons
 from typing import Optional
@@ -6,6 +5,8 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _base_api,
     _create_dataframe,
+    delete_item,
+    create_item,
 )
 from uuid import UUID
 
@@ -74,27 +75,14 @@ def create_kql_queryset(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    payload = {"displayName": name}
-
-    if description:
-        payload["description"] = description
-
-    _base_api(
-        request=f"v1/workspaces/{workspace_id}/kqlQuerysets",
-        method="post",
-        payload=payload,
-        status_codes=[201, 202],
-        lro_return_status_code=True,
-    )
-
-    print(
-        f"{icons.green_dot} The '{name}' KQL queryset has been created within the '{workspace_name}' workspace."
+    create_item(
+        name=name, description=description, type="KQLQueryset", workspace=workspace
     )
 
 
-def delete_kql_queryset(name: str, workspace: Optional[str | UUID] = None):
+def delete_kql_queryset(
+    kql_queryset: str | UUID, workspace: Optional[str | UUID] = None, **kwargs
+):
     """
     Deletes a KQL queryset.
 
@@ -102,23 +90,18 @@ def delete_kql_queryset(name: str, workspace: Optional[str | UUID] = None):
 
     Parameters
     ----------
-    name: str
-        Name of the KQL queryset.
+    kql_queryset: str | uuid.UUID
+        Name or ID of the KQL queryset.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    kql_database_id = fabric.resolve_item_id(
-        item_name=name, type="KQLQueryset", workspace=workspace_id
-    )
+    if "name" in kwargs:
+        kql_queryset = kwargs["name"]
+        print(
+            f"{icons.warning} The 'name' parameter is deprecated. Please use 'kql_queryset' instead."
+        )
 
-    _base_api(
-        request=f"/v1/workspaces/{workspace_id}/kqlQuerysets/{kql_database_id}",
-        method="delete",
-    )
-    print(
-        f"{icons.green_dot} The '{name}' KQL queryset within the '{workspace_name}' workspace has been deleted."
-    )
+    delete_item(item=kql_queryset, type="KQLQueryset", workspace=workspace)

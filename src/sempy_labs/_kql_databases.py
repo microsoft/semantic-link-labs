@@ -1,13 +1,14 @@
-import sempy.fabric as fabric
 import pandas as pd
-import sempy_labs._icons as icons
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _base_api,
     _create_dataframe,
+    delete_item,
+    create_item,
 )
 from uuid import UUID
+import sempy_labs._icons as icons
 
 
 def list_kql_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
@@ -64,7 +65,7 @@ def list_kql_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     return df
 
 
-def create_kql_database(
+def _create_kql_database(
     name: str, description: Optional[str] = None, workspace: Optional[str | UUID] = None
 ):
     """
@@ -84,27 +85,16 @@ def create_kql_database(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    payload = {"displayName": name}
-
-    if description:
-        payload["description"] = description
-
-    _base_api(
-        request=f"v1/workspaces/{workspace_id}/kqlDatabases",
-        method="post",
-        payload=payload,
-        status_codes=[201, 202],
-        lro_return_status_code=True,
-    )
-
-    print(
-        f"{icons.green_dot} The '{name}' KQL database has been created within the '{workspace_name}' workspace."
+    create_item(
+        name=name, description=description, type="KQLDatabase", workspace=workspace
     )
 
 
-def delete_kql_database(name: str, workspace: Optional[str | UUID] = None):
+def delete_kql_database(
+    kql_database: str | UUID,
+    workspace: Optional[str | UUID] = None,
+    **kwargs,
+):
     """
     Deletes a KQL database.
 
@@ -112,23 +102,18 @@ def delete_kql_database(name: str, workspace: Optional[str | UUID] = None):
 
     Parameters
     ----------
-    name: str
-        Name of the KQL database.
+    kql_database: str | uuid.UUID
+        Name or ID of the KQL database.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    kql_database_id = fabric.resolve_item_id(
-        item_name=name, type="KQLDatabase", workspace=workspace_id
-    )
+    if "name" in kwargs:
+        kql_database = kwargs["name"]
+        print(
+            f"{icons.warning} The 'name' parameter is deprecated. Please use 'kql_database' instead."
+        )
 
-    _base_api(
-        request=f"/v1/workspaces/{workspace_id}/kqlDatabases/{kql_database_id}",
-        method="delete",
-    )
-    print(
-        f"{icons.green_dot} The '{name}' KQL database within the '{workspace_name}' workspace has been deleted."
-    )
+    delete_item(item=kql_database, type="KQLDatabase", workspace=workspace)

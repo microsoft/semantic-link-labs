@@ -1,18 +1,18 @@
 import sempy.fabric as fabric
+import pandas as pd
 from sempy_labs._helper_functions import (
-    resolve_lakehouse_name,
-    resolve_lakehouse_id,
+    resolve_lakehouse_name_and_id,
     resolve_workspace_name_and_id,
     _base_api,
     _create_dataframe,
 )
+from sempy._utils._log import log
 from typing import Optional
 import sempy_labs._icons as icons
-from sempy.fabric.exceptions import FabricHTTPException
 from uuid import UUID
-import pandas as pd
 
 
+@log
 def create_shortcut_onelake(
     table_name: str,
     source_lakehouse: str,
@@ -64,21 +64,17 @@ def create_shortcut_onelake(
     (source_workspace_name, source_workspace_id) = resolve_workspace_name_and_id(
         source_workspace
     )
-    source_lakehouse_id = resolve_lakehouse_id(source_lakehouse, source_workspace_id)
-    source_lakehouse_name = fabric.resolve_item_name(
-        item_id=source_lakehouse_id, type="Lakehouse", workspace=source_workspace_id
+    (source_lakehouse_name, source_lakehouse_id) = resolve_lakehouse_name_and_id(
+        lakehouse=source_lakehouse, workspace=source_workspace_id
     )
 
     (destination_workspace_name, destination_workspace_id) = (
         resolve_workspace_name_and_id(destination_workspace)
     )
-    destination_lakehouse_id = resolve_lakehouse_id(
-        destination_lakehouse, destination_workspace
-    )
-    destination_lakehouse_name = fabric.resolve_item_name(
-        item_id=destination_lakehouse_id,
-        type="Lakehouse",
-        workspace=destination_workspace_id,
+    (destination_lakehouse_name, destination_lakehouse_id) = (
+        resolve_lakehouse_name_and_id(
+            lakehouse=destination_lakehouse, workspace=destination_workspace_id
+        )
     )
 
     if shortcut_name is None:
@@ -148,17 +144,14 @@ def create_shortcut(
 
     sourceTitle = source_titles[source]
 
-    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+        lakehouse=lakehouse, workspace=workspace_id
+    )
 
-    if lakehouse is None:
-        lakehouse_id = fabric.get_lakehouse_id()
-    else:
-        lakehouse_id = resolve_lakehouse_id(lakehouse, workspace)
-
-    client = fabric.FabricRestClient()
     shortcutActualName = shortcut_name.replace(" ", "")
 
-    request_body = {
+    payload = {
         "path": "Tables",
         "name": shortcutActualName,
         "target": {
@@ -170,22 +163,16 @@ def create_shortcut(
         },
     }
 
-    try:
-        response = client.post(
-            f"/v1/workspaces/{workspace_id}/items/{lakehouse_id}/shortcuts",
-            json=request_body,
-        )
-        if response.status_code == 201:
-            print(
-                f"{icons.green_dot} The shortcut '{shortcutActualName}' was created in the '{lakehouse}' lakehouse within"
-                f" the '{workspace} workspace. It is based on the '{subpath}' table in '{sourceTitle}'."
-            )
-        else:
-            print(response.status_code)
-    except Exception as e:
-        raise ValueError(
-            f"{icons.red_dot} Failed to create a shortcut for the '{shortcut_name}' table."
-        ) from e
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/items/{lakehouse_id}/shortcuts",
+        method="post",
+        payload=payload,
+        status_codes=201,
+    )
+    print(
+        f"{icons.green_dot} The shortcut '{shortcutActualName}' was created in the '{lakehouse_name}' lakehouse within"
+        f" the '{workspace_name}' workspace. It is based on the '{subpath}' table in '{sourceTitle}'."
+    )
 
 
 def delete_shortcut(
@@ -205,7 +192,7 @@ def delete_shortcut(
         The name of the shortcut.
     shortcut_path : str = "Tables"
         The path of the shortcut to be deleted. Must start with either "Files" or "Tables". Examples: Tables/FolderName/SubFolderName; Files/FolderName/SubFolderName.
-    lakehouse : str, default=None
+    lakehouse : str | uuid.UUID, default=None
         The Fabric lakehouse name in which the shortcut resides.
         Defaults to None which resolves to the lakehouse attached to the notebook.
     workspace : str | UUID, default=None
@@ -215,20 +202,15 @@ def delete_shortcut(
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    if lakehouse is None:
-        lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse = resolve_lakehouse_name(lakehouse_id, workspace_id)
-    else:
-        lakehouse_id = resolve_lakehouse_id(lakehouse, workspace_id)
-
-    client = fabric.FabricRestClient()
-    response = client.delete(
-        f"/v1/workspaces/{workspace_id}/items/{lakehouse_id}/shortcuts/{shortcut_path}/{shortcut_name}"
+    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+        lakehouse=lakehouse, workspace=workspace_id
     )
 
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/items/{lakehouse_id}/shortcuts/{shortcut_path}/{shortcut_name}",
+        method="delete",
+    )
+
     print(
         f"{icons.green_dot} The '{shortcut_name}' shortcut in the '{lakehouse}' within the '{workspace_name}' workspace has been deleted."
     )
@@ -262,8 +244,9 @@ def reset_shortcut_cache(workspace: Optional[str | UUID] = None):
     )
 
 
+@log
 def list_shortcuts(
-    lakehouse: Optional[str] = None,
+    lakehouse: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
     path: Optional[str] = None,
 ) -> pd.DataFrame:
@@ -272,8 +255,8 @@ def list_shortcuts(
 
     Parameters
     ----------
-    lakehouse : str, default=None
-        The Fabric lakehouse name.
+    lakehouse : str | uuid.UUID, default=None
+        The Fabric lakehouse name or ID.
         Defaults to None which resolves to the lakehouse attached to the notebook.
     workspace : str | uuid.UUID, default=None
         The name or ID of the Fabric workspace in which lakehouse resides.
@@ -290,11 +273,9 @@ def list_shortcuts(
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    if lakehouse is None:
-        lakehouse_id = fabric.get_lakehouse_id()
-    else:
-        lakehouse_id = resolve_lakehouse_id(lakehouse, workspace_id)
+    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+        lakehouse=lakehouse, workspace=workspace_id
+    )
 
     columns = {
         "Shortcut Name": "string",

@@ -1,12 +1,11 @@
-import sempy.fabric as fabric
 import pandas as pd
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _base_api,
-    _print_success,
-    resolve_item_id,
+    delete_item,
     _create_dataframe,
+    create_item,
 )
 from uuid import UUID
 
@@ -81,25 +80,8 @@ def create_ml_experiment(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    payload = {"displayName": name}
-
-    if description:
-        payload["description"] = description
-
-    _base_api(
-        request=f"/v1/workspaces/{workspace_id}/mlExperiments",
-        method="post",
-        payload=payload,
-        status_codes=[201, 202],
-        lro_return_status_code=True,
-    )
-    _print_success(
-        item_name=name,
-        item_type="ML experiment",
-        workspace_name=workspace_name,
-        action="created",
+    create_item(
+        name=name, description=description, type="MLExperiment", workspace=workspace
     )
 
 
@@ -119,11 +101,4 @@ def delete_ml_experiment(name: str, workspace: Optional[str | UUID] = None):
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    item_id = resolve_item_id(item=name, type="MLExperiment", workspace=workspace)
-    fabric.delete_item(item_id=item_id, workspace=workspace)
-    _print_success(
-        item_name=name,
-        item_type="ML Experiment",
-        workspace_name=workspace,
-        action="deleted",
-    )
+    delete_item(item=name, type="MLExperiment", workspace=workspace)

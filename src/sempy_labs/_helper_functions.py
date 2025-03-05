@@ -178,6 +178,127 @@ def resolve_report_name(report_id: UUID, workspace: Optional[str | UUID] = None)
     )
 
 
+def delete_item(
+    item: str | UUID, type: str, workspace: Optional[str | UUID] = None
+) -> None:
+    """
+    Deletes an item from a Fabric workspace.
+
+    Parameters
+    ----------
+    item : str | uuid.UUID
+        The name or ID of the item to be deleted.
+    type : str
+        The type of the item to be deleted.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    from sempy_labs._utils import item_types
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (item_name, item_id) = resolve_item_name_and_id(item, type, workspace_id)
+    item_type = item_types.get(type)[0].lower()
+
+    fabric.delete_item(item_id=item_id, workspace=workspace_id)
+
+    print(
+        f"{icons.green_dot} The '{item_name}' {item_type} has been successfully deleted from the '{workspace_name}' workspace."
+    )
+
+
+def create_item(
+    name: str,
+    type: str,
+    description: Optional[str] = None,
+    definition: Optional[dict] = None,
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Creates an item in a Fabric workspace.
+
+    Parameters
+    ----------
+    name : str
+        The name of the item to be created.
+    type : str
+        The type of the item to be created.
+    description : str, default=None
+        A description of the item to be created.
+    definition : dict, default=None
+        The definition of the item to be created.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+    from sempy_labs._utils import item_types
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    item_type = item_types.get(type)[0].lower()
+    item_type_url = item_types.get(type)[1]
+
+    payload = {
+        "displayName": name,
+    }
+    if description:
+        payload["description"] = description
+    if definition:
+        payload["definition"] = definition
+
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/{item_type_url}",
+        method="post",
+        payload=payload,
+        status_codes=[201, 202],
+        lro_return_status_code=True,
+    )
+    print(
+        f"{icons.green_dot} The '{name}' {item_type} has been successfully created within the in the '{workspace_name}' workspace."
+    )
+
+
+def get_item_definition(
+    item: str | UUID,
+    type: str,
+    workspace: Optional[str | UUID] = None,
+    format: Optional[str] = None,
+    return_dataframe: bool = True,
+    decode: bool = True,
+):
+
+    from sempy_labs._utils import item_types
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    item_id = resolve_item_id(item, type, workspace_id)
+    item_type_url = item_types.get(type)[1]
+    path = item_types.get(type)[2]
+
+    url = f"/v1/workspaces/{workspace_id}/{item_type_url}/{item_id}/getDefinition"
+    if format:
+        url += f"?format={format}"
+
+    result = _base_api(
+        request=url,
+        method="post",
+        status_codes=None,
+        lro_return_json=True,
+    )
+
+    if return_dataframe:
+        return pd.json_normalize(result["definition"]["parts"])
+
+    value = next(
+        p.get("payload") for p in result["definition"]["parts"] if p.get("path") == path
+    )
+    if decode:
+        json.loads(_decode_b64(value))
+    else:
+        return value
+
+
 def resolve_item_id(
     item: str | UUID, type: str, workspace: Optional[str] = None
 ) -> UUID:
@@ -922,6 +1043,9 @@ def resolve_capacity_id(capacity: Optional[str | UUID] = None, **kwargs) -> UUID
 
     if "capacity_name" in kwargs:
         capacity = kwargs["capacity_name"]
+        print(
+            f"{icons.warning} The 'capacity_name' parameter is deprecated. Please use 'capacity' instead."
+        )
 
     if capacity is None:
         return get_capacity_id()
@@ -1514,9 +1638,15 @@ def _base_api(
             raise NotImplementedError
     else:
         headers = _get_headers(auth.token_provider.get(), audience=client)
+        if client == "graph":
+            url = f"https://graph.microsoft.com/v1.0/{request}"
+        elif client == "azure":
+            url = request
+        else:
+            raise NotImplementedError
         response = requests.request(
             method.upper(),
-            f"https://graph.microsoft.com/v1.0/{request}",
+            url,
             headers=headers,
             json=payload,
         )

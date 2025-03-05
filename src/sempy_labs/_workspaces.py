@@ -225,6 +225,9 @@ def assign_workspace_to_capacity(
 
     if "capacity_name" in kwargs:
         capacity = kwargs["capacity_name"]
+        print(
+            f"{icons.warning} The 'capacity_name' parameter is deprecated. Please use 'capacity' instead."
+        )
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     capacity_id = resolve_capacity_id(capacity=capacity)

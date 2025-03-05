@@ -1172,8 +1172,8 @@ class TOMWrapper:
             Name of the table.
         entity_name : str
             Name of the lakehouse/warehouse table.
-        expression : TOM Object, default=None
-            The expression used by the table.
+        expression : str, default=None
+            The name of the expression used by the partition.
             Defaults to None which resolves to the 'DatabaseQuery' expression.
         description : str, default=None
             A description for the partition.

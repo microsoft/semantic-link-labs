@@ -5,7 +5,6 @@ import os
 from typing import Optional, List
 from sempy._utils._log import log
 from sempy_labs._helper_functions import (
-    resolve_lakehouse_name,
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
     _conv_b64,
