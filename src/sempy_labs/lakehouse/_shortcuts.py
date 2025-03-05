@@ -109,7 +109,7 @@ def create_shortcut_onelake(
     except Exception as e:
         if e.args[0] == "1":
             print(
-                f"{icons.red_dot} The '{actual_shortcut_name}' shortcut already exists in the '{destination_lakehouse_name}' lakehouse within the '{destination_workspace_name}' workspace."
+                f"{icons.info} The '{actual_shortcut_name}' shortcut already exists in the '{destination_lakehouse_name}' lakehouse within the '{destination_workspace_name}' workspace."
             )
             return
         elif e.args[0] == "2":
