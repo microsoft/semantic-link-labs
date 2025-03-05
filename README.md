@@ -9,6 +9,9 @@
 [Read the documentation on ReadTheDocs!](https://semantic-link-labs.readthedocs.io/en/stable/)
 ---
 
+[Read the Wiki!](https://github.com/microsoft/semantic-link-labs/wiki)
+---
+
 Semantic Link Labs is a Python library designed for use in [Microsoft Fabric notebooks](https://learn.microsoft.com/fabric/data-engineering/how-to-use-notebook). This library extends the capabilities of [Semantic Link](https://learn.microsoft.com/fabric/data-science/semantic-link-overview) offering additional functionalities to seamlessly integrate and work alongside it. The goal of Semantic Link Labs is to simplify technical processes, empowering people to focus on higher level activities and allowing tasks that are better suited for machines to be efficiently handled without human intervention.
 
 If you encounter any issues, please [raise a bug](https://github.com/microsoft/semantic-link-labs/issues/new?assignees=&labels=&projects=&template=bug_report.md&title=).
