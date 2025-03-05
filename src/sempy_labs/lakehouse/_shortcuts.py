@@ -105,16 +105,14 @@ def create_shortcut_onelake(
         response_json = response.json()
         del response_json["target"]["type"]
         if response_json.get("target") == payload.get("target"):
-            raise ValueError("1")
-        else:
-            raise ValueError("2")
-    except Exception as e:
-        if e.args[0] == "1":
             print(
                 f"{icons.info} The '{actual_shortcut_name}' shortcut already exists in the '{destination_lakehouse_name}' lakehouse within the '{destination_workspace_name}' workspace."
             )
             return
-        elif e.args[0] == "2":
+        else:
+            raise ValueError("2")
+    except Exception as e:
+        if e.args[0] == "2":
             raise ValueError(
                 f"{icons.red_dot} The '{actual_shortcut_name}' shortcut already exists in the '{destination_lakehouse_name} lakehouse within the '{destination_workspace_name}' workspace but has a different source."
             ) from e
