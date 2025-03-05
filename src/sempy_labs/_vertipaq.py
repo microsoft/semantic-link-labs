@@ -502,6 +502,14 @@ def vertipaq_analyzer(
 
     if export is None:
         visualize_vertipaq(dfs)
+        return {
+            "Model Summary": export_Model,
+            "Tables": export_Table,
+            "Partitions": export_Part,
+            "Columns": export_Col,
+            "Relationships": export_Rel,
+            "Hierarchies": export_Hier,
+        }
 
     # Export vertipaq to delta tables in lakehouse
     if export in ["table", "zip"]:
