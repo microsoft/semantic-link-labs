@@ -90,9 +90,9 @@ def create_shortcut_onelake(
         "name": actual_shortcut_name,
         "target": {
             "oneLake": {
-                "workspaceId": source_workspace_id,
                 "itemId": source_lakehouse_id,
                 "path": source_full_path,
+                "workspaceId": source_workspace_id,
             }
         },
     }
@@ -102,7 +102,9 @@ def create_shortcut_onelake(
         response = _base_api(
             request=f"/v1/workspaces/{destination_workspace_id}/items/{destination_lakehouse_id}/shortcuts/{destination_path}/{actual_shortcut_name}"
         )
-        if response.json().get("target") == payload.get("target"):
+        response_json = response.json()
+        del response_json['target']['type']
+        if response_json.get("target") == payload.get("target"):
             raise ValueError("1")
         else:
             raise ValueError("2")
