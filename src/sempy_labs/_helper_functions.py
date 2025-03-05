@@ -1645,7 +1645,6 @@ def _read_delta_table(
         A PySpark dataframe with the data from the specified delta table.
     """
     from urllib.parse import urlparse
-    from pyspark.sql import DataFrame
 
     spark = _create_spark_session()
     
