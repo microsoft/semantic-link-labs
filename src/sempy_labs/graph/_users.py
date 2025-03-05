@@ -127,6 +127,10 @@ def send_mail(
     content: str,
     content_type: str = "Text",
     cc_recipients: str | List[str] = None,
+    bcc_recipients: str | List[str] = None,
+    priority: str = "Normal",
+    follow_up_flag: bool = False,
+    attachments: str | List[str] = None,
 ):
     """
     Sends an email to the specified recipients.
@@ -149,12 +153,29 @@ def send_mail(
         The email content type. Options: "Text" or "HTML".
     cc_recipients : str | List[str], default=None
         The email address of the CC recipients.
+    bcc_recipients : str | List[str], default=None
+        The email address of the BCC recipients.
+    priority : str, default="Normal"
+        The email priority. Options: "Normal", "High", or "Low".
+    follow_up_flag : bool, default=False
+        Whether to set a follow-up flag for the email.
+    attachments : str | List[str], default=None
+        The abfss path or a list of the abfss paths of the attachments to include in the email.
     """
+
+    import base64
+    from sempy_labs._helper_functions import _create_spark_session
 
     if content_type.lower() == "html":
         content_type = "HTML"
     else:
         content_type = "Text"
+
+    priority = priority.capitalize()
+    if priority not in ["Normal", "High", "Low"]:
+        raise ValueError(
+            f"Invalid priority: {priority}. Options are: Normal, High, Low."
+        )
 
     user_id = resolve_user_id(user=user)
 
@@ -173,6 +194,11 @@ def send_mail(
         if cc_recipients
         else None
     )
+    bcc_email_addresses = (
+        [{"emailAddress": {"address": email}} for email in bcc_recipients]
+        if bcc_recipients
+        else None
+    )
 
     payload = {
         "message": {
@@ -182,11 +208,46 @@ def send_mail(
                 "content": content,
             },
             "toRecipients": to_email_addresses,
+            "importance": priority,
         },
     }
 
     if cc_email_addresses:
         payload["message"]["ccRecipients"] = cc_email_addresses
+
+    if bcc_email_addresses:
+        payload["message"]["bccRecipients"] = bcc_email_addresses
+
+    if follow_up_flag:
+        payload["message"]["flag"] = {"flagStatus": "flagged"}
+
+    if attachments:
+        if isinstance(attachments, str):
+            attachments = [attachments]
+
+        for abfss_path in attachments:
+            file_name = abfss_path.split("/")[-1]
+            if "attachments" not in payload["message"]:
+                payload["message"]["attachments"] = []
+
+            spark = _create_spark_session()
+            spark_file = (
+                spark.read.format("binaryFile")
+                .load(abfss_path)
+                .select("content")
+                .collect()[0][0]
+            )
+            content_bytes = base64.b64encode(spark_file).decode(
+                "utf-8"
+            )  # Convert bytearray to base64 string
+
+            payload["message"]["attachments"].append(
+                {
+                    "@odata.type": "#microsoft.graph.fileAttachment",
+                    "name": file_name,
+                    "contentBytes": content_bytes,
+                }
+            )
 
     _base_api(
         request=f"users/{user_id}/sendMail",
