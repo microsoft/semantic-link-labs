@@ -33,7 +33,7 @@ def vertipaq_analyzer(
     export: Optional[str] = None,
     read_stats_from_data: bool = False,
     **kwargs,
-):
+) -> dict[str, pd.DataFrame]:
     """
     Displays an HTML visualization of the Vertipaq Analyzer statistics from a semantic model.
 
@@ -51,6 +51,11 @@ def vertipaq_analyzer(
         Default value: None.
     read_stats_from_data : bool, default=False
         Setting this parameter to true has the function get Column Cardinality and Missing Rows using DAX (Direct Lake semantic models achieve this using a Spark query to the lakehouse).
+
+    Returns
+    -------
+    dict[str, pandas.DataFrame]
+        A dictionary of pandas dataframes showing the vertipaq analyzer statistics.
     """
 
     from sempy_labs.tom import connect_semantic_model
