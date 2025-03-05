@@ -10,6 +10,7 @@ from sempy._utils._log import log
 from typing import Optional
 import sempy_labs._icons as icons
 from uuid import UUID
+from sempy.fabric.exceptions import FabricHTTPException
 
 
 @log
@@ -64,6 +65,7 @@ def create_shortcut_onelake(
     (source_workspace_name, source_workspace_id) = resolve_workspace_name_and_id(
         source_workspace
     )
+
     (source_lakehouse_name, source_lakehouse_id) = resolve_lakehouse_name_and_id(
         lakehouse=source_lakehouse, workspace=source_workspace_id
     )
@@ -82,17 +84,38 @@ def create_shortcut_onelake(
 
     source_full_path = f"{source_path}/{table_name}"
 
+    actual_shortcut_name = shortcut_name.replace(" ", "")
+
     payload = {
         "path": destination_path,
-        "name": shortcut_name.replace(" ", ""),
+        "name": actual_shortcut_name,
         "target": {
             "oneLake": {
-                "workspaceId": source_workspace_id,
                 "itemId": source_lakehouse_id,
                 "path": source_full_path,
+                "workspaceId": source_workspace_id,
             }
         },
     }
+
+    # Check if the shortcut already exists
+    try:
+        response = _base_api(
+            request=f"/v1/workspaces/{destination_workspace_id}/items/{destination_lakehouse_id}/shortcuts/{destination_path}/{actual_shortcut_name}"
+        )
+        response_json = response.json()
+        del response_json["target"]["type"]
+        if response_json.get("target") == payload.get("target"):
+            print(
+                f"{icons.info} The '{actual_shortcut_name}' shortcut already exists in the '{destination_lakehouse_name}' lakehouse within the '{destination_workspace_name}' workspace."
+            )
+            return
+        else:
+            raise ValueError(
+                f"{icons.red_dot} The '{actual_shortcut_name}' shortcut already exists in the '{destination_lakehouse_name} lakehouse within the '{destination_workspace_name}' workspace but has a different source."
+            )
+    except FabricHTTPException:
+        pass
 
     _base_api(
         request=f"/v1/workspaces/{destination_workspace_id}/items/{destination_lakehouse_id}/shortcuts",
