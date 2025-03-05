@@ -3522,14 +3522,14 @@ class TOMWrapper:
 
         return usingView
 
-    def has_incremental_refresh_policy(self, table_name: str):
+    def has_incremental_refresh_policy(self, object):
         """
         Identifies whether a table has an `incremental refresh <https://learn.microsoft.com/power-bi/connect-data/incremental-refresh-overview>`_ policy.
 
         Parameters
         ----------
-        table_name : str
-            Name of the table.
+        object : TOM Object
+            The TOM object within the semantic model. Accepts either a table or the model object.
 
         Returns
         -------
@@ -3537,13 +3537,21 @@ class TOMWrapper:
             An indicator whether a table has an incremental refresh policy.
         """
 
-        hasRP = False
-        rp = self.model.Tables[table_name].RefreshPolicy
+        import Microsoft.AnalysisServices.Tabular as TOM
 
-        if rp is not None:
-            hasRP = True
-
-        return hasRP
+        if object.ObjectType == TOM.ObjectType.Table:
+            if object.RefreshPolicy is not None:
+                return True
+            else:
+                return False
+        elif object.ObjectType == TOM.ObjectType.Model:
+            rp = False
+            for t in self.model.Tables:
+                if t.RefreshPolicy is not None:
+                    rp = True
+            return rp
+        else:
+            raise NotImplementedError
 
     def show_incremental_refresh_policy(self, table_name: str):
         """
