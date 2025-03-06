@@ -10,7 +10,7 @@ import sempy_labs._icons as icons
 
 
 def add_user_to_workspace(
-    user: str,
+    user: str | UUID,
     role: str = "Member",
     principal_type: str = "User",
     workspace: Optional[str | UUID] = None,
@@ -22,8 +22,8 @@ def add_user_to_workspace(
 
     Parameters
     ----------
-    user : str
-        The user identifier or email address.
+    user : str | uuid.UUID
+        The user identifier or email address. For service principals and groups you must use the user identifier.
     role : str, default="Member"
         The role of the user in the workspace. Options are: 'Admin', 'Contributor', 'Member', 'None', 'Viewer'.
     principal_type : str, default="User"
@@ -65,7 +65,7 @@ def add_user_to_workspace(
 
 
 def delete_user_from_workspace(
-    user: str,
+    user: str | UUID,
     workspace: Optional[str | UUID] = None,
     is_group: Optional[bool] = None,
     profile_id: Optional[str] = None,
@@ -77,8 +77,8 @@ def delete_user_from_workspace(
 
     Parameters
     ----------
-    user : str
-        The user identifier or email address.
+    user : str | uuid.UUID
+        The user identifier or email address. For service principals and groups you must use the user identifier.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
