@@ -70,7 +70,6 @@ def optimize_lakehouse_tables(
         from deltalake import DeltaTable
     else:
         from delta import DeltaTable
-
         spark = _create_spark_session()
 
     for _, r in (bar := tqdm(df_tables.iterrows())):
