@@ -118,17 +118,17 @@ def delta_analyzer_history(
         predicate: str = ""
         tags: str=""
 
-       # for index,row in df.iterrows():
-        for index, row in enumerate(
-            bar := tqdm(df.iterrows(), leave=False), start=1
-            ):
+        for index,row in df.iterrows():
+        # for index, row in enumerate(
+        #     bar2 := tqdm(df.iterrows(), leave=False), start=1
+        #     ):
 
-            bar.set_description(
-                f"Analyzing change ({index} of {len(df)})..."
-            )
+            # bar.set_description(
+            #     f"Analyzing change ({index} of {len(df)})..."
+            # )
 
             if df.get('add') is not None:
-                add_row = row[1]['add']
+                add_row = row['add']
 
                 if type(add_row)==dict:
 
@@ -157,7 +157,7 @@ def delta_analyzer_history(
 
 
             if df.get('remove') is not None:
-                remove_row = row[1]['remove']
+                remove_row = row['remove']
                 if type(remove_row)==dict:
                     file_name = remove_row["path"]
                     ### CHECK IF FILE EXISTS!!!
@@ -183,7 +183,7 @@ def delta_analyzer_history(
 
 
             if df.get('commitInfo') is not None:
-                commit_row = row[1]['commitInfo']
+                commit_row = row['commitInfo']
                 if type(commit_row)==dict:
                     operation = commit_row["operation"]
 
