@@ -1371,25 +1371,46 @@ def _get_column_aggregate(
     default_value: int = 0,
 ) -> int:
 
-    from pyspark.sql.functions import approx_count_distinct
-    from pyspark.sql import functions as F
-
     function = function.upper()
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    lakehouse_id = resolve_lakehouse_id(lakehouse, workspace)
+    workspace_id = fabric.resolve_workspace_id(workspace)
+    lakehouse_id = resolve_lakehouse_id(lakehouse, workspace_id)
     path = create_abfss_path(lakehouse_id, workspace_id, table_name)
 
-    spark = _create_spark_session()
-    df = spark.read.format("delta").load(path)
+    if _pure_python_notebook():
+        from deltalake import DeltaTable
+        import polars as pl
 
-    if function in {"COUNTDISTINCT", "DISTINCTCOUNT"}:
-        result = df.select(F.count_distinct(F.col(column_name)))
-    elif "APPROX" in function:
-        result = df.select(approx_count_distinct(column_name))
+        # Load Delta table
+        dt = DeltaTable(path)
+        df = pl.from_pandas(dt.to_pandas())  # Convert Delta table to Polars DataFrame
+
+        # Perform aggregation
+        if function in {"COUNTDISTINCT", "DISTINCTCOUNT"}:
+            result = df[column_name].n_unique()
+        elif "APPROX" in function:
+            result = df[column_name].unique().shape[0]  # Approximation
+        else:
+            try:
+                result = getattr(df[column_name], function.lower())()
+            except AttributeError:
+                raise ValueError(f"Unsupported function: {function}")
+
+        return result if result is not None else default_value
     else:
-        result = df.selectExpr(f"{function}({column_name})")
+        from pyspark.sql.functions import approx_count_distinct
+        from pyspark.sql import functions as F
 
-    return result.collect()[0][0] or default_value
+        spark = _create_spark_session()
+        df = spark.read.format("delta").load(path)
+
+        if function in {"COUNTDISTINCT", "DISTINCTCOUNT"}:
+            result = df.select(F.count_distinct(F.col(column_name)))
+        elif "APPROX" in function:
+            result = df.select(approx_count_distinct(column_name))
+        else:
+            result = df.selectExpr(f"{function}({column_name})")
+
+        return result.collect()[0][0] or default_value
 
 
 def _make_list_unique(my_list):
