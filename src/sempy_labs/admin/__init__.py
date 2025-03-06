@@ -1,3 +1,11 @@
+from sempy_labs.admin._workspaces import (
+    add_user_to_workspace,
+    delete_user_from_workspace,
+    restore_deleted_workspace,
+)
+from sempy_labs.admin._artifacts import (
+    list_unused_artifacts,
+)
 from sempy_labs.admin._shared import (
     list_widely_shared_artifacts,
 )
@@ -24,6 +32,7 @@ from sempy_labs.admin._capacities import (
     list_capacities,
     get_capacity_assignment_status,
     get_capacity_state,
+    list_capacity_users,
 )
 from sempy_labs.admin._tenant import (
     list_tenant_settings,
@@ -113,4 +122,9 @@ __all__ = [
     "list_capacity_tenant_settings_overrides",
     "list_capacities_delegated_tenant_settings",
     "list_domain_tenant_settings_overrides",
+    "list_unused_artifacts",
+    "add_user_to_workspace",
+    "delete_user_from_workspace",
+    "restore_deleted_workspace",
+    "list_capacity_users",
 ]

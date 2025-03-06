@@ -248,3 +248,64 @@ def list_capacities(
             df = df[df["Capacity Name"] == capacity]
 
     return df
+
+
+def list_capacity_users(capacity: str | UUID) -> pd.DataFrame:
+    """
+    Shows a list of users that have access to the specified workspace.
+
+    This is a wrapper function for the following API: `Admin - Capacities GetCapacityUsersAsAdmin <https://learn.microsoft.com/rest/api/power-bi/admin/capacities-get-capacity-users-as-admin>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    capacity : str | uuid.UUID
+        The name or ID of the capacity.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of users that have access to the specified workspace.
+    """
+
+    (capacity_name, capacity_id) = _resolve_capacity_name_and_id(capacity)
+
+    columns = {
+        "User Name": "string",
+        "Email Address": "string",
+        "Capacity User Access Right": "string",
+        "Identifier": "string",
+        "Graph Id": "string",
+        "Principal Type": "string",
+        "User Type": "string",
+        "Profile": "string",
+    }
+
+    df = _create_dataframe(columns=columns)
+
+    response = _base_api(
+        request=f"/v1.0/myorg/admin/capacities/{capacity_id}/users", client="fabric_sp"
+    )
+
+    rows = []
+    for v in response.json().get("value", []):
+        rows.append(
+            {
+                "User Name": v.get("displayName"),
+                "Email Address": v.get("emailAddress"),
+                "Capacity User Access Right": v.get("capacityUserAccessRight"),
+                "Identifier": v.get("identifier"),
+                "Graph Id": v.get("graphId"),
+                "Principal Type": v.get("principalType"),
+                "User Type": v.get("userType"),
+                "Profile": v.get("profile"),
+            }
+        )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+
+    return df
