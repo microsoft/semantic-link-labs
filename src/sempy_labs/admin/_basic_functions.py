@@ -298,58 +298,6 @@ def list_modified_workspaces(
     return df
 
 
-def list_access_entities(
-    user_email_address: str,
-) -> pd.DataFrame:
-    """
-    Shows a list of permission details for Fabric and Power BI items the specified user can access.
-
-    This is a wrapper function for the following API: `Users - List Access Entities <https://learn.microsoft.com/rest/api/fabric/admin/users/list-access-entities>`_.
-
-    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
-
-    Parameters
-    ----------
-    user_email_address : str
-        The user's email address.
-
-    Returns
-    -------
-    pandas.DataFrame
-        A pandas dataframe showing a list of permission details for Fabric and Power BI items the specified user can access.
-    """
-
-    columns = {
-        "Item Id": "string",
-        "Item Name": "string",
-        "Item Type": "string",
-        "Permissions": "string",
-        "Additional Permissions": "string",
-    }
-    df = _create_dataframe(columns=columns)
-
-    responses = _base_api(
-        request=f"/v1/admin/users/{user_email_address}/access",
-        client="fabric_sp",
-        uses_pagination=True,
-    )
-
-    for r in responses:
-        for v in r.get("accessEntities", []):
-            new_data = {
-                "Item Id": v.get("id"),
-                "Item Name": v.get("displayName"),
-                "Item Type": v.get("itemAccessDetails", {}).get("type"),
-                "Permissions": v.get("itemAccessDetails", {}).get("permissions"),
-                "Additional Permissions": v.get("itemAccessDetails", {}).get(
-                    "additionalPermissions"
-                ),
-            }
-            df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
-
-    return df
-
-
 def list_workspace_access_details(
     workspace: Optional[Union[str, UUID]] = None,
 ) -> pd.DataFrame:
