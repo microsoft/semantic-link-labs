@@ -125,7 +125,6 @@ def vacuum_lakehouse_tables(
         from deltalake import DeltaTable
     else:
         from delta import DeltaTable
-
         spark = _create_spark_session()
         spark.conf.set("spark.databricks.delta.vacuum.parallelDelete.enabled", "true")
 
