@@ -11,7 +11,7 @@ from sempy_labs._job_scheduler import (
     list_item_schedules,
 )
 from sempy_labs._delta_analyzer import delta_analyzer
-from sempy_labs._delta_analyzer import delta_analyzer_history
+from sempy_labs._delta_analyzer_history import delta_analyzer_history
 from sempy_labs._gateways import (
     list_gateway_members,
     list_gateway_role_assigments,
@@ -503,6 +503,7 @@ __all__ = [
     "list_graphql_apis",
     "create_graphql_api",
     "delta_analyzer",
+    "delta_analyzer_history"
     # "dax_perf_test",
     # "dax_perf_test_bulk",
     "get_semantic_model_refresh_schedule",
