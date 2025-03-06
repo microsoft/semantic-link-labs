@@ -1810,3 +1810,15 @@ def _mount(lakehouse, workspace) -> str:
     )
 
     return local_path
+
+
+def _load_delta_table(path):
+
+    if _pure_python_notebook():
+        from deltalake import DeltaTable
+
+        return DeltaTable(path)
+    else:
+        from delta import DeltaTable
+        spark = _create_spark_session()
+        return DeltaTable.forPath(spark, path)
