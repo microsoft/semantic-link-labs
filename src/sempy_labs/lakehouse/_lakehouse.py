@@ -64,10 +64,7 @@ def optimize_lakehouse_tables(
     if isinstance(tables, str):
         tables = [tables]
 
-    if tables is not None:
-        df_tables = df_delta[df_delta["Table Name"].isin(tables)]
-    else:
-        df_tables = df_delta.copy()
+    df_tables = df_delta[df_delta["Table Name"].isin(tables)] if tables else df_delta
 
     if _pure_python_notebook():
         from deltalake import DeltaTable
@@ -81,11 +78,9 @@ def optimize_lakehouse_tables(
         path = r["Location"]
         bar.set_description(f"Optimizing the '{table_name}' table...")
         if _pure_python_notebook():
-            delta_table = DeltaTable(path)
-            delta_table.optimize.compact()
+            DeltaTable(path).optimize.compact()
         else:
-            delta_table = DeltaTable.forPath(spark, path)
-            delta_table.optimize().executeCompaction()
+            DeltaTable.forPath(spark, path).optimize().executeCompaction()
 
 
 @log
@@ -124,10 +119,7 @@ def vacuum_lakehouse_tables(
     if isinstance(tables, str):
         tables = [tables]
 
-    if tables is not None:
-        df_tables = df_delta[df_delta["Table Name"].isin(tables)]
-    else:
-        df_tables = df_delta.copy()
+    df_tables = df_delta[df_delta["Table Name"].isin(tables)] if tables else df_delta
 
     if _pure_python_notebook():
         from deltalake import DeltaTable
@@ -142,11 +134,9 @@ def vacuum_lakehouse_tables(
         path = r["Location"]
         bar.set_description(f"Vacuuming the '{table_name}' table...")
         if _pure_python_notebook():
-            delta_table = DeltaTable(path)
-            delta_table.vacuum(retention_hours=retain_n_hours)
+            DeltaTable(path).vacuum(retention_hours=retain_n_hours)
         else:
-            delta_table = DeltaTable.forPath(spark, path)
-            delta_table.vacuum(retain_n_hours)
+            DeltaTable.forPath(spark, path).vacuum(retain_n_hours)
 
 
 def run_table_maintenance(
