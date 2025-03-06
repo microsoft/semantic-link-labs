@@ -24,6 +24,7 @@ from sempy_labs.admin._apps import (
 from sempy_labs.admin._reports import (
     list_reports,
     list_report_users,
+    list_report_subscriptions,
 )
 from sempy_labs.admin._activities import (
     list_activity_events,
@@ -131,4 +132,5 @@ __all__ = [
     "restore_deleted_workspace",
     "list_capacity_users",
     "list_user_subscriptions",
+    "list_report_subscriptions",
 ]

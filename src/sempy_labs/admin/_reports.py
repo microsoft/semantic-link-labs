@@ -163,3 +163,76 @@ def list_report_users(report: str | UUID) -> pd.DataFrame:
     _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
+
+
+def list_report_subscriptions(report: str | UUID) -> pd.DataFrame:
+    """
+    Shows a list of report subscriptions along with subscriber details. This is a preview API call.
+
+    This is a wrapper function for the following API: `Admin - Reports GetReportSubscriptionsAsAdmin <https://learn.microsoft.com/rest/api/power-bi/admin/reports-get-report-subscriptions-as-admin>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    report : str | uuid.UUID
+        The name or ID of the report.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of report subscriptions along with subscriber details. This is a preview API call.
+    """
+
+    report_id = _resolve_report_id(report)
+
+    columns = {
+        "Subscription Id": "string",
+        "Title": "string",
+        "Artifact Id": "string",
+        "Artifact Name": "string",
+        "Sub Artifact Name": "string",
+        "Artifact Type": "string",
+        "Is Enabled": "bool",
+        "Frequency": "string",
+        "Start Date": "datetime",
+        "End Date": "string",
+        "Link To Content": "bool",
+        "Preview Image": "bool",
+        "Attachment Format": "string",
+        "Users": "string",
+    }
+
+    df = _create_dataframe(columns=columns)
+
+    response = _base_api(
+        request=f"/v1.0/myorg/admin/reports/{report_id}/subscriptions", client="fabric_sp"
+    )
+
+    rows = []
+    for v in response.json().get("value", []):
+        rows.append(
+            {
+                "Subscription Id": v.get('id'),
+                "Title": v.get('title'),
+                "Artifact Id": v.get('artifactId'),
+                "Artifact Name": v.get('artifactDisplayName'),
+                "Sub Artifact Name": v.get('subArtifactDisplayName'),
+                "Artifact Type": v.get('artifactType'),
+                "Is Enabled": v.get('isEnabled'),
+                "Frequency": v.get('frequency'),
+                "Start Date": v.get('startDate'),
+                "End Date": v.get('endDate'),
+                "Link To Content": v.get('linkToContent'),
+                "Preview Image": v.get('previewImage'),
+                "Attachment Format": v.get('attachmentFormat'),
+                "Users": str(v.get('users')),
+            }
+        )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+
+    return df
