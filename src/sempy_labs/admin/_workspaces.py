@@ -1,5 +1,6 @@
 from sempy_labs._helper_functions import (
     _base_api,
+    _build_url,
 )
 from uuid import UUID
 from typing import Optional
@@ -92,10 +93,14 @@ def delete_user_from_workspace(
     (workspace_name, workspace_id) = _resolve_workspace_name_and_id(workspace)
 
     url = f"/v1.0/myorg/admin/groups/{workspace_id}/users/{user}"
-    if is_group is not None:
-        url += f"?isGroup={is_group}"
+
+    params = {}
     if profile_id is not None:
-        url += f"&profileId={profile_id}"
+        params["profileId"] = profile_id
+    if is_group is not None:
+        params["isGroup"] = is_group
+
+    url = _build_url(url, params)
 
     _base_api(
         request=url,
