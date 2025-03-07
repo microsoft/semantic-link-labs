@@ -30,6 +30,11 @@ def _build_url(url: str, params: dict) -> str:
     return url
 
 
+def _encode_user(user: str) -> str:
+
+    return urllib.parse.quote(user, safe="@")
+
+
 def create_abfss_path(
     lakehouse_id: UUID,
     lakehouse_workspace_id: UUID,
