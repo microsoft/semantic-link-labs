@@ -1,6 +1,7 @@
 from sempy_labs._helper_functions import (
     _base_api,
     _build_url,
+    _encode_user,
 )
 from uuid import UUID
 from typing import Optional
@@ -48,6 +49,8 @@ def add_user_to_workspace(
             f"{icons.red_dot} Invalid principal type. Please choose from {principal_types}"
         )
 
+    user = _encode_user(user)
+
     payload = {
         "identifier": user,  # identifier or emailAddress?
         "principalType": principal_type,
@@ -92,6 +95,7 @@ def delete_user_from_workspace(
 
     (workspace_name, workspace_id) = _resolve_workspace_name_and_id(workspace)
 
+    user = _encode_user(user)
     url = f"/v1.0/myorg/admin/groups/{workspace_id}/users/{user}"
 
     params = {}
