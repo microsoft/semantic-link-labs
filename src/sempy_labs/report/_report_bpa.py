@@ -207,13 +207,13 @@ def run_report_bpa(
         if len(lakeT_filt) == 0:
             runId = 1
         else:
-            max_run_id = _get_column_aggregate(
-                table_name=delta_table_name
-            )
+            max_run_id = _get_column_aggregate(table_name=delta_table_name)
             runId = max_run_id + 1
 
         (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-        (report_name, report_id) = resolve_item_name_and_id(item=report, type='Report', workspace=workspace_id)
+        (report_name, report_id) = resolve_item_name_and_id(
+            item=report, type="Report", workspace=workspace_id
+        )
 
         export_df = finalDF.copy()
         capacity_id, capacity_name = resolve_workspace_capacity(workspace=workspace_id)

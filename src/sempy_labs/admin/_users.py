@@ -98,7 +98,9 @@ def list_user_subscriptions(user: str | UUID) -> pd.DataFrame:
     df = _create_dataframe(columns=columns)
 
     responses = _base_api(
-        request=f"/v1.0/myorg/admin/users/{user}/subscriptions", client="fabric_sp", uses_pagination=True
+        request=f"/v1.0/myorg/admin/users/{user}/subscriptions",
+        client="fabric_sp",
+        uses_pagination=True,
     )
 
     rows = []
@@ -106,20 +108,20 @@ def list_user_subscriptions(user: str | UUID) -> pd.DataFrame:
         for v in r.get("subscriptionEntities", []):
             rows.append(
                 {
-                    "Subscription Id": v.get('id'),
-                    "Title": v.get('title'),
-                    "Artifact Id": v.get('artifactId'),
-                    "Artifact Name": v.get('artifactDisplayName'),
-                    "Sub Artifact Name": v.get('subArtifactDisplayName'),
-                    "Artifact Type": v.get('artifactType'),
-                    "Is Enabled": v.get('isEnabled'),
-                    "Frequency": v.get('frequency'),
-                    "Start Date": v.get('startDate'),
-                    "End Date": v.get('endDate'),
-                    "Link To Content": v.get('linkToContent'),
-                    "Preview Image": v.get('previewImage'),
-                    "Attachment Format": v.get('attachmentFormat'),
-                    "Users": str(v.get('users')),
+                    "Subscription Id": v.get("id"),
+                    "Title": v.get("title"),
+                    "Artifact Id": v.get("artifactId"),
+                    "Artifact Name": v.get("artifactDisplayName"),
+                    "Sub Artifact Name": v.get("subArtifactDisplayName"),
+                    "Artifact Type": v.get("artifactType"),
+                    "Is Enabled": v.get("isEnabled"),
+                    "Frequency": v.get("frequency"),
+                    "Start Date": v.get("startDate"),
+                    "End Date": v.get("endDate"),
+                    "Link To Content": v.get("linkToContent"),
+                    "Preview Image": v.get("previewImage"),
+                    "Attachment Format": v.get("attachmentFormat"),
+                    "Users": str(v.get("users")),
                 }
             )
 
