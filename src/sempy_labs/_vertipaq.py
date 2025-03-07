@@ -35,7 +35,9 @@ def vertipaq_analyzer(
     **kwargs,
 ) -> dict[str, pd.DataFrame]:
     """
-    Displays an HTML visualization of the Vertipaq Analyzer statistics from a semantic model.
+    Displays an HTML visualization of the `Vertipaq Analyzer <https://www.sqlbi.com/tools/vertipaq-analyzer/>`_ statistics from a semantic model.
+
+    `Vertipaq Analyzer <https://www.sqlbi.com/tools/vertipaq-analyzer/>`_ is an open-sourced tool built by SQLBI. It provides a detailed analysis of the VertiPaq engine, which is the in-memory engine used by Power BI and Analysis Services Tabular models.
 
     Parameters
     ----------

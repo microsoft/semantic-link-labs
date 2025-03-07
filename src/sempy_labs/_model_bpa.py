@@ -43,6 +43,8 @@ def run_model_bpa(
     """
     Displays an HTML visualization of the results of the Best Practice Analyzer scan for a semantic model.
 
+    The Best Practice Analyzer rules are based on the rules defined `here <https://github.com/microsoft/Analysis-Services/tree/master/BestPracticeRules>`_. The framework for the Best Practice Analyzer and rules are based on the foundation set by `Tabular Editor <https://github.com/TabularEditor/TabularEditor>`_.
+
     Parameters
     ----------
     dataset : str | uuid.UUID
