@@ -10,6 +10,10 @@ from sempy_labs._helper_functions import (
     _base_api,
     _create_dataframe,
     _create_spark_session,
+    _mount,
+    create_abfss_path,
+    _read_delta_table,
+    _get_parquet_file_infos,
 )
 from sempy_labs.directlake._guardrails import (
     get_sku_size,
@@ -75,16 +79,6 @@ def get_lakehouse_tables(
     if count_rows:  # Setting countrows defaults to extended=True
         extended = True
 
-    if (
-        workspace_id != fabric.get_workspace_id()
-        and lakehouse_id != fabric.get_lakehouse_id()
-        and count_rows
-    ):
-        raise ValueError(
-            f"{icons.red_dot} If 'count_rows' is set to True, you must run this function against the default lakehouse attached to the notebook. "
-            "Count rows runs a spark query and cross-workspace spark queries are currently not supported."
-        )
-
     responses = _base_api(
         request=f"v1/workspaces/{workspace_id}/lakehouses/{lakehouse_id}/tables",
         uses_pagination=True,
@@ -110,6 +104,7 @@ def get_lakehouse_tables(
         df = pd.concat(dfs, ignore_index=True)
 
     if extended:
+        local_path = _mount(lakehouse=lakehouse, workspace=workspace)
         sku_value = get_sku_size(workspace_id)
         guardrail = get_directlake_guardrails_for_sku(sku_value)
         spark = _create_spark_session()
@@ -117,34 +112,43 @@ def get_lakehouse_tables(
         df["Row Groups"] = None
         df["Table Size"] = None
         if count_rows:
-            df["Row Count"] = None
+            df["Row Count"] = 0
         for i, r in df.iterrows():
-            tName = r["Table Name"]
+            table_name = r["Table Name"]
+            delta_table_path = create_abfss_path(lakehouse_id, workspace_id, table_name)
             if r["Type"] == "Managed" and r["Format"] == "delta":
-                detail_df = spark.sql(f"DESCRIBE DETAIL `{tName}`").collect()[0]
-                num_files = detail_df.numFiles
-                size_in_bytes = detail_df.sizeInBytes
 
-                delta_table_path = f"Tables/{tName}"
-                latest_files = (
-                    spark.read.format("delta").load(delta_table_path).inputFiles()
-                )
-                file_paths = [f.split("/")[-1] for f in latest_files]
+                from delta import DeltaTable
 
-                # Handle FileNotFoundError
-                num_rowgroups = 0
-                for filename in file_paths:
-                    try:
-                        num_rowgroups += pq.ParquetFile(
-                            f"/lakehouse/default/{delta_table_path}/{filename}"
-                        ).num_row_groups
-                    except FileNotFoundError:
-                        continue
+                delta_table = DeltaTable.forPath(spark, delta_table_path)
+                table_df = delta_table.toDF()
+                table_details = delta_table.detail().collect()[0].asDict()
+                num_files = table_details.get("numFiles", 0)
+                size_in_bytes = table_details.get("sizeInBytes", 0)
+                latest_files = _read_delta_table(delta_table_path).inputFiles()
+                all_parquet_files = _get_parquet_file_infos(delta_table_path)
+                common_file_paths = set(
+                    [file_info[0] for file_info in all_parquet_files]
+                ).intersection(set(latest_files))
+                latest_version_files = [
+                    file_info
+                    for file_info in all_parquet_files
+                    if file_info[0] in common_file_paths
+                ]
+
+                delta_table_path = f"Tables/{table_name}"
+
+                row_groups = 0
+                for file_path, file_size in latest_version_files:
+                    relative_path = file_path.split("Tables/")[1]
+                    file_system_path = f"{local_path}/Tables/{relative_path}"
+                    parquet_file = pq.ParquetFile(file_system_path)
+                    row_groups += parquet_file.num_row_groups
                 df.at[i, "Files"] = num_files
-                df.at[i, "Row Groups"] = num_rowgroups
+                df.at[i, "Row Groups"] = row_groups
                 df.at[i, "Table Size"] = size_in_bytes
             if count_rows:
-                num_rows = spark.table(tName).count()
+                num_rows = table_df.count()
                 df.at[i, "Row Count"] = num_rows
 
     if extended:

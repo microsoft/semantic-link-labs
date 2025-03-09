@@ -39,6 +39,7 @@ def create_abfss_path(
     lakehouse_id: UUID,
     lakehouse_workspace_id: UUID,
     delta_table_name: Optional[str] = None,
+    schema: Optional[str] = None,
 ) -> str:
     """
     Creates an abfss path for a delta table in a Fabric lakehouse.
@@ -51,6 +52,8 @@ def create_abfss_path(
         ID of the Fabric workspace.
     delta_table_name : str, default=None
         Name of the delta table name.
+    schema : str, default=None
+        The schema of the delta table.
 
     Returns
     -------
@@ -62,6 +65,8 @@ def create_abfss_path(
     path = f"abfss://{lakehouse_workspace_id}@{fp}/{lakehouse_id}"
 
     if delta_table_name is not None:
+        if schema is not None:
+            path += f"/{schema}"
         path += f"/Tables/{delta_table_name}"
 
     return path
@@ -610,11 +615,11 @@ def save_as_delta_table(
     workspace: Optional[str | UUID] = None,
 ):
     """
-    Saves a pandas dataframe as a delta table in a Fabric lakehouse.
+    Saves a pandas or Spark dataframe as a delta table in a Fabric lakehouse.
 
     Parameters
     ----------
-    dataframe : pandas.DataFrame
+    dataframe : pandas.DataFrame | spark.DataFrame
         The dataframe to be saved as a delta table.
     delta_table_name : str
         The name of the delta table.
@@ -632,19 +637,6 @@ def save_as_delta_table(
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
-
-    from pyspark.sql.types import (
-        StringType,
-        IntegerType,
-        FloatType,
-        DateType,
-        StructType,
-        StructField,
-        BooleanType,
-        LongType,
-        DoubleType,
-        TimestampType,
-    )
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
@@ -664,7 +656,18 @@ def save_as_delta_table(
             f"{icons.red_dot} Invalid 'delta_table_name'. Delta tables in the lakehouse cannot have spaces in their names."
         )
 
-    spark = _create_spark_session()
+    from pyspark.sql.types import (
+        StringType,
+        IntegerType,
+        FloatType,
+        DateType,
+        StructType,
+        StructField,
+        BooleanType,
+        LongType,
+        DoubleType,
+        TimestampType,
+    )
 
     type_mapping = {
         "string": StringType(),
@@ -680,36 +683,63 @@ def save_as_delta_table(
         "timestamp": TimestampType(),
     }
 
+    schema_map = None
+    if schema is not None:
+        schema_map = StructType(
+            [
+                StructField(column_name, type_mapping[data_type], True)
+                for column_name, data_type in schema.items()
+            ]
+        )
+
     if isinstance(dataframe, pd.DataFrame):
         dataframe.columns = [col.replace(" ", "_") for col in dataframe.columns]
-        if schema is None:
-            spark_df = spark.createDataFrame(dataframe)
+        if _pure_python_notebook():
+            spark_df = dataframe
         else:
-            schema_map = StructType(
-                [
-                    StructField(column_name, type_mapping[data_type], True)
-                    for column_name, data_type in schema.items()
-                ]
-            )
-            spark_df = spark.createDataFrame(dataframe, schema_map)
+            spark = _create_spark_session()
+            if schema is None:
+                spark_df = spark.createDataFrame(dataframe)
+            else:
+                spark_df = spark.createDataFrame(dataframe, schema_map)
     else:
         for col_name in dataframe.columns:
             new_name = col_name.replace(" ", "_")
             dataframe = dataframe.withColumnRenamed(col_name, new_name)
         spark_df = dataframe
 
-    filePath = create_abfss_path(
+    file_path = create_abfss_path(
         lakehouse_id=lakehouse_id,
         lakehouse_workspace_id=workspace_id,
         delta_table_name=delta_table_name,
     )
 
-    if merge_schema:
-        spark_df.write.mode(write_mode).format("delta").option(
-            "mergeSchema", "true"
-        ).save(filePath)
+    if _pure_python_notebook():
+        from deltalake import write_deltalake
+
+        if merge_schema:
+            write_deltalake(
+                table_or_uri=file_path,
+                data=spark_df,
+                mode=write_mode,
+                schema_mode="merge",
+                schema=schema_map,
+            )
+        else:
+            write_deltalake(
+                table_or_uri=file_path,
+                data=spark_df,
+                mode=write_mode,
+                schema=schema_map,
+            )
     else:
-        spark_df.write.mode(write_mode).format("delta").save(filePath)
+        if merge_schema:
+            spark_df.write.mode(write_mode).format("delta").option(
+                "mergeSchema", "true"
+            ).save(file_path)
+        else:
+            spark_df.write.mode(write_mode).format("delta").save(file_path)
+
     print(
         f"{icons.green_dot} The dataframe has been saved as the '{delta_table_name}' table in the '{lakehouse_name}' lakehouse within the '{workspace_name}' workspace."
     )
@@ -1376,25 +1406,46 @@ def _get_column_aggregate(
     default_value: int = 0,
 ) -> int:
 
-    from pyspark.sql.functions import approx_count_distinct
-    from pyspark.sql import functions as F
-
     function = function.upper()
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    lakehouse_id = resolve_lakehouse_id(lakehouse, workspace)
+    workspace_id = fabric.resolve_workspace_id(workspace)
+    lakehouse_id = resolve_lakehouse_id(lakehouse, workspace_id)
     path = create_abfss_path(lakehouse_id, workspace_id, table_name)
 
-    spark = _create_spark_session()
-    df = spark.read.format("delta").load(path)
+    if _pure_python_notebook():
+        from deltalake import DeltaTable
+        import polars as pl
 
-    if function in {"COUNTDISTINCT", "DISTINCTCOUNT"}:
-        result = df.select(F.count_distinct(F.col(column_name)))
-    elif "APPROX" in function:
-        result = df.select(approx_count_distinct(column_name))
+        # Load Delta table
+        dt = DeltaTable(path)
+        df = pl.from_pandas(dt.to_pandas())  # Convert Delta table to Polars DataFrame
+
+        # Perform aggregation
+        if function in {"COUNTDISTINCT", "DISTINCTCOUNT"}:
+            result = df[column_name].n_unique()
+        elif "APPROX" in function:
+            result = df[column_name].unique().shape[0]  # Approximation
+        else:
+            try:
+                result = getattr(df[column_name], function.lower())()
+            except AttributeError:
+                raise ValueError(f"Unsupported function: {function}")
+
+        return result if result is not None else default_value
     else:
-        result = df.selectExpr(f"{function}({column_name})")
+        from pyspark.sql.functions import approx_count_distinct
+        from pyspark.sql import functions as F
 
-    return result.collect()[0][0] or default_value
+        spark = _create_spark_session()
+        df = spark.read.format("delta").load(path)
+
+        if function in {"COUNTDISTINCT", "DISTINCTCOUNT"}:
+            result = df.select(F.count_distinct(F.col(column_name)))
+        elif "APPROX" in function:
+            result = df.select(approx_count_distinct(column_name))
+        else:
+            result = df.selectExpr(f"{function}({column_name})")
+
+        return result.collect()[0][0] or default_value
 
 
 def _make_list_unique(my_list):
@@ -1794,3 +1845,34 @@ def _mount(lakehouse, workspace) -> str:
     )
 
     return local_path
+
+
+def _load_delta_table(path):
+
+    if _pure_python_notebook():
+        from deltalake import DeltaTable
+
+        return DeltaTable(path)
+    else:
+        from delta import DeltaTable
+
+        spark = _create_spark_session()
+        return DeltaTable.forPath(spark, path)
+
+
+def _get_parquet_file_infos(path):
+
+    import notebookutils
+
+    files = []
+    items = notebookutils.fs.ls(path)
+    for item in items:
+        if item.isDir:
+            # Ignore the _delta_log directory
+            if "_delta_log" not in item.path:
+                files.extend(_get_parquet_file_infos(item.path))
+        else:
+            # Filter out non-Parquet files and files with size 0
+            if item.path.endswith(".parquet") and item.size > 0:
+                files.append((item.path, item.size))
+    return files
