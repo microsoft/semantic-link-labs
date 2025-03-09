@@ -17,30 +17,13 @@ from sempy_labs._helper_functions import (
     _read_delta_table,
     _mount,
     _create_spark_session,
+    _get_parquet_file_infos,
 )
 from sempy._utils._log import log
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 import sempy_labs._icons as icons
 from tqdm.auto import tqdm
-
-
-def get_parquet_file_infos(path):
-
-    import notebookutils
-
-    files = []
-    items = notebookutils.fs.ls(path)
-    for item in items:
-        if item.isDir:
-            # Ignore the _delta_log directory
-            if "_delta_log" not in item.path:
-                files.extend(get_parquet_file_infos(item.path))
-        else:
-            # Filter out non-Parquet files and files with size 0
-            if item.path.endswith(".parquet") and item.size > 0:
-                files.append((item.path, item.size))
-    return files
 
 
 @log
@@ -108,7 +91,6 @@ def delta_analyzer(
     (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=workspace
     )
-    path = create_abfss_path(lakehouse_id, workspace_id, table_name)
     local_path = _mount(lakehouse=lakehouse, workspace=workspace)
     table_path = f"{local_path}/Tables/{table_name}"
     delta_table_path = create_abfss_path(lakehouse_id, workspace_id, table_name)
@@ -183,9 +165,9 @@ def delta_analyzer(
     # min_reader_version = table_details.get("minReaderVersion")
     # min_writer_version = table_details.get("minWriterVersion")
 
-    latest_files = _read_delta_table(path).inputFiles()
+    latest_files = _read_delta_table(delta_table_path).inputFiles()
     # file_paths = [f.split("/")[-1] for f in latest_files]
-    all_parquet_files = get_parquet_file_infos(delta_table_path)
+    all_parquet_files = _get_parquet_file_infos(delta_table_path)
     common_file_paths = set(
         [file_info[0] for file_info in all_parquet_files]
     ).intersection(set(latest_files))

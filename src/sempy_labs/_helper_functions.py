@@ -1853,3 +1853,21 @@ def _load_delta_table(path):
 
         spark = _create_spark_session()
         return DeltaTable.forPath(spark, path)
+
+
+def _get_parquet_file_infos(path):
+
+    import notebookutils
+
+    files = []
+    items = notebookutils.fs.ls(path)
+    for item in items:
+        if item.isDir:
+            # Ignore the _delta_log directory
+            if "_delta_log" not in item.path:
+                files.extend(get_parquet_file_infos(item.path))
+        else:
+            # Filter out non-Parquet files and files with size 0
+            if item.path.endswith(".parquet") and item.size > 0:
+                files.append((item.path, item.size))
+    return files
