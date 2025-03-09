@@ -327,7 +327,7 @@ def deploy_semantic_model(
 
     if filters is not None and perspective is None:
         raise ValueError(
-            f"{icons.red_dot} The 'filters' parameter is only supported when the 'perspective' parameter is also specified."
+            f"{icons.red_dot} The 'filters' parameter is only supported when the 'perspective' parameter is set to None. Please update the parameters."
         )
 
     if filters is not None:
@@ -463,6 +463,7 @@ def deploy_semantic_model(
                 transitive_relations = find_transitive_incoming_relationships(
                     dfR, table_name
                 ).sort_values(by="Degree")
+                print(transitive_relations)
 
                 alias_counter = 0
                 alias_map = {entity_name: alias_counter}
@@ -572,10 +573,11 @@ def deploy_semantic_model(
                         last_entity = join_to_entity
                         last_column = join_to_source_column
 
+                max_value = max(alias_map.values())
                 # Final query with multiple JOINs
-                query = f"""SELECT T0.*\nFROM {from_entity} AS T0\n{''.join(join_conditions)}WHERE T{degree}.{source_column_name} {operator} '{value}'
+                query = f"""SELECT T0.*\nFROM {from_entity} AS T{max_value}\n{''.join(join_conditions)}WHERE T{alias_map.get(entity_name)}.{source_column_name} {operator} '{value}'
                 """
-
+                # print(query)
                 with ConnectLakehouse(
                     lakehouse=lakehouse_id, workspace=lakehouse_workspace_id
                 ) as sql:
@@ -596,9 +598,19 @@ def deploy_semantic_model(
         with connect_semantic_model(
             dataset=source_dataset, workspace=source_workspace, readonly=True
         ) as tom:
+            perspectives = [p.Name for p in tom.model.Perspectives]
 
+            # If invalid perspective, notify user
+            if filters is None and perspective in perspectives:
+                raise ValueError(
+                    f"{icons.red_dot} The '{perspective}' is not a valid perspective in the source semantic model."
+                )
+            elif filters is not None and perspective not in perspectives:
+                print(
+                    f"{icons.info} The '{perspective}' is not a valid perspective in the source semantic model."
+                )
             # Only reduce model if the perspective does not contain all the objects in the model
-            if not tom._is_perspective_full:
+            elif not tom._is_perspective_full:
                 model_reduced = True
                 df_added = tom._reduce_model(perspective_name=perspective)
             bim = tom.get_bim()

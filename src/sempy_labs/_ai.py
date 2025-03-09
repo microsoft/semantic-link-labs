@@ -428,7 +428,7 @@ def generate_aggs(
 #    viewName = view['viewName']
 #    isTemporary = view['isTemporary']
 #    new_data = {'Workspace Name': workspace, 'Lakehouse Name': lakehouse, 'View Name': viewName}
-#    dfView = pd.concat([dfView, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+#    dfView = pd.([dfView, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 # dfView
 # lakeT = get_lakehouse_tables(lakehouse, lakehouse_workspace)
 # if not dfP['Query'].isin(lakeT['Table Name'].values):
