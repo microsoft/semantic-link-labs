@@ -46,6 +46,7 @@ def get_parquet_file_infos(path):
 @log
 def delta_analyzer(
     table_name: str,
+    schema: Optional[str] = None,
     approx_distinct_count: bool = True,
     export: bool = False,
     lakehouse: Optional[str | UUID] = None,
@@ -70,6 +71,8 @@ def delta_analyzer(
     ----------
     table_name : str
         The delta table name.
+    schema : str, default=None
+        The name of the schema to which the table belongs (for schema-enabled lakehouses). If None, the default schema is used.
     approx_distinct_count: bool, default=True
         If True, uses approx_count_distinct to calculate the cardinality of each column. If False, uses COUNT(DISTINCT) instead.
     export : bool, default=False
@@ -96,25 +99,19 @@ def delta_analyzer(
     if not skip_cardinality:
         column_stats = True
 
-    # display_toggle = notebookutils.common.configs.pandas_display
-
-    # Turn off notebookutils display
-    # if display_toggle is True:
-    #    notebookutils.common.configs.pandas_display = False
-
     prefix = "SLL_DeltaAnalyzer_"
     now = datetime.now()
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace=workspace)
     (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=workspace
     )
-    path = create_abfss_path(lakehouse_id, workspace_id, table_name)
-    local_path = _mount(lakehouse=lakehouse, workspace=workspace)
-    table_path = f"{local_path}/Tables/{table_name}"
-    delta_table_path = create_abfss_path(lakehouse_id, workspace_id, table_name)
 
-    # Set back to original value
-    # notebookutils.common.configs.pandas_display = display_toggle
+    delta_table_path = create_abfss_path(lakehouse_id, workspace_id, table_name, schema=schema)
+    local_path = _mount(lakehouse=lakehouse, workspace=workspace)
+    if schema is not None:
+        table_path = f"{local_path}/Tables/{schema}/{table_name}"
+    else:
+        table_path = f"{local_path}/Tables/{table_name}" 
 
     parquet_file_df_columns = {
         # "Dataset": "string",
@@ -183,7 +180,7 @@ def delta_analyzer(
     # min_reader_version = table_details.get("minReaderVersion")
     # min_writer_version = table_details.get("minWriterVersion")
 
-    latest_files = _read_delta_table(path).inputFiles()
+    latest_files = _read_delta_table(delta_table_path).inputFiles()
     # file_paths = [f.split("/")[-1] for f in latest_files]
     all_parquet_files = get_parquet_file_infos(delta_table_path)
     common_file_paths = set(
