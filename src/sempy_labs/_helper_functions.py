@@ -1865,7 +1865,7 @@ def _get_parquet_file_infos(path):
         if item.isDir:
             # Ignore the _delta_log directory
             if "_delta_log" not in item.path:
-                files.extend(get_parquet_file_infos(item.path))
+                files.extend(_get_parquet_file_infos(item.path))
         else:
             # Filter out non-Parquet files and files with size 0
             if item.path.endswith(".parquet") and item.size > 0:
