@@ -4,13 +4,13 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_lakehouse_name_and_id,
     _create_dataframe,
-    _create_spark_session,
     _pure_python_notebook,
     _load_delta_table,
 )
 from typing import Optional
 from sempy._utils._log import log
 from uuid import UUID
+import re
 
 
 @log
@@ -58,46 +58,44 @@ def get_lakehouse_columns(
     tables_filt = tables[tables["Format"] == "delta"]
 
     df_list = []
-    #if _pure_python_notebook():
-    #    for _, r in tables_filt.iterrows():
-    #        table_name = r["Table Name"]
-    #        path = r["Location"]
-    #        delta_table = _load_delta_table(path)
 
-    #        for field in delta_table.schema().fields:  # Get column schema
-    #            col_name = field.name
-    #            data_type = field.type  # Get column data type
+    def extract_quoted_value(text):
+        match = re.search(r'"(.*?)"', text)  # Find text within double quotes
+        return (
+            match.group(1) if match else text
+        )  # Return extracted value or original text
 
-    #            full_column_name = format_dax_object_name(table_name, col_name)
-    #            new_data = {
-    #                "Workspace Name": workspace_name,
-    #                "Lakehouse Name": lakehouse_name,
-    #                "Table Name": table_name,
-    #                "Column Name": col_name,
-    #                "Full Column Name": full_column_name,
-    #                "Data Type": data_type,
-    #            }
-    #            df_list.append(new_data)
-
-    #    df = pd.DataFrame(df_list)
-    #else:
     for _, r in tables_filt.iterrows():
         table_name = r["Table Name"]
         path = r["Location"]
         delta_table = _load_delta_table(path)
-        sparkdf = delta_table.toDF()
 
-        for col_name, data_type in sparkdf.dtypes:
-            full_column_name = format_dax_object_name(table_name, col_name)
-            new_data = {
-                "Workspace Name": workspace_name,
-                "Lakehouse Name": lakehouse_name,
-                "Table Name": table_name,
-                "Column Name": col_name,
-                "Full Column Name": full_column_name,
-                "Data Type": data_type,
-            }
-            df_list.append(new_data)
+        if _pure_python_notebook():
+            for field in delta_table.schema().fields:  # Get column schema
+                col_name = field.name
+
+                new_data = {
+                    "Workspace Name": workspace_name,
+                    "Lakehouse Name": lakehouse_name,
+                    "Table Name": table_name,
+                    "Column Name": col_name,
+                    "Full Column Name": format_dax_object_name(table_name, col_name),
+                    "Data Type": extract_quoted_value(
+                        str(field.type)
+                    ),  # Parse from 'PrimitiveType' to 'string'
+                }
+                df_list.append(new_data)
+        else:
+            for col_name, data_type in delta_table.toDF().dtypes:
+                new_data = {
+                    "Workspace Name": workspace_name,
+                    "Lakehouse Name": lakehouse_name,
+                    "Table Name": table_name,
+                    "Column Name": col_name,
+                    "Full Column Name": format_dax_object_name(table_name, col_name),
+                    "Data Type": data_type,
+                }
+                df_list.append(new_data)
 
     df = pd.DataFrame(df_list)
 
