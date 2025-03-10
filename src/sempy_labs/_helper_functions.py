@@ -1799,7 +1799,7 @@ def _get_or_create_workspace(
 
     capacity_id = resolve_capacity_id(capacity)
     dfW = fabric.list_workspaces()
-    dfW_filt_name = dfW[dfW["Display Name"] == workspace]
+    dfW_filt_name = dfW[dfW["Name"] == workspace]
     dfW_filt_id = dfW[dfW["Id"] == workspace]
 
     # Workspace already exists
@@ -1829,6 +1829,8 @@ def _get_or_create_lakehouse(
     description: Optional[str] = None,
 ) -> Tuple[str, UUID]:
 
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
     dfI = fabric.list_items(type="Lakehouse", workspace=workspace)
     dfI_filt_name = dfI[dfI["Display Name"] == lakehouse]
     dfI_filt_id = dfI[dfI["Id"] == lakehouse]
@@ -1847,7 +1849,7 @@ def _get_or_create_lakehouse(
         display_name=lakehouse, workspace=workspace, description=description
     )
     print(
-        f"{icons.green_dot} The '{lakehouse}' lakehouse has been successfully created."
+        f"{icons.green_dot} The '{lakehouse}' lakehouse has been successfully created within the '{workspace_name}' workspace."
     )
 
     return (lakehouse, lakehouse_id)
