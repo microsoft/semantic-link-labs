@@ -46,13 +46,13 @@ def get_parquet_file_infos(path):
 @log
 def delta_analyzer(
     table_name: str,
-    schema: Optional[str] = None,
     approx_distinct_count: bool = True,
     export: bool = False,
     lakehouse: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
     column_stats: bool = True,
     skip_cardinality: bool = True,
+    schema: Optional[str] = None,
 ) -> Dict[str, pd.DataFrame]:
     """
     Analyzes a delta table and shows the results in dictionary containing a set of 5 dataframes. If 'export' is set to True, the results will be saved to delta tables in the lakehouse attached to the notebook.
