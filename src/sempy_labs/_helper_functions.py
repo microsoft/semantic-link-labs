@@ -1809,6 +1809,7 @@ def _read_delta_table_history(path) -> pd.DataFrame:
         df = pd.DataFrame(DeltaTable(table_uri=path).history())
     else:
         from delta import DeltaTable
+
         spark = _create_spark_session()
         delta_table = DeltaTable.forPath(spark, path)
         df = delta_table.history().toPandas()
