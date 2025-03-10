@@ -1,4 +1,3 @@
-import sempy.fabric as fabric
 import pandas as pd
 import pyarrow.parquet as pq
 import datetime
@@ -9,7 +8,6 @@ from sempy_labs._helper_functions import (
     save_as_delta_table,
     _base_api,
     _create_dataframe,
-    _create_spark_session,
     _mount,
     create_abfss_path,
     _read_delta_table,
@@ -107,7 +105,6 @@ def get_lakehouse_tables(
         local_path = _mount(lakehouse=lakehouse, workspace=workspace)
         sku_value = get_sku_size(workspace_id)
         guardrail = get_directlake_guardrails_for_sku(sku_value)
-        spark = _create_spark_session()
         df["Files"] = None
         df["Row Groups"] = None
         df["Table Size"] = None
@@ -117,10 +114,8 @@ def get_lakehouse_tables(
             table_name = r["Table Name"]
             delta_table_path = create_abfss_path(lakehouse_id, workspace_id, table_name)
             if r["Type"] == "Managed" and r["Format"] == "delta":
-
-                from delta import DeltaTable
-
-                delta_table = DeltaTable.forPath(spark, delta_table_path)
+                delta_table_path = f"Tables/{table_name}"
+                delta_table = _read_delta_table(delta_table_path, to_pandas=False)
                 table_df = delta_table.toDF()
                 table_details = delta_table.detail().collect()[0].asDict()
                 num_files = table_details.get("numFiles", 0)
@@ -135,8 +130,6 @@ def get_lakehouse_tables(
                     for file_info in all_parquet_files
                     if file_info[0] in common_file_paths
                 ]
-
-                delta_table_path = f"Tables/{table_name}"
 
                 row_groups = 0
                 for file_path, file_size in latest_version_files:

@@ -16,8 +16,8 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_name_and_id,
     _read_delta_table,
     _mount,
-    _create_spark_session,
     _get_parquet_file_infos,
+    _read_delta_table_history,
 )
 from sempy._utils._log import log
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
@@ -147,11 +147,7 @@ def delta_analyzer(
     is_vorder = any(b"vorder" in key for key in schema.keys())
 
     # Get the common details of the Delta table
-    spark = _create_spark_session()
-
-    from delta import DeltaTable
-
-    delta_table = DeltaTable.forPath(spark, delta_table_path)
+    delta_table = _read_delta_table(delta_table_path, to_pandas=False)
     table_df = delta_table.toDF()
     # total_partition_count = table_df.rdd.getNumPartitions()
     row_count = table_df.count()
@@ -165,7 +161,7 @@ def delta_analyzer(
     # min_reader_version = table_details.get("minReaderVersion")
     # min_writer_version = table_details.get("minWriterVersion")
 
-    latest_files = _read_delta_table(delta_table_path).inputFiles()
+    latest_files = delta_table.inputFiles()
     # file_paths = [f.split("/")[-1] for f in latest_files]
     all_parquet_files = _get_parquet_file_infos(delta_table_path)
     common_file_paths = set(
@@ -437,18 +433,13 @@ def get_delta_table_history(
     def camel_to_title(text):
         return re.sub(r"([a-z])([A-Z])", r"\1 \2", text).title()
 
-    spark = _create_spark_session()
-
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace=workspace)
     (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=workspace
     )
     path = create_abfss_path(lakehouse_id, workspace_id, table_name)
 
-    from delta import DeltaTable
-
-    delta_table = DeltaTable.forPath(spark, path)
-    df = delta_table.history().toPandas()
+    df = _read_delta_table_history(path=path)
 
     df.rename(columns=lambda col: camel_to_title(col), inplace=True)
 

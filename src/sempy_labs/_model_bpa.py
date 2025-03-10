@@ -14,7 +14,7 @@ from sempy_labs._helper_functions import (
     get_language_codes,
     _get_column_aggregate,
     resolve_workspace_name_and_id,
-    _create_spark_session,
+    _create_spark_dataframe,
 )
 from sempy_labs.lakehouse import get_lakehouse_tables, lakehouse_attached
 from sempy_labs.tom import connect_semantic_model
@@ -195,8 +195,7 @@ def run_model_bpa(
                     ]
                 )
 
-                spark = _create_spark_session()
-                dfRules = spark.createDataFrame(rules_temp, schema)
+                dfRules = _create_spark_dataframe(df=rules_temp, schema=schema)
 
                 columns = ["Category", "Rule Name", "Description"]
                 for clm in columns:

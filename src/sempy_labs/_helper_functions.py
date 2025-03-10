@@ -1405,14 +1405,12 @@ def _get_column_aggregate(
     workspace_id = fabric.resolve_workspace_id(workspace)
     lakehouse_id = resolve_lakehouse_id(lakehouse, workspace_id)
     path = create_abfss_path(lakehouse_id, workspace_id, table_name)
+    df = _read_delta_table(path)
 
     if _pure_python_notebook():
-        from deltalake import DeltaTable
         import polars as pl
 
-        # Load Delta table
-        dt = DeltaTable(path)
-        df = pl.from_pandas(dt.to_pandas())  # Convert Delta table to Polars DataFrame
+        df = pl.from_pandas(df)  # Convert Delta table to Polars DataFrame
 
         # Perform aggregation
         if function in {"COUNTDISTINCT", "DISTINCTCOUNT"}:
@@ -1429,9 +1427,6 @@ def _get_column_aggregate(
     else:
         from pyspark.sql.functions import approx_count_distinct
         from pyspark.sql import functions as F
-
-        spark = _create_spark_session()
-        df = spark.read.format("delta").load(path)
 
         if function in {"COUNTDISTINCT", "DISTINCTCOUNT"}:
             result = df.select(F.count_distinct(F.col(column_name)))
@@ -1791,11 +1786,41 @@ def _create_spark_session():
     return SparkSession.builder.getOrCreate()
 
 
-def _read_delta_table(path: str):
+def _read_delta_table(path: str, to_pandas: bool = True):
+
+    if _pure_python_notebook():
+        from deltalake import DeltaTable
+
+        df = DeltaTable(table_uri=path)
+        if to_pandas:
+            df = df.to_pandas()
+    else:
+        spark = _create_spark_session()
+        df = spark.read.format("delta").load(path)
+
+    return df
+
+
+def _read_delta_table_history(path) -> pd.DataFrame:
+
+    if _pure_python_notebook():
+        from deltalake import DeltaTable
+
+        df = pd.DataFrame(DeltaTable(table_uri=path).history())
+    else:
+        from delta import DeltaTable
+        spark = _create_spark_session()
+        delta_table = DeltaTable.forPath(spark, path)
+        df = delta_table.history().toPandas()
+
+    return df
+
+
+def _create_spark_dataframe(df, schema=None):
 
     spark = _create_spark_session()
 
-    return spark.read.format("delta").load(path)
+    return spark.createDataFrame(df, schema)
 
 
 def _delta_table_row_count(table_name: str) -> int:
@@ -1871,3 +1896,30 @@ def _get_parquet_file_infos(path):
             if item.path.endswith(".parquet") and item.size > 0:
                 files.append((item.path, item.size))
     return files
+
+
+def _optimize_table(path):
+
+    if _pure_python_notebook():
+        from deltalake import DeltaTable
+
+        DeltaTable(path).optimize.compact()
+    else:
+        from delta import DeltaTable
+
+        spark = _create_spark_session()
+        DeltaTable.forPath(spark, path).optimize().executeCompaction()
+
+
+def _vacuum_table(path, retain_n_hours):
+
+    if _pure_python_notebook():
+        from deltalake import DeltaTable
+
+        DeltaTable(path).vacuum(retention_hours=retain_n_hours)
+    else:
+        from delta import DeltaTable
+
+        spark = _create_spark_session()
+        spark.conf.set("spark.databricks.delta.vacuum.parallelDelete.enabled", "true")
+        DeltaTable.forPath(spark, path).vacuum(retain_n_hours)

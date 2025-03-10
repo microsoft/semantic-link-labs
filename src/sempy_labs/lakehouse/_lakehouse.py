@@ -6,8 +6,8 @@ from sempy_labs._helper_functions import (
     _base_api,
     resolve_lakehouse_name_and_id,
     resolve_workspace_name_and_id,
-    _create_spark_session,
-    _pure_python_notebook,
+    _optimize_table,
+    _vacuum_table,
 )
 import sempy_labs._icons as icons
 import re
@@ -66,21 +66,11 @@ def optimize_lakehouse_tables(
 
     df_tables = df_delta[df_delta["Table Name"].isin(tables)] if tables else df_delta
 
-    if _pure_python_notebook():
-        from deltalake import DeltaTable
-    else:
-        from delta import DeltaTable
-
-        spark = _create_spark_session()
-
     for _, r in (bar := tqdm(df_tables.iterrows())):
         table_name = r["Table Name"]
         path = r["Location"]
         bar.set_description(f"Optimizing the '{table_name}' table...")
-        if _pure_python_notebook():
-            DeltaTable(path).optimize.compact()
-        else:
-            DeltaTable.forPath(spark, path).optimize().executeCompaction()
+        _optimize_table(path=path)
 
 
 @log
@@ -121,22 +111,11 @@ def vacuum_lakehouse_tables(
 
     df_tables = df_delta[df_delta["Table Name"].isin(tables)] if tables else df_delta
 
-    if _pure_python_notebook():
-        from deltalake import DeltaTable
-    else:
-        from delta import DeltaTable
-
-        spark = _create_spark_session()
-        spark.conf.set("spark.databricks.delta.vacuum.parallelDelete.enabled", "true")
-
     for _, r in (bar := tqdm(df_tables.iterrows())):
         table_name = r["Table Name"]
         path = r["Location"]
         bar.set_description(f"Vacuuming the '{table_name}' table...")
-        if _pure_python_notebook():
-            DeltaTable(path).vacuum(retention_hours=retain_n_hours)
-        else:
-            DeltaTable.forPath(spark, path).vacuum(retain_n_hours)
+        _vacuum_table(path=path, retain_n_hours=retain_n_hours)
 
 
 def run_table_maintenance(

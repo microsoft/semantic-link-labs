@@ -16,8 +16,8 @@ from sempy_labs._helper_functions import (
     resolve_dataset_id,
     _update_dataframe_datatypes,
     _base_api,
-    _create_spark_session,
     _mount,
+    _create_spark_dataframe,
 )
 from typing import List, Optional, Union
 from sempy._utils._log import log
@@ -486,8 +486,8 @@ def translate_report_titles(
 
     reportJson = get_report_json(report=report, workspace=workspace_id)
     dfV = list_report_visuals(report=report, workspace=workspace_id)
-    spark = _create_spark_session()
-    df = spark.createDataFrame(dfV)
+
+    df = _create_spark_dataframe(dfV)
     columnToTranslate = "Title"
 
     translate = (

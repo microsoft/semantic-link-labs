@@ -14,7 +14,8 @@ from sempy_labs._helper_functions import (
     _get_column_aggregate,
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
-    _create_spark_session,
+    _run_spark_sql_query,
+    _read_delta_table,
 )
 from sempy_labs._list_functions import list_relationships, list_tables
 from sempy_labs.lakehouse import lakehouse_attached, get_lakehouse_tables
@@ -202,7 +203,6 @@ def vertipaq_analyzer(
                 )
 
             sql_statements = []
-            spark = _create_spark_session()
             # Loop through tables
             for lakeTName in dfC_flt["Query"].unique():
                 query = "SELECT "
@@ -221,7 +221,7 @@ def vertipaq_analyzer(
                     lakeTables_filt = lakeTables[lakeTables["Table Name"] == lakeTName]
                     tPath = lakeTables_filt["Location"].iloc[0]
 
-                    df = spark.read.format("delta").load(tPath)
+                    df = _read_delta_table(path=tPath)
                     tempTableName = "delta_table_" + lakeTName
                     df.createOrReplaceTempView(tempTableName)
                     query = query + f" FROM {tempTableName}"
@@ -231,7 +231,7 @@ def vertipaq_analyzer(
                 tName = o[0]
                 query = o[1]
 
-                df = spark.sql(query)
+                df = _run_spark_sql_query(query)
 
                 for column in df.columns:
                     x = df.collect()[0][column]
@@ -280,7 +280,6 @@ def vertipaq_analyzer(
             dfR.rename(columns={"Source": "To Lake Column"}, inplace=True)
             dfR.drop(columns=["Column Object"], inplace=True)
 
-            spark = _create_spark_session()
             for i, r in dfR.iterrows():
                 fromTable = r["From Lake Table"]
                 fromColumn = r["From Lake Column"]
@@ -297,7 +296,7 @@ def vertipaq_analyzer(
 
                 # query = f"select count(f.{fromColumn}) as {fromColumn}\nfrom {fromTable} as f\nleft join {toTable} as c on f.{fromColumn} = c.{toColumn}\nwhere c.{toColumn} is null"
 
-                df = spark.sql(query)
+                df = _run_spark_sql_query(query)
                 missingRows = df.collect()[0][0]
                 dfR.at[i, "Missing Rows"] = missingRows
 
