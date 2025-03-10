@@ -1558,6 +1558,7 @@ def _convert_data_type(input_data_type: str) -> str:
         "date": "DateTime",
         "double": "Double",
         "float": "Double",
+        "binary": "Boolean",
     }
 
     if "decimal" in input_data_type:
