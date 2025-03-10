@@ -392,6 +392,10 @@ def resolve_lakehouse_name_and_id(
 
     if lakehouse is None:
         lakehouse_id = _get_fabric_context_setting(name="trident.lakehouse.id")
+        if lakehouse_id == "":
+            raise ValueError(
+                f"{icons.red_dot} Cannot resolve a lakehouse. Please enter a valid lakehouse or make sure a lakehouse is attached to the notebook."
+            )
         (lakehouse_name, lakehouse_id) = resolve_item_name_and_id(
             item=lakehouse_id, type=type, workspace=workspace_id
         )
@@ -489,6 +493,10 @@ def resolve_lakehouse_name(
 
     if lakehouse_id is None:
         lakehouse_id = _get_fabric_context_setting(name="trident.lakehouse.id")
+        if lakehouse_id == "":
+            raise ValueError(
+                f"{icons.red_dot} Cannot resolve a lakehouse. Please enter a valid lakehouse or make sure a lakehouse is attached to the notebook."
+            )
 
     return resolve_item_name(
         item_id=lakehouse_id, type="Lakehouse", workspace=workspace
@@ -518,6 +526,10 @@ def resolve_lakehouse_id(
 
     if lakehouse is None:
         lakehouse_id = _get_fabric_context_setting(name="trident.lakehouse.id")
+        if lakehouse_id == "":
+            raise ValueError(
+                f"{icons.red_dot} Cannot resolve a lakehouse. Please enter a valid lakehouse or make sure a lakehouse is attached to the notebook."
+            )
     else:
         lakehouse_id = resolve_item_id(
             item=lakehouse, type="Lakehouse", workspace=workspace
