@@ -18,7 +18,7 @@ def create_shortcut_onelake(
     table_name: str,
     source_lakehouse: str,
     source_workspace: str | UUID,
-    destination_lakehouse: str,
+    destination_lakehouse: Optional[str | UUID] = None,
     destination_workspace: Optional[str | UUID] = None,
     shortcut_name: Optional[str] = None,
     source_path: str = "Tables",
@@ -37,8 +37,10 @@ def create_shortcut_onelake(
         The Fabric lakehouse in which the table resides.
     source_workspace : str | uuid.UUID
         The name or ID of the Fabric workspace in which the source lakehouse exists.
-    destination_lakehouse : str
-        The Fabric lakehouse in which the shortcut will be created.
+    destination_lakehouse : str | uuid.UUID, default=None
+        The name or ID of the Fabric lakehouse in which the shortcut will be created.
+        Defaults to None which resolves to the attached lakehouse.
+        If no lakehouse is provided or attached the function will fail
     destination_workspace : str | uuid.UUID, default=None
         The name or ID of the Fabric workspace in which the shortcut will be created.
         Defaults to None which resolves to the workspace of the attached lakehouse

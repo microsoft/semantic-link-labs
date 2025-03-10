@@ -347,6 +347,10 @@ def resolve_lakehouse_name_and_id(
 
     if lakehouse is None:
         lakehouse_id = fabric.get_lakehouse_id()
+        if lakehouse_id == '':
+            raise ValueError(
+                f"{icons.red_dot} Can't resolve lakehouse. Make sure a lakehouse is attached to the notebook or provide one via name or ID."
+            )
         lakehouse_name = fabric.resolve_item_name(
             item_id=lakehouse_id, type=type, workspace=workspace_id
         )
