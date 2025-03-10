@@ -4,7 +4,7 @@ import json
 import base64
 import time
 import uuid
-from sempy.fabric.exceptions import FabricHTTPException
+from sempy.fabric.exceptions import FabricHTTPException, WorkspaceNotFoundException
 import pandas as pd
 from functools import wraps
 import datetime
@@ -305,35 +305,62 @@ def get_item_definition(
 
 
 def resolve_item_id(
-    item: str | UUID, type: str, workspace: Optional[str] = None
+    item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None
 ) -> UUID:
 
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    item_id = None
+
     if _is_valid_uuid(item):
-        return item
+        # Check (optional)
+        item_id = item
+        try:
+            _base_api(
+                request=f"/v1/workspaces/{workspace_id}/items/{item_id}",
+                client="fabric_sp",
+            )
+        except FabricHTTPException:
+            raise ValueError(
+                f"{icons.red_dot} The '{item_id}' item was not found in the '{workspace_name}' workspace."
+            )
     else:
-        return fabric.resolve_item_id(item_name=item, type=type, workspace=workspace)
+        if type is None:
+            raise ValueError(
+                f"{icons.red_dot} The 'type' parameter is required if specifying an item name."
+            )
+        responses = _base_api(
+            request=f"/v1/workspaces/{workspace_id}/items?type={type}",
+            client="fabric_sp",
+            uses_pagination=True,
+        )
+        for r in responses:
+            for v in r.get("value", []):
+                display_name = v.get("displayName")
+                if display_name == item:
+                    item_id = v.get("id")
+                    break
+
+    if item_id is None:
+        raise ValueError(
+            f"{icons.red_dot} There's no item '{item}' of type '{type}' in the '{workspace_name}' workspace."
+        )
+
+    return item_id
 
 
 def resolve_item_name_and_id(
     item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None
 ) -> Tuple[str, UUID]:
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    if _is_valid_uuid(item):
-        item_id = item
-        item_name = fabric.resolve_item_name(
-            item_id=item_id, type=type, workspace=workspace_id
+    workspace_id = resolve_workspace_id(workspace)
+    item_id = resolve_item_id(item=item, type=type, workspace=workspace_id)
+    item_name = (
+        _base_api(
+            request=f"/v1/workspaces/{workspace_id}/items/{item_id}", client="fabric_sp"
         )
-    else:
-        if type is None:
-            raise ValueError(
-                f"{icons.warning} Must specify a 'type' if specifying a name as the 'item'."
-            )
-        item_name = item
-        item_id = fabric.resolve_item_id(
-            item_name=item, type=type, workspace=workspace_id
-        )
+        .json()
+        .get("displayName")
+    )
 
     return item_name, item_id
 
@@ -751,6 +778,52 @@ def language_validate(language: str):
     return lang
 
 
+def resolve_workspace_id(
+    workspace: Optional[str | UUID] = None,
+) -> UUID:
+    if workspace is None:
+        workspace_id = _get_fabric_context_setting(name="trident.workspace.id")
+    elif _is_valid_uuid(workspace):
+        # Check (optional)
+        workspace_id = workspace
+        try:
+            _base_api(request=f"/v1/workspaces/{workspace_id}", client="fabric_sp")
+        except FabricHTTPException:
+            raise ValueError(
+                f"{icons.red_dot} The '{workspace_id}' workspace was not found."
+            )
+    else:
+        responses = _base_api(
+            request="/v1/workspaces", client="fabric_sp", uses_pagination=True
+        )
+        workspace_id = None
+        for r in responses:
+            for v in r.get("value", []):
+                display_name = v.get("displayName")
+                if display_name == workspace:
+                    workspace_id = v.get("id")
+                    break
+
+    if workspace_id is None:
+        raise WorkspaceNotFoundException(workspace)
+
+    return workspace_id
+
+
+def resolve_workspace_name(workspace_id: UUID) -> str:
+
+    try:
+        response = _base_api(
+            request=f"/v1/workspaces/{workspace_id}", client="fabric_sp"
+        ).json()
+    except FabricHTTPException:
+        raise ValueError(
+            f"{icons.red_dot} The '{workspace_id}' workspace was not found."
+        )
+
+    return response.get("displayName")
+
+
 def resolve_workspace_name_and_id(
     workspace: Optional[str | UUID] = None,
 ) -> Tuple[str, str]:
@@ -771,16 +844,29 @@ def resolve_workspace_name_and_id(
     """
 
     if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace_name = fabric.resolve_workspace_name(workspace_id)
+        workspace_id = _get_fabric_context_setting(name="trident.workspace.id")
+        workspace_name = resolve_workspace_name(workspace)
     elif _is_valid_uuid(workspace):
         workspace_id = workspace
-        workspace_name = fabric.resolve_workspace_name(workspace_id)
+        workspace_name = resolve_workspace_name(workspace)
     else:
-        workspace_name = workspace
-        workspace_id = fabric.resolve_workspace_id(workspace_name)
+        responses = _base_api(
+            request="/v1/workspaces", client="fabric_sp", uses_pagination=True
+        )
+        workspace_id = None
+        workspace_name = None
+        for r in responses:
+            for v in r.get("value", []):
+                display_name = v.get("displayName")
+                if display_name == workspace:
+                    workspace_name = workspace
+                    workspace_id = v.get("id")
+                    break
 
-    return str(workspace_name), str(workspace_id)
+    if workspace_name is None or workspace_id is None:
+        raise WorkspaceNotFoundException(workspace)
+
+    return workspace_name, workspace_id
 
 
 def _extract_json(dataframe: pd.DataFrame) -> dict:
