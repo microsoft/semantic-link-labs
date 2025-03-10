@@ -1853,3 +1853,37 @@ def _get_or_create_lakehouse(
     )
 
     return (lakehouse, lakehouse_id)
+
+
+def _get_or_create_warehouse(
+    warehouse: str,
+    workspace: Optional[str | UUID] = None,
+    description: Optional[str] = None,
+) -> Tuple[str, UUID]:
+
+    from sempy_labs._warehouses import create_warehouse
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    dfI = fabric.list_items(type="Warehouse", workspace=workspace)
+    dfI_filt_name = dfI[dfI["Display Name"] == warehouse]
+    dfI_filt_id = dfI[dfI["Id"] == warehouse]
+
+    if (not dfI_filt_name.empty) or (not dfI_filt_id.empty):
+        print(f"{icons.green_dot} The '{warehouse}' warehouse already exists.")
+        (warehouse_name, warehouse_id) = resolve_item_name_and_id(
+            warehouse=warehouse, type="Warehouse", workspace=workspace
+        )
+        return (warehouse_name, warehouse_id)
+    if _is_valid_uuid(warehouse):
+        raise ValueError(f"{icons.warning} Must enter a warehouse name, not an ID.")
+
+    print(f"{icons.in_progress} Creating the '{warehouse}' warehouse...")
+    warehouse_id = create_warehouse(
+        display_name=warehouse, workspace=workspace, description=description
+    )
+    print(
+        f"{icons.green_dot} The '{warehouse}' warehouse has been successfully created within the '{workspace_name}' workspace."
+    )
+
+    return (warehouse, warehouse_id)
