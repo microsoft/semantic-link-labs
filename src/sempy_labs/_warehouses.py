@@ -16,7 +16,7 @@ def create_warehouse(
     description: Optional[str] = None,
     case_insensitive_collation: bool = False,
     workspace: Optional[str | UUID] = None,
-):
+) -> UUID:
     """
     Creates a Fabric warehouse.
 
@@ -34,6 +34,11 @@ def create_warehouse(
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    uuid.UUID
+        The ID of the created warehouse.
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -48,7 +53,7 @@ def create_warehouse(
             "defaultCollation"
         ] = "Latin1_General_100_CI_AS_KS_WS_SC_UTF8"
 
-    _base_api(
+    response = _base_api(
         request=f"/v1/workspaces/{workspace_id}/warehouses",
         payload=payload,
         method="post",
@@ -59,6 +64,8 @@ def create_warehouse(
     print(
         f"{icons.green_dot} The '{warehouse}' warehouse has been created within the '{workspace_name}' workspace."
     )
+
+    return response.get("id")
 
 
 def list_warehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:

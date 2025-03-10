@@ -1794,3 +1794,101 @@ def _mount(lakehouse, workspace) -> str:
     )
 
     return local_path
+
+
+def _get_or_create_workspace(
+    workspace: str,
+    capacity: Optional[str | UUID] = None,
+    description: Optional[str] = None,
+) -> Tuple[str, UUID]:
+
+    capacity_id = resolve_capacity_id(capacity)
+    dfW = fabric.list_workspaces()
+    dfW_filt_name = dfW[dfW["Name"] == workspace]
+    dfW_filt_id = dfW[dfW["Id"] == workspace]
+
+    # Workspace already exists
+    if (not dfW_filt_name.empty) or (not dfW_filt_id.empty):
+        print(f"{icons.green_dot} The '{workspace}' workspace already exists.")
+        (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+        return (workspace_name, workspace_id)
+
+    # Do not create workspace with name of an ID
+    if _is_valid_uuid(workspace):
+        raise ValueError(f"{icons.warning} Must enter a workspace name, not an ID.")
+
+    print(f"{icons.in_progress} Creating the '{workspace}' workspace...")
+    workspace_id = fabric.create_workspace(
+        display_name=workspace, capacity_id=capacity_id, description=description
+    )
+    print(
+        f"{icons.green_dot} The '{workspace}' workspace has been successfully created."
+    )
+
+    return (workspace, workspace_id)
+
+
+def _get_or_create_lakehouse(
+    lakehouse: str,
+    workspace: Optional[str | UUID] = None,
+    description: Optional[str] = None,
+) -> Tuple[str, UUID]:
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    dfI = fabric.list_items(type="Lakehouse", workspace=workspace)
+    dfI_filt_name = dfI[dfI["Display Name"] == lakehouse]
+    dfI_filt_id = dfI[dfI["Id"] == lakehouse]
+
+    if (not dfI_filt_name.empty) or (not dfI_filt_id.empty):
+        print(f"{icons.green_dot} The '{lakehouse}' lakehouse already exists.")
+        (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+            lakehouse=lakehouse, workspace=workspace
+        )
+        return (lakehouse_name, lakehouse_id)
+    if _is_valid_uuid(lakehouse):
+        raise ValueError(f"{icons.warning} Must enter a lakehouse name, not an ID.")
+
+    print(f"{icons.in_progress} Creating the '{lakehouse}' lakehouse...")
+    lakehouse_id = fabric.create_lakehouse(
+        display_name=lakehouse, workspace=workspace, description=description
+    )
+    print(
+        f"{icons.green_dot} The '{lakehouse}' lakehouse has been successfully created within the '{workspace_name}' workspace."
+    )
+
+    return (lakehouse, lakehouse_id)
+
+
+def _get_or_create_warehouse(
+    warehouse: str,
+    workspace: Optional[str | UUID] = None,
+    description: Optional[str] = None,
+) -> Tuple[str, UUID]:
+
+    from sempy_labs._warehouses import create_warehouse
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    dfI = fabric.list_items(type="Warehouse", workspace=workspace)
+    dfI_filt_name = dfI[dfI["Display Name"] == warehouse]
+    dfI_filt_id = dfI[dfI["Id"] == warehouse]
+
+    if (not dfI_filt_name.empty) or (not dfI_filt_id.empty):
+        print(f"{icons.green_dot} The '{warehouse}' warehouse already exists.")
+        (warehouse_name, warehouse_id) = resolve_item_name_and_id(
+            warehouse=warehouse, type="Warehouse", workspace=workspace
+        )
+        return (warehouse_name, warehouse_id)
+    if _is_valid_uuid(warehouse):
+        raise ValueError(f"{icons.warning} Must enter a warehouse name, not an ID.")
+
+    print(f"{icons.in_progress} Creating the '{warehouse}' warehouse...")
+    warehouse_id = create_warehouse(
+        display_name=warehouse, workspace=workspace, description=description
+    )
+    print(
+        f"{icons.green_dot} The '{warehouse}' warehouse has been successfully created within the '{workspace_name}' workspace."
+    )
+
+    return (warehouse, warehouse_id)
