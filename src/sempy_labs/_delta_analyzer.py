@@ -71,8 +71,6 @@ def delta_analyzer(
     ----------
     table_name : str
         The delta table name.
-    schema : str, default=None
-        The name of the schema to which the table belongs (for schema-enabled lakehouses). If None, the default schema is used.
     approx_distinct_count: bool, default=True
         If True, uses approx_count_distinct to calculate the cardinality of each column. If False, uses COUNT(DISTINCT) instead.
     export : bool, default=False
@@ -88,6 +86,8 @@ def delta_analyzer(
         If True, collects data about column chunks and columns. If False, skips that step and only returns the other 3 dataframes.
     skip_cardinality : bool, default=True
         If True, skips the cardinality calculation for each column. If False, calculates the cardinality for each column.
+    schema : str, default=None
+        The name of the schema to which the table belongs (for schema-enabled lakehouses). If None, the default schema is used.
 
     Returns
     -------
