@@ -114,7 +114,7 @@ def migrate_workspaces(
             continue
 
         if assign_workspace_to_capacity(
-            capacity_name=target_capacity, workspace=workspace
+            capacity=target_capacity, workspace=workspace
         ):
             migrated_workspaces.append(workspace)
 
@@ -127,7 +127,7 @@ def migrate_workspaces(
             workspace = r["Name"]
             if workspace in migrated_workspaces:
                 assign_workspace_to_capacity(
-                    capacity_name=source_capacity, workspace=workspace
+                    capacity=source_capacity, workspace=workspace
                 )
         print(
             f"{icons.green_dot} Rollback of the workspaces to the '{source_capacity}' capacity is complete."
