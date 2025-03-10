@@ -115,7 +115,7 @@ def get_lakehouse_tables(
             delta_table_path = create_abfss_path(lakehouse_id, workspace_id, table_name)
             if r["Type"] == "Managed" and r["Format"] == "delta":
                 delta_table_path = f"Tables/{table_name}"
-                delta_table = _read_delta_table(delta_table_path, to_pandas=False)
+                delta_table = _read_delta_table(delta_table_path)
                 table_df = delta_table.toDF()
                 table_details = delta_table.detail().collect()[0].asDict()
                 num_files = table_details.get("numFiles", 0)

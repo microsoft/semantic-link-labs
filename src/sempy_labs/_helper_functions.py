@@ -1401,20 +1401,34 @@ def _get_column_aggregate(
     default_value: int = 0,
 ) -> int:
 
-    function = function.upper()
     workspace_id = fabric.resolve_workspace_id(workspace)
     lakehouse_id = resolve_lakehouse_id(lakehouse, workspace_id)
     path = create_abfss_path(lakehouse_id, workspace_id, table_name)
     df = _read_delta_table(path)
 
+    _get_aggregate(
+        df=df, column_name=column_name, function=function, default_value=default_value
+    )
+
+
+def _get_aggregate(df, column_name, function, default_value: int = 0) -> int:
+
+    function = function.upper()
+
     if _pure_python_notebook():
         import polars as pl
+
+        if not isinstance(df, pd.DataFrame):
+            df.to_pandas()
 
         df = pl.from_pandas(df)  # Convert Delta table to Polars DataFrame
 
         # Perform aggregation
         if function in {"COUNTDISTINCT", "DISTINCTCOUNT"}:
-            result = df[column_name].n_unique()
+            if isinstance(df[column_name].dtype, pl.Decimal):
+                result = df[column_name].cast(pl.Float64).n_unique()
+            else:
+                result = df[column_name].n_unique()
         elif "APPROX" in function:
             result = df[column_name].unique().shape[0]  # Approximation
         else:
@@ -1427,6 +1441,9 @@ def _get_column_aggregate(
     else:
         from pyspark.sql.functions import approx_count_distinct
         from pyspark.sql import functions as F
+
+        if isinstance(df, pd.DataFrame):
+            df = _create_spark_dataframe(df)
 
         if function in {"COUNTDISTINCT", "DISTINCTCOUNT"}:
             result = df.select(F.count_distinct(F.col(column_name)))
@@ -1786,7 +1803,7 @@ def _create_spark_session():
     return SparkSession.builder.getOrCreate()
 
 
-def _read_delta_table(path: str, to_pandas: bool = True):
+def _read_delta_table(path: str, to_pandas: bool = True, to_df: bool = False):
 
     if _pure_python_notebook():
         from deltalake import DeltaTable
@@ -1797,6 +1814,8 @@ def _read_delta_table(path: str, to_pandas: bool = True):
     else:
         spark = _create_spark_session()
         df = spark.read.format("delta").load(path)
+        if to_df:
+            df = df.toDF()
 
     return df
 

@@ -18,6 +18,7 @@ from sempy_labs._helper_functions import (
     _mount,
     _get_parquet_file_infos,
     _read_delta_table_history,
+    _pure_python_notebook,
 )
 from sempy._utils._log import log
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
@@ -75,15 +76,14 @@ def delta_analyzer(
         A dictionary of pandas dataframes showing semantic model objects which violated the best practice analyzer rules.
     """
 
+    if _pure_python_notebook():
+        raise ValueError(
+            f"{icons.red_dot} This function cannot be run in a pure Python notebook. Please run it in a PySpark notebook."
+        )
+
     # Must calculate column stats if calculating cardinality
     if not skip_cardinality:
         column_stats = True
-
-    # display_toggle = notebookutils.common.configs.pandas_display
-
-    # Turn off notebookutils display
-    # if display_toggle is True:
-    #    notebookutils.common.configs.pandas_display = False
 
     prefix = "SLL_DeltaAnalyzer_"
     now = datetime.now()
@@ -94,9 +94,6 @@ def delta_analyzer(
     local_path = _mount(lakehouse=lakehouse, workspace=workspace)
     table_path = f"{local_path}/Tables/{table_name}"
     delta_table_path = create_abfss_path(lakehouse_id, workspace_id, table_name)
-
-    # Set back to original value
-    # notebookutils.common.configs.pandas_display = display_toggle
 
     parquet_file_df_columns = {
         # "Dataset": "string",
@@ -147,7 +144,7 @@ def delta_analyzer(
     is_vorder = any(b"vorder" in key for key in schema.keys())
 
     # Get the common details of the Delta table
-    delta_table = _read_delta_table(delta_table_path, to_pandas=False)
+    delta_table = _read_delta_table(delta_table_path)
     table_df = delta_table.toDF()
     # total_partition_count = table_df.rdd.getNumPartitions()
     row_count = table_df.count()
@@ -406,6 +403,7 @@ def delta_analyzer(
 @log
 def get_delta_table_history(
     table_name: str,
+    schema: Optional[str] = None,
     lakehouse: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
 ) -> pd.DataFrame:
@@ -416,6 +414,8 @@ def get_delta_table_history(
     ----------
     table_name : str
         The delta table name.
+    schema : str, default=None
+        The schema name of the delta table.
     lakehouse : str | uuid.UUID, default=None
         The Fabric lakehouse name or ID.
         Defaults to None which resolves to the lakehouse attached to the notebook.
@@ -437,7 +437,7 @@ def get_delta_table_history(
     (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=workspace
     )
-    path = create_abfss_path(lakehouse_id, workspace_id, table_name)
+    path = create_abfss_path(lakehouse_id, workspace_id, table_name, schema=schema)
 
     df = _read_delta_table_history(path=path)
 
