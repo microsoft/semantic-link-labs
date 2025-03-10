@@ -1792,7 +1792,9 @@ def _mount(lakehouse, workspace) -> str:
 
 
 def _get_or_create_workspace(
-    workspace: str, capacity: Optional[str | UUID] = None
+    workspace: str,
+    capacity: Optional[str | UUID] = None,
+    description: Optional[str] = None,
 ) -> Tuple[str, UUID]:
 
     capacity_id = resolve_capacity_id(capacity)
@@ -1812,7 +1814,7 @@ def _get_or_create_workspace(
 
     print(f"{icons.in_progress} Creating the '{workspace}' workspace...")
     workspace_id = fabric.create_workspace(
-        display_name=workspace, capacity_id=capacity_id
+        display_name=workspace, capacity_id=capacity_id, description=description
     )
     print(
         f"{icons.green_dot} The '{workspace}' workspace has been successfully created."
@@ -1822,7 +1824,9 @@ def _get_or_create_workspace(
 
 
 def _get_or_create_lakehouse(
-    lakehouse: str, workspace: Optional[str | UUID] = None
+    lakehouse: str,
+    workspace: Optional[str | UUID] = None,
+    description: Optional[str] = None,
 ) -> Tuple[str, UUID]:
 
     dfI = fabric.list_items(type="Lakehouse", workspace=workspace)
@@ -1839,7 +1843,9 @@ def _get_or_create_lakehouse(
         raise ValueError(f"{icons.warning} Must enter a lakehouse name, not an ID.")
 
     print(f"{icons.in_progress} Creating the '{lakehouse}' lakehouse...")
-    lakehouse_id = fabric.create_lakehouse(display_name=lakehouse, workspace=workspace)
+    lakehouse_id = fabric.create_lakehouse(
+        display_name=lakehouse, workspace=workspace, description=description
+    )
     print(
         f"{icons.green_dot} The '{lakehouse}' lakehouse has been successfully created."
     )
