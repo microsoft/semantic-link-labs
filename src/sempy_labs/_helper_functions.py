@@ -178,9 +178,7 @@ def resolve_report_name(report_id: UUID, workspace: Optional[str | UUID] = None)
         The name of the Power BI report.
     """
 
-    return fabric.resolve_item_name(
-        item_id=report_id, type="Report", workspace=workspace
-    )
+    return resolve_item_name(item_id=report_id, type="Report", workspace=workspace)
 
 
 def delete_item(
@@ -365,6 +363,26 @@ def resolve_item_name_and_id(
     return item_name, item_id
 
 
+def resolve_item_name(item_id: UUID, workspace: Optional[str | UUID] = None) -> str:
+
+    workspace_id = resolve_workspace_id(workspace)
+    try:
+        item_name = (
+            _base_api(
+                request=f"/v1/workspaces/{workspace_id}/items/{item_id}",
+                client="fabric_sp",
+            )
+            .json()
+            .get("displayName")
+        )
+    except FabricHTTPException:
+        raise ValueError(
+            f"{icons.red_dot} The '{item_id}' item was not found in the '{workspace_id}' workspace."
+        )
+
+    return item_name
+
+
 def resolve_lakehouse_name_and_id(
     lakehouse: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None
 ) -> Tuple[str, UUID]:
@@ -373,19 +391,14 @@ def resolve_lakehouse_name_and_id(
     type = "Lakehouse"
 
     if lakehouse is None:
-        lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse_name = fabric.resolve_item_name(
-            item_id=lakehouse_id, type=type, workspace=workspace_id
+        lakehouse_id = _get_fabric_context_setting(name="trident.lakehouse.id")
+        (lakehouse_name, lakehouse_id) = resolve_item_name_and_id(
+            item=lakehouse_id, type=type, workspace=workspace_id
         )
-    elif _is_valid_uuid(lakehouse):
-        lakehouse_id = lakehouse
-        lakehouse_name = fabric.resolve_item_name(
-            item_id=lakehouse_id, type=type, workspace=workspace_id
-        )
+
     else:
-        lakehouse_name = lakehouse
-        lakehouse_id = fabric.resolve_item_id(
-            item_name=lakehouse, type=type, workspace=workspace_id
+        (lakehouse_name, lakehouse_id) = resolve_item_name_and_id(
+            item=lakehouse, type=type, workspace=workspace_id
         )
 
     return lakehouse_name, lakehouse_id
@@ -447,7 +460,7 @@ def resolve_dataset_name(
         The name of the semantic model.
     """
 
-    return fabric.resolve_item_name(
+    return resolve_item_name(
         item_id=dataset_id, type="SemanticModel", workspace=workspace
     )
 
@@ -475,9 +488,9 @@ def resolve_lakehouse_name(
     """
 
     if lakehouse_id is None:
-        lakehouse_id = fabric.get_lakehouse_id()
+        lakehouse_id = _get_fabric_context_setting(name="trident.lakehouse.id")
 
-    return fabric.resolve_item_name(
+    return resolve_item_name(
         item_id=lakehouse_id, type="Lakehouse", workspace=workspace
     )
 
@@ -504,12 +517,10 @@ def resolve_lakehouse_id(
     """
 
     if lakehouse is None:
-        lakehouse_id = fabric.get_lakehouse_id()
-    elif _is_valid_uuid(lakehouse):
-        lakehouse_id = lakehouse
+        lakehouse_id = _get_fabric_context_setting(name="trident.lakehouse.id")
     else:
-        lakehouse_id = fabric.resolve_item_id(
-            item_name=lakehouse, type="Lakehouse", workspace=workspace
+        lakehouse_id = resolve_item_id(
+            item=lakehouse, type="Lakehouse", workspace=workspace
         )
 
     return lakehouse_id
@@ -845,10 +856,10 @@ def resolve_workspace_name_and_id(
 
     if workspace is None:
         workspace_id = _get_fabric_context_setting(name="trident.workspace.id")
-        workspace_name = resolve_workspace_name(workspace)
+        workspace_name = resolve_workspace_name(workspace_id)
     elif _is_valid_uuid(workspace):
         workspace_id = workspace
-        workspace_name = resolve_workspace_name(workspace)
+        workspace_name = resolve_workspace_name(workspace_id)
     else:
         responses = _base_api(
             request="/v1/workspaces", client="fabric_sp", uses_pagination=True
@@ -979,7 +990,7 @@ def resolve_dataset_from_report(
     dfR = _get_report(report=report, workspace=workspace)
     dataset_id = dfR["Dataset Id"].iloc[0]
     dataset_workspace_id = dfR["Dataset Workspace Id"].iloc[0]
-    dataset_workspace = fabric.resolve_workspace_name(dataset_workspace_id)
+    dataset_workspace = resolve_workspace_name(workspace_id=dataset_workspace_id)
     dataset_name = resolve_dataset_name(
         dataset_id=dataset_id, workspace=dataset_workspace
     )
