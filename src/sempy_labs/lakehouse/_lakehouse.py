@@ -6,7 +6,8 @@ from sempy_labs._helper_functions import (
     _base_api,
     resolve_lakehouse_name_and_id,
     resolve_workspace_name_and_id,
-    _create_spark_session,
+    _optimize_table,
+    _vacuum_table,
 )
 import sempy_labs._icons as icons
 import re
@@ -56,27 +57,20 @@ def optimize_lakehouse_tables(
     """
 
     from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
-    from delta import DeltaTable
 
-    lakeTables = get_lakehouse_tables(lakehouse=lakehouse, workspace=workspace)
-    lakeTablesDelta = lakeTables[lakeTables["Format"] == "delta"]
+    df = get_lakehouse_tables(lakehouse=lakehouse, workspace=workspace)
+    df_delta = df[df["Format"] == "delta"]
 
     if isinstance(tables, str):
         tables = [tables]
 
-    if tables is not None:
-        tables_filt = lakeTablesDelta[lakeTablesDelta["Table Name"].isin(tables)]
-    else:
-        tables_filt = lakeTablesDelta.copy()
+    df_tables = df_delta[df_delta["Table Name"].isin(tables)] if tables else df_delta
 
-    spark = _create_spark_session()
-
-    for _, r in (bar := tqdm(tables_filt.iterrows())):
-        tableName = r["Table Name"]
-        tablePath = r["Location"]
-        bar.set_description(f"Optimizing the '{tableName}' table...")
-        deltaTable = DeltaTable.forPath(spark, tablePath)
-        deltaTable.optimize().executeCompaction()
+    for _, r in (bar := tqdm(df_tables.iterrows())):
+        table_name = r["Table Name"]
+        path = r["Location"]
+        bar.set_description(f"Optimizing the '{table_name}' table...")
+        _optimize_table(path=path)
 
 
 @log
@@ -108,32 +102,20 @@ def vacuum_lakehouse_tables(
     """
 
     from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
-    from delta import DeltaTable
 
-    lakeTables = get_lakehouse_tables(lakehouse=lakehouse, workspace=workspace)
-    lakeTablesDelta = lakeTables[lakeTables["Format"] == "delta"]
+    df = get_lakehouse_tables(lakehouse=lakehouse, workspace=workspace)
+    df_delta = df[df["Format"] == "delta"]
 
     if isinstance(tables, str):
         tables = [tables]
 
-    if tables is not None:
-        tables_filt = lakeTablesDelta[lakeTablesDelta["Table Name"].isin(tables)]
-    else:
-        tables_filt = lakeTablesDelta.copy()
+    df_tables = df_delta[df_delta["Table Name"].isin(tables)] if tables else df_delta
 
-    spark = _create_spark_session()
-    spark.conf.set("spark.databricks.delta.vacuum.parallelDelete.enabled", "true")
-
-    for _, r in (bar := tqdm(tables_filt.iterrows())):
-        tableName = r["Table Name"]
-        tablePath = r["Location"]
-        bar.set_description(f"Vacuuming the '{tableName}' table...")
-        deltaTable = DeltaTable.forPath(spark, tablePath)
-
-        if retain_n_hours is None:
-            deltaTable.vacuum()
-        else:
-            deltaTable.vacuum(retain_n_hours)
+    for _, r in (bar := tqdm(df_tables.iterrows())):
+        table_name = r["Table Name"]
+        path = r["Location"]
+        bar.set_description(f"Vacuuming the '{table_name}' table...")
+        _vacuum_table(path=path, retain_n_hours=retain_n_hours)
 
 
 def run_table_maintenance(
