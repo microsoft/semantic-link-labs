@@ -2,11 +2,10 @@ import os
 import sempy.fabric
 from unittest.mock import patch
 from sempy_labs.tom import connect_semantic_model
-import os
 
 
-@patch("sempy.fabric.resolve_item_id")
-@patch("sempy.fabric.resolve_workspace_id")
+@patch("sempy_labs._helper_functions.resolve_item_id")
+@patch("sempy_labs._helper_functions.resolve_workspace_id")
 @patch("sempy_labs._helper_functions.resolve_dataset_name_and_id")
 @patch("sempy_labs._helper_functions.resolve_workspace_name_and_id")
 @patch("sempy.fabric.create_tom_server")

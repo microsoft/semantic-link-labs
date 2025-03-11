@@ -4,7 +4,7 @@ import json
 import base64
 import time
 import uuid
-from sempy.fabric.exceptions import FabricHTTPException
+from sempy.fabric.exceptions import FabricHTTPException, WorkspaceNotFoundException
 import pandas as pd
 from functools import wraps
 import datetime
@@ -183,9 +183,7 @@ def resolve_report_name(report_id: UUID, workspace: Optional[str | UUID] = None)
         The name of the Power BI report.
     """
 
-    return fabric.resolve_item_name(
-        item_id=report_id, type="Report", workspace=workspace
-    )
+    return resolve_item_name(item_id=report_id, type="Report", workspace=workspace)
 
 
 def delete_item(
@@ -310,37 +308,84 @@ def get_item_definition(
 
 
 def resolve_item_id(
-    item: str | UUID, type: str, workspace: Optional[str] = None
+    item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None
 ) -> UUID:
 
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    item_id = None
+
     if _is_valid_uuid(item):
-        return item
+        # Check (optional)
+        item_id = item
+        try:
+            _base_api(
+                request=f"/v1/workspaces/{workspace_id}/items/{item_id}",
+                client="fabric_sp",
+            )
+        except FabricHTTPException:
+            raise ValueError(
+                f"{icons.red_dot} The '{item_id}' item was not found in the '{workspace_name}' workspace."
+            )
     else:
-        return fabric.resolve_item_id(item_name=item, type=type, workspace=workspace)
+        if type is None:
+            raise ValueError(
+                f"{icons.red_dot} The 'type' parameter is required if specifying an item name."
+            )
+        responses = _base_api(
+            request=f"/v1/workspaces/{workspace_id}/items?type={type}",
+            client="fabric_sp",
+            uses_pagination=True,
+        )
+        for r in responses:
+            for v in r.get("value", []):
+                display_name = v.get("displayName")
+                if display_name == item:
+                    item_id = v.get("id")
+                    break
+
+    if item_id is None:
+        raise ValueError(
+            f"{icons.red_dot} There's no item '{item}' of type '{type}' in the '{workspace_name}' workspace."
+        )
+
+    return item_id
 
 
 def resolve_item_name_and_id(
     item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None
 ) -> Tuple[str, UUID]:
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    if _is_valid_uuid(item):
-        item_id = item
-        item_name = fabric.resolve_item_name(
-            item_id=item_id, type=type, workspace=workspace_id
+    workspace_id = resolve_workspace_id(workspace)
+    item_id = resolve_item_id(item=item, type=type, workspace=workspace_id)
+    item_name = (
+        _base_api(
+            request=f"/v1/workspaces/{workspace_id}/items/{item_id}", client="fabric_sp"
         )
-    else:
-        if type is None:
-            raise ValueError(
-                f"{icons.warning} Must specify a 'type' if specifying a name as the 'item'."
-            )
-        item_name = item
-        item_id = fabric.resolve_item_id(
-            item_name=item, type=type, workspace=workspace_id
-        )
+        .json()
+        .get("displayName")
+    )
 
     return item_name, item_id
+
+
+def resolve_item_name(item_id: UUID, workspace: Optional[str | UUID] = None) -> str:
+
+    workspace_id = resolve_workspace_id(workspace)
+    try:
+        item_name = (
+            _base_api(
+                request=f"/v1/workspaces/{workspace_id}/items/{item_id}",
+                client="fabric_sp",
+            )
+            .json()
+            .get("displayName")
+        )
+    except FabricHTTPException:
+        raise ValueError(
+            f"{icons.red_dot} The '{item_id}' item was not found in the '{workspace_id}' workspace."
+        )
+
+    return item_name
 
 
 def resolve_lakehouse_name_and_id(
@@ -351,19 +396,18 @@ def resolve_lakehouse_name_and_id(
     type = "Lakehouse"
 
     if lakehouse is None:
-        lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse_name = fabric.resolve_item_name(
-            item_id=lakehouse_id, type=type, workspace=workspace_id
+        lakehouse_id = _get_fabric_context_setting(name="trident.lakehouse.id")
+        if lakehouse_id == "":
+            raise ValueError(
+                f"{icons.red_dot} Cannot resolve a lakehouse. Please enter a valid lakehouse or make sure a lakehouse is attached to the notebook."
+            )
+        (lakehouse_name, lakehouse_id) = resolve_item_name_and_id(
+            item=lakehouse_id, type=type, workspace=workspace_id
         )
-    elif _is_valid_uuid(lakehouse):
-        lakehouse_id = lakehouse
-        lakehouse_name = fabric.resolve_item_name(
-            item_id=lakehouse_id, type=type, workspace=workspace_id
-        )
+
     else:
-        lakehouse_name = lakehouse
-        lakehouse_id = fabric.resolve_item_id(
-            item_name=lakehouse, type=type, workspace=workspace_id
+        (lakehouse_name, lakehouse_id) = resolve_item_name_and_id(
+            item=lakehouse, type=type, workspace=workspace_id
         )
 
     return lakehouse_name, lakehouse_id
@@ -425,7 +469,7 @@ def resolve_dataset_name(
         The name of the semantic model.
     """
 
-    return fabric.resolve_item_name(
+    return resolve_item_name(
         item_id=dataset_id, type="SemanticModel", workspace=workspace
     )
 
@@ -453,9 +497,13 @@ def resolve_lakehouse_name(
     """
 
     if lakehouse_id is None:
-        lakehouse_id = fabric.get_lakehouse_id()
+        lakehouse_id = _get_fabric_context_setting(name="trident.lakehouse.id")
+        if lakehouse_id == "":
+            raise ValueError(
+                f"{icons.red_dot} Cannot resolve a lakehouse. Please enter a valid lakehouse or make sure a lakehouse is attached to the notebook."
+            )
 
-    return fabric.resolve_item_name(
+    return resolve_item_name(
         item_id=lakehouse_id, type="Lakehouse", workspace=workspace
     )
 
@@ -482,12 +530,14 @@ def resolve_lakehouse_id(
     """
 
     if lakehouse is None:
-        lakehouse_id = fabric.get_lakehouse_id()
-    elif _is_valid_uuid(lakehouse):
-        lakehouse_id = lakehouse
+        lakehouse_id = _get_fabric_context_setting(name="trident.lakehouse.id")
+        if lakehouse_id == "":
+            raise ValueError(
+                f"{icons.red_dot} Cannot resolve a lakehouse. Please enter a valid lakehouse or make sure a lakehouse is attached to the notebook."
+            )
     else:
-        lakehouse_id = fabric.resolve_item_id(
-            item_name=lakehouse, type="Lakehouse", workspace=workspace
+        lakehouse_id = resolve_item_id(
+            item=lakehouse, type="Lakehouse", workspace=workspace
         )
 
     return lakehouse_id
@@ -756,6 +806,52 @@ def language_validate(language: str):
     return lang
 
 
+def resolve_workspace_id(
+    workspace: Optional[str | UUID] = None,
+) -> UUID:
+    if workspace is None:
+        workspace_id = _get_fabric_context_setting(name="trident.workspace.id")
+    elif _is_valid_uuid(workspace):
+        # Check (optional)
+        workspace_id = workspace
+        try:
+            _base_api(request=f"/v1/workspaces/{workspace_id}", client="fabric_sp")
+        except FabricHTTPException:
+            raise ValueError(
+                f"{icons.red_dot} The '{workspace_id}' workspace was not found."
+            )
+    else:
+        responses = _base_api(
+            request="/v1/workspaces", client="fabric_sp", uses_pagination=True
+        )
+        workspace_id = None
+        for r in responses:
+            for v in r.get("value", []):
+                display_name = v.get("displayName")
+                if display_name == workspace:
+                    workspace_id = v.get("id")
+                    break
+
+    if workspace_id is None:
+        raise WorkspaceNotFoundException(workspace)
+
+    return workspace_id
+
+
+def resolve_workspace_name(workspace_id: UUID) -> str:
+
+    try:
+        response = _base_api(
+            request=f"/v1/workspaces/{workspace_id}", client="fabric_sp"
+        ).json()
+    except FabricHTTPException:
+        raise ValueError(
+            f"{icons.red_dot} The '{workspace_id}' workspace was not found."
+        )
+
+    return response.get("displayName")
+
+
 def resolve_workspace_name_and_id(
     workspace: Optional[str | UUID] = None,
 ) -> Tuple[str, str]:
@@ -776,16 +872,29 @@ def resolve_workspace_name_and_id(
     """
 
     if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace_name = fabric.resolve_workspace_name(workspace_id)
+        workspace_id = _get_fabric_context_setting(name="trident.workspace.id")
+        workspace_name = resolve_workspace_name(workspace_id)
     elif _is_valid_uuid(workspace):
         workspace_id = workspace
-        workspace_name = fabric.resolve_workspace_name(workspace_id)
+        workspace_name = resolve_workspace_name(workspace_id)
     else:
-        workspace_name = workspace
-        workspace_id = fabric.resolve_workspace_id(workspace_name)
+        responses = _base_api(
+            request="/v1/workspaces", client="fabric_sp", uses_pagination=True
+        )
+        workspace_id = None
+        workspace_name = None
+        for r in responses:
+            for v in r.get("value", []):
+                display_name = v.get("displayName")
+                if display_name == workspace:
+                    workspace_name = workspace
+                    workspace_id = v.get("id")
+                    break
 
-    return str(workspace_name), str(workspace_id)
+    if workspace_name is None or workspace_id is None:
+        raise WorkspaceNotFoundException(workspace)
+
+    return workspace_name, workspace_id
 
 
 def _extract_json(dataframe: pd.DataFrame) -> dict:
@@ -898,7 +1007,7 @@ def resolve_dataset_from_report(
     dfR = _get_report(report=report, workspace=workspace)
     dataset_id = dfR["Dataset Id"].iloc[0]
     dataset_workspace_id = dfR["Dataset Workspace Id"].iloc[0]
-    dataset_workspace = fabric.resolve_workspace_name(dataset_workspace_id)
+    dataset_workspace = resolve_workspace_name(workspace_id=dataset_workspace_id)
     dataset_name = resolve_dataset_name(
         dataset_id=dataset_id, workspace=dataset_workspace
     )
