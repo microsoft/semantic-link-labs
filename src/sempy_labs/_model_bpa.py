@@ -6,7 +6,6 @@ from IPython.display import display, HTML
 from sempy_labs._model_dependencies import get_model_calc_dependencies
 from sempy_labs._helper_functions import (
     format_dax_object_name,
-    resolve_lakehouse_name,
     create_relationship_name,
     save_as_delta_table,
     resolve_workspace_capacity,
@@ -389,13 +388,7 @@ def run_model_bpa(
         dfExport = finalDF.copy()
         delta_table_name = "modelbparesults"
 
-        lakehouse_id = fabric.get_lakehouse_id()
-        lake_workspace = fabric.get_workspace_id()
-        lakehouse = resolve_lakehouse_name(
-            lakehouse_id=lakehouse_id, workspace=lake_workspace
-        )
-
-        lakeT = get_lakehouse_tables(lakehouse=lakehouse, workspace=lake_workspace)
+        lakeT = get_lakehouse_tables()
         lakeT_filt = lakeT[lakeT["Table Name"] == delta_table_name]
 
         dfExport["Severity"].replace(icons.severity_mapping, inplace=True)
@@ -404,7 +397,7 @@ def run_model_bpa(
             runId = 1
         else:
             max_run_id = _get_column_aggregate(
-                lakehouse=lakehouse, table_name=delta_table_name
+                table_name=delta_table_name
             )
             runId = max_run_id + 1
 
