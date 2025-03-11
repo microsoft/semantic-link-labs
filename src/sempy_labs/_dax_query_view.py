@@ -13,8 +13,7 @@ def generate_dax_query_view_url(
     dataset: str | UUID, dax_string: str, workspace: Optional[str | UUID] = None
 ):
     """
-    Prints a URL to the DAX query view of a dataset in Power BI.
-    This URL can be used to view the DAX query in the Power BI service.
+    Prints a URL based on query provided. This URL opens the `DAX query view <https://learn.microsoft.com/power-bi/transform-model/dax-query-view>`_ in the Power BI service.
 
     Parameters
     ----------
