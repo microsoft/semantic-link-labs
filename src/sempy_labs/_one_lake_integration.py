@@ -5,6 +5,7 @@ from sempy._utils._log import log
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
+    resolve_workspace_id,
 )
 import sempy_labs._icons as icons
 from uuid import UUID
@@ -43,7 +44,7 @@ def export_model_to_onelake(
         destination_workspace = workspace_name
         destination_workspace_id = workspace_id
     else:
-        destination_workspace_id = fabric.resolve_workspace_id(destination_workspace)
+        destination_workspace_id = resolve_workspace_id(workspace=destination_workspace)
 
     tmsl = f"""
     {{

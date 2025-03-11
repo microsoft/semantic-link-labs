@@ -28,7 +28,7 @@ def generate_dax_query_view_url(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    workspace_id = resolve_workspace_id(workspace)
+    workspace_id = resolve_workspace_id(workspace=workspace)
     dataset_id = resolve_dataset_id(dataset=dataset, workspace=workspace_id)
 
     prefix = _get_fabric_context_setting(name="spark.trident.pbienv").lower()
