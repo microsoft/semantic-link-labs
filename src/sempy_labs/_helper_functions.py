@@ -720,19 +720,19 @@ def save_as_delta_table(
 
     spark = _create_spark_session()
 
-        type_mapping = {
-            "string": StringType(),
-            "str": StringType(),
-            "integer": IntegerType(),
-            "int": IntegerType(),
-            "float": FloatType(),
-            "date": DateType(),
-            "bool": BooleanType(),
-            "boolean": BooleanType(),
-            "long": LongType(),
-            "double": DoubleType(),
-            "timestamp": TimestampType(),
-        }
+    type_mapping = {
+        "string": StringType(),
+        "str": StringType(),
+        "integer": IntegerType(),
+        "int": IntegerType(),
+        "float": FloatType(),
+        "date": DateType(),
+        "bool": BooleanType(),
+        "boolean": BooleanType(),
+        "long": LongType(),
+        "double": DoubleType(),
+        "timestamp": TimestampType(),
+    }
 
     if isinstance(dataframe, pd.DataFrame):
         dataframe.columns = [col.replace(" ", "_") for col in dataframe.columns]
