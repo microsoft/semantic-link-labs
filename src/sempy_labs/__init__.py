@@ -10,6 +10,7 @@ from sempy_labs._mounted_data_factories import (
 from sempy_labs._semantic_models import (
     get_semantic_model_refresh_schedule,
     enable_semantic_model_scheduled_refresh,
+    delete_semantic_model,
 )
 from sempy_labs._graphQL import (
     list_graphql_apis,
@@ -544,4 +545,5 @@ __all__ = [
     "get_mounted_data_factory_definition",
     "delete_mounted_data_factory",
     "generate_dax_query_view_url",
+    "delete_semantic_model",
 ]
