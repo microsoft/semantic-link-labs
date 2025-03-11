@@ -1,3 +1,6 @@
+from sempy_labs._dax_query_view import (
+    generate_dax_query_view_url,
+)
 from sempy_labs._mounted_data_factories import (
     list_mounted_data_factories,
     get_mounted_data_factory_definition,
@@ -540,4 +543,5 @@ __all__ = [
     "list_mounted_data_factories",
     "get_mounted_data_factory_definition",
     "delete_mounted_data_factory",
+    "generate_dax_query_view_url",
 ]
