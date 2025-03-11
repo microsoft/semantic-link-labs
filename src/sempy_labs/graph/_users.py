@@ -130,7 +130,6 @@ def send_mail(
     bcc_recipients: str | List[str] = None,
     priority: str = "Normal",
     follow_up_flag: bool = False,
-    # attachments: str | List[str] = None,
 ):
     """
     Sends an email to the specified recipients.
