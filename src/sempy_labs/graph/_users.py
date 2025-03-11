@@ -130,7 +130,7 @@ def send_mail(
     bcc_recipients: str | List[str] = None,
     priority: str = "Normal",
     follow_up_flag: bool = False,
-    attachments: str | List[str] = None,
+    # attachments: str | List[str] = None,
 ):
     """
     Sends an email to the specified recipients.
@@ -159,12 +159,12 @@ def send_mail(
         The email priority. Options: "Normal", "High", or "Low".
     follow_up_flag : bool, default=False
         Whether to set a follow-up flag for the email.
-    attachments : str | List[str], default=None
-        The abfss path or a list of the abfss paths of the attachments to include in the email.
     """
 
-    import base64
-    from sempy_labs._helper_functions import _create_spark_session
+    #import base64
+    #from sempy_labs._helper_functions import _create_spark_session
+    #attachments : str | List[str], default=None
+        #The abfss path or a list of the abfss paths of the attachments to include in the email.
 
     if content_type.lower() == "html":
         content_type = "HTML"
@@ -221,33 +221,33 @@ def send_mail(
     if follow_up_flag:
         payload["message"]["flag"] = {"flagStatus": "flagged"}
 
-    if attachments:
-        if isinstance(attachments, str):
-            attachments = [attachments]
+    #if attachments:
+    #    if isinstance(attachments, str):
+    #        attachments = [attachments]
 
-        for abfss_path in attachments:
-            file_name = abfss_path.split("/")[-1]
-            if "attachments" not in payload["message"]:
-                payload["message"]["attachments"] = []
+    #    for abfss_path in attachments:
+    #        file_name = abfss_path.split("/")[-1]
+    #        if "attachments" not in payload["message"]:
+    #            payload["message"]["attachments"] = []
 
-            spark = _create_spark_session()
-            spark_file = (
-                spark.read.format("binaryFile")
-                .load(abfss_path)
-                .select("content")
-                .collect()[0][0]
-            )
-            content_bytes = base64.b64encode(spark_file).decode(
-                "utf-8"
-            )  # Convert bytearray to base64 string
+    #        spark = _create_spark_session()
+    #        spark_file = (
+    #            spark.read.format("binaryFile")
+    #            .load(abfss_path)
+    #            .select("content")
+    #            .collect()[0][0]
+    #        )
+    #        content_bytes = base64.b64encode(spark_file).decode(
+    #            "utf-8"
+    #        )  # Convert bytearray to base64 string
 
-            payload["message"]["attachments"].append(
-                {
-                    "@odata.type": "#microsoft.graph.fileAttachment",
-                    "name": file_name,
-                    "contentBytes": content_bytes,
-                }
-            )
+    #        payload["message"]["attachments"].append(
+    #            {
+    #                "@odata.type": "#microsoft.graph.fileAttachment",
+    #                "name": file_name,
+    #                "contentBytes": content_bytes,
+    #            }
+    #        )
 
     _base_api(
         request=f"users/{user_id}/sendMail",
