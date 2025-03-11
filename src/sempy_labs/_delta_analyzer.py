@@ -106,12 +106,14 @@ def delta_analyzer(
         lakehouse=lakehouse, workspace=workspace
     )
 
-    delta_table_path = create_abfss_path(lakehouse_id, workspace_id, table_name, schema=schema)
+    delta_table_path = create_abfss_path(
+        lakehouse_id, workspace_id, table_name, schema=schema
+    )
     local_path = _mount(lakehouse=lakehouse, workspace=workspace)
     if schema is not None:
         table_path = f"{local_path}/Tables/{schema}/{table_name}"
     else:
-        table_path = f"{local_path}/Tables/{table_name}" 
+        table_path = f"{local_path}/Tables/{table_name}"
 
     parquet_file_df_columns = {
         # "Dataset": "string",

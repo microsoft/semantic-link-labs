@@ -113,9 +113,7 @@ def migrate_workspaces(
         else:
             continue
 
-        if assign_workspace_to_capacity(
-            capacity=target_capacity, workspace=workspace
-        ):
+        if assign_workspace_to_capacity(capacity=target_capacity, workspace=workspace):
             migrated_workspaces.append(workspace)
 
     if len(migrated_workspaces) < workspace_count:
