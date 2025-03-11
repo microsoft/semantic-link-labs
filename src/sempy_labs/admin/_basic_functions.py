@@ -354,9 +354,10 @@ def _resolve_workspace_name_and_id(
     workspace: str | UUID,
 ) -> Tuple[str, UUID]:
 
+    from sempy_labs._helper_functions import resolve_workspace_name_and_id
+
     if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace_name = fabric.resolve_workspace_name(workspace_id)
+        (workspace_name, workspace_id) = resolve_workspace_name_and_id()
     else:
         dfW = list_workspaces(workspace=workspace)
         if not dfW.empty:

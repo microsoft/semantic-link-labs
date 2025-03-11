@@ -3,10 +3,11 @@ import sempy_labs._icons as icons
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
-    resolve_lakehouse_name,
+    resolve_lakehouse_name_and_id,
     _base_api,
     resolve_item_id,
     _mount,
+    resolve_workspace_name,
 )
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from uuid import UUID
@@ -44,11 +45,8 @@ def download_report(
         )
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    lakehouse_id = fabric.get_lakehouse_id()
-    lakehouse_workspace = fabric.resolve_workspace_name()
-    lakehouse_name = resolve_lakehouse_name(
-        lakehouse_id=lakehouse_id, workspace=lakehouse_workspace
-    )
+    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id()
+    lakehouse_workspace = resolve_workspace_name()
 
     download_types = ["LiveConnect", "IncludeModel"]
     if download_type not in download_types:

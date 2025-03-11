@@ -838,7 +838,10 @@ def resolve_workspace_id(
     return workspace_id
 
 
-def resolve_workspace_name(workspace_id: UUID) -> str:
+def resolve_workspace_name(workspace_id: Optional[UUID] = None) -> str:
+
+    if workspace_id is None:
+        workspace_id = _get_fabric_context_setting(name="trident.workspace.id")
 
     try:
         response = _base_api(

@@ -319,9 +319,9 @@ def _create_report(
 
     from sempy_labs.report import report_rebind
 
-    report_workspace = fabric.resolve_workspace_name(report_workspace)
-    report_workspace_id = fabric.resolve_workspace_id(report_workspace)
-    dataset_workspace = fabric.resolve_workspace_name(dataset_workspace)
+    (report_workspace_name, report_workspace_id) = resolve_workspace_name_and_id(
+        workspace=report_workspace
+    )
 
     dfR = fabric.list_reports(workspace=report_workspace)
     dfR_filt = dfR[dfR["Name"] == report]
@@ -338,7 +338,7 @@ def _create_report(
         )
 
         print(
-            f"{icons.green_dot} The '{report}' report has been created within the '{report_workspace}'"
+            f"{icons.green_dot} The '{report}' report has been created within the '{report_workspace_name}'"
         )
         updated_report = True
     # Update the report if it exists
@@ -352,12 +352,12 @@ def _create_report(
             status_codes=None,
         )
         print(
-            f"{icons.green_dot} The '{report}' report has been updated within the '{report_workspace}'"
+            f"{icons.green_dot} The '{report}' report has been updated within the '{report_workspace_name}'"
         )
         updated_report = True
     else:
         raise ValueError(
-            f"{icons.red_dot} The '{report}' report within the '{report_workspace}' workspace already exists and the 'overwrite' parameter was set to False."
+            f"{icons.red_dot} The '{report}' report within the '{report_workspace_name}' workspace already exists and the 'overwrite' parameter was set to False."
         )
 
     # Rebind the report to the semantic model to make sure it is pointed at the correct semantic model

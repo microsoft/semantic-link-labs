@@ -1,5 +1,4 @@
 import sempy
-import sempy.fabric as fabric
 from sempy_labs.tom import connect_semantic_model
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
 from sempy_labs.directlake._dl_helper import get_direct_lake_source
@@ -7,6 +6,7 @@ from sempy_labs._helper_functions import (
     _convert_data_type,
     resolve_dataset_name_and_id,
     resolve_workspace_name_and_id,
+    resolve_workspace_name,
 )
 from typing import List, Optional, Union
 import sempy_labs._icons as icons
@@ -144,7 +144,7 @@ def add_table_to_direct_lake_semantic_model(
             f"{icons.red_dot} This function only supports Direct Lake semantic models where the source lakehouse resides in the same workpace as the semantic model."
         )
 
-    lakehouse_workspace = fabric.resolve_workspace_name(lakehouse_workspace_id)
+    lakehouse_workspace = resolve_workspace_name(workspace_id=lakehouse_workspace_id)
 
     with connect_semantic_model(
         dataset=dataset_id, readonly=False, workspace=workspace_id

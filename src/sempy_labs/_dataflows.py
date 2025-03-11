@@ -1,4 +1,3 @@
-import sempy.fabric as fabric
 import pandas as pd
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
@@ -6,6 +5,7 @@ from sempy_labs._helper_functions import (
     _update_dataframe_datatypes,
     _base_api,
     _create_dataframe,
+    resolve_workspace_name,
 )
 from typing import Optional, Tuple
 import sempy_labs._icons as icons
@@ -187,7 +187,7 @@ def list_upstream_dataflows(
         for v in values:
             tgt_dataflow_id = v.get("targetDataflowId")
             tgt_workspace_id = v.get("groupId")
-            tgt_workspace_name = fabric.resolve_workspace_name(tgt_workspace_id)
+            tgt_workspace_name = resolve_workspace_name(workspace_id=tgt_workspace_id)
             (tgt_dataflow_name, _) = _resolve_dataflow_name_and_id(
                 dataflow=tgt_dataflow_id, workspace=tgt_workspace_id
             )

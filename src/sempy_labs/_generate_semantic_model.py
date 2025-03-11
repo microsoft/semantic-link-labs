@@ -11,6 +11,7 @@ from sempy_labs._helper_functions import (
     _decode_b64,
     _base_api,
     _mount,
+    resolve_workspace_id,
 )
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 import sempy_labs._icons as icons
@@ -285,7 +286,7 @@ def deploy_semantic_model(
 
     if target_workspace is None:
         target_workspace_name = source_workspace_name
-        target_workspace_id = fabric.resolve_workspace_id(target_workspace_name)
+        target_workspace_id = resolve_workspace_id(workspace=target_workspace_name)
     else:
         (target_workspace_name, target_workspace_id) = resolve_workspace_name_and_id(
             target_workspace

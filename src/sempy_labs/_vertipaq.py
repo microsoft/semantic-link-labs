@@ -15,6 +15,8 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
     _create_spark_session,
+    resolve_workspace_id,
+    resolve_workspace_name,
 )
 from sempy_labs._list_functions import list_relationships, list_tables
 from sempy_labs.lakehouse import lakehouse_attached, get_lakehouse_tables
@@ -196,8 +198,10 @@ def vertipaq_analyzer(
                 & (~dfC["Column Name"].str.startswith("RowNumber-"))
             ]
 
-            object_workspace = fabric.resolve_workspace_name(lakehouse_workspace_id)
-            current_workspace_id = fabric.get_workspace_id()
+            object_workspace = resolve_workspace_name(
+                workspace_id=lakehouse_workspace_id
+            )
+            current_workspace_id = resolve_workspace_id()
             if current_workspace_id != lakehouse_workspace_id:
                 lakeTables = get_lakehouse_tables(
                     lakehouse=lakehouse_name, workspace=object_workspace
@@ -526,22 +530,15 @@ def vertipaq_analyzer(
             )
 
     if export == "table":
-        lakehouse_id = fabric.get_lakehouse_id()
-        lake_workspace = fabric.resolve_workspace_name()
-        lakehouse = resolve_lakehouse_name(
-            lakehouse_id=lakehouse_id, workspace=lake_workspace
-        )
         lakeTName = "vertipaqanalyzer_model"
 
-        lakeT = get_lakehouse_tables(lakehouse=lakehouse, workspace=lake_workspace)
+        lakeT = get_lakehouse_tables()
         lakeT_filt = lakeT[lakeT["Table Name"] == lakeTName]
 
         if len(lakeT_filt) == 0:
             runId = 1
         else:
-            max_run_id = _get_column_aggregate(
-                lakehouse=lakehouse, table_name=lakeTName
-            )
+            max_run_id = _get_column_aggregate(table_name=lakeTName)
             runId = max_run_id + 1
 
         dfMap = {

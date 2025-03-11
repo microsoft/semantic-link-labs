@@ -1,9 +1,9 @@
-import sempy.fabric as fabric
 from sempy_labs._helper_functions import (
     resolve_dataset_id,
     resolve_workspace_name_and_id,
     resolve_report_id,
     _base_api,
+    resolve_dataset_name_and_id,
 )
 from typing import Optional, List
 from sempy._utils._log import log
@@ -104,10 +104,12 @@ def report_rebind_all(
             f"{icons.red_dot} The 'dataset' and 'new_dataset' parameters are both set to '{dataset}'. These parameters must be set to different values."
         )
 
-    dataset_workspace = fabric.resolve_workspace_name(dataset_workspace)
-
-    if new_dataset_workpace is None:
-        new_dataset_workpace = dataset_workspace
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(
+        dataset=dataset, workspace=dataset_workspace
+    )
+    (dataset_workspace_name, dataset_workspace_id) = resolve_workspace_name_and_id(
+        workspace=dataset_workspace
+    )
 
     if isinstance(report_workspace, str):
         report_workspace = [report_workspace]
@@ -118,7 +120,7 @@ def report_rebind_all(
 
     if len(dfR) == 0:
         print(
-            f"{icons.info} The '{dataset}' semantic model within the '{dataset_workspace}' workspace has no dependent reports."
+            f"{icons.info} The '{dataset_name}' semantic model within the '{dataset_workspace_name}' workspace has no dependent reports."
         )
         return
 

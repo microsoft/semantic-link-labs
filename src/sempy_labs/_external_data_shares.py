@@ -1,4 +1,3 @@
-import sempy.fabric as fabric
 from uuid import UUID
 import pandas as pd
 from typing import Optional, List
@@ -7,6 +6,7 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _base_api,
     _create_dataframe,
+    resolve_item_id,
 )
 
 
@@ -39,9 +39,7 @@ def create_external_data_share(
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    item_id = fabric.resolve_item_id(
-        item_name=item_name, type=item_type, workspace=workspace_id
-    )
+    item_id = resolve_item_id(item=item_name, type=item_type, workspace=workspace_id)
 
     if isinstance(paths, str):
         paths = [paths]
@@ -85,9 +83,7 @@ def revoke_external_data_share(
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    item_id = fabric.resolve_item_id(
-        item_name=item_name, type=item_type, workspace=workspace_id
-    )
+    item_id = resolve_item_id(item=item_name, type=item_type, workspace=workspace_id)
 
     _base_api(
         request=f"/v1/workspaces/{workspace_id}/items/{item_id}/externalDataShares/{external_data_share_id}/revoke",
@@ -124,9 +120,7 @@ def list_external_data_shares_in_item(
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    item_id = fabric.resolve_item_id(
-        item_name=item_name, type=item_type, workspace=workspace_id
-    )
+    item_id = resolve_item_id(item=item_name, type=item_type, workspace=workspace_id)
 
     columns = {
         "External Data Share Id": "string",

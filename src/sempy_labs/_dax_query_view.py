@@ -1,9 +1,9 @@
-import sempy.fabric as fabric
 from typing import Optional
 from uuid import UUID
 from sempy_labs._helper_functions import (
     resolve_dataset_id,
     _get_fabric_context_setting,
+    resolve_workspace_id,
 )
 import gzip
 import base64
@@ -19,7 +19,7 @@ def generate_dax_query_view_url(
     Parameters
     ----------
     dataset : str | uuid.UUID
-        The dataset name or ID.
+        The semantic model name or ID.
     dax_string : str
         The DAX query string.
     workspace : str | uuid.UUID, default=None
@@ -28,7 +28,7 @@ def generate_dax_query_view_url(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    workspace_id = fabric.resolve_workspace_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
     dataset_id = resolve_dataset_id(dataset=dataset, workspace=workspace_id)
 
     prefix = _get_fabric_context_setting(name="spark.trident.pbienv").lower()

@@ -4,6 +4,7 @@ from sempy_labs._helper_functions import (
     format_dax_object_name,
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
+    resolve_workspace_name,
 )
 from IPython.display import display
 from sempy_labs.lakehouse import get_lakehouse_columns
@@ -70,7 +71,7 @@ def direct_lake_schema_compare(
             f"{icons.red_dot} This function only supports Direct Lake semantic models where the source lakehouse resides in the same workpace as the semantic model."
         )
 
-    lakehouse_workspace = fabric.resolve_workspace_name(lakehouse_workspace_id)
+    lakehouse_workspace = resolve_workspace_name(workspace_id=lakehouse_workspace_id)
     dfT = fabric.list_tables(dataset=dataset_id, workspace=workspace_id)
     dfC = fabric.list_columns(dataset=dataset_id, workspace=workspace_id)
     lc = get_lakehouse_columns(lakehouse_name, lakehouse_workspace)

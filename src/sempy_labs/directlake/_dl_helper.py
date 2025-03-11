@@ -7,7 +7,6 @@ import sempy_labs._icons as icons
 from sempy._utils._log import log
 from sempy_labs._helper_functions import (
     retry,
-    resolve_lakehouse_name,
     _convert_data_type,
     resolve_dataset_name_and_id,
     resolve_workspace_name_and_id,
@@ -129,11 +128,6 @@ def generate_direct_lake_semantic_model(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     if lakehouse_workspace is None:
         lakehouse_workspace = workspace
-    if lakehouse is None:
-        lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse_workspace_id = fabric.get_workspace_id()
-        lakehouse_workspace = fabric.resolve_workspace_name(lakehouse_workspace_id)
-        lakehouse = resolve_lakehouse_name(lakehouse_id, lakehouse_workspace)
 
     dfLT = get_lakehouse_tables(lakehouse=lakehouse, workspace=lakehouse_workspace)
 
