@@ -10,6 +10,7 @@ from sempy_labs._helper_functions import (
     _decode_b64,
     _base_api,
     resolve_item_id,
+    create_item,
 )
 from sempy.fabric.exceptions import FabricHTTPException
 import os
@@ -183,35 +184,24 @@ def create_notebook(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     notebook_payload = base64.b64encode(notebook_content).decode("utf-8")
-
-    payload = {
-        "displayName": name,
-        "definition": {
-            "format": "ipynb",
-            "parts": [
-                {
-                    "path": f"{_notebook_prefix}.{type}",
-                    "payload": notebook_payload,
-                    "payloadType": "InlineBase64",
-                }
-            ],
-        },
+    definition_payload = {
+        "format": "ipynb",
+        "parts": [
+            {
+                "path": f"{_notebook_prefix}.{type}",
+                "payload": notebook_payload,
+                "payloadType": "InlineBase64",
+            }
+        ],
     }
-    if description is not None:
-        payload["description"] = description
 
-    _base_api(
-        request=f"v1/workspaces/{workspace_id}/notebooks",
-        payload=payload,
-        method="post",
-        lro_return_status_code=True,
-        status_codes=[201, 202],
-    )
-
-    print(
-        f"{icons.green_dot} The '{name}' notebook was created within the '{workspace_name}' workspace."
+    create_item(
+        name=name,
+        type="Notebook",
+        workspace=workspace,
+        description=description,
+        definition=definition_payload,
     )
 
 

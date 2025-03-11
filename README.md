@@ -1,12 +1,15 @@
 # Semantic Link Labs
 
 [![PyPI version](https://badge.fury.io/py/semantic-link-labs.svg)](https://badge.fury.io/py/semantic-link-labs)
-[![Read The Docs](https://readthedocs.org/projects/semantic-link-labs/badge/?version=0.9.4&style=flat)](https://readthedocs.org/projects/semantic-link-labs/)
+[![Read The Docs](https://readthedocs.org/projects/semantic-link-labs/badge/?version=0.9.6&style=flat)](https://readthedocs.org/projects/semantic-link-labs/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Downloads](https://static.pepy.tech/badge/semantic-link-labs)](https://pepy.tech/project/semantic-link-labs)
 
 ---
 [Read the documentation on ReadTheDocs!](https://semantic-link-labs.readthedocs.io/en/stable/)
+---
+
+[Read the Wiki!](https://github.com/microsoft/semantic-link-labs/wiki)
 ---
 
 Semantic Link Labs is a Python library designed for use in [Microsoft Fabric notebooks](https://learn.microsoft.com/fabric/data-engineering/how-to-use-notebook). This library extends the capabilities of [Semantic Link](https://learn.microsoft.com/fabric/data-science/semantic-link-overview) offering additional functionalities to seamlessly integrate and work alongside it. The goal of Semantic Link Labs is to simplify technical processes, empowering people to focus on higher level activities and allowing tasks that are better suited for machines to be efficiently handled without human intervention.
@@ -120,6 +123,8 @@ An even better way to ensure the semantic-link-labs library is available in your
 2. Select your newly created environment within the 'Environment' drop down in the navigation bar at the top of the notebook
 
 ## Version History
+* [0.9.6](https://github.com/microsoft/semantic-link-labs/releases/tag/0.9.6) (March 11, 2025)
+* [0.9.5](https://github.com/microsoft/semantic-link-labs/releases/tag/0.9.5) (March 7, 2025)
 * [0.9.4](https://github.com/microsoft/semantic-link-labs/releases/tag/0.9.4) (February 27, 2025)
 * [0.9.3](https://github.com/microsoft/semantic-link-labs/releases/tag/0.9.3) (February 13, 2025)
 * [0.9.2](https://github.com/microsoft/semantic-link-labs/releases/tag/0.9.2) (February 5, 2025)
@@ -274,6 +279,18 @@ python -m build
 4. Enter details into the description.
 5. Click 'Create'.
 
+#### Code Formatting
+We use [black](github.com/psf/black) formatting as a code formatting standard. Make sure to run 'black' formatting on your code before submitting a pull request.
+
+Run this code to install black
+```cli
+pip install black
+```
+
+Run this code to format your code using black
+```cli
+python -m black src
+```
 
 ## Trademarks
 

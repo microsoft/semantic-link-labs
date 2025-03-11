@@ -1,10 +1,8 @@
-import sempy.fabric as fabric
 from sempy_labs._helper_functions import (
-    resolve_lakehouse_name,
-    resolve_lakehouse_id,
-    resolve_warehouse_id,
     resolve_workspace_name_and_id,
     _base_api,
+    resolve_lakehouse_name_and_id,
+    resolve_item_name_and_id,
 )
 from typing import Optional
 import sempy_labs._icons as icons
@@ -45,13 +43,14 @@ def generate_shared_expression(
             f"{icons.red_dot} Invalid item type. Valid options: {item_types}."
         )
 
-    if item_name is None:
-        item_id = fabric.get_lakehouse_id()
-        item_name = resolve_lakehouse_name(item_id, workspace_id)
-    elif item_name is not None and item_type == "Lakehouse":
-        item_id = resolve_lakehouse_id(lakehouse=item_name, workspace=workspace_id)
-    elif item_type == "Warehouse":
-        item_id = resolve_warehouse_id(warehouse=item_name, workspace=workspace_id)
+    if item_type == "Lakehouse":
+        (item_name, item_id) = resolve_lakehouse_name_and_id(
+            lakehouse=item_name, workspace=workspace_id
+        )
+    else:
+        (item_name, item_id) = resolve_item_name_and_id(
+            item=item_name, type=item_type, workspace=workspace_id
+        )
 
     item_type_rest = f"{item_type.lower()}s"
     response = _base_api(

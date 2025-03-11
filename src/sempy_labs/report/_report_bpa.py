@@ -1,4 +1,3 @@
-import sempy.fabric as fabric
 from typing import Optional
 import pandas as pd
 import datetime
@@ -7,8 +6,7 @@ from sempy_labs.report import ReportWrapper, report_bpa_rules
 from sempy_labs._helper_functions import (
     format_dax_object_name,
     save_as_delta_table,
-    resolve_report_id,
-    resolve_lakehouse_name,
+    resolve_item_name_and_id,
     resolve_workspace_capacity,
     _get_column_aggregate,
     resolve_workspace_name_and_id,
@@ -54,9 +52,7 @@ def run_report_bpa(
         A pandas dataframe in HTML format showing report objects which violated the best practice analyzer rules.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    rpt = ReportWrapper(report=report, workspace=workspace_id)
+    rpt = ReportWrapper(report=report, workspace=workspace)
 
     dfCV = rpt.list_custom_visuals()
     dfP = rpt.list_pages()
@@ -149,7 +145,7 @@ def run_report_bpa(
             df_output["Description"] = row["Description"]
             df_output["URL"] = row["URL"]
             df_output["Report URL"] = helper.get_web_url(
-                report=report, workspace=workspace_id
+                report=report, workspace=workspace
             )
 
             page_mapping_dict = dfP.set_index("Page Display Name")["Page URL"].to_dict()
@@ -205,22 +201,19 @@ def run_report_bpa(
 
         now = datetime.datetime.now()
         delta_table_name = "reportbparesults"
-        lakehouse_id = fabric.get_lakehouse_id()
-        lake_workspace = fabric.resolve_workspace_name()
-        lakehouse = resolve_lakehouse_name(
-            lakehouse_id=lakehouse_id, workspace=lake_workspace
-        )
-
-        lakeT = get_lakehouse_tables(lakehouse=lakehouse, workspace=lake_workspace)
+        lakeT = get_lakehouse_tables()
         lakeT_filt = lakeT[lakeT["Table Name"] == delta_table_name]
 
         if len(lakeT_filt) == 0:
             runId = 1
         else:
-            max_run_id = _get_column_aggregate(
-                lakehouse=lakehouse, table_name=delta_table_name
-            )
+            max_run_id = _get_column_aggregate(table_name=delta_table_name)
             runId = max_run_id + 1
+
+        (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+        (report_name, report_id) = resolve_item_name_and_id(
+            item=report, type="Report", workspace=workspace_id
+        )
 
         export_df = finalDF.copy()
         capacity_id, capacity_name = resolve_workspace_capacity(workspace=workspace_id)
@@ -228,8 +221,8 @@ def run_report_bpa(
         export_df["Capacity Id"] = capacity_id
         export_df["Workspace Name"] = workspace_name
         export_df["Workspace Id"] = workspace_id
-        export_df["Report Name"] = report
-        export_df["Report Id"] = resolve_report_id(report, workspace_id)
+        export_df["Report Name"] = report_name
+        export_df["Report Id"] = report_id
         export_df["RunId"] = runId
         export_df["Timestamp"] = now
         export_df["RunId"] = export_df["RunId"].astype(int)

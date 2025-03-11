@@ -50,6 +50,11 @@ class ConnectBase:
             (resource_name, resource_id) = resolve_item_name_and_id(
                 item=item, type="SQLDatabase", workspace=workspace_id
             )
+        elif endpoint_type == "lakehouse":
+            (resource_name, resource_id) = resolve_lakehouse_name_and_id(
+                lakehouse=item,
+                workspace=workspace_id,
+            )
         else:
             (resource_name, resource_id) = resolve_item_name_and_id(
                 item=item, workspace=workspace_id, type=endpoint_type.capitalize()

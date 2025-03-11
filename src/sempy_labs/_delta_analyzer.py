@@ -52,6 +52,7 @@ def delta_analyzer(
     workspace: Optional[str | UUID] = None,
     column_stats: bool = True,
     skip_cardinality: bool = True,
+    schema: Optional[str] = None,
 ) -> Dict[str, pd.DataFrame]:
     """
     Analyzes a delta table and shows the results in dictionary containing a set of 5 dataframes. If 'export' is set to True, the results will be saved to delta tables in the lakehouse attached to the notebook.
@@ -85,6 +86,8 @@ def delta_analyzer(
         If True, collects data about column chunks and columns. If False, skips that step and only returns the other 3 dataframes.
     skip_cardinality : bool, default=True
         If True, skips the cardinality calculation for each column. If False, calculates the cardinality for each column.
+    schema : str, default=None
+        The name of the schema to which the table belongs (for schema-enabled lakehouses). If None, the default schema is used.
 
     Returns
     -------
@@ -96,25 +99,21 @@ def delta_analyzer(
     if not skip_cardinality:
         column_stats = True
 
-    # display_toggle = notebookutils.common.configs.pandas_display
-
-    # Turn off notebookutils display
-    # if display_toggle is True:
-    #    notebookutils.common.configs.pandas_display = False
-
     prefix = "SLL_DeltaAnalyzer_"
     now = datetime.now()
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace=workspace)
     (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=workspace
     )
-    path = create_abfss_path(lakehouse_id, workspace_id, table_name)
-    local_path = _mount(lakehouse=lakehouse, workspace=workspace)
-    table_path = f"{local_path}/Tables/{table_name}"
-    delta_table_path = create_abfss_path(lakehouse_id, workspace_id, table_name)
 
-    # Set back to original value
-    # notebookutils.common.configs.pandas_display = display_toggle
+    delta_table_path = create_abfss_path(
+        lakehouse_id, workspace_id, table_name, schema=schema
+    )
+    local_path = _mount(lakehouse=lakehouse, workspace=workspace)
+    if schema is not None:
+        table_path = f"{local_path}/Tables/{schema}/{table_name}"
+    else:
+        table_path = f"{local_path}/Tables/{table_name}"
 
     parquet_file_df_columns = {
         # "Dataset": "string",
@@ -183,7 +182,7 @@ def delta_analyzer(
     # min_reader_version = table_details.get("minReaderVersion")
     # min_writer_version = table_details.get("minWriterVersion")
 
-    latest_files = _read_delta_table(path).inputFiles()
+    latest_files = _read_delta_table(delta_table_path).inputFiles()
     # file_paths = [f.split("/")[-1] for f in latest_files]
     all_parquet_files = get_parquet_file_infos(delta_table_path)
     common_file_paths = set(

@@ -18,6 +18,7 @@ from sempy_labs._helper_functions import (
     _base_api,
     _create_spark_session,
     _mount,
+    resolve_workspace_id,
 )
 from typing import List, Optional, Union
 from sempy._utils._log import log
@@ -192,7 +193,7 @@ def clone_report(
         target_workspace = workspace_name
         target_workspace_id = workspace_id
     else:
-        target_workspace_id = fabric.resolve_workspace_id(target_workspace)
+        target_workspace_id = resolve_workspace_id(workspace=target_workspace)
 
     if target_dataset is not None:
         if target_dataset_workspace is None:

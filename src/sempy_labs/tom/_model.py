@@ -1172,8 +1172,8 @@ class TOMWrapper:
             Name of the table.
         entity_name : str
             Name of the lakehouse/warehouse table.
-        expression : TOM Object, default=None
-            The expression used by the table.
+        expression : str, default=None
+            The name of the expression used by the partition.
             Defaults to None which resolves to the 'DatabaseQuery' expression.
         description : str, default=None
             A description for the partition.
@@ -1543,6 +1543,7 @@ class TOMWrapper:
         self,
         object: Union["TOM.Table", "TOM.Column", "TOM.Measure", "TOM.Hierarchy"],
         perspective_name: str,
+        include_all: bool = True,
     ):
         """
         Adds an object to a `perspective <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.perspective?view=analysisservices-dotnet>`_.
@@ -1553,6 +1554,8 @@ class TOMWrapper:
             An object (i.e. table/column/measure) within a semantic model.
         perspective_name : str
             Name of the perspective.
+        include_all : bool, default=True
+            Relevant to tables only, if set to True, includes all columns, measures, and hierarchies within that table in the perspective.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
@@ -1578,6 +1581,8 @@ class TOMWrapper:
 
         if objectType == TOM.ObjectType.Table:
             pt = TOM.PerspectiveTable()
+            if include_all:
+                pt.IncludeAll = True
             pt.Table = object
             object.Model.Perspectives[perspective_name].PerspectiveTables.Add(pt)
         elif objectType == TOM.ObjectType.Column:
@@ -3517,14 +3522,14 @@ class TOMWrapper:
 
         return usingView
 
-    def has_incremental_refresh_policy(self, table_name: str):
+    def has_incremental_refresh_policy(self, object):
         """
         Identifies whether a table has an `incremental refresh <https://learn.microsoft.com/power-bi/connect-data/incremental-refresh-overview>`_ policy.
 
         Parameters
         ----------
-        table_name : str
-            Name of the table.
+        object : TOM Object
+            The TOM object within the semantic model. Accepts either a table or the model object.
 
         Returns
         -------
@@ -3532,13 +3537,21 @@ class TOMWrapper:
             An indicator whether a table has an incremental refresh policy.
         """
 
-        hasRP = False
-        rp = self.model.Tables[table_name].RefreshPolicy
+        import Microsoft.AnalysisServices.Tabular as TOM
 
-        if rp is not None:
-            hasRP = True
-
-        return hasRP
+        if object.ObjectType == TOM.ObjectType.Table:
+            if object.RefreshPolicy is not None:
+                return True
+            else:
+                return False
+        elif object.ObjectType == TOM.ObjectType.Model:
+            rp = False
+            for t in self.model.Tables:
+                if t.RefreshPolicy is not None:
+                    rp = True
+            return rp
+        else:
+            raise NotImplementedError
 
     def show_incremental_refresh_policy(self, table_name: str):
         """
@@ -4760,17 +4773,20 @@ class TOMWrapper:
 
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        return (
+        bim = (
             json.loads(TOM.JsonScripter.ScriptCreate(self.model.Database))
             .get("create")
             .get("database")
         )
+
+        return bim
 
     def _reduce_model(self, perspective_name: str):
         """
         Reduces a model's objects based on a perspective. Adds the dependent objects within a perspective to that perspective.
         """
 
+        import Microsoft.AnalysisServices.Tabular as TOM
         from sempy_labs._model_dependencies import get_model_calc_dependencies
 
         fabric.refresh_tom_cache(workspace=self._workspace_id)
@@ -4852,7 +4868,7 @@ class TOMWrapper:
                     object=obj, perspective_name=perspective_name
                 ):
                     self.add_to_perspective(
-                        object=obj, perspective_name=perspective_name
+                        object=obj, perspective_name=perspective_name, include_all=False
                     )
                     added = True
             elif obj_type == "Measure":
@@ -4861,7 +4877,7 @@ class TOMWrapper:
                     object=obj, perspective_name=perspective_name
                 ):
                     self.add_to_perspective(
-                        object=obj, perspective_name=perspective_name
+                        object=obj, perspective_name=perspective_name, include_all=False
                     )
                     added = True
             elif obj_type == "Table":
@@ -4870,7 +4886,7 @@ class TOMWrapper:
                     object=obj, perspective_name=perspective_name
                 ):
                     self.add_to_perspective(
-                        object=obj, perspective_name=perspective_name
+                        object=obj, perspective_name=perspective_name, include_all=False
                     )
                     added = True
             if added:
@@ -4917,7 +4933,9 @@ class TOMWrapper:
             else:
                 for attr in ["Columns", "Measures", "Hierarchies"]:
                     for obj in getattr(t, attr):
-                        if not self.in_perspective(
+                        if attr == "Columns" and obj.Type == TOM.ColumnType.RowNumber:
+                            pass
+                        elif not self.in_perspective(
                             object=obj, perspective_name=perspective_name
                         ):
                             self.remove_object(object=obj)

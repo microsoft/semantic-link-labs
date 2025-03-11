@@ -1,5 +1,4 @@
 import sempy
-import sempy.fabric as fabric
 from sempy_labs.tom import connect_semantic_model
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
 from sempy_labs.directlake._dl_helper import get_direct_lake_source
@@ -7,6 +6,7 @@ from sempy_labs._helper_functions import (
     _convert_data_type,
     resolve_dataset_name_and_id,
     resolve_workspace_name_and_id,
+    resolve_workspace_name,
 )
 from typing import List, Optional, Union
 import sempy_labs._icons as icons
@@ -17,6 +17,7 @@ def update_direct_lake_partition_entity(
     dataset: str | UUID,
     table_name: Union[str, List[str]],
     entity_name: Union[str, List[str]],
+    schema: Optional[str] = None,
     workspace: Optional[str | UUID] = None,
 ):
     """
@@ -30,6 +31,9 @@ def update_direct_lake_partition_entity(
         Name of the table(s) in the semantic model.
     entity_name : str, List[str]
         Name of the lakehouse table to be mapped to the semantic model table.
+    schema : str, default=None
+        The schema of the lakehouse table to be mapped to the semantic model table.
+        Defaults to None which resolves to the existing schema of the lakehouse table.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID in which the semantic model exists.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -79,9 +83,13 @@ def update_direct_lake_partition_entity(
             tom.model.Tables[tName].Partitions[part_name].Source.EntityName = eName
 
             # Update source lineage tag
-            schema = (
+            existing_schema = (
                 tom.model.Tables[tName].Partitions[part_name].Source.SchemaName or "dbo"
             )
+            if schema is None:
+                schema = existing_schema
+
+            tom.model.Tables[tName].Partitions[part_name].Source.SchemaName = schema
             tom.model.Tables[tName].SourceLineageTag = f"[{schema}].[{eName}]"
             print(
                 f"{icons.green_dot} The '{tName}' table in the '{dataset_name}' semantic model within the '{workspace_name}' workspace has been updated to point to the '{eName}' table."
@@ -136,7 +144,7 @@ def add_table_to_direct_lake_semantic_model(
             f"{icons.red_dot} This function only supports Direct Lake semantic models where the source lakehouse resides in the same workpace as the semantic model."
         )
 
-    lakehouse_workspace = fabric.resolve_workspace_name(lakehouse_workspace_id)
+    lakehouse_workspace = resolve_workspace_name(workspace_id=lakehouse_workspace_id)
 
     with connect_semantic_model(
         dataset=dataset_id, readonly=False, workspace=workspace_id

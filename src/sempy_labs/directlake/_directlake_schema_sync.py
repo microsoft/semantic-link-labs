@@ -1,5 +1,5 @@
 import sempy
-import sempy.fabric as fabric
+import pandas as pd
 from sempy_labs.lakehouse import get_lakehouse_columns
 from sempy_labs.directlake._dl_helper import get_direct_lake_source
 from sempy_labs.tom import connect_semantic_model
@@ -19,8 +19,8 @@ def direct_lake_schema_sync(
     dataset: str | UUID,
     workspace: Optional[str | UUID] = None,
     add_to_model: bool = False,
-    **kwargs,
-):
+    remove_from_model: bool = False,
+) -> pd.DataFrame:
     """
     Shows/adds columns which exist in the lakehouse but do not exist in the semantic model (only for tables in the semantic model).
 
@@ -34,21 +34,17 @@ def direct_lake_schema_sync(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     add_to_model : bool, default=False
         If set to True, columns which exist in the lakehouse but do not exist in the semantic model are added to the semantic model. No new tables are added.
+    remove_from_model : bool, default=False
+        If set to True, columns which exist in the semantic model but do not exist in the lakehouse are removed from the semantic model. No new tables are removed.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the status of columns in the semantic model and lakehouse (prior to adding/removing them from the model using this function).
     """
 
     sempy.fabric._client._utils._init_analysis_services()
     import Microsoft.AnalysisServices.Tabular as TOM
-
-    if "lakehouse" in kwargs:
-        print(
-            "The 'lakehouse' parameter has been deprecated as it is no longer necessary. Please remove this parameter from the function going forward."
-        )
-        del kwargs["lakehouse"]
-    if "lakehouse_workspace" in kwargs:
-        print(
-            "The 'lakehouse_workspace' parameter has been deprecated as it is no longer necessary. Please remove this parameter from the function going forward."
-        )
-        del kwargs["lakehouse_workspace"]
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
@@ -67,14 +63,54 @@ def direct_lake_schema_sync(
             f"{icons.red_dot} This function only supports Direct Lake semantic models where the source lakehouse resides in the same workpace as the semantic model."
         )
 
-    lakehouse_workspace = fabric.resolve_workspace_name(lakehouse_workspace_id)
+    lc = get_lakehouse_columns(lakehouse_id, lakehouse_workspace_id)
 
-    lc = get_lakehouse_columns(lakehouse_name, lakehouse_workspace)
+    readonly = True
+    if add_to_model or remove_from_model:
+        readonly = False
+    df = pd.DataFrame(
+        columns=[
+            "TableName",
+            "ColumnName",
+            "SourceTableName",
+            "SourceColumnName",
+            "Status",
+        ]
+    )
 
     with connect_semantic_model(
-        dataset=dataset_id, readonly=False, workspace=workspace_id
+        dataset=dataset_id, readonly=readonly, workspace=workspace_id
     ) as tom:
+        # Check if the columns in the semantic model exist in the lakehouse
+        for c in tom.all_columns():
+            partition_name = next(p.Name for p in c.Table.Partitions)
+            p = c.Table.Partitions[partition_name]
+            if p.SourceType == TOM.PartitionSourceType.Entity:
+                entity_name = p.Source.EntityName
+                source_column = c.SourceColumn
+                lc_filt = lc[
+                    (lc["Table Name"] == entity_name)
+                    & (lc["Column Name"] == source_column)
+                ]
+                # Remove column from model if it doesn't exist in the lakehouse
+                if lc_filt.empty:
+                    new_data = {
+                        "TableName": c.Parent.Name,
+                        "ColumnName": c.Name,
+                        "SourceTableName": entity_name,
+                        "SourceColumnName": source_column,
+                        "Status": "Not in lakehouse",
+                    }
+                    df = pd.concat(
+                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
+                    if remove_from_model:
+                        tom.remove_object(object=c)
+                        print(
+                            f"{icons.green_dot} The '{c.Parent.Name}'[{c.Name}] column has been removed from the '{dataset_name}' semantic model within the '{workspace_name}' workspace."
+                        )
 
+        # Check if the lakehouse columns exist in the semantic model
         for i, r in lc.iterrows():
             lakeTName = r["Table Name"]
             lakeCName = r["Column Name"]
@@ -97,9 +133,17 @@ def direct_lake_schema_sync(
                     c.SourceColumn == lakeCName and c.Parent.Name == table_name
                     for c in tom.all_columns()
                 ):
-                    print(
-                        f"{icons.yellow_dot} The '{lakeCName}' column exists in the '{lakeTName}' lakehouse table but not in the '{dataset_name}' semantic model within the '{workspace_name}' workspace."
+                    new_data = {
+                        "TableName": table_name,
+                        "ColumnName": None,
+                        "SourceTableName": lakeTName,
+                        "SourceColumnName": lakeCName,
+                        "Status": "Not in semantic model",
+                    }
+                    df = pd.concat(
+                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
                     )
+
                     if add_to_model:
                         dt = _convert_data_type(dType)
                         tom.add_data_column(
@@ -111,3 +155,5 @@ def direct_lake_schema_sync(
                         print(
                             f"{icons.green_dot} The '{lakeCName}' column in the '{lakeTName}' lakehouse table was added to the '{dataset_name}' semantic model within the '{workspace_name}' workspace."
                         )
+
+        return df

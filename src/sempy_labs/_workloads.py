@@ -6,9 +6,10 @@ from sempy_labs._helper_functions import (
     _base_api,
     _create_dataframe,
 )
+from uuid import UUID
 
 
-def list_workloads(capacity_name: str) -> pd.DataFrame:
+def list_workloads(capacity: str | UUID, **kwargs) -> pd.DataFrame:
     """
     Returns the current state of the specified capacity workloads.
     If a workload is enabled, the percentage of maximum memory that the workload can consume is also returned.
@@ -17,8 +18,8 @@ def list_workloads(capacity_name: str) -> pd.DataFrame:
 
     Parameters
     ----------
-    capacity_name : str
-        The capacity name.
+    capacity : str | uuid.UUID
+        The capacity name or ID.
 
     Returns
     -------
@@ -28,6 +29,12 @@ def list_workloads(capacity_name: str) -> pd.DataFrame:
 
     from sempy_labs._helper_functions import resolve_capacity_id
 
+    if "capacity_name" in kwargs:
+        capacity = kwargs["capacity_name"]
+        print(
+            f"{icons.warning} The 'capacity_name' parameter is deprecated. Please use 'capacity' instead."
+        )
+
     columns = {
         "Workload Name": "string",
         "State": "string",
@@ -35,7 +42,7 @@ def list_workloads(capacity_name: str) -> pd.DataFrame:
     }
     df = _create_dataframe(columns=columns)
 
-    capacity_id = resolve_capacity_id(capacity_name=capacity_name)
+    capacity_id = resolve_capacity_id(capacity=capacity)
 
     response = _base_api(request=f"/v1.0/myorg/capacities/{capacity_id}/Workloads")
 
@@ -53,10 +60,11 @@ def list_workloads(capacity_name: str) -> pd.DataFrame:
 
 
 def patch_workload(
-    capacity_name: str,
+    capacity: str | UUID,
     workload_name: str,
     state: Optional[str] = None,
     max_memory_percentage: Optional[int] = None,
+    **kwargs,
 ):
     """
     Changes the state of a specific workload to Enabled or Disabled.
@@ -66,8 +74,8 @@ def patch_workload(
 
     Parameters
     ----------
-    capacity_name : str
-        The capacity name.
+    capacity : str | uuid.UUID
+        The capacity name or ID.
     workload_name : str
         The workload name.
     state : str, default=None
@@ -78,7 +86,13 @@ def patch_workload(
 
     from sempy_labs._helper_functions import resolve_capacity_id
 
-    capacity_id = resolve_capacity_id(capacity_name=capacity_name)
+    if "capacity_name" in kwargs:
+        capacity = kwargs["capacity_name"]
+        print(
+            f"{icons.warning} The 'capacity_name' parameter is deprecated. Please use 'capacity' instead."
+        )
+
+    capacity_id = resolve_capacity_id(capacity=capacity)
 
     states = ["Disabled", "Enabled", "Unsupported"]
     state = state.capitalize()
@@ -119,5 +133,5 @@ def patch_workload(
     _base_api(request=url, method="patch", payload=payload)
 
     print(
-        f"The '{workload_name}' workload within the '{capacity_name}' capacity has been updated accordingly."
+        f"The '{workload_name}' workload within the '{capacity}' capacity has been updated accordingly."
     )

@@ -7,6 +7,8 @@ from sempy_labs._helper_functions import (
     resolve_workspace_capacity,
     retry,
     _get_column_aggregate,
+    resolve_workspace_id,
+    resolve_lakehouse_name_and_id,
 )
 from sempy_labs.lakehouse import (
     get_lakehouse_tables,
@@ -16,6 +18,7 @@ from sempy_labs._model_bpa import run_model_bpa
 from typing import Optional, List
 from sempy._utils._log import log
 import sempy_labs._icons as icons
+from uuid import UUID
 
 
 @log
@@ -66,17 +69,12 @@ def run_model_bpa_bulk(
 
     now = datetime.datetime.now()
     output_table = "modelbparesults"
-    lakehouse_workspace = fabric.resolve_workspace_name()
-    lakehouse_id = fabric.get_lakehouse_id()
-    lakehouse = resolve_lakehouse_name(
-        lakehouse_id=lakehouse_id, workspace=lakehouse_workspace
-    )
-    lakeT = get_lakehouse_tables(lakehouse=lakehouse, workspace=lakehouse_workspace)
+    lakeT = get_lakehouse_tables()
     lakeT_filt = lakeT[lakeT["Table Name"] == output_table]
     if len(lakeT_filt) == 0:
         runId = 1
     else:
-        max_run_id = _get_column_aggregate(lakehouse=lakehouse, table_name=output_table)
+        max_run_id = _get_column_aggregate(table_name=output_table)
         runId = max_run_id + 1
 
     if isinstance(workspace, str):
@@ -170,7 +168,7 @@ def run_model_bpa_bulk(
 
                     # Append save results individually for each workspace (so as not to create a giant dataframe)
                     print(
-                        f"{icons.in_progress} Saving the Model BPA results of the '{wksp}' workspace to the '{output_table}' within the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace..."
+                        f"{icons.in_progress} Saving the Model BPA results of the '{wksp}' workspace to the '{output_table}' within the lakehouse attached to this notebook..."
                     )
 
                     schema = {
@@ -195,8 +193,8 @@ def run_model_bpa_bulk(
 @log
 def create_model_bpa_semantic_model(
     dataset: Optional[str] = icons.model_bpa_name,
-    lakehouse: Optional[str] = None,
-    lakehouse_workspace: Optional[str] = None,
+    lakehouse: Optional[str | UUID] = None,
+    lakehouse_workspace: Optional[str | UUID] = None,
 ):
     """
     Dynamically generates a Direct Lake semantic model based on the 'modelbparesults' delta table which contains the Best Practice Analyzer results.
@@ -209,16 +207,15 @@ def create_model_bpa_semantic_model(
     ----------
     dataset : str, default='ModelBPA'
         Name of the semantic model to be created.
-    lakehouse : str, default=None
+    lakehouse : str | uuid.UUID, default=None
         Name of the Fabric lakehouse which contains the 'modelbparesults' delta table.
         Defaults to None which resolves to the default lakehouse attached to the notebook.
-    lakehouse_workspace : str, default=None
+    lakehouse_workspace : str | uuid.UUID, default=None
         The workspace in which the lakehouse resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    from sempy_labs._helper_functions import resolve_lakehouse_name
     from sempy_labs.directlake import (
         generate_shared_expression,
         add_table_to_direct_lake_semantic_model,
@@ -226,22 +223,21 @@ def create_model_bpa_semantic_model(
     from sempy_labs import create_blank_semantic_model, refresh_semantic_model
     from sempy_labs.tom import connect_semantic_model
 
-    lakehouse_workspace = fabric.resolve_workspace_name(lakehouse_workspace)
-
-    if lakehouse is None:
-        lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse = resolve_lakehouse_name(
-            lakehouse_id=lakehouse_id, workspace=lakehouse_workspace
-        )
+    lakehouse_workspace_id = resolve_workspace_id(workspace=lakehouse_workspace)
+    (lakehouse_id, lakehouse_name) = resolve_lakehouse_name_and_id(
+        lakehouse=lakehouse, workspace=lakehouse_workspace_id
+    )
 
     # Generate the shared expression based on the lakehouse and lakehouse workspace
     expr = generate_shared_expression(
-        item_name=lakehouse, item_type="Lakehouse", workspace=lakehouse_workspace
+        item_name=lakehouse_name,
+        item_type="Lakehouse",
+        workspace=lakehouse_workspace_id,
     )
 
     # Create blank model
     create_blank_semantic_model(
-        dataset=dataset, workspace=lakehouse_workspace, overwrite=True
+        dataset=dataset, workspace=lakehouse_workspace_id, overwrite=True
     )
 
     @retry(
@@ -250,7 +246,7 @@ def create_model_bpa_semantic_model(
     )
     def dyn_connect():
         with connect_semantic_model(
-            dataset=dataset, readonly=True, workspace=lakehouse_workspace
+            dataset=dataset, readonly=True, workspace=lakehouse_workspace_id
         ) as tom:
 
             tom.model
@@ -259,7 +255,7 @@ def create_model_bpa_semantic_model(
     icons.sll_tags.append("ModelBPABulk")
     table_exists = False
     with connect_semantic_model(
-        dataset=dataset, readonly=False, workspace=lakehouse_workspace
+        dataset=dataset, readonly=False, workspace=lakehouse_workspace_id
     ) as tom:
         t_name = "BPAResults"
         t_name_full = f"'{t_name}'"
@@ -274,11 +270,11 @@ def create_model_bpa_semantic_model(
             dataset=dataset,
             table_name=t_name,
             lakehouse_table_name="modelbparesults",
-            workspace=lakehouse_workspace,
+            workspace=lakehouse_workspace_id,
             refresh=False,
         )
     with connect_semantic_model(
-        dataset=dataset, readonly=False, workspace=lakehouse_workspace
+        dataset=dataset, readonly=False, workspace=lakehouse_workspace_id
     ) as tom:
         # Fix column names
         for c in tom.all_columns():
@@ -377,4 +373,4 @@ def create_model_bpa_semantic_model(
         # tom.add_measure(table_name=t_name, measure_name='Rules Followed', expression="[Rules] - [Rules Violated]")
 
     # Refresh the model
-    refresh_semantic_model(dataset=dataset, workspace=lakehouse_workspace)
+    refresh_semantic_model(dataset=dataset, workspace=lakehouse_workspace_id)

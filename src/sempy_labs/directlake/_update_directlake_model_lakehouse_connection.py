@@ -4,6 +4,8 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
     resolve_dataset_name_and_id,
     resolve_workspace_name_and_id,
+    resolve_item_name_and_id,
+    resolve_lakehouse_name_and_id,
 )
 from sempy_labs.tom import connect_semantic_model
 from typing import Optional
@@ -40,22 +42,9 @@ def update_direct_lake_model_lakehouse_connection(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    if lakehouse_workspace is None:
-        lakehouse_workspace = workspace_name
-
-    if lakehouse is None:
-        lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse = resolve_lakehouse_name(lakehouse_id, lakehouse_workspace)
-
-    # Check if lakehouse is valid
-    dfI = fabric.list_items(workspace=lakehouse_workspace, type="Lakehouse")
-    dfI_filt = dfI[(dfI["Display Name"] == lakehouse)]
-
-    if len(dfI_filt) == 0:
-        raise ValueError(
-            f"{icons.red_dot} The '{lakehouse}' lakehouse does not exist within the '{lakehouse_workspace}' workspace. "
-            f"Therefore it cannot be used to support the '{dataset_name}' semantic model within the '{workspace_name}' workspace."
-        )
+    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+        lakehouse=lakehouse, workspace=lakehouse_workspace
+    )
 
     icons.sll_tags.append("UpdateDLConnection")
 
@@ -121,21 +110,19 @@ def update_direct_lake_model_connection(
     if source_workspace is None:
         source_workspace = workspace_name
 
-    if source is None:
-        source_id = fabric.get_lakehouse_id()
-        source = resolve_lakehouse_name(source_id, source_workspace)
-    else:
-        source_id = fabric.resolve_item_id(
-            item_name=source, type=source_type, workspace=source_workspace
+    if source_type == "Lakehouse":
+        (source_name, source_id) = resolve_lakehouse_name_and_id(
+            lakehouse=source, workspace=source_workspace
         )
-        source = fabric.resolve_item_name(
-            item_id=source_id, workspace=source_workspace, type=source_type
+    else:
+        (source_name, source_id) = resolve_item_name_and_id(
+            item=source, type=source_type, workspace=source_workspace
         )
 
     icons.sll_tags.append("UpdateDLConnection")
 
     shEx = generate_shared_expression(
-        item_name=source, item_type=source_type, workspace=source_workspace
+        item_name=source_name, item_type=source_type, workspace=source_workspace
     )
 
     with connect_semantic_model(
