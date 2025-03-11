@@ -14,7 +14,7 @@ def generate_dax_query_view_url(
     dataset: str | UUID, dax_string: str, workspace: Optional[str | UUID] = None
 ):
     """
-    Prints a URL based on query provided. This URL opens the `DAX query view <https://learn.microsoft.com/power-bi/transform-model/dax-query-view>`_ in the Power BI service.
+    Prints a URL based on query provided. This URL opens `DAX query view <https://learn.microsoft.com/power-bi/transform-model/dax-query-view>`_ in the Power BI service, connected to the semantic model and using the query provided.
 
     Parameters
     ----------
