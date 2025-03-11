@@ -3,6 +3,7 @@ from typing import Optional
 from uuid import UUID
 from sempy_labs._helper_functions import (
     resolve_dataset_id,
+    _get_fabric_context_setting,
 )
 import gzip
 import base64
@@ -30,6 +31,11 @@ def generate_dax_query_view_url(
     workspace_id = fabric.resolve_workspace_id(workspace)
     dataset_id = resolve_dataset_id(dataset=dataset, workspace=workspace_id)
 
+    prefix = _get_fabric_context_setting(name="spark.trident.pbienv").lower()
+
+    if prefix == "prod":
+        prefix = "app"
+
     def gzip_base64_urlsafe(input_string):
         # Compress the string with gzip
         compressed_data = gzip.compress(input_string.encode("utf-8"))
@@ -44,6 +50,6 @@ def generate_dax_query_view_url(
 
     formatted_query = gzip_base64_urlsafe(dax_string)
 
-    url = f"https://app.powerbi.com/groups/{workspace_id}/modeling/{dataset_id}/daxQueryView?query={formatted_query}"
+    url = f"https://{prefix}.powerbi.com/groups/{workspace_id}/modeling/{dataset_id}/daxQueryView?query={formatted_query}"
 
     print(url)
