@@ -39,6 +39,7 @@ def create_abfss_path(
     lakehouse_id: UUID,
     lakehouse_workspace_id: UUID,
     delta_table_name: Optional[str] = None,
+    schema: Optional[str] = None,
 ) -> str:
     """
     Creates an abfss path for a delta table in a Fabric lakehouse.
@@ -51,6 +52,8 @@ def create_abfss_path(
         ID of the Fabric workspace.
     delta_table_name : str, default=None
         Name of the delta table name.
+    schema : str, default=None
+        The schema of the delta table.
 
     Returns
     -------
@@ -62,6 +65,8 @@ def create_abfss_path(
     path = f"abfss://{lakehouse_workspace_id}@{fp}/{lakehouse_id}"
 
     if delta_table_name is not None:
+        if schema is not None:
+            path += f"/{schema}"
         path += f"/Tables/{delta_table_name}"
 
     return path
