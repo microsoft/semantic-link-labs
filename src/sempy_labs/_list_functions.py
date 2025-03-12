@@ -1172,42 +1172,6 @@ def list_shortcuts(
     return list_shortcuts(lakehouse=lakehouse, workspace=workspace, path=path)
 
 
-def list_capacities() -> pd.DataFrame:
-    """
-    Shows the capacities and their properties.
-
-    Returns
-    -------
-    pandas.DataFrame
-        A pandas dataframe showing the capacities and their properties
-    """
-
-    columns = {
-        "Id": "string",
-        "Display Name": "string",
-        "Sku": "string",
-        "Region": "string",
-        "State": "string",
-        "Admins": "string",
-    }
-    df = _create_dataframe(columns=columns)
-
-    response = _base_api(request="/v1.0/myorg/capacities")
-
-    for i in response.json().get("value", []):
-        new_data = {
-            "Id": i.get("id").lower(),
-            "Display Name": i.get("displayName"),
-            "Sku": i.get("sku"),
-            "Region": i.get("region"),
-            "State": i.get("state"),
-            "Admins": [i.get("admins", [])],
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    return df
-
-
 def list_reports_using_semantic_model(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:

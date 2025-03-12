@@ -152,6 +152,7 @@ from sempy_labs._capacities import (
     create_or_update_resource_group,
     list_resource_groups,
     get_resource_group,
+    list_capacities,
 )
 from sempy_labs._spark import (
     get_spark_settings,
@@ -252,7 +253,6 @@ from sempy_labs._list_functions import (
     list_semantic_model_objects,
     list_shortcuts,
     get_object_level_security,
-    list_capacities,
     list_datamarts,
     list_lakehouses,
     list_sql_endpoints,

@@ -242,7 +242,7 @@ def list_vcores() -> pd.DataFrame:
 
 def get_capacity_resource_governance(capacity_name: str):
 
-    dfC = fabric.list_capacities()
+    dfC = list_capacities()
     dfC_filt = dfC[dfC["Display Name"] == capacity_name]
     capacity_id = dfC_filt["Id"].iloc[0].upper()
 
@@ -1131,3 +1131,39 @@ def get_resource_group(azure_subscription_id: str, resource_group: str) -> pd.Da
     }
 
     return pd.DataFrame(new_data, index=[0])
+
+
+def list_capacities() -> pd.DataFrame:
+    """
+    Shows the capacities and their properties.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the capacities and their properties
+    """
+
+    columns = {
+        "Id": "string",
+        "Display Name": "string",
+        "Sku": "string",
+        "Region": "string",
+        "State": "string",
+        "Admins": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    response = _base_api(request="/v1.0/myorg/capacities", client="fabric_sp")
+
+    for i in response.json().get("value", []):
+        new_data = {
+            "Id": i.get("id").lower(),
+            "Display Name": i.get("displayName"),
+            "Sku": i.get("sku"),
+            "Region": i.get("region"),
+            "State": i.get("state"),
+            "Admins": [i.get("admins", [])],
+        }
+        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    return df
