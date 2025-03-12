@@ -169,6 +169,7 @@ from sempy_labs._workspaces import (
     assign_workspace_to_capacity,
     unassign_workspace_from_capacity,
     list_workspace_role_assignments,
+    delete_workspace,
 )
 from sempy_labs._notebooks import (
     get_notebook_definition,
@@ -546,4 +547,5 @@ __all__ = [
     "delete_mounted_data_factory",
     "generate_dax_query_view_url",
     "delete_semantic_model",
+    "delete_workspace",
 ]

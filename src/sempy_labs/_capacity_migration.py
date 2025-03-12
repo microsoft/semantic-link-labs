@@ -109,12 +109,12 @@ def migrate_workspaces(
         workspace_id = r["Id"]
         workspace_name = r["Name"]
 
-        #if workspaces is None or workspace in workspaces:
+        # if workspaces is None or workspace in workspaces:
         #    pass
-        #else:
+        # else:
         #    continue
 
-        #if
+        # if
         assign_workspace_to_capacity(capacity=target_capacity, workspace=workspace_id)
         migrated_workspaces.append(workspace_name)
 

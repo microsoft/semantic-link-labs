@@ -318,3 +318,26 @@ def list_workspace_role_assignments(
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
+
+
+def delete_workspace(workspace: Optional[str | UUID] = None):
+    """
+    Deletes a workspace.
+
+    This is a wrapper function for the following API: `Workspaces - Delete Workspace <https://learn.microsoft.com/rest/api/fabric/core/workspaces/delete-workspace>`_.
+
+    Parameters
+    ----------
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    _base_api(
+        request=f"v1/workspaces/{workspace_id}", method="delete", client="fabric_sp"
+    )
+
+    print(f"{icons.green_dot} The '{workspace_name}' workspace has been deleted.")
