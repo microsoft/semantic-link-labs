@@ -23,6 +23,8 @@ def create_managed_private_endpoint(
 
     This is a wrapper function for the following API: `Managed Private Endpoints - Create Workspace Managed Private Endpoint <https://learn.microsoft.com/rest/api/fabric/core/managed-private-endpoints/create-workspace-managed-private-endpoint>`.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     name: str
@@ -77,6 +79,8 @@ def list_managed_private_endpoints(
     Shows the managed private endpoints within a workspace.
 
     This is a wrapper function for the following API: `Managed Private Endpoints - List Workspace Managed Private Endpoints <https://learn.microsoft.com/rest/api/fabric/core/managed-private-endpoints/list-workspace-managed-private-endpoints>`.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -134,6 +138,8 @@ def delete_managed_private_endpoint(
     Deletes a Fabric managed private endpoint.
 
     This is a wrapper function for the following API: `Managed Private Endpoints - Delete Workspace Managed Private Endpoint <https://learn.microsoft.com/rest/api/fabric/core/managed-private-endpoints/delete-workspace-managed-private-endpoint>`.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------

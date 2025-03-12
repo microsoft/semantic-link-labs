@@ -72,6 +72,8 @@ def list_eventhouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
     This is a wrapper function for the following API: `Items - List Eventhouses <https://learn.microsoft.com/rest/api/fabric/environment/items/list-eventhouses>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     workspace : str | uuid.UUID, default=None

@@ -15,6 +15,8 @@ def list_graphql_apis(workspace: Optional[str | UUID]) -> pd.DataFrame:
 
     This is a wrapper function for the following API: `Items - List GraphQLApis <https://learn.microsoft.com/rest/api/fabric/graphqlapi/items/list-graphqlapi-s>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     workspace : str | uuid.UUID, default=None

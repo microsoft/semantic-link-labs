@@ -18,6 +18,8 @@ def delete_user_from_workspace(
 
     This is a wrapper function for the following API: `Groups - Delete User In Group <https://learn.microsoft.com/rest/api/power-bi/groups/delete-user-in-group>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     email_address : str
@@ -50,6 +52,8 @@ def update_workspace_user(
     Updates a user's role within a workspace.
 
     This is a wrapper function for the following API: `Groups - Update Group User <https://learn.microsoft.com/rest/api/power-bi/groups/update-group-user>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -103,6 +107,8 @@ def list_workspace_users(workspace: Optional[str | UUID] = None) -> pd.DataFrame
     A list of all the users of a workspace and their roles.
 
     This is a wrapper function for the following API: `Workspaces - List Workspace Role Assignments <https://learn.microsoft.com/rest/api/fabric/core/workspaces/list-workspace-role-assignments>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -255,6 +261,8 @@ def unassign_workspace_from_capacity(workspace: Optional[str | UUID] = None):
 
     This is a wrapper function for the following API: `Workspaces - Unassign From Capacity <https://learn.microsoft.com/rest/api/fabric/core/workspaces/unassign-from-capacity>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     workspace : str | uuid.UUID, default=None
@@ -283,6 +291,8 @@ def list_workspace_role_assignments(
     Shows the members of a given workspace.
 
     This is a wrapper function for the following API: `Workspaces - List Workspace Role Assignments <https://learn.microsoft.com/rest/api/fabric/core/workspaces/list-workspace-role-assignments>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------

@@ -13,6 +13,8 @@ def provision_workspace_identity(workspace: Optional[str | UUID] = None):
 
     This is a wrapper function for the following API: `Workspaces - Provision Identity <https://learn.microsoft.com/rest/api/fabric/core/workspaces/provision-identity>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     workspace : str | uuid.UUID, default=None
@@ -41,6 +43,8 @@ def deprovision_workspace_identity(workspace: Optional[str | UUID] = None):
     Deprovisions a workspace identity for a workspace.
 
     This is a wrapper function for the following API: `Workspaces - Derovision Identity <https://learn.microsoft.com/rest/api/fabric/core/workspaces/deprovision-identity>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
