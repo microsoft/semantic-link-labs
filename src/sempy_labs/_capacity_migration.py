@@ -108,9 +108,9 @@ def migrate_workspaces(
     for i, r in dfW.iterrows():
         workspace_id = r["Id"]
         workspace_name = r["Name"]
-
-        assign_workspace_to_capacity(capacity=target_capacity, workspace=workspace_id)
-        migrated_workspaces.append(workspace_name)
+        if workspaces is None or workspace_name in workspaces:
+            assign_workspace_to_capacity(capacity=target_capacity, workspace=workspace_id)
+            migrated_workspaces.append(workspace_name)
 
     if len(migrated_workspaces) < workspace_count:
         print(
