@@ -60,14 +60,18 @@ class ConnectBase:
                 item=item, workspace=workspace_id, type=endpoint_type.capitalize()
             )
 
+        endpoint_for_url = (
+            "SQLDatabases" if endpoint_type == "sqldatabase" else f"{endpoint_type}s"
+        )
+
         # Get the TDS endpoint
         response = _base_api(
-            request=f"v1/workspaces/{workspace_id}/{endpoint_type}s/{resource_id}"
+            request=f"v1/workspaces/{workspace_id}/{endpoint_for_url}/{resource_id}"
         )
 
         if endpoint_type == "warehouse":
             tds_endpoint = response.json().get("properties", {}).get("connectionString")
-        if endpoint_type == "sqldatabase":
+        elif endpoint_type == "sqldatabase":
             tds_endpoint = response.json().get("properties", {}).get("serverFqdn")
         else:
             tds_endpoint = (
