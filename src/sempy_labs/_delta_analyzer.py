@@ -429,6 +429,7 @@ def get_delta_table_history(
     table_name: str,
     lakehouse: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
+    schema: Optional[str] = None,
 ) -> pd.DataFrame:
     """
     Returns the history of a delta table as a pandas dataframe.
@@ -444,6 +445,8 @@ def get_delta_table_history(
         The Fabric workspace name or ID used by the lakehouse.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    schema : str, default=None
+        The name of the schema to which the table belongs (for schema-enabled lakehouses). If None, the default schema is used.
 
     Returns
     -------
@@ -460,7 +463,7 @@ def get_delta_table_history(
     (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=workspace
     )
-    path = create_abfss_path(lakehouse_id, workspace_id, table_name)
+    path = create_abfss_path(lakehouse_id, workspace_id, table_name, schema)
 
     from delta import DeltaTable
 

@@ -18,6 +18,8 @@ def delete_user_from_workspace(
 
     This is a wrapper function for the following API: `Groups - Delete User In Group <https://learn.microsoft.com/rest/api/power-bi/groups/delete-user-in-group>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     email_address : str
@@ -33,6 +35,7 @@ def delete_user_from_workspace(
     _base_api(
         request=f"/v1.0/myorg/groups/{workspace_id}/users/{email_address}",
         method="delete",
+        client="fabric_sp",
     )
     print(
         f"{icons.green_dot} The '{email_address}' user has been removed from accessing the '{workspace_name}' workspace."
@@ -49,6 +52,8 @@ def update_workspace_user(
     Updates a user's role within a workspace.
 
     This is a wrapper function for the following API: `Groups - Update Group User <https://learn.microsoft.com/rest/api/power-bi/groups/update-group-user>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -90,6 +95,7 @@ def update_workspace_user(
         request=f"/v1.0/myorg/groups/{workspace_id}/users",
         method="put",
         payload=payload,
+        client="fabric_sp",
     )
     print(
         f"{icons.green_dot} The '{email_address}' user has been updated to a '{role_name}' within the '{workspace_name}' workspace."
@@ -101,6 +107,8 @@ def list_workspace_users(workspace: Optional[str | UUID] = None) -> pd.DataFrame
     A list of all the users of a workspace and their roles.
 
     This is a wrapper function for the following API: `Workspaces - List Workspace Role Assignments <https://learn.microsoft.com/rest/api/fabric/core/workspaces/list-workspace-role-assignments>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -127,7 +135,9 @@ def list_workspace_users(workspace: Optional[str | UUID] = None) -> pd.DataFrame
     df = _create_dataframe(columns=columns)
 
     responses = _base_api(
-        request=f"v1/workspaces/{workspace_id}/roleAssignments", uses_pagination=True
+        request=f"v1/workspaces/{workspace_id}/roleAssignments",
+        uses_pagination=True,
+        client="fabric_sp",
     )
 
     for r in responses:
@@ -251,6 +261,8 @@ def unassign_workspace_from_capacity(workspace: Optional[str | UUID] = None):
 
     This is a wrapper function for the following API: `Workspaces - Unassign From Capacity <https://learn.microsoft.com/rest/api/fabric/core/workspaces/unassign-from-capacity>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     workspace : str | uuid.UUID, default=None
@@ -265,6 +277,7 @@ def unassign_workspace_from_capacity(workspace: Optional[str | UUID] = None):
         request=f"/v1/workspaces/{workspace_id}/unassignFromCapacity",
         method="post",
         status_codes=[200, 202],
+        client="fabric_sp",
     )
     print(
         f"{icons.green_dot} The '{workspace_name}' workspace has been unassigned from its capacity."
@@ -278,6 +291,8 @@ def list_workspace_role_assignments(
     Shows the members of a given workspace.
 
     This is a wrapper function for the following API: `Workspaces - List Workspace Role Assignments <https://learn.microsoft.com/rest/api/fabric/core/workspaces/list-workspace-role-assignments>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -303,7 +318,9 @@ def list_workspace_role_assignments(
     df = _create_dataframe(columns=columns)
 
     responses = _base_api(
-        request=f"v1/workspaces/{workspace_id}/roleAssignments", uses_pagination=True
+        request=f"v1/workspaces/{workspace_id}/roleAssignments",
+        uses_pagination=True,
+        client="fabric_sp",
     )
 
     for r in responses:
@@ -318,3 +335,26 @@ def list_workspace_role_assignments(
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
     return df
+
+
+def delete_workspace(workspace: Optional[str | UUID] = None):
+    """
+    Deletes a workspace.
+
+    This is a wrapper function for the following API: `Workspaces - Delete Workspace <https://learn.microsoft.com/rest/api/fabric/core/workspaces/delete-workspace>`_.
+
+    Parameters
+    ----------
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    _base_api(
+        request=f"v1/workspaces/{workspace_id}", method="delete", client="fabric_sp"
+    )
+
+    print(f"{icons.green_dot} The '{workspace_name}' workspace has been deleted.")

@@ -73,7 +73,7 @@ def create_ml_experiment(
     name: str
         Name of the ML experiment.
     description : str, default=None
-        A description of the environment.
+        A description of the ML experiment.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse

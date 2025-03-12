@@ -1043,12 +1043,13 @@ def resolve_workspace_capacity(
     Tuple[uuid.UUID, str]
         capacity Id; capacity came.
     """
+    from sempy_labs._capacities import list_capacities
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     filter_condition = urllib.parse.quote(workspace_id)
     dfW = fabric.list_workspaces(filter=f"id eq '{filter_condition}'")
     capacity_id = dfW["Capacity Id"].iloc[0]
-    dfC = fabric.list_capacities()
+    dfC = list_capacities()
     dfC_filt = dfC[dfC["Id"] == capacity_id]
     if len(dfC_filt) == 1:
         capacity_name = dfC_filt["Display Name"].iloc[0]
@@ -1106,8 +1107,10 @@ def get_capacity_name(workspace: Optional[str | UUID] = None) -> str:
         The capacity name.
     """
 
+    from sempy_labs._capacities import list_capacities
+
     capacity_id = get_capacity_id(workspace)
-    dfC = fabric.list_capacities()
+    dfC = list_capacities()
     dfC_filt = dfC[dfC["Id"] == capacity_id]
     if dfC_filt.empty:
         raise ValueError(
@@ -1133,11 +1136,12 @@ def resolve_capacity_name(capacity_id: Optional[UUID] = None) -> str:
     str
         The capacity name.
     """
+    from sempy_labs._capacities import list_capacities
 
     if capacity_id is None:
         return get_capacity_name()
 
-    dfC = fabric.list_capacities()
+    dfC = list_capacities()
     dfC_filt = dfC[dfC["Id"] == capacity_id]
 
     if dfC_filt.empty:
@@ -1164,6 +1168,7 @@ def resolve_capacity_id(capacity: Optional[str | UUID] = None, **kwargs) -> UUID
     uuid.UUID
         The capacity Id.
     """
+    from sempy_labs._capacities import list_capacities
 
     if "capacity_name" in kwargs:
         capacity = kwargs["capacity_name"]
@@ -1176,7 +1181,7 @@ def resolve_capacity_id(capacity: Optional[str | UUID] = None, **kwargs) -> UUID
     if _is_valid_uuid(capacity):
         return capacity
 
-    dfC = fabric.list_capacities()
+    dfC = list_capacities()
     dfC_filt = dfC[dfC["Display Name"] == capacity]
 
     if dfC_filt.empty:
