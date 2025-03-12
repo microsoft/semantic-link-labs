@@ -100,7 +100,7 @@ def list_warehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     responses = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/warehouses", uses_pagination=True
+        request=f"/v1/workspaces/{workspace_id}/warehouses", uses_pagination=True, client="fabric_sp",
     )
 
     for r in responses:

@@ -28,6 +28,7 @@ def provision_workspace_identity(workspace: Optional[str | UUID] = None):
         method="post",
         lro_return_status_code=True,
         status_codes=None,
+        client="fabric_sp",
     )
 
     print(
@@ -56,6 +57,7 @@ def deprovision_workspace_identity(workspace: Optional[str | UUID] = None):
         method="post",
         lro_return_status_code=True,
         status_codes=None,
+        client="fabric_sp",
     )
 
     print(

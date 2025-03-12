@@ -33,6 +33,7 @@ def delete_user_from_workspace(
     _base_api(
         request=f"/v1.0/myorg/groups/{workspace_id}/users/{email_address}",
         method="delete",
+        client="fabric_sp",
     )
     print(
         f"{icons.green_dot} The '{email_address}' user has been removed from accessing the '{workspace_name}' workspace."
@@ -90,6 +91,7 @@ def update_workspace_user(
         request=f"/v1.0/myorg/groups/{workspace_id}/users",
         method="put",
         payload=payload,
+        client="fabric_sp",
     )
     print(
         f"{icons.green_dot} The '{email_address}' user has been updated to a '{role_name}' within the '{workspace_name}' workspace."
@@ -127,7 +129,7 @@ def list_workspace_users(workspace: Optional[str | UUID] = None) -> pd.DataFrame
     df = _create_dataframe(columns=columns)
 
     responses = _base_api(
-        request=f"v1/workspaces/{workspace_id}/roleAssignments", uses_pagination=True
+        request=f"v1/workspaces/{workspace_id}/roleAssignments", uses_pagination=True, client="fabric_sp"
     )
 
     for r in responses:
@@ -265,6 +267,7 @@ def unassign_workspace_from_capacity(workspace: Optional[str | UUID] = None):
         request=f"/v1/workspaces/{workspace_id}/unassignFromCapacity",
         method="post",
         status_codes=[200, 202],
+        client="fabric_sp",
     )
     print(
         f"{icons.green_dot} The '{workspace_name}' workspace has been unassigned from its capacity."
@@ -303,7 +306,7 @@ def list_workspace_role_assignments(
     df = _create_dataframe(columns=columns)
 
     responses = _base_api(
-        request=f"v1/workspaces/{workspace_id}/roleAssignments", uses_pagination=True
+        request=f"v1/workspaces/{workspace_id}/roleAssignments", uses_pagination=True, client="fabric_sp"
     )
 
     for r in responses:
