@@ -60,6 +60,7 @@ def create_managed_private_endpoint(
         status_codes=[201, 202],
         payload=request_body,
         lro_return_status_code=True,
+        client="fabric_sp",
     )
     _print_success(
         item_name=name,
@@ -106,7 +107,7 @@ def list_managed_private_endpoints(
     responses = _base_api(
         request=f"/v1/workspaces/{workspace_id}/managedPrivateEndpoints",
         uses_pagination=True,
-        status_codes=200,
+        client="fabric_sp",
     )
 
     for r in responses:
@@ -162,7 +163,7 @@ def delete_managed_private_endpoint(
     _base_api(
         request=f"/v1/workspaces/{workspace_id}/managedPrivateEndpoints/{item_id}",
         method="delete",
-        status_codes=200,
+        client="fabric_sp",
     )
 
     _print_success(

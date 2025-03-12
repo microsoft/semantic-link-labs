@@ -50,8 +50,8 @@ def list_mirrored_databases(workspace: Optional[str | UUID] = None) -> pd.DataFr
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     responses = _base_api(
         request=f"/v1/workspaces/{workspace_id}/mirroredDatabases",
-        status_codes=200,
         uses_pagination=True,
+        client="fabric_sp",
     )
 
     for r in responses:
