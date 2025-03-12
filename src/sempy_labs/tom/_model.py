@@ -4682,6 +4682,46 @@ class TOMWrapper:
                     f"{icons.yellow_dot} '{m}' is not a member of the '{role_name}' role."
                 )
 
+    def clear_linguistic_schema(self, culture: str):
+        """
+        Clears the linguistic schema for a given culture.
+
+        Parameters
+        ----------
+        culture : str
+            The culture name.
+        """
+
+        empty_schema = f'{{"Version":"1.0.0","Language":"{culture}"}}'
+
+        self.model.Cultures[culture].LinguisticMetadata.Content = json.dumps(
+            empty_schema, indent=4
+        )
+
+    def get_linguistic_schema(self, culture: str) -> dict:
+        """
+        Obtains the linguistic schema for a given culture.
+
+        Parameters
+        ----------
+        culture : str
+            The culture name.
+
+        Returns
+        -------
+        dict
+            The linguistic schema for the given culture.
+        """
+
+        c = self.model.Cultures[culture]
+        if c.LinguisticMetadata is not None:
+            return json.loads(c.LinguisticMetadata.Content)
+        else:
+            print(
+                f"{icons.info} The '{culture}' culture does not have a linguistic schema."
+            )
+            return None
+
     def _add_linguistic_schema(self, culture: str):
 
         import Microsoft.AnalysisServices.Tabular as TOM
