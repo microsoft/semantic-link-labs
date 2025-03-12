@@ -129,7 +129,9 @@ def list_workspace_users(workspace: Optional[str | UUID] = None) -> pd.DataFrame
     df = _create_dataframe(columns=columns)
 
     responses = _base_api(
-        request=f"v1/workspaces/{workspace_id}/roleAssignments", uses_pagination=True, client="fabric_sp"
+        request=f"v1/workspaces/{workspace_id}/roleAssignments",
+        uses_pagination=True,
+        client="fabric_sp",
     )
 
     for r in responses:
@@ -306,7 +308,9 @@ def list_workspace_role_assignments(
     df = _create_dataframe(columns=columns)
 
     responses = _base_api(
-        request=f"v1/workspaces/{workspace_id}/roleAssignments", uses_pagination=True, client="fabric_sp"
+        request=f"v1/workspaces/{workspace_id}/roleAssignments",
+        uses_pagination=True,
+        client="fabric_sp",
     )
 
     for r in responses:

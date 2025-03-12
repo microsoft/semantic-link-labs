@@ -185,6 +185,9 @@ from sempy_labs._sql import (
 from sempy_labs._sqldatabase import (
     get_sql_database_columns,
     get_sql_database_tables,
+    create_sql_database,
+    delete_sql_database,
+    list_sql_databases,
 )
 from sempy_labs._workspace_identity import (
     provision_workspace_identity,
@@ -548,4 +551,7 @@ __all__ = [
     "generate_dax_query_view_url",
     "delete_semantic_model",
     "delete_workspace",
+    "create_sql_database",
+    "delete_sql_database",
+    "list_sql_databases",
 ]
