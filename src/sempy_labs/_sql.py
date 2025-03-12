@@ -61,7 +61,7 @@ class ConnectBase:
             )
 
         endpoint_for_url = (
-            "SQLDatabases" if endpoint_type == "sqldatabase" else f"{endpoint_type}s"
+            "sqlDatabases" if endpoint_type == "sqldatabase" else f"{endpoint_type}s"
         )
 
         # Get the TDS endpoint
