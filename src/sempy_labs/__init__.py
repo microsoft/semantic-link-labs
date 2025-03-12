@@ -1,3 +1,6 @@
+from sempy_labs._delta_analyzer_history import (
+    delta_analyzer_history,
+)
 from sempy_labs._dax_query_view import (
     generate_dax_query_view_url,
 )
@@ -544,4 +547,5 @@ __all__ = [
     "get_mounted_data_factory_definition",
     "delete_mounted_data_factory",
     "generate_dax_query_view_url",
+    "delta_analyzer_history",
 ]

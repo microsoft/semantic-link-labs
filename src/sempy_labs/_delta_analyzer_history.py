@@ -3,21 +3,13 @@ from typing import Optional
 import pyarrow.parquet as pq
 from sempy_labs._helper_functions import (
     create_abfss_path,
-    save_as_delta_table,
-    _get_column_aggregate,
-    _create_dataframe,
-    _update_dataframe_datatypes,
-    resolve_workspace_name_and_id,
-    resolve_lakehouse_name_and_id,
-    _read_delta_table,
-    _delta_table_row_count,
+    resolve_workspace_id,
+    resolve_lakehouse_id,
     _mount,
-    _create_spark_session,
 )
 from tqdm.auto import tqdm
 from uuid import UUID
 from datetime import datetime
-from IPython.display import display, HTML
 
 
 def delta_analyzer_history(
@@ -54,11 +46,10 @@ def delta_analyzer_history(
     """
 
     import notebookutils
+    from IPython.display import display, HTML
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace=workspace)
-    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
-        lakehouse=lakehouse, workspace=workspace
-    )
+    workspace_id = resolve_workspace_id(workspace=workspace)
+    lakehouse_id = resolve_lakehouse_id(lakehouse=lakehouse, workspace=workspace)
 
     table_path = create_abfss_path(lakehouse_id, workspace_id, table_name, schema)
     local_path = _mount(lakehouse=lakehouse, workspace=workspace)
@@ -68,187 +59,147 @@ def delta_analyzer_history(
     files = notebookutils.fs.ls(delta_table_path)
     json_files = [file.name for file in files if file.name.endswith(".json")]
 
-    elementVersion = 0
-    totalSize: int = 0
-    totalRows: int = 0
-    totalFiles: int = 0
-    totalRowgroups: int = 0
-
-    changesArray = []
-    parquetFiles = []
-
-    myDateTimeFormat = "%Y-%m-%d %H:%M:%S.%f"
-
-    nowToEpoch = datetime.now().strftime(myDateTimeFormat)
-
+    element_version = total_size = total_rows = total_files = total_rowgroups = 0
+    changes_array = []
+    parquet_files = []
+    my_date_time_format = "%Y-%m-%d %H:%M:%S.%f"
+    now_to_epoch = datetime.now().strftime(my_date_time_format)
     num_latest_files = len(json_files)
-    for idx, file in enumerate(bar := tqdm(json_files), start=1):
 
+    for idx, file in enumerate(bar := tqdm(json_files), start=1):
         bar.set_description(
             f"Analyzing the '{file}' parquet file ({idx}/{num_latest_files})..."
         )
 
-        changeTimestamp = datetime.strptime("2001-01-01 12:00:00.000", myDateTimeFormat)
-        df = pd.read_json(
-            f"{table_path}/_delta_log/{file}", lines=True
+        change_timestamp = datetime.strptime(
+            "2001-01-01 12:00:00.000", my_date_time_format
         )
+        df = pd.read_json(f"{delta_table_path}/{file}", lines=True)
 
-        rowsAdded: int = 0
-        sizeAdded: int = 0
-        rowsDeleted: int = 0
-        sizeDeleted: int = 0
-        filesAdded: int = 0
-        filesRemoved: int = 0
-
-        rowGroupsAdded: int = 0
-        rowGroupsRemoved: int = 0
-
-        totalFilesBeforeChange: int = totalFiles
-        totalRowGroupsBeforeChange: int = totalRowgroups
-        operation: str = ""
-        predicate: str = ""
-        tags: str = ""
+        rows_added = size_added = rows_deleted = size_deleted = files_added = (
+            files_removed
+        ) = row_groups_added = row_groups_removed = 0
+        total_files_before_change = total_files
+        total_row_groups_before_change = total_rowgroups
+        operation = predicate = tags = ""
 
         for _, row in df.iterrows():
-            if df.get("add") is not None:
-                add_row = row["add"]
+            add_row = row.get("add")
+            remove_row = row.get("remove")
+            commit_row = row.get("commitInfo")
 
-                if type(add_row) == dict:
+            if isinstance(add_row, dict):
+                file_name = add_row["path"]
+                fs_filename = f"{table_path}/{file_name}"
+                size_added += add_row["size"]
+                files_added += 1
+                filerows_added = 0
 
-                    file_name = add_row["path"]
-                    sizeAdded = sizeAdded + add_row["size"]
-                    filesAdded = filesAdded + 1
+                if notebookutils.fs.exists(fs_filename):
+                    parquet_file = pq.ParquetFile(table_path_local + f"/{file_name}")
+                    for i in range(parquet_file.num_row_groups):
+                        row_group = parquet_file.metadata.row_group(i)
+                        num_rows = row_group.num_rows
+                        filerows_added += num_rows
+                        rows_added += num_rows
 
-                    fileRowsAdded: int = 0
+                    row_groups_added += parquet_file.num_row_groups
 
-                    fs_filename = f"{table_path}/{file_name}"
+                    start = str(
+                        datetime.fromtimestamp(add_row["modificationTime"] / 1000.0)
+                    )
+                    parquet_files.append(
+                        {
+                            "file": file_name,
+                            "start": start,
+                            "end": now_to_epoch,
+                            "rows": filerows_added,
+                            "isCurrent": 1,
+                        }
+                    )
 
-                    if notebookutils.fs.exists(fs_filename):
-                        # parquet_file = pq.ParquetFile(f"{table_path}/Tables/{table_name}/{file_name}")
-                        parquet_file = pq.ParquetFile(
-                            table_path_local + f"/{file_name}"
-                        )
-                        for i in range(parquet_file.num_row_groups):
-                            row_group = parquet_file.metadata.row_group(i)
-                            num_rows = row_group.num_rows
-                            fileRowsAdded = fileRowsAdded + num_rows
+            if isinstance(remove_row, dict):
+                file_name = remove_row["path"]
+                fs_filename = f"{table_path}/{file_name}"
 
-                            rowsAdded = rowsAdded + num_rows
+                if notebookutils.fs.exists(fs_filename):
+                    parquet_file = pq.ParquetFile(table_path_local + f"/{file_name}")
+                    for i in range(parquet_file.num_row_groups):
+                        row_group = parquet_file.metadata.row_group(i)
+                        num_rows = row_group.num_rows
+                        rows_deleted += num_rows
 
-                        rowGroupsAdded = rowGroupsAdded + parquet_file.num_row_groups
+                    files_removed += 1
+                    size_deleted += remove_row.get("size", 0)
+                    row_groups_removed += parquet_file.num_row_groups
 
-                        start = str(
-                            datetime.fromtimestamp(add_row["modificationTime"] / 1000.0)
-                        )
-                        parquetFiles.append(
+                    result = next(
+                        (row for row in parquet_files if row["file"] == file_name), None
+                    )
+                    if result:
+                        result.update(
                             {
-                                "file": file_name,
-                                "start": start,
-                                "end": nowToEpoch,
-                                "rows": fileRowsAdded,
-                                "isCurrent": 1,
+                                "isCurrent": 0,
+                                "end": str(
+                                    datetime.fromtimestamp(
+                                        remove_row["deletionTimestamp"] / 1000.0
+                                    )
+                                ),
                             }
                         )
 
-            if df.get("remove") is not None:
-                remove_row = row["remove"]
-                if type(remove_row) == dict:
-                    file_name = remove_row["path"]
-                    ### CHECK IF FILE EXISTS!!!
-                    fs_filename = f"{table_path}/{file_name}"
+            if isinstance(commit_row, dict):
+                operation = commit_row.get("operation")
+                tags = commit_row.get("tags")
+                predicate = commit_row.get("operationParameters", {}).get("predicate")
 
-                    if notebookutils.fs.exists(fs_filename):
-                        # parquet_file = pq.ParquetFile(f"{table_path}/{file_name}")
-                        parquet_file = pq.ParquetFile(
-                            table_path_local + f"/{file_name}"
-                        )
-                        for i in range(parquet_file.num_row_groups):
-                            row_group = parquet_file.metadata.row_group(i)
-                            num_rows = row_group.num_rows
-                            rowsDeleted = rowsDeleted + num_rows
+                if operation == "VACUUM START":
+                    operation_metrics = commit_row.get("operationMetrics", {})
+                    total_files -= int(operation_metrics.get("numFilesToDelete", 0))
+                    total_size -= int(operation_metrics.get("sizeOfDataToDelete", 0))
 
-                        filesRemoved = filesRemoved + 1
-                        sizeDeleted = sizeDeleted + remove_row["size"]
+                change_timestamp = datetime.fromtimestamp(
+                    commit_row["timestamp"] / 1000.0
+                )
 
-                        rowGroupsRemoved = (
-                            rowGroupsRemoved + parquet_file.num_row_groups
-                        )
+        total_size += size_added - size_deleted
+        total_rows += rows_added - rows_deleted
+        total_files += files_added - files_removed
+        total_rowgroups += row_groups_added - row_groups_removed
 
-                        result = next(
-                            (row for row in parquetFiles if row["file"] == file_name),
-                            None,
-                        )
-                        if result is not None:
-                            result["isCurrent"] = 0
-                            result["end"] = str(
-                                datetime.fromtimestamp(
-                                    remove_row["deletionTimestamp"] / 1000.0
-                                )
-                            )
-
-            if df.get("commitInfo") is not None:
-                commit_row = row["commitInfo"]
-                if type(commit_row) == dict:
-                    operation = commit_row["operation"]
-
-                    if "tags" in commit_row:
-                        tags = commit_row["tags"]
-
-                    if "operationParameters" in commit_row:
-                        operationParameters = commit_row["operationParameters"]
-                        if "predicate" in operationParameters:
-                            predicate = operationParameters["predicate"]
-
-                    if operation == "VACUUM START":
-                        totalFiles = totalFiles - int(
-                            commit_row["operationMetrics"]["numFilesToDelete"]
-                        )
-                        totalSize = totalSize - int(
-                            commit_row["operationMetrics"]["sizeOfDataToDelete"]
-                        )
-
-                    changeTimestamp = datetime.fromtimestamp(
-                        commit_row["timestamp"] / 1000.0
-                    )
-
-        totalSize = totalSize + sizeAdded - sizeDeleted
-        totalRows = totalRows + rowsAdded - rowsDeleted
-        totalFiles = totalFiles + filesAdded - filesRemoved
-        totalRowgroups = totalRowgroups + rowGroupsAdded - rowGroupsRemoved
-
-        incrementalFramingEffect = 1
-        if sizeDeleted != 0:
-            incrementalFramingEffect = round(
-                (totalSize - sizeAdded * 1.0) / totalSize, 4
+        incremental_framing_effect = 1
+        if size_deleted != 0 and total_size != 0:
+            incremental_framing_effect = round(
+                (total_size - size_added) / total_size, 4
             )
 
-        changesArray.append(
+        changes_array.append(
             [
-                elementVersion,
+                element_version,
                 operation,
                 predicate,
-                changeTimestamp,
-                incrementalFramingEffect * 100,
-                filesAdded,
-                filesRemoved,
-                totalFilesBeforeChange - filesRemoved,
-                totalFiles,
-                sizeAdded,
-                sizeDeleted,
-                totalSize,
-                rowGroupsAdded,
-                rowGroupsRemoved,
-                totalRowGroupsBeforeChange - rowGroupsRemoved,
-                totalRowgroups,
-                rowsAdded,
-                rowsDeleted,
-                rowsAdded - rowsDeleted,
-                totalRows,
+                change_timestamp,
+                incremental_framing_effect * 100,
+                files_added,
+                files_removed,
+                total_files_before_change - files_removed,
+                total_files,
+                size_added,
+                size_deleted,
+                total_size,
+                row_groups_added,
+                row_groups_removed,
+                total_row_groups_before_change - row_groups_removed,
+                total_rowgroups,
+                rows_added,
+                rows_deleted,
+                rows_added - rows_deleted,
+                total_rows,
                 tags,
             ]
         )
 
-        elementVersion = elementVersion + 1
+        element_version += 1
 
     #  /********************************************************************************************************************
     #      Display Gantt Chart of files
@@ -287,7 +238,7 @@ def delta_analyzer_history(
             }
     }
     }"""
-        % (parquetFiles)
+        % (parquet_files)
     )
 
     display(
@@ -314,8 +265,8 @@ def delta_analyzer_history(
         )
     )
 
-    changesDF = pd.DataFrame(
-        changesArray,
+    return pd.DataFrame(
+        changes_array,
         columns=[
             "Change Number",
             "Change Type",
@@ -325,20 +276,18 @@ def delta_analyzer_history(
             "Files Added",
             "Files Removed",
             "Files Preserved",
-            "Files after change",
+            "Files After Change",
             "Size Added",
             "Sized Removed",
-            "Size after change",
+            "Size After Change",
             "Rowgroups Added",
             "Rowgroups Removed",
             "Rowgroups Preserved",
-            "Rowgroups after change",
+            "Rowgroups After Change",
             "Rows Added",
             "Rows Removed",
             "Rows Delta",
-            "Rows after change",
+            "Rows After Change",
             "Tags",
         ],
     )
-
-    return changesDF
