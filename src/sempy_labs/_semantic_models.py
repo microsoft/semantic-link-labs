@@ -7,6 +7,7 @@ from sempy_labs._helper_functions import (
     _update_dataframe_datatypes,
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
+    delete_item,
 )
 import sempy_labs._icons as icons
 
@@ -115,3 +116,22 @@ def enable_semantic_model_scheduled_refresh(
         print(
             f"{icons.green_dot} Scheduled refresh for the '{dataset_name}' within the '{workspace_name}' workspace has been enabled."
         )
+
+
+def delete_semantic_model(dataset: str | UUID, workspace: Optional[str | UUID] = None):
+    """
+    Deletes a semantic model.
+
+    This is a wrapper function for the following API: `Items - Delete Semantic Model <https://learn.microsoft.com/rest/api/fabric/semanticmodel/items/delete-semantic-model>`_.
+
+    Parameters
+    ----------
+    dataset: str | uuid.UUID
+        Name or ID of the semantic model.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    delete_item(item=dataset, type="SemanticModel", workspace=workspace)

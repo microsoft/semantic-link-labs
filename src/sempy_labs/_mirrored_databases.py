@@ -22,6 +22,8 @@ def list_mirrored_databases(workspace: Optional[str | UUID] = None) -> pd.DataFr
 
     This is a wrapper function for the following API: `Items - List Mirrored Databases <https://learn.microsoft.com/rest/api/fabric/mirroredwarehouse/items/list-mirrored-databases>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     workspace : str | uuid.UUID, default=None
@@ -50,8 +52,8 @@ def list_mirrored_databases(workspace: Optional[str | UUID] = None) -> pd.DataFr
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     responses = _base_api(
         request=f"/v1/workspaces/{workspace_id}/mirroredDatabases",
-        status_codes=200,
         uses_pagination=True,
+        client="fabric_sp",
     )
 
     for r in responses:

@@ -10,6 +10,7 @@ from sempy_labs._mounted_data_factories import (
 from sempy_labs._semantic_models import (
     get_semantic_model_refresh_schedule,
     enable_semantic_model_scheduled_refresh,
+    delete_semantic_model,
 )
 from sempy_labs._graphQL import (
     list_graphql_apis,
@@ -151,6 +152,7 @@ from sempy_labs._capacities import (
     create_or_update_resource_group,
     list_resource_groups,
     get_resource_group,
+    list_capacities,
 )
 from sempy_labs._spark import (
     get_spark_settings,
@@ -168,6 +170,7 @@ from sempy_labs._workspaces import (
     assign_workspace_to_capacity,
     unassign_workspace_from_capacity,
     list_workspace_role_assignments,
+    delete_workspace,
 )
 from sempy_labs._notebooks import (
     get_notebook_definition,
@@ -183,6 +186,9 @@ from sempy_labs._sql import (
 from sempy_labs._sqldatabase import (
     get_sql_database_columns,
     get_sql_database_tables,
+    create_sql_database,
+    delete_sql_database,
+    list_sql_databases,
 )
 from sempy_labs._workspace_identity import (
     provision_workspace_identity,
@@ -247,7 +253,6 @@ from sempy_labs._list_functions import (
     list_semantic_model_objects,
     list_shortcuts,
     get_object_level_security,
-    list_capacities,
     list_datamarts,
     list_lakehouses,
     list_sql_endpoints,
@@ -544,4 +549,9 @@ __all__ = [
     "get_mounted_data_factory_definition",
     "delete_mounted_data_factory",
     "generate_dax_query_view_url",
+    "delete_semantic_model",
+    "delete_workspace",
+    "create_sql_database",
+    "delete_sql_database",
+    "list_sql_databases",
 ]
