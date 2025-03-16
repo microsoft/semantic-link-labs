@@ -1314,17 +1314,27 @@ class FabricTokenCredential(TokenCredential):
         return access_token
 
 
+def _create_adls_url(account_name):
+
+    return f"https://{account_name}.dfs.core.windows.net"
+
+
 def _get_adls_client(account_name):
 
     from azure.storage.filedatalake import DataLakeServiceClient
 
-    account_url = f"https://{account_name}.dfs.core.windows.net"
+    account_url = _create_adls_url(account_name)
 
-    service_client = DataLakeServiceClient(
-        account_url, credential=FabricTokenCredential()
-    )
+    return DataLakeServiceClient(account_url, credential=FabricTokenCredential())
 
-    return service_client
+
+def _get_blob_client(account_name):
+
+    from azure.storage.blob import BlobServiceClient
+
+    account_url = _create_adls_url(account_name)
+
+    return BlobServiceClient(account_url, credential=FabricTokenCredential())
 
 
 def resolve_warehouse_id(
