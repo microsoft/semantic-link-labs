@@ -35,8 +35,8 @@ def restore_lakehouse_table(
         The name of the schema to which the table belongs (for schema-enabled lakehouses). If None, the default schema is used.
     """
 
-    (workspace_name, workspace_id) = resolve_lakehouse_name_and_id(workspace)
-    (lakehouse_name, lakehouse_id) = resolve_workspace_name_and_id(
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
         lakehouse, workspace_id
     )
 
@@ -47,11 +47,10 @@ def restore_lakehouse_table(
 
     client = _get_adls_client(storage_account)
     fs = client.get_file_system_client(workspace_name)
-    # paths = fs.get_paths(path=data_path)
     deleted_paths = fs.list_deleted_paths(path_prefix=data_path)
     bsc = _get_blob_client(account_name=storage_account)
     ccli = bsc.get_container_client(container=workspace_name)
+
     for path in deleted_paths:
         blob_client = ccli.get_blob_client(path)
         blob_client.undelete_blob()
-    return deleted_paths
