@@ -1308,33 +1308,31 @@ class FabricTokenCredential(TokenCredential):
 
         import notebookutils
 
-        token = notebookutils.credentials.getToken(scopes)
-        access_token = AccessToken(token, 0)
-
-        return access_token
-
-
-def _create_adls_url(account_name):
-
-    return f"https://{account_name}.dfs.core.windows.net"
+        token = notebookutils.credentials.getToken("storage")
+        return AccessToken(token, 0)
 
 
 def _get_adls_client(account_name):
 
     from azure.storage.filedatalake import DataLakeServiceClient
 
-    account_url = _create_adls_url(account_name)
+    account_url = f"https://{account_name}.dfs.core.windows.net"
 
     return DataLakeServiceClient(account_url, credential=FabricTokenCredential())
 
 
-def _get_blob_client(account_name):
+def _get_blob_client(workspace_id: UUID, item_id: UUID):
 
     from azure.storage.blob import BlobServiceClient
 
-    account_url = _create_adls_url(account_name)
+    endpoint = _get_fabric_context_setting(name="trident.onelake.endpoint").replace(
+        ".dfs.", ".blob."
+    )
+    url = f"https://{endpoint}/{workspace_id}/{item_id}"
 
-    return BlobServiceClient(account_url, credential=FabricTokenCredential())
+    # account_url = f"https://{account_name}.blob.core.windows.net"
+
+    return BlobServiceClient(url, credential=FabricTokenCredential())
 
 
 def resolve_warehouse_id(

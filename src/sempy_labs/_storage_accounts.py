@@ -6,24 +6,21 @@ from sempy_labs._helper_functions import (
 )
 from uuid import UUID
 from typing import Optional
+import sempy_labs._icons as icons
 
 
-def restore_lakehouse_table(
-    table_name,
-    storage_account: str,
+def restore_lakehouse_object(
+    file_path: str,
     lakehouse: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
-    schema: Optional[str] = None,
 ):
     """
     Restores a delta table in a lakehouse from a deleted state.
 
     Parameters
     ----------
-    table_name : str
-        The name of the table to restore.
-    storage_account: str
-        The name of the ADLS Gen2 storage account.
+    file_path : str
+        The file path of the object to restore. For example: "Tables/my_delta_table".
     lakehouse : str | uuid.UUID, default=None
         The Fabric lakehouse name or ID.
         Defaults to None which resolves to the lakehouse attached to the notebook.
@@ -31,26 +28,27 @@ def restore_lakehouse_table(
         The Fabric workspace name or ID used by the lakehouse.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    schema : str, default=None
-        The name of the schema to which the table belongs (for schema-enabled lakehouses). If None, the default schema is used.
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
         lakehouse, workspace_id
     )
+    blob_path_prefix = f"{lakehouse_id}/{file_path}"
 
-    data_path = f"{lakehouse_name}.Lakehouse/Tables"
-    if schema:
-        data_path += f"/{schema}"
-    data_path += f"/{table_name}"
+    container = file_path.split("/")[0]
+    if container not in ["Tables", "Files"]:
+        raise ValueError(
+            f"Invalid container '{container}'. Expected 'Tables' or 'Files'."
+        )
 
-    client = _get_adls_client(storage_account)
-    fs = client.get_file_system_client(workspace_name)
-    deleted_paths = fs.list_deleted_paths(path_prefix=data_path)
-    bsc = _get_blob_client(account_name=storage_account)
-    ccli = bsc.get_container_client(container=workspace_name)
-
-    for path in deleted_paths:
-        blob_client = ccli.get_blob_client(path)
-        blob_client.undelete_blob()
+    bsc = _get_blob_client(workspace_id=workspace_id, item_id=lakehouse_id)
+    ccli = bsc.get_container_client(container=container)
+    blobs = ccli.list_blobs(include=["deleted"])
+    for b in blobs:
+        blob_name = b.name
+        if blob_name.startswith(blob_path_prefix) and b.deleted:
+            print(f"{icons.in_progress} Restoring the '{blob_name}' blob...")
+            blob_client = ccli.get_blob_client(blob_name)
+            blob_client.undelete_blob()
+            print(f"{icons.green_dot} The '{blob_name}' blob has been restored.")
