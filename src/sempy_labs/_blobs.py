@@ -1,7 +1,6 @@
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_lakehouse_name_and_id,
-    _get_adls_client,
     _get_blob_client,
 )
 from uuid import UUID
