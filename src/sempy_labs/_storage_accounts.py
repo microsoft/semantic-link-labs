@@ -39,7 +39,7 @@ def restore_lakehouse_object(
     container = file_path.split("/")[0]
     if container not in ["Tables", "Files"]:
         raise ValueError(
-            f"Invalid container '{container}'. Expected 'Tables' or 'Files'."
+            f"{icons.red_dot} Invalid container '{container}' within the file_path parameter. Expected 'Tables' or 'Files'."
         )
 
     bsc = _get_blob_client(workspace_id=workspace_id, item_id=lakehouse_id)
