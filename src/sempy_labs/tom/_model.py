@@ -3309,14 +3309,16 @@ class TOMWrapper:
             .tolist()
         )
         cols = (
-            fil[fil["Referenced Object Type"] == "Column"][
+            fil[fil["Referenced Object Type"].isin(["Column", "Calc Column"])][
                 "Referenced Full Object Name"
             ]
             .unique()
             .tolist()
         )
         tbls = (
-            fil[fil["Referenced Object Type"] == "Table"]["Referenced Table"]
+            fil[fil["Referenced Object Type"].isin(["Table", "Calc Table"])][
+                "Referenced Table"
+            ]
             .unique()
             .tolist()
         )
