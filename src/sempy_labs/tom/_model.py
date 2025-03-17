@@ -2257,7 +2257,7 @@ class TOMWrapper:
 
         if validate:
             dax_query = f"""
-            define measure '{table_name}'[test] = 
+            define measure '{table_name}'[test] =
             var mn = MIN('{table_name}'[{column_name}])
             var ma = MAX('{table_name}'[{column_name}])
             var x = COUNTROWS(DISTINCT('{table_name}'[{column_name}]))
@@ -3489,7 +3489,7 @@ class TOMWrapper:
                         tableList.append(c.Parent.Name)
                 if (
                     re.search(
-                        create_pattern(tableList, re.escape(obj.Name)),
+                        create_pattern(tableList, obj.Name),
                         expr,
                     )
                     is not None
