@@ -27,6 +27,7 @@ def run_model_bpa_bulk(
     extended: bool = False,
     language: Optional[str] = None,
     workspace: Optional[str | List[str]] = None,
+    workspace_id: Optional[str | List[str]] = None, # Added New Parameter to take workspace Ids
     skip_models: Optional[str | List[str]] = ["ModelBPA", "Fabric Capacity Metrics"],
     skip_models_in_workspace: Optional[dict] = None,
 ):
@@ -77,14 +78,23 @@ def run_model_bpa_bulk(
         max_run_id = _get_column_aggregate(table_name=output_table)
         runId = max_run_id + 1
 
+    dfW = fabric.list_workspaces("type ne 'AdminInsights'")
+
     if isinstance(workspace, str):
         workspace = [workspace]
+            
+    if isinstance(workspace_id, str):
+        workspace_id = [workspace_id]
 
-    dfW = fabric.list_workspaces("type ne 'AdminInsights'")
     if workspace is None:
         dfW_filt = dfW.copy()
     else:
         dfW_filt = dfW[dfW["Name"].isin(workspace)]
+
+    if workspace_id is None:
+        dfW_filt = dfW.copy()
+    else:
+        dfW_filt = dfW[dfW["Id"].isin(workspace_id)]
 
     if len(dfW_filt) == 0:
         raise ValueError(
