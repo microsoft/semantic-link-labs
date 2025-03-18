@@ -83,7 +83,7 @@ def run_model_bpa_bulk(
     if workspace is None:
         dfW_filt = dfW.copy()
     else:
-        dfW_filt = dfW[(dfW['Name'].isin(workspace)) | (dfW['Id'].isin(workspace))]
+        dfW_filt = dfW[(dfW["Name"].isin(workspace)) | (dfW["Id"].isin(workspace))]
 
     if dfW_filt.empty:
         raise ValueError(
