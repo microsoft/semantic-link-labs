@@ -2,7 +2,6 @@ import sempy.fabric as fabric
 import pandas as pd
 import datetime
 from sempy_labs._helper_functions import (
-    resolve_lakehouse_name,
     save_as_delta_table,
     resolve_workspace_capacity,
     retry,
@@ -26,7 +25,7 @@ def run_model_bpa_bulk(
     rules: Optional[pd.DataFrame] = None,
     extended: bool = False,
     language: Optional[str] = None,
-    workspace: Optional[str | List[str]] = None,
+    workspace: Optional[str | UUID | List[str | UUID]] = None,
     skip_models: Optional[str | List[str]] = ["ModelBPA", "Fabric Capacity Metrics"],
     skip_models_in_workspace: Optional[dict] = None,
 ):
@@ -44,8 +43,8 @@ def run_model_bpa_bulk(
     language : str, default=None
         The language (code) in which the rules will appear. For example, specifying 'it-IT' will show the Rule Name, Category and Description in Italian.
         Defaults to None which resolves to English.
-    workspace : str | List[str], default=None
-        The workspace or list of workspaces to scan.
+    workspace : str | uuid.UUID | List[str | uuid.UUID], default=None
+        The workspace or list of workspaces to scan. Supports both the workspace name and the workspace id.
         Defaults to None which scans all accessible workspaces.
     skip_models : str | List[str], default=['ModelBPA', 'Fabric Capacity Metrics']
         The semantic models to always skip when running this analysis.
@@ -84,14 +83,14 @@ def run_model_bpa_bulk(
     if workspace is None:
         dfW_filt = dfW.copy()
     else:
-        dfW_filt = dfW[dfW["Name"].isin(workspace)]
+        dfW_filt = dfW[(dfW['Name'].isin(workspace)) | (dfW['Id'].isin(workspace))]
 
-    if len(dfW_filt) == 0:
+    if dfW_filt.empty:
         raise ValueError(
             f"{icons.red_dot} There are no valid workspaces to assess. This is likely due to not having proper permissions to the workspace(s) entered in the 'workspace' parameter."
         )
 
-    for i, r in dfW_filt.iterrows():
+    for _, r in dfW_filt.iterrows():
         wksp = r["Name"]
         wksp_id = r["Id"]
         capacity_id, capacity_name = resolve_workspace_capacity(workspace=wksp)
@@ -116,7 +115,7 @@ def run_model_bpa_bulk(
             skip_models.extend(default_semantic_models)
             dfD_filt = dfD[~dfD["Dataset Name"].isin(skip_models)]
 
-            if len(dfD_filt) > 0:
+            if not dfD_filt.empty:
                 for _, r2 in dfD_filt.iterrows():
                     dataset_id = r2["Dataset Id"]
                     dataset_name = r2["Dataset Name"]
