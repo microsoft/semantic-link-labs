@@ -70,7 +70,7 @@ def run_model_bpa_bulk(
     output_table = "modelbparesults"
     lakeT = get_lakehouse_tables()
     lakeT_filt = lakeT[lakeT["Table Name"] == output_table]
-    if len(lakeT_filt) == 0:
+    if lakeT_filt.empty:
         runId = 1
     else:
         max_run_id = _get_column_aggregate(table_name=output_table)
@@ -105,7 +105,7 @@ def run_model_bpa_bulk(
             dfD = dfD[~dfD["Dataset Name"].isin(skip_models_wkspc)]
 
         # Exclude default semantic models
-        if len(dfD) > 0:
+        if not dfD.empty:
             dfI = fabric.list_items(workspace=wksp)
             filtered_df = dfI.groupby("Display Name").filter(
                 lambda x: set(["Warehouse", "SemanticModel"]).issubset(set(x["Type"]))
@@ -158,7 +158,7 @@ def run_model_bpa_bulk(
                         )
                         print(e)
 
-                if len(df) == 0:
+                if df.empty:
                     print(
                         f"{icons.yellow_dot} No BPA results to save for the '{wksp}' workspace."
                     )
