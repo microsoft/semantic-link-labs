@@ -1,9 +1,10 @@
 import sempy
 from uuid import UUID
 import sempy_labs._icons as icons
+from typing import Optional, List
 
 
-def migrate_direct_lake_to_import(dataset: str | UUID, workspace: str | UUID):
+def migrate_direct_lake_to_import(dataset: str | UUID, workspace: Optional[str | UUID] = None, tables: Optional[str | List[str]] = None, mode: str = "import"):
     """
     Migrates a semantic model from Direct Lake mode to import mode. After running this function, you must go to the semantic model settings and update the cloud connection. Not doing so will result in an inablity to refresh/use the semantic model.
 
@@ -15,11 +16,32 @@ def migrate_direct_lake_to_import(dataset: str | UUID, workspace: str | UUID):
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    tables : str | list[str], default=None
+        The name of the table or tables to migrate. If None, all tables will be migrated.
+    mode : str, default="import"
+        The mode to migrate to. Can be either "import" or "directquery".
     """
 
     sempy.fabric._client._utils._init_analysis_services()
     import Microsoft.AnalysisServices.Tabular as TOM
     from sempy_labs.tom import connect_semantic_model
+
+    modes = {
+        "import": "Import",
+        "directquery": "DirectQuery",
+        "dq": "DirectQuery",
+    }
+
+    # Resolve mode
+    mode = mode.lower()
+    actual_mode = modes.get(mode)
+    if actual_mode is None:
+        raise ValueError(
+            f"Invalid mode '{mode}'. Must be one of {list(modes.keys())}."
+        )
+
+    if isinstance(tables, str):
+        tables = [tables]
 
     with connect_semantic_model(
         dataset=dataset, workspace=workspace, readonly=False
@@ -31,7 +53,12 @@ def migrate_direct_lake_to_import(dataset: str | UUID, workspace: str | UUID):
             )
             return
 
-        for t in tom.model.Tables:
+        if tables is None:
+            table_list = [t for t in tom.model.Tables]
+        else:
+            table_list = [t for t in tom.model.Tables if t.Name in tables]
+
+        for t in table_list:
             table_name = t.Name
             if t.Partitions.Count == 1 and all(
                 p.Mode == TOM.ModeType.DirectLake for p in t.Partitions
@@ -51,7 +78,7 @@ def migrate_direct_lake_to_import(dataset: str | UUID, workspace: str | UUID):
                     table_name=table_name,
                     partition_name=partition_name,
                     expression=expression,
-                    mode="Import",
+                    mode=actual_mode,
                 )
                 # Remove Direct Lake partition
                 tom.remove_object(object=p)
