@@ -4,9 +4,14 @@ import sempy_labs._icons as icons
 from typing import Optional, List
 
 
-def migrate_direct_lake_to_import(dataset: str | UUID, workspace: Optional[str | UUID] = None, tables: Optional[str | List[str]] = None, mode: str = "import"):
+def migrate_direct_lake_to_import(
+    dataset: str | UUID,
+    workspace: Optional[str | UUID] = None,
+    tables: Optional[str | List[str]] = None,
+    mode: str = "import",
+):
     """
-    Migrates a semantic model from Direct Lake mode to import mode. After running this function, you must go to the semantic model settings and update the cloud connection. Not doing so will result in an inablity to refresh/use the semantic model.
+    Migrates a semantic model or specific table(s) from a Direct Lake mode to import or DirectQuery mode. After running this function, you must go to the semantic model settings and update the cloud connection. Not doing so will result in an inablity to refresh/use the semantic model.
 
     Parameters
     ----------
@@ -36,9 +41,7 @@ def migrate_direct_lake_to_import(dataset: str | UUID, workspace: Optional[str |
     mode = mode.lower()
     actual_mode = modes.get(mode)
     if actual_mode is None:
-        raise ValueError(
-            f"Invalid mode '{mode}'. Must be one of {list(modes.keys())}."
-        )
+        raise ValueError(f"Invalid mode '{mode}'. Must be one of {list(modes.keys())}.")
 
     if isinstance(tables, str):
         tables = [tables]
@@ -57,6 +60,8 @@ def migrate_direct_lake_to_import(dataset: str | UUID, workspace: Optional[str |
             table_list = [t for t in tom.model.Tables]
         else:
             table_list = [t for t in tom.model.Tables if t.Name in tables]
+        if not table_list:
+            raise ValueError(f"{icons.red_dot} No tables found to migrate.")
 
         for t in table_list:
             table_name = t.Name
@@ -82,8 +87,16 @@ def migrate_direct_lake_to_import(dataset: str | UUID, workspace: Optional[str |
                 )
                 # Remove Direct Lake partition
                 tom.remove_object(object=p)
+                if tables is not None:
+                    print(
+                        f"{icons.green_dot} The '{table_name}' table has been migrated to '{actual_mode}' mode."
+                    )
 
         tom.model.Model.DefaultMode = TOM.ModeType.Import
+    if tables is None:
+        print(
+            f"{icons.green_dot} All tables which were in Direct Lake mode have been migrated to '{actual_mode}' mode."
+        )
 
         # Check
         # for t in tom.model.Tables:
