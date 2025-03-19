@@ -314,10 +314,10 @@ def list_capacity_users(capacity: str | UUID) -> pd.DataFrame:
 
 @log
 def get_refreshables(
-    top: int = None,
-    expand: str = None,
-    filter: str = None,
-    skip: int = None,
+    top: Optional[int] = None,
+    expand: Optional[str] = None,
+    filter: Optional[str] = None,
+    skip: Optional[int] = None,
 ) -> pd.DataFrame:
     """
     Returns a list of refreshables for the organization within a capacity.
@@ -354,26 +354,28 @@ def get_refreshables(
         "Capacity Id": "string",
         "Capacity Name": "string",
         "Capacity SKU": "string",
-        "refreshCount": "int",
-        "refreshFailures": "int",
-        "averageDuration": "decimal",
-        "medianDuration": "decimal",
-        "refreshesPerDay": "int",
-        "refreshType": "string",
-        "startTime": "string",
-        "endTime": "string",
-        "status": "string",
-        "requestId": "string",
-        "serviceExceptionJson": "dict",
-        "extendedStatus": "dict",
-        "refreshAttempts": "dict",
-        "refreshScheduleDays": "dict",
-        "refreshScheduleTimes": "dict",
-        "refreshScheduleEnabled": "bool",
-        "refreshScheduleLocalTimezoneId": "string",
-        "refreshScheduleNotifyOption": "string",
-        "configuredBy": "dict",
+        "Refresh Count": "int",
+        "Refresh Failures": "int",
+        "Average Duration": "float",
+        "Median Duration": "float",
+        "Refreshes Per Day": "int",
+        "Refresh Type": "string",
+        "Start Time": "string",
+        "End Time": "string",
+        "Status": "string",
+        "Request Id": "string",
+        "Service Exception Json": "string",
+        "Extended Status": "dict",
+        "Refresh Attempts": "list",
+        "Refresh Schedule Days": "list",
+        "Refresh Schedule Times": "list",
+        "Refresh Schedule Enabled": "bool",
+        "Refresh Schedule Local Timezone Id": "string",
+        "Refresh Schedule Notify Option": "string",
+        "Configured By": "list",
     }
+
+    df = _create_dataframe(columns=columns)
 
     params = {}
     url = "/v1.0/myorg/admin/capacities/refreshables"
@@ -394,8 +396,6 @@ def get_refreshables(
 
     responses = _base_api(request=url, client="fabric_sp")
 
-    refreshables = []
-
     for i in responses.json().get("value", []):
         new_data = {
             "Workspace Id": i.get("group", {}).get("id"),
@@ -410,33 +410,35 @@ def get_refreshables(
             ),
             "Capacity Name": i.get("capacity", {}).get("displayName"),
             "Capacity SKU": i.get("capacity", {}).get("sku"),
-            "refreshCount": i.get("refreshCount", 0),
-            "refreshFailures": i.get("refreshFailures", 0),
-            "averageDuration": i.get("averageDuration", 0),
-            "medianDuration": i.get("medianDuration", 0),
-            "refreshesPerDay": i.get("refreshesPerDay", 0),
-            "refreshType": i.get("lastRefresh", {}).get("refreshType"),
-            "startTime": i.get("lastRefresh", {}).get("startTime"),
-            "endTime": i.get("lastRefresh", {}).get("endTime"),
-            "status": i.get("lastRefresh", {}).get("status"),
-            "requestId": i.get("lastRefresh", {}).get("requestId"),
-            "serviceExceptionJson": i.get("lastRefresh", {}).get(
+            "Refresh Count": i.get("refreshCount", 0),
+            "Refresh Failures": i.get("refreshFailures", 0),
+            "Average Duration": i.get("averageDuration", 0),
+            "Median Duration": i.get("medianDuration", 0),
+            "Refreshes Per Day": i.get("refreshesPerDay", 0),
+            "Refresh Type": i.get("lastRefresh", {}).get("refreshType"),
+            "Start Time": i.get("lastRefresh", {}).get("startTime"),
+            "End Time": i.get("lastRefresh", {}).get("endTime"),
+            "Status": i.get("lastRefresh", {}).get("status"),
+            "Request Id": i.get("lastRefresh", {}).get("requestId"),
+            "Service Exception Json": i.get("lastRefresh", {}).get(
                 "serviceExceptionJson"
             ),
-            "extendedStatus": i.get("lastRefresh", {}).get("extendedStatus"),
-            "refreshAttempts": i.get("lastRefresh", {}).get("refreshAttempts"),
-            "refreshScheduleDays": i.get("refreshSchedule", {}).get("days"),
-            "refreshScheduleTimes": i.get("refreshSchedule", {}).get("times"),
-            "refreshScheduleEnabled": i.get("refreshSchedule", {}).get("enabled"),
-            "refreshScheduleLocalTimezoneId": i.get("refreshSchedule", {}).get(
+            "Extended Status": i.get("lastRefresh", {}).get("extendedStatus"),
+            "Refresh Attempts": i.get("lastRefresh", {}).get("refreshAttempts"),
+            "Refresh Schedule Days": i.get("refreshSchedule", {}).get("days"),
+            "Refresh Schedule Times": i.get("refreshSchedule", {}).get("times"),
+            "Refresh Schedule Enabled": i.get("refreshSchedule", {}).get("enabled"),
+            "Refresh Schedule Local Timezone Id": i.get("refreshSchedule", {}).get(
                 "localTimeZoneId"
             ),
-            "refreshScheduleNotifyOption": i.get("refreshSchedule", {}).get(
+            "Refresh Schedule Notify Option": i.get("refreshSchedule", {}).get(
                 "notifyOption"
             ),
-            "configuredBy": i.get("configuredBy"),
+            "Configured By": i.get("configuredBy"),
         }
 
-        refreshables.append(new_data)
+        df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
 
-    return pd.DataFrame(refreshables, columns=columns)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
+
+    return df

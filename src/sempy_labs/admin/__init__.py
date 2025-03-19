@@ -81,6 +81,9 @@ from sempy_labs.admin._external_data_share import (
 from sempy_labs.admin._git import (
     list_git_connections,
 )
+from sempy_labs.admin._dataflows import (
+    export_dataflow,
+)
 
 __all__ = [
     "list_items",
@@ -135,4 +138,5 @@ __all__ = [
     "list_user_subscriptions",
     "list_report_subscriptions",
     "get_refreshables",
+    "export_dataflow",
 ]
