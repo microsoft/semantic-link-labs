@@ -183,7 +183,7 @@ def resolve_report_name(report_id: UUID, workspace: Optional[str | UUID] = None)
         The name of the Power BI report.
     """
 
-    return resolve_item_name(item_id=report_id, type="Report", workspace=workspace)
+    return resolve_item_name(item_id=report_id, workspace=workspace)
 
 
 def delete_item(
@@ -469,9 +469,7 @@ def resolve_dataset_name(
         The name of the semantic model.
     """
 
-    return resolve_item_name(
-        item_id=dataset_id, type="SemanticModel", workspace=workspace
-    )
+    return resolve_item_name(item_id=dataset_id, workspace=workspace)
 
 
 def resolve_lakehouse_name(
@@ -503,9 +501,7 @@ def resolve_lakehouse_name(
                 f"{icons.red_dot} Cannot resolve a lakehouse. Please enter a valid lakehouse or make sure a lakehouse is attached to the notebook."
             )
 
-    return resolve_item_name(
-        item_id=lakehouse_id, type="Lakehouse", workspace=workspace
-    )
+    return resolve_item_name(item_id=lakehouse_id, workspace=workspace)
 
 
 def resolve_lakehouse_id(
