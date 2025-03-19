@@ -5,6 +5,7 @@ from typing import Optional, Tuple
 from sempy._utils._log import log
 from sempy_labs._helper_functions import (
     _base_api,
+    _build_url,
     _create_dataframe,
     _update_dataframe_datatypes,
     _is_valid_uuid,
@@ -309,3 +310,133 @@ def list_capacity_users(capacity: str | UUID) -> pd.DataFrame:
     _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
+
+
+@log
+def get_refreshables(
+    top: int = None,
+    expand: str = None,
+    filter: str = None,
+    skip: int = None,
+) -> pd.DataFrame:
+    """
+    Returns a list of refreshables for the organization within a capacity.
+
+    Power BI retains a seven-day refresh history for each dataset, up to a maximum of sixty refreshes.
+
+    This is a wrapper function for the following API: `Admin - Get Refreshables <https://learn.microsoft.com/rest/api/power-bi/admin/get-refreshables>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    top : int, default=None
+        Returns only the first n results.
+    expand : str, default=None
+        Accepts a comma-separated list of data types, which will be expanded inline in the response. Supports capacities and groups.
+    filter : str, default=None
+        Returns a subset of a results based on Odata filter query parameter condition.
+    skip : int, default=None
+        Skips the first n results. Use with top to fetch results beyond the first 1000.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Returns a list of refreshables for the organization within a capacity.
+    """
+
+    columns = {
+        "Workspace Id": "string",
+        "Workspace Name": "string",
+        "Item Id": "string",
+        "Item Name": "string",
+        "Item Kind": "string",
+        "Capacity Id": "string",
+        "Capacity Name": "string",
+        "Capacity SKU": "string",
+        "refreshCount": "int",
+        "refreshFailures": "int",
+        "averageDuration": "decimal",
+        "medianDuration": "decimal",
+        "refreshesPerDay": "int",
+        "refreshType": "string",
+        "startTime": "string",
+        "endTime": "string",
+        "status": "string",
+        "requestId": "string",
+        "serviceExceptionJson": "dict",
+        "extendedStatus": "dict",
+        "refreshAttempts": "dict",
+        "refreshScheduleDays": "dict",
+        "refreshScheduleTimes": "dict",
+        "refreshScheduleEnabled": "bool",
+        "refreshScheduleLocalTimezoneId": "string",
+        "refreshScheduleNotifyOption": "string",
+        "configuredBy": "dict",
+    }
+
+    params = {}
+    url = "/v1.0/myorg/admin/capacities/refreshables"
+
+    if top is not None:
+        params["$top"] = top
+
+    if expand is not None:
+        params["$expand"] = expand
+
+    if filter is not None:
+        params["$filter"] = filter
+
+    if skip is not None:
+        params["$skip"] = skip
+
+    url = _build_url(url, params)
+
+    responses = _base_api(request=url, client="fabric_sp")
+
+    refreshables = []
+
+    for i in responses.json().get("value", []):
+        new_data = {
+            "Workspace Id": i.get("group", {}).get("id"),
+            "Workspace Name": i.get("group", {}).get("name"),
+            "Item Id": i.get("id"),
+            "Item Name": i.get("name"),
+            "Item Kind": i.get("kind"),
+            "Capacity Id": (
+                i.get("capacity", {}).get("id").lower()
+                if i.get("capacity", {}).get("id")
+                else None
+            ),
+            "Capacity Name": i.get("capacity", {}).get("displayName"),
+            "Capacity SKU": i.get("capacity", {}).get("sku"),
+            "refreshCount": i.get("refreshCount", 0),
+            "refreshFailures": i.get("refreshFailures", 0),
+            "averageDuration": i.get("averageDuration", 0),
+            "medianDuration": i.get("medianDuration", 0),
+            "refreshesPerDay": i.get("refreshesPerDay", 0),
+            "refreshType": i.get("lastRefresh", {}).get("refreshType"),
+            "startTime": i.get("lastRefresh", {}).get("startTime"),
+            "endTime": i.get("lastRefresh", {}).get("endTime"),
+            "status": i.get("lastRefresh", {}).get("status"),
+            "requestId": i.get("lastRefresh", {}).get("requestId"),
+            "serviceExceptionJson": i.get("lastRefresh", {}).get(
+                "serviceExceptionJson"
+            ),
+            "extendedStatus": i.get("lastRefresh", {}).get("extendedStatus"),
+            "refreshAttempts": i.get("lastRefresh", {}).get("refreshAttempts"),
+            "refreshScheduleDays": i.get("refreshSchedule", {}).get("days"),
+            "refreshScheduleTimes": i.get("refreshSchedule", {}).get("times"),
+            "refreshScheduleEnabled": i.get("refreshSchedule", {}).get("enabled"),
+            "refreshScheduleLocalTimezoneId": i.get("refreshSchedule", {}).get(
+                "localTimeZoneId"
+            ),
+            "refreshScheduleNotifyOption": i.get("refreshSchedule", {}).get(
+                "notifyOption"
+            ),
+            "configuredBy": i.get("configuredBy"),
+        }
+
+        refreshables.append(new_data)
+
+    return pd.DataFrame(refreshables, columns=columns)
