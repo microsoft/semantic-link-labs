@@ -168,10 +168,13 @@ def delta_analyzer_history(
         total_rowgroups += row_groups_added - row_groups_removed
 
         incremental_framing_effect = 1
-        if size_deleted != 0 and total_size != 0:
-            incremental_framing_effect = round(
-                (total_size - size_added) / total_size, 4
+        if size_deleted != 0:
+            incremental_framing_effect = (
+                int((total_size - size_added * 1.0) / total_size * 100000) / 1000
             )
+            # incrementalFramingEffect = round(
+            #     (totalSize - sizeAdded * 1.0) / totalSize, 4
+            # )
 
         changes_array.append(
             [
@@ -179,7 +182,7 @@ def delta_analyzer_history(
                 operation,
                 predicate,
                 change_timestamp,
-                incremental_framing_effect * 100,
+                incremental_framing_effect,
                 files_added,
                 files_removed,
                 total_files_before_change - files_removed,
