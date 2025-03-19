@@ -1901,6 +1901,11 @@ def _mount(lakehouse, workspace) -> str:
         lakehouse=lakehouse, workspace=workspace
     )
 
+    current_setting = notebookutils.conf.get(
+        "spark.notebookutils.displaymountpoint.enabled"
+    )
+    notebookutils.conf.set("spark.notebookutils.displaymountpoint.enabled", "false")
+
     lake_path = create_abfss_path(lakehouse_id, workspace_id)
     mounts = notebookutils.fs.mounts()
     mount_point = f"/{workspace_name.replace(' ', '')}{lakehouse_name.replace(' ', '')}"
@@ -1915,6 +1920,9 @@ def _mount(lakehouse, workspace) -> str:
     local_path = next(
         i.get("localPath") for i in mounts if i.get("source") == lake_path
     )
+
+    if current_setting != "false":
+        notebookutils.conf.set("spark.notebookutils.displaymountpoint.enabled", "true")
 
     return local_path
 
