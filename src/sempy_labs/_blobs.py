@@ -1,11 +1,12 @@
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_lakehouse_name_and_id,
-    _get_blob_client,
+    _xml_to_dict,
 )
 from uuid import UUID
-from typing import Optional
+from typing import Optional, List
 import sempy_labs._icons as icons
+import xml.etree.ElementTree as ET
 
 
 def restore_lakehouse_object(
@@ -33,6 +34,7 @@ def restore_lakehouse_object(
     (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
         lakehouse, workspace_id
     )
+
     blob_path_prefix = f"{lakehouse_id}/{file_path}"
 
     container = file_path.split("/")[0]
@@ -41,13 +43,42 @@ def restore_lakehouse_object(
             f"{icons.red_dot} Invalid container '{container}' within the file_path parameter. Expected 'Tables' or 'Files'."
         )
 
-    bsc = _get_blob_client(workspace_id=workspace_id, item_id=lakehouse_id)
-    ccli = bsc.get_container_client(container=container)
-    blobs = ccli.list_blobs(include=["deleted"])
-    for b in blobs:
-        blob_name = b.name
-        if blob_name.startswith(blob_path_prefix) and b.deleted:
+    response = _request_blob_api(request=f"{workspace_id}/{lakehouse_id}/{container}?restype=container&comp=list&include=deleted")
+    root = ET.fromstring(response.content)
+    response_json = _xml_to_dict(root)
+    for blob in response_json['EnumerationResults']['Blobs']['Blob']:
+        blob_name = blob.get('Name')
+        is_deleted = blob.get('Deleted', False)
+        if blob_name.startswith(blob_path_prefix) and is_deleted:
             print(f"{icons.in_progress} Restoring the '{blob_name}' blob...")
-            blob_client = ccli.get_blob_client(blob_name)
-            blob_client.undelete_blob()
+            response = _request_blob_api(request=f"{workspace_id}/{lakehouse_id}/{file_path}?comp=undelete", method="put")
             print(f"{icons.green_dot} The '{blob_name}' blob has been restored.")
+
+
+def _request_blob_api(request: str, method: str = "get", payload: Optional[dict] = None, status_codes: int | List[int] = 200):
+
+    import requests
+    import notebookutils
+    from sempy.fabric.exceptions import FabricHTTPException
+
+    if isinstance(status_codes, int):
+        status_codes = [status_codes]
+
+    token = notebookutils.credentials.getToken('storage')
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "x-ms-version": "2025-05-05",
+    }
+
+    response = requests.request(
+        method.upper(),
+        f"https://onelake.blob.fabric.microsoft.com/{request}",
+        headers=headers,
+        json=payload,
+        )
+
+    if response.status_code not in status_codes:
+        raise FabricHTTPException(response)
+    return response

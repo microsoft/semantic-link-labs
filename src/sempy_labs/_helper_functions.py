@@ -1743,7 +1743,7 @@ def _base_api(
     lro_return_json: bool = False,
     lro_return_status_code: bool = False,
 ):
-
+    
     from sempy_labs._authentication import _get_headers
 
     if (lro_return_json or lro_return_status_code) and status_codes is None:
@@ -2023,3 +2023,24 @@ def _get_or_create_warehouse(
     )
 
     return (warehouse, warehouse_id)
+
+
+def _xml_to_dict(element):
+    data = {element.tag: {} if element.attrib else None}
+    children = list(element)
+    if children:
+        temp_dict = {}
+        for child in children:
+            child_dict = _xml_to_dict(child)
+            for key, value in child_dict.items():
+                if key in temp_dict:
+                    if isinstance(temp_dict[key], list):
+                        temp_dict[key].append(value)
+                    else:
+                        temp_dict[key] = [temp_dict[key], value]
+                else:
+                    temp_dict[key] = value
+        data[element.tag] = temp_dict
+    else:
+        data[element.tag] = element.text.strip() if element.text and element.text.strip() else None
+    return data
