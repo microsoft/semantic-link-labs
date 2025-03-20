@@ -284,7 +284,7 @@ We use [black](github.com/psf/black) formatting as a code formatting standard. M
 
 Run this code to install black
 ```cli
-pip install black
+pip install black==25.1.0
 ```
 
 Run this code to format your code using black

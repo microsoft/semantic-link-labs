@@ -1893,7 +1893,9 @@ def _run_spark_sql_query(query):
     return spark.sql(query)
 
 
-def _mount(lakehouse, workspace) -> str:
+def _mount(
+    lakehouse: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None
+) -> str:
     """
     Mounts a lakehouse to a notebook if it is not already mounted. Returns the local path to the lakehouse.
     """

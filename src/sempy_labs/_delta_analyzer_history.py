@@ -7,11 +7,13 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_id,
     _mount,
 )
+from sempy._utils._log import log
 from tqdm.auto import tqdm
 from uuid import UUID
 from datetime import datetime
 
 
+@log
 def delta_analyzer_history(
     table_name: str,
     schema: Optional[str] = None,

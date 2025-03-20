@@ -113,7 +113,7 @@ def list_report_users(report: str | UUID) -> pd.DataFrame:
     """
     Shows a list of users that have access to the specified report.
 
-    This is a wrapper function for the following API: `Admin - Reports GetDatasetUsersAsAdmin <https://learn.microsoft.com/rest/api/power-bi/admin/datasets-get-report-users-as-admin>`_.
+    This is a wrapper function for the following API: `Admin - Reports GetDatasetUsersAsAdmin <https://learn.microsoft.com/rest/api/power-bi/admin/reports-get-report-users-as-admin>`_.
 
     Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
