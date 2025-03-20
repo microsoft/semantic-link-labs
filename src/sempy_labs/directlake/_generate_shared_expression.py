@@ -13,6 +13,7 @@ def generate_shared_expression(
     item_name: Optional[str] = None,
     item_type: str = "Lakehouse",
     workspace: Optional[str | UUID] = None,
+    use_sql_endpoint: bool = True,
 ) -> str:
     """
     Dynamically generates the M expression used by a Direct Lake model for a given lakehouse/warehouse.
@@ -28,6 +29,9 @@ def generate_shared_expression(
         The Fabric workspace name or ID used by the item.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    use_sql_endpoint : bool, default=True
+        Whether to use the SQL Endpoint for the lakehouse/warehouse.
+        If False, the expression will be generated without using the SQL Endpoint.
 
     Returns
     -------
@@ -78,4 +82,8 @@ def generate_shared_expression(
     end_expr = "\nin\n\tdatabase"
     mid_expr = f'Sql.Database("{sqlEPCS}", "{sqlepid}")'
 
-    return f"{start_expr}{mid_expr}{end_expr}"
+    # Build DL/OL expression
+    if not use_sql_endpoint and item_type == "Lakehouse":
+        return f'AzureDataLakeStorage{{"server":"onelake.dfs.fabric.microsoft.com","path":"/{workspace_id}/{item_id}/"}}'
+    else:
+        return f"{start_expr}{mid_expr}{end_expr}"

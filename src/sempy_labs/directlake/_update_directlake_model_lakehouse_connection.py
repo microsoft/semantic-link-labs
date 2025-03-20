@@ -1,7 +1,5 @@
-import sempy.fabric as fabric
 from sempy_labs.directlake._generate_shared_expression import generate_shared_expression
 from sempy_labs._helper_functions import (
-    resolve_lakehouse_name,
     resolve_dataset_name_and_id,
     resolve_workspace_name_and_id,
     resolve_item_name_and_id,
@@ -11,6 +9,8 @@ from sempy_labs.tom import connect_semantic_model
 from typing import Optional
 import sempy_labs._icons as icons
 from uuid import UUID
+
+# from sempy_labs.directlake._dlol import _get_direct_lake_expressions
 
 
 def update_direct_lake_model_lakehouse_connection(
@@ -39,32 +39,12 @@ def update_direct_lake_model_lakehouse_connection(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
-
-    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
-        lakehouse=lakehouse, workspace=lakehouse_workspace
-    )
-
-    icons.sll_tags.append("UpdateDLConnection")
-
-    shEx = generate_shared_expression(
-        item_name=lakehouse, item_type="Lakehouse", workspace=lakehouse_workspace
-    )
-
-    with connect_semantic_model(
-        dataset=dataset_id, readonly=False, workspace=workspace_id
-    ) as tom:
-
-        if not tom.is_direct_lake():
-            raise ValueError(
-                f"{icons.red_dot} The '{dataset_name}' semantic model is not in Direct Lake. This function is only applicable to Direct Lake semantic models."
-            )
-
-        tom.model.Expressions["DatabaseQuery"].Expression = shEx
-
-    print(
-        f"{icons.green_dot} The expression in the '{dataset_name}' semantic model has been updated to point to the '{lakehouse}' lakehouse in the '{lakehouse_workspace}' workspace."
+    update_direct_lake_model_connection(
+        dataset=dataset,
+        workspace=workspace,
+        source=lakehouse,
+        source_type="Lakehouse",
+        source_workspace=lakehouse_workspace,
     )
 
 
@@ -95,7 +75,10 @@ def update_direct_lake_model_connection(
         The Fabric workspace name or ID used by the lakehouse/warehouse.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    tables : str | List[str], default=None
+    use_sql_endpoint : bool, default=True
     """
+    icons.sll_tags.append("UpdateDLConnection")
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
@@ -119,11 +102,13 @@ def update_direct_lake_model_connection(
             item=source, type=source_type, workspace=source_workspace
         )
 
-    icons.sll_tags.append("UpdateDLConnection")
-
-    shEx = generate_shared_expression(
-        item_name=source_name, item_type=source_type, workspace=source_workspace
+    shared_expression = generate_shared_expression(
+        item_name=source_name,
+        item_type=source_type,
+        workspace=source_workspace,  # use_sql_endpoint
     )
+
+    # expressions = _get_direct_lake_expressions(dataset=dataset, workspace=workspace)
 
     with connect_semantic_model(
         dataset=dataset_id, readonly=False, workspace=workspace_id
@@ -134,7 +119,7 @@ def update_direct_lake_model_connection(
                 f"{icons.red_dot} The '{dataset_name}' semantic model within the '{workspace_name}' workspace is not in Direct Lake. This function is only applicable to Direct Lake semantic models."
             )
 
-        tom.model.Expressions["DatabaseQuery"].Expression = shEx
+        tom.model.Expressions["DatabaseQuery"].Expression = shared_expression
 
     print(
         f"{icons.green_dot} The expression in the '{dataset_name}' semantic model within the '{workspace_name}' workspace has been updated to point to the '{source}' {source_type.lower()} in the '{source_workspace}' workspace."
