@@ -2257,7 +2257,7 @@ class TOMWrapper:
 
         if validate:
             dax_query = f"""
-            define measure '{table_name}'[test] = 
+            define measure '{table_name}'[test] =
             var mn = MIN('{table_name}'[{column_name}])
             var ma = MAX('{table_name}'[{column_name}])
             var x = COUNTROWS(DISTINCT('{table_name}'[{column_name}]))
@@ -3309,14 +3309,16 @@ class TOMWrapper:
             .tolist()
         )
         cols = (
-            fil[fil["Referenced Object Type"] == "Column"][
+            fil[fil["Referenced Object Type"].isin(["Column", "Calc Column"])][
                 "Referenced Full Object Name"
             ]
             .unique()
             .tolist()
         )
         tbls = (
-            fil[fil["Referenced Object Type"] == "Table"]["Referenced Table"]
+            fil[fil["Referenced Object Type"].isin(["Table", "Calc Table"])][
+                "Referenced Table"
+            ]
             .unique()
             .tolist()
         )
@@ -3489,7 +3491,7 @@ class TOMWrapper:
                         tableList.append(c.Parent.Name)
                 if (
                     re.search(
-                        create_pattern(tableList, re.escape(obj.Name)),
+                        create_pattern(tableList, obj.Name),
                         expr,
                     )
                     is not None

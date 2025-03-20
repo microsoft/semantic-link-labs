@@ -17,6 +17,8 @@ def list_kql_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
     This is a wrapper function for the following API: `Items - List KQL Databases <https://learn.microsoft.com/rest/api/fabric/kqldatabase/items/list-kql-databases>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     workspace : str | uuid.UUID, default=None
@@ -44,7 +46,9 @@ def list_kql_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     responses = _base_api(
-        request=f"v1/workspaces/{workspace_id}/kqlDatabases", uses_pagination=True
+        request=f"v1/workspaces/{workspace_id}/kqlDatabases",
+        uses_pagination=True,
+        client="fabric_sp",
     )
 
     for r in responses:

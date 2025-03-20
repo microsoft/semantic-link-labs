@@ -556,7 +556,7 @@ def model_bpa_rules(
                 "Warning",
                 "Use the DIVIDE function for division",
                 lambda obj, tom: re.search(
-                    r"\]\s*\/(?!\/)(?!\*)\" or \"\)\s*\/(?!\/)(?!\*)",
+                    r"\]\s*\/(?!\/)(?!\*)|\)\s*\/(?!\/)(?!\*)",
                     obj.Expression,
                     flags=re.IGNORECASE,
                 ),

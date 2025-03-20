@@ -106,15 +106,13 @@ def migrate_workspaces(
     migrated_workspaces = []
 
     for i, r in dfW.iterrows():
-        workspace = r["Name"]
-
-        if workspaces is None or workspace in workspaces:
-            pass
-        else:
-            continue
-
-        if assign_workspace_to_capacity(capacity=target_capacity, workspace=workspace):
-            migrated_workspaces.append(workspace)
+        workspace_id = r["Id"]
+        workspace_name = r["Name"]
+        if workspaces is None or workspace_name in workspaces:
+            assign_workspace_to_capacity(
+                capacity=target_capacity, workspace=workspace_id
+            )
+            migrated_workspaces.append(workspace_name)
 
     if len(migrated_workspaces) < workspace_count:
         print(
@@ -122,10 +120,11 @@ def migrate_workspaces(
         )
         print(f"{icons.in_progress} Initiating rollback...")
         for i, r in dfW.iterrows():
-            workspace = r["Name"]
-            if workspace in migrated_workspaces:
+            workspace_id = r["Id"]
+            workspace_name = r["Name"]
+            if workspace_name in migrated_workspaces:
                 assign_workspace_to_capacity(
-                    capacity=source_capacity, workspace=workspace
+                    capacity=source_capacity, workspace=workspace_id
                 )
         print(
             f"{icons.green_dot} Rollback of the workspaces to the '{source_capacity}' capacity is complete."
