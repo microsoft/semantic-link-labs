@@ -1476,7 +1476,7 @@ def list_server_properties(workspace: Optional[str | UUID] = None) -> pd.DataFra
         A pandas dataframe showing a list of the server properties.
     """
 
-    tom_server = fabric.create_tom_server(readonly=True, workspace=workspace)
+    tom_server = fabric.create_tom_server(dataset=None, readonly=True, workspace=workspace)
 
     rows = [
         {

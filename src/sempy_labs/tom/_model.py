@@ -84,7 +84,7 @@ class TOMWrapper:
         # No token provider (standard authentication)
         if self._token_provider is None:
             self._tom_server = fabric.create_tom_server(
-                readonly=readonly, workspace=workspace_id
+                dataset=dataset, readonly=readonly, workspace=workspace_id
             )
         # Service Principal Authentication for Azure AS via token provider
         elif self._is_azure_as:
