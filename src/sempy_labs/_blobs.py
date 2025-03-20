@@ -17,7 +17,7 @@ def recover_lakehouse_object(
     workspace: Optional[str | UUID] = None,
 ):
     """
-    Recovers an object (i.e. table, file, folder) in a lakehouse from a deleted state.
+    Recovers an object (i.e. table, file, folder) in a lakehouse from a deleted state. Only `soft-deleted objects <https://learn.microsoft.com/fabric/onelake/onelake-disaster-recovery#soft-delete-for-onelake-files>`_ can be recovered (deleted for less than 7 days).
 
     Parameters
     ----------
