@@ -173,4 +173,6 @@ def update_direct_lake_model_connection(
                 f"{icons.green_dot} The expression in the '{dataset_name}' semantic model within the '{workspace_name}' workspace has been updated to point to the '{source}' {source_type.lower()} in the '{source_workspace}' workspace."
             )
         else:
-            print(f"{icons.info} Multiple expressions found in the model. Please use the update_direct_lake_partition_entity function to update specific tables.")
+            print(
+                f"{icons.info} Multiple expressions found in the model. Please use the update_direct_lake_partition_entity function to update specific tables."
+            )
