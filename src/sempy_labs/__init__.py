@@ -1,5 +1,6 @@
 from sempy_labs._delta_analyzer_history import (
     delta_analyzer_history,
+)
 from sempy_labs._blobs import (
     recover_lakehouse_object,
 )
