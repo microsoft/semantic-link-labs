@@ -1,3 +1,6 @@
+from sempy_labs._blobs import (
+    recover_lakehouse_object,
+)
 from sempy_labs._dax_query_view import (
     generate_dax_query_view_url,
 )
@@ -554,4 +557,5 @@ __all__ = [
     "create_sql_database",
     "delete_sql_database",
     "list_sql_databases",
+    "recover_lakehouse_object",
 ]

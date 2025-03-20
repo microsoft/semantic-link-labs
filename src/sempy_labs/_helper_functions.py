@@ -1743,7 +1743,7 @@ def _base_api(
     lro_return_json: bool = False,
     lro_return_status_code: bool = False,
 ):
-    
+
     from sempy_labs._authentication import _get_headers
 
     if (lro_return_json or lro_return_status_code) and status_codes is None:
@@ -2042,5 +2042,7 @@ def _xml_to_dict(element):
                     temp_dict[key] = value
         data[element.tag] = temp_dict
     else:
-        data[element.tag] = element.text.strip() if element.text and element.text.strip() else None
+        data[element.tag] = (
+            element.text.strip() if element.text and element.text.strip() else None
+        )
     return data

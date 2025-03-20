@@ -5,11 +5,13 @@ from sempy_labs._helper_functions import (
     _get_fabric_context_setting,
     resolve_workspace_id,
 )
+from sempy._utils._log import log
 import gzip
 import base64
 import urllib.parse
 
 
+@log
 def generate_dax_query_view_url(
     dataset: str | UUID, dax_string: str, workspace: Optional[str | UUID] = None
 ):
