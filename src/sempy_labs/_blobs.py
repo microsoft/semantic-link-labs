@@ -50,7 +50,9 @@ def recover_lakehouse_object(
     )
     root = ET.fromstring(response.content)
     response_json = _xml_to_dict(root)
-    for blob in response_json["EnumerationResults"]["Blobs"]["Blob"]:
+    for blob in (
+        response_json.get("EnumerationResults", {}).get("Blobs", {}).get("Blob", {})
+    ):
         blob_name = blob.get("Name")
         is_deleted = blob.get("Deleted", False)
         if blob_name.startswith(blob_path_prefix) and is_deleted:
