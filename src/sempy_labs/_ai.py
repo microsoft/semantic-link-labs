@@ -216,7 +216,9 @@ def generate_aggs(
     f"{icons.green_dot} The '{aggLakeTName}' table has been created/updated in the lakehouse."
 
     # Create/update semantic model agg table
-    tom_server = fabric.create_tom_server(dataset=dataset, readonly=False, workspace=workspace)
+    tom_server = fabric.create_tom_server(
+        dataset=dataset, readonly=False, workspace=workspace
+    )
     m = tom_server.Databases.GetByName(dataset).Model
     print(f"\n{icons.in_progress} Updating the '{dataset}' semantic model...")
     dfC_agg = dfC[dfC["Table Name"] == aggTableName]
