@@ -28,6 +28,7 @@ def run_model_bpa_bulk(
     workspace: Optional[str | UUID | List[str | UUID]] = None,
     skip_models: Optional[str | List[str]] = ["ModelBPA", "Fabric Capacity Metrics"],
     skip_models_in_workspace: Optional[dict] = None,
+    return_df: bool = False,
 ):
     """
     Runs the semantic model Best Practice Analyzer across all semantic models in a workspace (or all accessible workspaces).
@@ -185,6 +186,9 @@ def run_model_bpa_bulk(
                     print(
                         f"{icons.green_dot} Saved BPA results to the '{output_table}' delta table."
                     )
+                    
+                    if(return_df):
+                        return df
 
     print(f"{icons.green_dot} Bulk BPA scan complete.")
 
