@@ -14,25 +14,33 @@ import re
 
 
 def _extract_expression_list(expression):
+    """
+    Finds the pattern for DL/SQL & DL/OL expressions in the semantic model.
+    """
 
     pattern_sql = r'Sql\.Database\s*\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\)'
     pattern_no_sql = r'AzureDataLakeStorage\s*\{\s*"server".*?:\s*onelake\.dfs\.fabric\.microsoft\.com"\s*,\s*"path"\s*:\s*"/([\da-fA-F-]+)\s*/\s*([\da-fA-F-]+)\s*/"\s*\}'
 
     match_sql = re.search(pattern_sql, expression)
     match_no_sql = re.search(pattern_no_sql, expression)
-    sql = True
+
+    result = []
     if match_sql:
         value_1, value_2 = match_sql.groups()
+        result = [value_1, value_2, True]
     elif match_no_sql:
         value_1, value_2 = match_no_sql.groups()
-        sql = False
+        result = [value_1, value_2, False]
 
-    return [value_1, value_2, sql]
+    return result
 
 
 def _get_direct_lake_expressions(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> dict:
+    """
+    Extracts a dictionary of all Direct Lake expressions from a semantic model.
+    """
 
     from sempy_labs.tom import connect_semantic_model
 
@@ -44,7 +52,8 @@ def _get_direct_lake_expressions(
             expr = e.Expression
 
             list_values = _extract_expression_list(expr)
-            result[expr_name] = list_values
+            if list_values:
+                result[expr_name] = list_values
 
     return result
 
