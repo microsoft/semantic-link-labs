@@ -350,14 +350,40 @@ def list_workspace_access_details(
     return df
 
 
+def _resolve_workspace_name(workspace_id: Optional[UUID] = None) -> str:
+    from sempy_labs._helper_functions import _get_fabric_context_setting
+    from sempy.fabric.exceptions import FabricHTTPException
+
+    if workspace_id is None:
+        workspace_id = _get_fabric_context_setting(name="trident.workspace.id")
+
+    try:
+        workspace_name = (
+            _base_api(
+                request=f"/v1/admin/workspaces/{workspace_id}", client="fabric_sp"
+            )
+            .json()
+            .get("name")
+        )
+    except FabricHTTPException:
+        raise ValueError(
+            f"{icons.red_dot} The '{workspace_id}' workspace was not found."
+        )
+    return workspace_name
+
+
 def _resolve_workspace_name_and_id(
     workspace: str | UUID,
 ) -> Tuple[str, UUID]:
 
-    from sempy_labs._helper_functions import resolve_workspace_name_and_id
+    from sempy_labs._helper_functions import _get_fabric_context_setting
 
     if workspace is None:
-        (workspace_name, workspace_id) = resolve_workspace_name_and_id()
+        workspace_id = _get_fabric_context_setting(name="trident.workspace.id")
+        workspace_name = _resolve_workspace_name(workspace_id)
+    elif _is_valid_uuid(workspace):
+        workspace_id = workspace
+        workspace_name = _resolve_workspace_name(workspace_id)
     else:
         dfW = list_workspaces(workspace=workspace)
         if not dfW.empty:
