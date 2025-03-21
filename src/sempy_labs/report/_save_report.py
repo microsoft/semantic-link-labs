@@ -6,8 +6,11 @@ import sempy_labs._icons as icons
 from sempy_labs.report._generate_report import get_report_definition
 from sempy_labs._generate_semantic_model import get_semantic_model_definition
 from sempy_labs._helper_functions import (
-    _is_valid_uuid,
     _mount,
+    resolve_workspace_name_and_id,
+    resolve_item_name,
+    resolve_workspace_name,
+    resolve_item_name_and_id,
 )
 from uuid import UUID
 from sempy._utils._log import log
@@ -17,7 +20,7 @@ from typing import Optional
 @log
 def save_report_as_pbip(
     report: str | UUID,
-    workspace: str | UUID,
+    workspace: Optional[str | UUID] = None,
     thick_report: bool = True,
     live_connect: bool = True,
     lakehouse: Optional[str | UUID] = None,
@@ -49,39 +52,36 @@ def save_report_as_pbip(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    report_workspace = fabric.resolve_workspace_name(workspace)
+    (report_workspace_name, report_workspace_id) = resolve_workspace_name_and_id(
+        workspace
+    )
+    (report_name, report_id) = resolve_item_name_and_id(
+        item=report, type="Report", workspace=workspace
+    )
     indent = 2
 
     local_path = _mount(lakehouse=lakehouse, workspace=lakehouse_workspace)
     save_location = f"{local_path}/Files"
 
     # Find semantic model info
-    dfR = fabric.list_reports(workspace=report_workspace)
-    if _is_valid_uuid(report):
-        dfR_filt = dfR[(dfR["Report Type"] == "PowerBIReport") & (dfR["Id"] == report)]
-    else:
-        dfR_filt = dfR[
-            (dfR["Report Type"] == "PowerBIReport") & (dfR["Name"] == report)
-        ]
+    dfR = fabric.list_reports(workspace=workspace)
+    dfR_filt = dfR[dfR["Id"] == report_id]
     if dfR_filt.empty:
         raise ValueError(
-            f"{icons.red_dot} The '{report} report does not exist within the '{report_workspace} workspace."
+            f"{icons.red_dot} The '{report} report does not exist within the '{report_workspace_name} workspace."
         )
 
-    report_name = dfR_filt["Name"].iloc[0]
     dataset_id = dfR_filt["Dataset Id"].iloc[0]
     dataset_workspace_id = dfR_filt["Dataset Workspace Id"].iloc[0]
-    dataset_name = fabric.resolve_item_name(
-        item_id=dataset_id, workspace=dataset_workspace_id, type="SemanticModel"
-    )
-    dataset_workspace = fabric.resolve_workspace_name(dataset_workspace_id)
-    path_prefix = f"{save_location}/{report_workspace}/{report_name}/{report_name}"
+    dataset_name = resolve_item_name(item_id=dataset_id, workspace=dataset_workspace_id)
+    dataset_workspace_name = resolve_workspace_name(dataset_workspace_id)
+    path_prefix = f"{save_location}/{report_workspace_name}/{report_name}/{report_name}"
 
     # Local model not supported if the report and model are in different workspaces
-    if dataset_workspace != report_workspace and not live_connect:
+    if dataset_workspace_name != report_workspace_name and not live_connect:
         live_connect = True
         print(
-            f"{icons.warning} The '{report_name}' report from the '{report_workspace}' workspace is being saved as a live-connected report/model."
+            f"{icons.warning} The '{report_name}' report from the '{report_workspace_name}' workspace is being saved as a live-connected report/model."
         )
 
     def add_files(name, type, object_workspace):
@@ -89,7 +89,7 @@ def save_report_as_pbip(
         path_prefix_full = f"{path_prefix}.{type}"
 
         if type == "Report":
-            dataframe = get_report_definition(report=name, workspace=report_workspace)
+            dataframe = get_report_definition(report=name, workspace=workspace)
         elif type == "SemanticModel":
             dataframe = get_semantic_model_definition(
                 dataset=name, workspace=object_workspace
@@ -135,11 +135,13 @@ def save_report_as_pbip(
             with open(pbip_final, "w") as file:
                 json.dump(pbip, file, indent=indent)
 
-    add_files(name=report_name, type="Report", object_workspace=report_workspace)
+    add_files(name=report_name, type="Report", object_workspace=workspace)
     if thick_report:
         add_files(
-            name=dataset_name, type="SemanticModel", object_workspace=dataset_workspace
+            name=dataset_name,
+            type="SemanticModel",
+            object_workspace=dataset_workspace_name,
         )
     print(
-        f"{icons.green_dot} The '{report_name}' report within the '{report_workspace}' workspace has been saved to this location: {save_location}."
+        f"{icons.green_dot} The '{report_name}' report within the '{report_workspace_name}' workspace has been saved to this location: {save_location}."
     )

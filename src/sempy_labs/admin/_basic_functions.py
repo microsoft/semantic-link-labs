@@ -664,7 +664,7 @@ def list_access_entities(
 
 
 def list_workspace_access_details(
-    workspace: Optional[Union[str, UUID]] = None
+    workspace: Optional[Union[str, UUID]] = None,
 ) -> pd.DataFrame:
     """
     Shows a list of users (including groups and Service Principals) that have access to the specified workspace.

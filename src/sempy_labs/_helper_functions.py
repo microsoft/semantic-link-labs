@@ -4,7 +4,7 @@ import json
 import base64
 import time
 import uuid
-from sempy.fabric.exceptions import FabricHTTPException
+from sempy.fabric.exceptions import FabricHTTPException, WorkspaceNotFoundException
 import pandas as pd
 from functools import wraps
 import datetime
@@ -15,6 +15,7 @@ import urllib.parse
 from azure.core.credentials import TokenCredential, AccessToken
 import numpy as np
 from IPython.display import display, HTML
+import sempy_labs._authentication as auth
 
 
 def _build_url(url: str, params: dict) -> str:
@@ -570,6 +571,55 @@ def language_validate(language: str):
     return lang
 
 
+def resolve_workspace_id(
+    workspace: Optional[str | UUID] = None,
+) -> UUID:
+    if workspace is None:
+        workspace_id = _get_fabric_context_setting(name="trident.workspace.id")
+    elif _is_valid_uuid(workspace):
+        # Check (optional)
+        workspace_id = workspace
+        try:
+            _base_api(request=f"/v1/workspaces/{workspace_id}", client="fabric_sp")
+        except FabricHTTPException:
+            raise ValueError(
+                f"{icons.red_dot} The '{workspace_id}' workspace was not found."
+            )
+    else:
+        responses = _base_api(
+            request="/v1/workspaces", client="fabric_sp", uses_pagination=True
+        )
+        workspace_id = None
+        for r in responses:
+            for v in r.get("value", []):
+                display_name = v.get("displayName")
+                if display_name == workspace:
+                    workspace_id = v.get("id")
+                    break
+
+    if workspace_id is None:
+        raise WorkspaceNotFoundException(workspace)
+
+    return workspace_id
+
+
+def resolve_workspace_name(workspace_id: Optional[UUID] = None) -> str:
+
+    if workspace_id is None:
+        workspace_id = _get_fabric_context_setting(name="trident.workspace.id")
+
+    try:
+        response = _base_api(
+            request=f"/v1/workspaces/{workspace_id}", client="fabric_sp"
+        ).json()
+    except FabricHTTPException:
+        raise ValueError(
+            f"{icons.red_dot} The '{workspace_id}' workspace was not found."
+        )
+
+    return response.get("displayName")
+
+
 def resolve_workspace_name_and_id(workspace: Optional[str] = None) -> Tuple[str, str]:
     """
     Obtains the name and ID of the Fabric workspace.
@@ -594,6 +644,87 @@ def resolve_workspace_name_and_id(workspace: Optional[str] = None) -> Tuple[str,
         workspace_id = fabric.resolve_workspace_id(workspace)
 
     return str(workspace), str(workspace_id)
+
+
+def resolve_item_id(
+    item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None
+) -> UUID:
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    item_id = None
+
+    if _is_valid_uuid(item):
+        # Check (optional)
+        item_id = item
+        try:
+            _base_api(
+                request=f"/v1/workspaces/{workspace_id}/items/{item_id}",
+                client="fabric_sp",
+            )
+        except FabricHTTPException:
+            raise ValueError(
+                f"{icons.red_dot} The '{item_id}' item was not found in the '{workspace_name}' workspace."
+            )
+    else:
+        if type is None:
+            raise ValueError(
+                f"{icons.red_dot} The 'type' parameter is required if specifying an item name."
+            )
+        responses = _base_api(
+            request=f"/v1/workspaces/{workspace_id}/items?type={type}",
+            client="fabric_sp",
+            uses_pagination=True,
+        )
+        for r in responses:
+            for v in r.get("value", []):
+                display_name = v.get("displayName")
+                if display_name == item:
+                    item_id = v.get("id")
+                    break
+
+    if item_id is None:
+        raise ValueError(
+            f"{icons.red_dot} There's no item '{item}' of type '{type}' in the '{workspace_name}' workspace."
+        )
+
+    return item_id
+
+
+def resolve_item_name_and_id(
+    item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None
+) -> Tuple[str, UUID]:
+
+    workspace_id = resolve_workspace_id(workspace)
+    item_id = resolve_item_id(item=item, type=type, workspace=workspace_id)
+    item_name = (
+        _base_api(
+            request=f"/v1/workspaces/{workspace_id}/items/{item_id}", client="fabric_sp"
+        )
+        .json()
+        .get("displayName")
+    )
+
+    return item_name, item_id
+
+
+def resolve_item_name(item_id: UUID, workspace: Optional[str | UUID] = None) -> str:
+
+    workspace_id = resolve_workspace_id(workspace)
+    try:
+        item_name = (
+            _base_api(
+                request=f"/v1/workspaces/{workspace_id}/items/{item_id}",
+                client="fabric_sp",
+            )
+            .json()
+            .get("displayName")
+        )
+    except FabricHTTPException:
+        raise ValueError(
+            f"{icons.red_dot} The '{item_id}' item was not found in the '{workspace_id}' workspace."
+        )
+
+    return item_name
 
 
 def resolve_lakehouse_name_and_id(
@@ -1400,6 +1531,76 @@ def _get_fabric_context_setting(name: str):
     from synapse.ml.internal_utils.session_utils import get_fabric_context
 
     return get_fabric_context().get(name)
+
+
+def _base_api(
+    request: str,
+    client: str = "fabric",
+    method: str = "get",
+    payload: Optional[str] = None,
+    status_codes: Optional[int] = 200,
+    uses_pagination: bool = False,
+    lro_return_json: bool = False,
+    lro_return_status_code: bool = False,
+):
+
+    from sempy_labs._authentication import _get_headers
+
+    if (lro_return_json or lro_return_status_code) and status_codes is None:
+        status_codes = [200, 202]
+
+    if isinstance(status_codes, int):
+        status_codes = [status_codes]
+
+    if client == "fabric":
+        c = fabric.FabricRestClient()
+    elif client == "fabric_sp":
+        c = fabric.FabricRestClient(token_provider=auth.token_provider.get())
+    elif client in ["azure", "graph"]:
+        pass
+    else:
+        raise ValueError(f"{icons.red_dot} The '{client}' client is not supported.")
+
+    if client not in ["azure", "graph"]:
+        if method == "get":
+            response = c.get(request)
+        elif method == "delete":
+            response = c.delete(request)
+        elif method == "post":
+            response = c.post(request, json=payload)
+        elif method == "patch":
+            response = c.patch(request, json=payload)
+        elif method == "put":
+            response = c.put(request, json=payload)
+        else:
+            raise NotImplementedError
+    else:
+        headers = _get_headers(auth.token_provider.get(), audience=client)
+        if client == "graph":
+            url = f"https://graph.microsoft.com/v1.0/{request}"
+        elif client == "azure":
+            url = request
+        else:
+            raise NotImplementedError
+        response = requests.request(
+            method.upper(),
+            url,
+            headers=headers,
+            json=payload,
+        )
+
+    if lro_return_json:
+        return lro(c, response, status_codes).json()
+    elif lro_return_status_code:
+        return lro(c, response, status_codes, return_status_code=True)
+    else:
+        if response.status_code not in status_codes:
+            raise FabricHTTPException(response)
+        if uses_pagination:
+            responses = pagination(c, response)
+            return responses
+        else:
+            return response
 
 
 def _mount(lakehouse, workspace) -> str:

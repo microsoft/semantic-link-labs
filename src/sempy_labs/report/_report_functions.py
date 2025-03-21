@@ -119,9 +119,9 @@ def report_dependency_tree(workspace: Optional[str] = None):
     dfR.rename(columns={"Name": "Report Name"}, inplace=True)
     dfR = dfR[["Report Name", "Dataset Name"]]
 
-    report_icon = "\U0001F4F6"
-    dataset_icon = "\U0001F9CA"
-    workspace_icon = "\U0001F465"
+    report_icon = "\U0001f4f6"
+    dataset_icon = "\U0001f9ca"
+    workspace_icon = "\U0001f465"
 
     node_dict = {}
     rootNode = Node(workspace)
