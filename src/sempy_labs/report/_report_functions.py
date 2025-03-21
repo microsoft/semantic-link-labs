@@ -19,6 +19,7 @@ from sempy_labs._helper_functions import (
     _create_spark_session,
     _mount,
     resolve_workspace_id,
+    resolve_item_name_and_id,
 )
 from typing import List, Optional, Union
 from sempy._utils._log import log
@@ -157,78 +158,74 @@ def clone_report(
 
     Parameters
     ----------
-    report : str
-        Name of the Power BI report.
+    report : str | uuid.UUID
+        Name or ID of the Power BI report.
     cloned_report : str
         Name of the new Power BI report.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    target_workspace : str, default=None
-        The name of the Fabric workspace to place the cloned report.
+    target_workspace : str | uuid.UUID, default=None
+        The name or ID of the Fabric workspace to place the cloned report.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    target_dataset : str, default=None
-        The name of the semantic model to be used by the cloned report.
+    target_dataset : str | uuid.UUID, default=None
+        The name or ID of the semantic model to be used by the cloned report.
         Defaults to None which resolves to the semantic model used by the initial report.
-    target_dataset_workspace : str, default=None
-        The workspace name in which the semantic model to be used by the report resides.
+    target_dataset_workspace : str | uuid.UUID, default=None
+        The workspace name or ID in which the semantic model to be used by the report resides.
         Defaults to None which resolves to the semantic model used by the initial report.
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (report_name, report_id) = resolve_item_name_and_id(
+        item=report, type="Report", workspace=workspace_id
+    )
 
-    dfI = fabric.list_items(workspace=workspace_id, type="Report")
-    dfI_filt = dfI[(dfI["Display Name"] == report)]
+    (target_workspace_name, target_workspace_id) = resolve_workspace_name_and_id(
+        workspace=target_workspace
+    )
 
-    if len(dfI_filt) == 0:
-        raise ValueError(
-            f"{icons.red_dot} The '{report}' report does not exist within the '{workspace_name}' workspace."
-        )
-
-    reportId = resolve_report_id(report, workspace_id)
-
-    if target_workspace is None:
-        target_workspace = workspace_name
-        target_workspace_id = workspace_id
-    else:
-        target_workspace_id = resolve_workspace_id(workspace=target_workspace)
-
-    if target_dataset is not None:
-        if target_dataset_workspace is None:
-            target_dataset_workspace = workspace_name
-        target_dataset_id = resolve_dataset_id(target_dataset, target_dataset_workspace)
-
-    if report == cloned_report and workspace_name == target_workspace:
+    if report_name == cloned_report and workspace_name == target_workspace_name:
         raise ValueError(
             f"{icons.warning} The 'report' and 'cloned_report' parameters have the same value of '{report}. The 'workspace' and 'target_workspace' have the same value of '{workspace_name}'. Either the 'cloned_report' or the 'target_workspace' must be different from the original report."
         )
 
+    # Do not clone the report if the target report already exists
+    dfR = fabric.list_reports(workspace=target_workspace)
+    dfR_filt = dfR[dfR["Name"] == cloned_report]
+    if not dfR_filt.empty:
+        print(
+            f"{icons.warning} The '{cloned_report}' report already exists in the '{target_workspace_name}' workspace."
+        )
+        return
+
     payload = {"name": cloned_report}
     if target_dataset is not None:
+        target_dataset_id = resolve_dataset_id(target_dataset, target_dataset_workspace)
         payload["targetModelId"] = target_dataset_id
-    if target_workspace != workspace_name:
+    if target_workspace_name != workspace_name:
         payload["targetWorkspaceId"] = target_workspace_id
 
     _base_api(
-        request=f"/v1.0/myorg/groups/{workspace_id}/reports/{reportId}/Clone",
+        request=f"/v1.0/myorg/groups/{workspace_id}/reports/{report_id}/Clone",
         method="post",
         payload=payload,
     )
     print(
-        f"{icons.green_dot} The '{report}' report has been successfully cloned as the '{cloned_report}' report within the '{target_workspace}' workspace."
+        f"{icons.green_dot} The '{report_name}' report has been successfully cloned as the '{cloned_report}' report within the '{target_workspace_name}' workspace."
     )
 
 
-def launch_report(report: str, workspace: Optional[str | UUID] = None):
+def launch_report(report: str | UUID, workspace: Optional[str | UUID] = None):
     """
     Shows a Power BI report within a Fabric notebook.
 
     Parameters
     ----------
-    report : str
-        Name of the Power BI report.
+    report : str | uuid.UUID
+        Name or ID of the Power BI report.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
