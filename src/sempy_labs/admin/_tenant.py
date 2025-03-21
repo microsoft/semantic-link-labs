@@ -126,11 +126,10 @@ def list_capacity_tenant_settings_overrides(
             if capacity_id is None:
                 # If capacity_id is None, we access 'Overrides' -> 'tenantSettings'
                 for override in r.get("overrides", []):
+                    capacity_id = override.get("id")
                     tenant_settings = override.get("tenantSettings", [])
                     for setting in tenant_settings:
-                        data.append(
-                            create_new_data(setting)
-                        )  # No capacity_id needed here
+                        data.append(create_new_data(setting, capacity_id))
             else:
                 # If capacity_id is provided, we access 'value' directly for tenantSettings
                 for setting in r.get("value", []):
