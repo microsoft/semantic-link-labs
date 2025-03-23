@@ -1,9 +1,6 @@
 from sempy_labs._delta_analyzer_history import (
     delta_analyzer_history,
 )
-from sempy_labs._blobs import (
-    recover_lakehouse_object,
-)
 from sempy_labs._dax_query_view import (
     generate_dax_query_view_url,
 )
@@ -561,5 +558,4 @@ __all__ = [
     "delete_sql_database",
     "list_sql_databases",
     "delta_analyzer_history",
-    "recover_lakehouse_object",
 ]
