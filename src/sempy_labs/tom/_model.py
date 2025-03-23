@@ -11,6 +11,8 @@ from sempy_labs._helper_functions import (
     resolve_dataset_name_and_id,
     resolve_workspace_name_and_id,
     _base_api,
+    resolve_workspace_id,
+    resolve_item_id,
 )
 from sempy_labs._list_functions import list_relationships
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
@@ -4944,6 +4946,71 @@ class TOMWrapper:
 
         # Return the objects added to the perspective based on dependencies
         return result_df.drop_duplicates()
+
+    def convert_direct_lake_to_import(
+        self,
+        table_name: str,
+        entity_name: str,
+        schema: str = "dbo",
+        source: Optional[str | UUID] = None,
+        source_type: str = "Lakehouse",
+        source_workspace: Optional[str | UUID] = None,
+    ):
+
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        t = self.model.Tables[table_name]
+        p = next(p for p in t.Partitions)
+        partition_name = p.Name
+        if p.Mode != TOM.ModeType.DirectLake:
+            print(f"{icons.info} The '{table_name}' table is not in Direct Lake mode.")
+            return
+
+        # Update name of the Direct Lake partition (will be removed later)
+        self.model.Tables[table_name].Partitions[
+            partition_name
+        ].Name = f"{partition_name}_remove"
+
+        source_workspace_id = resolve_workspace_id(source_workspace)
+        item_id = resolve_item_id(
+            item=source, type=source_type, workspace=source_workspace_id
+        )
+
+        def _generate_m_expression(
+            workspace_id, artifact_id, artifact_type, table_name, schema_name
+        ):
+            """
+            Generates the M expression for the import partition.
+            """
+
+            if artifact_type == "Lakehouse":
+                type_id = "lakehouseId"
+            elif artifact_type == "Warehouse":
+                type_id = "warehouseId"
+            else:
+                raise NotImplementedError
+
+            return f"""
+            let
+                Source = {artifact_type}.Contents(null),
+                #"Workspace" = Source{{[workspaceId="{workspace_id}"]}}[Data],
+                #"Artifact" = #"Workspace"{{[{type_id}="{artifact_id}"]}}[Data],
+                result = #"Artifact"{{[Id="{table_name}",ItemKind="Table"]}}[Data]
+            in
+                result
+            """
+
+        # Add the import partition
+        self.add_m_partition(
+            table_name=table_name,
+            partition_name=f"{partition_name}",
+            expression=_generate_m_expression(
+                source_workspace_id, item_id, source_type, entity_name
+            ),
+            mode="Import",
+        )
+        # Remove the Direct Lake partition
+        self.remove_object(object=p)
 
     def close(self):
 
