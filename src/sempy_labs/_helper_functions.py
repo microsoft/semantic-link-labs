@@ -1889,7 +1889,9 @@ def _run_spark_sql_query(query):
     return spark.sql(query)
 
 
-def _mount(lakehouse, workspace) -> str:
+def _mount(
+    lakehouse: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None
+) -> str:
     """
     Mounts a lakehouse to a notebook if it is not already mounted. Returns the local path to the lakehouse.
     """
@@ -1901,10 +1903,15 @@ def _mount(lakehouse, workspace) -> str:
         lakehouse=lakehouse, workspace=workspace
     )
 
-    current_setting = notebookutils.conf.get(
-        "spark.notebookutils.displaymountpoint.enabled"
-    )
-    notebookutils.conf.set("spark.notebookutils.displaymountpoint.enabled", "false")
+    # Hide display mounts
+    current_setting = ""
+    try:
+        current_setting = notebookutils.conf.get(
+            "spark.notebookutils.displaymountpoint.enabled"
+        )
+        notebookutils.conf.set("spark.notebookutils.displaymountpoint.enabled", "false")
+    except Exception:
+        pass
 
     lake_path = create_abfss_path(lakehouse_id, workspace_id)
     mounts = notebookutils.fs.mounts()
@@ -1921,8 +1928,14 @@ def _mount(lakehouse, workspace) -> str:
         i.get("localPath") for i in mounts if i.get("source") == lake_path
     )
 
-    if current_setting != "false":
-        notebookutils.conf.set("spark.notebookutils.displaymountpoint.enabled", "true")
+    # Set display mounts to original setting
+    try:
+        if current_setting != "false":
+            notebookutils.conf.set(
+                "spark.notebookutils.displaymountpoint.enabled", "true"
+            )
+    except Exception:
+        pass
 
     return local_path
 
