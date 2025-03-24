@@ -854,7 +854,6 @@ def resolve_workspace_name(workspace_id: Optional[UUID] = None) -> str:
 def resolve_workspace_name_and_id(
     workspace: Optional[str | UUID] = None,
 ) -> Tuple[str, str]:
-
     """
     Obtains the name and ID of the Fabric workspace.
 
@@ -2172,4 +2171,3 @@ def _xml_to_dict(element):
             element.text.strip() if element.text and element.text.strip() else None
         )
     return data
-
