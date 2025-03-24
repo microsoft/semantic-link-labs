@@ -4950,13 +4950,35 @@ class TOMWrapper:
     def convert_direct_lake_to_import(
         self,
         table_name: str,
-        entity_name: str,
-        schema: str = "dbo",
+        entity_name: Optional[str] = None,
+        schema: Optional[str] = None,
         source: Optional[str | UUID] = None,
         source_type: str = "Lakehouse",
         source_workspace: Optional[str | UUID] = None,
     ):
+        """
+        Converts a Direct Lake table's partition to an import-mode partition.
 
+        The entity_name and schema parameters default to using the existing values in the Direct Lake partition. The source, source_type, and source_workspace
+        parameters do not default to existing values. This is because it may not always be possible to reconcile the source and its workspace.
+
+        Parameters
+        ----------
+        table_name : str
+            The table name.
+        entity_name : str, default=None
+            The entity name of the Direct Lake partition (the table name in the source).
+        schema : str, default=None
+            The schema of the source table. Defaults to None which resolves to the existing schema.
+        source : str | uuid.UUID, default=None
+            The source name or ID. This is the name or ID of the Lakehouse or Warehouse.
+        source_type : str, default="Lakehouse"
+            The source type (i.e. "Lakehouse" or "Warehouse").
+        source_workspace: str | uuid.UUID, default=None
+            The workspace name or ID of the source. This is the workspace in which the Lakehouse or Warehouse exists.
+            Defaults to None which resolves to the workspace of the attached lakehouse
+            or if no lakehouse attached, resolves to the workspace of the notebook.
+        """
         import Microsoft.AnalysisServices.Tabular as TOM
 
         t = self.model.Tables[table_name]
@@ -4965,6 +4987,8 @@ class TOMWrapper:
         if p.Mode != TOM.ModeType.DirectLake:
             print(f"{icons.info} The '{table_name}' table is not in Direct Lake mode.")
             return
+        partition_entity_name = entity_name or p.Source.EntityName
+        partition_schema = schema or p.Source.SchemaName
 
         # Update name of the Direct Lake partition (will be removed later)
         self.model.Tables[table_name].Partitions[
@@ -4990,23 +5014,27 @@ class TOMWrapper:
             else:
                 raise NotImplementedError
 
+            full_table_name = f"{schema_name}.{table_name}" if schema_name else table_name
+
             return f"""
             let
                 Source = {artifact_type}.Contents(null),
                 #"Workspace" = Source{{[workspaceId="{workspace_id}"]}}[Data],
                 #"Artifact" = #"Workspace"{{[{type_id}="{artifact_id}"]}}[Data],
-                result = #"Artifact"{{[Id="{table_name}",ItemKind="Table"]}}[Data]
+                result = #"Artifact"{{[Id="{full_table_name}",ItemKind="Table"]}}[Data]
             in
                 result
             """
+
+        m_expression = _generate_m_expression(
+            source_workspace_id, item_id, source_type, partition_entity_name, partition_schema,
+        )
 
         # Add the import partition
         self.add_m_partition(
             table_name=table_name,
             partition_name=f"{partition_name}",
-            expression=_generate_m_expression(
-                source_workspace_id, item_id, source_type, entity_name
-            ),
+            expression=m_expression,
             mode="Import",
         )
         # Remove the Direct Lake partition
