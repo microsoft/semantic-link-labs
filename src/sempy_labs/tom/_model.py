@@ -5014,10 +5014,11 @@ class TOMWrapper:
             else:
                 raise NotImplementedError
 
-            full_table_name = f"{schema_name}.{table_name}" if schema_name else table_name
+            full_table_name = (
+                f"{schema_name}.{table_name}" if schema_name else table_name
+            )
 
-            return f"""
-            let
+            return f"""let
                 Source = {artifact_type}.Contents(null),
                 #"Workspace" = Source{{[workspaceId="{workspace_id}"]}}[Data],
                 #"Artifact" = #"Workspace"{{[{type_id}="{artifact_id}"]}}[Data],
@@ -5027,7 +5028,11 @@ class TOMWrapper:
             """
 
         m_expression = _generate_m_expression(
-            source_workspace_id, item_id, source_type, partition_entity_name, partition_schema,
+            source_workspace_id,
+            item_id,
+            source_type,
+            partition_entity_name,
+            partition_schema,
         )
 
         # Add the import partition
