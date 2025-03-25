@@ -202,3 +202,30 @@ def recover_lakehouse_object(
                 method="put",
             )
             print(f"{icons.green_dot} The '{blob_name}' blob has been restored.")
+
+
+def _get_user_delegation_key():
+
+    # https://learn.microsoft.com/rest/api/storageservices/get-user-delegation-key
+
+    from datetime import datetime, timedelta
+
+    utc_now = datetime.utcnow()
+    start_time = utc_now + timedelta(minutes=2)
+    expiry_time = start_time + timedelta(minutes=45)
+    start_str = start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+    expiry_str = expiry_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    payload = f"""<?xml version="1.0" encoding="utf-8"?>
+    <KeyInfo>
+        <Start>{start_str}</Start>
+        <Expiry>{expiry_str}</Expiry>
+    </KeyInfo>"""
+
+    response = _request_blob_api(
+        request="restype=service&comp=userdelegationkey",
+        method="post",
+        payload=payload,
+    )
+
+    return response.content
