@@ -170,7 +170,6 @@ def restore_semantic_model(
     if force_restore:
         tmsl["restore"]["forceRestore"] = force_restore
 
-    print(tmsl)
     fabric.execute_tmsl(script=tmsl, workspace=workspace_id)
 
     print(
