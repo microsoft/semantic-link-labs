@@ -84,6 +84,10 @@ def list_blobs(
     if container is None:
         path_prefix = f"{workspace_id}/{lakehouse_id}"
     else:
+        if container not in ["Tables", "Files"]:
+            raise ValueError(
+                f"{icons.red_dot} Invalid container '{container}' within the file_path parameter. Expected 'Tables' or 'Files'."
+            )
         path_prefix = f"{workspace_id}/{lakehouse_id}/{container}"
 
     response = _request_blob_api(
