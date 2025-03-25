@@ -208,9 +208,9 @@ def _get_user_delegation_key():
 
     # https://learn.microsoft.com/rest/api/storageservices/get-user-delegation-key
 
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
 
-    utc_now = datetime.utcnow()
+    utc_now = datetime.now(timezone.utc)
     start_time = utc_now + timedelta(minutes=2)
     expiry_time = start_time + timedelta(minutes=45)
     start_str = start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
