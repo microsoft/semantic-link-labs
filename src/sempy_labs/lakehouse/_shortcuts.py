@@ -24,6 +24,7 @@ def create_shortcut_onelake(
     shortcut_name: Optional[str] = None,
     source_path: str = "Tables",
     destination_path: str = "Tables",
+    shortcut_conflict_policy: Optional[str] = None,
 ):
     """
     Creates a `shortcut <https://learn.microsoft.com/fabric/onelake/onelake-shortcuts>`_ to a delta table in OneLake.
@@ -53,6 +54,8 @@ def create_shortcut_onelake(
         A string representing the full path to the table/file in the source lakehouse, including either "Files" or "Tables". Examples: Tables/FolderName/SubFolderName; Files/FolderName/SubFolderName.
     destination_path: str, default="Tables"
         A string representing the full path where the shortcut is created, including either "Files" or "Tables". Examples: Tables/FolderName/SubFolderName; Files/FolderName/SubFolderName.
+    shortcut_conflict_policy : str, default=None
+        When provided, it defines the action to take when a shortcut with the same name and path already exists. The default action is 'Abort'. Additional ShortcutConflictPolicy types may be added over time.
     """
 
     if not (source_path.startswith("Files") or source_path.startswith("Tables")):
@@ -122,8 +125,17 @@ def create_shortcut_onelake(
     except FabricHTTPException:
         pass
 
+    url = f"/v1/workspaces/{destination_workspace_id}/items/{destination_lakehouse_id}/shortcuts"
+
+    if shortcut_conflict_policy:
+        if shortcut_conflict_policy not in ["Abort", "GenerateUniqueName"]:
+            raise ValueError(
+                f"{icons.red_dot} The 'shortcut_conflict_policy' parameter must be either 'Abort' or 'GenerateUniqueName'."
+            )
+        url += f"?shortcutConflictPolicy={shortcut_conflict_policy}"
+
     _base_api(
-        request=f"/v1/workspaces/{destination_workspace_id}/items/{destination_lakehouse_id}/shortcuts",
+        request=url,
         payload=payload,
         status_codes=201,
         method="post",
