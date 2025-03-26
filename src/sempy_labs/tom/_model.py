@@ -13,6 +13,7 @@ from sempy_labs._helper_functions import (
     _base_api,
     resolve_workspace_id,
     resolve_item_id,
+    resolve_lakehouse_id,
 )
 from sempy_labs._list_functions import list_relationships
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
@@ -4981,12 +4982,12 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        t = self.model.Tables[table_name]
-        p = next(p for p in t.Partitions)
-        partition_name = p.Name
+        p = next(p for p in self.model.Tables[table_name].Partitions)
         if p.Mode != TOM.ModeType.DirectLake:
             print(f"{icons.info} The '{table_name}' table is not in Direct Lake mode.")
             return
+
+        partition_name = p.Name
         partition_entity_name = entity_name or p.Source.EntityName
         partition_schema = schema or p.Source.SchemaName
 
@@ -4995,10 +4996,15 @@ class TOMWrapper:
             partition_name
         ].Name = f"{partition_name}_remove"
 
-        source_workspace_id = resolve_workspace_id(source_workspace)
-        item_id = resolve_item_id(
-            item=source, type=source_type, workspace=source_workspace_id
-        )
+        source_workspace_id = resolve_workspace_id(workspace=source_workspace)
+        if source_type == "Lakehouse":
+            item_id = resolve_lakehouse_id(
+                lakehouse=source, workspace=source_workspace_id
+            )
+        else:
+            item_id = resolve_item_id(
+                item=source, type=source_type, workspace=source_workspace_id
+            )
 
         def _generate_m_expression(
             workspace_id, artifact_id, artifact_type, table_name, schema_name
@@ -5058,18 +5064,24 @@ class TOMWrapper:
                         p.SourceType == TOM.PartitionSourceType.Entity
                         for p in t.Partitions
                     ):
-                        if t.LineageTag in list(self._table_map.keys()):
-                            if self._table_map.get(t.LineageTag) != t.Name:
-                                self.add_changed_property(object=t, property="Name")
+                        entity_name = next(p.Source.EntityName for p in t.Partitions)
+                        if t.Name != entity_name:
+                            self.add_changed_property(object=t, property="Name")
+                        # if t.LineageTag in list(self._table_map.keys()):
+                        #    if self._table_map.get(t.LineageTag) != t.Name:
+                        #        self.add_changed_property(object=t, property="Name")
 
                 for c in self.all_columns():
+                    # if c.LineageTag in list(self._column_map.keys()):
+                    if any(
+                        p.SourceType == TOM.PartitionSourceType.Entity
+                        for p in c.Parent.Partitions
+                    ):
+                        if c.Name != c.SourceColumn:
+                            self.add_changed_property(object=c, property="Name")
+                        # if self._column_map.get(c.LineageTag)[0] != c.Name:
+                        #    self.add_changed_property(object=c, property="Name")
                     if c.LineageTag in list(self._column_map.keys()):
-                        if any(
-                            p.SourceType == TOM.PartitionSourceType.Entity
-                            for p in c.Parent.Partitions
-                        ):
-                            if self._column_map.get(c.LineageTag)[0] != c.Name:
-                                self.add_changed_property(object=c, property="Name")
                         if self._column_map.get(c.LineageTag)[1] != c.DataType:
                             self.add_changed_property(object=c, property="DataType")
 
