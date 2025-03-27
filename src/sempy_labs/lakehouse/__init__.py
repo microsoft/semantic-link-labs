@@ -19,6 +19,7 @@ from sempy_labs.lakehouse._shortcuts import (
 )
 from sempy_labs.lakehouse._blobs import (
     recover_lakehouse_object,
+    list_blobs,
 )
 
 __all__ = [
@@ -34,4 +35,5 @@ __all__ = [
     "run_table_maintenance",
     "list_shortcuts",
     "recover_lakehouse_object",
+    "list_blobs",
 ]
