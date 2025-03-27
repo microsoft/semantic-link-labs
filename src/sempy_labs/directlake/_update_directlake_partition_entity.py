@@ -8,11 +8,13 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_workspace_name,
 )
+from sempy._utils._log import log
 from typing import List, Optional, Union
 import sempy_labs._icons as icons
 from uuid import UUID
 
 
+@log
 def update_direct_lake_partition_entity(
     dataset: str | UUID,
     table_name: Union[str, List[str]],
@@ -96,6 +98,7 @@ def update_direct_lake_partition_entity(
             )
 
 
+@log
 def add_table_to_direct_lake_semantic_model(
     dataset: str | UUID,
     table_name: str,
