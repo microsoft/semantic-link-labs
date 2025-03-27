@@ -4859,6 +4859,18 @@ class TOMWrapper:
 
         result_df = pd.DataFrame(columns=["Table Name", "Object Name", "Object Type"])
 
+        def add_to_result(table_name, object_name, object_type, dataframe):
+
+            new_data = {
+                "Table Name": table_name,
+                "Object Name": object_name,
+                "Object Type": object_type,
+            }
+
+            return pd.concat(
+                [dataframe, pd.DataFrame(new_data, index=[0])], ignore_index=True
+            )
+
         for _, r in filt.iterrows():
             added = False
             obj_type = r["Referenced Object Type"]
@@ -4892,15 +4904,7 @@ class TOMWrapper:
                     )
                     added = True
             if added:
-                new_data = {
-                    "Table Name": table_name,
-                    "Object Name": object_name,
-                    "Object Type": obj_type,
-                }
-
-                result_df = pd.concat(
-                    [result_df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                )
+                result_df = add_to_result(table_name, object_name, obj_type, result_df)
 
         # Reduce model...
 
@@ -4923,10 +4927,16 @@ class TOMWrapper:
                 self.add_to_perspective(
                     object=r.FromColumn, perspective_name=perspective_name
                 )
+
+                result_df = add_to_result(r.FromTable.Name, r.FromColumn.Name, "Column", result_df)
             if not self.in_perspective(r.ToColumn, perspective_name=perspective_name):
+                table_name = r.ToTable.Name
+                object_name = r.ToColumn.Name
                 self.add_to_perspective(
                     object=r.ToColumn, perspective_name=perspective_name
                 )
+
+                result_df = add_to_result(r.ToTable.Name, r.ToColumn.Name, "Column", result_df)
 
         # Remove objects not in the perspective
         for t in self.model.Tables:

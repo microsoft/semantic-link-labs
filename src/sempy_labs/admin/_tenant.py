@@ -390,6 +390,7 @@ def list_workspaces_tenant_settings_overrides() -> pd.DataFrame:
     """
 
     columns = {
+        "Workspace Id": "string",
         "Setting Name": "string",
         "Title": "string",
         "Enabled": "bool",
@@ -408,8 +409,10 @@ def list_workspaces_tenant_settings_overrides() -> pd.DataFrame:
 
     for r in responses:
         for v in r.get("value", []):
+            workspace_id = v.get("id")
             for setting in v.get("tenantSettings", []):
                 new_data = {
+                    "Workspace Id": workspace_id,
                     "Setting Name": setting.get("settingName"),
                     "Title": setting.get("title"),
                     "Enabled": setting.get("enabled"),
@@ -446,6 +449,7 @@ def list_domain_tenant_settings_overrides() -> pd.DataFrame:
     """
 
     columns = {
+        "Domain Id": "string",
         "Setting Name": "string",
         "Title": "string",
         "Enabled": "bool",
@@ -465,8 +469,10 @@ def list_domain_tenant_settings_overrides() -> pd.DataFrame:
 
     for r in responses:
         for v in r.get("value", []):
+            domain_id = v.get("id")
             for setting in v.get("tenantSettings", []):
                 new_data = {
+                    "Domain Id": domain_id,
                     "Setting Name": setting.get("settingName"),
                     "Title": setting.get("title"),
                     "Enabled": setting.get("enabled"),
