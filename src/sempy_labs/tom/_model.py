@@ -5079,7 +5079,7 @@ class TOMWrapper:
                     ):
                         if c.Name != c.SourceColumn:
                             self.add_changed_property(object=c, property="Name")
-                        #c.SourceLineageTag = c.SourceColumn
+                        # c.SourceLineageTag = c.SourceColumn
                         # if self._column_map.get(c.LineageTag)[0] != c.Name:
                         #    self.add_changed_property(object=c, property="Name")
                     if c.LineageTag in list(self._column_map.keys()):
