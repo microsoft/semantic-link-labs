@@ -1,4 +1,3 @@
-import sempy.fabric as fabric
 from typing import Optional, List, Tuple
 from sempy._utils._log import log
 import sempy_labs._icons as icons
