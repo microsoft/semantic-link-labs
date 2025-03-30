@@ -4928,7 +4928,9 @@ class TOMWrapper:
                     object=r.FromColumn, perspective_name=perspective_name
                 )
 
-                result_df = add_to_result(r.FromTable.Name, r.FromColumn.Name, "Column", result_df)
+                result_df = add_to_result(
+                    r.FromTable.Name, r.FromColumn.Name, "Column", result_df
+                )
             if not self.in_perspective(r.ToColumn, perspective_name=perspective_name):
                 table_name = r.ToTable.Name
                 object_name = r.ToColumn.Name
@@ -4936,7 +4938,9 @@ class TOMWrapper:
                     object=r.ToColumn, perspective_name=perspective_name
                 )
 
-                result_df = add_to_result(r.ToTable.Name, r.ToColumn.Name, "Column", result_df)
+                result_df = add_to_result(
+                    r.ToTable.Name, r.ToColumn.Name, "Column", result_df
+                )
 
         # Remove objects not in the perspective
         for t in self.model.Tables:
