@@ -4948,7 +4948,7 @@ class TOMWrapper:
         # Return the objects added to the perspective based on dependencies
         return result_df.drop_duplicates()
 
-    def convert_direct_lake_to_import(
+    def _convert_direct_lake_to_import(
         self,
         table_name: str,
         entity_name: Optional[str] = None,
