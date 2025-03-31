@@ -967,7 +967,11 @@ class ReportWrapper:
 
             if isinstance(data, dict):
                 expression = data.get("Expression", {})
-                source_ref = expression.get("SourceRef", {})
+                source_ref = (
+                    expression.get("SourceRef", {})
+                    if isinstance(expression, dict)
+                    else {}
+                )
                 if (
                     isinstance(source_ref, dict)
                     and "Entity" in source_ref

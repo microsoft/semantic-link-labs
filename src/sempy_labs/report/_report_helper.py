@@ -237,7 +237,10 @@ def find_entity_property_pairs(data, result=None, keys_path=None):
 
     if isinstance(data, dict):
         expression = data.get("Expression", {})
-        source_ref = expression.get("SourceRef", {})
+        source_ref = (
+            expression.get("SourceRef", {}) if isinstance(expression, dict) else {}
+        )
+
         if (
             isinstance(source_ref, dict)
             and "Entity" in source_ref
