@@ -55,6 +55,7 @@ def run_model_bpa_bulk(
             "Workspace A": ["Dataset1", "Dataset2"],
             "Workspace B": ["Dataset5", "Dataset 8"],
         }
+    return_df: bool = False (default: False) – If set to True, it will return the BPA rules as a DataFrame for the specified workspaces.`
     """
 
     if not lakehouse_attached():
@@ -66,6 +67,9 @@ def run_model_bpa_bulk(
         skip_models = [skip_models]
 
     skip_models.extend(["ModelBPA", "Fabric Capacity Metrics"])
+
+    #Declaring a tempDf to return the BPARules
+    tempDf = pd.DataFrame()
 
     now = datetime.datetime.now()
     output_table = "modelbparesults"
@@ -176,6 +180,9 @@ def run_model_bpa_bulk(
                         for key, value in icons.bpa_schema.items()
                     }
 
+                    #Appending all the dfs to tempDf    
+                    tempDf = pd.concat([tempDf, df], ignore_index=True)
+
                     save_as_delta_table(
                         dataframe=df,
                         delta_table_name=output_table,
@@ -186,9 +193,9 @@ def run_model_bpa_bulk(
                     print(
                         f"{icons.green_dot} Saved BPA results to the '{output_table}' delta table."
                     )
-                    
-                    if(return_df):
-                        return df
+    #If `return_df` is set to `True`, it will return the BPA rules result as a DataFrame.
+    if(return_df):
+        return tempDf
 
     print(f"{icons.green_dot} Bulk BPA scan complete.")
 
@@ -230,6 +237,9 @@ def create_model_bpa_semantic_model(
     (lakehouse_id, lakehouse_name) = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=lakehouse_workspace_id
     )
+
+    
+
 
     # Generate the shared expression based on the lakehouse and lakehouse workspace
     expr = generate_shared_expression(
