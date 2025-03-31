@@ -979,16 +979,7 @@ class ReportWrapper:
                 ):
                     entity = source_ref.get("Entity", "")
                     property_value = data.get("Property", "")
-                    # if (
-                    #    "Entity" in data.get("Expression", {}).get("SourceRef", {})
-                    #    and "Property" in data
-                    # ):
-                    #    entity = (
-                    #        data.get("Expression", {})
-                    #        .get("SourceRef", {})
-                    #        .get("Entity", {})
-                    #    )
-                    # property_value = data.get("Property", {})
+
                     object_type = (
                         keys_path[-1].replace("HierarchyLevel", "Hierarchy")
                         if keys_path
