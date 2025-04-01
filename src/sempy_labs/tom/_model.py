@@ -4962,7 +4962,7 @@ class TOMWrapper:
         # Return the objects added to the perspective based on dependencies
         return result_df.drop_duplicates()
 
-    def _convert_direct_lake_to_import(
+    def convert_direct_lake_to_import(
         self,
         table_name: str,
         entity_name: Optional[str] = None,
@@ -5064,6 +5064,8 @@ class TOMWrapper:
         )
         # Remove the Direct Lake partition
         self.remove_object(object=p)
+
+        print(f"{icons.green_dot} The '{table_name}' table has been converted to Import mode.")
 
     def close(self):
 
