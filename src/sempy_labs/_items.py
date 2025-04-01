@@ -34,18 +34,29 @@ def backup_item_definitions(
     for _, r in dfI_filt.iterrows():
         item_name = r["Display Name"]
         item_id = r["Id"]
+        description = r["Description"]
+        # folder_id = r['Folder Id']
         item_type = r["Type"]
-        result = _base_api(
+        definition = _base_api(
             request=f"/v1/workspaces/{workspace_id}/items/{item_id}/getDefinition",
             method="post",
             lro_return_json=True,
             status_codes=None,
         )
 
-        file_path = f"{local_path}/Files/{workspace_name}/{item_type}/{item_name}.json"
+        file_path_prefix = f"{local_path}/Files/{workspace_name}/{item_type}/{item_name}"
+        definition_file_path = f"{file_path_prefix}/definition.json"
+        info_file_path = f"{file_path_prefix}/info.json"
 
-        with open(file_path, "w") as json_file:
-            json.dump(result, json_file, indent=4)
+        info = {
+            "description": description,
+            "folderId": None,  # Update to folder_id
+        }
+
+        with open(definition_file_path, "w") as json_file:
+            json.dump(definition, json_file, indent=4)
+        with open(info_file_path, "w") as json_file:
+            json.dump(info, json_file, indent=4)
         print(
             f"{icons.green_dot} The '{item_name}' {item_type}' definition has been backed up to the Files section of the '{lakehouse_name}' lakehouse within the '{lakehouse_workspace_name}' workspace."
         )
@@ -86,7 +97,7 @@ def restore_item_definitions(
         split = blob_name.split("/")
         item_type = split[-2]
         item_name = split[-1].replace(".json", "")
-        file_path = f"{local_path}/{blob_file}"
+        definition_file_path = f"{local_path}/{blob_file}"
         with open(file_path, "r", encoding="utf-8") as file:
             data = json.load(file)
 
@@ -96,7 +107,8 @@ def restore_item_definitions(
             "description": "",
             "definition": json.dumps(data, indent=2),
         }
-
+        
+        # Create items...
         _base_api(
             request=f"/v1/workspaces/{target_workspace_id}/items",
             method="post",
@@ -104,4 +116,4 @@ def restore_item_definitions(
             status_codes=[201, 202],
             lro_return_status_code=True,
         )
-    # Create items...
+    
