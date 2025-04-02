@@ -4,6 +4,8 @@ from sempy_labs._helper_functions import (
     _xml_to_dict,
     _create_dataframe,
     _update_dataframe_datatypes,
+    resolve_workspace_name_and_id,
+    resolve_lakehouse_name_and_id,
 )
 from sempy._utils._log import log
 from uuid import UUID
@@ -202,6 +204,36 @@ def recover_lakehouse_object(
                 method="put",
             )
             print(f"{icons.green_dot} The '{blob_name}' blob has been restored.")
+
+
+def delete_lakehouse_object(file_path: str, lakehouse: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None):
+    """
+    Deletes an object (i.e. table, file, folder) in a lakehouse. The object is soft-deleted and can be recovered within 7 days (use the `recover_lakehouse_object <https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.lakehouse.html#sempy_labs.lakehouse.recover_lakehouse_object>`_ function).
+
+    Parameters
+    ----------
+    file_path : str
+        The file path of the object to restore. For example: "Tables/my_delta_table" or "Files/myfile.json" or "Files/myfolder".
+    lakehouse : str | uuid.UUID, default=None
+        The Fabric lakehouse name or ID.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(lakehouse, workspace_id)
+
+    if not file_path.startswith('Tables') and not file_path.startswith('Files'):
+        raise ValueError(
+            f"{icons.red_dot} Invalid container '{file_path}' within the file_path parameter. Expected 'Tables' or 'Files'."
+        )
+
+    _request_blob_api(request=f"{workspace_id}/{lakehouse_id}/{file_path}?recursive=True", method="delete")
+
+    print(f"{icons.green_dot} The '{file_path}' blob has been soft-deleted in the '{lakehouse_name}' lakehouse within the '{workspace_name}' workspace. It can be recovered within 7 days.")
 
 
 def _get_user_delegation_key():
