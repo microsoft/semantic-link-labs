@@ -210,7 +210,7 @@ def get_dax_query_dependencies(
         dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
         dl_tables = dfP[dfP["Mode"] == "DirectLake"]["Table Name"].unique().tolist()
         not_in_memory = dfC_filtered[
-            dfC_filtered["Table Name"].isin(dl_tables)
+            (dfC_filtered["Table Name"].isin(dl_tables))
             & (dfC_filtered["Is Resident"] == False)
         ]
 
