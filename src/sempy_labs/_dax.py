@@ -214,7 +214,7 @@ def get_dax_query_dependencies(
             & (dfC_filtered["Is Resident"] == False)
         ]
 
-        if len(not_in_memory) > 0:
+        if not not_in_memory.empty:
             _put_columns_into_memory(
                 dataset=dataset,
                 workspace=workspace,
