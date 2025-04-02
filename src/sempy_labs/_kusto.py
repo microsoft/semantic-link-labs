@@ -5,17 +5,16 @@ from sempy._utils._log import log
 import sempy_labs._icons as icons
 from typing import Optional
 from uuid import UUID
-from sempy_labs._kql_databases import (
-    _resolve_cluster_uri
-)
-from sempy_labs._helper_functions import (
-    resolve_item_name_and_id
-)
+from sempy_labs._kql_databases import _resolve_cluster_uri
+from sempy_labs._helper_functions import resolve_item_name_and_id
 
 
 @log
 def query_kusto(
-    query: str, kql_database: str | UUID, workspace: Optional[str | UUID] = None
+    query: str,
+    eventhouse: str | UUID,
+    workspace: Optional[str | UUID] = None,
+    language: str = "kql",
 ) -> pd.DataFrame:
     """
     Runs a KQL query against a KQL database.
@@ -24,12 +23,14 @@ def query_kusto(
     ----------
     query : str
         The KQL query.
-    kql_database : str | uuid.UUID
-        The KQL database name or ID.
+    eventhouse : str | uuid.UUID
+        The eventhouse name or ID.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    language : str, default="kql"
+        The language of the query. Currently "kql' and "sql" are supported.
 
     Returns
     -------
@@ -38,6 +39,11 @@ def query_kusto(
     """
 
     import notebookutils
+
+    if language not in ["kql", "sql"]:
+        raise ValueError(
+            f"Invalid language '{language}'. Only 'kql' and 'sql' are supported."
+        )
 
     cluster_uri = _resolve_cluster_uri(workspace=workspace)
     token = notebookutils.credentials.getToken(cluster_uri)
@@ -48,10 +54,12 @@ def query_kusto(
         "Accept": "application/json",
     }
 
-    (kql_database_name, kql_database_id) = resolve_item_name_and_id(
-        item=kql_database, type="KQLDatabase", workspace=workspace
+    (eventhouse_name, eventhouse_id) = resolve_item_name_and_id(
+        item=eventhouse, type="Eventhouse", workspace=workspace
     )
-    payload = {"db": kql_database_name, "csl": query}
+    payload = {"db": eventhouse_name, "csl": query}
+    if language == "sql":
+        payload["properties"] = {"Options": {"query_language": "sql"}}
 
     response = requests.post(
         f"{cluster_uri}/v1/rest/query",
@@ -93,3 +101,34 @@ def query_kusto(
             df[col_name] = df[col_name].astype(str)
 
     return df
+
+
+def query_workspace_monitoring(
+    query: str, workspace: Optional[str | UUID] = None, language: str = "kql"
+) -> pd.DataFrame:
+    """
+    Runs a KQL query against the Fabric workspace monitoring database.
+
+    Parameters
+    ----------
+    query : str
+        The KQL query.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    language : str, default="kql"
+        The language of the query. Currently "kql' and "sql" are supported.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the result of the KQL query.
+    """
+
+    return query_kusto(
+        query=query,
+        eventhouse="Monitoring Eventhouse",
+        workspace=workspace,
+        language=language,
+    )
