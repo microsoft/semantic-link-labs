@@ -14,7 +14,7 @@ def query_kusto(
     query: str, kql_database: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
-    Shows the KQL querysets within a workspace.
+    Runs a KQL query against a KQL database.
 
     Parameters
     ----------
