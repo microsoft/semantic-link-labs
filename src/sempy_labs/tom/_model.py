@@ -5065,7 +5065,9 @@ class TOMWrapper:
         # Remove the Direct Lake partition
         self.remove_object(object=p)
 
-        print(f"{icons.green_dot} The '{table_name}' table has been converted to Import mode.")
+        print(
+            f"{icons.green_dot} The '{table_name}' table has been converted to Import mode."
+        )
 
     def close(self):
 
