@@ -6,11 +6,12 @@ import sempy_labs._icons as icons
 from typing import Optional
 from uuid import UUID
 from sempy_labs._kql_databases import _resolve_cluster_uri
+from sempy_labs._helper_functions import resolve_item_name_and_id
 
 
 @log
 def query_kusto(
-    query: str, database: str, workspace: Optional[str | UUID] = None
+    query: str, kql_database: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
     Shows the KQL querysets within a workspace.
@@ -19,8 +20,8 @@ def query_kusto(
     ----------
     query : str
         The KQL query.
-    database : str
-        The KQL database name.
+    kql_database : str | uuid.UUID
+        The KQL database name or ID.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -43,7 +44,10 @@ def query_kusto(
         "Accept": "application/json",
     }
 
-    payload = {"db": database, "csl": query}
+    (kql_database_name, kql_database_id) = resolve_item_name_and_id(
+        item=kql_database, type="KQLDatabase", workspace=workspace
+    )
+    payload = {"db": kql_database_name, "csl": query}
 
     response = requests.post(
         f"{cluster_uri}/v1/rest/query",
