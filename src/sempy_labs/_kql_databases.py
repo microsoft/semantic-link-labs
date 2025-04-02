@@ -121,3 +121,15 @@ def delete_kql_database(
         )
 
     delete_item(item=kql_database, type="KQLDatabase", workspace=workspace)
+
+
+def _resolve_cluster_uri(workspace: Optional[str | UUID] = None) -> str:
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    dfK = list_kql_databases(workspace=workspace_id)
+    dfK_filt = dfK[dfK["KQL Database Name"] == "Monitoring KQL database"]
+    if dfK_filt.empty:
+        raise ValueError(
+            f"{icons.red_dot} Workspace monitoring is not set up for the '{workspace_name}' workspace."
+        )
+    return dfK_filt["Query Service URI"].iloc[0]
