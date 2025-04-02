@@ -1,32 +1,30 @@
-import sempy.fabric as fabric
 import requests
 import pandas as pd
 from sempy.fabric.exceptions import FabricHTTPException
 from sempy._utils._log import log
 import sempy_labs._icons as icons
-from typing import Optional, List
+from typing import Optional
 from uuid import UUID
-from sempy_labs._helper_functions import (
-    resolve_workspace_name_and_id,
-    create_abfss_path,
-    save_as_delta_table,
-)
 from sempy_labs._kql_databases import _resolve_cluster_uri
 
 
 @log
-def query_kusto(cluster_uri: str, query: str, database: str) -> pd.DataFrame:
+def query_kusto(
+    query: str, database: str, workspace: Optional[str | UUID] = None
+) -> pd.DataFrame:
     """
     Shows the KQL querysets within a workspace.
 
     Parameters
     ----------
-    cluster_uri : str
-        The Query URI for the KQL database. Example: "https://guid.kusto.fabric.microsoft.com"
     query : str
         The KQL query.
     database : str
         The KQL database name.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
 
     Returns
     -------
@@ -36,6 +34,7 @@ def query_kusto(cluster_uri: str, query: str, database: str) -> pd.DataFrame:
 
     import notebookutils
 
+    cluster_uri = _resolve_cluster_uri(workspace=workspace)
     token = notebookutils.credentials.getToken(cluster_uri)
 
     headers = {
