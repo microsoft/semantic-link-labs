@@ -3,6 +3,7 @@ from typing import Optional
 from uuid import UUID
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
+    resolve_workspace_id,
     _base_api,
     _create_dataframe,
     _update_dataframe_datatypes,
@@ -36,7 +37,7 @@ def list_folders(
         A pandas dataframe showing a list of folders from the specified workspace.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
 
     columns = {
         "Folder Name": "string",
@@ -69,8 +70,23 @@ def list_folders(
 
     _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
-    if root_folder is not None and not _is_valid_uuid(root_folder):
+    # Add folder path
+    folder_map = {row["Folder Id"]: row["Folder Name"] for _, row in df.iterrows()}
 
+    def get_folder_path(folder_id):
+        if folder_id not in folder_map:
+            return ""
+
+        row = df.loc[df["Folder Id"] == folder_id].iloc[0]
+        if "Parent Folder Id" in row:
+            return get_folder_path(row["Parent Folder Id"]) + "/" + row["Folder Name"]
+        return row["Folder Name"]
+
+    # Apply function to create the path column
+    df["Folder Path"] = df["Folder Id"].apply(get_folder_path)
+
+    # Filter the folders if specified
+    if root_folder is not None and not _is_valid_uuid(root_folder):
         root = df[df["Folder Name"] == root_folder]
         if root.empty:
             raise ValueError(f"Folder name '{root_folder}' not found.")
@@ -98,10 +114,6 @@ def create_folder(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     parent_folder : str | uuid.UUID, default=None
         The ID of the parent folder. If not provided, the folder will be created in the root folder of the workspace.
-
-    Returns
-    -------
-    None
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -131,13 +143,17 @@ def create_folder(
 
 def resolve_folder_id(
     folder: str | UUID, workspace: Optional[str | UUID] = None
-) -> str:
+) -> UUID:
 
     if _is_valid_uuid(folder):
         return folder
     else:
         df = list_folders(workspace=workspace)
-        df_filt = df[df["Folder Name"] == folder]
+        if not folder.startswith("/"):
+            folder_path = f"/{folder}"
+        else:
+            folder_path = folder
+        df_filt = df[df["Folder Path"] == folder_path]
         if df_filt.empty:
             (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
             raise ValueError(
@@ -147,6 +163,18 @@ def resolve_folder_id(
 
 
 def delete_folder(folder: str | UUID, workspace: Optional[str | UUID] = None):
+    """
+    Deletes a folder from the specified workspace.
+
+    Parameters
+    ----------
+    folder : str | uuid.UUID
+        The name or ID of the folder to move. If the folder is a subfolder, specify the path (i.e. "/folder/subfolder").
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
@@ -174,9 +202,9 @@ def move_folder(
     Parameters
     ----------
     folder : str | uuid.UUID
-        The name or ID of the folder to move.
+        The name or ID of the folder to move. If the folder is a subfolder, specify the path (i.e. "/folder/subfolder").
     target_folder : str | uuid.UUID
-        The name or ID of the target folder where the folder will be moved.
+        The name or ID of the target folder where the folder will be moved. If the folder is a subfolder, specify the path (i.e. "/folder/subfolder").
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -212,7 +240,7 @@ def update_folder(
     Parameters
     ----------
     folder : str | uuid.UUID
-        The name or ID of the folder to update.
+        The name/path or ID of the folder to update. If the folder is a subfolder, specify the path (i.e. "/folder/subfolder").
     name : str
         The new name for the folder. Must meet the `folder name requirements <https://learn.microsoft.com/fabric/fundamentals/workspaces-folders#folder-name-requirements>`_.
     workspace : str | uuid.UUID, default=None
