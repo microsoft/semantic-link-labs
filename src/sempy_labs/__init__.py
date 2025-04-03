@@ -1,3 +1,6 @@
+from sempy_labs._vpax import (
+    create_vpax,
+)
 from sempy_labs._delta_analyzer_history import (
     delta_analyzer_history,
 )
@@ -558,4 +561,5 @@ __all__ = [
     "delete_sql_database",
     "list_sql_databases",
     "delta_analyzer_history",
+    "create_vpax",
 ]

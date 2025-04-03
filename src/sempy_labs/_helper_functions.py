@@ -977,32 +977,6 @@ def resolve_item_name(item_id: UUID, workspace: Optional[str | UUID] = None) -> 
     return item_name
 
 
-def resolve_lakehouse_name_and_id(
-    lakehouse: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None
-) -> Tuple[str, UUID]:
-
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    type = "Lakehouse"
-
-    if lakehouse is None:
-        lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse_name = fabric.resolve_item_name(
-            item_id=lakehouse_id, type=type, workspace=workspace_id
-        )
-    elif _is_valid_uuid(lakehouse):
-        lakehouse_id = lakehouse
-        lakehouse_name = fabric.resolve_item_name(
-            item_id=lakehouse_id, type=type, workspace=workspace_id
-        )
-    else:
-        lakehouse_name = lakehouse
-        lakehouse_id = fabric.resolve_item_id(
-            item_name=lakehouse, type=type, workspace=workspace_id
-        )
-
-    return lakehouse_name, lakehouse_id
-
-
 def _extract_json(dataframe: pd.DataFrame) -> dict:
 
     payload = dataframe["payload"].iloc[0]
