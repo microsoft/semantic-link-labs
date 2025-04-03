@@ -6,6 +6,8 @@ from sempy_labs._helper_functions import (
     _create_dataframe,
     delete_item,
     create_item,
+    resolve_item_id,
+    resolve_workspace_id,
 )
 from uuid import UUID
 import sempy_labs._icons as icons
@@ -123,13 +125,17 @@ def delete_kql_database(
     delete_item(item=kql_database, type="KQLDatabase", workspace=workspace)
 
 
-def _resolve_cluster_uri(workspace: Optional[str | UUID] = None) -> str:
+def _resolve_cluster_uri(
+    kql_database: str | UUID, workspace: Optional[str | UUID] = None
+) -> str:
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    dfK = list_kql_databases(workspace=workspace_id)
-    dfK_filt = dfK[dfK["KQL Database Name"] == "Monitoring KQL database"]
-    if dfK_filt.empty:
-        raise ValueError(
-            f"{icons.red_dot} Workspace monitoring is not set up for the '{workspace_name}' workspace."
-        )
-    return dfK_filt["Query Service URI"].iloc[0]
+    workspace_id = resolve_workspace_id(workspace=workspace)
+    item_id = resolve_item_id(
+        item=kql_database, type="KQLDatabase", workspace=workspace
+    )
+    response = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/kqlDatabases/{item_id}",
+        client="fabric_sp",
+    )
+
+    return response.json().get("properties", {}).get("queryServiceUri")

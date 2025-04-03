@@ -6,13 +6,13 @@ import sempy_labs._icons as icons
 from typing import Optional
 from uuid import UUID
 from sempy_labs._kql_databases import _resolve_cluster_uri
-from sempy_labs._helper_functions import resolve_item_name_and_id
+from sempy_labs._helper_functions import resolve_item_id
 
 
 @log
 def query_kusto(
     query: str,
-    eventhouse: str | UUID,
+    kql_database: str | UUID,
     workspace: Optional[str | UUID] = None,
     language: str = "kql",
 ) -> pd.DataFrame:
@@ -23,8 +23,8 @@ def query_kusto(
     ----------
     query : str
         The KQL query.
-    eventhouse : str | uuid.UUID
-        The eventhouse name or ID.
+    kql_database : str | uuid.UUID
+        The KQL database name or ID.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -45,7 +45,7 @@ def query_kusto(
             f"Invalid language '{language}'. Only 'kql' and 'sql' are supported."
         )
 
-    cluster_uri = _resolve_cluster_uri(workspace=workspace)
+    cluster_uri = _resolve_cluster_uri(kql_database=kql_database, workspace=workspace)
     token = notebookutils.credentials.getToken(cluster_uri)
 
     headers = {
@@ -54,10 +54,10 @@ def query_kusto(
         "Accept": "application/json",
     }
 
-    (eventhouse_name, eventhouse_id) = resolve_item_name_and_id(
-        item=eventhouse, type="Eventhouse", workspace=workspace
+    kql_database_id = resolve_item_id(
+        item=kql_database, type="KQLDatabase", workspace=workspace
     )
-    payload = {"db": eventhouse_name, "csl": query}
+    payload = {"db": kql_database_id, "csl": query}
     if language == "sql":
         payload["properties"] = {"Options": {"query_language": "sql"}}
 
@@ -128,7 +128,7 @@ def query_workspace_monitoring(
 
     return query_kusto(
         query=query,
-        eventhouse="Monitoring Eventhouse",
+        kql_database="Monitoring KQL database",
         workspace=workspace,
         language=language,
     )
