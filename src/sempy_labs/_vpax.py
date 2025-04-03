@@ -97,9 +97,10 @@ def create_vpax(
     df = list_blobs(lakehouse=lakehouse, workspace=lakehouse_workspace)
     df_filt = df[df["Blob Name"] == f"{lakehouse_id}/Files/{file_path}.vpax"]
     if not df_filt.empty and not overwrite:
-        raise ValueError(
-            f"VPAX file already exists at {path}. Set overwrite=True to overwrite the file."
+        print(
+            f"{icons.warning} The .vpax file already exists at {path}. Set overwrite=True to overwrite the file."
         )
+        return
 
     vpax_stream = MemoryStream()
     extractor_app_name = "VPAX Notebook"
