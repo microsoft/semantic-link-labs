@@ -39,9 +39,35 @@ def create_vpax(
     lakehouse: Optional[str | UUID] = None,
     lakehouse_workspace: Optional[str | UUID] = None,
     file_path: Optional[str] = None,
-    direct_lake_mode: bool = False,
+    direct_lake_mode: str = "ResidentOnly",
     overwrite: bool = False,
 ):
+    """
+    Creates a .vpax file for a semantic model and saves it to a lakehouse.
+
+    Parameters
+    ----------
+    dataset : str | uuid.UUID
+        Name or ID of the semantic model.
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    lakehouse : str | uuid.UUID, default=None
+        The lakehouse name or ID.
+        Defaults to None which resolves to the attached lakehouse.
+    lakehouse_workspace : str | uuid.UUID, default=None
+        The workspace name or ID of the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse.
+    file_path : str, default=None
+        The path where the .vpax file will be saved in the lakehouse.
+        Defaults to None which resolves to the dataset name.
+    direct_lake_mode : str, default='ResidentOnly'
+        The Direct Lake extraction mode.
+        Options are 'ResidentOnly' or 'Full'.
+    overwrite : bool, default=False
+        Whether to overwrite the .vpax file if it already exists in the lakehouse.
+    """
 
     init_vertipaq_analyzer()
 
@@ -87,7 +113,7 @@ def create_vpax(
 
     dl_mode = (
         DirectLakeExtractionMode.Full
-        if direct_lake_mode
+        if direct_lake_mode.capitalize() == "Full"
         else DirectLakeExtractionMode.ResidentOnly
     )
 
