@@ -10,6 +10,7 @@ from sempy_labs._helper_functions import (
 )
 import sempy_labs._icons as icons
 from sempy_labs.lakehouse._blobs import list_blobs
+import sempy_labs._authentication as auth
 
 _vpa_initialized = False
 
@@ -93,7 +94,12 @@ def create_vpax(
         lakehouse=lakehouse, workspace=lakehouse_workspace
     )
 
-    token = notebookutils.credentials.getToken("pbi")
+    token_provider = auth.token_provider.get()
+    if token_provider is None:
+        token = notebookutils.credentials.getToken("pbi")
+    else:
+        token = token_provider(audience="pbi")
+
     local_path = _mount(lakehouse=lakehouse, workspace=lakehouse_workspace)
     if file_path is None:
         file_path = dataset_name
