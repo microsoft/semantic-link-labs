@@ -39,6 +39,8 @@ def create_vpax(
     lakehouse: Optional[str | UUID] = None,
     lakehouse_workspace: Optional[str | UUID] = None,
     file_path: Optional[str] = None,
+    read_stats_from_data: bool = False,
+    analyze_direct_query: bool = False,
     direct_lake_mode: str = "ResidentOnly",
     overwrite: bool = False,
 ):
@@ -62,6 +64,10 @@ def create_vpax(
     file_path : str, default=None
         The path where the .vpax file will be saved in the lakehouse.
         Defaults to None which resolves to the dataset name.
+    read_stats_from_data : bool, default=False
+        Whether to read statistics from the data.
+    analyze_direct_query : bool, default=False
+        Whether to analyze DirectQuery tables.
     direct_lake_mode : str, default='ResidentOnly'
         The Direct Lake extraction mode.
         Options are 'ResidentOnly' or 'Full'.
@@ -105,8 +111,6 @@ def create_vpax(
     vpax_stream = MemoryStream()
     extractor_app_name = "VPAX Notebook"
     extractor_app_version = "1.0"
-    read_stats_from_data = False
-    analyze_direct_query = False
     column_batch_size = 50
     connection_string = f"data source=powerbi://api.powerbi.com/v1.0/myorg/{workspace};initial catalog={dataset_name};User ID=;Password={token};Persist Security Info=True;Impersonation Level=Impersonate "
 
