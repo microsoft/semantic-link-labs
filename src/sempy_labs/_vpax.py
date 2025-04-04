@@ -6,11 +6,15 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
     resolve_lakehouse_name_and_id,
+    resolve_lakehouse_id,
+    resolve_workspace_id,
+    create_abfss_path,
     _mount,
 )
 import sempy_labs._icons as icons
 from sempy_labs.lakehouse._blobs import list_blobs
 import sempy_labs._authentication as auth
+import sempy_labs._utils as utils
 
 _vpa_initialized = False
 
@@ -19,9 +23,13 @@ def init_vertipaq_analyzer() -> None:
     global _vpa_initialized
     if _vpa_initialized:
         return
+    
+    from clr_loader import get_coreclr
+    from pythonnet import set_runtime
 
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    assembly_path = f"{current_dir}/dotnet_lib"
+    assembly_path = f"{utils.current_dir}/dotnet_lib"
+    rt = get_coreclr(runtime_config=os.fspath(f"{utils.current_dir}/dotnet.runtime.config.json"))
+    set_runtime(rt)
 
     import clr
 
@@ -142,6 +150,85 @@ def create_vpax(
     tom_database = TomExtractor.GetDatabase(connection_string)
 
     VpaxTools.ExportVpax(vpax_stream, dax_model, vpa_model, tom_database)
+    print('stream...')
+    print(vpax_stream)
+    print('dax_model...')
+    print(dax_model)
+    print('vpa_model...')
+    print(vpa_model)
+    print('tom_database...')
+    print(tom_database)
+
+    # Direct Lake
+    from sempy_labs.tom import connect_semantic_model
+    #import Microsoft.AnalysisServices.Tabular as TOM
+    import re
+    import sempy.fabric as fabric
+
+    def _get_column_aggregates(lakehouse, workspace, table_name, schema_name, columns):
+        from pyspark.sql import SparkSession
+        from pyspark.sql.functions import countDistinct
+
+        spark = SparkSession.builder.getOrCreate()
+
+        if isinstance(columns, str):
+            columns = [columns]
+
+        workspace_id = resolve_workspace_id(workspace)
+        lakehouse_id = resolve_lakehouse_id(lakehouse, workspace)
+        path = create_abfss_path(lakehouse_id, workspace_id, table_name, schema_name)
+
+        df = spark.read.format("delta").load(path)
+
+        agg_exprs = [countDistinct(col).alias(f"{col}") for col in columns]
+        result_df = df.agg(*agg_exprs)
+
+        return result_df.collect()[0].asDict()
+
+    with connect_semantic_model(dataset=dataset, workspace=workspace) as tom:
+        dl_tables = [
+            t
+            for t in tom.model.Tables
+            if any(p.Mode == TOM.ModeType.DirectLake for p in t.Partitions)
+        ]
+        dl_tables = []
+        for t in dl_tables:
+            entity_name = next(p.Source.EntityName for p in t.Partitions)
+            schema_name = next(p.Source.SchemaName for p in t.Partitions) or "dbo"
+            expr_name = next(p.Source.ExpressionSource.Name for p in t.Partitions)
+            expr = tom.model.Expressions[expr_name].Expression
+            if "Sql.Database(" in expr:
+                matches = re.findall(r'"([^"]+)"', expr)
+                sql_endpoint_id = matches[1]
+                dfI = fabric.list_items(type="SQLEndpoint", workspace=workspace)
+                dfI_filt = dfI[dfI["Id"] == sql_endpoint_id]
+                if dfI_filt.empty:
+                    name = None
+                else:
+                    name = dfI_filt["Display Name"].iloc[0]
+
+            if name:
+                col_dict = {}
+                for c in t.Columns:
+                    col_dict[c.Name] = c.SourceColumn
+                col_agg = _get_column_aggregates(
+                    lakehouse=name,
+                    workspace=workspace,
+                    table_name=entity_name,
+                    schema_name=schema_name,
+                    columns=list(col_dict.keys()),
+                )
+                column_dc = {
+                    column_name: col_agg[source_column]
+                    for column_name, source_column in col_dict.items()
+                    if source_column in col_agg
+                }
+                # Update the vpax file
+
+            else:
+                print(
+                    f"{icons.info} Cannot determine the Direct Lake source of the '{t.Name}' table."
+                )
 
     print(f"{icons.in_progress} Exporting .vpax file...")
 
