@@ -38,6 +38,7 @@ from sempy_labs.admin._capacities import (
     get_capacity_assignment_status,
     get_capacity_state,
     list_capacity_users,
+    get_refreshables,
 )
 from sempy_labs.admin._tenant import (
     list_tenant_settings,
@@ -79,6 +80,9 @@ from sempy_labs.admin._external_data_share import (
 )
 from sempy_labs.admin._git import (
     list_git_connections,
+)
+from sempy_labs.admin._dataflows import (
+    export_dataflow,
 )
 
 __all__ = [
@@ -133,4 +137,6 @@ __all__ = [
     "list_capacity_users",
     "list_user_subscriptions",
     "list_report_subscriptions",
+    "get_refreshables",
+    "export_dataflow",
 ]
