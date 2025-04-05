@@ -66,8 +66,9 @@ def create_abfss_path(
 
     if delta_table_name is not None:
         if schema is not None:
-            path += f"/{schema}"
-        path += f"/Tables/{delta_table_name}"
+            path += f"/Tables/{schema}/{delta_table_name}"
+        else:
+            path += f"/Tables/{delta_table_name}"
 
     return path
 
@@ -1739,19 +1740,23 @@ def _base_api(
     lro_return_json: bool = False,
     lro_return_status_code: bool = False,
 ):
-
+    import notebookutils
     from sempy_labs._authentication import _get_headers
 
     if (lro_return_json or lro_return_status_code) and status_codes is None:
         status_codes = [200, 202]
 
+    def get_token(audience="pbi"):
+        return notebookutils.credentials.getToken(audience)
+
     if isinstance(status_codes, int):
         status_codes = [status_codes]
 
     if client == "fabric":
-        c = fabric.FabricRestClient()
+        c = fabric.FabricRestClient(token_provider=get_token)
     elif client == "fabric_sp":
-        c = fabric.FabricRestClient(token_provider=auth.token_provider.get())
+        token = auth.token_provider.get() or get_token
+        c = fabric.FabricRestClient(token_provider=token)
     elif client in ["azure", "graph"]:
         pass
     else:
