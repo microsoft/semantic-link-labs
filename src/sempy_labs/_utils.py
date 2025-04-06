@@ -1,5 +1,3 @@
-import os
-
 item_types = {
     "Dashboard": ["Dashboard", "dashboards"],
     "DataPipeline": ["Data Pipeline", "dataPipelines", "pipeline-content.json"],
@@ -43,5 +41,3 @@ item_types = {
     "Warehouse": ["Warehouse", "warehouses"],
 }
 
-
-current_dir = os.path.dirname(os.path.abspath(__file__))
