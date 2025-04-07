@@ -4,7 +4,7 @@ import pandas as pd
 import re
 import os
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 from decimal import Decimal
 from sempy_labs._helper_functions import (
     format_dax_object_name,
@@ -4871,7 +4871,7 @@ class TOMWrapper:
 
         # Generate synonym dictionary
         _validate_weight(weight)
-        now = datetime.now(timezone.utc).isoformat(timespec="milliseconds") + "Z"
+        now = datetime.now().isoformat(timespec="milliseconds") + "Z"
         syn_dict = {"Type": "Noun", "State": "Authored", "LastModified": now}
         if weight is not None:
             syn_dict["Weight"] = weight
