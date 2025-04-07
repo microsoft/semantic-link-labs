@@ -65,10 +65,11 @@ def create_abfss_path(
     path = f"abfss://{lakehouse_workspace_id}@{fp}/{lakehouse_id}"
 
     if delta_table_name is not None:
+        path += "/Tables"
         if schema is not None:
-            path += f"/Tables/{schema}/{delta_table_name}"
+            path += f"/{schema}/{delta_table_name}"
         else:
-            path += f"/Tables/{delta_table_name}"
+            path += f"/{delta_table_name}"
 
     return path
 
