@@ -1,5 +1,8 @@
 import os
 import sempy
+import re
+import json
+import sempy.fabric as fabric
 import sys
 from pathlib import Path
 from typing import Optional
@@ -15,6 +18,10 @@ from sempy_labs._helper_functions import (
 )
 import sempy_labs._icons as icons
 from sempy_labs.lakehouse._blobs import list_blobs
+from System import Array, Byte
+import zipfile
+import io
+from sempy_labs.tom import connect_semantic_model
 
 _vpa_initialized = False
 
@@ -30,10 +37,7 @@ def init_vertipaq_analyzer() -> None:
     #from pythonnet import set_runtime
 
     current_dir = Path(__file__).parent
-
-    #current_dir = os.path.dirname(os.path.abspath(__file__))
     assembly_path = current_dir / "dotnet_lib"
-    print(assembly_path)
     #rt = get_coreclr(
     #    runtime_config=os.fspath(f"{assembly_path}/dotnet.runtime.config.json")
     #)
@@ -47,11 +51,11 @@ def init_vertipaq_analyzer() -> None:
     clr.AddReference(os.fspath(assembly_path / "Dax.ViewVpaExport.dll"))
     clr.AddReference(os.fspath(assembly_path / "Dax.Vpax.dll"))
     clr.AddReference(os.fspath(assembly_path / "System.IO.Packaging.dll"))
-    clr.AddReference("Dax.Metadata")
-    clr.AddReference("Dax.Model.Extractor")
-    clr.AddReference("Dax.ViewVpaExport")
-    clr.AddReference("Dax.Vpax")
-    clr.AddReference("System.IO")
+    #clr.AddReference("Dax.Metadata")
+    #clr.AddReference("Dax.Model.Extractor")
+    #clr.AddReference("Dax.ViewVpaExport")
+    #clr.AddReference("Dax.Vpax")
+    #clr.AddReference("System.IO")
     _vpa_initialized = True
 
 
@@ -163,21 +167,90 @@ def create_vpax(
     tom_database = TomExtractor.GetDatabase(connection_string)
 
     VpaxTools.ExportVpax(vpax_stream, dax_model, vpa_model, tom_database)
-    print("stream...")
-    print(vpax_stream)
-    print("dax_model...")
-    print(dax_model)
-    print("vpa_model...")
-    print(vpa_model)
-    print("tom_database...")
-    print(tom_database)
+
+    def _get_column_aggregates(lakehouse, workspace, table_name, schema_name, columns):
+        from pyspark.sql import SparkSession
+        from pyspark.sql.functions import countDistinct
+
+        spark = SparkSession.builder.getOrCreate()
+
+        if isinstance(columns, str):
+            columns = [columns]
+
+        workspace_id = resolve_workspace_id(workspace)
+        lakehouse_id = resolve_lakehouse_id(lakehouse, workspace)
+        path = create_abfss_path(lakehouse_id, workspace_id, table_name, schema_name)
+
+        df = spark.read.format("delta").load(path)
+
+        agg_exprs = [countDistinct(col).alias(f"{col}") for col in columns]
+        result_df = df.agg(*agg_exprs)
+
+        return result_df.collect()[0].asDict()
 
     # Direct Lake
-    from sempy_labs.tom import connect_semantic_model
+    if read_stats_from_data:
+        with connect_semantic_model(dataset=dataset, workspace=workspace) as tom:
+            import Microsoft.AnalysisServices.Tabular as TOM
+            if tom.is_direct_lake():
+                print('Calculating Direct Lake statistics...')
 
-    # import Microsoft.AnalysisServices.Tabular as TOM
-    import re
-    import sempy.fabric as fabric
+                vpax_stream.Position = 0
+                buffer = Array.CreateInstance(Byte, vpax_stream.Length)
+                vpax_stream.Read(buffer, 0, vpax_stream.Length)
+                vpax_bytes = bytes(bytearray(buffer))
+                vpax_zip = zipfile.ZipFile(io.BytesIO(vpax_bytes), mode="r")
+                vpa_json = vpax_zip.read("DaxVpaView.json").decode("utf-8")
+                cleaned_data = vpa_json.lstrip('\ufeff')
+                data_dict = json.loads(cleaned_data)
+
+                dl_tables = [
+                    t
+                    for t in tom.model.Tables
+                    if any(p.Mode == TOM.ModeType.DirectLake for p in t.Partitions)
+                ]
+                dl_tables = []
+                for t in dl_tables:
+                    entity_name = next(p.Source.EntityName for p in t.Partitions)
+                    schema_name = next(p.Source.SchemaName for p in t.Partitions) or "dbo"
+                    expr_name = next(p.Source.ExpressionSource.Name for p in t.Partitions)
+                    expr = tom.model.Expressions[expr_name].Expression
+                    if "Sql.Database(" in expr:
+                        matches = re.findall(r'"([^"]+)"', expr)
+                        sql_endpoint_id = matches[1]
+                        dfI = fabric.list_items(type="SQLEndpoint", workspace=workspace)
+                        dfI_filt = dfI[dfI["Id"] == sql_endpoint_id]
+                        if dfI_filt.empty:
+                            name = None
+                        else:
+                            name = dfI_filt["Display Name"].iloc[0]
+
+                    if name:
+                        col_dict = {}
+                        for c in t.Columns:
+                            col_dict[c.Name] = c.SourceColumn
+                        col_agg = _get_column_aggregates(
+                            lakehouse=name,
+                            workspace=workspace,
+                            table_name=entity_name,
+                            schema_name=schema_name,
+                            columns=list(col_dict.keys()),
+                        )
+                        column_dc = {
+                            column_name: col_agg[source_column]
+                            for column_name, source_column in col_dict.items()
+                            if source_column in col_agg
+                        }
+                        # Update the vpax file
+                        for item_type, items in data_dict.items():
+                            if item_type == 'Columns':
+                                for c in items:
+                                    if c.get('ColumnName')
+
+                    else:
+                        print(
+                            f"{icons.info} Cannot determine the Direct Lake source of the '{t.Name}' table."
+                        )
 
     print(f"{icons.in_progress} Exporting .vpax file...")
 
