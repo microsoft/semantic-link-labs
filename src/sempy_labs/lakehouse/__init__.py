@@ -20,6 +20,7 @@ from sempy_labs.lakehouse._shortcuts import (
 from sempy_labs.lakehouse._blobs import (
     recover_lakehouse_object,
     list_blobs,
+    delete_lakehouse_object,
 )
 
 __all__ = [
@@ -36,4 +37,5 @@ __all__ = [
     "list_shortcuts",
     "recover_lakehouse_object",
     "list_blobs",
+    "delete_lakehouse_object",
 ]
