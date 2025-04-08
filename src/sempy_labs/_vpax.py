@@ -18,7 +18,6 @@ from sempy_labs._helper_functions import (
 )
 import sempy_labs._icons as icons
 from sempy_labs.lakehouse._blobs import list_blobs
-from System import Array, Byte
 import zipfile
 import io
 from sempy_labs.tom import connect_semantic_model
@@ -101,7 +100,7 @@ def create_vpax(
         Whether to overwrite the .vpax file if it already exists in the lakehouse.
     """
 
-    init_vertipaq_analyzer()
+    #init_vertipaq_analyzer()
 
     import notebookutils
     from Dax.Metadata import DirectLakeExtractionMode
@@ -193,6 +192,8 @@ def create_vpax(
 
     # Calculate Direct Lake stats
     if read_stats_from_data and is_direct_lake:
+        from System import Array, Byte
+
         # Extract vertipaq json from the vpax stream
         vpax_stream.Position = 0
         buffer = Array.CreateInstance(Byte, vpax_stream.Length)
@@ -206,7 +207,7 @@ def create_vpax(
         with connect_semantic_model(dataset=dataset, workspace=workspace) as tom:
             import Microsoft.AnalysisServices.Tabular as TOM
 
-            print("Calculating Direct Lake statistics...")
+            print(f"{icons.in_progress} Calculating Direct Lake statistics...")
 
             for t in tom.model.Tables:
                 column_cardinalities = {}
@@ -214,9 +215,9 @@ def create_vpax(
                 # Direct Lake
                 if any(p.Mode == TOM.ModeType.DirectLake for p in t.Partitions):
                     entity_name = next(p.Source.EntityName for p in t.Partitions)
-                    schema_name = (
-                        next(p.Source.SchemaName for p in t.Partitions) or "dbo"
-                    )
+                    schema_name = next(p.Source.SchemaName for p in t.Partitions)
+                    if len(schema_name) == 0 or schema_name == "dbo":
+                        schema_name = None
                     expr_name = next(
                         p.Source.ExpressionSource.Name for p in t.Partitions
                     )
@@ -236,7 +237,11 @@ def create_vpax(
                             f"{icons.info} Cannot determine the Direct Lake source of the '{table_name}' table."
                         )
                     else:
-                        col_dict = {c.Name: c.SourceColumn for c in t.Columns}
+                        col_dict = {
+                            c.Name: c.SourceColumn
+                            for c in t.Columns
+                            if c.Type != TOM.ColumnType.RowNumber
+                        }
                         col_agg = _get_column_aggregates(
                             lakehouse=name,
                             workspace=workspace,
@@ -250,7 +255,9 @@ def create_vpax(
                             if source_column in col_agg
                         }
                 else:
-                    columns = [c.Name for c in t.Columns]
+                    columns = [
+                        c.Name for c in t.Columns if c.Type != TOM.ColumnType.RowNumber
+                    ]
                     dax = _dax_distinctcount(table_name, columns)
                     dax_result = fabric.evaluate_dax(
                         dataset=dataset, workspace=workspace, dax_string=dax
@@ -259,34 +266,60 @@ def create_vpax(
                 # Update the vpax file with column cardinalities
                 for item_type, items in data_dict.items():
                     if item_type == "Columns":
-                        for c in items:
+                        for i, c in enumerate(items):  # get index and item
                             t_name = c.get("TableName")
                             c_name = c.get("ColumnName")
-                            if t_name == t.Name:
-                                c["ColumnCardinality"] = column_cardinalities.get(
-                                    c_name
-                                )
+                            if t_name == t.Name and c.get('ColumnType') != "RowNumber":
+                                c["ColumnCardinality"] = column_cardinalities.get(c_name)
+                                items[i] = _move_key_to_index(c, 'ColumnCardinality', 3)  # update in-place
 
         # Update the vpax file with relationship cardinalities
         for item_type, items in data_dict.items():
             if item_type == "Relationships":
-                for r in items:
+                for i, r in enumerate(items):
                     from_column_full = r.get("FromFullColumnName")
                     to_column_full = r.get("ToFullColumnName")
+
                     from_cardinality = next(
                         c.get("ColumnCardinality")
                         for c in data_dict["Columns"]
-                        if f"'{c.get('TableName')}'[{c.get('ColumnName')}]"
-                        == from_column_full
+                        if f"'{c.get('TableName')}'[{c.get('ColumnName')}]" == from_column_full
                     )
+
                     to_cardinality = next(
                         c.get("ColumnCardinality")
                         for c in data_dict["Columns"]
-                        if f"'{c.get('TableName')}'[{c.get('ColumnName')}]"
-                        == to_column_full
+                        if f"'{c.get('TableName')}'[{c.get('ColumnName')}]" == to_column_full
                     )
+
                     r["FromCardinality"] = from_cardinality
                     r["ToCardinality"] = to_cardinality
+
+                    # Update the item in-place
+                    r = _move_key_to_index(r, 'FromCardinality', 2)
+                    r = _move_key_to_index(r, 'ToCardinality', 6)
+                    items[i] = r  # <--- this line ensures the data_dict is updated
+                    r["UsedSizeFrom"] = 0
+                    r["UsedSize"] = 0
+                    r["OneToManyRatio"] = from_cardinality / to_cardinality if to_cardinality else 0
+
+        # Step 1: Convert data_dict to JSON string and encode it
+        updated_json_str = json.dumps(data_dict, indent=2)
+        updated_json_bytes = updated_json_str.encode('utf-8')
+
+        # Step 2: Recreate the vpax ZIP archive in memory, replacing "DaxVpaView.json"
+        new_vpax_stream = io.BytesIO()
+        with zipfile.ZipFile(new_vpax_stream, mode="w", compression=zipfile.ZIP_DEFLATED) as new_zip:
+            # Copy original contents except DaxVpaView.json
+            for item in vpax_zip.infolist():
+                if item.filename != "DaxVpaView.json":
+                    new_zip.writestr(item, vpax_zip.read(item.filename))
+            # Add updated DaxVpaView.json
+            new_zip.writestr("DaxVpaView.json", updated_json_bytes)
+
+        # Step 3: Reset the stream position
+        new_vpax_stream.seek(0)
+        vpax_stream = MemoryStream(new_vpax_stream.getvalue())
 
     print(f"{icons.in_progress} Exporting .vpax file...")
 
@@ -299,6 +332,8 @@ def create_vpax(
         f"{icons.green_dot} The {file_path}.vpax file has been saved in the '{lakehouse_name}' lakehouse within the '{lakehouse_workspace_name}' workspace."
     )
 
+    return vpax_stream
+
 
 def _dax_distinctcount(table_name, columns):
 
@@ -308,3 +343,14 @@ def _dax_distinctcount(table_name, columns):
         dax += f"""\n"{c}", DISTINCTCOUNT({full_name}),"""
 
     return f"{dax.rstrip(',')}\n)"
+
+
+def _move_key_to_index(d, key, index):
+
+    items = list(d.items())
+    # Remove the key from its current position
+    value = d[key]
+    items = [(k, v) for k, v in items if k != key]
+    # Insert it at the desired index
+    items.insert(index, (key, value))
+    return dict(items)
