@@ -33,15 +33,15 @@ def init_vertipaq_analyzer() -> None:
 
     sempy.fabric._client._utils._init_analysis_services()
 
-    #from clr_loader import get_coreclr
-    #from pythonnet import set_runtime
+    # from clr_loader import get_coreclr
+    # from pythonnet import set_runtime
 
     current_dir = Path(__file__).parent
     assembly_path = current_dir / "dotnet_lib"
-    #rt = get_coreclr(
+    # rt = get_coreclr(
     #    runtime_config=os.fspath(f"{assembly_path}/dotnet.runtime.config.json")
-    #)
-    #set_runtime(rt)
+    # )
+    # set_runtime(rt)
 
     import clr
 
@@ -51,11 +51,11 @@ def init_vertipaq_analyzer() -> None:
     clr.AddReference(os.fspath(assembly_path / "Dax.ViewVpaExport.dll"))
     clr.AddReference(os.fspath(assembly_path / "Dax.Vpax.dll"))
     clr.AddReference(os.fspath(assembly_path / "System.IO.Packaging.dll"))
-    #clr.AddReference("Dax.Metadata")
-    #clr.AddReference("Dax.Model.Extractor")
-    #clr.AddReference("Dax.ViewVpaExport")
-    #clr.AddReference("Dax.Vpax")
-    #clr.AddReference("System.IO")
+    # clr.AddReference("Dax.Metadata")
+    # clr.AddReference("Dax.Model.Extractor")
+    # clr.AddReference("Dax.ViewVpaExport")
+    # clr.AddReference("Dax.Vpax")
+    # clr.AddReference("System.IO")
     _vpa_initialized = True
 
 
@@ -119,10 +119,10 @@ def create_vpax(
         lakehouse=lakehouse, workspace=lakehouse_workspace
     )
 
-    #token_provider = auth.token_provider.get()
-    #if token_provider is None:
+    # token_provider = auth.token_provider.get()
+    # if token_provider is None:
     token = notebookutils.credentials.getToken("pbi")
-    #else:
+    # else:
     #    token = token_provider(audience="pbi")
 
     local_path = _mount(lakehouse=lakehouse, workspace=lakehouse_workspace)
@@ -153,11 +153,16 @@ def create_vpax(
         else DirectLakeExtractionMode.ResidentOnly
     )
 
+    # Do not use TOMExtractor to get stats for Direct Lake
+    with connect_semantic_model(dataset=dataset, workspace=workspace) as tom:
+        is_direct_lake = tom.is_direct_lake()
+        read_stats_using_tom_extractor = not is_direct_lake and read_stats_from_data
+
     dax_model = TomExtractor.GetDaxModel(
         connection_string,
         extractor_app_name,
         extractor_app_version,
-        read_stats_from_data,
+        read_stats_using_tom_extractor,
         0,
         analyze_direct_query,
         dl_mode,
@@ -169,10 +174,8 @@ def create_vpax(
     VpaxTools.ExportVpax(vpax_stream, dax_model, vpa_model, tom_database)
 
     def _get_column_aggregates(lakehouse, workspace, table_name, schema_name, columns):
-        from pyspark.sql import SparkSession
         from pyspark.sql.functions import countDistinct
-
-        spark = SparkSession.builder.getOrCreate()
+        from sempy_labs._helper_functions import _read_delta_table
 
         if isinstance(columns, str):
             columns = [columns]
@@ -181,39 +184,42 @@ def create_vpax(
         lakehouse_id = resolve_lakehouse_id(lakehouse, workspace)
         path = create_abfss_path(lakehouse_id, workspace_id, table_name, schema_name)
 
-        df = spark.read.format("delta").load(path)
+        df = _read_delta_table(path)
 
         agg_exprs = [countDistinct(col).alias(f"{col}") for col in columns]
         result_df = df.agg(*agg_exprs)
 
         return result_df.collect()[0].asDict()
 
-    # Direct Lake
-    if read_stats_from_data:
+    # Calculate Direct Lake stats
+    if read_stats_from_data and is_direct_lake:
+        # Extract vertipaq json from the vpax stream
+        vpax_stream.Position = 0
+        buffer = Array.CreateInstance(Byte, vpax_stream.Length)
+        vpax_stream.Read(buffer, 0, vpax_stream.Length)
+        vpax_bytes = bytes(bytearray(buffer))
+        vpax_zip = zipfile.ZipFile(io.BytesIO(vpax_bytes), mode="r")
+        vpa_json = vpax_zip.read("DaxVpaView.json").decode("utf-8")
+        cleaned_data = vpa_json.lstrip("\ufeff")
+        data_dict = json.loads(cleaned_data)
+
         with connect_semantic_model(dataset=dataset, workspace=workspace) as tom:
             import Microsoft.AnalysisServices.Tabular as TOM
-            if tom.is_direct_lake():
-                print('Calculating Direct Lake statistics...')
 
-                vpax_stream.Position = 0
-                buffer = Array.CreateInstance(Byte, vpax_stream.Length)
-                vpax_stream.Read(buffer, 0, vpax_stream.Length)
-                vpax_bytes = bytes(bytearray(buffer))
-                vpax_zip = zipfile.ZipFile(io.BytesIO(vpax_bytes), mode="r")
-                vpa_json = vpax_zip.read("DaxVpaView.json").decode("utf-8")
-                cleaned_data = vpa_json.lstrip('\ufeff')
-                data_dict = json.loads(cleaned_data)
+            print("Calculating Direct Lake statistics...")
 
-                dl_tables = [
-                    t
-                    for t in tom.model.Tables
-                    if any(p.Mode == TOM.ModeType.DirectLake for p in t.Partitions)
-                ]
-                dl_tables = []
-                for t in dl_tables:
+            for t in tom.model.Tables:
+                column_cardinalities = {}
+                table_name = t.Name
+                # Direct Lake
+                if any(p.Mode == TOM.ModeType.DirectLake for p in t.Partitions):
                     entity_name = next(p.Source.EntityName for p in t.Partitions)
-                    schema_name = next(p.Source.SchemaName for p in t.Partitions) or "dbo"
-                    expr_name = next(p.Source.ExpressionSource.Name for p in t.Partitions)
+                    schema_name = (
+                        next(p.Source.SchemaName for p in t.Partitions) or "dbo"
+                    )
+                    expr_name = next(
+                        p.Source.ExpressionSource.Name for p in t.Partitions
+                    )
                     expr = tom.model.Expressions[expr_name].Expression
                     if "Sql.Database(" in expr:
                         matches = re.findall(r'"([^"]+)"', expr)
@@ -225,10 +231,12 @@ def create_vpax(
                         else:
                             name = dfI_filt["Display Name"].iloc[0]
 
-                    if name:
-                        col_dict = {}
-                        for c in t.Columns:
-                            col_dict[c.Name] = c.SourceColumn
+                    if not name:
+                        print(
+                            f"{icons.info} Cannot determine the Direct Lake source of the '{table_name}' table."
+                        )
+                    else:
+                        col_dict = {c.Name: c.SourceColumn for c in t.Columns}
                         col_agg = _get_column_aggregates(
                             lakehouse=name,
                             workspace=workspace,
@@ -236,21 +244,49 @@ def create_vpax(
                             schema_name=schema_name,
                             columns=list(col_dict.keys()),
                         )
-                        column_dc = {
+                        column_cardinalities = {
                             column_name: col_agg[source_column]
                             for column_name, source_column in col_dict.items()
                             if source_column in col_agg
                         }
-                        # Update the vpax file
-                        for item_type, items in data_dict.items():
-                            if item_type == 'Columns':
-                                for c in items:
-                                    if c.get('ColumnName')
+                else:
+                    columns = [c.Name for c in t.Columns]
+                    dax = _dax_distinctcount(table_name, columns)
+                    dax_result = fabric.evaluate_dax(
+                        dataset=dataset, workspace=workspace, dax_string=dax
+                    )
+                    column_cardinalities = dax_result.iloc[0].to_dict()
+                # Update the vpax file with column cardinalities
+                for item_type, items in data_dict.items():
+                    if item_type == "Columns":
+                        for c in items:
+                            t_name = c.get("TableName")
+                            c_name = c.get("ColumnName")
+                            if t_name == t.Name:
+                                c["ColumnCardinality"] = column_cardinalities.get(
+                                    c_name
+                                )
 
-                    else:
-                        print(
-                            f"{icons.info} Cannot determine the Direct Lake source of the '{t.Name}' table."
-                        )
+        # Update the vpax file with relationship cardinalities
+        for item_type, items in data_dict.items():
+            if item_type == "Relationships":
+                for r in items:
+                    from_column_full = r.get("FromFullColumnName")
+                    to_column_full = r.get("ToFullColumnName")
+                    from_cardinality = next(
+                        c.get("ColumnCardinality")
+                        for c in data_dict["Columns"]
+                        if f"'{c.get('TableName')}'[{c.get('ColumnName')}]"
+                        == from_column_full
+                    )
+                    to_cardinality = next(
+                        c.get("ColumnCardinality")
+                        for c in data_dict["Columns"]
+                        if f"'{c.get('TableName')}'[{c.get('ColumnName')}]"
+                        == to_column_full
+                    )
+                    r["FromCardinality"] = from_cardinality
+                    r["ToCardinality"] = to_cardinality
 
     print(f"{icons.in_progress} Exporting .vpax file...")
 
@@ -262,3 +298,13 @@ def create_vpax(
     print(
         f"{icons.green_dot} The {file_path}.vpax file has been saved in the '{lakehouse_name}' lakehouse within the '{lakehouse_workspace_name}' workspace."
     )
+
+
+def _dax_distinctcount(table_name, columns):
+
+    dax = "EVALUATE\nROW("
+    for c in columns:
+        full_name = f"'{table_name}'[{c}]"
+        dax += f"""\n"{c}", DISTINCTCOUNT({full_name}),"""
+
+    return f"{dax.rstrip(',')}\n)"

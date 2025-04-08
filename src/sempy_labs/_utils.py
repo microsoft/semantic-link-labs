@@ -40,4 +40,3 @@ item_types = {
     ],
     "Warehouse": ["Warehouse", "warehouses"],
 }
-
