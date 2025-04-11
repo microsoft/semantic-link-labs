@@ -70,7 +70,7 @@ def create_vpax(
     overwrite: bool = False,
 ):
     """
-    Creates a .vpax file for a semantic model and saves it to a lakehouse.
+    Creates a .vpax file for a semantic model and saves it to a lakehouse. This is based on `SQL BI's VertiPaq Analyzer <https://www.sqlbi.com/tools/vertipaq-analyzer/>`_.
 
     Parameters
     ----------
@@ -100,7 +100,7 @@ def create_vpax(
         Whether to overwrite the .vpax file if it already exists in the lakehouse.
     """
 
-    #init_vertipaq_analyzer()
+    init_vertipaq_analyzer()
 
     import notebookutils
     from Dax.Metadata import DirectLakeExtractionMode
@@ -117,12 +117,6 @@ def create_vpax(
     (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=lakehouse_workspace
     )
-
-    # token_provider = auth.token_provider.get()
-    # if token_provider is None:
-    token = notebookutils.credentials.getToken("pbi")
-    # else:
-    #    token = token_provider(audience="pbi")
 
     local_path = _mount(lakehouse=lakehouse, workspace=lakehouse_workspace)
     if file_path is None:
@@ -142,6 +136,7 @@ def create_vpax(
     extractor_app_name = "VPAX Notebook"
     extractor_app_version = "1.0"
     column_batch_size = 50
+    token = notebookutils.credentials.getToken("pbi")
     connection_string = f"data source=powerbi://api.powerbi.com/v1.0/myorg/{workspace};initial catalog={dataset_name};User ID=;Password={token};Persist Security Info=True;Impersonation Level=Impersonate "
 
     print(f"{icons.in_progress} Extracting .vpax metadata...")
