@@ -22,7 +22,7 @@ def query_kusto(
     Parameters
     ----------
     query : str
-        The KQL query.
+        The query (supports KQL or SQL - make sure to specify the language parameter accordingly).
     kql_database : str | uuid.UUID
         The KQL database name or ID.
     workspace : str | uuid.UUID, default=None
@@ -40,9 +40,10 @@ def query_kusto(
 
     import notebookutils
 
+    language = language.lower()
     if language not in ["kql", "sql"]:
         raise ValueError(
-            f"Invalid language '{language}'. Only 'kql' and 'sql' are supported."
+            f"{icons._red_dot} Invalid language '{language}'. Only 'kql' and 'sql' are supported."
         )
 
     cluster_uri = _resolve_cluster_uri(kql_database=kql_database, workspace=workspace)
@@ -107,12 +108,12 @@ def query_workspace_monitoring(
     query: str, workspace: Optional[str | UUID] = None, language: str = "kql"
 ) -> pd.DataFrame:
     """
-    Runs a KQL query against the Fabric workspace monitoring database.
+    Runs a query against the Fabric workspace monitoring database. Workspace monitoring must be enabled on the workspace to use this function.
 
     Parameters
     ----------
     query : str
-        The KQL query.
+        The query (supports KQL or SQL - make sure to specify the language parameter accordingly).
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -123,7 +124,7 @@ def query_workspace_monitoring(
     Returns
     -------
     pandas.DataFrame
-        A pandas dataframe showing the result of the KQL query.
+        A pandas dataframe showing the result of the query.
     """
 
     return query_kusto(
