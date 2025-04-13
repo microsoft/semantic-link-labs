@@ -2,6 +2,7 @@ import sempy.fabric as fabric
 import pandas as pd
 import json
 import os
+import base64
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
@@ -182,6 +183,7 @@ def get_report_definition(
     report: str | UUID,
     workspace: Optional[str | UUID] = None,
     return_dataframe: bool = True,
+    files_to_built_in_resources = False
 ) -> pd.DataFrame | dict:
     """
     Gets the collection of definition files of a report.
@@ -198,16 +200,31 @@ def get_report_definition(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     return_dataframe : bool, default=True
         If True, returns a dataframe. If False, returns a json dictionary.
+    files_to_built_in_resources : bool, default=False
+        If True, saves the files to the built in resources so they can be downloaded
 
     Returns
     -------
     pandas.DataFrame
         The collection of report definition files within a pandas dataframe.
     """
-
-    return get_item_definition(
+    report_items = get_item_definition(
         item=report, type="Report", workspace=workspace, return_dataframe=True
     )
+    output_base_dir = f"./builtin/{report}"
+    os.makedirs(output_base_dir, exist_ok=True)
+
+    for _, row in report_items.iterrows():
+        relative_path = row['path']
+        base64_payload = row['payload']
+        output_path = os.path.join(output_base_dir, relative_path)
+        
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        
+        with open(output_path, "wb") as f:
+            f.write(base64.b64decode(base64_payload))
+            
+    return report_items
 
 
 @log
