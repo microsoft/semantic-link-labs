@@ -224,7 +224,11 @@ def get_report_definition(
             ]
             count = len(matching_items)
             new_folder_name = f"{output_base_dir} ({count})"
+            while os.path.exists(new_folder_name):
+                count += 1
+                new_folder_name = f"{output_base_dir} ({count})"
             os.makedirs(new_folder_name, exist_ok=True)
+            output_base_dir = new_folder_name
         else:
             os.makedirs(output_base_dir, exist_ok=True)
     
