@@ -59,6 +59,7 @@ def backup_semantic_model(
     allow_overwrite: bool = True,
     apply_compression: bool = True,
     workspace: Optional[str | UUID] = None,
+    password: Optional[str] = None,
 ):
     """
     `Backs up <https://learn.microsoft.com/azure/analysis-services/analysis-services-backup>`_ a semantic model to the ADLS Gen2 storage account connected to the workspace.
@@ -72,6 +73,8 @@ def backup_semantic_model(
         Must end in '.abf'.
         Example 1: file_path = 'MyModel.abf'
         Example 2: file_path = 'MyFolder/MyModel.abf'
+    password : Optional[str], default=None
+        Password to encrypt the backup file. If None, no password is used.
     allow_overwrite : bool, default=True
         If True, overwrites backup files of the same name. If False, the file you are saving cannot have the same name as a file that already exists in the same location.
     apply_compression : bool, default=True
@@ -99,6 +102,9 @@ def backup_semantic_model(
         }
     }
 
+    if password:
+        tmsl["backup"]["password"] = password  # Add password only if provided
+
     fabric.execute_tmsl(script=tmsl, workspace=workspace_id)
     print(
         f"{icons.green_dot} The '{dataset_name}' semantic model within the '{workspace_name}' workspace has been backed up to the '{file_path}' location."
@@ -113,6 +119,7 @@ def restore_semantic_model(
     ignore_incompatibilities: bool = True,
     force_restore: bool = False,
     workspace: Optional[str | UUID] = None,
+    password: Optional[str] = None,
 ):
     """
     `Restores <https://learn.microsoft.com/power-bi/enterprise/service-premium-backup-restore-dataset>`_ a semantic model based on a backup (.abf) file
@@ -126,6 +133,8 @@ def restore_semantic_model(
         The location in which to backup the semantic model. Must end in '.abf'.
         Example 1: file_path = 'MyModel.abf'
         Example 2: file_path = 'MyFolder/MyModel.abf'
+    password : Optional[str], default=None
+        Password to decrypt the backup file. If None, no password is used.
     allow_overwrite : bool, default=True
         If True, overwrites backup files of the same name. If False, the file you are saving cannot have the same name as a file that already exists in the same location.
     ignore_incompatibilities : bool, default=True
@@ -155,6 +164,9 @@ def restore_semantic_model(
         }
     }
 
+    if password:
+        tmsl["restore"]["password"] = password 
+
     if force_restore:
         tmsl["restore"]["forceRestore"] = force_restore
 
@@ -163,6 +175,7 @@ def restore_semantic_model(
     print(
         f"{icons.green_dot} The '{dataset}' semantic model has been restored to the '{workspace_name}' workspace based on the '{file_path}' backup file."
     )
+
 
 
 @log
