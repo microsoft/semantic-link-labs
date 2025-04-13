@@ -31,7 +31,7 @@ def list_unused_artifacts(workspace: Optional[str | UUID] = None) -> pd.DataFram
         "Artifact Name": "string",
         "Artifact Id": "string",
         "Artifact Type": "string",
-        "Artifact Size in MB": "int",
+        "Artifact Size in MB": "string",
         "Created Date Time": "datetime",
         "Last Accessed Date Time": "datetime",
     }
@@ -47,8 +47,8 @@ def list_unused_artifacts(workspace: Optional[str | UUID] = None) -> pd.DataFram
     for r in responses:
         for i in r.get("unusedArtifactEntities", []):
             new_data = {
-                "Artifact Name": i.get("artifactId"),
-                "Artifact Id": i.get("displayName"),
+                "Artifact Name": i.get("displayName"),
+                "Artifact Id": i.get("artifactId"),
                 "Artifact Type": i.get("artifactType"),
                 "Artifact Size in MB": i.get("artifactSizeInMB"),
                 "Created Date Time": i.get("createdDateTime"),

@@ -65,9 +65,11 @@ def create_abfss_path(
     path = f"abfss://{lakehouse_workspace_id}@{fp}/{lakehouse_id}"
 
     if delta_table_name is not None:
+        path += "/Tables"
         if schema is not None:
-            path += f"/{schema}"
-        path += f"/Tables/{delta_table_name}"
+            path += f"/{schema}/{delta_table_name}"
+        else:
+            path += f"/{delta_table_name}"
 
     return path
 
@@ -183,7 +185,7 @@ def resolve_report_name(report_id: UUID, workspace: Optional[str | UUID] = None)
         The name of the Power BI report.
     """
 
-    return resolve_item_name(item_id=report_id, type="Report", workspace=workspace)
+    return resolve_item_name(item_id=report_id, workspace=workspace)
 
 
 def delete_item(
@@ -392,7 +394,7 @@ def resolve_lakehouse_name_and_id(
     lakehouse: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None
 ) -> Tuple[str, UUID]:
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
     type = "Lakehouse"
 
     if lakehouse is None:
@@ -469,9 +471,7 @@ def resolve_dataset_name(
         The name of the semantic model.
     """
 
-    return resolve_item_name(
-        item_id=dataset_id, type="SemanticModel", workspace=workspace
-    )
+    return resolve_item_name(item_id=dataset_id, workspace=workspace)
 
 
 def resolve_lakehouse_name(
@@ -503,9 +503,7 @@ def resolve_lakehouse_name(
                 f"{icons.red_dot} Cannot resolve a lakehouse. Please enter a valid lakehouse or make sure a lakehouse is attached to the notebook."
             )
 
-    return resolve_item_name(
-        item_id=lakehouse_id, type="Lakehouse", workspace=workspace
-    )
+    return resolve_item_name(item_id=lakehouse_id, workspace=workspace)
 
 
 def resolve_lakehouse_id(
@@ -1308,10 +1306,8 @@ class FabricTokenCredential(TokenCredential):
 
         import notebookutils
 
-        token = notebookutils.credentials.getToken(scopes)
-        access_token = AccessToken(token, 0)
-
-        return access_token
+        token = notebookutils.credentials.getToken("storage")
+        return AccessToken(token, 0)
 
 
 def _get_adls_client(account_name):
@@ -1320,11 +1316,21 @@ def _get_adls_client(account_name):
 
     account_url = f"https://{account_name}.dfs.core.windows.net"
 
-    service_client = DataLakeServiceClient(
-        account_url, credential=FabricTokenCredential()
-    )
+    return DataLakeServiceClient(account_url, credential=FabricTokenCredential())
 
-    return service_client
+
+def _get_blob_client(workspace_id: UUID, item_id: UUID):
+
+    from azure.storage.blob import BlobServiceClient
+
+    endpoint = _get_fabric_context_setting(name="trident.onelake.endpoint").replace(
+        ".dfs.", ".blob."
+    )
+    url = f"https://{endpoint}/{workspace_id}/{item_id}"
+
+    # account_url = f"https://{account_name}.blob.core.windows.net"
+
+    return BlobServiceClient(url, credential=FabricTokenCredential())
 
 
 def resolve_warehouse_id(
@@ -1735,19 +1741,23 @@ def _base_api(
     lro_return_json: bool = False,
     lro_return_status_code: bool = False,
 ):
-
+    import notebookutils
     from sempy_labs._authentication import _get_headers
 
     if (lro_return_json or lro_return_status_code) and status_codes is None:
         status_codes = [200, 202]
 
+    def get_token(audience="pbi"):
+        return notebookutils.credentials.getToken(audience)
+
     if isinstance(status_codes, int):
         status_codes = [status_codes]
 
     if client == "fabric":
-        c = fabric.FabricRestClient()
+        c = fabric.FabricRestClient(token_provider=get_token)
     elif client == "fabric_sp":
-        c = fabric.FabricRestClient(token_provider=auth.token_provider.get())
+        token = auth.token_provider.get() or get_token
+        c = fabric.FabricRestClient(token_provider=token)
     elif client in ["azure", "graph"]:
         pass
     else:
@@ -1889,7 +1899,9 @@ def _run_spark_sql_query(query):
     return spark.sql(query)
 
 
-def _mount(lakehouse, workspace) -> str:
+def _mount(
+    lakehouse: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None
+) -> str:
     """
     Mounts a lakehouse to a notebook if it is not already mounted. Returns the local path to the lakehouse.
     """
@@ -1900,6 +1912,16 @@ def _mount(lakehouse, workspace) -> str:
     (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=workspace
     )
+
+    # Hide display mounts
+    current_setting = ""
+    try:
+        current_setting = notebookutils.conf.get(
+            "spark.notebookutils.displaymountpoint.enabled"
+        )
+        notebookutils.conf.set("spark.notebookutils.displaymountpoint.enabled", "false")
+    except Exception:
+        pass
 
     lake_path = create_abfss_path(lakehouse_id, workspace_id)
     mounts = notebookutils.fs.mounts()
@@ -1912,6 +1934,16 @@ def _mount(lakehouse, workspace) -> str:
         )
 
     mounts = notebookutils.fs.mounts()
+
+    # Set display mounts to original setting
+    try:
+        if current_setting != "false":
+            notebookutils.conf.set(
+                "spark.notebookutils.displaymountpoint.enabled", "true"
+            )
+    except Exception:
+        pass
+
     local_path = next(
         i.get("localPath") for i in mounts if i.get("source") == lake_path
     )
@@ -2015,3 +2047,26 @@ def _get_or_create_warehouse(
     )
 
     return (warehouse, warehouse_id)
+
+
+def _xml_to_dict(element):
+    data = {element.tag: {} if element.attrib else None}
+    children = list(element)
+    if children:
+        temp_dict = {}
+        for child in children:
+            child_dict = _xml_to_dict(child)
+            for key, value in child_dict.items():
+                if key in temp_dict:
+                    if isinstance(temp_dict[key], list):
+                        temp_dict[key].append(value)
+                    else:
+                        temp_dict[key] = [temp_dict[key], value]
+                else:
+                    temp_dict[key] = value
+        data[element.tag] = temp_dict
+    else:
+        data[element.tag] = (
+            element.text.strip() if element.text and element.text.strip() else None
+        )
+    return data

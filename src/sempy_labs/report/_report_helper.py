@@ -236,15 +236,27 @@ def find_entity_property_pairs(data, result=None, keys_path=None):
         keys_path = []
 
     if isinstance(data, dict):
+        expression = data.get("Expression", {})
+        source_ref = (
+            expression.get("SourceRef", {}) if isinstance(expression, dict) else {}
+        )
+
         if (
-            "Entity" in data.get("Expression", {}).get("SourceRef", {})
+            isinstance(source_ref, dict)
+            and "Entity" in source_ref
             and "Property" in data
         ):
-            entity = data.get("Expression", {}).get("SourceRef", {}).get("Entity", {})
-            property_value = data.get("Property")
-            object_type = keys_path[-1].replace("HierarchyLevel", "Hierarchy")
+            entity = source_ref.get("Entity", "")
+            property_value = data.get("Property", "")
+
+            object_type = (
+                keys_path[-1].replace("HierarchyLevel", "Hierarchy")
+                if keys_path
+                else "Unknown"
+            )
             result[property_value] = (entity, object_type)
-            keys_path.pop()
+            if keys_path:
+                keys_path.pop()
 
         # Recursively search the rest of the dictionary
         for key, value in data.items():

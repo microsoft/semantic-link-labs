@@ -11,6 +11,9 @@ from sempy_labs._helper_functions import (
     resolve_dataset_name_and_id,
     resolve_workspace_name_and_id,
     _base_api,
+    resolve_workspace_id,
+    resolve_item_id,
+    resolve_lakehouse_id,
 )
 from sempy_labs._list_functions import list_relationships
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
@@ -84,7 +87,7 @@ class TOMWrapper:
         # No token provider (standard authentication)
         if self._token_provider is None:
             self._tom_server = fabric.create_tom_server(
-                readonly=readonly, workspace=workspace_id
+                dataset=dataset, readonly=readonly, workspace=workspace_id
             )
         # Service Principal Authentication for Azure AS via token provider
         elif self._is_azure_as:
@@ -2257,7 +2260,7 @@ class TOMWrapper:
 
         if validate:
             dax_query = f"""
-            define measure '{table_name}'[test] = 
+            define measure '{table_name}'[test] =
             var mn = MIN('{table_name}'[{column_name}])
             var ma = MAX('{table_name}'[{column_name}])
             var x = COUNTROWS(DISTINCT('{table_name}'[{column_name}]))
@@ -3309,14 +3312,16 @@ class TOMWrapper:
             .tolist()
         )
         cols = (
-            fil[fil["Referenced Object Type"] == "Column"][
+            fil[fil["Referenced Object Type"].isin(["Column", "Calc Column"])][
                 "Referenced Full Object Name"
             ]
             .unique()
             .tolist()
         )
         tbls = (
-            fil[fil["Referenced Object Type"] == "Table"]["Referenced Table"]
+            fil[fil["Referenced Object Type"].isin(["Table", "Calc Table"])][
+                "Referenced Table"
+            ]
             .unique()
             .tolist()
         )
@@ -3489,7 +3494,7 @@ class TOMWrapper:
                         tableList.append(c.Parent.Name)
                 if (
                     re.search(
-                        create_pattern(tableList, re.escape(obj.Name)),
+                        create_pattern(tableList, obj.Name),
                         expr,
                     )
                     is not None
@@ -4857,6 +4862,18 @@ class TOMWrapper:
 
         result_df = pd.DataFrame(columns=["Table Name", "Object Name", "Object Type"])
 
+        def add_to_result(table_name, object_name, object_type, dataframe):
+
+            new_data = {
+                "Table Name": table_name,
+                "Object Name": object_name,
+                "Object Type": object_type,
+            }
+
+            return pd.concat(
+                [dataframe, pd.DataFrame(new_data, index=[0])], ignore_index=True
+            )
+
         for _, r in filt.iterrows():
             added = False
             obj_type = r["Referenced Object Type"]
@@ -4890,15 +4907,7 @@ class TOMWrapper:
                     )
                     added = True
             if added:
-                new_data = {
-                    "Table Name": table_name,
-                    "Object Name": object_name,
-                    "Object Type": obj_type,
-                }
-
-                result_df = pd.concat(
-                    [result_df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                )
+                result_df = add_to_result(table_name, object_name, obj_type, result_df)
 
         # Reduce model...
 
@@ -4921,9 +4930,19 @@ class TOMWrapper:
                 self.add_to_perspective(
                     object=r.FromColumn, perspective_name=perspective_name
                 )
+
+                result_df = add_to_result(
+                    r.FromTable.Name, r.FromColumn.Name, "Column", result_df
+                )
             if not self.in_perspective(r.ToColumn, perspective_name=perspective_name):
+                table_name = r.ToTable.Name
+                object_name = r.ToColumn.Name
                 self.add_to_perspective(
                     object=r.ToColumn, perspective_name=perspective_name
+                )
+
+                result_df = add_to_result(
+                    r.ToTable.Name, r.ToColumn.Name, "Column", result_df
                 )
 
         # Remove objects not in the perspective
@@ -4943,6 +4962,113 @@ class TOMWrapper:
         # Return the objects added to the perspective based on dependencies
         return result_df.drop_duplicates()
 
+    def convert_direct_lake_to_import(
+        self,
+        table_name: str,
+        entity_name: Optional[str] = None,
+        schema: Optional[str] = None,
+        source: Optional[str | UUID] = None,
+        source_type: str = "Lakehouse",
+        source_workspace: Optional[str | UUID] = None,
+    ):
+        """
+        Converts a Direct Lake table's partition to an import-mode partition.
+
+        The entity_name and schema parameters default to using the existing values in the Direct Lake partition. The source, source_type, and source_workspace
+        parameters do not default to existing values. This is because it may not always be possible to reconcile the source and its workspace.
+
+        Parameters
+        ----------
+        table_name : str
+            The table name.
+        entity_name : str, default=None
+            The entity name of the Direct Lake partition (the table name in the source).
+        schema : str, default=None
+            The schema of the source table. Defaults to None which resolves to the existing schema.
+        source : str | uuid.UUID, default=None
+            The source name or ID. This is the name or ID of the Lakehouse or Warehouse.
+        source_type : str, default="Lakehouse"
+            The source type (i.e. "Lakehouse" or "Warehouse").
+        source_workspace: str | uuid.UUID, default=None
+            The workspace name or ID of the source. This is the workspace in which the Lakehouse or Warehouse exists.
+            Defaults to None which resolves to the workspace of the attached lakehouse
+            or if no lakehouse attached, resolves to the workspace of the notebook.
+        """
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        p = next(p for p in self.model.Tables[table_name].Partitions)
+        if p.Mode != TOM.ModeType.DirectLake:
+            print(f"{icons.info} The '{table_name}' table is not in Direct Lake mode.")
+            return
+
+        partition_name = p.Name
+        partition_entity_name = entity_name or p.Source.EntityName
+        partition_schema = schema or p.Source.SchemaName
+
+        # Update name of the Direct Lake partition (will be removed later)
+        self.model.Tables[table_name].Partitions[
+            partition_name
+        ].Name = f"{partition_name}_remove"
+
+        source_workspace_id = resolve_workspace_id(workspace=source_workspace)
+        if source_type == "Lakehouse":
+            item_id = resolve_lakehouse_id(
+                lakehouse=source, workspace=source_workspace_id
+            )
+        else:
+            item_id = resolve_item_id(
+                item=source, type=source_type, workspace=source_workspace_id
+            )
+
+        def _generate_m_expression(
+            workspace_id, artifact_id, artifact_type, table_name, schema_name
+        ):
+            """
+            Generates the M expression for the import partition.
+            """
+
+            if artifact_type == "Lakehouse":
+                type_id = "lakehouseId"
+            elif artifact_type == "Warehouse":
+                type_id = "warehouseId"
+            else:
+                raise NotImplementedError
+
+            full_table_name = (
+                f"{schema_name}.{table_name}" if schema_name else table_name
+            )
+
+            return f"""let
+                Source = {artifact_type}.Contents(null),
+                #"Workspace" = Source{{[workspaceId="{workspace_id}"]}}[Data],
+                #"Artifact" = #"Workspace"{{[{type_id}="{artifact_id}"]}}[Data],
+                result = #"Artifact"{{[Id="{full_table_name}",ItemKind="Table"]}}[Data]
+            in
+                result
+            """
+
+        m_expression = _generate_m_expression(
+            source_workspace_id,
+            item_id,
+            source_type,
+            partition_entity_name,
+            partition_schema,
+        )
+
+        # Add the import partition
+        self.add_m_partition(
+            table_name=table_name,
+            partition_name=f"{partition_name}",
+            expression=m_expression,
+            mode="Import",
+        )
+        # Remove the Direct Lake partition
+        self.remove_object(object=p)
+
+        print(
+            f"{icons.green_dot} The '{table_name}' table has been converted to Import mode."
+        )
+
     def close(self):
 
         if not self._readonly and self.model is not None:
@@ -4956,18 +5082,25 @@ class TOMWrapper:
                         p.SourceType == TOM.PartitionSourceType.Entity
                         for p in t.Partitions
                     ):
-                        if t.LineageTag in list(self._table_map.keys()):
-                            if self._table_map.get(t.LineageTag) != t.Name:
-                                self.add_changed_property(object=t, property="Name")
+                        entity_name = next(p.Source.EntityName for p in t.Partitions)
+                        if t.Name != entity_name:
+                            self.add_changed_property(object=t, property="Name")
+                        # if t.LineageTag in list(self._table_map.keys()):
+                        #    if self._table_map.get(t.LineageTag) != t.Name:
+                        #        self.add_changed_property(object=t, property="Name")
 
                 for c in self.all_columns():
+                    # if c.LineageTag in list(self._column_map.keys()):
+                    if any(
+                        p.SourceType == TOM.PartitionSourceType.Entity
+                        for p in c.Parent.Partitions
+                    ):
+                        if c.Name != c.SourceColumn:
+                            self.add_changed_property(object=c, property="Name")
+                        # c.SourceLineageTag = c.SourceColumn
+                        # if self._column_map.get(c.LineageTag)[0] != c.Name:
+                        #    self.add_changed_property(object=c, property="Name")
                     if c.LineageTag in list(self._column_map.keys()):
-                        if any(
-                            p.SourceType == TOM.PartitionSourceType.Entity
-                            for p in c.Parent.Partitions
-                        ):
-                            if self._column_map.get(c.LineageTag)[0] != c.Name:
-                                self.add_changed_property(object=c, property="Name")
                         if self._column_map.get(c.LineageTag)[1] != c.DataType:
                             self.add_changed_property(object=c, property="DataType")
 

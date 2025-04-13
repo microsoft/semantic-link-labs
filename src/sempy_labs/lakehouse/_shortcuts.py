@@ -24,11 +24,14 @@ def create_shortcut_onelake(
     shortcut_name: Optional[str] = None,
     source_path: str = "Tables",
     destination_path: str = "Tables",
+    shortcut_conflict_policy: Optional[str] = None,
 ):
     """
     Creates a `shortcut <https://learn.microsoft.com/fabric/onelake/onelake-shortcuts>`_ to a delta table in OneLake.
 
     This is a wrapper function for the following API: `OneLake Shortcuts - Create Shortcut <https://learn.microsoft.com/rest/api/fabric/core/onelake-shortcuts/create-shortcut>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -51,6 +54,8 @@ def create_shortcut_onelake(
         A string representing the full path to the table/file in the source lakehouse, including either "Files" or "Tables". Examples: Tables/FolderName/SubFolderName; Files/FolderName/SubFolderName.
     destination_path: str, default="Tables"
         A string representing the full path where the shortcut is created, including either "Files" or "Tables". Examples: Tables/FolderName/SubFolderName; Files/FolderName/SubFolderName.
+    shortcut_conflict_policy : str, default=None
+        When provided, it defines the action to take when a shortcut with the same name and path already exists. The default action is 'Abort'. Additional ShortcutConflictPolicy types may be added over time.
     """
 
     if not (source_path.startswith("Files") or source_path.startswith("Tables")):
@@ -103,7 +108,8 @@ def create_shortcut_onelake(
     # Check if the shortcut already exists
     try:
         response = _base_api(
-            request=f"/v1/workspaces/{destination_workspace_id}/items/{destination_lakehouse_id}/shortcuts/{destination_path}/{actual_shortcut_name}"
+            request=f"/v1/workspaces/{destination_workspace_id}/items/{destination_lakehouse_id}/shortcuts/{destination_path}/{actual_shortcut_name}",
+            client="fabric_sp",
         )
         response_json = response.json()
         del response_json["target"]["type"]
@@ -119,11 +125,21 @@ def create_shortcut_onelake(
     except FabricHTTPException:
         pass
 
+    url = f"/v1/workspaces/{destination_workspace_id}/items/{destination_lakehouse_id}/shortcuts"
+
+    if shortcut_conflict_policy:
+        if shortcut_conflict_policy not in ["Abort", "GenerateUniqueName"]:
+            raise ValueError(
+                f"{icons.red_dot} The 'shortcut_conflict_policy' parameter must be either 'Abort' or 'GenerateUniqueName'."
+            )
+        url += f"?shortcutConflictPolicy={shortcut_conflict_policy}"
+
     _base_api(
-        request=f"/v1/workspaces/{destination_workspace_id}/items/{destination_lakehouse_id}/shortcuts",
+        request=url,
         payload=payload,
         status_codes=201,
         method="post",
+        client="fabric_sp",
     )
 
     print(
@@ -211,6 +227,8 @@ def delete_shortcut(
 
     This is a wrapper function for the following API: `OneLake Shortcuts - Delete Shortcut <https://learn.microsoft.com/rest/api/fabric/core/onelake-shortcuts/delete-shortcut>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     shortcut_name : str
@@ -234,6 +252,7 @@ def delete_shortcut(
     _base_api(
         request=f"/v1/workspaces/{workspace_id}/items/{lakehouse_id}/shortcuts/{shortcut_path}/{shortcut_name}",
         method="delete",
+        client="fabric_sp",
     )
 
     print(
@@ -288,7 +307,7 @@ def list_shortcuts(
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     path: str, default=None
-        The path within lakehouse where to look for shortcuts. If provied, must start with either "Files" or "Tables". Examples: Tables/FolderName/SubFolderName; Files/FolderName/SubFolderName.
+        The path within lakehouse where to look for shortcuts. If provided, must start with either "Files" or "Tables". Examples: Tables/FolderName/SubFolderName; Files/FolderName/SubFolderName.
         Defaults to None which will retun all shortcuts on the given lakehouse
 
     Returns

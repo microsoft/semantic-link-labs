@@ -126,11 +126,10 @@ def list_capacity_tenant_settings_overrides(
             if capacity_id is None:
                 # If capacity_id is None, we access 'Overrides' -> 'tenantSettings'
                 for override in r.get("overrides", []):
+                    capacity_id = override.get("id")
                     tenant_settings = override.get("tenantSettings", [])
                     for setting in tenant_settings:
-                        data.append(
-                            create_new_data(setting)
-                        )  # No capacity_id needed here
+                        data.append(create_new_data(setting, capacity_id))
             else:
                 # If capacity_id is provided, we access 'value' directly for tenantSettings
                 for setting in r.get("value", []):
@@ -391,6 +390,7 @@ def list_workspaces_tenant_settings_overrides() -> pd.DataFrame:
     """
 
     columns = {
+        "Workspace Id": "string",
         "Setting Name": "string",
         "Title": "string",
         "Enabled": "bool",
@@ -409,8 +409,10 @@ def list_workspaces_tenant_settings_overrides() -> pd.DataFrame:
 
     for r in responses:
         for v in r.get("value", []):
+            workspace_id = v.get("id")
             for setting in v.get("tenantSettings", []):
                 new_data = {
+                    "Workspace Id": workspace_id,
                     "Setting Name": setting.get("settingName"),
                     "Title": setting.get("title"),
                     "Enabled": setting.get("enabled"),
@@ -447,6 +449,7 @@ def list_domain_tenant_settings_overrides() -> pd.DataFrame:
     """
 
     columns = {
+        "Domain Id": "string",
         "Setting Name": "string",
         "Title": "string",
         "Enabled": "bool",
@@ -466,8 +469,10 @@ def list_domain_tenant_settings_overrides() -> pd.DataFrame:
 
     for r in responses:
         for v in r.get("value", []):
+            domain_id = v.get("id")
             for setting in v.get("tenantSettings", []):
                 new_data = {
+                    "Domain Id": domain_id,
                     "Setting Name": setting.get("settingName"),
                     "Title": setting.get("title"),
                     "Enabled": setting.get("enabled"),

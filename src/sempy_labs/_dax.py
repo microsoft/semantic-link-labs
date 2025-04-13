@@ -206,9 +206,15 @@ def get_dax_query_dependencies(
     ].reset_index(drop=True)
 
     if put_in_memory:
-        not_in_memory = dfC_filtered[dfC_filtered["Is Resident"] == False]
+        # Only put columns in memory if they are in a Direct Lake table (and are not already in memory)
+        dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
+        dl_tables = dfP[dfP["Mode"] == "DirectLake"]["Table Name"].unique().tolist()
+        not_in_memory = dfC_filtered[
+            (dfC_filtered["Table Name"].isin(dl_tables))
+            & (dfC_filtered["Is Resident"] == False)
+        ]
 
-        if len(not_in_memory) > 0:
+        if not not_in_memory.empty:
             _put_columns_into_memory(
                 dataset=dataset,
                 workspace=workspace,

@@ -115,6 +115,4 @@ def scan_workspaces(
         client="fabric_sp",
     )
 
-    print(f"{icons.green_dot} Status: {scan_status}")
-
     return response.json()
