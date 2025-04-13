@@ -201,7 +201,7 @@ def get_report_definition(
     return_dataframe : bool, default=True
         If True, returns a dataframe. If False, returns a json dictionary.
     files_to_built_in_resources : bool, default=False
-        If True, saves the files to the built in resources so they can be downloaded
+        If True, saves the files to the built in resources of a fabric notebook so they can be downloaded. If False does nothing.
 
     Returns
     -------
@@ -211,18 +211,32 @@ def get_report_definition(
     report_items = get_item_definition(
         item=report, type="Report", workspace=workspace, return_dataframe=True
     )
-    output_base_dir = f"./builtin/{report}"
-    os.makedirs(output_base_dir, exist_ok=True)
 
-    for _, row in report_items.iterrows():
-        relative_path = row['path']
-        base64_payload = row['payload']
-        output_path = os.path.join(output_base_dir, relative_path)
-        
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        
-        with open(output_path, "wb") as f:
-            f.write(base64.b64decode(base64_payload))
+    if files_to_built_in_resources:
+        output_base_dir = f"./builtin/{report}"
+        if os.path.exists(output_base_dir):
+            parent_directory = "./builtin/"
+            target_name = report
+
+            matching_items = [
+                item for item in os.listdir(parent_directory)
+                if item == target_name
+            ]
+            count = len(matching_items)
+            new_folder_name = f"{output_base_dir} ({count})"
+            os.makedirs(new_folder_name, exist_ok=True)
+        else:
+            os.makedirs(output_base_dir, exist_ok=True)
+    
+        for _, row in report_items.iterrows():
+            relative_path = row['path']
+            base64_payload = row['payload']
+            output_path = os.path.join(output_base_dir, relative_path)
+            
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            
+            with open(output_path, "wb") as f:
+                f.write(base64.b64decode(base64_payload))
             
     return report_items
 
