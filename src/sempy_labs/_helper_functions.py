@@ -18,7 +18,6 @@ from IPython.display import display, HTML
 import requests
 import sempy_labs._authentication as auth
 
-
 def _build_url(url: str, params: dict) -> str:
     """
     Build the url with a list of parameters
@@ -663,12 +662,12 @@ def save_as_delta_table(
     workspace: Optional[str | UUID] = None,
 ):
     """
-    Saves a pandas dataframe as a delta table in a Fabric lakehouse.
+    Saves a Pandas or PySpark dataframe as a delta table in a Fabric lakehouse.
 
     Parameters
     ----------
-    dataframe : pandas.DataFrame
-        The dataframe to be saved as a delta table.
+    dataframe : pandas.DataFrame | pyspark.sql.DataFrame
+        The Pandas or PySpark dataframe to be saved as a delta table.
     delta_table_name : str
         The name of the delta table.
     write_mode : str
@@ -750,6 +749,9 @@ def save_as_delta_table(
             new_name = col_name.replace(" ", "_")
             dataframe = dataframe.withColumnRenamed(col_name, new_name)
         spark_df = dataframe
+
+    # Replace spaces with underscores in column names
+    spark_df = spark_df.toDF(*[col.replace(" ", "_") for col in spark_df.columns])
 
     filePath = create_abfss_path(
         lakehouse_id=lakehouse_id,
@@ -1878,12 +1880,51 @@ def _create_spark_session():
     return SparkSession.builder.getOrCreate()
 
 
-def _read_delta_table(path: str):
+def _read_delta_table(
+    path: str,
+    lakehouse: Optional [str | UUID] = None,
+    workspace: Optional [str | UUID] = None,
+) -> 'pyspark.sql.DataFrame':
+    """
+    Returns a spark dataframe with the rows of a delta table in a Fabric lakehouse.
+
+    Parameters
+    ----------
+    path : str
+        The abfss path or name of the delta table.
+    lakehouse : uuid.UUID
+        The Fabric lakehouse ID. 
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+        Ignored if an abfss path was provided in the path parameter.
+    workspace : uuid.UUID
+        The Fabric workspace ID where the specified lakehouse is located.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+        Ignored if an abfss path was provided in the path parameter.
+
+    Returns
+    -------
+    DataFrame
+        A PySpark dataframe with the data from the specified delta table.
+    """
+    from urllib.parse import urlparse
 
     spark = _create_spark_session()
+    
+    parsed_path = urlparse(path)
+    if parsed_path.scheme == 'abfss' and bool(parsed_path.netloc):
+        return spark.read.format("delta").load(path)
+    else:
+        (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+        (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(lakehouse=lakehouse,workspace=workspace_id)
 
-    return spark.read.format("delta").load(path)
+        abfss_path = create_abfss_path(
+            lakehouse_id=lakehouse_id,
+            lakehouse_workspace_id=workspace_id,
+            delta_table_name=path,
+        )
 
+        return spark.read.format("delta").load(abfss_path)
 
 def _delta_table_row_count(table_name: str) -> int:
 
