@@ -4,6 +4,8 @@ from sempy_labs._helper_functions import (
     _xml_to_dict,
     _create_dataframe,
     _update_dataframe_datatypes,
+    resolve_workspace_name_and_id,
+    resolve_lakehouse_name_and_id,
 )
 from sempy._utils._log import log
 from uuid import UUID
@@ -13,27 +15,38 @@ import xml.etree.ElementTree as ET
 import pandas as pd
 
 
+def _get_storage_token():
+
+    import notebookutils
+
+    return notebookutils.credentials.getToken("storage")
+
+
 def _request_blob_api(
     request: str,
     method: str = "get",
     payload: Optional[dict] = None,
     status_codes: int | List[int] = 200,
+    extra_headers: Optional[dict] = None,
 ):
 
     import requests
-    import notebookutils
     from sempy.fabric.exceptions import FabricHTTPException
 
     if isinstance(status_codes, int):
         status_codes = [status_codes]
 
-    token = notebookutils.credentials.getToken("storage")
+    token = _get_storage_token()
 
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
         "x-ms-version": "2025-05-05",
     }
+
+    if extra_headers:
+        for k, v in extra_headers.items():
+            headers[k] = v
 
     response = requests.request(
         method.upper(),
@@ -204,6 +217,117 @@ def recover_lakehouse_object(
             print(f"{icons.green_dot} The '{blob_name}' blob has been restored.")
 
 
+def delete_lakehouse_object(
+    file_path: str,
+    lakehouse: Optional[str | UUID] = None,
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Deletes an object (i.e. table, file, folder) in a lakehouse. The object is soft-deleted and can be recovered within 7 days (use the `recover_lakehouse_object <https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.lakehouse.html#sempy_labs.lakehouse.recover_lakehouse_object>`_ function).
+
+    Parameters
+    ----------
+    file_path : str
+        The file path of the object to delete. For example: "Tables/my_delta_table" or "Files/myfile.json" or "Files/myfolder".
+    lakehouse : str | uuid.UUID, default=None
+        The Fabric lakehouse name or ID.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+        lakehouse, workspace_id
+    )
+
+    if not file_path.startswith("Tables") and not file_path.startswith("Files"):
+        raise ValueError(
+            f"{icons.red_dot} Invalid container '{file_path}' within the file_path parameter. Expected 'Tables' or 'Files'."
+        )
+
+    _request_blob_api(
+        request=f"{workspace_id}/{lakehouse_id}/{file_path}?recursive=True",
+        method="delete",
+    )
+
+    print(
+        f"{icons.green_dot} The '{file_path}' blob has been soft-deleted in the '{lakehouse_name}' lakehouse within the '{workspace_name}' workspace. It can be recovered within 7 days."
+    )
+
+
+def copy_lakehouse_object(
+    source_file_path: str,
+    destination_file_path: Optional[str] = None,
+    source_lakehouse: Optional[str | UUID] = None,
+    source_workspace: Optional[str | UUID] = None,
+    destination_lakehouse: Optional[str | UUID] = None,
+    destination_workspace: Optional[str | UUID] = None,
+):
+    """
+    Copies a blob from one lakehouse to another. The source and destination lakehouses must be different.
+
+    Parameters
+    ----------
+    source_file_path : str
+        The file path of the object to copy. For example: "Tables/my_delta_table" or "Files/myfile.json" or "Files/myfolder".
+    destination_file_path : str, default=None
+        The destination file path of the object being copied. For example: "Tables/my_delta_table" or "Files/myfile.json" or "Files/myfolder".
+        Defaults to None which resolves to the source_file_path.
+    source_lakehouse : str | uuid.UUID, default=None
+        The Fabric lakehouse name or ID of the source.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    source_workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID used by the source lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    destination_lakehouse : str | uuid.UUID, default=None
+        The Fabric lakehouse name or ID of the destination.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    destination_workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID used by the destination lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    if destination_file_path is None:
+        destination_file_path = source_file_path
+    (source_workspace_name, source_workspace_id) = resolve_workspace_name_and_id(
+        source_workspace
+    )
+    (source_lakehouse_name, source_lakehouse_id) = resolve_lakehouse_name_and_id(
+        source_lakehouse, source_workspace
+    )
+    (destination_workspace_name, destination_workspace_id) = (
+        resolve_workspace_name_and_id(destination_workspace)
+    )
+    (destination_lakehouse_name, destination_lakehouse_id) = (
+        resolve_lakehouse_name_and_id(destination_lakehouse, destination_workspace)
+    )
+
+    if (source_lakehouse_id == destination_lakehouse_id) and (
+        source_workspace_id == destination_workspace_id
+    ):
+        raise ValueError(
+            f"{icons.red_dot} The source and destination lakehouse/workspace cannot be the same."
+        )
+
+    token = _get_storage_token()
+
+    source_file_path = source_file_path.replace(" ", "%20")
+
+    extra_headers = {
+        "x-ms-copy-source": f"https://onelake.blob.fabric.microsoft.com/{source_workspace_id}/{source_lakehouse_id}/{source_file_path}?sv=2024-04-01&ss=bfqt&srt=sco&sp=rwdlacupx&se=2025-04-05T00:00:00Z&st=2025-04-02T00:00:00Z&spr=https&sig={token}"
+    }
+    print(extra_headers)
+
+    _request_blob_api(request=f"{destination_workspace_id}/{destination_lakehouse_id}/{destination_file_path}", method="put", status_codes=202, extra_headers=extra_headers)
+
+    print(f"{icons.green_dot} The '{source_file_path}' blob has been copied to the '{destination_file_path}' blob in the '{destination_lakehouse_name}' lakehouse within the '{destination_workspace_name}' workspace.")
+
+
 def _get_user_delegation_key():
 
     # https://learn.microsoft.com/rest/api/storageservices/get-user-delegation-key
@@ -229,3 +353,4 @@ def _get_user_delegation_key():
     )
 
     return response.content
+
