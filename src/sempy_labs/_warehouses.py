@@ -53,11 +53,11 @@ def create_warehouse(
             "defaultCollation"
         ] = "Latin1_General_100_CI_AS_KS_WS_SC_UTF8"
 
-    response = _base_api(
+    result = _base_api(
         request=f"/v1/workspaces/{workspace_id}/warehouses",
         payload=payload,
         method="post",
-        lro_return_status_code=True,
+        lro_return_json=True,
         status_codes=[201, 202],
     )
 
@@ -65,7 +65,7 @@ def create_warehouse(
         f"{icons.green_dot} The '{warehouse}' warehouse has been created within the '{workspace_name}' workspace."
     )
 
-    return response.get("id")
+    return result.get("id")
 
 
 def list_warehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
