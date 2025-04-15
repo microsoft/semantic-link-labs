@@ -461,9 +461,7 @@ def get_delta_table_history(
         return re.sub(r"([a-z])([A-Z])", r"\1 \2", text).title()
 
     workspace_id = resolve_workspace_id(workspace=workspace)
-    lakehouse_id = resolve_lakehouse_id(
-        lakehouse=lakehouse, workspace=workspace_id
-    )
+    lakehouse_id = resolve_lakehouse_id(lakehouse=lakehouse, workspace=workspace_id)
     path = create_abfss_path(lakehouse_id, workspace_id, table_name, schema)
     df = _read_delta_table_history(path=path)
     df.rename(columns=lambda col: camel_to_title(col), inplace=True)

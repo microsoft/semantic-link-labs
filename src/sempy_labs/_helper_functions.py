@@ -1915,6 +1915,7 @@ def _delta_table_row_count(path: str) -> int:
 
     if _pure_python_notebook():
         from deltalake import DeltaTable
+
         dt = DeltaTable(path)
         arrow_table = dt.to_pyarrow_table()
         return arrow_table.num_rows

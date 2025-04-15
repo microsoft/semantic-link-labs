@@ -116,7 +116,11 @@ def refresh_calc_tables(dataset: str | UUID, workspace: Optional[str | UUID] = N
                         f"{icons.in_progress} Refresh of the '{delta_table_name}' table within the lakehouse is in progress..."
                     )
 
-                    save_as_delta_table(dataframe=df, table_name=delta_table_name, write_mode='overwrite')
+                    save_as_delta_table(
+                        dataframe=df,
+                        table_name=delta_table_name,
+                        write_mode="overwrite",
+                    )
 
                     print(
                         f"{icons.green_dot} Calculated table '{tName}' has been refreshed as the '{delta_table_name.lower()}' table in the lakehouse."

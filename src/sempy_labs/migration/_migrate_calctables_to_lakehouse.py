@@ -195,7 +195,13 @@ def migrate_calc_tables_to_lakehouse(
 
                                 delta_table_name = t.Name.replace(" ", "_").lower()
 
-                                save_as_delta_table(dataframe=df, table_name=delta_table_name, lakehouse=lakehouse, workspace=lakehouse_workspace, write_mode='overwrite')
+                                save_as_delta_table(
+                                    dataframe=df,
+                                    table_name=delta_table_name,
+                                    lakehouse=lakehouse,
+                                    workspace=lakehouse_workspace,
+                                    write_mode="overwrite",
+                                )
 
                                 @retry(
                                     sleep_time=1,
