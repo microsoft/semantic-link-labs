@@ -6,10 +6,9 @@ from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 from sempy_labs._helper_functions import (
     resolve_lakehouse_name,
     resolve_lakehouse_id,
-    create_abfss_path,
     retry,
     generate_guid,
-    _create_spark_session,
+    save_as_delta_table,
 )
 from sempy_labs.tom import connect_semantic_model
 from typing import Optional
@@ -97,8 +96,6 @@ def migrate_calc_tables_to_lakehouse(
 
     if killFunction:
         return
-
-    spark = _create_spark_session()
 
     if len(dfP_filt) == 0:
         print(
@@ -198,15 +195,7 @@ def migrate_calc_tables_to_lakehouse(
 
                                 delta_table_name = t.Name.replace(" ", "_").lower()
 
-                                spark_df = spark.createDataFrame(df)
-                                filePath = create_abfss_path(
-                                    lakehouse_id=lakehouse_id,
-                                    lakehouse_workspace_id=lakehouse_workspace_id,
-                                    delta_table_name=delta_table_name,
-                                )
-                                spark_df.write.mode("overwrite").format("delta").save(
-                                    filePath
-                                )
+                                save_as_delta_table(dataframe=df, table_name=delta_table_name, lakehouse=lakehouse, workspace=lakehouse_workspace, write_mode='overwrite')
 
                                 @retry(
                                     sleep_time=1,

@@ -1878,18 +1878,48 @@ def _create_spark_session():
     return SparkSession.builder.getOrCreate()
 
 
-def _read_delta_table(path: str):
+def _read_delta_table(path: str, to_pandas: bool = True, to_df: bool = False):
 
-    spark = _create_spark_session()
+    if _pure_python_notebook():
+        from deltalake import DeltaTable
 
-    return spark.read.format("delta").load(path)
+        df = DeltaTable(table_uri=path)
+        if to_pandas:
+            df = df.to_pandas()
+    else:
+        spark = _create_spark_session()
+        df = spark.read.format("delta").load(path)
+        if to_df:
+            df = df.toDF()
+
+    return df
 
 
-def _delta_table_row_count(table_name: str) -> int:
+def _read_delta_table_history(path) -> pd.DataFrame:
 
-    spark = _create_spark_session()
+    if _pure_python_notebook():
+        from deltalake import DeltaTable
 
-    return spark.table(table_name).count()
+        df = pd.DataFrame(DeltaTable(table_uri=path).history())
+    else:
+        from delta import DeltaTable
+
+        spark = _create_spark_session()
+        delta_table = DeltaTable.forPath(spark, path)
+        df = delta_table.history().toPandas()
+
+    return df
+
+
+def _delta_table_row_count(path: str) -> int:
+
+    if _pure_python_notebook():
+        from deltalake import DeltaTable
+        dt = DeltaTable(path)
+        arrow_table = dt.to_pyarrow_table()
+        return arrow_table.num_rows
+    else:
+        return _read_delta_table(path).count()
 
 
 def _run_spark_sql_query(query):

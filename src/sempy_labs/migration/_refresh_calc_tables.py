@@ -1,7 +1,6 @@
 import sempy.fabric as fabric
 import pandas as pd
 import re
-from sempy_labs._helper_functions import retry
 from sempy_labs.tom import connect_semantic_model
 from typing import Optional
 from sempy._utils._log import log
@@ -10,7 +9,8 @@ from uuid import UUID
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
-    _create_spark_session,
+    save_as_delta_table,
+    retry,
 )
 
 
@@ -29,7 +29,6 @@ def refresh_calc_tables(dataset: str | UUID, workspace: Optional[str | UUID] = N
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    spark = _create_spark_session()
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
     icons.sll_tags.append("DirectLakeMigration")
@@ -117,10 +116,8 @@ def refresh_calc_tables(dataset: str | UUID, workspace: Optional[str | UUID] = N
                         f"{icons.in_progress} Refresh of the '{delta_table_name}' table within the lakehouse is in progress..."
                     )
 
-                    spark_df = spark.createDataFrame(df)
-                    spark_df.write.mode("overwrite").format("delta").saveAsTable(
-                        delta_table_name
-                    )
+                    save_as_delta_table(dataframe=df, table_name=delta_table_name, write_mode='overwrite')
+
                     print(
                         f"{icons.green_dot} Calculated table '{tName}' has been refreshed as the '{delta_table_name.lower()}' table in the lakehouse."
                     )

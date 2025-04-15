@@ -17,6 +17,9 @@ from sempy_labs._helper_functions import (
     _read_delta_table,
     _mount,
     _create_spark_session,
+    _read_delta_table_history,
+    resolve_workspace_id,
+    resolve_lakehouse_id,
 )
 from sempy._utils._log import log
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
@@ -457,19 +460,12 @@ def get_delta_table_history(
     def camel_to_title(text):
         return re.sub(r"([a-z])([A-Z])", r"\1 \2", text).title()
 
-    spark = _create_spark_session()
-
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace=workspace)
-    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
-        lakehouse=lakehouse, workspace=workspace
+    workspace_id = resolve_workspace_id(workspace=workspace)
+    lakehouse_id = resolve_lakehouse_id(
+        lakehouse=lakehouse, workspace=workspace_id
     )
     path = create_abfss_path(lakehouse_id, workspace_id, table_name, schema)
-
-    from delta import DeltaTable
-
-    delta_table = DeltaTable.forPath(spark, path)
-    df = delta_table.history().toPandas()
-
+    df = _read_delta_table_history(path=path)
     df.rename(columns=lambda col: camel_to_title(col), inplace=True)
 
     return df
