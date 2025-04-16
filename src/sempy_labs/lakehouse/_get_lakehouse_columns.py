@@ -18,6 +18,8 @@ def get_lakehouse_columns(
     """
     Shows the tables and columns of a lakehouse and their respective properties.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     lakehouse : str | uuid.UUID, default=None
@@ -68,7 +70,7 @@ def get_lakehouse_columns(
             full_column_name = format_dax_object_name(table_name, col_name)
             new_data = {
                 "Workspace Name": workspace_name,
-                "Lakehouse Name": lakehouse,
+                "Lakehouse Name": lakehouse_name,
                 "Table Name": table_name,
                 "Column Name": col_name,
                 "Full Column Name": full_column_name,

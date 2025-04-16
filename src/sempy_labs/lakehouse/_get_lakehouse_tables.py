@@ -36,6 +36,8 @@ def get_lakehouse_tables(
 
     This is a wrapper function for the following API: `Tables - List Tables <https://learn.microsoft.com/rest/api/fabric/lakehouse/tables/list-tables>`_ plus extended capabilities.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     lakehouse : str | uuid.UUID, default=None
@@ -179,9 +181,7 @@ def get_lakehouse_tables(
         if lakeT_filt.empty:
             run_id = 1
         else:
-            max_run_id = _get_column_aggregate(
-                table_name=lakeTName
-            )
+            max_run_id = _get_column_aggregate(table_name=lakeTName)
             run_id = max_run_id + 1
 
         export_df = df.copy()
