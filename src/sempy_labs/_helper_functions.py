@@ -1687,6 +1687,7 @@ def _convert_data_type(input_data_type: str) -> str:
         "double": "Double",
         "float": "Double",
         "binary": "Boolean",
+        "long": "Int64",
     }
 
     if "decimal" in input_data_type:
@@ -1876,6 +1877,14 @@ def _create_spark_session():
     from pyspark.sql import SparkSession
 
     return SparkSession.builder.getOrCreate()
+
+
+def _get_delta_table(path: str) -> str:
+
+    from delta import DeltaTable
+    spark = _create_spark_session()
+
+    return DeltaTable.forPath(spark, path)
 
 
 def _read_delta_table(path: str, to_pandas: bool = True, to_df: bool = False):
