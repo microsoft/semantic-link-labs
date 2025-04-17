@@ -128,7 +128,9 @@ def get_lakehouse_tables(
         for i, r in df.iterrows():
             table_name = r["Table Name"]
             if r["Type"] == "Managed" and r["Format"] == "delta":
-                delta_table_path = create_abfss_path(lakehouse_id, workspace_id, table_name)
+                delta_table_path = create_abfss_path(
+                    lakehouse_id, workspace_id, table_name
+                )
 
                 delta_table = _get_delta_table(delta_table_path)
                 latest_files = _read_delta_table(delta_table_path).inputFiles()
@@ -142,9 +144,7 @@ def get_lakehouse_tables(
 
                 num_rowgroups = 0
                 for filename in file_paths:
-                    parquet_file = pq.ParquetFile(
-                        f"{table_path}/{filename}"
-                    )
+                    parquet_file = pq.ParquetFile(f"{table_path}/{filename}")
                     num_rowgroups += parquet_file.num_row_groups
                 df.at[i, "Files"] = num_latest_files
                 df.at[i, "Row Groups"] = num_rowgroups

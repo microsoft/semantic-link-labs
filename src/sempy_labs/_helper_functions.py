@@ -1882,6 +1882,7 @@ def _create_spark_session():
 def _get_delta_table(path: str) -> str:
 
     from delta import DeltaTable
+
     spark = _create_spark_session()
 
     return DeltaTable.forPath(spark, path)

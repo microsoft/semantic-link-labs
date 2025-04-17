@@ -61,14 +61,16 @@ def get_lakehouse_columns(
     tables_filt = tables[tables["Format"] == "delta"]
 
     def add_column_metadata(table_name, col_name, data_type):
-        new_rows.append({
-            "Workspace Name": workspace_name,
-            "Lakehouse Name": lakehouse_name,
-            "Table Name": table_name,
-            "Column Name": col_name,
-            "Full Column Name": format_dax_object_name(table_name, col_name),
-            "Data Type": data_type,
-        })
+        new_rows.append(
+            {
+                "Workspace Name": workspace_name,
+                "Lakehouse Name": lakehouse_name,
+                "Table Name": table_name,
+                "Column Name": col_name,
+                "Full Column Name": format_dax_object_name(table_name, col_name),
+                "Data Type": data_type,
+            }
+        )
 
     new_rows = []
 
@@ -78,13 +80,16 @@ def get_lakehouse_columns(
 
         if _pure_python_notebook():
             from deltalake import DeltaTable
+
             table_schema = DeltaTable(path).schema()
 
             for field in table_schema.fields:
                 col_name = field.name
                 match = re.search(r'"(.*?)"', str(field.type))
                 if not match:
-                    raise ValueError(f"{icons.red_dot} Could not find data type for column {col_name}.")
+                    raise ValueError(
+                        f"{icons.red_dot} Could not find data type for column {col_name}."
+                    )
                 data_type = match.group(1)
                 add_column_metadata(table_name, col_name, data_type)
         else:
