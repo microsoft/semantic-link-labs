@@ -16,10 +16,10 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_name_and_id,
     _read_delta_table,
     _mount,
-    _create_spark_session,
     _read_delta_table_history,
     resolve_workspace_id,
     resolve_lakehouse_id,
+    _get_delta_table,
 )
 from sempy._utils._log import log
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
@@ -167,11 +167,7 @@ def delta_analyzer(
     is_vorder = any(b"vorder" in key for key in schema.keys())
 
     # Get the common details of the Delta table
-    spark = _create_spark_session()
-
-    from delta import DeltaTable
-
-    delta_table = DeltaTable.forPath(spark, delta_table_path)
+    delta_table = _get_delta_table(delta_table_path)
     table_df = delta_table.toDF()
     # total_partition_count = table_df.rdd.getNumPartitions()
     row_count = table_df.count()

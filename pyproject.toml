@@ -23,7 +23,7 @@ classifiers = [
 license= { text = "MIT License" }
 
 dependencies = [
-    "semantic-link-sempy>=0.9.3",
+    "semantic-link-sempy>=0.10.2",
     "anytree",
     "powerbiclient",
     "polib",
