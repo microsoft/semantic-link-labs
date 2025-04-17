@@ -1,7 +1,6 @@
-import sempy.fabric as fabric
 import pandas as pd
 import pyarrow.parquet as pq
-import datetime
+from datetime import datetime
 from sempy_labs._helper_functions import (
     _get_column_aggregate,
     resolve_workspace_name_and_id,
@@ -10,6 +9,8 @@ from sempy_labs._helper_functions import (
     _base_api,
     _create_dataframe,
     _create_spark_session,
+    resolve_workspace_id,
+    resolve_lakehouse_id,
 )
 from sempy_labs.directlake._guardrails import (
     get_sku_size,
@@ -34,6 +35,8 @@ def get_lakehouse_tables(
     Shows the tables of a lakehouse and their respective properties. Option to include additional properties relevant to Direct Lake guardrails.
 
     This is a wrapper function for the following API: `Tables - List Tables <https://learn.microsoft.com/rest/api/fabric/lakehouse/tables/list-tables>`_ plus extended capabilities.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -76,8 +79,8 @@ def get_lakehouse_tables(
         extended = True
 
     if (
-        workspace_id != fabric.get_workspace_id()
-        and lakehouse_id != fabric.get_lakehouse_id()
+        workspace_id != resolve_workspace_id()
+        and lakehouse_id != resolve_lakehouse_id()
         and count_rows
     ):
         raise ValueError(
@@ -88,6 +91,7 @@ def get_lakehouse_tables(
     responses = _base_api(
         request=f"v1/workspaces/{workspace_id}/lakehouses/{lakehouse_id}/tables",
         uses_pagination=True,
+        client="fabric_sp",
     )
 
     if not responses[0].get("data"):
@@ -119,13 +123,13 @@ def get_lakehouse_tables(
         if count_rows:
             df["Row Count"] = None
         for i, r in df.iterrows():
-            tName = r["Table Name"]
+            table_name = r["Table Name"]
             if r["Type"] == "Managed" and r["Format"] == "delta":
-                detail_df = spark.sql(f"DESCRIBE DETAIL `{tName}`").collect()[0]
+                detail_df = spark.sql(f"DESCRIBE DETAIL `{table_name}`").collect()[0]
                 num_files = detail_df.numFiles
                 size_in_bytes = detail_df.sizeInBytes
 
-                delta_table_path = f"Tables/{tName}"
+                delta_table_path = f"Tables/{table_name}"
                 latest_files = (
                     spark.read.format("delta").load(delta_table_path).inputFiles()
                 )
@@ -144,7 +148,7 @@ def get_lakehouse_tables(
                 df.at[i, "Row Groups"] = num_rowgroups
                 df.at[i, "Table Size"] = size_in_bytes
             if count_rows:
-                num_rows = spark.table(tName).count()
+                num_rows = spark.table(table_name).count()
                 df.at[i, "Row Count"] = num_rows
 
     if extended:
@@ -171,16 +175,13 @@ def get_lakehouse_tables(
                 f"{icons.red_dot} In order to save the report.json file, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
             )
 
-        (current_lakehouse_name, current_lakehouse_id) = resolve_lakehouse_name_and_id()
         lakeTName = "lakehouse_table_details"
         lakeT_filt = df[df["Table Name"] == lakeTName]
 
-        if len(lakeT_filt) == 0:
+        if lakeT_filt.empty:
             run_id = 1
         else:
-            max_run_id = _get_column_aggregate(
-                lakehouse=current_lakehouse_name, table_name=lakeTName
-            )
+            max_run_id = _get_column_aggregate(table_name=lakeTName)
             run_id = max_run_id + 1
 
         export_df = df.copy()
@@ -226,7 +227,7 @@ def get_lakehouse_tables(
         print(
             f"{icons.in_progress} Saving Lakehouse table properties to the '{lakeTName}' table in the lakehouse...\n"
         )
-        export_df["Timestamp"] = datetime.datetime.now()
+        export_df["Timestamp"] = datetime.now()
         export_df["RunId"] = run_id
 
         save_as_delta_table(
