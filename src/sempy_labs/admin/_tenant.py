@@ -32,7 +32,7 @@ def list_tenant_settings() -> pd.DataFrame:
         "Enabled": "bool",
         "Can Specify Security Groups": "bool",
         "Tenant Setting Group": "string",
-        "Enabled Security Groups": "string",
+        "Enabled Security Groups": "list",
     }
     df = _create_dataframe(columns=columns)
 
@@ -86,9 +86,9 @@ def list_capacity_tenant_settings_overrides(
         "Setting Title": "string",
         "Setting Enabled": "bool",
         "Can Specify Security Groups": "bool",
-        "Enabled Security Groups": "string",
+        "Enabled Security Groups": "list",
         "Tenant Setting Group": "string",
-        "Tenant Setting Properties": "string",
+        "Tenant Setting Properties": "list",
         "Delegate to Workspace": "bool",
         "Delegated From": "string",
     }
@@ -395,7 +395,7 @@ def list_workspaces_tenant_settings_overrides() -> pd.DataFrame:
         "Title": "string",
         "Enabled": "bool",
         "Can Specify Security Groups": "bool",
-        "Enabled Security Groups": "string",
+        "Enabled Security Groups": "list",
         "Tenant Setting Group": "string",
         "Delegated From": "string",
     }
@@ -454,7 +454,7 @@ def list_domain_tenant_settings_overrides() -> pd.DataFrame:
         "Title": "string",
         "Enabled": "bool",
         "Can Specify Security Groups": "bool",
-        "Enabled Security Groups": "string",
+        "Enabled Security Groups": "list",
         "Tenant Setting Group": "string",
         "Delegated To Workspace": "bool",
         "Delegated From": "string",
