@@ -447,7 +447,9 @@ def list_refreshables(
             "Configured By": i.get("configuredBy"),
         }
 
-        df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
+        dfs = [df, pd.DataFrame([new_data])]
+        non_empty_dfs = [df for df in dfs if not df.empty]
+        df = pd.concat(non_empty_dfs, ignore_index=True)
 
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
