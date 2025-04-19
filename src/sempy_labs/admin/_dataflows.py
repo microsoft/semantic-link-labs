@@ -18,7 +18,7 @@ def export_dataflow(
     """
     Shows a list of datasets for the organization.
 
-    This is a wrapper function for the following API: `Admin - Dataflows ExportDataflowAsAdmin <https://learn.microsoft.com/en-us/rest/api/power-bi/admin/dataflows-export-dataflow-as-admin>`_.
+    This is a wrapper function for the following API: `Admin - Dataflows ExportDataflowAsAdmin <https://learn.microsoft.com/rest/api/power-bi/admin/dataflows-export-dataflow-as-admin>`_.
 
     Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 

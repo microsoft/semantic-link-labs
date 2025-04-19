@@ -222,7 +222,7 @@ def list_capacities(
         "Sku": "string",
         "Region": "string",
         "State": "string",
-        "Admins": "string",
+        "Admins": "list",
     }
     df = _create_dataframe(columns=columns)
 
@@ -313,11 +313,12 @@ def list_capacity_users(capacity: str | UUID) -> pd.DataFrame:
 
 
 @log
-def get_refreshables(
+def list_refreshables(
     top: Optional[int] = None,
     expand: Optional[str] = None,
     filter: Optional[str] = None,
     skip: Optional[int] = None,
+    capacity: Optional[str | UUID] = None,
 ) -> pd.DataFrame:
     """
     Returns a list of refreshables for the organization within a capacity.
@@ -338,6 +339,8 @@ def get_refreshables(
         Returns a subset of a results based on Odata filter query parameter condition.
     skip : int, default=None
         Skips the first n results. Use with top to fetch results beyond the first 1000.
+    capacity : str | uuid.UUID, default=None
+        The capacity name or ID to filter. If None, all capacities are returned.
 
     Returns
     -------
@@ -377,8 +380,17 @@ def get_refreshables(
 
     df = _create_dataframe(columns=columns)
 
+    capacity_id = None
+
+    if capacity is not None:
+        capacity_name, capacity_id = _resolve_capacity_name_and_id(capacity=capacity)
+
     params = {}
-    url = "/v1.0/myorg/admin/capacities/refreshables"
+    url = (
+        "/v1.0/myorg/admin/capacities/refreshables"
+        if capacity is None
+        else f"/v1.0/myorg/admin/capacities/{capacity_id}/refreshables"
+    )
 
     if top is not None:
         params["$top"] = top
@@ -397,6 +409,8 @@ def get_refreshables(
     responses = _base_api(request=url, client="fabric_sp")
 
     for i in responses.json().get("value", []):
+        last_refresh = i.get("lastRefresh", {})
+        refresh_schedule = i.get("refreshSchedule", {})
         new_data = {
             "Workspace Id": i.get("group", {}).get("id"),
             "Workspace Name": i.get("group", {}).get("name"),
@@ -415,25 +429,21 @@ def get_refreshables(
             "Average Duration": i.get("averageDuration", 0),
             "Median Duration": i.get("medianDuration", 0),
             "Refreshes Per Day": i.get("refreshesPerDay", 0),
-            "Refresh Type": i.get("lastRefresh", {}).get("refreshType"),
-            "Start Time": i.get("lastRefresh", {}).get("startTime"),
-            "End Time": i.get("lastRefresh", {}).get("endTime"),
-            "Status": i.get("lastRefresh", {}).get("status"),
-            "Request Id": i.get("lastRefresh", {}).get("requestId"),
-            "Service Exception Json": i.get("lastRefresh", {}).get(
-                "serviceExceptionJson"
-            ),
-            "Extended Status": i.get("lastRefresh", {}).get("extendedStatus"),
-            "Refresh Attempts": i.get("lastRefresh", {}).get("refreshAttempts"),
-            "Refresh Schedule Days": i.get("refreshSchedule", {}).get("days"),
-            "Refresh Schedule Times": i.get("refreshSchedule", {}).get("times"),
-            "Refresh Schedule Enabled": i.get("refreshSchedule", {}).get("enabled"),
-            "Refresh Schedule Local Timezone Id": i.get("refreshSchedule", {}).get(
+            "Refresh Type": last_refresh.get("refreshType"),
+            "Start Time": last_refresh.get("startTime"),
+            "End Time": last_refresh.get("endTime"),
+            "Status": last_refresh.get("status"),
+            "Request Id": last_refresh.get("requestId"),
+            "Service Exception Json": last_refresh.get("serviceExceptionJson"),
+            "Extended Status": last_refresh.get("extendedStatus"),
+            "Refresh Attempts": last_refresh.get("refreshAttempts"),
+            "Refresh Schedule Days": refresh_schedule.get("days"),
+            "Refresh Schedule Times": refresh_schedule.get("times"),
+            "Refresh Schedule Enabled": refresh_schedule.get("enabled"),
+            "Refresh Schedule Local Timezone Id": refresh_schedule.get(
                 "localTimeZoneId"
             ),
-            "Refresh Schedule Notify Option": i.get("refreshSchedule", {}).get(
-                "notifyOption"
-            ),
+            "Refresh Schedule Notify Option": refresh_schedule.get("notifyOption"),
             "Configured By": i.get("configuredBy"),
         }
 
