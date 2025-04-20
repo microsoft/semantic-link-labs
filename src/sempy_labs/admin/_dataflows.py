@@ -2,7 +2,6 @@ import pandas as pd
 from typing import Optional
 from sempy_labs._helper_functions import (
     _base_api,
-    _is_valid_uuid,
 )
 from sempy_labs.admin._items import (
     _resolve_item_id,
@@ -32,10 +31,9 @@ def export_dataflow(
     dict
         Exported Json file.
     """
-    if not _is_valid_uuid(dataflow):
-        dataflow = _resolve_item_id(item_name=dataflow, type="dataflow")
+    dataflow_id = _resolve_item_id(item_name=dataflow, type="dataflow")
 
-    url = f"/v1.0/myorg/admin/dataflows/{dataflow}/export"
+    url = f"/v1.0/myorg/admin/dataflows/{dataflow_id}/export"
 
     response = _base_api(request=url, client="fabric_sp")
 

@@ -313,7 +313,7 @@ def list_capacity_users(capacity: str | UUID) -> pd.DataFrame:
 
 
 @log
-def list_refreshables(
+def get_refreshables(
     top: Optional[int] = None,
     expand: Optional[str] = None,
     filter: Optional[str] = None,

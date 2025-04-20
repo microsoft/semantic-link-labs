@@ -21,16 +21,21 @@ def _resolve_item_id(
     type: Optional[str] = None,
     workspace: Optional[str | UUID] = None,
 ) -> UUID:
+    if _is_valid_uuid(item_name):
+        item_id = item_name
 
-    dfI = list_items(workspace=workspace, type=type)
-    dfI_filt = dfI[dfI["Item Name"] == item_name]
+    else:
+        dfI = list_items(workspace=workspace, type=type)
+        dfI_filt = dfI[dfI["Item Name"] == item_name]
 
-    if len(dfI_filt) == 0:
-        raise ValueError(
-            f"The '{item_name}' {type} does not exist within the '{workspace}' workspace or is not of type '{type}'."
-        )
+        if len(dfI_filt) == 0:
+            raise ValueError(
+                f"The '{item_name}' {type} does not exist within the '{workspace}' workspace or is not of type '{type}'."
+            )
 
-    return dfI_filt["Item Id"].iloc[0]
+        item_id = dfI_filt["Item Id"].iloc[0]
+
+    return UUID(item_id, version=4)
 
 
 def _resolve_item_name_and_id(
