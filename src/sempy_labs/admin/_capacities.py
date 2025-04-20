@@ -398,16 +398,11 @@ def get_refreshables(
 
     df = _create_dataframe(columns=columns)
 
-    capacity_id = None
-
-    if capacity is not None:
-        capacity_id = _resolve_capacity_id(capacity=capacity)
-
     params = {}
     url = (
         "/v1.0/myorg/admin/capacities/refreshables"
-        if capacity_id is None
-        else f"/v1.0/myorg/admin/capacities/{capacity_id}/refreshables"
+        if capacity is None
+        else f"/v1.0/myorg/admin/capacities/{_resolve_capacity_id(capacity=capacity)}/refreshables"
     )
 
     if top is not None:
