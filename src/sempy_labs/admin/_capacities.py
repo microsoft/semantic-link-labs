@@ -58,6 +58,24 @@ def _resolve_capacity_name_and_id(
     return capacity_name, capacity_id
 
 
+def _resolve_capacity_id(
+    capacity: str | UUID,
+) -> UUID:
+
+    if _is_valid_uuid(capacity):
+        capacity_id = capacity
+    else:
+        dfC = list_capacities(capacity=capacity)
+        if dfC.empty:
+            raise ValueError(
+                f"{icons.red_dot} The '{capacity}' capacity was not found."
+            )
+
+        capacity_id = dfC["Capacity Id"].iloc[0]
+
+    return capacity_id
+
+
 def _list_capacities_meta() -> pd.DataFrame:
     """
     Shows the a list of capacities and their properties. This function is the admin version.
@@ -383,12 +401,12 @@ def get_refreshables(
     capacity_id = None
 
     if capacity is not None:
-        capacity_name, capacity_id = _resolve_capacity_name_and_id(capacity=capacity)
+        capacity_id = _resolve_capacity_id(capacity=capacity)
 
     params = {}
     url = (
         "/v1.0/myorg/admin/capacities/refreshables"
-        if capacity is None
+        if capacity_id is None
         else f"/v1.0/myorg/admin/capacities/{capacity_id}/refreshables"
     )
 

@@ -17,25 +17,25 @@ from sempy_labs._helper_functions import (
 
 
 def _resolve_item_id(
-    item_name: str,
+    item: str,
     type: Optional[str] = None,
     workspace: Optional[str | UUID] = None,
 ) -> UUID:
-    if _is_valid_uuid(item_name):
-        item_id = item_name
+    if _is_valid_uuid(item):
+        item_id = item
 
     else:
         dfI = list_items(workspace=workspace, type=type)
-        dfI_filt = dfI[dfI["Item Name"] == item_name]
+        dfI_filt = dfI[dfI["Item Name"] == item]
 
         if len(dfI_filt) == 0:
             raise ValueError(
-                f"The '{item_name}' {type} does not exist within the '{workspace}' workspace or is not of type '{type}'."
+                f"The '{item}' {type} does not exist within the '{workspace}' workspace or is not of type '{type}'."
             )
 
         item_id = dfI_filt["Item Id"].iloc[0]
 
-    return UUID(item_id, version=4)
+    return item_id
 
 
 def _resolve_item_name_and_id(

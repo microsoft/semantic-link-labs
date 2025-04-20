@@ -31,7 +31,7 @@ def export_dataflow(
     dict
         Exported Json file.
     """
-    dataflow_id = _resolve_item_id(item_name=dataflow, type="dataflow")
+    dataflow_id = _resolve_item_id(item=dataflow, type="dataflow")
 
     url = f"/v1.0/myorg/admin/dataflows/{dataflow_id}/export"
 
