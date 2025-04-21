@@ -1,4 +1,5 @@
 item_types = {
+    "CopyJob": ["Copy Job", "copyJobs", "copyjob-content.json"],
     "Dashboard": ["Dashboard", "dashboards"],
     "DataPipeline": ["Data Pipeline", "dataPipelines", "pipeline-content.json"],
     "Datamart": ["Datamart", "datamarts"],
