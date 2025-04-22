@@ -337,7 +337,7 @@ def get_refreshables(
     filter: Optional[str] = None,
     skip: Optional[int] = None,
     capacity: Optional[str | UUID] = None,
-) -> pd.DataFrame:
+) -> pd.DataFrame | dict:
     """
     Returns a list of refreshables for the organization within a capacity.
 
@@ -421,6 +421,8 @@ def get_refreshables(
 
     responses = _base_api(request=url, client="fabric_sp")
 
+    refreshables = []
+
     for i in responses.json().get("value", []):
         last_refresh = i.get("lastRefresh", {})
         refresh_schedule = i.get("refreshSchedule", {})
@@ -460,10 +462,10 @@ def get_refreshables(
             "Configured By": i.get("configuredBy"),
         }
 
-        dfs = [df, pd.DataFrame([new_data])]
-        non_empty_dfs = [df for df in dfs if not df.empty]
-        df = pd.concat(non_empty_dfs, ignore_index=True)
+        refreshables.append(new_data)
 
+    if len(refreshables) > 0:
+        df = pd.DataFrame(refreshables)
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
