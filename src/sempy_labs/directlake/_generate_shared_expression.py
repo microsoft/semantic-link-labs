@@ -84,6 +84,6 @@ def generate_shared_expression(
 
     # Build DL/OL expression
     if not use_sql_endpoint and item_type == "Lakehouse":
-        return f'AzureDataLakeStorage{{"server":"onelake.dfs.fabric.microsoft.com","path":"/{workspace_id}/{item_id}/"}}'
+        return f"""let\n\tSource = AzureDataLakeStorage("server":"onelake.dfs.fabric.microsoft.com","path":"/{workspace_id}/{item_id}", [HierarchicalNavigation=true])\nin\n\tSource"""
     else:
         return f"{start_expr}{mid_expr}{end_expr}"
