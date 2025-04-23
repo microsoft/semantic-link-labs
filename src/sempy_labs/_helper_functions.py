@@ -663,11 +663,13 @@ def save_as_delta_table(
     workspace: Optional[str | UUID] = None,
 ):
     """
-    Saves a pandas dataframe as a delta table in a Fabric lakehouse.
+    Saves a pandas or spark dataframe as a delta table in a Fabric lakehouse.
+
+    This function may be executed in either a PySpark or pure Python notebook. If executing in a pure Python notebook, the dataframe must be a pandas dataframe.
 
     Parameters
     ----------
-    dataframe : pandas.DataFrame
+    dataframe : pandas.DataFrame | spark.Dataframe
         The dataframe to be saved as a delta table.
     delta_table_name : str
         The name of the delta table.
@@ -685,19 +687,6 @@ def save_as_delta_table(
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
-
-    from pyspark.sql.types import (
-        StringType,
-        IntegerType,
-        FloatType,
-        DateType,
-        StructType,
-        StructField,
-        BooleanType,
-        LongType,
-        DoubleType,
-        TimestampType,
-    )
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
@@ -717,52 +706,101 @@ def save_as_delta_table(
             f"{icons.red_dot} Invalid 'delta_table_name'. Delta tables in the lakehouse cannot have spaces in their names."
         )
 
-    spark = _create_spark_session()
+    import pyarrow as pa
+    from pyspark.sql.types import (
+        StringType,
+        IntegerType,
+        FloatType,
+        DateType,
+        StructType,
+        StructField,
+        BooleanType,
+        LongType,
+        DoubleType,
+        TimestampType,
+    )
 
-    type_mapping = {
-        "string": StringType(),
-        "str": StringType(),
-        "integer": IntegerType(),
-        "int": IntegerType(),
-        "float": FloatType(),
-        "date": DateType(),
-        "bool": BooleanType(),
-        "boolean": BooleanType(),
-        "long": LongType(),
-        "double": DoubleType(),
-        "timestamp": TimestampType(),
-    }
+    def get_type_mapping(pure_python):
+        common_mapping = {
+            "string": ("pa", pa.string(), StringType()),
+            "str": ("pa", pa.string(), StringType()),
+            "integer": ("pa", pa.int32(), IntegerType()),
+            "int": ("pa", pa.int32(), IntegerType()),
+            "float": ("pa", pa.float32(), FloatType()),
+            "double": ("pa", pa.float64(), DoubleType()),
+            "long": ("pa", pa.int64(), LongType()),
+            "bool": ("pa", pa.bool_(), BooleanType()),
+            "boolean": ("pa", pa.bool_(), BooleanType()),
+            "date": ("pa", pa.date32(), DateType()),
+            "timestamp": ("pa", pa.timestamp("ms"), TimestampType()),
+        }
+        return {k: v[1] if pure_python else v[2] for k, v in common_mapping.items()}
+
+    def build_schema(schema_dict, type_mapping, use_arrow=True):
+        if use_arrow:
+            fields = [
+                pa.field(name, type_mapping.get(dtype.lower()))
+                for name, dtype in schema_dict.items()
+            ]
+            return pa.schema(fields)
+        else:
+            return StructType(
+                [
+                    StructField(name, type_mapping.get(dtype.lower()), True)
+                    for name, dtype in schema_dict.items()
+                ]
+            )
+
+    # Main logic
+    schema_map = None
+    if schema is not None:
+        use_arrow = _pure_python_notebook()
+        type_mapping = get_type_mapping(use_arrow)
+        schema_map = build_schema(schema, type_mapping, use_arrow)
 
     if isinstance(dataframe, pd.DataFrame):
         dataframe.columns = [col.replace(" ", "_") for col in dataframe.columns]
-        if schema is None:
-            spark_df = spark.createDataFrame(dataframe)
+        if _pure_python_notebook():
+            spark_df = dataframe
         else:
-            schema_map = StructType(
-                [
-                    StructField(column_name, type_mapping[data_type], True)
-                    for column_name, data_type in schema.items()
-                ]
-            )
-            spark_df = spark.createDataFrame(dataframe, schema_map)
+            spark = _create_spark_session()
+            if schema is None:
+                spark_df = spark.createDataFrame(dataframe)
+            else:
+                spark_df = spark.createDataFrame(dataframe, schema_map)
     else:
         for col_name in dataframe.columns:
             new_name = col_name.replace(" ", "_")
             dataframe = dataframe.withColumnRenamed(col_name, new_name)
         spark_df = dataframe
 
-    filePath = create_abfss_path(
+    file_path = create_abfss_path(
         lakehouse_id=lakehouse_id,
         lakehouse_workspace_id=workspace_id,
         delta_table_name=delta_table_name,
     )
 
-    if merge_schema:
-        spark_df.write.mode(write_mode).format("delta").option(
-            "mergeSchema", "true"
-        ).save(filePath)
+    if _pure_python_notebook():
+        from deltalake import write_deltalake
+
+        write_args = {
+            "table_or_uri": file_path,
+            "data": spark_df,
+            "mode": write_mode,
+            "schema": schema_map,
+        }
+
+        if merge_schema:
+            write_args["schema_mode"] = "merge"
+
+        write_deltalake(**write_args)
     else:
-        spark_df.write.mode(write_mode).format("delta").save(filePath)
+        writer = spark_df.write.mode(write_mode).format("delta")
+        if merge_schema:
+            writer = writer.option("mergeSchema", "true")
+
+        writer.save(file_path)
+
     print(
         f"{icons.green_dot} The dataframe has been saved as the '{delta_table_name}' table in the '{lakehouse_name}' lakehouse within the '{workspace_name}' workspace."
     )
