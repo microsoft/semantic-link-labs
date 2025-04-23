@@ -8,7 +8,7 @@ from sempy.fabric.exceptions import FabricHTTPException, WorkspaceNotFoundExcept
 import pandas as pd
 from functools import wraps
 import datetime
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Dict
 from uuid import UUID
 import sempy_labs._icons as icons
 from azure.core.credentials import TokenCredential, AccessToken
@@ -663,11 +663,13 @@ def save_as_delta_table(
     workspace: Optional[str | UUID] = None,
 ):
     """
-    Saves a pandas dataframe as a delta table in a Fabric lakehouse.
+    Saves a pandas or spark dataframe as a delta table in a Fabric lakehouse.
+
+    This function may be executed in either a PySpark or pure Python notebook. If executing in a pure Python notebook, the dataframe must be a pandas dataframe.
 
     Parameters
     ----------
-    dataframe : pandas.DataFrame
+    dataframe : pandas.DataFrame | spark.Dataframe
         The dataframe to be saved as a delta table.
     delta_table_name : str
         The name of the delta table.
@@ -685,19 +687,6 @@ def save_as_delta_table(
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
-
-    from pyspark.sql.types import (
-        StringType,
-        IntegerType,
-        FloatType,
-        DateType,
-        StructType,
-        StructField,
-        BooleanType,
-        LongType,
-        DoubleType,
-        TimestampType,
-    )
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
@@ -717,52 +706,101 @@ def save_as_delta_table(
             f"{icons.red_dot} Invalid 'delta_table_name'. Delta tables in the lakehouse cannot have spaces in their names."
         )
 
-    spark = _create_spark_session()
+    import pyarrow as pa
+    from pyspark.sql.types import (
+        StringType,
+        IntegerType,
+        FloatType,
+        DateType,
+        StructType,
+        StructField,
+        BooleanType,
+        LongType,
+        DoubleType,
+        TimestampType,
+    )
 
-    type_mapping = {
-        "string": StringType(),
-        "str": StringType(),
-        "integer": IntegerType(),
-        "int": IntegerType(),
-        "float": FloatType(),
-        "date": DateType(),
-        "bool": BooleanType(),
-        "boolean": BooleanType(),
-        "long": LongType(),
-        "double": DoubleType(),
-        "timestamp": TimestampType(),
-    }
+    def get_type_mapping(pure_python):
+        common_mapping = {
+            "string": ("pa", pa.string(), StringType()),
+            "str": ("pa", pa.string(), StringType()),
+            "integer": ("pa", pa.int32(), IntegerType()),
+            "int": ("pa", pa.int32(), IntegerType()),
+            "float": ("pa", pa.float32(), FloatType()),
+            "double": ("pa", pa.float64(), DoubleType()),
+            "long": ("pa", pa.int64(), LongType()),
+            "bool": ("pa", pa.bool_(), BooleanType()),
+            "boolean": ("pa", pa.bool_(), BooleanType()),
+            "date": ("pa", pa.date32(), DateType()),
+            "timestamp": ("pa", pa.timestamp("ms"), TimestampType()),
+        }
+        return {k: v[1] if pure_python else v[2] for k, v in common_mapping.items()}
+
+    def build_schema(schema_dict, type_mapping, use_arrow=True):
+        if use_arrow:
+            fields = [
+                pa.field(name, type_mapping.get(dtype.lower()))
+                for name, dtype in schema_dict.items()
+            ]
+            return pa.schema(fields)
+        else:
+            return StructType(
+                [
+                    StructField(name, type_mapping.get(dtype.lower()), True)
+                    for name, dtype in schema_dict.items()
+                ]
+            )
+
+    # Main logic
+    schema_map = None
+    if schema is not None:
+        use_arrow = _pure_python_notebook()
+        type_mapping = get_type_mapping(use_arrow)
+        schema_map = build_schema(schema, type_mapping, use_arrow)
 
     if isinstance(dataframe, pd.DataFrame):
         dataframe.columns = [col.replace(" ", "_") for col in dataframe.columns]
-        if schema is None:
-            spark_df = spark.createDataFrame(dataframe)
+        if _pure_python_notebook():
+            spark_df = dataframe
         else:
-            schema_map = StructType(
-                [
-                    StructField(column_name, type_mapping[data_type], True)
-                    for column_name, data_type in schema.items()
-                ]
-            )
-            spark_df = spark.createDataFrame(dataframe, schema_map)
+            spark = _create_spark_session()
+            if schema is None:
+                spark_df = spark.createDataFrame(dataframe)
+            else:
+                spark_df = spark.createDataFrame(dataframe, schema_map)
     else:
         for col_name in dataframe.columns:
             new_name = col_name.replace(" ", "_")
             dataframe = dataframe.withColumnRenamed(col_name, new_name)
         spark_df = dataframe
 
-    filePath = create_abfss_path(
+    file_path = create_abfss_path(
         lakehouse_id=lakehouse_id,
         lakehouse_workspace_id=workspace_id,
         delta_table_name=delta_table_name,
     )
 
-    if merge_schema:
-        spark_df.write.mode(write_mode).format("delta").option(
-            "mergeSchema", "true"
-        ).save(filePath)
+    if _pure_python_notebook():
+        from deltalake import write_deltalake
+
+        write_args = {
+            "table_or_uri": file_path,
+            "data": spark_df,
+            "mode": write_mode,
+            "schema": schema_map,
+        }
+
+        if merge_schema:
+            write_args["schema_mode"] = "merge"
+
+        write_deltalake(**write_args)
     else:
-        spark_df.write.mode(write_mode).format("delta").save(filePath)
+        writer = spark_df.write.mode(write_mode).format("delta")
+        if merge_schema:
+            writer = writer.option("mergeSchema", "true")
+
+        writer.save(file_path)
+
     print(
         f"{icons.green_dot} The dataframe has been saved as the '{delta_table_name}' table in the '{lakehouse_name}' lakehouse within the '{workspace_name}' workspace."
     )
@@ -1497,32 +1535,82 @@ def generate_guid():
 
 def _get_column_aggregate(
     table_name: str,
-    column_name: str = "RunId",
+    column_name: str | List[str] = "RunId",
     lakehouse: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
     function: str = "max",
     default_value: int = 0,
-) -> int:
+) -> int | Dict[str, int]:
 
-    from pyspark.sql.functions import approx_count_distinct
-    from pyspark.sql import functions as F
+    workspace_id = resolve_workspace_id(workspace)
+    lakehouse_id = resolve_lakehouse_id(lakehouse, workspace_id)
+    path = create_abfss_path(lakehouse_id, workspace_id, table_name)
+    df = _read_delta_table(path)
+
+    if isinstance(column_name, str):
+        result = _get_aggregate(
+            df=df,
+            column_name=column_name,
+            function=function,
+            default_value=default_value,
+        )
+    elif isinstance(column_name, list):
+        result = {}
+        for col in column_name:
+            result[col] = _get_aggregate(
+                df=df,
+                column_name=col,
+                function=function,
+                default_value=default_value,
+            )
+    else:
+        raise TypeError("column_name must be a string or a list of strings.")
+
+    return result
+
+
+def _get_aggregate(df, column_name, function, default_value: int = 0) -> int:
 
     function = function.upper()
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    lakehouse_id = resolve_lakehouse_id(lakehouse, workspace)
-    path = create_abfss_path(lakehouse_id, workspace_id, table_name)
 
-    spark = _create_spark_session()
-    df = spark.read.format("delta").load(path)
+    if _pure_python_notebook():
+        import polars as pl
 
-    if function in {"COUNTDISTINCT", "DISTINCTCOUNT"}:
-        result = df.select(F.count_distinct(F.col(column_name)))
-    elif "APPROX" in function:
-        result = df.select(approx_count_distinct(column_name))
+        if not isinstance(df, pd.DataFrame):
+            df.to_pandas()
+
+        df = pl.from_pandas(df)
+
+        # Perform aggregation
+        if "DISTINCT" in function:
+            if isinstance(df[column_name].dtype, pl.Decimal):
+                result = df[column_name].cast(pl.Float64).n_unique()
+            else:
+                result = df[column_name].n_unique()
+        elif "APPROX" in function:
+            result = df[column_name].unique().shape[0]
+        else:
+            try:
+                result = getattr(df[column_name], function.lower())()
+            except AttributeError:
+                raise ValueError(f"Unsupported function: {function}")
+
+        return result if result is not None else default_value
     else:
-        result = df.selectExpr(f"{function}({column_name})")
+        from pyspark.sql.functions import approx_count_distinct
+        from pyspark.sql import functions as F
 
-    return result.collect()[0][0] or default_value
+        if isinstance(df, pd.DataFrame):
+            df = _create_spark_dataframe(df)
+
+        if "DISTINCT" in function:
+            result = df.select(F.count_distinct(F.col(column_name)))
+        elif "APPROX" in function:
+            result = df.select(approx_count_distinct(column_name))
+        else:
+            result = df.selectExpr(f"{function}({column_name})")
+
+        return result.collect()[0][0] or default_value
 
 
 def _make_list_unique(my_list):
@@ -1687,6 +1775,7 @@ def _convert_data_type(input_data_type: str) -> str:
         "double": "Double",
         "float": "Double",
         "binary": "Boolean",
+        "long": "Int64",
     }
 
     if "decimal" in input_data_type:
@@ -1876,6 +1965,15 @@ def _create_spark_session():
     from pyspark.sql import SparkSession
 
     return SparkSession.builder.getOrCreate()
+
+
+def _get_delta_table(path: str) -> str:
+
+    from delta import DeltaTable
+
+    spark = _create_spark_session()
+
+    return DeltaTable.forPath(spark, path)
 
 
 def _read_delta_table(path: str, to_pandas: bool = True, to_df: bool = False):

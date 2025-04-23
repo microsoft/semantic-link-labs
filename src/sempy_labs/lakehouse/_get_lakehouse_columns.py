@@ -1,14 +1,17 @@
 import pandas as pd
+import re
 from sempy_labs._helper_functions import (
     format_dax_object_name,
     resolve_workspace_name_and_id,
     resolve_lakehouse_name_and_id,
     _create_dataframe,
-    _create_spark_session,
+    _get_delta_table,
+    _pure_python_notebook,
 )
 from typing import Optional
 from sempy._utils._log import log
 from uuid import UUID
+import sempy_labs._icons as icons
 
 
 @log
@@ -16,7 +19,7 @@ def get_lakehouse_columns(
     lakehouse: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
-    Shows the tables and columns of a lakehouse and their respective properties.
+    Shows the tables and columns of a lakehouse and their respective properties. This function can be executed in either a PySpark or pure Python notebook. Note that data types may show differently when using PySpark vs pure Python.
 
     Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
@@ -36,7 +39,6 @@ def get_lakehouse_columns(
         Shows the tables/columns within a lakehouse and their properties.
     """
     from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
-    from delta import DeltaTable
 
     columns = {
         "Workspace Name": "string",
@@ -53,29 +55,48 @@ def get_lakehouse_columns(
         lakehouse=lakehouse, workspace=workspace_id
     )
 
-    spark = _create_spark_session()
-
     tables = get_lakehouse_tables(
         lakehouse=lakehouse_id, workspace=workspace_id, extended=False, count_rows=False
     )
     tables_filt = tables[tables["Format"] == "delta"]
 
-    for _, r in tables_filt.iterrows():
-        table_name = r["Table Name"]
-        path = r["Location"]
-        delta_table = DeltaTable.forPath(spark, path)
-        sparkdf = delta_table.toDF()
-
-        for col_name, data_type in sparkdf.dtypes:
-            full_column_name = format_dax_object_name(table_name, col_name)
-            new_data = {
+    def add_column_metadata(table_name, col_name, data_type):
+        new_rows.append(
+            {
                 "Workspace Name": workspace_name,
                 "Lakehouse Name": lakehouse_name,
                 "Table Name": table_name,
                 "Column Name": col_name,
-                "Full Column Name": full_column_name,
+                "Full Column Name": format_dax_object_name(table_name, col_name),
                 "Data Type": data_type,
             }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+        )
 
-    return df
+    new_rows = []
+
+    for _, r in tables_filt.iterrows():
+        table_name = r["Table Name"]
+        path = r["Location"]
+
+        if _pure_python_notebook():
+            from deltalake import DeltaTable
+
+            table_schema = DeltaTable(path).schema()
+
+            for field in table_schema.fields:
+                col_name = field.name
+                match = re.search(r'"(.*?)"', str(field.type))
+                if not match:
+                    raise ValueError(
+                        f"{icons.red_dot} Could not find data type for column {col_name}."
+                    )
+                data_type = match.group(1)
+                add_column_metadata(table_name, col_name, data_type)
+        else:
+            delta_table = _get_delta_table(path=path)
+            table_df = delta_table.toDF()
+
+            for col_name, data_type in table_df.dtypes:
+                add_column_metadata(table_name, col_name, data_type)
+
+    return pd.concat([df, pd.DataFrame(new_rows)], ignore_index=True)

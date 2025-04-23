@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import pyarrow.parquet as pq
 from datetime import datetime
@@ -8,9 +9,13 @@ from sempy_labs._helper_functions import (
     save_as_delta_table,
     _base_api,
     _create_dataframe,
-    _create_spark_session,
     resolve_workspace_id,
     resolve_lakehouse_id,
+    _read_delta_table,
+    _get_delta_table,
+    _mount,
+    create_abfss_path,
+    _pure_python_notebook,
 )
 from sempy_labs.directlake._guardrails import (
     get_sku_size,
@@ -33,6 +38,8 @@ def get_lakehouse_tables(
 ) -> pd.DataFrame:
     """
     Shows the tables of a lakehouse and their respective properties. Option to include additional properties relevant to Direct Lake guardrails.
+
+    This function can be executed in either a PySpark or pure Python notebook.
 
     This is a wrapper function for the following API: `Tables - List Tables <https://learn.microsoft.com/rest/api/fabric/lakehouse/tables/list-tables>`_ plus extended capabilities.
 
@@ -116,40 +123,59 @@ def get_lakehouse_tables(
     if extended:
         sku_value = get_sku_size(workspace_id)
         guardrail = get_directlake_guardrails_for_sku(sku_value)
-        spark = _create_spark_session()
-        df["Files"] = None
-        df["Row Groups"] = None
-        df["Table Size"] = None
+        local_path = _mount()
+
+        df["Files"], df["Row Groups"], df["Table Size"] = None, None, None
         if count_rows:
             df["Row Count"] = None
+
         for i, r in df.iterrows():
             table_name = r["Table Name"]
             if r["Type"] == "Managed" and r["Format"] == "delta":
-                detail_df = spark.sql(f"DESCRIBE DETAIL `{table_name}`").collect()[0]
-                num_files = detail_df.numFiles
-                size_in_bytes = detail_df.sizeInBytes
-
-                delta_table_path = f"Tables/{table_name}"
-                latest_files = (
-                    spark.read.format("delta").load(delta_table_path).inputFiles()
+                delta_table_path = create_abfss_path(
+                    lakehouse_id, workspace_id, table_name
                 )
-                file_paths = [f.split("/")[-1] for f in latest_files]
 
-                # Handle FileNotFoundError
+                if _pure_python_notebook():
+                    from deltalake import DeltaTable
+
+                    delta_table = DeltaTable(delta_table_path)
+                    latest_files = [
+                        file["path"]
+                        for file in delta_table.get_add_actions().to_pylist()
+                    ]
+                    size_in_bytes = 0
+                    for f in latest_files:
+                        local_file_path = os.path.join(
+                            local_path, "Tables", table_name, os.path.basename(f)
+                        )
+                        if os.path.exists(local_file_path):
+                            size_in_bytes += os.path.getsize(local_file_path)
+                    num_latest_files = len(latest_files)
+                else:
+                    delta_table = _get_delta_table(delta_table_path)
+                    latest_files = _read_delta_table(delta_table_path).inputFiles()
+                    table_df = delta_table.toDF()
+                    table_details = delta_table.detail().collect()[0].asDict()
+                    num_latest_files = table_details.get("numFiles", 0)
+                    size_in_bytes = table_details.get("sizeInBytes", 0)
+
+                table_path = os.path.join(local_path, "Tables", table_name)
+                file_paths = [os.path.basename(f) for f in latest_files]
+
                 num_rowgroups = 0
                 for filename in file_paths:
-                    try:
-                        num_rowgroups += pq.ParquetFile(
-                            f"/lakehouse/default/{delta_table_path}/{filename}"
-                        ).num_row_groups
-                    except FileNotFoundError:
-                        continue
-                df.at[i, "Files"] = num_files
+                    parquet_file = pq.ParquetFile(f"{table_path}/{filename}")
+                    num_rowgroups += parquet_file.num_row_groups
+                df.at[i, "Files"] = num_latest_files
                 df.at[i, "Row Groups"] = num_rowgroups
                 df.at[i, "Table Size"] = size_in_bytes
             if count_rows:
-                num_rows = spark.table(table_name).count()
-                df.at[i, "Row Count"] = num_rows
+                if _pure_python_notebook():
+                    row_count = delta_table.to_pyarrow_table().num_rows
+                else:
+                    row_count = table_df.count()
+                df.at[i, "Row Count"] = row_count
 
     if extended:
         intColumns = ["Files", "Row Groups", "Table Size"]
@@ -172,16 +198,16 @@ def get_lakehouse_tables(
     if export:
         if not lakehouse_attached():
             raise ValueError(
-                f"{icons.red_dot} In order to save the report.json file, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
+                f"{icons.red_dot} In order to save the dataframe, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
             )
 
-        lakeTName = "lakehouse_table_details"
-        lakeT_filt = df[df["Table Name"] == lakeTName]
+        lake_table_name = "lakehouse_table_details"
+        df_filt = df[df["Table Name"] == lake_table_name]
 
-        if lakeT_filt.empty:
+        if df_filt.empty:
             run_id = 1
         else:
-            max_run_id = _get_column_aggregate(table_name=lakeTName)
+            max_run_id = _get_column_aggregate(table_name=lake_table_name)
             run_id = max_run_id + 1
 
         export_df = df.copy()
@@ -225,13 +251,13 @@ def get_lakehouse_tables(
                     export_df[c] = export_df[c].astype(bool)
 
         print(
-            f"{icons.in_progress} Saving Lakehouse table properties to the '{lakeTName}' table in the lakehouse...\n"
+            f"{icons.in_progress} Saving Lakehouse table properties to the '{lake_table_name}' table in the lakehouse...\n"
         )
         export_df["Timestamp"] = datetime.now()
         export_df["RunId"] = run_id
 
         save_as_delta_table(
-            dataframe=export_df, delta_table_name=lakeTName, write_mode="append"
+            dataframe=export_df, delta_table_name=lake_table_name, write_mode="append"
         )
 
     return df
