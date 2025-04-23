@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import pyarrow.parquet as pq
 from datetime import datetime
@@ -14,6 +15,7 @@ from sempy_labs._helper_functions import (
     _get_delta_table,
     _mount,
     create_abfss_path,
+    _pure_python_notebook,
 )
 from sempy_labs.directlake._guardrails import (
     get_sku_size,
@@ -36,6 +38,8 @@ def get_lakehouse_tables(
 ) -> pd.DataFrame:
     """
     Shows the tables of a lakehouse and their respective properties. Option to include additional properties relevant to Direct Lake guardrails.
+
+    This function can be executed in either a PySpark or pure Python notebook.
 
     This is a wrapper function for the following API: `Tables - List Tables <https://learn.microsoft.com/rest/api/fabric/lakehouse/tables/list-tables>`_ plus extended capabilities.
 
@@ -132,15 +136,32 @@ def get_lakehouse_tables(
                     lakehouse_id, workspace_id, table_name
                 )
 
-                delta_table = _get_delta_table(delta_table_path)
-                latest_files = _read_delta_table(delta_table_path).inputFiles()
-                table_df = delta_table.toDF()
-                table_details = delta_table.detail().collect()[0].asDict()
-                num_latest_files = table_details.get("numFiles", 0)
-                size_in_bytes = table_details.get("sizeInBytes", 0)
+                if _pure_python_notebook():
+                    from deltalake import DeltaTable
 
-                table_path = f"{local_path}/Tables/{table_name}"
-                file_paths = [f.split("/")[-1] for f in latest_files]
+                    delta_table = DeltaTable(delta_table_path)
+                    latest_files = [
+                        file["path"]
+                        for file in delta_table.get_add_actions().to_pylist()
+                    ]
+                    size_in_bytes = 0
+                    for f in latest_files:
+                        local_file_path = os.path.join(
+                            local_path, "Tables", table_name, os.path.basename(f)
+                        )
+                        if os.path.exists(local_file_path):
+                            size_in_bytes += os.path.getsize(local_file_path)
+                    num_latest_files = len(latest_files)
+                else:
+                    delta_table = _get_delta_table(delta_table_path)
+                    latest_files = _read_delta_table(delta_table_path).inputFiles()
+                    table_df = delta_table.toDF()
+                    table_details = delta_table.detail().collect()[0].asDict()
+                    num_latest_files = table_details.get("numFiles", 0)
+                    size_in_bytes = table_details.get("sizeInBytes", 0)
+
+                table_path = os.path.join(local_path, "Tables", table_name)
+                file_paths = [os.path.basename(f) for f in latest_files]
 
                 num_rowgroups = 0
                 for filename in file_paths:
@@ -150,7 +171,11 @@ def get_lakehouse_tables(
                 df.at[i, "Row Groups"] = num_rowgroups
                 df.at[i, "Table Size"] = size_in_bytes
             if count_rows:
-                df.at[i, "Row Count"] = table_df.count()
+                if _pure_python_notebook():
+                    row_count = delta_table.to_pyarrow_table().num_rows
+                else:
+                    row_count = table_df.count()
+                df.at[i, "Row Count"] = row_count
 
     if extended:
         intColumns = ["Files", "Row Groups", "Table Size"]
@@ -173,7 +198,7 @@ def get_lakehouse_tables(
     if export:
         if not lakehouse_attached():
             raise ValueError(
-                f"{icons.red_dot} In order to save the report.json file, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
+                f"{icons.red_dot} In order to save the dataframe, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
             )
 
         lake_table_name = "lakehouse_table_details"

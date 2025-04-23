@@ -19,7 +19,7 @@ def get_lakehouse_columns(
     lakehouse: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
-    Shows the tables and columns of a lakehouse and their respective properties. This function can be executed in either a PySpark or pure Python notebook.
+    Shows the tables and columns of a lakehouse and their respective properties. This function can be executed in either a PySpark or pure Python notebook. Note that data types may show differently when using PySpark vs pure Python.
 
     Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
