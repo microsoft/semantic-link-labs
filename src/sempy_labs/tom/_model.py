@@ -938,19 +938,23 @@ class TOMWrapper:
         import Microsoft.AnalysisServices.Tabular as TOM
         import System
 
-        if cross_filtering_behavior is None:
+        if not cross_filtering_behavior:
             cross_filtering_behavior = "Automatic"
-        if security_filtering_behavior is None:
+        if not security_filtering_behavior:
             security_filtering_behavior = "OneDirection"
 
-        from_cardinality = from_cardinality.capitalize()
-        to_cardinality = to_cardinality.capitalize()
-        cross_filtering_behavior = cross_filtering_behavior.capitalize()
-        security_filtering_behavior = security_filtering_behavior.capitalize()
+        for var_name in [
+            "from_cardinality",
+            "to_cardinality",
+            "cross_filtering_behavior",
+            "security_filtering_behavior",
+        ]:
+            locals()[var_name] = locals()[var_name].capitalize()
+
+        cross_filtering_behavior = cross_filtering_behavior.replace("direct", "Direct")
         security_filtering_behavior = security_filtering_behavior.replace(
             "direct", "Direct"
         )
-        cross_filtering_behavior = cross_filtering_behavior.replace("direct", "Direct")
 
         rel = TOM.SingleColumnRelationship()
         rel.FromColumn = self.model.Tables[from_table].Columns[from_column]
@@ -962,13 +966,16 @@ class TOMWrapper:
             TOM.RelationshipEndCardinality, to_cardinality
         )
         rel.IsActive = is_active
-        rel.CrossFilteringBehavior = System.Enum.Parse(
-            TOM.CrossFilteringBehavior, cross_filtering_behavior
-        )
-        rel.SecurityFilteringBehavior = System.Enum.Parse(
-            TOM.SecurityFilteringBehavior, security_filtering_behavior
-        )
-        rel.RelyOnReferentialIntegrity = rely_on_referential_integrity
+        if cross_filtering_behavior != "Automatic":
+            rel.CrossFilteringBehavior = System.Enum.Parse(
+                TOM.CrossFilteringBehavior, cross_filtering_behavior
+            )
+        if security_filtering_behavior != "OneDirection":
+            rel.SecurityFilteringBehavior = System.Enum.Parse(
+                TOM.SecurityFilteringBehavior, security_filtering_behavior
+            )
+        if rely_on_referential_integrity:
+            rel.RelyOnReferentialIntegrity = True
 
         self.model.Relationships.Add(rel)
 
