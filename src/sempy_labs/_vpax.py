@@ -95,8 +95,9 @@ def create_vpax(
     analyze_direct_query : bool, default=False
         Whether to analyze DirectQuery tables.
     direct_lake_mode : str, default='ResidentOnly'
-        The Direct Lake extraction mode.
-        Options are 'ResidentOnly' or 'Full'.
+        The Direct Lake extraction mode. Options are 'ResidentOnly' or 'Full'. This parameter is ignored if read_stats_from_data is False. This parameter is only relevant for tables which use Direct Lake mode.
+        If set to 'ResidentOnly', column statistics are obtained only for the columns which are in memory.
+        If set to 'Full', column statistics are obtained for all columns - pending the proper identification of the Direct Lake source.
     overwrite : bool, default=False
         Whether to overwrite the .vpax file if it already exists in the lakehouse.
     """
