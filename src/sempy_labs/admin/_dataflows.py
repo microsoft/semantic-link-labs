@@ -1,4 +1,3 @@
-import pandas as pd
 from typing import Optional
 from sempy_labs._helper_functions import (
     _base_api,

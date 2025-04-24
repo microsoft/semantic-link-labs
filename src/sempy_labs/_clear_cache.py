@@ -165,7 +165,7 @@ def restore_semantic_model(
     }
 
     if password:
-        tmsl["restore"]["password"] = password 
+        tmsl["restore"]["password"] = password
 
     if force_restore:
         tmsl["restore"]["forceRestore"] = force_restore
@@ -175,7 +175,6 @@ def restore_semantic_model(
     print(
         f"{icons.green_dot} The '{dataset}' semantic model has been restored to the '{workspace_name}' workspace based on the '{file_path}' backup file."
     )
-
 
 
 @log
