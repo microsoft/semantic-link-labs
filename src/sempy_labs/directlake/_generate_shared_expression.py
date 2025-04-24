@@ -56,34 +56,33 @@ def generate_shared_expression(
             item=item_name, type=item_type, workspace=workspace_id
         )
 
-    item_type_rest = f"{item_type.lower()}s"
-    response = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/{item_type_rest}/{item_id}"
-    )
-
-    prop = response.json().get("properties")
-
-    if item_type == "Lakehouse":
-        sqlprop = prop.get("sqlEndpointProperties")
-        sqlEPCS = sqlprop.get("connectionString")
-        sqlepid = sqlprop.get("id")
-        provStatus = sqlprop.get("provisioningStatus")
-    elif item_type == "Warehouse":
-        sqlEPCS = prop.get("connectionString")
-        sqlepid = item_id
-        provStatus = None
-
-    if provStatus == "InProgress":
-        raise ValueError(
-            f"{icons.red_dot} The SQL Endpoint for the '{item_name}' lakehouse within the '{workspace_name}' workspace has not yet been provisioned. Please wait until it has been provisioned."
+    if use_sql_endpoint:
+        item_type_rest = f"{item_type.lower()}s"
+        response = _base_api(
+            request=f"/v1/workspaces/{workspace_id}/{item_type_rest}/{item_id}"
         )
 
-    start_expr = "let\n\tdatabase = "
-    end_expr = "\nin\n\tdatabase"
-    mid_expr = f'Sql.Database("{sqlEPCS}", "{sqlepid}")'
+        prop = response.json().get("properties")
 
-    # Build DL/OL expression
-    if not use_sql_endpoint and item_type == "Lakehouse":
-        return f"""let\n\tSource = AzureDataLakeStorage("server":"onelake.dfs.fabric.microsoft.com","path":"/{workspace_id}/{item_id}", [HierarchicalNavigation=true])\nin\n\tSource"""
-    else:
+        if item_type == "Lakehouse":
+            sqlprop = prop.get("sqlEndpointProperties")
+            sqlEPCS = sqlprop.get("connectionString")
+            sqlepid = sqlprop.get("id")
+            provStatus = sqlprop.get("provisioningStatus")
+        elif item_type == "Warehouse":
+            sqlEPCS = prop.get("connectionString")
+            sqlepid = item_id
+            provStatus = None
+
+        if provStatus == "InProgress":
+            raise ValueError(
+                f"{icons.red_dot} The SQL Endpoint for the '{item_name}' {item_type.lower()} within the '{workspace_name}' workspace has not yet been provisioned. Please wait until it has been provisioned."
+            )
+
+        start_expr = "let\n\tdatabase = "
+        end_expr = "\nin\n\tdatabase"
+        mid_expr = f'Sql.Database("{sqlEPCS}", "{sqlepid}")'
         return f"{start_expr}{mid_expr}{end_expr}"
+    else:
+        # Build DL/OL expression
+        return f"""let\n\tSource = AzureStorage.DataLake("onelake.dfs.fabric.microsoft.com/{workspace_id}/{item_id}")\nin\n\tSource"""
