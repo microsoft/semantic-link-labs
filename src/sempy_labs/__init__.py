@@ -1,3 +1,7 @@
+from sempy_labs._kusto import (
+    query_kusto,
+    query_workspace_monitoring,
+)
 from sempy_labs._delta_analyzer_history import (
     delta_analyzer_history,
 )
@@ -558,4 +562,6 @@ __all__ = [
     "delete_sql_database",
     "list_sql_databases",
     "delta_analyzer_history",
+    "query_kusto",
+    "query_workspace_monitoring",
 ]
