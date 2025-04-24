@@ -6,7 +6,10 @@ from sempy_labs._helper_functions import (
     _is_valid_uuid,
     _base_api,
     _create_dataframe,
+    _mount,
 )
+import os
+import base64
 
 
 def resolve_user_id(user: str | UUID) -> UUID:
@@ -130,6 +133,7 @@ def send_mail(
     bcc_recipients: str | List[str] = None,
     priority: str = "Normal",
     follow_up_flag: bool = False,
+    attachments: str | List[str] = None,
 ):
     """
     Sends an email to the specified recipients.
@@ -158,17 +162,11 @@ def send_mail(
         The email priority. Options: "Normal", "High", or "Low".
     follow_up_flag : bool, default=False
         Whether to set a follow-up flag for the email.
+    attachments : str | List[str], default=None
+        The abfss path or a list of the abfss paths of the attachments to include in the email.
     """
 
-    #import base64
-    #from sempy_labs._helper_functions import _create_spark_session
-    #attachments : str | List[str], default=None
-        #The abfss path or a list of the abfss paths of the attachments to include in the email.
-
-    if content_type.lower() == "html":
-        content_type = "HTML"
-    else:
-        content_type = "Text"
+    content_type = "HTML" if content_type.lower() == "html" else "Text"
 
     priority = priority.capitalize()
     if priority not in ["Normal", "High", "Low"]:
@@ -220,33 +218,66 @@ def send_mail(
     if follow_up_flag:
         payload["message"]["flag"] = {"flagStatus": "flagged"}
 
-    #if attachments:
-    #    if isinstance(attachments, str):
-    #        attachments = [attachments]
+    content_types = {
+        ".txt": "text/plain",
+        ".pdf": "application/pdf",
+        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ".csv": "text/csv",
+        ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".gif": "image/gif",
+        ".bmp": "image/bmp",
+        ".zip": "application/zip",
+        ".json": "application/json",
+        ".xml": "application/xml",
+        ".html": "text/html",
+        ".bim": "application/json",
+        ".pbix": "application/vnd.ms-powerbi.report",
+        ".pbip": "application/vnd.ms-powerbi.report",
+        ".pbit": "application/vnd.ms-powerbi.report",
+    }
 
-    #    for abfss_path in attachments:
-    #        file_name = abfss_path.split("/")[-1]
-    #        if "attachments" not in payload["message"]:
-    #            payload["message"]["attachments"] = []
+    def file_path_to_content_bytes(file_path):
 
-    #        spark = _create_spark_session()
-    #        spark_file = (
-    #            spark.read.format("binaryFile")
-    #            .load(abfss_path)
-    #            .select("content")
-    #            .collect()[0][0]
-    #        )
-    #        content_bytes = base64.b64encode(spark_file).decode(
-    #            "utf-8"
-    #        )  # Convert bytearray to base64 string
+        workspace_id = file_path.split("abfss://")[1].split("@")[0]
+        lakehouse_id = file_path.split(".microsoft.com/")[1].split("/")[0]
+        parts = file_path.split(".microsoft.com/")[1].split("/")[1:]
+        file = os.path.join(*parts)
 
-    #        payload["message"]["attachments"].append(
-    #            {
-    #                "@odata.type": "#microsoft.graph.fileAttachment",
-    #                "name": file_name,
-    #                "contentBytes": content_bytes,
-    #            }
-    #        )
+        local_path = _mount(lakehouse_id, workspace_id)
+        full_path = os.path.join(local_path, file_path)
+
+        with open(full_path, "rb") as file:
+            file_bytes = file.read()
+
+            return base64.b64encode(file_bytes).decode("utf-8")
+
+    if isinstance(attachments, str):
+        attachments = [attachments]
+    if attachments:
+        lst_attachments = []
+        for attach_path in attachments:
+            content_bytes = file_path_to_content_bytes(attach_path)
+            file_extension = os.path.splitext(attach_path)[1]
+            content_type = content_types.get(file_extension)
+            if not content_type:
+                raise ValueError(
+                    f"{icons.red_dot} Unsupported file type: {file_extension}. Supported types are: {', '.join(content_types.keys())}."
+                )
+            lst_attachments.append(
+                {
+                    "@odata.type": "#microsoft.graph.fileAttachment",
+                    "name": attach_path.split("/")[-1],
+                    "contentType": content_type,
+                    "contentBytes": content_bytes,
+                }
+            )
+
+        # Add to payload
+        payload["message"]["attachments"] = lst_attachments
 
     _base_api(
         request=f"users/{user_id}/sendMail",
@@ -256,4 +287,11 @@ def send_mail(
         method="post",
     )
 
-    print(f"{icons.green_dot} The email has been sent to {to_recipients}.")
+    printout = f"{icons.green_dot} The email has been sent to {to_recipients}"
+    if cc_recipients:
+        printout += f" and CCed to {cc_recipients}"
+    if bcc_recipients:
+        printout += f" and BCCed to {bcc_recipients}"
+    if attachments:
+        printout += f" with {len(attachments)} attachment(s)"
+    print(f"{printout}.")
