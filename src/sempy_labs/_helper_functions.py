@@ -1931,6 +1931,18 @@ def _update_dataframe_datatypes(dataframe: pd.DataFrame, column_map: dict):
                 dataframe[column] = dataframe[column].fillna(0).astype(int)
             elif data_type in ["str", "string"]:
                 dataframe[column] = dataframe[column].astype(str)
+            # Avoid having empty lists or lists with a value of None.
+            elif data_type in ["list"]:
+                dataframe[column] = dataframe[column].apply(
+                    lambda x: (
+                        None
+                        if (type(x) == list and len(x) == 1 and x[0] == None)
+                        or (type(x) == list and len(x) == 0)
+                        else x
+                    )
+                )
+            elif data_type in ["dict"]:
+                dataframe[column] = dataframe[column]
             else:
                 raise NotImplementedError
 

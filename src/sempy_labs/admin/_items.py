@@ -17,20 +17,26 @@ from sempy_labs._helper_functions import (
 
 
 def _resolve_item_id(
-    item_name: str,
+    item: str,
     type: Optional[str] = None,
     workspace: Optional[str | UUID] = None,
 ) -> UUID:
+    if _is_valid_uuid(item):
+        item_id = item
 
-    dfI = list_items(workspace=workspace, type=type)
-    dfI_filt = dfI[dfI["Item Name"] == item_name]
+    else:
+        workspace_id = _resolve_workspace_name_and_id(workspace)[1]
+        dfI = list_items(workspace=workspace_id, type=type)
+        dfI_filt = dfI[dfI["Item Name"] == item]
 
-    if len(dfI_filt) == 0:
-        raise ValueError(
-            f"The '{item_name}' {type} does not exist within the '{workspace}' workspace or is not of type '{type}'."
-        )
+        if len(dfI_filt) == 0:
+            raise ValueError(
+                f"The '{item}' {type} does not exist within the '{workspace}' workspace or is not of type '{type}'."
+            )
 
-    return dfI_filt["Item Id"].iloc[0]
+        item_id = dfI_filt["Item Id"].iloc[0]
+
+    return item_id
 
 
 def _resolve_item_name_and_id(
@@ -84,9 +90,8 @@ def list_items(
     capacity : str | uuid.UUID, default=None
         The capacity name or id.
     workspace : str | uuid.UUID, default=None
-        The Fabric workspace name.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
+        The Fabric workspace name or id.
+        Defaults to None which looks into all the workspaces.
     state : str, default=None
         The item state.
     type : str, default=None
