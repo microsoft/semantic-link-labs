@@ -28,6 +28,7 @@ def run_model_bpa_bulk(
     workspace: Optional[str | UUID | List[str | UUID]] = None,
     skip_models: Optional[str | List[str]] = ["ModelBPA", "Fabric Capacity Metrics"],
     skip_models_in_workspace: Optional[dict] = None,
+    skip_models_with_keyword: Optional[str | List[str]] = None,
 ):
     """
     Runs the semantic model Best Practice Analyzer across all semantic models in a workspace (or all accessible workspaces).
@@ -54,6 +55,9 @@ def run_model_bpa_bulk(
             "Workspace A": ["Dataset1", "Dataset2"],
             "Workspace B": ["Dataset5", "Dataset 8"],
         }
+    skip_models_with_keyword : str | List[str], default=None
+        A string or list of strings to filter out semantic models with a specific keyword in the name. Not case sensitive.
+        For example, if you want to skip all models with the word "Test" in the name, you can set this parameter to "Test".
     """
 
     if not lakehouse_attached():
@@ -103,6 +107,13 @@ def run_model_bpa_bulk(
         ):
             skip_models_wkspc = skip_models_in_workspace.get(wksp)
             dfD = dfD[~dfD["Dataset Name"].isin(skip_models_wkspc)]
+
+        # Skip models in workspace with keyword
+        if skip_models_with_keyword is not None:
+            if isinstance(skip_models_with_keyword, str):
+                skip_models_with_keyword = [skip_models_with_keyword]
+            for keyword in skip_models_with_keyword:
+                dfD = dfD[~dfD["Dataset Name"].str.contains(keyword, case=False)]
 
         # Exclude default semantic models
         if not dfD.empty:
