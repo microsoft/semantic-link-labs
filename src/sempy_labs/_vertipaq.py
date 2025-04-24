@@ -8,7 +8,6 @@ import datetime
 import warnings
 from sempy_labs._helper_functions import (
     format_dax_object_name,
-    resolve_lakehouse_name,
     save_as_delta_table,
     resolve_workspace_capacity,
     _get_column_aggregate,
@@ -20,7 +19,6 @@ from sempy_labs._helper_functions import (
 )
 from sempy_labs._list_functions import list_relationships, list_tables
 from sempy_labs.lakehouse import lakehouse_attached, get_lakehouse_tables
-from sempy_labs.directlake import get_direct_lake_source
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
@@ -176,10 +174,12 @@ def vertipaq_analyzer(
     )
 
     artifact_type = None
-    if is_direct_lake:
-        artifact_type, lakehouse_name, lakehouse_id, lakehouse_workspace_id = (
-            get_direct_lake_source(dataset=dataset_id, workspace=workspace_id)
-        )
+    lakehouse_workspace_id = None
+    lakehouse_name = None
+    # if is_direct_lake:
+    #    artifact_type, lakehouse_name, lakehouse_id, lakehouse_workspace_id = (
+    #        get_direct_lake_source(dataset=dataset_id, workspace=workspace_id)
+    #    )
 
     dfR["Missing Rows"] = 0
     dfR["Missing Rows"] = dfR["Missing Rows"].astype(int)
