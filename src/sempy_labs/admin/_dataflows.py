@@ -13,6 +13,7 @@ from sempy._utils._log import log
 @log
 def export_dataflow(
     dataflow: str | UUID,
+    workspace: Optional[str | UUID] = None,
 ) -> dict:
     """
     Shows a list of datasets for the organization.
@@ -25,13 +26,18 @@ def export_dataflow(
     ----------
     dataflow : str | UUID, default=None
         The dataflow Name or Id.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or id.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+        Only used if given a dataflow name and not an id.
 
     Returns
     -------
     dict
         Exported Json file.
     """
-    dataflow_id = _resolve_item_id(item=dataflow, type="dataflow")
+    dataflow_id = _resolve_item_id(item=dataflow, type="dataflow", workspace=workspace)
 
     url = f"/v1.0/myorg/admin/dataflows/{dataflow_id}/export"
 

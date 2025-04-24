@@ -25,7 +25,8 @@ def _resolve_item_id(
         item_id = item
 
     else:
-        dfI = list_items(workspace=workspace, type=type)
+        workspace_id = _resolve_workspace_name_and_id(workspace)[1]
+        dfI = list_items(workspace=workspace_id, type=type)
         dfI_filt = dfI[dfI["Item Name"] == item]
 
         if len(dfI_filt) == 0:
@@ -89,9 +90,8 @@ def list_items(
     capacity : str | uuid.UUID, default=None
         The capacity name or id.
     workspace : str | uuid.UUID, default=None
-        The Fabric workspace name.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
+        The Fabric workspace name or id.
+        Defaults to None which looks into all the workspaces.
     state : str, default=None
         The item state.
     type : str, default=None
