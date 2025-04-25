@@ -34,6 +34,8 @@ def list_dataflows(workspace: Optional[str | UUID | List[str | UUID]] = None):
     if workspace is None:
         dfW_filt = dfW.copy()
     else:
+        if isinstance(workspace, str):
+            workspace = [workspace]
         dfW_filt = dfW[(dfW["Name"].isin(workspace)) | (dfW["Id"].isin(workspace))]
 
     if dfW_filt.empty:
@@ -44,9 +46,6 @@ def list_dataflows(workspace: Optional[str | UUID | List[str | UUID]] = None):
     # Convert 'Name' column to list
     workspaces_list = dfW_filt['Id'].tolist()
 
-
-
-    # (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     columns = {
         "Workspace Id": "string",
@@ -59,9 +58,7 @@ def list_dataflows(workspace: Optional[str | UUID | List[str | UUID]] = None):
     }
     df = _create_dataframe(columns=columns)
 
-    # print(workspace_name,workspace_id)
-
-
+    
     for workspace_id in workspaces_list:
         (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace_id)
         response = _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/dataflows")
