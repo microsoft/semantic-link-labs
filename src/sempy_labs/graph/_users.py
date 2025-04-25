@@ -245,10 +245,10 @@ def send_mail(
         workspace_id = file_path.split("abfss://")[1].split("@")[0]
         lakehouse_id = file_path.split(".microsoft.com/")[1].split("/")[0]
         parts = file_path.split(".microsoft.com/")[1].split("/")[1:]
-        file = os.path.join(*parts)
+        f = os.path.join(*parts)
 
         local_path = _mount(lakehouse_id, workspace_id)
-        full_path = os.path.join(local_path, file_path)
+        full_path = os.path.join(local_path, f)
 
         with open(full_path, "rb") as file:
             file_bytes = file.read()
