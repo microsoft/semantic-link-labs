@@ -242,18 +242,18 @@ def send_mail(
 
     def file_path_to_content_bytes(file_path):
 
-        workspace_id = file_path.split("abfss://")[1].split("@")[0]
-        lakehouse_id = file_path.split(".microsoft.com/")[1].split("/")[0]
-        parts = file_path.split(".microsoft.com/")[1].split("/")[1:]
-        f = os.path.join(*parts)
+        path_parts = file_path.split("abfss://")[1].split("@")
+        workspace_id = path_parts[0]
+
+        rest = path_parts[1].split(".microsoft.com/")[1]
+        lakehouse_id, *file_parts = rest.split("/")
+        relative_path = os.path.join(*file_parts)
 
         local_path = _mount(lakehouse_id, workspace_id)
-        full_path = os.path.join(local_path, f)
+        full_path = os.path.join(local_path, relative_path)
 
         with open(full_path, "rb") as file:
-            file_bytes = file.read()
-
-            return base64.b64encode(file_bytes).decode("utf-8")
+            return base64.b64encode(file.read()).decode("utf-8")
 
     if isinstance(attachments, str):
         attachments = [attachments]
