@@ -7,21 +7,21 @@ from sempy_labs._helper_functions import (
     _create_dataframe,
     resolve_workspace_name,
 )
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 import sempy_labs._icons as icons
 from uuid import UUID
+import sempy.fabric as fabric
 
 
-def list_dataflows(workspace: Optional[str | UUID] = None):
+def list_dataflows(workspace: Optional[str | UUID | List[str | UUID]] = None):
     """
-    Shows a list of all dataflows which exist within a workspace.
+    Shows a list of all dataflows which exist within specified or all workspaces .
 
     Parameters
     ----------
-    workspace : str | uuid.UUID, default=None
-        The Fabric workspace name or ID.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
+    workspace : str | uuid.UUID | List[str | uuid.UUID], default=None
+        The workspace or list of workspaces to scan. Supports both the workspace name and the workspace id.
+        Defaults to None which scans all accessible workspaces.
 
     Returns
     -------
@@ -29,9 +29,28 @@ def list_dataflows(workspace: Optional[str | UUID] = None):
         A pandas dataframe showing the dataflows which exist within a workspace.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    #Pulling all the workspaces details
+    dfW = fabric.list_workspaces("type ne 'AdminInsights'")
+    if workspace is None:
+        dfW_filt = dfW.copy()
+    else:
+        dfW_filt = dfW[(dfW["Name"].isin(workspace)) | (dfW["Id"].isin(workspace))]
+
+    if dfW_filt.empty:
+        raise ValueError(
+            f"{icons.red_dot} There are no valid workspaces to assess. This is likely due to not having proper permissions to the workspace(s) entered in the 'workspace' parameter."
+        )
+
+    # Convert 'Name' column to list
+    workspaces_list = dfW_filt['Id'].tolist()
+
+
+
+    # (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     columns = {
+        "Workspace Id": "string",
+        "Workspace Name": "string",
         "Dataflow Id": "string",
         "Dataflow Name": "string",
         "Configured By": "string",
@@ -40,24 +59,31 @@ def list_dataflows(workspace: Optional[str | UUID] = None):
     }
     df = _create_dataframe(columns=columns)
 
-    response = _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/dataflows")
+    # print(workspace_name,workspace_id)
 
-    data = []  # Collect rows here
 
-    for v in response.json().get("value", []):
-        new_data = {
-            "Dataflow Id": v.get("objectId"),
-            "Dataflow Name": v.get("name"),
-            "Configured By": v.get("configuredBy"),
-            "Users": v.get("users", []),
-            "Generation": v.get("generation"),
-        }
-        data.append(new_data)
+    for workspace_id in workspaces_list:
+        (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace_id)
+        response = _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/dataflows")
 
-    if data:
-        df = pd.DataFrame(data)
+        data = []  # Collect rows here
 
-        _update_dataframe_datatypes(dataframe=df, column_map=columns)
+        for v in response.json().get("value", []):
+            new_data = {
+                "Workspace Id": workspace_id,
+                "Workspace Name": workspace_name,
+                "Dataflow Id": v.get("objectId"),
+                "Dataflow Name": v.get("name"),
+                "Configured By": v.get("configuredBy"),
+                "Users": v.get("users", []),
+                "Generation": v.get("generation"),
+            }
+            data.append(new_data)
+
+        if data:
+            df_temp = pd.DataFrame(data)
+            _update_dataframe_datatypes(dataframe=df_temp, column_map=columns)
+            df = pd.concat([df, df_temp], ignore_index=True)
 
     return df
 
