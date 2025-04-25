@@ -22,7 +22,7 @@ def download_report(
     """
     Downloads the specified report from the specified workspace to a Power BI .pbix file.
 
-    This is a wrapper function for the following API: `Reports - Export Report In Group <https://learn.microsoft.com/rest/api/power-bi/reports/export-report-in-group>`.
+    This is a wrapper function for the following API: `Reports - Export Report In Group <https://learn.microsoft.com/rest/api/power-bi/reports/export-report-in-group>`_.
 
     Parameters
     ----------
