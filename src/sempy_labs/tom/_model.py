@@ -5078,6 +5078,58 @@ class TOMWrapper:
             f"{icons.green_dot} The '{table_name}' table has been converted to Import mode."
         )
 
+    def copy_object(
+        self,
+        object,
+        target_dataset: str | UUID,
+        target_workspace: Optional[str | UUID] = None,
+        readonly: bool = False,
+    ):
+        """
+        Copies a semantic model object from the current semantic model to the target semantic model.
+
+        Parameters
+        ----------
+        object : TOM Object
+            The TOM object to be copied to the target semantic model. For example: tom.model.Tables['Sales'].
+        target_dataset : str | uuid.UUID
+            Name or ID of the target semantic model.
+        target_workspace : str | uuid.UUID, default=None
+            The Fabric workspace name or ID.
+            Defaults to None which resolves to the workspace of the attached lakehouse
+            or if no lakehouse attached, resolves to the workspace of the notebook.
+        readonly : bool, default=False
+            Whether the connection is read-only or read/write. Setting this to False enables read/write which saves the changes made back to the server.
+        """
+
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        clone = object.Clone()
+        with connect_semantic_model(
+            dataset=target_dataset, workspace=target_workspace, readonly=readonly,
+        ) as target_tom:
+            if isinstance(object, TOM.Table):
+                target_tom.model.Tables.Add(clone)
+            elif isinstance(object, TOM.Column):
+                target_tom.model.Tables[object.Parent.Name].Columns.Add(clone)
+            elif isinstance(object, TOM.Measure):
+                target_tom.model.Tables[object.Parent.Name].Measures.Add(clone)
+            elif isinstance(object, TOM.Hierarchy):
+                target_tom.model.Tables[object.Parent.Name].Hierarchies.Add(clone)
+            elif isinstance(object, TOM.Level):
+                target_tom.model.Tables[object.Parent.Parent.Name].Hierarchies[
+                    object.Parent.Name
+                ].Levels.Add(clone)
+            elif isinstance(object, TOM.Role):
+                target_tom.model.Roles.Add(clone)
+            elif isinstance(object, TOM.Relationship):
+                target_tom.model.Relationships.Add(clone)
+            else:
+                raise NotImplementedError(
+                    f"{icons.red_dot} The '{object.ObjectType}' object type is not supported."
+                )
+            print(f"{icons.green_dot} The '{object.Name}' {str(object.ObjectType).lower()} has been copied to the '{target_dataset}' semantic model within the '{target_workspace}' workspace.")
+
     def close(self):
 
         if not self._readonly and self.model is not None:

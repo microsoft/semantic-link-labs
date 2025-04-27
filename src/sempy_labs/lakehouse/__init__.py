@@ -21,6 +21,9 @@ from sempy_labs.lakehouse._blobs import (
     recover_lakehouse_object,
     list_blobs,
 )
+from sempy_labs.lakehouse._helper import (
+    is_v_ordered,
+)
 
 __all__ = [
     "get_lakehouse_columns",
@@ -36,4 +39,5 @@ __all__ = [
     "list_shortcuts",
     "recover_lakehouse_object",
     "list_blobs",
+    "is_v_ordered",
 ]

@@ -14,6 +14,28 @@ def is_v_ordered(
     workspace: Optional[str | UUID] = None,
     schema: Optional[str] = None,
 ) -> bool:
+    """
+    Checks if a delta table is v-ordered.
+
+    Parameters
+    ----------
+    table_name : str
+        The name of the table to check.
+    lakehouse : str | uuid.UUID, default=None
+        The Fabric lakehouse name or ID.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    schema : str, optional
+        The schema of the table to check. If not provided, the default schema is used.
+
+    Returns
+    -------
+    bool
+        True if the table is v-ordered, False otherwise.
+    """
 
     local_path = _mount(lakehouse=lakehouse, workspace=workspace)
     table_path = (
