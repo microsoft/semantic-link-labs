@@ -49,7 +49,7 @@ def backup_item_definitions(
         "Report",
         "SemanticModel",
         "Eventstream",
-        "Reflex",
+        # "Reflex",
         "SparkJobDefinition",
         "VariableLibrary",
     ]  # Dataflow, GraphQLApi
@@ -68,6 +68,7 @@ def backup_item_definitions(
         description = r["description"]
         folder_id = r.get("folderId")
         item_type = r["type"]
+        print(f"{item_name} : {item_type}")
         definition = _base_api(
             request=f"/v1/workspaces/{workspace_id}/items/{item_id}/getDefinition",
             method="post",
