@@ -36,8 +36,11 @@ def backup_item_definitions(
 
     items = ["Report", "SemanticModel"]
 
-    dfI = fabric.list_items(workspace=workspace)
-    dfI_filt = dfI[dfI["Type"].isin(items)]
+    #dfI = fabric.list_items(workspace=workspace)
+    response = _base_api(request=f"/v1/workspaces/{workspace_id}/items?recursive=True")
+    df = pd.json_normalize(response.json()['value'])
+    dfI_filt = df[df['type'].isin(items)]
+    #dfI_filt = dfI[dfI["Type"].isin(items)]
 
     # Save folder structure
     dfF = list_folders(workspace=workspace)
@@ -45,11 +48,11 @@ def backup_item_definitions(
         json.dump(dfF.to_json(), json_file, indent=4)
 
     for _, r in dfI_filt.iterrows():
-        item_name = r["Display Name"]
-        item_id = r["Id"]
-        description = r["Description"]
-        folder_id = r["Folder Id"]
-        item_type = r["Type"]
+        item_name = r["displayName"]
+        item_id = r["id"]
+        description = r["descritption"]
+        folder_id = r["folderid"]
+        item_type = r["type"]
         definition = _base_api(
             request=f"/v1/workspaces/{workspace_id}/items/{item_id}/getDefinition",
             method="post",
