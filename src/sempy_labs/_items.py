@@ -15,6 +15,29 @@ from sempy_labs.lakehouse._blobs import list_blobs
 from sempy_labs._folders import list_folders
 
 
+# Item types which have definitions
+item_list = [
+    "CopyJob",
+    "Eventhouse",
+    "DataPipeline",
+    "KQLDatabase",
+    "KQLDashboard",
+    "KQLQueryset",
+    "MirroredDatabase",
+    "MountedDataFactory",
+    "Environment",
+    "Notebook",
+    "Report",
+    "SemanticModel",
+    "Eventstream",
+    # "Reflex", # This API is not working
+    "SparkJobDefinition",
+    "VariableLibrary",
+    # Dataflow,
+    # GraphQLApi,
+]
+
+
 def backup_item_definitions(
     workspace: Optional[str | UUID] = None,
     lakehouse: Optional[str | UUID] = None,
@@ -34,30 +57,10 @@ def backup_item_definitions(
     local_path = _mount(lakehouse=lakehouse_id, workspace=lakehouse_workspace_id)
     path_prefix = f"{local_path}/Files/SLL_backup_item_definitions/{workspace_name}"
 
-    # Item types which have definitions
-    items = [
-        "CopyJob",
-        "Eventhouse",
-        "DataPipeline",
-        "KQLDatabase",
-        "KQLDashboard",
-        "KQLQueryset",
-        "MirroredDatabase",
-        "MountedDataFactory",
-        "Environment",
-        "Notebook",
-        "Report",
-        "SemanticModel",
-        "Eventstream",
-        # "Reflex",
-        "SparkJobDefinition",
-        "VariableLibrary",
-    ]  # Dataflow, GraphQLApi
-
     # dfI = fabric.list_items(workspace=workspace)
     response = _base_api(request=f"/v1/workspaces/{workspace_id}/items?recursive=True")
     df = pd.json_normalize(response.json()["value"])
-    dfI_filt = df[df["type"].isin(items)]
+    dfI_filt = df[df["type"].isin(item_list)]
     # dfI_filt = dfI[dfI["Type"].isin(items)]
 
     dfF = list_folders(workspace=workspace)
@@ -97,40 +100,48 @@ def backup_item_definitions(
 
 
 def restore_item_definitions(
-    source_workspace: str,
+    backup_file_path: str,
     target_workspace: Optional[str | UUID] = None,
-    lakehouse: Optional[str | UUID] = None,
-    lakehouse_workspace: Optional[str | UUID] = None,
 ):
+    """
+    Creates items based on an item definition backup file path.
+
+    Parameters
+    ----------
+    backup_file_path : str
+        The path to the backup file. For example: "abfss://{lakehouse_id}@onelake.dfs.fabric.microsoft.com/{workspace_id}/Files/SLL_backup_item_definitions/My Workspace Name"
+    target_workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
 
     (target_workspace_name, target_workspace_id) = resolve_workspace_name_and_id(
         target_workspace
     )
-    (lakehouse_workspace_name, lakehouse_workspace_id) = resolve_workspace_name_and_id(
-        lakehouse_workspace
-    )
-    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
-        lakehouse=lakehouse, workspace=lakehouse_workspace_id
-    )
+
+    lakehouse_workspace_id = backup_file_path.split('abfss://')[1].split('@')[0]
+    lakehouse_id = backup_file_path.split('microsoft.com/')[1].split('/')[0]
+    folder_path = backup_file_path.split(f'microsoft.com/{lakehouse_id}/')[1]
 
     blobs = list_blobs(
         lakehouse=lakehouse_id, workspace=lakehouse_workspace_id, container="Files"
     )
     blobs_filt = blobs[
-        (blobs["Blob Name"].str.startswith(f"{lakehouse_id}/Files/{source_workspace}"))
+        (blobs["Blob Name"].str.startswith(f"{lakehouse_id}/{folder_path}"))
         & (blobs["Blob Name"].str.endswith(".json"))
     ]
 
     local_path = _mount(lakehouse=lakehouse_id, workspace=lakehouse_workspace_id)
 
     # Create the folder structure
-    with open(
-        f"{local_path}/Files/folderStructure.json", "r", encoding="utf-8"
-    ) as file:
-        df_folders = pd.json_normalize(json.load(file))
-        for _, r in df_folders.iterrows():
-            folder_name = r["Folder Name"]
-            folder_path = r["Folder Path"]
+    #with open(
+    #    f"{local_path}/Files/folderStructure.json", "r", encoding="utf-8"
+    #) as file:
+    #    df_folders = pd.json_normalize(json.load(file))
+    #    for _, r in df_folders.iterrows():
+    #        folder_name = r["Folder Name"]
+    #        folder_path = r["Folder Path"]
 
     for _, r in blobs_filt.iterrows():
         blob_name = r["Blob Name"]
