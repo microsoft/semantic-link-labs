@@ -37,7 +37,12 @@ def backup_item_definitions(
     items = ["Report", "SemanticModel"]
 
     dfI = fabric.list_items(workspace=workspace)
-    dfI_filt = dfI[dfI["Type"].isin([items])]
+    dfI_filt = dfI[dfI["Type"].isin(items)]
+
+    # Save folder structure
+    dfF = list_folders(workspace=workspace)
+    with open(f"{path_prefix}/folderStructure.json", "w") as json_file:
+        json.dump(dfF.to_json(), json_file, indent=4)
 
     for _, r in dfI_filt.iterrows():
         item_name = r["Display Name"]
@@ -66,11 +71,6 @@ def backup_item_definitions(
         print(
             f"{icons.green_dot} The '{item_name}' {item_type}' definition has been backed up to the Files section of the '{lakehouse_name}' lakehouse within the '{lakehouse_workspace_name}' workspace."
         )
-
-    # Save folder structure
-    dfF = list_folders(workspace=workspace)
-    with open(f"{path_prefix}/folderStructure.json", "w") as json_file:
-        json.dump(dfF.to_json(), json_file, indent=4)
 
 
 def restore_item_definitions(
