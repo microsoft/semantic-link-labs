@@ -32,26 +32,41 @@ def backup_item_definitions(
         lakehouse=lakehouse, workspace=lakehouse_workspace_id
     )
     local_path = _mount(lakehouse=lakehouse_id, workspace=lakehouse_workspace_id)
-    path_prefix = f"{local_path}/Files/{workspace_name}/"
+    path_prefix = f"{local_path}/Files/SLL_backup_item_definitions/{workspace_name}"
 
-    items = ["Report", "SemanticModel"]
+    # Item types which have definitions
+    items = [
+        "CopyJob",
+        "Eventhouse",
+        "DataPipeline",
+        "KQLDatabase",
+        "KQLDashboard",
+        "KQLQueryset",
+        "MirroredDatabase",
+        "MountedDataFactory",
+        "Environment",
+        "Notebook",
+        "Report",
+        "SemanticModel",
+        "Eventstream",
+        "Reflex",
+        "SparkJobDefinition",
+        "VariableLibrary",
+    ]  # Dataflow, GraphQLApi
 
-    #dfI = fabric.list_items(workspace=workspace)
+    # dfI = fabric.list_items(workspace=workspace)
     response = _base_api(request=f"/v1/workspaces/{workspace_id}/items?recursive=True")
-    df = pd.json_normalize(response.json()['value'])
-    dfI_filt = df[df['type'].isin(items)]
-    #dfI_filt = dfI[dfI["Type"].isin(items)]
+    df = pd.json_normalize(response.json()["value"])
+    dfI_filt = df[df["type"].isin(items)]
+    # dfI_filt = dfI[dfI["Type"].isin(items)]
 
-    # Save folder structure
     dfF = list_folders(workspace=workspace)
-    with open(f"{path_prefix}/folderStructure.json", "w") as json_file:
-        json.dump(dfF.to_json(), json_file, indent=4)
 
     for _, r in dfI_filt.iterrows():
         item_name = r["displayName"]
         item_id = r["id"]
-        description = r["descritption"]
-        folder_id = r["folderid"]
+        description = r["description"]
+        folder_id = r.get("folderId")
         item_type = r["type"]
         definition = _base_api(
             request=f"/v1/workspaces/{workspace_id}/items/{item_id}/getDefinition",
@@ -60,14 +75,18 @@ def backup_item_definitions(
             status_codes=None,
         )
 
-        df_filt = dfF[dfF["Folder Id"] == folder_id]
-        folder_path = df_filt["Folder Path"].iloc[0]
-
-        file_path = f"{path_prefix}/{item_type}/{item_name}.json"
+        # Obtain the folder path
+        folder_path = ""
+        if folder_id:
+            df_filt = dfF[dfF["Folder Id"] == folder_id]
+            if not df_filt.empty:
+                folder_path = df_filt["Folder Path"].iloc[0]
 
         definition["description"] = description
         definition["folderPath"] = folder_path
 
+        file_path = f"{path_prefix}/{item_type}/{item_name}.json"
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
         with open(file_path, "w") as json_file:
             json.dump(definition, json_file, indent=4)
 
