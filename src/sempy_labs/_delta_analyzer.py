@@ -163,7 +163,9 @@ def delta_analyzer(
     max_rows_per_row_group = 0
     min_rows_per_row_group = float("inf")
 
-    is_vorder = is_v_ordered(table_name=table_name, lakehouse=lakehouse, workspace=workspace, schema=schema)
+    is_vorder = is_v_ordered(
+        table_name=table_name, lakehouse=lakehouse, workspace=workspace, schema=schema
+    )
 
     # Get the common details of the Delta table
     delta_table = _get_delta_table(delta_table_path)

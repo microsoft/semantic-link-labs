@@ -5106,7 +5106,9 @@ class TOMWrapper:
 
         clone = object.Clone()
         with connect_semantic_model(
-            dataset=target_dataset, workspace=target_workspace, readonly=readonly,
+            dataset=target_dataset,
+            workspace=target_workspace,
+            readonly=readonly,
         ) as target_tom:
             if isinstance(object, TOM.Table):
                 target_tom.model.Tables.Add(clone)
@@ -5128,7 +5130,9 @@ class TOMWrapper:
                 raise NotImplementedError(
                     f"{icons.red_dot} The '{object.ObjectType}' object type is not supported."
                 )
-            print(f"{icons.green_dot} The '{object.Name}' {str(object.ObjectType).lower()} has been copied to the '{target_dataset}' semantic model within the '{target_workspace}' workspace.")
+            print(
+                f"{icons.green_dot} The '{object.Name}' {str(object.ObjectType).lower()} has been copied to the '{target_dataset}' semantic model within the '{target_workspace}' workspace."
+            )
 
     def close(self):
 
