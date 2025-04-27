@@ -4,7 +4,6 @@ from datetime import datetime
 import os
 from uuid import UUID
 from typing import Dict, Optional
-import pyarrow.dataset as ds
 import pyarrow.parquet as pq
 from sempy_labs._helper_functions import (
     create_abfss_path,
@@ -23,7 +22,12 @@ from sempy_labs._helper_functions import (
 )
 from sempy._utils._log import log
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
-from sempy_labs.lakehouse._lakehouse import lakehouse_attached
+from sempy_labs.lakehouse._lakehouse import (
+    lakehouse_attached,
+)
+from sempy_labs.lakehouse._helper import (
+    is_v_ordered,
+)
 import sempy_labs._icons as icons
 from tqdm.auto import tqdm
 
@@ -113,11 +117,6 @@ def delta_analyzer(
         lakehouse_id, workspace_id, table_name, schema=schema
     )
     local_path = _mount(lakehouse=lakehouse, workspace=workspace)
-    table_path = (
-        f"{local_path}/Tables/{schema}/{table_name}"
-        if schema
-        else f"{local_path}/Tables/{table_name}"
-    )
 
     parquet_file_df_columns = {
         # "Dataset": "string",
@@ -164,8 +163,7 @@ def delta_analyzer(
     max_rows_per_row_group = 0
     min_rows_per_row_group = float("inf")
 
-    ds_schema = ds.dataset(table_path).schema.metadata
-    is_vorder = any(b"vorder" in key for key in ds_schema.keys())
+    is_vorder = is_v_ordered(table_name=table_name, lakehouse=lakehouse, workspace=workspace, schema=schema)
 
     # Get the common details of the Delta table
     delta_table = _get_delta_table(delta_table_path)
