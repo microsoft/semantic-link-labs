@@ -13,7 +13,9 @@ from sempy_labs._mounted_data_factories import (
     get_mounted_data_factory_definition,
     delete_mounted_data_factory,
 )
-
+from sempy_labs._tags import (
+    list_tags,
+)
 from sempy_labs._semantic_models import (
     get_semantic_model_refresh_schedule,
     enable_semantic_model_scheduled_refresh,
@@ -564,4 +566,5 @@ __all__ = [
     "delta_analyzer_history",
     "query_kusto",
     "query_workspace_monitoring",
+    "list_tags",
 ]
