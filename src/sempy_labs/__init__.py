@@ -1,3 +1,7 @@
+from sempy_labs._variable_libraries import (
+    list_variable_libraries,
+    delete_variable_library,
+)
 from sempy_labs._kusto import (
     query_kusto,
     query_workspace_monitoring,
@@ -564,4 +568,6 @@ __all__ = [
     "delta_analyzer_history",
     "query_kusto",
     "query_workspace_monitoring",
+    "list_variable_libraries",
+    "delete_variable_library",
 ]
