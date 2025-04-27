@@ -3662,25 +3662,27 @@ class TOMWrapper:
         import Microsoft.AnalysisServices.Tabular as TOM
         import System
 
-        if not self.has_incremental_refresh_policy(table_name=table_name):
+        if not self.has_incremental_refresh_policy(
+            object=self.model.Tables[table_name]
+        ):
             print(
                 f"The '{table_name}' table does not have an incremental refresh policy."
             )
             return
 
-        incGran = ["Day", "Month", "Quarter", "Year"]
+        granularities = ["Day", "Month", "Quarter", "Year"]
 
         incremental_granularity = incremental_granularity.capitalize()
         rolling_window_granularity = rolling_window_granularity.capitalize()
 
-        if incremental_granularity not in incGran:
+        if incremental_granularity not in granularities:
             raise ValueError(
-                f"{icons.red_dot} Invalid 'incremental_granularity' value. Please choose from the following options: {incGran}."
+                f"{icons.red_dot} Invalid 'incremental_granularity' value. Please choose from the following options: {granularities}."
             )
 
-        if rolling_window_granularity not in incGran:
+        if rolling_window_granularity not in granularities:
             raise ValueError(
-                f"{icons.red_dot} Invalid 'rolling_window_granularity' value. Please choose from the following options: {incGran}."
+                f"{icons.red_dot} Invalid 'rolling_window_granularity' value. Please choose from the following options: {granularities}."
             )
 
         if rolling_window_periods < 1:
