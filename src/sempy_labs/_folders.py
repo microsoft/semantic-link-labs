@@ -100,7 +100,7 @@ def create_folder(
     name,
     workspace: Optional[str | UUID] = None,
     parent_folder: Optional[str | UUID] = None,
-):
+) -> UUID:
     """
     Creates a new folder in the specified workspace.
 
@@ -114,6 +114,11 @@ def create_folder(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     parent_folder : str | uuid.UUID, default=None
         The ID of the parent folder. If not provided, the folder will be created in the root folder of the workspace.
+
+    Returns
+    -------
+    uuid.UUID
+        The ID of the created folder.
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -128,7 +133,7 @@ def create_folder(
         parent_folder_id = resolve_folder_id(folder=parent_folder, workspace=workspace)
         payload["parentFolderId"] = parent_folder_id
 
-    _base_api(
+    response = _base_api(
         request=url,
         client="fabric_sp",
         method="post",
@@ -139,6 +144,8 @@ def create_folder(
     print(
         f"{icons.green_dot} The '{name}' folder has been successfully created within the '{workspace_name}' workspace."
     )
+
+    return response.json().get("id")
 
 
 def resolve_folder_id(

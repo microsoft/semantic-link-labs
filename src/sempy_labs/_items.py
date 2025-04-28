@@ -12,7 +12,11 @@ from typing import Optional
 import json
 import sempy_labs._icons as icons
 from sempy_labs.lakehouse._blobs import list_blobs
-from sempy_labs._folders import list_folders
+from sempy_labs._folders import (
+    list_folders,
+    create_folder,
+)
+import re
 
 
 # Item types which have definitions
@@ -120,9 +124,9 @@ def restore_item_definitions(
         target_workspace
     )
 
-    lakehouse_workspace_id = backup_file_path.split('abfss://')[1].split('@')[0]
-    lakehouse_id = backup_file_path.split('microsoft.com/')[1].split('/')[0]
-    folder_path = backup_file_path.split(f'microsoft.com/{lakehouse_id}/')[1]
+    lakehouse_workspace_id = backup_file_path.split("abfss://")[1].split("@")[0]
+    lakehouse_id = backup_file_path.split("microsoft.com/")[1].split("/")[0]
+    folder_path = backup_file_path.split(f"microsoft.com/{lakehouse_id}/")[1]
 
     blobs = list_blobs(
         lakehouse=lakehouse_id, workspace=lakehouse_workspace_id, container="Files"
@@ -134,14 +138,36 @@ def restore_item_definitions(
 
     local_path = _mount(lakehouse=lakehouse_id, workspace=lakehouse_workspace_id)
 
-    # Create the folder structure
-    #with open(
-    #    f"{local_path}/Files/folderStructure.json", "r", encoding="utf-8"
-    #) as file:
-    #    df_folders = pd.json_normalize(json.load(file))
-    #    for _, r in df_folders.iterrows():
-    #        folder_name = r["Folder Name"]
-    #        folder_path = r["Folder Path"]
+    # Creating the folder structure
+    def ensure_folder_path_exists(folder_path):
+        # Normalize the paths if necessary
+        existing_paths = set(
+            dfF["Folder Path"].str.strip("/")
+        )  # remove leading/trailing slashes for easier comparison
+
+        parts = folder_path.strip("/").split("/")
+        current_path = ""
+
+        for part in parts:
+            if current_path:
+                current_path += "/" + part
+            else:
+                current_path = part
+
+            if current_path not in existing_paths:
+                # Create the folder since it does not exist
+                parent_folder = (
+                    "/" + "/".join(current_path.split("/")[:-1])
+                    if "/" in current_path
+                    else "/"
+                )
+                # creation_folder = '/' + current_path
+                create_folder(
+                    name=part,
+                    workspace=target_workspace_id,
+                    parent_folder=parent_folder,
+                )
+                existing_paths.add(current_path)
 
     for _, r in blobs_filt.iterrows():
         blob_name = r["Blob Name"]
@@ -155,18 +181,34 @@ def restore_item_definitions(
         with open(definition_file_path, "r", encoding="utf-8") as file:
             definition = json.load(file)
 
-        description = definition.get("definition")
+        description = definition.get("description")
         folder_path = definition.get("folderPath")
-
-        definition.pop("description")
-        definition.pop("folderPath")
+        raw_definition = definition.get('definition')
 
         payload = {
             "displayName": item_name,
             "type": item_type,
-            "description": description,
-            "definition": json.dumps(definition, indent=2),
+            "definition": raw_definition,
         }
+
+        if description:
+            payload["description"] = description
+        if folder_path:
+            dfF = list_folders(workspace=target_workspace_id)
+            dfF_filt = dfF[dfF["Folder Path"] == folder_path]
+            if not dfF_filt.empty:
+                folder_id = dfF_filt["Folder Id"].iloc[0]
+            else:
+                folder_id = None
+                # Create the folder if it does not exist
+                ensure_folder_path_exists(folder_path)
+                # Get the folder ID again after creating it
+                dfF = list_folders(workspace=target_workspace_id)
+                dfF_filt = dfF[dfF["Folder Path"] == folder_path]
+                if not dfF_filt.empty:
+                    folder_id = dfF_filt["Folder Id"].iloc[0]
+
+            payload["folderId"] = folder_id
 
         # Create items...
         _base_api(
@@ -176,3 +218,16 @@ def restore_item_definitions(
             status_codes=[201, 202],
             lro_return_status_code=True,
         )
+
+        print(f"{icons.green_dot} Created the '{item_name}' {_split_camel_case(item_type)} within the '{target_workspace_name}' workspace")
+
+
+def _split_camel_case(text):
+    # Find acronym groups or normal words
+    matches = re.finditer(r'([A-Z]+(?=[A-Z][a-z])|[A-Z][a-z]*)', text)
+    words = [m.group(0) for m in matches]
+
+    # Lowercase normal words, keep acronyms as-is
+    words = [w if w.isupper() else w.lower() for w in words]
+
+    return ' '.join(words)

@@ -120,6 +120,7 @@ from sempy_labs._environments import (
     create_environment,
     delete_environment,
     publish_environment,
+    list_environments,
 )
 from sempy_labs._clear_cache import (
     clear_cache,
@@ -558,4 +559,5 @@ __all__ = [
     "delete_sql_database",
     "list_sql_databases",
     "delta_analyzer_history",
+    "list_environments",
 ]
