@@ -77,29 +77,30 @@ def query_kusto(
 
     df = pd.DataFrame(rows, columns=[col["ColumnName"] for col in columns_info])
 
-    for col_info in columns_info:
-        col_name = col_info["ColumnName"]
-        data_type = col_info["DataType"]
+    return df
+    # for col_info in columns_info:
+    #    col_name = col_info["ColumnName"]
+    #    data_type = col_info["DataType"]
 
-        try:
-            if data_type == "DateTime":
-                df[col_name] = pd.to_datetime(df[col_name])
-            elif data_type in ["Int64", "Int32", "Long"]:
-                df[col_name] = (
-                    pd.to_numeric(df[col_name], errors="coerce")
-                    .fillna(0)
-                    .astype("int64")
-                )
-            elif data_type == "Real" or data_type == "Double":
-                df[col_name] = pd.to_numeric(df[col_name], errors="coerce")
-            else:
-                # Convert any other type to string, change as needed
-                df[col_name] = df[col_name].astype(str)
-        except Exception as e:
-            print(
-                f"{icons.yellow_dot} Could not convert column {col_name} to {data_type}, defaulting to string: {str(e)}"
-            )
-            df[col_name] = df[col_name].astype(str)
+    #    try:
+    #        if data_type == "DateTime":
+    #            df[col_name] = pd.to_datetime(df[col_name])
+    #        elif data_type in ["Int64", "Int32", "Long"]:
+    #            df[col_name] = (
+    #                pd.to_numeric(df[col_name], errors="coerce")
+    #                .fillna(0)
+    #                .astype("int64")
+    #            )
+    #        elif data_type == "Real" or data_type == "Double":
+    #            df[col_name] = pd.to_numeric(df[col_name], errors="coerce")
+    #        else:
+    #            # Convert any other type to string, change as needed
+    #            df[col_name] = df[col_name].astype(str)
+    #    except Exception as e:
+    #        print(
+    #            f"{icons.yellow_dot} Could not convert column {col_name} to {data_type}, defaulting to string: {str(e)}"
+    #        )
+    #        df[col_name] = df[col_name].astype(str)
 
     return df
 
