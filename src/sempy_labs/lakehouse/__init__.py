@@ -24,6 +24,9 @@ from sempy_labs.lakehouse._blobs import (
 from sempy_labs.lakehouse._livy_sessions import (
     list_livy_sessions,
 )
+from sempy_labs.lakehouse._helper import (
+    is_v_ordered,
+)
 
 __all__ = [
     "get_lakehouse_columns",
@@ -40,4 +43,5 @@ __all__ = [
     "recover_lakehouse_object",
     "list_blobs",
     "list_livy_sessions",
+    "is_v_ordered",
 ]
