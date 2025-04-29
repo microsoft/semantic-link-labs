@@ -124,6 +124,7 @@ from sempy_labs._environments import (
     create_environment,
     delete_environment,
     publish_environment,
+    list_environments,
 )
 from sempy_labs._clear_cache import (
     clear_cache,
@@ -564,4 +565,5 @@ __all__ = [
     "delta_analyzer_history",
     "query_kusto",
     "query_workspace_monitoring",
+    "list_environments",
 ]

@@ -3,6 +3,7 @@ import sempy_labs._icons as icons
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
+    resolve_workspace_id,
     _base_api,
     _create_dataframe,
     resolve_item_id,
@@ -67,10 +68,16 @@ def list_environments(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         "Environment Name": "string",
         "Environment Id": "string",
         "Description": "string",
+        "Publish State": "string",
+        "Publish Target Version": "string",
+        "Publish Start Time": "string",
+        "Publish End Time": "string",
+        "Spark Libraries State": "string",
+        "Spark Settings State": "string",
     }
     df = _create_dataframe(columns=columns)
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
 
     responses = _base_api(
         request=f"/v1/workspaces/{workspace_id}/environments",
@@ -80,10 +87,21 @@ def list_environments(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
     for r in responses:
         for v in r.get("value", []):
+            pub = v.get("properties", {}).get("publishDetails", {})
             new_data = {
                 "Environment Name": v.get("displayName"),
                 "Environment Id": v.get("id"),
                 "Description": v.get("description"),
+                "Publish State": pub.get("state"),
+                "Publish Target Version": pub.get("targetVersion"),
+                "Publish Start Time": pub.get("startTime"),
+                "Publish End Time": pub.get("endTime"),
+                "Spark Libraries State": pub.get("componentPublishInfo", {})
+                .get("sparkLibraries", {})
+                .get("state"),
+                "Spark Settings State": pub.get("componentPublishInfo", {})
+                .get("sparkSettings", {})
+                .get("state"),
             }
             df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
