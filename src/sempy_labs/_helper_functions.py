@@ -278,10 +278,9 @@ def get_item_definition(
     return_dataframe: bool = True,
     decode: bool = True,
 ):
-
     from sempy_labs._utils import item_types
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
     item_id = resolve_item_id(item, type, workspace_id)
     item_type_url = item_types.get(type)[1]
     path = item_types.get(type)[2]
@@ -304,7 +303,7 @@ def get_item_definition(
         p.get("payload") for p in result["definition"]["parts"] if p.get("path") == path
     )
     if decode:
-        json.loads(_decode_b64(value))
+        return json.loads(_decode_b64(value))
     else:
         return value
 

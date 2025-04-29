@@ -178,6 +178,7 @@ def update_report_from_reportjson(
     )
 
 
+@log
 def get_report_definition(
     report: str | UUID,
     workspace: Optional[str | UUID] = None,
@@ -205,9 +206,7 @@ def get_report_definition(
         The collection of report definition files within a pandas dataframe.
     """
 
-    return get_item_definition(
-        item=report, type="Report", workspace=workspace, return_dataframe=True
-    )
+    return get_item_definition(item=report, type="Report", workspace=workspace, return_dataframe=return_dataframe)
 
 
 @log
