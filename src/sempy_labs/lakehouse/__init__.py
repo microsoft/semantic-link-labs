@@ -26,6 +26,9 @@ from sempy_labs.lakehouse._livy_sessions import (
 )
 from sempy_labs.lakehouse._helper import (
     is_v_ordered,
+    delete_lakehouse,
+    update_lakehouse,
+    load_table,
 )
 
 __all__ = [
@@ -44,4 +47,7 @@ __all__ = [
     "list_blobs",
     "list_livy_sessions",
     "is_v_ordered",
+    "delete_lakehouse",
+    "update_lakehouse",
+    "load_table",
 ]

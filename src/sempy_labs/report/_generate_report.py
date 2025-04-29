@@ -206,7 +206,12 @@ def get_report_definition(
         The collection of report definition files within a pandas dataframe.
     """
 
-    return get_item_definition(item=report, type="Report", workspace=workspace, return_dataframe=return_dataframe)
+    return get_item_definition(
+        item=report,
+        type="Report",
+        workspace=workspace,
+        return_dataframe=return_dataframe,
+    )
 
 
 @log

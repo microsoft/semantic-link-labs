@@ -1,10 +1,16 @@
 from uuid import UUID
-from typing import Optional
+from typing import Optional, Literal
 import pyarrow.dataset as ds
 from sempy_labs._helper_functions import (
     _mount,
+    delete_item,
+    _base_api,
+    resolve_workspace_name_and_id,
+    resolve_lakehouse_name_and_id,
 )
 from sempy._utils._log import log
+import sempy_labs._icons as icons
+import os
 
 
 @log
@@ -46,3 +52,151 @@ def is_v_ordered(
     ds_schema = ds.dataset(table_path).schema.metadata
 
     return any(b"vorder" in key for key in ds_schema.keys())
+
+
+def delete_lakehouse(
+    lakehouse: str | UUID, workspace: Optional[str | UUID] = None
+) -> None:
+    """
+    Deletes a lakehouse.
+
+    Parameters
+    ----------
+    lakehouse : str | uuid.UUID
+        The name or ID of the lakehouse to delete.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    delete_item(item=lakehouse, item_type="lakehouse", workspace=workspace)
+
+
+def update_lakehouse(
+    name: Optional[str] = None,
+    description: Optional[str] = None,
+    lakehouse: Optional[str | UUID] = None,
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Updates a lakehouse.
+
+    Parameters
+    ----------
+    name: str, default=None
+        The new name of the lakehouse.
+        Defaults to None which does not update the name.
+    description: str, default=None
+        The new description of the lakehouse.
+        Defaults to None which does not update the description.
+    lakehouse : str | uuid.UUID, default=None
+        The name or ID of the lakehouse to update.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    if not name and not description:
+        raise ValueError(
+            f"{icons.red_dot} Either name or description must be provided."
+        )
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+        lakehouse, workspace_id
+    )
+
+    payload = {}
+    if name:
+        payload["displayName"] = name
+    if description:
+        payload["description"] = description
+
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/lakehouses/{lakehouse_id}",
+        method="patch",
+        client="fabric_sp",
+        payload=payload,
+    )
+
+    print(
+        f"{icons.green_dot} The '{lakehouse_name}' lakehouse within the '{workspace_name}' workspace has been updated accordingly."
+    )
+
+
+@log
+def load_table(
+    table_name: str,
+    file_path: str,
+    mode: Literal["Overwrite", "Append"],
+    lakehouse: Optional[str | UUID] = None,
+    workspace: Optional[str | UUID] = None,
+    recursive: bool = False,
+):
+    """
+    Loads a table into a lakehouse.
+
+    Parameters
+    ----------
+    table_name : str
+        The name of the table to load.
+    file_path : str
+        The path to the data to load.
+    mode : Literal["Overwrite", "Append"]
+        The mode to use when loading the data.
+        "Overwrite" will overwrite the existing data.
+        "Append" will append the data to the existing data.
+    lakehouse : str | uuid.UUID, default=None
+        The name or ID of the lakehouse to load the table into.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    recursive: bool, default=False
+        Indicates whether to search data files recursively or not, when loading a table from a folder.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+        lakehouse, workspace_id
+    )
+
+    file_extension = os.path.splitext(file_path)[1]
+
+    payload = {
+        "relativePath": file_path,
+        "pathType": "File",
+        "mode": mode,
+        "formatOptions": {},
+    }
+
+    if file_extension == ".csv":
+        payload["formatOptions"] = {"format": "Csv", "header": True, "delimiter": ","}
+    elif file_extension == ".parquet":
+        payload["formatOptions"] = {
+            "format": "Parquet",
+            "header": True,
+        }
+    # Solve for loading folders
+    # elif file_extension == '':
+    #    payload['pathType'] = "Folder"
+    #    payload["recursive"] = recursive
+    #    payload['formatOptions']
+    else:
+        raise NotImplementedError()
+
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/lakehouses/{lakehouse_id}/tables/{table_name}/load",
+        client="fabric_sp",
+        method="post",
+        status_codes=202,
+        lro_return_status_code=True,
+    )
+
+    print(
+        f"{icons.green_dot} The '{table_name}' table has been loaded into the '{lakehouse_name}' lakehouse within the '{workspace_name}' workspace."
+    )
