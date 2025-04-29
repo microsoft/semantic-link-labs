@@ -1705,6 +1705,9 @@ def _process_and_display_chart(df, title, widget):
     df["Start"] = df["Start"] - Offset
     df["End"] = df["End"] - Offset
 
+    unique_objects = df["Object Name"].nunique()
+    height = min(max(400, unique_objects * 30), 1000)
+
     # Vega-Lite spec for Gantt chart
     spec = (
         """{
@@ -1714,7 +1717,7 @@ def _process_and_display_chart(df, title, widget):
         + df.to_json(orient="records")
         + """ },
         "width": 700,
-        "height": 400,
+        "height": """ + str(height) + """,
         "mark": "bar",
         "encoding": {
             "y": {
