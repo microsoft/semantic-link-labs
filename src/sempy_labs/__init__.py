@@ -1,3 +1,11 @@
+from sempy_labs._variable_libraries import (
+    list_variable_libraries,
+    delete_variable_library,
+)
+from sempy_labs._kusto import (
+    query_kusto,
+    query_workspace_monitoring,
+)
 from sempy_labs._delta_analyzer_history import (
     delta_analyzer_history,
 )
@@ -9,7 +17,9 @@ from sempy_labs._mounted_data_factories import (
     get_mounted_data_factory_definition,
     delete_mounted_data_factory,
 )
-
+from sempy_labs._tags import (
+    list_tags,
+)
 from sempy_labs._semantic_models import (
     get_semantic_model_refresh_schedule,
     enable_semantic_model_scheduled_refresh,
@@ -120,6 +130,7 @@ from sempy_labs._environments import (
     create_environment,
     delete_environment,
     publish_environment,
+    list_environments,
 )
 from sempy_labs._clear_cache import (
     clear_cache,
@@ -558,4 +569,10 @@ __all__ = [
     "delete_sql_database",
     "list_sql_databases",
     "delta_analyzer_history",
+    "query_kusto",
+    "query_workspace_monitoring",
+    "list_environments",
+    "list_tags",
+    "list_variable_libraries",
+    "delete_variable_library",
 ]

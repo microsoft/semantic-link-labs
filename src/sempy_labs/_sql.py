@@ -185,7 +185,7 @@ class ConnectWarehouse(ConnectBase):
 class ConnectLakehouse(ConnectBase):
     def __init__(
         self,
-        lakehouse: str | UUID,
+        lakehouse: Optional[str | UUID] = None,
         workspace: Optional[Union[str, UUID]] = None,
         timeout: int = 30,
     ):
@@ -194,8 +194,9 @@ class ConnectLakehouse(ConnectBase):
 
         Parameters
         ----------
-        lakehouse : str | uuid.UUID
+        lakehouse : str | uuid.UUID, default=None
             The name or ID of the Fabric lakehouse.
+            Defaults to None which resolves to the lakehouse attached to the notebook.
         workspace : str | uuid.UUID, default=None
             The name or ID of the workspace.
             Defaults to None which resolves to the workspace of the attached lakehouse

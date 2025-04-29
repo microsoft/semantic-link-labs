@@ -240,7 +240,11 @@ def list_tables(
                         "Columns": sum(
                             1 for c in t.Columns if str(c.Type) != "RowNumber"
                         ),
-                        "% DB": round((total_size / model_size) * 100, 2),
+                        "% DB": (
+                            round((total_size / model_size) * 100, 2)
+                            if model_size not in (0, None, float("nan"))
+                            else 0.0
+                        ),
                     }
                 )
 

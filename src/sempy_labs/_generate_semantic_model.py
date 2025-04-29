@@ -496,20 +496,17 @@ def get_semantic_model_size(
         The size of the semantic model in
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
-
     dict = fabric.evaluate_dax(
-        dataset=dataset_id,
-        workspace=workspace_id,
+        dataset=dataset,
+        workspace=workspace,
         dax_string="""
         EVALUATE SELECTCOLUMNS(FILTER(INFO.STORAGETABLECOLUMNS(), [COLUMN_TYPE] = "BASIC_DATA"),[DICTIONARY_SIZE])
         """,
     )
 
     used_size = fabric.evaluate_dax(
-        dataset=dataset_id,
-        workspace=workspace_id,
+        dataset=dataset,
+        workspace=workspace,
         dax_string="""
         EVALUATE SELECTCOLUMNS(INFO.STORAGETABLECOLUMNSEGMENTS(),[USED_SIZE])
         """,
@@ -524,5 +521,7 @@ def get_semantic_model_size(
         result = model_size / (1024**2) * 10**6
     elif model_size >= 10**3:
         result = model_size / (1024) * 10**3
+    else:
+        result = model_size
 
     return result
