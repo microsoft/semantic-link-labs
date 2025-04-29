@@ -1717,7 +1717,9 @@ def _process_and_display_chart(df, title, widget):
         + df.to_json(orient="records")
         + """ },
         "width": 700,
-        "height": """ + str(height) + """,
+        "height": """
+        + str(height)
+        + """,
         "mark": "bar",
         "encoding": {
             "y": {
