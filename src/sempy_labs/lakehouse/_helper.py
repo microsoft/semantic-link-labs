@@ -134,10 +134,9 @@ def load_table(
     mode: Literal["Overwrite", "Append"],
     lakehouse: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
-    recursive: bool = False,
 ):
     """
-    Loads a table into a lakehouse.
+    Loads a table into a lakehouse. Currently only files are supported, not folders.
 
     Parameters
     ----------
@@ -156,8 +155,6 @@ def load_table(
         The Fabric workspace name or ID used by the lakehouse.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    recursive: bool, default=False
-        Indicates whether to search data files recursively or not, when loading a table from a folder.
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
