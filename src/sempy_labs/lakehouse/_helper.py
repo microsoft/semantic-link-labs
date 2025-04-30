@@ -60,6 +60,10 @@ def delete_lakehouse(
     """
     Deletes a lakehouse.
 
+    This is a wrapper function for the following API: `Items - Delete Lakehouse <https://learn.microsoft.com/rest/api/fabric/lakehouse/items/delete-lakehouse>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     lakehouse : str | uuid.UUID
@@ -81,6 +85,10 @@ def update_lakehouse(
 ):
     """
     Updates a lakehouse.
+
+    This is a wrapper function for the following API: `Items - Update Lakehouse <https://learn.microsoft.com/rest/api/fabric/lakehouse/items/update-lakehouse>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -137,6 +145,10 @@ def load_table(
 ):
     """
     Loads a table into a lakehouse. Currently only files are supported, not folders.
+
+    This is a wrapper function for the following API: `Tables - Load Table <https://learn.microsoft.com/rest/api/fabric/lakehouse/tables/load-table>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------

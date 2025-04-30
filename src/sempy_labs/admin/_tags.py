@@ -26,6 +26,10 @@ def create_tags(tags: str | List[str]):
     """
     Creates a new tag or tags.
 
+    This is a wrapper function for the following API: `Tags - Bulk Create Tags <https://learn.microsoft.com/rest/api/fabric/admin/tags/bulk-create-tags>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     tags : str | List[str]
@@ -77,6 +81,10 @@ def delete_tag(tag: str | UUID):
     """
     Deletes a tag.
 
+    This is a wrapper function for the following API: `Tags - Delete Tag <https://learn.microsoft.com/rest/api/fabric/admin/tags/delete-tag>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     tag : str | uuid.UUID
@@ -93,6 +101,10 @@ def delete_tag(tag: str | UUID):
 def update_tag(name: str, tag: str | UUID):
     """
     Updates the name of a tag.
+
+    This is a wrapper function for the following API: `Tags - Update Tag <https://learn.microsoft.com/rest/api/fabric/admin/tags/update-tag>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
