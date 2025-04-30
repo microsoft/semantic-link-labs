@@ -4842,7 +4842,7 @@ class TOMWrapper:
     def set_synonym(
         self,
         culture: str,
-        object: Union["TOM.Table", "TOM.Column"],
+        object: Union["TOM.Table", "TOM.Column", "TOM.Measure", "TOM.Hierarchy"],
         synonym_name: str,
         weight: Optional[Decimal] = None,
     ):
@@ -4851,12 +4851,12 @@ class TOMWrapper:
 
         object_type = object.ObjectType
 
-        if not any(c.Name == culture for c in self.model.Cultures):
-            raise ValueError(
-                f"{icons.red_dot} The '{culture}' culture does not exist within the semantic model."
-            )
-
-        if object_type not in [TOM.ObjectType.Table, TOM.ObjectType.Column]:
+        if object_type not in [
+            TOM.ObjectType.Table,
+            TOM.ObjectType.Column,
+            TOM.ObjectType.Measure,
+            TOM.ObjectType.Hierarchy,
+        ]:
             raise ValueError(
                 f"{icons.red_dot} This function only supports adding synonyms for tables or columns."
             )
@@ -4865,9 +4865,7 @@ class TOMWrapper:
         self._add_linguistic_schema(culture=culture)
 
         # Extract linguistic metadata content
-        c = self.model.Cultures[culture]
-        lm_content = c.LinguisticMetadata.Content
-        lm = json.loads(lm_content)
+        lm = json.loads(self.model.Cultures[culture].LinguisticMetadata.Content)
 
         # Generate synonym dictionary
         _validate_weight(weight)
@@ -4916,7 +4914,9 @@ class TOMWrapper:
             del lm["Entities"][obj]["State"]
 
         if updated:
-            c.LinguisticMetadata.Content = json.dumps(lm, indent=4)
+            self.model.Cultures[culture].LinguisticMetadata.Content = json.dumps(
+                lm, indent=4
+            )
             if object_type == TOM.ObjectType.Table:
                 print(
                     f"{icons.green_dot} The '{synonym_name}' synonym was set for the '{object.Name}' table."
@@ -4929,7 +4929,7 @@ class TOMWrapper:
     def delete_synonym(
         self,
         culture: str,
-        object: Union["TOM.Table", "TOM.Column"],
+        object: Union["TOM.Table", "TOM.Column", "TOM.Measure", "TOM.Hierarchy"],
         synonym_name: str,
     ):
 
@@ -4940,14 +4940,17 @@ class TOMWrapper:
                 f"{icons.red_dot} The '{culture}' culture does not exist within the semantic model."
             )
 
-        if object.ObjectType not in [TOM.ObjectType.Table, TOM.ObjectType.Column]:
+        if object.ObjectType not in [
+            TOM.ObjectType.Table,
+            TOM.ObjectType.Column,
+            TOM.ObjectType.Measure,
+            TOM.ObjectType.Hierarchy,
+        ]:
             raise ValueError(
                 f"{icons.red_dot} This function only supports tables or columns."
             )
 
-        c = self.model.Cultures[culture]
-        lm_content = c.LinguisticMetadata.Content
-        lm = json.loads(lm_content)
+        lm = json.loads(self.model.Cultures[culture].LinguisticMetadata.Content)
 
         if "Entities" not in lm:
             print(
@@ -4971,7 +4974,9 @@ class TOMWrapper:
                 None,
             )
 
-            c.LinguisticMetadata.Content = json.dumps(lm, indent=4)
+            self.model.Cultures[culture].LinguisticMetadata.Content = json.dumps(
+                lm, indent=4
+            )
             print(
                 f"{icons.green_dot} The '{synonym_name}' synonym was marked as status 'Deleted' for the '{object.Name}' object."
             )
