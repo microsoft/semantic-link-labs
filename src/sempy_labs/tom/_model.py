@@ -4810,7 +4810,9 @@ class TOMWrapper:
 
     @staticmethod
     def _get_synonym_info(
-        lm: dict, object: Union["TOM.Table", "TOM.Column"], synonym_name: str
+        lm: dict,
+        object: Union["TOM.Table", "TOM.Column", "TOM.Measure", "TOM.Hierarchy"],
+        synonym_name: str,
     ):
 
         import Microsoft.AnalysisServices.Tabular as TOM
@@ -4824,18 +4826,25 @@ class TOMWrapper:
             t_name = binding.get("ConceptualEntity")
             o_name = binding.get("ConceptualProperty")
 
-            if object_type == TOM.ObjectType.Table:
-                if t_name == object.Name and o_name is None:
-                    obj = key
-                    for term in v.get("Terms", []):
-                        if synonym_name in term:
-                            syn_exists = True
-            elif object_type == TOM.ObjectType.Column:
-                if t_name == object.Parent.Name and o_name == object.Name:
-                    obj = key
-                    for term in v.get("Terms", []):
-                        if synonym_name in term:
-                            syn_exists = True
+            if (
+                object_type == TOM.ObjectType.Table
+                and t_name == object.Name
+                and o_name is None
+            ) or (
+                object_type
+                in [
+                    TOM.ObjectType.Column,
+                    TOM.ObjectType.Measure,
+                    TOM.ObjectType.Hierarchy,
+                ]
+                and t_name == object.Parent.Name
+                and o_name == object.Name
+            ):
+                obj = key
+                terms = v.get("Terms", [])
+                syn_exists = any(synonym_name in term for term in terms)
+                # optionally break early if match is found
+                break
 
         return obj, syn_exists
 
@@ -4880,8 +4889,31 @@ class TOMWrapper:
             lm=lm, object=object, synonym_name=synonym_name
         )
 
+        entities = lm.get("Entities", {})
+
+        def get_unique_entity_key(object, object_type, entities):
+
+            if object_type == TOM.ObjectType.Table:
+                base_obj = object.Name.lower().replace(" ", "_")
+            else:
+                base_obj = f"{object.Parent.Name}.{object.Name}".lower().replace(
+                    " ", "_"
+                )
+
+            obj = base_obj
+            counter = 1
+            existing_keys = set(entities.keys())
+
+            # Make sure the object name is unique
+            while obj in existing_keys:
+                obj = f"{base_obj}_{counter}"
+                counter += 1
+
+            return obj
+
         # Update linguistic metadata content
         if obj is None:
+            obj = get_unique_entity_key(object, object_type, entities)
             lm["Entities"][obj] = {
                 "Definition": {"Binding": {}},
                 "State": "Authored",
