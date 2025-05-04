@@ -5089,9 +5089,7 @@ class TOMWrapper:
                     f"{icons.red_dot} The culture of the schema_file is not a valid culture within the semantic model."
                 )
 
-            for c in self.model.Cultures:
-                if c.Name == culture_name:
-                    c.LinguisticMetadata.Content = json.dumps(schema_file, indent=4)
+            self.model.Cultures[culture_name].LinguisticMetadata.Content = json.dumps(schema_file, indent=4)
 
     def close(self):
 
