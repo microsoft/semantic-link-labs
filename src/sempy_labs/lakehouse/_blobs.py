@@ -93,6 +93,8 @@ def list_blobs(
     container : str, default=None
         The container name to list blobs from. If None, lists all blobs in the lakehouse.
         Valid values are "Tables" or "Files". If not specified, the function will list all blobs in the lakehouse.
+    prefix : str, default=None
+        The prefix to filter blobs by (i.e. the blob name). If None, lists all blobs in the specified container.
 
     Returns
     -------
