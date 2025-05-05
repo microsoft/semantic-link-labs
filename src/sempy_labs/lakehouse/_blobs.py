@@ -155,9 +155,17 @@ def list_blobs(
         response_json = _xml_to_dict(root)
 
         if prefix:
-            blobs = response_json.get("EnumerationResults", {}).get("Blobs", {}).get("BlobPrefix", [])
+            blobs = (
+                response_json.get("EnumerationResults", {})
+                .get("Blobs", {})
+                .get("BlobPrefix", [])
+            )
         else:
-            blobs = response_json.get("EnumerationResults", {}).get("Blobs", {}).get("Blob", [])
+            blobs = (
+                response_json.get("EnumerationResults", {})
+                .get("Blobs", {})
+                .get("Blob", [])
+            )
 
         if isinstance(blobs, dict):
             blobs = [blobs]
@@ -231,9 +239,11 @@ def recover_lakehouse_object(
         )
 
     # Filter list_blobs by the file
-    prefix = file_path[len(container) + 1:]
+    prefix = file_path[len(container) + 1 :]
 
-    df = list_blobs(lakehouse=lakehouse, workspace=workspace, container=container, prefix=prefix)
+    df = list_blobs(
+        lakehouse=lakehouse, workspace=workspace, container=container, prefix=prefix
+    )
     # df_filt = df[df["Blob Name"] == blob_name]
     # df_filt_deleted = df_filt[df_filt['Is Deleted'] == True]
 
