@@ -203,6 +203,9 @@ def list_blobs(
     if dfs:
         df = pd.concat(dfs, ignore_index=True)
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
+        if prefix:
+            # These columns do not show when the prefix is used
+            df.drop(['Is Deleted', 'Deletion Id'], axis=1, inplace=True)
 
     return df
 
