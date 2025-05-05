@@ -36,7 +36,6 @@ def _request_blob_api(
         "x-ms-version": "2025-05-05",
     }
 
-    
     base_url = "https://onelake.blob.fabric.microsoft.com/"
     full_url = f"{base_url}{request}"
     results = []
@@ -59,12 +58,12 @@ def _request_blob_api(
         root = ET.fromstring(response.text)
         results.append(root)
 
-        next_marker = root.findtext('.//NextMarker')
+        next_marker = root.findtext(".//NextMarker")
         if not next_marker:
             break  # No more pages
 
         # Append the marker to the original request (assuming query string format)
-        delimiter = '&' if '?' in request else '?'
+        delimiter = "&" if "?" in request else "?"
         full_url = f"{base_url}{request}{delimiter}marker={next_marker}"
 
     return results
@@ -112,12 +111,6 @@ def list_blobs(
             )
         path_prefix = f"{workspace_id}/{lakehouse_id}/{container}"
 
-    response = _request_blob_api(
-        request=f"{path_prefix}?restype=container&comp=list&include=deleted"
-    )
-    root = ET.fromstring(response.content)
-    response_json = _xml_to_dict(root)
-
     columns = {
         "Blob Name": "str",
         "Is Deleted": "bool",
@@ -144,37 +137,49 @@ def list_blobs(
 
     df = _create_dataframe(columns=columns)
 
-    for blob in (
-        response_json.get("EnumerationResults", {}).get("Blobs", {}).get("Blob", {})
-    ):
-        p = blob.get("Properties", {})
-        new_data = {
-            "Blob Name": blob.get("Name"),
-            "Is Deleted": blob.get("Deleted", False),
-            "Deletion Id": blob.get("DeletionId"),
-            "Creation Time": p.get("Creation-Time"),
-            "Expiry Time": p.get("Expiry-Time"),
-            "Etag": p.get("Etag"),
-            "Resource Type": p.get("ResourceType"),
-            "Content Length": p.get("Content-Length"),
-            "Content Type": p.get("Content-Type"),
-            "Content Encoding": p.get("Content-Encoding"),
-            "Content Language": p.get("Content-Language"),
-            "Content CRC64": p.get("Content-CRC64"),
-            "Content MD5": p.get("Content-MD5"),
-            "Cache Control": p.get("Cache-Control"),
-            "Content Disposition": p.get("Content-Disposition"),
-            "Blob Type": p.get("BlobType"),
-            "Access Tier": p.get("AccessTier"),
-            "Access Tier Inferred": p.get("AccessTierInferred"),
-            "Server Encrypted": p.get("ServerEncrypted"),
-            "Deleted Time": p.get("DeletedTime"),
-            "Remaining Retention Days": p.get("RemainingRetentionDays"),
-        }
+    responses = _request_blob_api(
+        request=f"{path_prefix}?restype=container&comp=list&include=deleted",
+        uses_pagination=True,
+    )
 
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    dfs = []
 
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+    for root in responses:
+        response_json = _xml_to_dict(root)
+
+        for blob in (
+            response_json.get("EnumerationResults", {}).get("Blobs", {}).get("Blob", {})
+        ):
+            p = blob.get("Properties", {})
+            new_data = {
+                "Blob Name": blob.get("Name"),
+                "Is Deleted": blob.get("Deleted", False),
+                "Deletion Id": blob.get("DeletionId"),
+                "Creation Time": p.get("Creation-Time"),
+                "Expiry Time": p.get("Expiry-Time"),
+                "Etag": p.get("Etag"),
+                "Resource Type": p.get("ResourceType"),
+                "Content Length": p.get("Content-Length"),
+                "Content Type": p.get("Content-Type"),
+                "Content Encoding": p.get("Content-Encoding"),
+                "Content Language": p.get("Content-Language"),
+                "Content CRC64": p.get("Content-CRC64"),
+                "Content MD5": p.get("Content-MD5"),
+                "Cache Control": p.get("Cache-Control"),
+                "Content Disposition": p.get("Content-Disposition"),
+                "Blob Type": p.get("BlobType"),
+                "Access Tier": p.get("AccessTier"),
+                "Access Tier Inferred": p.get("AccessTierInferred"),
+                "Server Encrypted": p.get("ServerEncrypted"),
+                "Deleted Time": p.get("DeletedTime"),
+                "Remaining Retention Days": p.get("RemainingRetentionDays"),
+            }
+
+            dfs.append(pd.DataFrame(new_data, index=[0]))
+
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
