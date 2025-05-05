@@ -105,6 +105,7 @@ def query_kusto(
     return df
 
 
+@log
 def query_workspace_monitoring(
     query: str, workspace: Optional[str | UUID] = None, language: str = "kql"
 ) -> pd.DataFrame:

@@ -84,6 +84,11 @@ from sempy_labs.admin._git import (
 from sempy_labs.admin._dataflows import (
     export_dataflow,
 )
+from sempy_labs.admin._tags import (
+    list_tags,
+    create_tags,
+    delete_tag,
+)
 
 __all__ = [
     "list_items",
@@ -139,4 +144,7 @@ __all__ = [
     "list_report_subscriptions",
     "get_refreshables",
     "export_dataflow",
+    "list_tags",
+    "create_tags",
+    "delete_tag",
 ]
