@@ -18,6 +18,7 @@ def _request_blob_api(
     method: str = "get",
     payload: Optional[dict] = None,
     status_codes: int | List[int] = 200,
+    uses_pagination: bool = False,
 ):
 
     import requests
@@ -35,17 +36,38 @@ def _request_blob_api(
         "x-ms-version": "2025-05-05",
     }
 
-    response = requests.request(
-        method.upper(),
-        f"https://onelake.blob.fabric.microsoft.com/{request}",
-        headers=headers,
-        json=payload,
-    )
+    
+    base_url = "https://onelake.blob.fabric.microsoft.com/"
+    full_url = f"{base_url}{request}"
+    results = []
 
-    if response.status_code not in status_codes:
-        raise FabricHTTPException(response)
+    while True:
+        response = requests.request(
+            method.upper(),
+            full_url,
+            headers=headers,
+            json=payload if method.lower() != "get" else None,
+        )
 
-    return response
+        if response.status_code not in status_codes:
+            raise FabricHTTPException(response)
+
+        if not uses_pagination:
+            return response
+
+        # Parse XML to find blobs and NextMarker
+        root = ET.fromstring(response.text)
+        results.append(root)
+
+        next_marker = root.findtext('.//NextMarker')
+        if not next_marker:
+            break  # No more pages
+
+        # Append the marker to the original request (assuming query string format)
+        delimiter = '&' if '?' in request else '?'
+        full_url = f"{base_url}{request}{delimiter}marker={next_marker}"
+
+    return results
 
 
 @log
