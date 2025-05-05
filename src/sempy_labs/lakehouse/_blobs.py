@@ -55,7 +55,7 @@ def _request_blob_api(
             return response
 
         # Parse XML to find blobs and NextMarker
-        root = ET.fromstring(response.text)
+        root = ET.fromstring(response.content)
         results.append(root)
 
         next_marker = root.findtext(".//NextMarker")
@@ -74,6 +74,7 @@ def list_blobs(
     lakehouse: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
     container: Optional[str] = None,
+    prefix: Optional[str] = None,
 ) -> pd.DataFrame:
     """
     Returns a list of blobs for a given lakehouse.
@@ -137,19 +138,31 @@ def list_blobs(
 
     df = _create_dataframe(columns=columns)
 
+    url = f"{path_prefix}?restype=container&comp=list&include=deleted"
+    if prefix:
+        if container:
+            url += f"&prefix={lakehouse_id}/{container}/{prefix}&delimiter=/"
+        else:
+            url += f"&prefix={lakehouse_id}/{prefix}&delimiter=/"
+
     responses = _request_blob_api(
-        request=f"{path_prefix}?restype=container&comp=list&include=deleted",
+        request=url,
         uses_pagination=True,
     )
 
     dfs = []
-
     for root in responses:
         response_json = _xml_to_dict(root)
 
-        for blob in (
-            response_json.get("EnumerationResults", {}).get("Blobs", {}).get("Blob", {})
-        ):
+        if prefix:
+            blobs = response_json.get("EnumerationResults", {}).get("Blobs", {}).get("BlobPrefix", [])
+        else:
+            blobs = response_json.get("EnumerationResults", {}).get("Blobs", {}).get("Blob", [])
+
+        if isinstance(blobs, dict):
+            blobs = [blobs]
+
+        for blob in blobs:
             p = blob.get("Properties", {})
             new_data = {
                 "Blob Name": blob.get("Name"),
@@ -209,7 +222,7 @@ def recover_lakehouse_object(
     workspace_id = resolve_workspace_id(workspace)
     lakehouse_id = resolve_lakehouse_id(lakehouse, workspace_id)
 
-    blob_path_prefix = f"{lakehouse_id}/{file_path}"
+    blob_name = f"{lakehouse_id}/{file_path}"
 
     container = file_path.split("/")[0]
     if container not in ["Tables", "Files"]:
@@ -217,18 +230,28 @@ def recover_lakehouse_object(
             f"{icons.red_dot} Invalid container '{container}' within the file_path parameter. Expected 'Tables' or 'Files'."
         )
 
-    df = list_blobs(lakehouse=lakehouse, workspace=workspace, container=container)
+    # Filter list_blobs by the file
+    prefix = file_path[len(container) + 1:]
 
-    for _, r in df.iterrows():
-        blob_name = r.get("Blob Name")
-        is_deleted = r.get("Is Deleted")
-        if blob_name.startswith(blob_path_prefix) and is_deleted:
-            print(f"{icons.in_progress} Restoring the '{blob_name}' blob...")
-            _request_blob_api(
-                request=f"{workspace_id}/{lakehouse_id}/{file_path}?comp=undelete",
-                method="put",
-            )
-            print(f"{icons.green_dot} The '{blob_name}' blob has been restored.")
+    df = list_blobs(lakehouse=lakehouse, workspace=workspace, container=container, prefix=prefix)
+    # df_filt = df[df["Blob Name"] == blob_name]
+    # df_filt_deleted = df_filt[df_filt['Is Deleted'] == True]
+
+    # if df_filt_deleted.empty:
+    if df.empty:
+        print(f"{icons.warning} The '{file_path}' blob was not found. No action taken.")
+        return
+    #    else:
+    #        print(f"{icons.info} The '{file_path}' blob was not found in a deleted state. No action taken.")
+    #        return
+
+    # Undelete the blob
+    print(f"{icons.in_progress} Restoring the '{blob_name}' blob...")
+    _request_blob_api(
+        request=f"{workspace_id}/{lakehouse_id}/{file_path}?comp=undelete",
+        method="put",
+    )
+    print(f"{icons.green_dot} The '{blob_name}' blob restore attempt was successful.")
 
 
 def _get_user_delegation_key():
