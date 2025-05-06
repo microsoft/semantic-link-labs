@@ -493,7 +493,7 @@ def get_semantic_model_size(
     Returns
     -------
     int
-        The size of the semantic model in
+        The size of the semantic model in bytes
     """
 
     dict = fabric.evaluate_dax(

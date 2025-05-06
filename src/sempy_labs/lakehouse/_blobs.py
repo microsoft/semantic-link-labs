@@ -11,6 +11,7 @@ from typing import Optional, List
 import sempy_labs._icons as icons
 import xml.etree.ElementTree as ET
 import pandas as pd
+from sempy.fabric.exceptions import FabricHTTPException
 
 
 def _request_blob_api(
@@ -18,6 +19,7 @@ def _request_blob_api(
     method: str = "get",
     payload: Optional[dict] = None,
     status_codes: int | List[int] = 200,
+    uses_pagination: bool = False,
 ):
 
     import requests
@@ -31,21 +33,41 @@ def _request_blob_api(
 
     headers = {
         "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
+        "Content-Type": "application/xml",
         "x-ms-version": "2025-05-05",
     }
 
-    response = requests.request(
-        method.upper(),
-        f"https://onelake.blob.fabric.microsoft.com/{request}",
-        headers=headers,
-        json=payload,
-    )
+    base_url = "https://onelake.blob.fabric.microsoft.com/"
+    full_url = f"{base_url}{request}"
+    results = []
 
-    if response.status_code not in status_codes:
-        raise FabricHTTPException(response)
+    while True:
+        response = requests.request(
+            method.upper(),
+            full_url,
+            headers=headers,
+            json=payload if method.lower() != "get" else None,
+        )
 
-    return response
+        if response.status_code not in status_codes:
+            raise FabricHTTPException(response)
+
+        if not uses_pagination:
+            return response
+
+        # Parse XML to find blobs and NextMarker
+        root = ET.fromstring(response.content)
+        results.append(root)
+
+        next_marker = root.findtext(".//NextMarker")
+        if not next_marker:
+            break  # No more pages
+
+        # Append the marker to the original request (assuming query string format)
+        delimiter = "&" if "?" in request else "?"
+        full_url = f"{base_url}{request}{delimiter}marker={next_marker}"
+
+    return results
 
 
 @log
@@ -90,12 +112,6 @@ def list_blobs(
             )
         path_prefix = f"{workspace_id}/{lakehouse_id}/{container}"
 
-    response = _request_blob_api(
-        request=f"{path_prefix}?restype=container&comp=list&include=deleted"
-    )
-    root = ET.fromstring(response.content)
-    response_json = _xml_to_dict(root)
-
     columns = {
         "Blob Name": "str",
         "Is Deleted": "bool",
@@ -122,37 +138,55 @@ def list_blobs(
 
     df = _create_dataframe(columns=columns)
 
-    for blob in (
-        response_json.get("EnumerationResults", {}).get("Blobs", {}).get("Blob", {})
-    ):
-        p = blob.get("Properties", {})
-        new_data = {
-            "Blob Name": blob.get("Name"),
-            "Is Deleted": blob.get("Deleted", False),
-            "Deletion Id": blob.get("DeletionId"),
-            "Creation Time": p.get("Creation-Time"),
-            "Expiry Time": p.get("Expiry-Time"),
-            "Etag": p.get("Etag"),
-            "Resource Type": p.get("ResourceType"),
-            "Content Length": p.get("Content-Length"),
-            "Content Type": p.get("Content-Type"),
-            "Content Encoding": p.get("Content-Encoding"),
-            "Content Language": p.get("Content-Language"),
-            "Content CRC64": p.get("Content-CRC64"),
-            "Content MD5": p.get("Content-MD5"),
-            "Cache Control": p.get("Cache-Control"),
-            "Content Disposition": p.get("Content-Disposition"),
-            "Blob Type": p.get("BlobType"),
-            "Access Tier": p.get("AccessTier"),
-            "Access Tier Inferred": p.get("AccessTierInferred"),
-            "Server Encrypted": p.get("ServerEncrypted"),
-            "Deleted Time": p.get("DeletedTime"),
-            "Remaining Retention Days": p.get("RemainingRetentionDays"),
-        }
+    url = f"{path_prefix}?restype=container&comp=list&include=deleted"
 
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    responses = _request_blob_api(
+        request=url,
+        uses_pagination=True,
+    )
 
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+    dfs = []
+    for root in responses:
+        response_json = _xml_to_dict(root)
+
+        blobs = (
+            response_json.get("EnumerationResults", {}).get("Blobs", {}).get("Blob", [])
+        )
+
+        if isinstance(blobs, dict):
+            blobs = [blobs]
+
+        for blob in blobs:
+            p = blob.get("Properties", {})
+            new_data = {
+                "Blob Name": blob.get("Name"),
+                "Is Deleted": blob.get("Deleted", False),
+                "Deletion Id": blob.get("DeletionId"),
+                "Creation Time": p.get("Creation-Time"),
+                "Expiry Time": p.get("Expiry-Time"),
+                "Etag": p.get("Etag"),
+                "Resource Type": p.get("ResourceType"),
+                "Content Length": p.get("Content-Length"),
+                "Content Type": p.get("Content-Type"),
+                "Content Encoding": p.get("Content-Encoding"),
+                "Content Language": p.get("Content-Language"),
+                "Content CRC64": p.get("Content-CRC64"),
+                "Content MD5": p.get("Content-MD5"),
+                "Cache Control": p.get("Cache-Control"),
+                "Content Disposition": p.get("Content-Disposition"),
+                "Blob Type": p.get("BlobType"),
+                "Access Tier": p.get("AccessTier"),
+                "Access Tier Inferred": p.get("AccessTierInferred"),
+                "Server Encrypted": p.get("ServerEncrypted"),
+                "Deleted Time": p.get("DeletedTime"),
+                "Remaining Retention Days": p.get("RemainingRetentionDays"),
+            }
+
+            dfs.append(pd.DataFrame(new_data, index=[0]))
+
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -182,7 +216,7 @@ def recover_lakehouse_object(
     workspace_id = resolve_workspace_id(workspace)
     lakehouse_id = resolve_lakehouse_id(lakehouse, workspace_id)
 
-    blob_path_prefix = f"{lakehouse_id}/{file_path}"
+    blob_name = f"{lakehouse_id}/{file_path}"
 
     container = file_path.split("/")[0]
     if container not in ["Tables", "Files"]:
@@ -190,18 +224,26 @@ def recover_lakehouse_object(
             f"{icons.red_dot} Invalid container '{container}' within the file_path parameter. Expected 'Tables' or 'Files'."
         )
 
-    df = list_blobs(lakehouse=lakehouse, workspace=workspace, container=container)
+    # Undelete the blob
+    print(f"{icons.in_progress} Attempting to recover the '{blob_name}' blob...")
 
-    for _, r in df.iterrows():
-        blob_name = r.get("Blob Name")
-        is_deleted = r.get("Is Deleted")
-        if blob_name.startswith(blob_path_prefix) and is_deleted:
-            print(f"{icons.in_progress} Restoring the '{blob_name}' blob...")
-            _request_blob_api(
-                request=f"{workspace_id}/{lakehouse_id}/{file_path}?comp=undelete",
-                method="put",
+    try:
+        _request_blob_api(
+            request=f"{workspace_id}/{lakehouse_id}/{file_path}?comp=undelete",
+            method="put",
+        )
+        print(
+            f"{icons.green_dot} The '{blob_name}' blob recover attempt was successful."
+        )
+    except FabricHTTPException as e:
+        if e.status_code == 404:
+            print(
+                f"{icons.warning} The '{blob_name}' blob was not found. No action taken."
             )
-            print(f"{icons.green_dot} The '{blob_name}' blob has been restored.")
+        else:
+            print(
+                f"{icons.red_dot} An error occurred while recovering the '{blob_name}' blob: {e}"
+            )
 
 
 def _get_user_delegation_key():
