@@ -48,8 +48,12 @@ class ReportWrapper:
         workspace: Optional[str | UUID] = None,
         readonly: bool = True,
     ):
-        (self._workspace_name, self._workspace_id) = resolve_workspace_name_and_id(workspace)
-        (self._report_name, self._report_id) = resolve_item_name_and_id(item=report, type='Report', workspace=self._workspace_id)
+        (self._workspace_name, self._workspace_id) = resolve_workspace_name_and_id(
+            workspace
+        )
+        (self._report_name, self._report_id) = resolve_item_name_and_id(
+            item=report, type="Report", workspace=self._workspace_id
+        )
         self._readonly = readonly
 
         result = _base_api(
@@ -60,15 +64,21 @@ class ReportWrapper:
         )
 
         self._report_definition = {"parts": []}  # This contains all the json files
-        self._non_report_definition = {"parts": []}  # This contains all the non-json files
-        for parts in result.get('definition', {}).get('parts', []):
-            path = parts.get('path')
-            payload = parts.get('payload')
-            if path.endswith('.json'):
+        self._non_report_definition = {
+            "parts": []
+        }  # This contains all the non-json files
+        for parts in result.get("definition", {}).get("parts", []):
+            path = parts.get("path")
+            payload = parts.get("payload")
+            if path.endswith(".json"):
                 decoded_payload = json.loads(_decode_b64(payload))
-                self._report_definition["parts"].append({"path": path, "payload": decoded_payload})
+                self._report_definition["parts"].append(
+                    {"path": path, "payload": decoded_payload}
+                )
             else:
-                self._non_report_definition["parts"].append({"path": path, "payload": payload})
+                self._non_report_definition["parts"].append(
+                    {"path": path, "payload": payload}
+                )
 
     def get(self, file_path: str) -> dict:
         """
@@ -84,9 +94,9 @@ class ReportWrapper:
         dict
             The report definition file.
         """
-        for part in self._report_definition.get('parts'):
-            if part.get('path') == file_path:
-                return part.get('payload')
+        for part in self._report_definition.get("parts"):
+            if part.get("path") == file_path:
+                return part.get("payload")
 
         raise ValueError(f"File {file_path} not found in report definition.")
 
@@ -99,13 +109,13 @@ class ReportWrapper:
 
     def remove(self, file_path: str):
 
-        for part in self._report_definition.get('parts'):
-            if part.get('path') == file_path:
+        for part in self._report_definition.get("parts"):
+            if part.get("path") == file_path:
                 self._report_definition["parts"].remove(part)
                 # print(f"The file '{file_path}' has been removed from report definition.")
                 return
-        for part in self._non_report_definition.get('parts'):
-            if part.get('path') == file_path:
+        for part in self._non_report_definition.get("parts"):
+            if part.get("path") == file_path:
                 self._non_report_definition["parts"].remove(part)
                 # print(f"The file '{file_path}' has been removed from report definition.")
                 return
@@ -116,9 +126,9 @@ class ReportWrapper:
         if not isinstance(payload, dict):
             raise ValueError("Payload must be a dictionary.")
 
-        for part in self._report_definition.get('parts'):
-            if part.get('path') == file_path:
-                part['payload'] = payload
+        for part in self._report_definition.get("parts"):
+            if part.get("path") == file_path:
+                part["payload"] = payload
                 # print(f"The file '{file_path}' has been updated in report definition.")
                 return
 
@@ -127,19 +137,22 @@ class ReportWrapper:
     def save_changes(self):
 
         if self._readonly:
-            print(f"{icons.red_dot} The connection is read-only. Set 'readonly' to False to save changes.")
+            print(
+                f"{icons.red_dot} The connection is read-only. Set 'readonly' to False to save changes."
+            )
         else:
             # Convert the report definition to base64
             new_report_definition = copy.deepcopy(self._report_definition)
 
-            for part in new_report_definition.get('parts', []):
-                if isinstance(part.get('payload'), dict):
-                    part['payload'] = _conv_b64(part['payload'])
+            for part in new_report_definition.get("parts", []):
+                if isinstance(part.get("payload"), dict):
+                    part["payload"] = _conv_b64(part["payload"])
 
             # Combine report and non-report definitions
             payload = {
                 "definition": {
-                    "parts": new_report_definition.get('parts') + self._non_report_definition.get('parts')
+                    "parts": new_report_definition.get("parts")
+                    + self._non_report_definition.get("parts")
                 }
             }
 
@@ -151,7 +164,9 @@ class ReportWrapper:
                 lro_return_status_code=True,
                 status_codes=None,
             )
-            print(f"{icons.green_dot} The report definition has been updated successfully.")
+            print(
+                f"{icons.green_dot} The report definition has been updated successfully."
+            )
 
     def close(self):
 
