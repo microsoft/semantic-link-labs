@@ -11,6 +11,7 @@ from typing import Optional, List
 import sempy_labs._icons as icons
 import xml.etree.ElementTree as ET
 import pandas as pd
+from sempy.fabric.exceptions import FabricHTTPException
 
 
 def _request_blob_api(
@@ -32,7 +33,7 @@ def _request_blob_api(
 
     headers = {
         "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
+        "Content-Type": "application/xml",
         "x-ms-version": "2025-05-05",
     }
 
@@ -74,7 +75,6 @@ def list_blobs(
     lakehouse: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
     container: Optional[str] = None,
-    prefix: Optional[str] = None,
 ) -> pd.DataFrame:
     """
     Returns a list of blobs for a given lakehouse.
@@ -93,8 +93,6 @@ def list_blobs(
     container : str, default=None
         The container name to list blobs from. If None, lists all blobs in the lakehouse.
         Valid values are "Tables" or "Files". If not specified, the function will list all blobs in the lakehouse.
-    prefix : str, default=None
-        The prefix to filter blobs by (i.e. the blob name). If None, lists all blobs in the specified container. When specified, the output does not show the 'Is Deleted' or 'Deletion Id' columns (this is a limitation of the API). 
 
     Returns
     -------
@@ -141,11 +139,6 @@ def list_blobs(
     df = _create_dataframe(columns=columns)
 
     url = f"{path_prefix}?restype=container&comp=list&include=deleted"
-    if prefix:
-        if container:
-            url += f"&prefix={lakehouse_id}/{container}/{prefix}&delimiter=/"
-        else:
-            url += f"&prefix={lakehouse_id}/{prefix}&delimiter=/"
 
     responses = _request_blob_api(
         request=url,
@@ -156,18 +149,9 @@ def list_blobs(
     for root in responses:
         response_json = _xml_to_dict(root)
 
-        if prefix:
-            blobs = (
-                response_json.get("EnumerationResults", {})
-                .get("Blobs", {})
-                .get("BlobPrefix", [])
-            )
-        else:
-            blobs = (
-                response_json.get("EnumerationResults", {})
-                .get("Blobs", {})
-                .get("Blob", [])
-            )
+        blobs = (
+            response_json.get("EnumerationResults", {}).get("Blobs", {}).get("Blob", [])
+        )
 
         if isinstance(blobs, dict):
             blobs = [blobs]
@@ -203,9 +187,6 @@ def list_blobs(
     if dfs:
         df = pd.concat(dfs, ignore_index=True)
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
-        if prefix:
-            # These columns do not show when the prefix is used
-            df.drop(['Is Deleted', 'Deletion Id'], axis=1, inplace=True)
 
     return df
 
@@ -243,30 +224,26 @@ def recover_lakehouse_object(
             f"{icons.red_dot} Invalid container '{container}' within the file_path parameter. Expected 'Tables' or 'Files'."
         )
 
-    # Filter list_blobs by the file
-    prefix = file_path[len(container) + 1 :]
-
-    df = list_blobs(
-        lakehouse=lakehouse, workspace=workspace, container=container, prefix=prefix
-    )
-    # df_filt = df[df["Blob Name"] == blob_name]
-    # df_filt_deleted = df_filt[df_filt['Is Deleted'] == True]
-
-    # if df_filt_deleted.empty:
-    if df.empty:
-        print(f"{icons.warning} The '{file_path}' blob was not found. No action taken.")
-        return
-    #    else:
-    #        print(f"{icons.info} The '{file_path}' blob was not found in a deleted state. No action taken.")
-    #        return
-
     # Undelete the blob
-    print(f"{icons.in_progress} Restoring the '{blob_name}' blob...")
-    _request_blob_api(
-        request=f"{workspace_id}/{lakehouse_id}/{file_path}?comp=undelete",
-        method="put",
-    )
-    print(f"{icons.green_dot} The '{blob_name}' blob restore attempt was successful.")
+    print(f"{icons.in_progress} Attempting to recover the '{blob_name}' blob...")
+
+    try:
+        _request_blob_api(
+            request=f"{workspace_id}/{lakehouse_id}/{file_path}?comp=undelete",
+            method="put",
+        )
+        print(
+            f"{icons.green_dot} The '{blob_name}' blob recover attempt was successful."
+        )
+    except FabricHTTPException as e:
+        if e.status_code == 404:
+            print(
+                f"{icons.warning} The '{blob_name}' blob was not found. No action taken."
+            )
+        else:
+            print(
+                f"{icons.red_dot} An error occurred while recovering the '{blob_name}' blob: {e}"
+            )
 
 
 def _get_user_delegation_key():
