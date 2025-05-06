@@ -94,7 +94,7 @@ def list_blobs(
         The container name to list blobs from. If None, lists all blobs in the lakehouse.
         Valid values are "Tables" or "Files". If not specified, the function will list all blobs in the lakehouse.
     prefix : str, default=None
-        The prefix to filter blobs by (i.e. the blob name). If None, lists all blobs in the specified container.
+        The prefix to filter blobs by (i.e. the blob name). If None, lists all blobs in the specified container. When specified, the output does not show the 'Is Deleted' or 'Deletion Id' columns (this is a limitation of the API). 
 
     Returns
     -------
