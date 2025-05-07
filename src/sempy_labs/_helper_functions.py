@@ -308,87 +308,6 @@ def get_item_definition(
         return value
 
 
-def resolve_item_id(
-    item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None
-) -> UUID:
-
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    item_id = None
-
-    if _is_valid_uuid(item):
-        # Check (optional)
-        item_id = item
-        try:
-            _base_api(
-                request=f"/v1/workspaces/{workspace_id}/items/{item_id}",
-                client="fabric_sp",
-            )
-        except FabricHTTPException:
-            raise ValueError(
-                f"{icons.red_dot} The '{item_id}' item was not found in the '{workspace_name}' workspace."
-            )
-    else:
-        if type is None:
-            raise ValueError(
-                f"{icons.red_dot} The 'type' parameter is required if specifying an item name."
-            )
-        responses = _base_api(
-            request=f"/v1/workspaces/{workspace_id}/items?type={type}",
-            client="fabric_sp",
-            uses_pagination=True,
-        )
-        for r in responses:
-            for v in r.get("value", []):
-                display_name = v.get("displayName")
-                if display_name == item:
-                    item_id = v.get("id")
-                    break
-
-    if item_id is None:
-        raise ValueError(
-            f"{icons.red_dot} There's no item '{item}' of type '{type}' in the '{workspace_name}' workspace."
-        )
-
-    return item_id
-
-
-def resolve_item_name_and_id(
-    item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None
-) -> Tuple[str, UUID]:
-
-    workspace_id = resolve_workspace_id(workspace)
-    item_id = resolve_item_id(item=item, type=type, workspace=workspace_id)
-    item_name = (
-        _base_api(
-            request=f"/v1/workspaces/{workspace_id}/items/{item_id}", client="fabric_sp"
-        )
-        .json()
-        .get("displayName")
-    )
-
-    return item_name, item_id
-
-
-def resolve_item_name(item_id: UUID, workspace: Optional[str | UUID] = None) -> str:
-
-    workspace_id = resolve_workspace_id(workspace)
-    try:
-        item_name = (
-            _base_api(
-                request=f"/v1/workspaces/{workspace_id}/items/{item_id}",
-                client="fabric_sp",
-            )
-            .json()
-            .get("displayName")
-        )
-    except FabricHTTPException:
-        raise ValueError(
-            f"{icons.red_dot} The '{item_id}' item was not found in the '{workspace_id}' workspace."
-        )
-
-    return item_name
-
-
 def resolve_lakehouse_name_and_id(
     lakehouse: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None
 ) -> Tuple[str, UUID]:
@@ -933,6 +852,87 @@ def resolve_workspace_name_and_id(
         raise WorkspaceNotFoundException(workspace)
 
     return workspace_name, workspace_id
+
+
+def resolve_item_id(
+    item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None
+) -> UUID:
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    item_id = None
+
+    if _is_valid_uuid(item):
+        # Check (optional)
+        item_id = item
+        try:
+            _base_api(
+                request=f"/v1/workspaces/{workspace_id}/items/{item_id}",
+                client="fabric_sp",
+            )
+        except FabricHTTPException:
+            raise ValueError(
+                f"{icons.red_dot} The '{item_id}' item was not found in the '{workspace_name}' workspace."
+            )
+    else:
+        if type is None:
+            raise ValueError(
+                f"{icons.red_dot} The 'type' parameter is required if specifying an item name."
+            )
+        responses = _base_api(
+            request=f"/v1/workspaces/{workspace_id}/items?type={type}",
+            client="fabric_sp",
+            uses_pagination=True,
+        )
+        for r in responses:
+            for v in r.get("value", []):
+                display_name = v.get("displayName")
+                if display_name == item:
+                    item_id = v.get("id")
+                    break
+
+    if item_id is None:
+        raise ValueError(
+            f"{icons.red_dot} There's no item '{item}' of type '{type}' in the '{workspace_name}' workspace."
+        )
+
+    return item_id
+
+
+def resolve_item_name_and_id(
+    item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None
+) -> Tuple[str, UUID]:
+
+    workspace_id = resolve_workspace_id(workspace)
+    item_id = resolve_item_id(item=item, type=type, workspace=workspace_id)
+    item_name = (
+        _base_api(
+            request=f"/v1/workspaces/{workspace_id}/items/{item_id}", client="fabric_sp"
+        )
+        .json()
+        .get("displayName")
+    )
+
+    return item_name, item_id
+
+
+def resolve_item_name(item_id: UUID, workspace: Optional[str | UUID] = None) -> str:
+
+    workspace_id = resolve_workspace_id(workspace)
+    try:
+        item_name = (
+            _base_api(
+                request=f"/v1/workspaces/{workspace_id}/items/{item_id}",
+                client="fabric_sp",
+            )
+            .json()
+            .get("displayName")
+        )
+    except FabricHTTPException:
+        raise ValueError(
+            f"{icons.red_dot} The '{item_id}' item was not found in the '{workspace_id}' workspace."
+        )
+
+    return item_name
 
 
 def _extract_json(dataframe: pd.DataFrame) -> dict:
@@ -1539,11 +1539,12 @@ def _get_column_aggregate(
     workspace: Optional[str | UUID] = None,
     function: str = "max",
     default_value: int = 0,
+    schema_name: Optional[str] = None,
 ) -> int | Dict[str, int]:
 
     workspace_id = resolve_workspace_id(workspace)
     lakehouse_id = resolve_lakehouse_id(lakehouse, workspace_id)
-    path = create_abfss_path(lakehouse_id, workspace_id, table_name)
+    path = create_abfss_path(lakehouse_id, workspace_id, table_name, schema_name)
     df = _read_delta_table(path)
 
     if isinstance(column_name, str):
@@ -1610,6 +1611,12 @@ def _get_aggregate(df, column_name, function, default_value: int = 0) -> int:
             result = df.selectExpr(f"{function}({column_name})")
 
         return result.collect()[0][0] or default_value
+
+
+def _create_spark_dataframe(df: pd.DataFrame):
+
+    spark = _create_spark_session()
+    return spark.createDataFrame(df)
 
 
 def _make_list_unique(my_list):
