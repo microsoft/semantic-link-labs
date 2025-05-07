@@ -194,7 +194,7 @@ def create_vpax(
         lakehouse_workspace
     )
     (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
-        lakehouse=lakehouse, workspace=lakehouse_workspace
+        lakehouse=lakehouse, workspace=lakehouse_workspace_id
     )
 
     local_path = _mount(lakehouse=lakehouse_id, workspace=lakehouse_workspace_id)
@@ -208,9 +208,10 @@ def create_vpax(
         workspace=lakehouse_workspace_id,
         container="Files",
     )
-    if not df.empty and not overwrite:
+    df_filt = df[df["Blob Name"] == f"{lakehouse_id}/Files/{file_path}.vpax"]
+    if not df_filt.empty and not overwrite:
         print(
-            f"{icons.warning} The .vpax file already exists at {path}. Set overwrite=True to overwrite the file."
+            f"{icons.warning} The Files/{file_path}.vpax file already exists in the '{lakehouse_name}' lakehouse. Set overwrite=True to overwrite the file."
         )
         return
 
@@ -376,14 +377,3 @@ def _dax_distinctcount(table_name, columns):
         dax += f"""\n"{c}", DISTINCTCOUNT({full_name}),"""
 
     return f"{dax.rstrip(',')}\n)"
-
-
-def _move_key_to_index(d, key, index):
-
-    items = list(d.items())
-    # Remove the key from its current position
-    value = d[key]
-    items = [(k, v) for k, v in items if k != key]
-    # Insert it at the desired index
-    items.insert(index, (key, value))
-    return dict(items)
