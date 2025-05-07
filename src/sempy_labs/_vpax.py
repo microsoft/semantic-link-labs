@@ -1,4 +1,3 @@
-import os
 import sempy
 import re
 from urllib.parse import urlparse
@@ -18,40 +17,120 @@ from sempy_labs._helper_functions import (
 import sempy_labs._icons as icons
 from sempy_labs.lakehouse._blobs import list_blobs
 from sempy_labs.tom import connect_semantic_model
+import zipfile
+import requests
+
+
+VPA_VERSION = "1.10.0"
+NUGET_BASE_URL = "https://www.nuget.org/api/v2/package"
+ASSEMBLIES = [
+    "Dax.Metadata",
+    "Dax.Model.Extractor",
+    "Dax.ViewVpaExport",
+    "Dax.Vpax",
+]
 
 _vpa_initialized = False
+current_dir = Path(__file__).parent
+nuget_dir = current_dir / "nuget_dlls"
 
 
-def init_vertipaq_analyzer() -> None:
+def find_lib_folder(pkg_folder: Path) -> Path:
+    lib_base = pkg_folder / "lib"
+    if not lib_base.exists():
+        raise FileNotFoundError(f"No 'lib' directory in package {pkg_folder}")
+
+    # Prefer netstandard2.0 if available
+    candidates = sorted(lib_base.iterdir())
+    for preferred in ["netstandard2.0", "net6.0", "net5.0", "netcoreapp3.1", "net472"]:
+        if (lib_base / preferred).exists():
+            return lib_base / preferred
+
+    # Fallback: first available folder
+    for candidate in candidates:
+        if candidate.is_dir():
+            return candidate
+
+    raise FileNotFoundError(f"No usable framework folder found in {lib_base}")
+
+
+def download_and_extract_package(
+    package_name: str, version: str, target_dir: Path
+) -> Path:
+    nupkg_url = f"{NUGET_BASE_URL}/{package_name}/{version}"
+    nupkg_path = target_dir / f"{package_name}.{version}.nupkg"
+
+    if not nupkg_path.exists():
+        r = requests.get(nupkg_url)
+        r.raise_for_status()
+        target_dir.mkdir(parents=True, exist_ok=True)
+        with open(nupkg_path, "wb") as f:
+            f.write(r.content)
+
+    extract_path = target_dir / f"{package_name}_{version}"
+    if not extract_path.exists():
+        with zipfile.ZipFile(nupkg_path, "r") as zip_ref:
+            zip_ref.extractall(extract_path)
+    return extract_path
+
+
+def download_and_load_nuget_package(
+    package_name, version, target_dir: Path = None, load_assembly=True
+):
+
+    from System.Reflection import Assembly
+
+    if target_dir is None:
+        target_dir = nuget_dir
+
+    # Download and extract
+    pkg_folder = download_and_extract_package(package_name, version, target_dir)
+    lib_folder = find_lib_folder(pkg_folder)
+
+    dll_path = lib_folder / f"{package_name}.dll"
+    if not dll_path.exists():
+        raise FileNotFoundError(f"{dll_path} not found")
+
+    sys.path.append(str(lib_folder))
+    if load_assembly:
+        Assembly.LoadFile(str(dll_path))
+
+
+def init_vertipaq_analyzer():
     global _vpa_initialized
     if _vpa_initialized:
         return
 
+    from clr_loader import get_coreclr
+    from pythonnet import set_runtime
+
+    # Load the runtime and set it BEFORE importing clr
+    runtime_config_path = current_dir / "dotnet_lib" / "dotnet.runtime.config.json"
+    rt = get_coreclr(runtime_config=str(runtime_config_path))
+    set_runtime(rt)
+
     sempy.fabric._client._utils._init_analysis_services()
 
-    # from clr_loader import get_coreclr
-    # from pythonnet import set_runtime
+    from System.Reflection import Assembly
 
-    current_dir = Path(__file__).parent
-    assembly_path = current_dir / "dotnet_lib"
-    # rt = get_coreclr(
-    #    runtime_config=os.fspath(f"{assembly_path}/dotnet.runtime.config.json")
-    # )
-    # set_runtime(rt)
+    for name in ASSEMBLIES:
+        download_and_load_nuget_package(
+            name, VPA_VERSION, nuget_dir, load_assembly=False
+        )
 
-    import clr
+    download_and_load_nuget_package("Newtonsoft.Json", "13.0.1")
+    download_and_load_nuget_package("System.IO.Packaging", "7.0.0")
 
-    sys.path.append(os.fspath(assembly_path))
-    clr.AddReference(os.fspath(assembly_path / "Dax.Metadata.dll"))
-    clr.AddReference(os.fspath(assembly_path / "Dax.Model.Extractor.dll"))
-    clr.AddReference(os.fspath(assembly_path / "Dax.ViewVpaExport.dll"))
-    clr.AddReference(os.fspath(assembly_path / "Dax.Vpax.dll"))
-    clr.AddReference(os.fspath(assembly_path / "System.IO.Packaging.dll"))
-    # clr.AddReference("Dax.Metadata")
-    # clr.AddReference("Dax.Model.Extractor")
-    # clr.AddReference("Dax.ViewVpaExport")
-    # clr.AddReference("Dax.Vpax")
-    # clr.AddReference("System.IO")
+    # For some reason I have to load these after and not inside the download_and_load_nuget_package function
+    dll_paths = [
+        f"{nuget_dir}/Dax.Model.Extractor_1.10.0/lib/net6.0/Dax.Model.Extractor.dll",
+        f"{nuget_dir}/Dax.Metadata_1.10.0/lib/netstandard2.0/Dax.Metadata.dll",
+        f"{nuget_dir}/Dax.ViewVpaExport_1.10.0/lib/netstandard2.0/Dax.ViewVpaExport.dll",
+        f"{nuget_dir}/Dax.Vpax_1.10.0/lib/net6.0/Dax.Vpax.dll",
+    ]
+    for dll_path in dll_paths:
+        Assembly.LoadFile(dll_path)
+
     _vpa_initialized = True
 
 
@@ -128,7 +207,6 @@ def create_vpax(
         lakehouse=lakehouse_id,
         workspace=lakehouse_workspace_id,
         container="Files",
-        prefix=f"{file_path}.vpax",
     )
     if not df.empty and not overwrite:
         print(
@@ -141,7 +219,7 @@ def create_vpax(
     extractor_app_version = "1.0"
     column_batch_size = 50
     token = notebookutils.credentials.getToken("pbi")
-    connection_string = f"data source=powerbi://api.powerbi.com/v1.0/myorg/{workspace_name};initial catalog={dataset_name};User ID=;Password={token};Persist Security Info=True;Impersonation Level=Impersonate "
+    connection_string = f"data source=powerbi://api.powerbi.com/v1.0/myorg/{workspace_name};initial catalog={dataset_name};User ID=;Password={token};Persist Security Info=True;Impersonation Level=Impersonate"
 
     print(f"{icons.in_progress} Extracting .vpax metadata...")
 
@@ -163,7 +241,6 @@ def create_vpax(
     with connect_semantic_model(dataset=dataset, workspace=workspace) as tom:
         is_direct_lake = tom.is_direct_lake()
         if read_stats_from_data and is_direct_lake and direct_lake_stats_mode == "Full":
-            from System import Array, Byte
 
             df_not_resident = fabric.evaluate_dax(
                 dataset=dataset,
@@ -289,8 +366,6 @@ def create_vpax(
     print(
         f"{icons.green_dot} The {file_path}.vpax file has been saved in the '{lakehouse_name}' lakehouse within the '{lakehouse_workspace_name}' workspace."
     )
-
-    return (vpax_stream, dax_model, vpa_model, tom_database)
 
 
 def _dax_distinctcount(table_name, columns):
