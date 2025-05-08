@@ -12,6 +12,9 @@ from sempy_labs._helper_functions import (
 import json
 import sempy_labs._icons as icons
 import copy
+from io import BytesIO
+import zipfile
+import base64
 
 
 class ReportWrapper:
@@ -63,40 +66,51 @@ class ReportWrapper:
             lro_return_json=True,
         )
 
-        self._report_definition = {"parts": []}  # This contains all the json files
-        self._non_report_definition = {
-            "parts": []
-        }  # This contains all the non-json files
+        def is_zip_file(data: bytes) -> bool:
+            return data.startswith(b"PK\x03\x04")
+
+        self._report_definition = {"parts": []}
         for parts in result.get("definition", {}).get("parts", []):
             path = parts.get("path")
             payload = parts.get("payload")
-            if path.endswith(".json"):
-                decoded_payload = json.loads(_decode_b64(payload))
-                self._report_definition["parts"].append(
-                    {"path": path, "payload": decoded_payload}
-                )
-            else:
-                self._non_report_definition["parts"].append(
-                    {"path": path, "payload": payload}
-                )
+            decoded_bytes = base64.b64decode(payload)
 
-    def get(self, file_path: str) -> dict:
+            if is_zip_file(decoded_bytes):
+                with zipfile.ZipFile(BytesIO(decoded_bytes)) as zip_file:
+                    for filename in zip_file.namelist():
+                        with zip_file.open(filename) as f:
+                            content = f.read()
+                            decoded_payload = json.loads(content.decode("utf-8"))
+            else:
+                decoded_payload = json.loads(decoded_bytes.decode("utf-8"))
+
+            self._report_definition["parts"].append(
+                {"path": path, "payload": decoded_payload}
+            )
+
+    def get(self, file_path: str, format: bool = False) -> dict | str:
         """
-        Get the report definition file.
+        Get the json content of the specified report definition file.
 
         Parameters
         ----------
         file_path : str
-            The path of the report definition file.
+            The path of the report definition file. For example: "definition/pages/pages.json".
+        format : bool, default=False
+            Whether to format the JSON output.
+            If True, the JSON will be pretty-printed with indentation.
 
         Returns
         -------
-        dict
-            The report definition file.
+        dict | str
+            The json content of the specified report definition file.
         """
         for part in self._report_definition.get("parts"):
             if part.get("path") == file_path:
-                return part.get("payload")
+                value = part.get("payload")
+                if format:
+                    value = json.dumps(value, indent=2)
+                return value
 
         raise ValueError(f"File {file_path} not found in report definition.")
 
@@ -134,6 +148,10 @@ class ReportWrapper:
 
         raise ValueError(f"File {file_path} not found in report definition.")
 
+    # def all_files(self):
+
+    #    yield self._report_definition.get('parts')
+
     def save_changes(self):
 
         if self._readonly:
@@ -146,13 +164,12 @@ class ReportWrapper:
 
             for part in new_report_definition.get("parts", []):
                 if isinstance(part.get("payload"), dict):
-                    part["payload"] = _conv_b64(part["payload"])
+                    part["payload"] = _conv_b64(part["payload"])  # Do I need to zip some of these?
 
             # Combine report and non-report definitions
             payload = {
                 "definition": {
                     "parts": new_report_definition.get("parts")
-                    + self._non_report_definition.get("parts")
                 }
             }
 
