@@ -6,8 +6,9 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_item_name_and_id,
     _base_api,
-    _decode_b64,
     _conv_b64,
+    _create_dataframe,
+    _update_dataframe_datatypes,
 )
 import json
 import sempy_labs._icons as icons
@@ -15,6 +16,9 @@ import copy
 from io import BytesIO
 import zipfile
 import base64
+import pandas as pd
+from jsonpath_ng.ext import parse
+import sempy_labs.report._report_helper as helper
 
 
 class ReportWrapper:
@@ -76,17 +80,28 @@ class ReportWrapper:
             decoded_bytes = base64.b64decode(payload)
 
             if is_zip_file(decoded_bytes):
+                merged_payload = {}
                 with zipfile.ZipFile(BytesIO(decoded_bytes)) as zip_file:
                     for filename in zip_file.namelist():
-                        with zip_file.open(filename) as f:
-                            content = f.read()
-                            decoded_payload = json.loads(content.decode("utf-8"))
+                        if filename.endswith(".json"):
+                            with zip_file.open(filename) as f:
+                                content = f.read()
+                                part_data = json.loads(content.decode("utf-8"))
+
+                                if isinstance(part_data, dict):
+                                    merged_payload.update(part_data)
+                                else:
+                                    # For non-dict top-level json (rare), store under filename
+                                    merged_payload[filename] = part_data
+
+                self._report_definition["parts"].append(
+                    {"path": path, "payload": merged_payload}
+                )
             else:
                 decoded_payload = json.loads(decoded_bytes.decode("utf-8"))
-
-            self._report_definition["parts"].append(
-                {"path": path, "payload": decoded_payload}
-            )
+                self._report_definition["parts"].append(
+                    {"path": path, "payload": decoded_payload}
+                )
 
     def get(self, file_path: str, format: bool = False) -> dict | str:
         """
@@ -119,6 +134,14 @@ class ReportWrapper:
         if not isinstance(payload, dict):
             raise ValueError("Payload must be a dictionary.")
 
+        existing_paths = [
+            part.get("path") for part in self._report_definition.get("parts")
+        ]
+        if file_path in existing_paths:
+            raise ValueError(
+                f"{icons.red_dot} Cannot add the '{file_path}' file as this file path already exists in the report definition."
+            )
+
         self._report_definition["parts"].append({"path": file_path, "payload": payload})
 
     def remove(self, file_path: str):
@@ -126,11 +149,6 @@ class ReportWrapper:
         for part in self._report_definition.get("parts"):
             if part.get("path") == file_path:
                 self._report_definition["parts"].remove(part)
-                # print(f"The file '{file_path}' has been removed from report definition.")
-                return
-        for part in self._non_report_definition.get("parts"):
-            if part.get("path") == file_path:
-                self._non_report_definition["parts"].remove(part)
                 # print(f"The file '{file_path}' has been removed from report definition.")
                 return
 
@@ -164,14 +182,12 @@ class ReportWrapper:
 
             for part in new_report_definition.get("parts", []):
                 if isinstance(part.get("payload"), dict):
-                    part["payload"] = _conv_b64(part["payload"])  # Do I need to zip some of these?
+                    part["payload"] = _conv_b64(
+                        part["payload"]
+                    )  # Do I need to zip some of these?
 
             # Combine report and non-report definitions
-            payload = {
-                "definition": {
-                    "parts": new_report_definition.get("parts")
-                }
-            }
+            payload = {"definition": {"parts": new_report_definition.get("parts")}}
 
             # Update item definition
             _base_api(
@@ -184,6 +200,115 @@ class ReportWrapper:
             print(
                 f"{icons.green_dot} The report definition has been updated successfully."
             )
+
+    def list_pages(self) -> pd.DataFrame:
+        """
+        List all pages in the report.
+
+        Returns
+        -------
+        list
+            A list of page names.
+        """
+
+        columns = {
+            "File Path": "str",
+            "Page Name": "str",
+            "Page Display Name": "str",
+            "Hidden": "bool",
+            "Active": "bool",
+            "Width": "int",
+            "Height": "int",
+            "Display Option": "str",
+            "Type": "str",
+            "Alignment": "str",
+            "Drillthrough Target Page": "bool",
+            "Visual Count": "int",
+            "Data Visual Count": "int",
+            "Visible Visual Count": "int",
+            "Page Filter Count": "int",
+            "Page URL": "str",
+        }
+        df = _create_dataframe(columns=columns)
+
+        pages = [
+            p
+            for p in self._report_definition.get("parts")
+            if p.get("path").endswith("/page.json")
+        ]
+        page = self.get(file_path="definition/pages/pages.json")
+        active_page = page.get("activePageName")
+
+        for p in pages:
+            file_path = p.get("path")
+            page_prefix = file_path[0:-9]
+            payload = p.get("payload")
+            page_name = payload.get("name")
+            height = payload.get("height")
+            width = payload.get("width")
+
+            # Alignment
+            matches = parse(
+                "$.objects.displayArea[0].properties.verticalAlignment.expr.Literal.Value"
+            ).find(payload)
+            alignment_value = (
+                matches[0].value[1:-1] if matches and matches[0].value else "Top"
+            )
+
+            # Drillthrough
+            matches = parse("$.filterConfig.filters[*].howCreated").find(payload)
+            how_created_values = [match.value for match in matches]
+            drill_through = any(value == "Drillthrough" for value in how_created_values)
+
+            visual_count = len(
+                [
+                    v
+                    for v in self._report_definition.get("parts")
+                    if v.get("path").endswith("/visual.json")
+                    and v.get("path").startswith(page_prefix)
+                ]
+            )
+
+            # data_visual_count = len(
+            #    dfV[(dfV["Page Name"] == page_name) & (dfV["Data Visual"])]
+            # )
+            # visible_visual_count = len(
+            #    dfV[(dfV["Page Name"] == page_name) & (dfV["Hidden"] == False)]
+            # )
+
+            # Page Filter Count
+            matches = parse("$.filterConfig.filters").find(payload)
+            page_filter_count = (
+                len(matches[0].value) if matches and matches[0].value else 0
+            )
+
+            # Hidden
+            matches = parse("$.visibility").find(payload)
+            is_hidden = any(match.value == "HiddenInViewMode" for match in matches)
+
+            new_data = {
+                "File Path": file_path,
+                "Page Name": page_name,
+                "Page Display Name": payload.get("displayName"),
+                "Display Option": payload.get("displayOption"),
+                "Height": height,
+                "Width": width,
+                "Hidden": is_hidden,
+                "Active": True if page_name == active_page else False,
+                "Type": helper.page_type_mapping.get((width, height), "Custom"),
+                "Alignment": alignment_value,
+                "Drillthrough Target Page": drill_through,
+                "Visual Count": visual_count,
+                # "Data Visual Count": data_visual_count,
+                # "Visible Visual Count": visible_visual_count,
+                "Page Filter Count": page_filter_count,
+                "Page URL": f"{helper.get_web_url(report=self._report_name, workspace=self._workspace_id)}/{page_name}",
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+        #_update_dataframe_datatypes(dataframe=df, column_map=columns)
+
+        return df
 
     def close(self):
 
