@@ -343,7 +343,10 @@ def create_vpax(
                     tbl = next(
                         table
                         for table in dax_model.Tables
-                        if str(t.TableName) == table_name
+                        if str(table.TableName) == table_name
+                    )
+                    print(
+                        f"{icons.in_progress} Calculating column cardinalities for the '{table_name}' table..."
                     )
                     cols = [
                         col
@@ -352,6 +355,7 @@ def create_vpax(
                         and str(col.ColumnName) in column_cardinalities
                     ]
                     for col in cols:
+                        print(str(col.ColumnName), col.ColumnCardinality)
                         col.ColumnCardinality = column_cardinalities.get(
                             str(col.ColumnName)
                         )
