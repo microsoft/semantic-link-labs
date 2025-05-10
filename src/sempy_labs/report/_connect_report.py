@@ -22,6 +22,9 @@ import sempy_labs.report._report_helper as helper
 from sempy_labs._model_dependencies import get_measure_dependencies
 import requests
 import re
+import base64
+from io import BytesIO
+import zipfile
 
 
 class ReportWrapper:
@@ -80,7 +83,13 @@ class ReportWrapper:
         for parts in result.get("definition", {}).get("parts", []):
             path = parts.get("path")
             payload = parts.get("payload")
-            decoded_payload = json.loads(_decode_b64(payload))
+
+            # decoded_bytes = base64.b64decode(payload)
+            # decoded_payload = json.loads(_decode_b64(payload))
+            try:
+                decoded_payload = json.loads(base64.b64decode(payload).decode("utf-8"))
+            except:
+                decoded_payload = payload
 
             # if is_zip_file(decoded_bytes):
             #    merged_payload = {}
@@ -99,14 +108,15 @@ class ReportWrapper:
 
             #    self._report_definition["parts"].append(
             #        {"path": path, "payload": merged_payload}
-            #    )
+            #   )
             # else:
-            # decoded_payload = json.loads(decoded_bytes.decode("utf-8"))
+            #    decoded_payload = json.loads(decoded_bytes.decode("utf-8"))
             self._report_definition["parts"].append(
                 {"path": path, "payload": decoded_payload}
             )
+        self._current_report_definition = copy.deepcopy(self._report_definition)
 
-    def get(self, file_path: str, format: bool = False) -> dict | str:
+    def get(self, file_path: str) -> dict:
         """
         Get the json content of the specified report definition file.
 
@@ -114,21 +124,15 @@ class ReportWrapper:
         ----------
         file_path : str
             The path of the report definition file. For example: "definition/pages/pages.json".
-        format : bool, default=False
-            Whether to format the JSON output.
-            If True, the JSON will be pretty-printed with indentation.
 
         Returns
         -------
-        dict | str
+        dict
             The json content of the specified report definition file.
         """
         for part in self._report_definition.get("parts"):
             if part.get("path") == file_path:
-                value = part.get("payload")
-                if format:
-                    value = json.dumps(value, indent=2)
-                return value
+                return part.get("payload")
 
         raise ValueError(f"File {file_path} not found in report definition.")
 
@@ -270,6 +274,8 @@ class ReportWrapper:
         }
         df = _create_dataframe(columns=columns)
 
+        dfs = []
+
         if "filterConfig" in report_file:
             for flt in report_file.get("filterConfig", {}).get("filters", {}):
                 filter_name = flt.get("name")
@@ -294,9 +300,10 @@ class ReportWrapper:
                         "Used": filter_used,
                     }
 
-                    df = pd.concat(
-                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                    )
+                    dfs.append(pd.DataFrame(new_data, index=[0]))
+
+        if dfs:
+            df = pd.concat(dfs, ignore_index=True)
 
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
@@ -342,6 +349,7 @@ class ReportWrapper:
             if p.get("path").endswith("/page.json")
         ]
 
+        dfs = []
         for p in pages:
             payload = p.get("payload")
             page_id = payload.get("name")
@@ -374,10 +382,10 @@ class ReportWrapper:
                             "Page URL": f"{helper.get_web_url(report=self._report_name, workspace=self._workspace_id)}/{page_id}",
                         }
 
-                        df = pd.concat(
-                            [df, pd.DataFrame(new_data, index=[0])],
-                            ignore_index=True,
-                        )
+                        dfs.append(pd.DataFrame(new_data, index=[0]))
+
+        if dfs:
+            df = pd.concat(dfs, ignore_index=True)
 
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
@@ -426,6 +434,7 @@ class ReportWrapper:
             if o.get("path").endswith("/visual.json")
         ]
 
+        dfs = []
         for v in visuals:
             path = v.get("path")
             payload = v.get("payload")
@@ -460,10 +469,10 @@ class ReportWrapper:
                             "Used": filter_used,
                         }
 
-                        df = pd.concat(
-                            [df, pd.DataFrame(new_data, index=[0])],
-                            ignore_index=True,
-                        )
+                        dfs.append(pd.DataFrame(new_data, index=[0]))
+
+        if dfs:
+            df = pd.concat(dfs, ignore_index=True)
 
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
@@ -500,6 +509,7 @@ class ReportWrapper:
             if o.get("path").endswith("/page.json")
         ]
 
+        dfs = []
         for p in pages:
             payload = p.get("payload")
             page_name = payload.get("name")
@@ -517,9 +527,10 @@ class ReportWrapper:
                     "Target Visual Name": targetVisual,
                     "Type": vizIntType,
                 }
-                df = pd.concat(
-                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                )
+                dfs.append(pd.DataFrame(new_data, index=[0]))
+
+        if dfs:
+            df = pd.concat(dfs, ignore_index=True)
 
         return df
 
@@ -563,6 +574,7 @@ class ReportWrapper:
 
         dfV = self.list_visuals()
 
+        dfs = []
         for p in pages:
             file_path = p.get("path")
             page_prefix = file_path[0:-9]
@@ -628,7 +640,10 @@ class ReportWrapper:
                 "Page Filter Count": page_filter_count,
                 "Page URL": f"{helper.get_web_url(report=self._report_name, workspace=self._workspace_id)}/{page_name}",
             }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            dfs.append(pd.DataFrame(new_data, index=[0]))
+
+        if dfs:
+            df = pd.concat(dfs, ignore_index=True)
 
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
@@ -699,6 +714,8 @@ class ReportWrapper:
             for o in self._report_definition.get("parts")
             if o.get("path").endswith("/visual.json")
         ]
+
+        dfs = []
 
         for v in visuals:
             path = v.get("path")
@@ -835,8 +852,10 @@ class ReportWrapper:
                 "Visual Filter Count": visual_filter_count,
                 "Data Limit": data_limit,
             }
+            dfs.append(pd.DataFrame(new_data, index=[0]))
 
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+        if dfs:
+            df = pd.concat(dfs, ignore_index=True)
 
         grouped_df = (
             self.list_visual_objects()
@@ -874,7 +893,7 @@ class ReportWrapper:
             A pandas dataframe containing a list of all semantic model objects used in each visual in the report.
         """
 
-        page_mapping, visual_mapping = self.visual_page_mapping()
+        (page_mapping, visual_mapping) = self.visual_page_mapping()
 
         columns = {
             "Page Name": "str",
@@ -960,6 +979,7 @@ class ReportWrapper:
             if o.get("path").endswith("/visual.json")
         ]
 
+        dfs = []
         for v in visuals:
             path = v.get("path")
             payload = v.get("payload")
@@ -1007,9 +1027,10 @@ class ReportWrapper:
                     "Object Display Name": obj_display,
                 }
 
-                df = pd.concat(
-                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                )
+                dfs.append(pd.DataFrame(new_data, index=[0]))
+
+        if dfs:
+            df = pd.concat(dfs, ignore_index=True)
 
         if extended:
             df = self._add_extended(dataframe=df)
@@ -1196,6 +1217,8 @@ class ReportWrapper:
             if o.get("path").endswith("/bookmark.json")
         ]
 
+        dfs = []
+
         for b in bookmarks:
             path = b.get("path")
             payload = b.get("payload")
@@ -1238,9 +1261,10 @@ class ReportWrapper:
                         "Visual Name": visual_name,
                         "Visual Hidden": visual_hidden,
                     }
-                    df = pd.concat(
-                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                    )
+                    dfs.append(pd.DataFrame(new_data, index=[0]))
+
+        if dfs:
+            df = pd.concat(dfs, ignore_index=True)
 
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
@@ -1271,6 +1295,7 @@ class ReportWrapper:
 
         report_file = self.get(file_path="definition/reportExtensions.json")
 
+        dfs = []
         if report_file:
             payload = report_file.get("payload")
             for e in payload.get("entities", []):
@@ -1288,9 +1313,10 @@ class ReportWrapper:
                         "Data Type": data_type,
                         "Format String": format_string,
                     }
-                    df = pd.concat(
-                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                    )
+                    dfs.append(pd.DataFrame(new_data, index=[0]))
+
+        if dfs:
+            df = pd.concat(dfs, ignore_index=True)
 
         return df
 
@@ -1446,7 +1472,10 @@ class ReportWrapper:
         theme_name_full = f"{theme_name}.json"
 
         # Add theme.json file to request_body
-        self.add(file_path=f"StaticResources/RegisteredResources/{theme_name_full}", payload=theme_file)
+        self.add(
+            file_path=f"StaticResources/RegisteredResources/{theme_name_full}",
+            payload=theme_file,
+        )
 
         new_theme = {
             "name": theme_name_full,
@@ -1472,9 +1501,7 @@ class ReportWrapper:
 
         for package in report_file["resourcePackages"]:
             package["items"] = [
-                item
-                for item in package["items"]
-                if item["type"] != "CustomTheme"
+                item for item in package["items"] if item["type"] != "CustomTheme"
             ]
 
         if not any(
@@ -1488,9 +1515,7 @@ class ReportWrapper:
             }
             report_file["resourcePackages"].append(new_registered_resources)
         else:
-            names = [
-                rp["name"] for rp in report_file["resourcePackages"][1]["items"]
-            ]
+            names = [rp["name"] for rp in report_file["resourcePackages"][1]["items"]]
 
             if theme_name_full not in names:
                 report_file["resourcePackages"][1]["items"].append(new_theme)
@@ -1538,7 +1563,11 @@ class ReportWrapper:
 
     def close(self):
 
-        if not self._readonly:
+        # Save the changes to the service if the connection is read/write and the report definition has changed
+        if (
+            not self._readonly
+            and self._report_definition != self._current_report_definition
+        ):
             self.save_changes()
 
             # self._report_definition = None
