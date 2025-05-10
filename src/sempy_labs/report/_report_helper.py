@@ -149,36 +149,6 @@ def resolve_page_name(self, page_name: str) -> Tuple[str, str, str]:
     return valid_page_name, valid_display_name, file_path
 
 
-def visual_page_mapping(self) -> Tuple[dict, dict]:
-
-    page_mapping = {}
-    visual_mapping = {}
-    rd = self.rdef
-    for _, r in rd.iterrows():
-        file_path = r["path"]
-        payload = r["payload"]
-        if file_path.endswith("/page.json"):
-            pattern_page = r"/pages/(.*?)/page.json"
-            page_name = re.search(pattern_page, file_path).group(1)
-            obj_file = base64.b64decode(payload).decode("utf-8")
-            obj_json = json.loads(obj_file)
-            page_id = obj_json.get("name")
-            page_display = obj_json.get("displayName")
-            page_mapping[page_name] = (page_id, page_display)
-    for _, r in rd.iterrows():
-        file_path = r["path"]
-        payload = r["payload"]
-        if file_path.endswith("/visual.json"):
-            pattern_page = r"/pages/(.*?)/visuals/"
-            page_name = re.search(pattern_page, file_path).group(1)
-            visual_mapping[file_path] = (
-                page_mapping.get(page_name)[0],
-                page_mapping.get(page_name)[1],
-            )
-
-    return page_mapping, visual_mapping
-
-
 def resolve_visual_name(
     self, page_name: str, visual_name: str
 ) -> Tuple[str, str, str, str]:
