@@ -27,6 +27,55 @@ from io import BytesIO
 import zipfile
 
 
+def color_text(text, color_code):
+    return f"\033[{color_code}m{text}\033[0m"
+
+
+def stringify(payload):
+    if isinstance(payload, str):
+        return payload
+    try:
+        return json.dumps(payload, indent=2, sort_keys=True)
+    except Exception:
+        return str(payload)
+
+
+def build_path_map(parts):
+    return {part["path"]: part["payload"] for part in parts}
+
+
+def diff_parts(d1, d2):
+
+    import difflib
+
+    paths1 = build_path_map(d1.get("parts", []))
+    paths2 = build_path_map(d2.get("parts", []))
+
+    all_paths = set(paths1) | set(paths2)
+
+    for path in sorted(all_paths):
+        p1 = paths1.get(path)
+        p2 = paths2.get(path)
+
+        if p1 is None:
+            print(color_text(f"+ {path}", "32"))  # Green
+        elif p2 is None:
+            print(color_text(f"- {path}", "31"))  # Red
+        elif p1 != p2:
+            print(color_text(f"~ {path}", "33"))  # Yellow
+            text1 = stringify(p1).splitlines()
+            text2 = stringify(p2).splitlines()
+            for line in difflib.unified_diff(
+                text1, text2, lineterm="", fromfile="old", tofile="new"
+            ):
+                if line.startswith("+") and not line.startswith("+++"):
+                    print(color_text(line, "32"))
+                elif line.startswith("-") and not line.startswith("---"):
+                    print(color_text(line, "31"))
+                elif line.startswith("@@"):
+                    print(color_text(line, "36"))
+
+
 class ReportWrapper:
     """
     Connects to a Power BI report and retrieves its definition.
@@ -63,6 +112,7 @@ class ReportWrapper:
         report: str | UUID,
         workspace: Optional[str | UUID] = None,
         readonly: bool = True,
+        show_diffs: bool = True,
     ):
         (self._workspace_name, self._workspace_id) = resolve_workspace_name_and_id(
             workspace
@@ -71,6 +121,7 @@ class ReportWrapper:
             item=report, type="Report", workspace=self._workspace_id
         )
         self._readonly = readonly
+        self._show_diffs = show_diffs
 
         result = _base_api(
             request=f"/v1/workspaces/{self._workspace_id}/items/{self._report_id}/getDefinition",
@@ -159,7 +210,10 @@ class ReportWrapper:
         for part in self._report_definition.get("parts"):
             if part.get("path") == file_path:
                 self._report_definition["parts"].remove(part)
-                # print(f"The file '{file_path}' has been removed from report definition.")
+                if not self._readonly:
+                    print(
+                        f"The file '{file_path}' has been removed from report definition."
+                    )
                 return
 
         raise ValueError(f"File {file_path} not found in report definition.")
@@ -171,7 +225,10 @@ class ReportWrapper:
         for part in self._report_definition.get("parts"):
             if part.get("path") == file_path:
                 part["payload"] = payload
-                # print(f"The file '{file_path}' has been updated in report definition.")
+                if not self._readonly:
+                    print(
+                        f"The file '{file_path}' has been updated in report definition."
+                    )
                 return
 
         raise ValueError(f"File {file_path} not found in report definition.")
@@ -184,7 +241,7 @@ class ReportWrapper:
 
         if self._readonly:
             print(
-                f"{icons.red_dot} The connection is read-only. Set 'readonly' to False to save changes."
+                f"{icons.warning} The connection is read-only. Set 'readonly' to False to save changes."
             )
         else:
             # Convert the report definition to base64
@@ -313,7 +370,7 @@ class ReportWrapper:
             page_display = payload.get("displayName")
             page_mapping[page_name] = (page_id, page_display)
 
-        for v in self.all_visuals():
+        for v in self.__all_visuals():
             path = v.get("path")
             payload = v.get("payload")
             pattern_page = r"/pages/(.*?)/visuals/"
@@ -1532,9 +1589,10 @@ class ReportWrapper:
                 report_file["resourcePackages"][1]["items"].append(new_theme)
 
         self.update(file_path=self._report_file_path, payload=report_file)
-        print(
-            f"{icons.green_dot} The '{theme_name}' theme has been set as the theme for the '{self._report_name}' report within the '{self._workspace_name}' workspace."
-        )
+        if not self._readonly:
+            print(
+                f"{icons.green_dot} The '{theme_name}' theme has been set as the theme for the '{self._report_name}' report within the '{self._workspace_name}' workspace."
+            )
 
     def set_active_page(self, page_name: str):
         """
@@ -1556,9 +1614,10 @@ class ReportWrapper:
 
         self.update(file_path=self._pages_file_path, payload=page_file)
 
-        print(
-            f"{icons.green_dot} The '{page_display_name}' page has been set as the active page in the '{self._report_name}' report within the '{self._workspace_name}' workspace."
-        )
+        if not self._readonly:
+            print(
+                f"{icons.green_dot} The '{page_display_name}' page has been set as the active page in the '{self._report_name}' report within the '{self._workspace_name}' workspace."
+            )
 
     def set_page_type(self, page_name: str, page_type: str):
         """
@@ -1602,9 +1661,10 @@ class ReportWrapper:
 
         self.update(file_path=file_path, payload=page_file)
 
-        print(
-            f"{icons.green_dot} The '{page_display_name}' page has been updated to the '{page_type}' page type."
-        )
+        if not self._readonly:
+            print(
+                f"{icons.green_dot} The '{page_display_name}' page has been updated to the '{page_type}' page type."
+            )
 
     def set_page_visibility(self, page_name: str, hidden: bool):
         """
@@ -1634,9 +1694,10 @@ class ReportWrapper:
 
         self.update(file_path=file_path, payload=page_file)
 
-        print(
-            f"{icons.green_dot} The '{page_display_name}' page has been set to {visibility}."
-        )
+        if not self._readonly:
+            print(
+                f"{icons.green_dot} The '{page_display_name}' page has been set to {visibility}."
+            )
 
     def hide_tooltip_drillthrough_pages(self):
         """
@@ -1679,9 +1740,10 @@ class ReportWrapper:
             delete_key_in_json(payload, "showAll")
             self.update(file_path=path, payload=payload)
 
-        print(
-            f"{icons.green_dot} Show items with data has been disabled for all visuals in the '{self._report_name}' report within the '{self._workspace_name}' workspace."
-        )
+        if not self._readonly:
+            print(
+                f"{icons.green_dot} Show items with data has been disabled for all visuals in the '{self._report_name}' report within the '{self._workspace_name}' workspace."
+            )
 
     def remove_unnecessary_custom_visuals(self):
         """
@@ -1707,9 +1769,10 @@ class ReportWrapper:
 
         self.update(file_path=self._report_file_path, payload=report_file)
 
-        print(
-            f"{icons.green_dot} The {cv_remove_display} custom visuals have been removed from the '{self._report_name}' report within the '{self._workspace_name}' workspace."
-        )
+        if not self._readonly:
+            print(
+                f"{icons.green_dot} The {cv_remove_display} custom visuals have been removed from the '{self._report_name}' report within the '{self._workspace_name}' workspace."
+            )
 
     def migrate_report_level_measures(self, measures: Optional[str | List[str]] = None):
         """
@@ -1783,9 +1846,10 @@ class ReportWrapper:
                 self.update(file_path=self._report_extensions_path, payload=file)
             # what about if measures is None?
 
-        print(
-            f"{icons.green_dot} The report-level measures have been migrated to the '{dataset_name}' semantic model within the '{dataset_workspace_name}' workspace."
-        )
+        if not self._readonly:
+            print(
+                f"{icons.green_dot} The report-level measures have been migrated to the '{dataset_name}' semantic model within the '{dataset_workspace_name}' workspace."
+            )
 
     # In progress...
     def _list_annotations(self) -> pd.DataFrame:
@@ -1856,6 +1920,10 @@ class ReportWrapper:
 
     def close(self):
 
+        if self._show_diffs and (
+            self._current_report_definition != self._report_definition
+        ):
+            diff_parts(self._current_report_definition, self._report_definition)
         # Save the changes to the service if the connection is read/write and the report definition has changed
         if (
             not self._readonly
@@ -1863,15 +1931,14 @@ class ReportWrapper:
         ):
             self.save_changes()
 
-            # self._report_definition = None
-
 
 @log
 @contextmanager
 def connect_report(
     report: str | UUID,
-    readonly: bool = True,
     workspace: Optional[str | UUID] = None,
+    readonly: bool = True,
+    show_diffs: bool = True,
 ):
     """
     Connects to the report.
@@ -1880,24 +1947,26 @@ def connect_report(
     ----------
     report : str | uuid.UUID
         Name or ID of the report.
-    readonly: bool, default=True
-        Whether the connection is read-only or read/write. Setting this to False enables read/write which saves the changes made back to the server.
     workspace : str | uuid.UUID, default=None
-        The Fabric workspace name or ID. Also supports Azure Analysis Services (Service Principal Authentication required).
-        If connecting to Azure Analysis Services, enter the workspace parameter in the following format: 'asazure://<region>.asazure.windows.net/<server_name>'.
+        The workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    readonly: bool, default=True
+        Whether the connection is read-only or read/write. Setting this to False enables read/write which saves the changes made back to the server.
+    show_diffs: bool, default=True
+        Whether to show the differences between the current report definition in the service and the new report definition.
 
     Returns
     -------
-    typing.Iterator[TOMWrapper]
-        A connection to the semantic model's Tabular Object Model.
+    typing.Iterator[ReportWrapper]
+        A connection to the report's metadata.
     """
 
     rw = ReportWrapper(
         report=report,
         workspace=workspace,
         readonly=readonly,
+        show_diffs=show_diffs,
     )
     try:
         yield rw
