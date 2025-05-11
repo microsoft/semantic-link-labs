@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 from contextlib import contextmanager
 from sempy._utils._log import log
 from uuid import UUID
@@ -53,6 +53,9 @@ class ReportWrapper:
     _workspace_name: str
     _workspace_id: str
     _readonly: bool
+    _report_file_path = "definition/report.json"
+    _pages_file_path = "definition/pages/pages.json"
+    _report_extensions_path = "definition/reportExtensions.json"
 
     @log
     def __init__(
@@ -208,6 +211,121 @@ class ReportWrapper:
                 f"{icons.green_dot} The report definition has been updated successfully."
             )
 
+    def __all_pages(self):
+
+        return [
+            o
+            for o in self._report_definition.get("parts")
+            if o.get("path").endswith("/page.json")
+        ]
+
+    def __all_visuals(self):
+
+        return [
+            o
+            for o in self._report_definition.get("parts")
+            if o.get("path").endswith("/visual.json")
+        ]
+
+    # Helper functions
+    def resolve_page_name(self, page_display_name: str) -> UUID:
+        """
+        Obtains the page name, page display name, and the file path for a given page in a report.
+
+        Parameters
+        ----------
+        page_display_name : str
+            The display name of the page of the report.
+
+        Returns
+        -------
+        uuid.UUID
+            The page name.
+        """
+
+        x, y, z = helper.resolve_page_name(self, page_display_name)
+
+        return x
+
+    def resolve_page_display_name(self, page_name: UUID) -> str:
+        """
+        Obtains the page dispaly name.
+
+        Parameters
+        ----------
+        page_name : uuid.UUID
+            The name of the page of the report.
+
+        Returns
+        -------
+        str
+            The page display name.
+        """
+
+        x, y, z = helper.resolve_page_name(self, page_name=page_name)
+
+        return y
+
+    def _add_extended(self, dataframe):
+
+        from sempy_labs.tom import connect_semantic_model
+
+        (dataset_id, dataset_name, dataset_workspace_id, dataset_workspace_name) = (
+            resolve_dataset_from_report(
+                report=self._report_id, workspace=self._workspace_id
+            )
+        )
+
+        with connect_semantic_model(
+            dataset=dataset_id, readonly=True, workspace=dataset_workspace_id
+        ) as tom:
+            for index, row in dataframe.iterrows():
+                obj_type = row["Object Type"]
+                if obj_type == "Measure":
+                    dataframe.at[index, "Valid Semantic Model Object"] = any(
+                        o.Name == row["Object Name"] for o in tom.all_measures()
+                    )
+                elif obj_type == "Column":
+                    dataframe.at[index, "Valid Semantic Model Object"] = any(
+                        format_dax_object_name(c.Parent.Name, c.Name)
+                        == format_dax_object_name(row["Table Name"], row["Object Name"])
+                        for c in tom.all_columns()
+                    )
+                elif obj_type == "Hierarchy":
+                    dataframe.at[index, "Valid Semantic Model Object"] = any(
+                        format_dax_object_name(h.Parent.Name, h.Name)
+                        == format_dax_object_name(row["Table Name"], row["Object Name"])
+                        for h in tom.all_hierarchies()
+                    )
+        return dataframe
+
+    def visual_page_mapping(self) -> Tuple[dict, dict]:
+
+        page_mapping = {}
+        visual_mapping = {}
+
+        for p in self.__all_pages():
+            path = p.get("path")
+            payload = p.get("payload")
+            pattern_page = r"/pages/(.*?)/page.json"
+            page_name = re.search(pattern_page, path).group(1)
+            page_id = payload.get("name")
+            page_display = payload.get("displayName")
+            page_mapping[page_name] = (page_id, page_display)
+
+        for v in self.all_visuals():
+            path = v.get("path")
+            payload = v.get("payload")
+            pattern_page = r"/pages/(.*?)/visuals/"
+            page_name = re.search(pattern_page, path).group(1)
+            visual_mapping[path] = (
+                page_mapping.get(page_name)[0],
+                page_mapping.get(page_name)[1],
+            )
+
+        return (page_mapping, visual_mapping)
+
+    # List functions
     def list_custom_visuals(self) -> pd.DataFrame:
         """
         Shows a list of all custom visuals used in the report.
@@ -343,14 +461,8 @@ class ReportWrapper:
         }
         df = _create_dataframe(columns=columns)
 
-        pages = [
-            p
-            for p in self._report_definition.get("parts")
-            if p.get("path").endswith("/page.json")
-        ]
-
         dfs = []
-        for p in pages:
+        for p in self.__all_pages():
             payload = p.get("payload")
             page_id = payload.get("name")
             page_display = payload.get("displayName")
@@ -428,14 +540,8 @@ class ReportWrapper:
 
         page_mapping, visual_mapping = self.visual_page_mapping()
 
-        visuals = [
-            o
-            for o in self._report_definition.get("parts")
-            if o.get("path").endswith("/visual.json")
-        ]
-
         dfs = []
-        for v in visuals:
+        for v in self.__all_visuals():
             path = v.get("path")
             payload = v.get("payload")
             page_id = visual_mapping.get(path)[0]
@@ -503,14 +609,8 @@ class ReportWrapper:
         }
         df = _create_dataframe(columns=columns)
 
-        pages = [
-            o
-            for o in self._report_definition.get("parts")
-            if o.get("path").endswith("/page.json")
-        ]
-
         dfs = []
-        for p in pages:
+        for p in self.__all_pages():
             payload = p.get("payload")
             page_name = payload.get("name")
             page_display = payload.get("displayName")
@@ -564,18 +664,13 @@ class ReportWrapper:
         }
         df = _create_dataframe(columns=columns)
 
-        pages = [
-            o
-            for o in self._report_definition.get("parts")
-            if o.get("path").endswith("/page.json")
-        ]
-        page = self.get(file_path="definition/pages/pages.json")
+        page = self.get(file_path=self._pages_file_path)
         active_page = page.get("activePageName")
 
         dfV = self.list_visuals()
 
         dfs = []
-        for p in pages:
+        for p in self.__all_pages():
             file_path = p.get("path")
             page_prefix = file_path[0:-9]
             payload = p.get("payload")
@@ -689,7 +784,7 @@ class ReportWrapper:
         }
         df = _create_dataframe(columns=columns)
 
-        report_file = self.get(file_path="definition/report.json")
+        report_file = self.get(file_path=self._report_file_path)
         custom_visuals = report_file.get("publicCustomVisuals", [])
         page_mapping, visual_mapping = self.visual_page_mapping()
         helper.populate_custom_visual_display_names()
@@ -709,15 +804,9 @@ class ReportWrapper:
 
             return any(key in all_keys for key in keys_to_check)
 
-        visuals = [
-            o
-            for o in self._report_definition.get("parts")
-            if o.get("path").endswith("/visual.json")
-        ]
-
         dfs = []
 
-        for v in visuals:
+        for v in self.__all_visuals():
             path = v.get("path")
             payload = v.get("payload")
             page_id = visual_mapping.get(path)[0]
@@ -973,14 +1062,8 @@ class ReportWrapper:
 
             return result
 
-        visuals = [
-            o
-            for o in self._report_definition.get("parts")
-            if o.get("path").endswith("/visual.json")
-        ]
-
         dfs = []
-        for v in visuals:
+        for v in self.__all_visuals():
             path = v.get("path")
             payload = v.get("payload")
             page_id = visual_mapping.get(path)[0]
@@ -1320,77 +1403,6 @@ class ReportWrapper:
 
         return df
 
-    def _add_extended(self, dataframe):
-
-        from sempy_labs.tom import connect_semantic_model
-
-        (dataset_id, dataset_name, dataset_workspace_id, dataset_workspace_name) = (
-            resolve_dataset_from_report(
-                report=self._report_id, workspace=self._workspace_id
-            )
-        )
-
-        with connect_semantic_model(
-            dataset=dataset_id, readonly=True, workspace=dataset_workspace_id
-        ) as tom:
-            for index, row in dataframe.iterrows():
-                obj_type = row["Object Type"]
-                if obj_type == "Measure":
-                    dataframe.at[index, "Valid Semantic Model Object"] = any(
-                        o.Name == row["Object Name"] for o in tom.all_measures()
-                    )
-                elif obj_type == "Column":
-                    dataframe.at[index, "Valid Semantic Model Object"] = any(
-                        format_dax_object_name(c.Parent.Name, c.Name)
-                        == format_dax_object_name(row["Table Name"], row["Object Name"])
-                        for c in tom.all_columns()
-                    )
-                elif obj_type == "Hierarchy":
-                    dataframe.at[index, "Valid Semantic Model Object"] = any(
-                        format_dax_object_name(h.Parent.Name, h.Name)
-                        == format_dax_object_name(row["Table Name"], row["Object Name"])
-                        for h in tom.all_hierarchies()
-                    )
-        return dataframe
-
-    def resolve_page_name(self, page_display_name: str) -> UUID:
-        """
-        Obtains the page name, page display name, and the file path for a given page in a report.
-
-        Parameters
-        ----------
-        page_display_name : str
-            The display name of the page of the report.
-
-        Returns
-        -------
-        UUID
-            The page name.
-        """
-
-        x, y, z = helper.resolve_page_name(self, page_display_name)
-
-        return x
-
-    def resolve_page_display_name(self, page_name: UUID) -> str:
-        """
-        Obtains the page dispaly name.
-
-        Parameters
-        ----------
-        page_name : UUID
-            The name of the page of the report.
-
-        Returns
-        -------
-        str
-            The page display name.
-        """
-
-        x, y, z = helper.resolve_page_name(self, page_name=page_name)
-
-        return y
-
     def get_theme(self, theme_type: str = "baseTheme") -> dict:
         """
         Obtains the theme file of the report.
@@ -1418,7 +1430,7 @@ class ReportWrapper:
                 f"{icons.red_dot} Invalid theme type. Valid options: {theme_types}."
             )
 
-        report_file = self.get(file_path="definition/report.json")
+        report_file = self.get(file_path=self._report_file_path)
         theme_collection = report_file.get("themeCollection", {})
         if theme_type not in theme_collection:
             raise ValueError(
@@ -1437,7 +1449,7 @@ class ReportWrapper:
 
         return self.get(file_path=theme_file_path)
 
-    # Automation functions
+    # Action functions
     def set_theme(self, theme_file_path: str):
         """
         Sets a custom theme for a report based on a theme .json file.
@@ -1484,8 +1496,7 @@ class ReportWrapper:
         }
 
         # Update the report.json file
-        report_file_path = "definition/report.json"
-        report_file = self.get(file_path=report_file_path)
+        report_file = self.get(file_path=self._report_file_path)
         resource_type = "RegisteredResources"
 
         # Add to theme collection
@@ -1520,46 +1531,328 @@ class ReportWrapper:
             if theme_name_full not in names:
                 report_file["resourcePackages"][1]["items"].append(new_theme)
 
-        self.update(file_path=report_file_path, payload=report_file)
+        self.update(file_path=self._report_file_path, payload=report_file)
         print(
             f"{icons.green_dot} The '{theme_name}' theme has been set as the theme for the '{self._report_name}' report within the '{self._workspace_name}' workspace."
         )
 
-    def visual_page_mapping(self) -> Tuple[dict, dict]:
+    def set_active_page(self, page_name: str):
+        """
+        Sets the active page (first page displayed when opening a report) for a report.
 
-        page_mapping = {}
-        visual_mapping = {}
+        Parameters
+        ----------
+        page_name : str
+            The page name or page display name of the report.
+        """
 
-        pages = [
-            o
-            for o in self._report_definition.get("parts")
-            if o.get("path").endswith("/page.json")
-        ]
-        visuals = [
-            o
-            for o in self._report_definition.get("parts")
-            if o.get("path").endswith("/visual.json")
-        ]
-        for p in pages:
-            path = p.get("path")
-            payload = p.get("payload")
-            pattern_page = r"/pages/(.*?)/page.json"
-            page_name = re.search(pattern_page, path).group(1)
-            page_id = payload.get("name")
-            page_display = payload.get("displayName")
-            page_mapping[page_name] = (page_id, page_display)
+        page_file = self.get(file_path=self._pages_file_path)
 
-        for v in visuals:
-            path = v.get("path")
-            payload = v.get("payload")
-            pattern_page = r"/pages/(.*?)/visuals/"
-            page_name = re.search(pattern_page, path).group(1)
-            visual_mapping[path] = (
-                page_mapping.get(page_name)[0],
-                page_mapping.get(page_name)[1],
+        page_id, page_display_name, file_path = helper.resolve_page_name(
+            self, page_name=page_name
+        )
+
+        page_file["activePageName"] = page_id
+
+        self.update(file_path=self._pages_file_path, payload=page_file)
+
+        print(
+            f"{icons.green_dot} The '{page_display_name}' page has been set as the active page in the '{self._report_name}' report within the '{self._workspace_name}' workspace."
+        )
+
+    def set_page_type(self, page_name: str, page_type: str):
+        """
+        Changes the page type of a report page.
+
+        Parameters
+        ----------
+        page_name : str
+            Name or display name of the report page.
+        page_type : str
+            The page type. Valid page types: 'Tooltip', 'Letter', '4:3', '16:9'.
+        """
+
+        if page_type not in helper.page_types:
+            raise ValueError(
+                f"{icons.red_dot} Invalid page type. Valid options: {helper.page_types}."
             )
 
-        return page_mapping, visual_mapping
+        letter_key = next(
+            (
+                key
+                for key, value in helper.page_type_mapping.items()
+                if value == page_type
+            ),
+            None,
+        )
+        if letter_key:
+            width, height = letter_key
+        else:
+            raise ValueError(
+                f"{icons.red_dot} Invalid page_type parameter. Valid options: ['Tooltip', 'Letter', '4:3', '16:9']."
+            )
+
+        (page_id, page_display_name, file_path) = helper.resolve_page_name(
+            self, page_name=page_name
+        )
+
+        page_file = self.get(file_path=file_path)
+        page_file["width"] = width
+        page_file["height"] = height
+
+        self.update(file_path=file_path, payload=page_file)
+
+        print(
+            f"{icons.green_dot} The '{page_display_name}' page has been updated to the '{page_type}' page type."
+        )
+
+    def set_page_visibility(self, page_name: str, hidden: bool):
+        """
+        Sets whether a report page is visible or hidden.
+
+        Parameters
+        ----------
+        page_name : str
+            The page name or page display name of the report.
+        hidden : bool
+            If set to True, hides the report page.
+            If set to False, makes the report page visible.
+        """
+
+        (page_id, page_display_name, file_path) = helper.resolve_page_name(
+            self, page_name=page_name
+        )
+        visibility = "visible" if hidden is False else "hidden"
+
+        page_file = self.get(file_path=file_path)
+
+        if hidden:
+            page_file["visibility"] = "HiddenInViewMode"
+        else:
+            if "visibility" in page_file:
+                del page_file["visibility"]
+
+        self.update(file_path=file_path, payload=page_file)
+
+        print(
+            f"{icons.green_dot} The '{page_display_name}' page has been set to {visibility}."
+        )
+
+    def hide_tooltip_drillthrough_pages(self):
+        """
+        Hides all tooltip pages and drillthrough pages in a report.
+        """
+
+        dfP = self.list_pages()
+        dfP_filt = dfP[
+            (dfP["Type"] == "Tooltip") | (dfP["Drillthrough Target Page"] == True)
+        ]
+
+        if dfP_filt.empty:
+            print(
+                f"{icons.green_dot} There are no Tooltip or Drillthrough pages in the '{self._report_name}' report within the '{self._workspace_name}' workspace."
+            )
+            return
+
+        for _, r in dfP_filt.iterrows():
+            page_name = r["Page Name"]
+            self.set_page_visibility(page_name=page_name, hidden=True)
+
+    def disable_show_items_with_no_data(self):
+        """
+        Disables the `show items with no data <https://learn.microsoft.com/power-bi/create-reports/desktop-show-items-no-data>`_ property in all visuals within the report.
+        """
+
+        def delete_key_in_json(obj, key_to_delete):
+            if isinstance(obj, dict):
+                if key_to_delete in obj:
+                    del obj[key_to_delete]
+                for key, value in obj.items():
+                    delete_key_in_json(value, key_to_delete)
+            elif isinstance(obj, list):
+                for item in obj:
+                    delete_key_in_json(item, key_to_delete)
+
+        for v in self.__all_visuals():
+            path = v.get("path")
+            payload = v.get("payload")
+            delete_key_in_json(payload, "showAll")
+            self.update(file_path=path, payload=payload)
+
+        print(
+            f"{icons.green_dot} Show items with data has been disabled for all visuals in the '{self._report_name}' report within the '{self._workspace_name}' workspace."
+        )
+
+    def remove_unnecessary_custom_visuals(self):
+        """
+        Removes any custom visuals within the report that are not used in the report.
+        """
+
+        dfCV = self.list_custom_visuals()
+        df = dfCV[dfCV["Used in Report"] == False]
+
+        if not df.empty:
+            cv_remove = df["Custom Visual Name"].values()
+            cv_remove_display = df["Custom Visual Display Name"].values()
+        else:
+            print(
+                f"{icons.red_dot} There are no unnecessary custom visuals in the '{self._report_name}' report within the '{self._workspace_name}' workspace."
+            )
+            return
+
+        report_file = self.get(file_path=self._report_file_path)
+        report_file["publicCustomVisuals"] = [
+            item for item in report_file["publicCustomVisuals"] if item not in cv_remove
+        ]
+
+        self.update(file_path=self._report_file_path, payload=report_file)
+
+        print(
+            f"{icons.green_dot} The {cv_remove_display} custom visuals have been removed from the '{self._report_name}' report within the '{self._workspace_name}' workspace."
+        )
+
+    def migrate_report_level_measures(self, measures: Optional[str | List[str]] = None):
+        """
+        Moves all report-level measures from the report to the semantic model on which the report is based.
+
+        Parameters
+        ----------
+        measures : str | List[str], default=None
+            A measure or list of measures to move to the semantic model.
+            Defaults to None which resolves to moving all report-level measures to the semantic model.
+        """
+
+        from sempy_labs.tom import connect_semantic_model
+
+        rlm = self.list_report_level_measures()
+        if rlm.empty:
+            print(
+                f"{icons.info} The '{self._report_name}' report within the '{self._workspace_name}' workspace has no report-level measures."
+            )
+            return
+
+        dataset_id, dataset_name, dataset_workspace_id, dataset_workspace_name = (
+            resolve_dataset_from_report(
+                report=self._report_id, workspace=self._workspace_id
+            )
+        )
+
+        if isinstance(measures, str):
+            measures = [measures]
+
+        file = self.get(file_path=self._report_extensions_path)
+
+        mCount = 0
+        with connect_semantic_model(
+            dataset=dataset_id, readonly=False, workspace=dataset_workspace_id
+        ) as tom:
+            existing_measures = [m.Name for m in tom.all_measures()]
+            for _, r in rlm.iterrows():
+                table_name = r["Table Name"]
+                measure_name = r["Measure Name"]
+                expr = r["Expression"]
+                # mDataType = r["Data Type"]
+                format_string = r["Format String"]
+                # Add measures to the model
+                if (
+                    measure_name in measures or measures is None
+                ) and measure_name not in existing_measures:
+                    tom.add_measure(
+                        table_name=table_name,
+                        measure_name=measure_name,
+                        expression=expr,
+                        format_string=format_string,
+                    )
+                    tom.set_annotation(
+                        object=tom.model.Tables[table_name].Measures[measure_name],
+                        name="semanticlinklabs",
+                        value="reportlevelmeasure",
+                    )
+                mCount += 1
+            # Remove measures from the json
+            if measures is not None and len(measures) < mCount:
+                for e in file["entities"]:
+                    e["measures"] = [
+                        measure
+                        for measure in e["measures"]
+                        if measure["name"] not in measures
+                    ]
+                file["entities"] = [
+                    entity for entity in file["entities"] if entity["measures"]
+                ]
+                self.update(file_path=self._report_extensions_path, payload=file)
+            # what about if measures is None?
+
+        print(
+            f"{icons.green_dot} The report-level measures have been migrated to the '{dataset_name}' semantic model within the '{dataset_workspace_name}' workspace."
+        )
+
+    # In progress...
+    def _list_annotations(self) -> pd.DataFrame:
+        """
+        Shows a list of annotations in the report.
+
+        Returns
+        -------
+        pandas.DataFrame
+            A pandas dataframe showing a list of report, page and visual annotations in the report.
+        """
+
+        columns = {
+            "Type": "str",
+            "Object Name": "str",
+            "Annotation Name": "str",
+            "Annotation Value": "str",
+        }
+        df = _create_dataframe(columns=columns)
+
+        (page_mapping, visual_mapping) = self.visual_page_mapping()
+        report_file = self.get(file_path="definition/report.json")
+
+        dfs = []
+        if "annotations" in report_file:
+            for ann in report_file["annotations"]:
+                new_data = {
+                    "Type": "Report",
+                    "Object Name": self._report_name,
+                    "Annotation Name": ann.get("name"),
+                    "Annotation Value": ann.get("value"),
+                }
+                dfs.append(pd.DataFrame(new_data, index=[0]))
+
+        for p in self.__all_pages():
+            path = p.get("path")
+            payload = p.get("payload")
+            page_name = payload.get("displayName")
+            if "annotations" in payload:
+                for ann in payload["annotations"]:
+                    new_data = {
+                        "Type": "Page",
+                        "Object Name": page_name,
+                        "Annotation Name": ann.get("name"),
+                        "Annotation Value": ann.get("value"),
+                    }
+                    dfs.append(pd.DataFrame(new_data, index=[0]))
+
+        for v in self.__all_visuals():
+            path = v.get("path")
+            payload = v.get("payload")
+            page_display = visual_mapping.get(path)[1]
+            visual_name = payload.get("name")
+            if "annotations" in payload:
+                for ann in payload["annotations"]:
+                    new_data = {
+                        "Type": "Visual",
+                        "Object Name": f"'{page_display}'[{visual_name}]",
+                        "Annotation Name": ann.get("name"),
+                        "Annotation Value": ann.get("value"),
+                    }
+                    dfs.append(pd.DataFrame(new_data, index=[0]))
+
+        if dfs:
+            df = pd.concat(dfs, ignore_index=True)
+
+        return df
 
     def close(self):
 
