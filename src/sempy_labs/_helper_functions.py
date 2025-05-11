@@ -2234,7 +2234,7 @@ def save_as_file(file_path: str, content, file_type: Optional[str] = None):
     ----------
     file_path : str
         The file path where the content will be saved.
-        Example: "./build/myfolder/myfile.json" (will save to the Notebook resources)
+        Example: "./builtin/myfolder/myfile.json" (will save to the Notebook resources)
     content : any
         The content to be saved.
     file_type : str, default=None
