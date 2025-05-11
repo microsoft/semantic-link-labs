@@ -17,6 +17,7 @@ import numpy as np
 from IPython.display import display, HTML
 import requests
 import sempy_labs._authentication as auth
+from pathlib import Path
 
 
 def _build_url(url: str, params: dict) -> str:
@@ -2222,3 +2223,44 @@ def _xml_to_dict(element):
             element.text.strip() if element.text and element.text.strip() else None
         )
     return data
+
+
+def save_as_file(file_path: str, content, file_type: Optional[str] = None):
+
+    """
+    Saves the content to a file in the specified format.
+
+    Parameters
+    ----------
+    file_path : str
+        The file path where the content will be saved.
+        Example: "./build/myfolder/myfile.json" (will save to the Notebook resources)
+    content : any
+        The content to be saved.
+    file_type : str, default=None
+        The file type to save the content as. If None, it will be inferred from the file path.
+    """
+
+    file_path = Path(file_path)
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if file_type is None:
+        file_type = file_path.suffix.lower()
+
+    if file_type == ".json":
+        with open(file_path, "w") as f:
+            json.dump(content, f, indent=4)
+    elif file_type == ".txt":
+        with open(file_path, "w") as f:
+            f.write(str(content))
+    elif file_type in [".csv", ".tsv"]:
+        delimiter = "\t" if file_type == ".tsv" else ","
+        with open(file_path, "w", newline="") as f:
+            import csv
+            writer = csv.writer(f, delimiter=delimiter)
+            writer.writerows(content)
+    else:
+        with open(file_path, "wb") as f:
+            f.write(content)
+
+    print(f"{icons.green_dot} The file has been saved to the following location: '{file_path}.")

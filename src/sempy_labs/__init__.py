@@ -303,6 +303,7 @@ from sempy_labs._helper_functions import (
     get_capacity_name,
     resolve_capacity_name,
     get_tenant_id,
+    save_as_file,
 )
 from sempy_labs._model_bpa_bulk import (
     run_model_bpa_bulk,
@@ -579,4 +580,5 @@ __all__ = [
     "list_variable_libraries",
     "delete_variable_library",
     "create_vpax",
+    "save_as_file",
 ]
