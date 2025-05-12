@@ -266,7 +266,7 @@ def create_item(
         lro_return_status_code=True,
     )
     print(
-        f"{icons.green_dot} The '{name}' {item_type} has been successfully created within the in the '{workspace_name}' workspace."
+        f"{icons.green_dot} The '{name}' {item_type} has been successfully created within the '{workspace_name}' workspace."
     )
 
 
