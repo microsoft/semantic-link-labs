@@ -28,13 +28,12 @@ def _get_notebook_definition_base(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     item_id = resolve_item_id(item=notebook_name, type="Notebook", workspace=workspace)
 
+    url = f"v1/workspaces/{workspace_id}/notebooks/{item_id}/getDefinition"
     if format == 'ipynb':
-        format = f"?format={format}"
-    else:
-        format = ''
-
+        url += f"?format={format}"
+   
     result = _base_api(
-        request=f"v1/workspaces/{workspace_id}/notebooks/{item_id}/getDefinition{format}",
+        request=url,
         method="post",
         lro_return_json=True,
         status_codes=None,
