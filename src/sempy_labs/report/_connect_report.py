@@ -23,9 +23,8 @@ from sempy_labs._model_dependencies import get_measure_dependencies
 import requests
 import re
 import base64
-from io import BytesIO
-import zipfile
 from pathlib import Path
+from urllib.parse import urlparse
 
 
 def color_text(text, color_code):
@@ -194,16 +193,55 @@ class ReportWrapper:
             The name of the image file to be added. For example: "MyImage".
         """
 
-        suffix = Path(image_path).suffix
-        file_path = f"StaticResources/RegisteredResources/{image_name}{suffix}"
+        if image_path.startswith("http://") or image_path.startswith("https://"):
+            response = requests.get(image_path)
+            response.raise_for_status()
+            image_bytes = response.content
+            # Extract the suffix (extension) from the URL path
+            suffix = Path(urlparse(image_path).path).suffix
+        else:
+            with open(image_path, "rb") as image_file:
+                image_bytes = image_file.read()
+            suffix = Path(image_path).suffix
 
-        with open(image_path, "rb") as image_file:
-            encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
+        encoded_string = base64.b64encode(image_bytes).decode("utf-8")
+        file_path = f"StaticResources/RegisteredResources/{image_name}{suffix}"
 
         self.add(
             file_path=file_path,
             payload=encoded_string,
         )
+
+    def _update_visual_image(self, file_path: str, image_path: str):
+        """
+        Update the image of a visual in the report definition. Only supported for 'image' visual types.
+
+        Parameters
+        ----------
+        file_path : str
+            The file path of the visual to be updated. For example: "definition/pages/ReportSection1/visuals/a1d8f99b81dcc2d59035/visual.json".
+        image_path : str
+            The name of the image file to be added. For example: "MyImage".
+        """
+
+        if image_path not in self.list_paths().get("Path").values:
+            raise ValueError(f"Image path '{image_path}' not found in the report definition.")
+        if not image_path.startswith("StaticResources/RegisteredResources/"):
+            raise ValueError(
+                f"Image path must start with 'StaticResources/RegisteredResources/'. Provided: {image_path}"
+            )
+
+        image_name = image_path.split('RegisteredResources/')[1]
+
+        if not file_path.endswith("/visual.json"):
+            raise ValueError(
+                f"File path must end with '/visual.json'. Provided: {file_path}"
+            )
+
+        file = self.get(file_path=file_path)
+        if file.get('visual').get('visualType') != 'image':
+            raise ValueError("This function is only valid for image visuals.")
+        file.get('visual').get('objects').get('general')[0].get('properties').get('imageUrl').get('expr').get('ResourcePackageItem')['ItemName'] == image_name
 
     def get(self, file_path: str) -> dict:
         """
@@ -225,20 +263,34 @@ class ReportWrapper:
 
         raise ValueError(f"File {file_path} not found in report definition.")
 
-    def add(self, file_path: str, payload: dict):
+    def add(self, file_path: str, payload: dict | bytes):
+        """
+        Add a new file to the report definition.
 
-        if not isinstance(payload, dict):
-            raise ValueError("Payload must be a dictionary.")
+        Parameters
+        ----------
+        file_path : str
+            The path of the file to be added. For example: "definition/pages/pages.json".
+        payload : dict | bytes
+            The json content of the file to be added. This can be a dictionary or a base64 encoded string.
+        """
 
-        existing_paths = [
-            part.get("path") for part in self._report_definition.get("parts")
-        ]
-        if file_path in existing_paths:
+        if is_base64(payload):
+            try:
+                decoded_payload = json.loads(base64.b64decode(payload).decode("utf-8"))
+            except Exception:
+                decoded_payload = base64.b64decode(payload)
+        elif isinstance(payload, dict):
+            decoded_payload = payload
+        else:
+            raise ValueError("Payload must be a dictionary or a base64 encoded value.")
+
+        if file_path in self.list_paths().get("Path").values:
             raise ValueError(
                 f"{icons.red_dot} Cannot add the '{file_path}' file as this file path already exists in the report definition."
             )
 
-        self._report_definition["parts"].append({"path": file_path, "payload": payload})
+        self._report_definition["parts"].append({"path": file_path, "payload": decoded_payload})
 
     def remove(self, file_path: str):
 
