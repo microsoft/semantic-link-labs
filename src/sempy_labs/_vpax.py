@@ -346,7 +346,7 @@ def create_vpax(
                         table_name=entity_name,
                         schema_name=schema_name,
                         column_name=list(col_dict.values()),
-                        function="distinctcount",
+                        function="distinct",
                     )
                     column_cardinalities = {
                         column_name: col_agg[source_column]
@@ -360,9 +360,9 @@ def create_vpax(
                         for table in dax_model.Tables
                         if str(table.TableName) == table_name
                     )
-                    #print(
+                    # print(
                     #    f"{icons.in_progress} Calculating column cardinalities for the '{table_name}' table..."
-                    #)
+                    # )
                     cols = [
                         col
                         for col in tbl.Columns
@@ -370,11 +370,13 @@ def create_vpax(
                         and str(col.ColumnName) in column_cardinalities
                     ]
                     for col in cols:
-                        #print(str(col.ColumnName), col.ColumnCardinality)
+                        # print(str(col.ColumnName), col.ColumnCardinality)
                         col.ColumnCardinality = column_cardinalities.get(
                             str(col.ColumnName)
                         )
-                    print(f"DL stats for {table_name} in {time.time() - start:.2f} seconds")
+                    print(
+                        f"DL stats for {table_name} in {time.time() - start:.2f} seconds"
+                    )
                     start = time.time()
 
     VpaxTools.ExportVpax(vpax_stream, dax_model, vpa_model, tom_database)
