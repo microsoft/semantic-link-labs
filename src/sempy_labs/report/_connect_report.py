@@ -1753,7 +1753,7 @@ class ReportWrapper:
 
         if not self._readonly:
             print(
-                f"{icons.green_dot} The '{page_display_name}' page has been set to {visibility}."
+                f"{icons.green_dot} The '{page_display_name}' page has been set to '{visibility}' in the '{self._report_name}' report within the '{self._workspace_name}' workspace."
             )
 
     def hide_tooltip_drillthrough_pages(self):
