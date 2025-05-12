@@ -27,6 +27,20 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 
+def decode_payload(payload):
+
+    if is_base64(payload):
+        try:
+            decoded_payload = json.loads(base64.b64decode(payload).decode("utf-8"))
+        except Exception:
+            decoded_payload = base64.b64decode(payload)
+    elif isinstance(payload, dict):
+        decoded_payload = payload
+    else:
+        raise ValueError("Payload must be a dictionary or a base64 encoded value.")
+    
+    return decoded_payload
+
 def color_text(text, color_code):
     return f"\033[{color_code}m{text}\033[0m"
 
@@ -151,10 +165,11 @@ class ReportWrapper:
 
             # decoded_bytes = base64.b64decode(payload)
             # decoded_payload = json.loads(_decode_b64(payload))
-            try:
-                decoded_payload = json.loads(base64.b64decode(payload).decode("utf-8"))
-            except Exception:
-                decoded_payload = base64.b64decode(payload)
+            #try:
+            #    decoded_payload = json.loads(base64.b64decode(payload).decode("utf-8"))
+            #except Exception:
+            #    decoded_payload = base64.b64decode(payload)
+            decoded_payload = decode_payload(payload)
 
             # if is_zip_file(decoded_bytes):
             #    merged_payload = {}
@@ -275,15 +290,7 @@ class ReportWrapper:
             The json content of the file to be added. This can be a dictionary or a base64 encoded string.
         """
 
-        if is_base64(payload):
-            try:
-                decoded_payload = json.loads(base64.b64decode(payload).decode("utf-8"))
-            except Exception:
-                decoded_payload = base64.b64decode(payload)
-        elif isinstance(payload, dict):
-            decoded_payload = payload
-        else:
-            raise ValueError("Payload must be a dictionary or a base64 encoded value.")
+        decoded_payload = decode_payload(payload)
 
         if file_path in self.list_paths().get("Path").values:
             raise ValueError(
@@ -293,6 +300,14 @@ class ReportWrapper:
         self._report_definition["parts"].append({"path": file_path, "payload": decoded_payload})
 
     def remove(self, file_path: str):
+        """
+        Removes a file from the report definition.
+
+        Parameters
+        ----------
+        file_path : str
+            The path of the file to be removed. For example: "definition/pages/pages.json".
+        """
 
         for part in self._report_definition.get("parts"):
             if part.get("path") == file_path:
@@ -303,22 +318,32 @@ class ReportWrapper:
                     )
                 return
 
-        raise ValueError(f"File {file_path} not found in report definition.")
+        raise ValueError(f"The '{file_path}' file was not found in the report definition.")
 
-    def update(self, file_path: str, payload: dict):
-        if not isinstance(payload, dict):
-            raise ValueError("Payload must be a dictionary.")
+    def update(self, file_path: str, payload: dict | bytes):
+        """
+        Updates the payload of a file in the report definition.
+
+        Parameters
+        ----------
+        file_path : str
+            The path of the file to be updated. For example: "definition/pages/pages.json".
+        payload : dict | bytes
+            The new json content of the file to be updated. This can be a dictionary or a base64 encoded string.
+        """
+
+        decoded_payload = decode_payload(payload)
 
         for part in self._report_definition.get("parts"):
             if part.get("path") == file_path:
-                part["payload"] = payload
+                part["payload"] = decoded_payload
                 if not self._readonly:
                     print(
-                        f"The file '{file_path}' has been updated in report definition."
+                        f"The file '{file_path}' has been updated in the report definition."
                     )
                 return
 
-        raise ValueError(f"File {file_path} not found in report definition.")
+        raise ValueError(f"The '{file_path}' file was not found in the report definition.")
 
     def list_paths(self) -> pd.DataFrame:
         """
