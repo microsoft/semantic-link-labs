@@ -6,6 +6,9 @@ from sempy_labs._kusto import (
     query_kusto,
     query_workspace_monitoring,
 )
+from sempy_labs._vpax import (
+    create_vpax,
+)
 from sempy_labs._delta_analyzer_history import (
     delta_analyzer_history,
 )
@@ -575,4 +578,5 @@ __all__ = [
     "list_tags",
     "list_variable_libraries",
     "delete_variable_library",
+    "create_vpax",
 ]
