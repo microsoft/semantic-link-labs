@@ -25,6 +25,7 @@ import re
 import base64
 from io import BytesIO
 import zipfile
+from pathlib import Path
 
 
 def color_text(text, color_code):
@@ -74,6 +75,17 @@ def diff_parts(d1, d2):
                     print(color_text(line, "31"))
                 elif line.startswith("@@"):
                     print(color_text(line, "36"))
+
+
+def is_base64(s):
+    try:
+        # Add padding if needed
+        s_padded = s + "=" * (-len(s) % 4)
+        decoded = base64.b64decode(s_padded, validate=True)
+        # Optional: check if re-encoding gives the original (excluding padding)
+        return base64.b64encode(decoded).decode().rstrip("=") == s.rstrip("=")
+    except Exception:
+        return False
 
 
 class ReportWrapper:
@@ -142,8 +154,8 @@ class ReportWrapper:
             # decoded_payload = json.loads(_decode_b64(payload))
             try:
                 decoded_payload = json.loads(base64.b64decode(payload).decode("utf-8"))
-            except:
-                decoded_payload = payload
+            except Exception:
+                decoded_payload = base64.b64decode(payload)
 
             # if is_zip_file(decoded_bytes):
             #    merged_payload = {}
@@ -169,6 +181,29 @@ class ReportWrapper:
                 {"path": path, "payload": decoded_payload}
             )
         self._current_report_definition = copy.deepcopy(self._report_definition)
+
+    def add_image(self, image_path: str, image_name: str):
+        """
+        Add an image to the report definition. The image will be added to the StaticResources/RegisteredResources folder in the report definition.
+
+        Parameters
+        ----------
+        image_path : str
+            The path of the image file to be added. For example: "./builtin/MyImage.png".
+        image_name : str
+            The name of the image file to be added. For example: "MyImage".
+        """
+
+        suffix = Path(image_path).suffix
+        file_path = f"StaticResources/RegisteredResources/{image_name}{suffix}"
+
+        with open(image_path, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
+
+        self.add(
+            file_path=file_path,
+            payload=encoded_string,
+        )
 
     def get(self, file_path: str) -> dict:
         """
@@ -233,9 +268,20 @@ class ReportWrapper:
 
         raise ValueError(f"File {file_path} not found in report definition.")
 
-    # def all_files(self):
+    def list_paths(self) -> pd.DataFrame:
+        """
+        List all paths in the report definition.
 
-    #    yield self._report_definition.get('parts')
+        Returns
+        -------
+        pandas.DataFrame
+            A pandas dataframe containing a list of all paths in the report definition.
+        """
+
+        existing_paths = [
+            part.get("path") for part in self._report_definition.get("parts")
+        ]
+        return pd.DataFrame(existing_paths, columns=["Path"])
 
     def save_changes(self):
 
@@ -247,20 +293,31 @@ class ReportWrapper:
             # Convert the report definition to base64
             new_report_definition = copy.deepcopy(self._report_definition)
 
-            for part in new_report_definition.get("parts", []):
-                if isinstance(part.get("payload"), dict):
-                    part["payload"] = _conv_b64(
-                        part["payload"]
-                    )  # Do I need to zip some of these?
+            for part in new_report_definition:
+                path = part.get("path")
+                payload = part.get("payload")
+                if isinstance(payload, dict):
+                    converted_json = json.dumps(part["payload"])
+                    part["payload"] = base64.b64encode(
+                        converted_json.encode("utf-8")
+                    ).decode("utf-8")
+                elif isinstance(payload, bytes):
+                    part["payload"] = base64.b64encode(part["payload"]).decode("utf-8")
+                elif is_base64(payload):
+                    part["payload"] = payload
+                else:
+                    raise NotImplementedError(
+                        f"{icons.red_dot} Unsupported payload type: {type(payload)} for the '{path}' file."
+                    )
 
-            # Combine report and non-report definitions
-            payload = {"definition": {"parts": new_report_definition.get("parts")}}
+            # Generate payload for the updateDefinition API
+            new_payload = {"definition": {"parts": new_report_definition.get("parts")}}
 
             # Update item definition
             _base_api(
                 request=f"/v1/workspaces/{self._workspace_id}/reports/{self._report_id}/updateDefinition",
                 method="post",
-                payload=payload,
+                payload=new_payload,
                 lro_return_status_code=True,
                 status_codes=None,
             )
