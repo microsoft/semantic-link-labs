@@ -1556,13 +1556,17 @@ def _get_column_aggregate(
         )
     elif isinstance(column_name, list):
         result = {}
-        for col in column_name:
-            result[col] = _get_aggregate(
-                df=df,
-                column_name=col,
-                function=function,
-                default_value=default_value,
-            )
+
+        if not _pure_python_notebook() and 'distinct' in function:
+            result = {col: df.select(col).distinct().count() for col in column_name}
+        else:
+            for col in column_name:
+                result[col] = _get_aggregate(
+                    df=df,
+                    column_name=col,
+                    function=function,
+                    default_value=default_value,
+                )
     else:
         raise TypeError("column_name must be a string or a list of strings.")
 

@@ -19,6 +19,7 @@ from sempy_labs.lakehouse._blobs import list_blobs
 from sempy_labs.tom import connect_semantic_model
 import zipfile
 import requests
+import time
 
 
 VPA_VERSION = "1.10.0"
@@ -177,7 +178,10 @@ def create_vpax(
         Whether to overwrite the .vpax file if it already exists in the lakehouse.
     """
 
+    start = time.time()
     init_vertipaq_analyzer()
+    print(f"Initialized vertipaq in {time.time() - start:.2f} seconds")
+    start = time.time()
 
     import notebookutils
     from Dax.Metadata import DirectLakeExtractionMode
@@ -216,6 +220,8 @@ def create_vpax(
             )
             return
 
+    print(f"Mounted, checked blobs in {time.time() - start:.2f} seconds")
+    start = time.time()
     vpax_stream = MemoryStream()
     extractor_app_name = "VPAX Notebook"
     extractor_app_version = "1.0"
@@ -239,8 +245,13 @@ def create_vpax(
     vpa_model = Model(dax_model)
     tom_database = TomExtractor.GetDatabase(connection_string)
 
+    print(f"tom extractor done in {time.time() - start:.2f} seconds")
+    start = time.time()
+
     # Calculate Direct Lake stats for columns which are IsResident=False
     with connect_semantic_model(dataset=dataset, workspace=workspace) as tom:
+        print(f"Connected to semantic model in {time.time() - start:.2f} seconds")
+        start = time.time()
         is_direct_lake = tom.is_direct_lake()
         if read_stats_from_data and is_direct_lake and direct_lake_stats_mode == "Full":
 
@@ -249,6 +260,8 @@ def create_vpax(
                 workspace=workspace,
                 dax_string=""" SELECT [DIMENSION_NAME] AS [TableName], [ATTRIBUTE_NAME] AS [ColumnName] FROM $SYSTEM.DISCOVER_STORAGE_TABLE_COLUMNS WHERE NOT [ISROWNUMBER] AND NOT [DICTIONARY_ISRESIDENT]""",
             )
+            print(f"get non-resident columns in {time.time() - start:.2f} seconds")
+            start = time.time()
 
             import Microsoft.AnalysisServices.Tabular as TOM
 
@@ -256,6 +269,8 @@ def create_vpax(
 
             # For SQL endpoints (do once)
             dfI = fabric.list_items(workspace=workspace)
+            print(f"list items in {time.time() - start:.2f} seconds")
+            start = time.time()
 
             # Get list of tables in Direct Lake mode which have columns that are not resident
             tbls = [
@@ -345,9 +360,9 @@ def create_vpax(
                         for table in dax_model.Tables
                         if str(table.TableName) == table_name
                     )
-                    print(
-                        f"{icons.in_progress} Calculating column cardinalities for the '{table_name}' table..."
-                    )
+                    #print(
+                    #    f"{icons.in_progress} Calculating column cardinalities for the '{table_name}' table..."
+                    #)
                     cols = [
                         col
                         for col in tbl.Columns
@@ -355,12 +370,16 @@ def create_vpax(
                         and str(col.ColumnName) in column_cardinalities
                     ]
                     for col in cols:
-                        print(str(col.ColumnName), col.ColumnCardinality)
+                        #print(str(col.ColumnName), col.ColumnCardinality)
                         col.ColumnCardinality = column_cardinalities.get(
                             str(col.ColumnName)
                         )
+                    print(f"DL stats for {table_name} in {time.time() - start:.2f} seconds")
+                    start = time.time()
 
     VpaxTools.ExportVpax(vpax_stream, dax_model, vpa_model, tom_database)
+    print(f"export vpax in {time.time() - start:.2f} seconds")
+    start = time.time()
 
     print(f"{icons.in_progress} Exporting .vpax file...")
 
@@ -368,6 +387,8 @@ def create_vpax(
     file_stream = FileStream(path, mode, FileAccess.Write, FileShare.Read)
     vpax_stream.CopyTo(file_stream)
     file_stream.Close()
+
+    print(f"Done in {time.time() - start:.2f} seconds")
 
     print(
         f"{icons.green_dot} The {file_path}.vpax file has been saved in the '{lakehouse_name}' lakehouse within the '{lakehouse_workspace_name}' workspace."
