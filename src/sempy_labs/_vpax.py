@@ -15,8 +15,6 @@ from sempy_labs._helper_functions import (
     resolve_item_type,
 )
 import sempy_labs._icons as icons
-from sempy_labs.lakehouse._blobs import list_blobs
-from sempy_labs.tom import connect_semantic_model
 import zipfile
 import requests
 
@@ -200,17 +198,15 @@ def create_vpax(
     local_path = _mount(lakehouse=lakehouse_id, workspace=lakehouse_workspace_id)
     if file_path is None:
         file_path = dataset_name
+
+    if file_path.endswith(".vpax"):
+        file_path = file_path[:-5]
     path = f"{local_path}/Files/{file_path}.vpax"
 
     # Check if the .vpax file already exists in the lakehouse
     if not overwrite:
-        df = list_blobs(
-            lakehouse=lakehouse_id,
-            workspace=lakehouse_workspace_id,
-            container="Files",
-        )
-        df_filt = df[df["Blob Name"] == f"{lakehouse_id}/Files/{file_path}.vpax"]
-        if not df_filt.empty:
+        new_path = f"abfss://{lakehouse_workspace_id}@onelake.dfs.fabric.microsoft.com/{lakehouse_id}/Files/{file_path}.vpax"
+        if len(notebookutils.fs.ls(new_path)) > 0:
             print(
                 f"{icons.warning} The Files/{file_path}.vpax file already exists in the '{lakehouse_name}' lakehouse. Set overwrite=True to overwrite the file."
             )
@@ -240,6 +236,8 @@ def create_vpax(
     tom_database = TomExtractor.GetDatabase(connection_string)
 
     # Calculate Direct Lake stats for columns which are IsResident=False
+    from sempy_labs.tom import connect_semantic_model
+
     with connect_semantic_model(dataset=dataset, workspace=workspace) as tom:
         is_direct_lake = tom.is_direct_lake()
         if read_stats_from_data and is_direct_lake and direct_lake_stats_mode == "Full":
