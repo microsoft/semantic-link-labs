@@ -674,7 +674,17 @@ def model_bpa_rules(
                 "Provide format string for 'Date' columns",
                 lambda obj, tom: (re.search(r"date", obj.Name, flags=re.IGNORECASE))
                 and (obj.DataType == TOM.DataType.DateTime)
-                and (obj.FormatString.lower() not in ['mm/dd/yyyy', 'mm-dd-yyyy', 'dd/mm/yyyy', 'dd-mm-yyyy', 'yyyy-mm-dd', 'yyyy/mm/dd']),
+                and (
+                    obj.FormatString.lower()
+                    not in [
+                        "mm/dd/yyyy",
+                        "mm-dd-yyyy",
+                        "dd/mm/yyyy",
+                        "dd-mm-yyyy",
+                        "yyyy-mm-dd",
+                        "yyyy/mm/dd",
+                    ]
+                ),
                 'Columns of type "DateTime" that have "Date" in their names should be formatted.',
             ),
             (
