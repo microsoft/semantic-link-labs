@@ -802,23 +802,27 @@ class TOMWrapper:
         if permission not in ["Read", "None", "Default"]:
             raise ValueError(f"{icons.red_dot} Invalid 'permission' value.")
 
-        cp = TOM.ColumnPermission()
-        cp.Column = self.model.Tables[table_name].Columns[column_name]
-        cp.MetadataPermission = System.Enum.Parse(TOM.MetadataPermission, permission)
-
-        if any(
-            c.Name == column_name and t.Name == table_name and r.Name == role_name
-            for r in self.model.Roles
-            for t in r.TablePermissions
-            for c in t.ColumnPermissions
-        ):
-            self.model.Roles[role_name].TablePermissions[table_name].ColumnPermissions[
+        r = self.model.Roles[role_name]
+        tables = [t.Name for t in r.TablePermissions]
+        # Add table permission if it does not exist
+        if table_name not in tables:
+            tp = TOM.TablePermission()
+            tp.Table = self.model.Tables[table_name]
+            r.TablePermissions.Add(tp)
+        columns = [c.Name for c in r.TablePermissions[table_name].ColumnPermissions]
+        # Add column permission if it does not exist
+        if column_name not in columns:
+            cp = TOM.ColumnPermission()
+            cp.Column = self.model.Tables[table_name].Columns[column_name]
+            cp.MetadataPermission = System.Enum.Parse(
+                TOM.MetadataPermission, permission
+            )
+            r.TablePermissions[table_name].ColumnPermissions.Add(cp)
+        # Set column permission if it already exists
+        else:
+            r.TablePermissions[table_name].ColumnPermissions[
                 column_name
             ].MetadataPermission = System.Enum.Parse(TOM.MetadataPermission, permission)
-        else:
-            self.model.Roles[role_name].TablePermissions[
-                table_name
-            ].ColumnPermissions.Add(cp)
 
     def add_hierarchy(
         self,

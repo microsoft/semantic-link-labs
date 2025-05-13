@@ -41,54 +41,32 @@ def get_object_level_security(
 
     from sempy_labs.tom import connect_semantic_model
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
-
     columns = {
         "Role Name": "string",
         "Object Type": "string",
         "Table Name": "string",
         "Object Name": "string",
+        "Metadata Permission": "string",
     }
     df = _create_dataframe(columns=columns)
 
     with connect_semantic_model(
-        dataset=dataset_id, readonly=True, workspace=workspace_id
+        dataset=dataset, readonly=True, workspace=workspace
     ) as tom:
 
         for r in tom.model.Roles:
             for tp in r.TablePermissions:
-                if len(tp.FilterExpression) == 0:
-                    columnCount = 0
-                    try:
-                        columnCount = len(tp.ColumnPermissions)
-                    except Exception:
-                        pass
-                    objectType = "Table"
-                    if columnCount == 0:
-                        new_data = {
-                            "Role Name": r.Name,
-                            "Object Type": objectType,
-                            "Table Name": tp.Name,
-                            "Object Name": tp.Name,
-                        }
-                        df = pd.concat(
-                            [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                        )
-                    else:
-                        objectType = "Column"
-                        for cp in tp.ColumnPermissions:
-                            new_data = {
-                                "Role Name": r.Name,
-                                "Object Type": objectType,
-                                "Table Name": tp.Name,
-                                "Object Name": cp.Name,
-                            }
-                            df = pd.concat(
-                                [df, pd.DataFrame(new_data, index=[0])],
-                                ignore_index=True,
-                            )
-
+                for cp in tp.ColumnPermissions:
+                    new_data = {
+                        "Role Name": r.Name,
+                        "Object Type": "Column",
+                        "Table Name": tp.Name,
+                        "Object Name": cp.Name,
+                        "Metadata Permission": cp.Permission,
+                    }
+                    df = pd.concat(
+                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
         return df
 
 
