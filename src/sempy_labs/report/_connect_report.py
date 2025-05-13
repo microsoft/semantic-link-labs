@@ -6,8 +6,6 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_item_name_and_id,
     _base_api,
-    _conv_b64,
-    _decode_b64,
     _create_dataframe,
     _update_dataframe_datatypes,
     format_dax_object_name,
