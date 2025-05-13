@@ -13,10 +13,10 @@ from sempy_labs._helper_functions import (
     _mount,
     _get_column_aggregate,
     resolve_item_type,
+    file_exists,
+    create_abfss_path_from_path,
 )
 import sempy_labs._icons as icons
-from sempy_labs.lakehouse._blobs import list_blobs
-from sempy_labs.tom import connect_semantic_model
 import zipfile
 import requests
 
@@ -200,19 +200,20 @@ def create_vpax(
     local_path = _mount(lakehouse=lakehouse_id, workspace=lakehouse_workspace_id)
     if file_path is None:
         file_path = dataset_name
-    path = f"{local_path}/Files/{file_path}.vpax"
+
+    if file_path.endswith(".vpax"):
+        file_path = file_path[:-5]
+    save_location = f"Files/{file_path}.vpax"
+    path = f"{local_path}/{save_location}"
 
     # Check if the .vpax file already exists in the lakehouse
     if not overwrite:
-        df = list_blobs(
-            lakehouse=lakehouse_id,
-            workspace=lakehouse_workspace_id,
-            container="Files",
+        new_path = create_abfss_path_from_path(
+            lakehouse_id, lakehouse_workspace_id, save_location
         )
-        df_filt = df[df["Blob Name"] == f"{lakehouse_id}/Files/{file_path}.vpax"]
-        if not df_filt.empty:
+        if file_exists(new_path):
             print(
-                f"{icons.warning} The Files/{file_path}.vpax file already exists in the '{lakehouse_name}' lakehouse. Set overwrite=True to overwrite the file."
+                f"{icons.warning} The {save_location} file already exists in the '{lakehouse_name}' lakehouse. Set overwrite=True to overwrite the file."
             )
             return
 
@@ -240,6 +241,8 @@ def create_vpax(
     tom_database = TomExtractor.GetDatabase(connection_string)
 
     # Calculate Direct Lake stats for columns which are IsResident=False
+    from sempy_labs.tom import connect_semantic_model
+
     with connect_semantic_model(dataset=dataset, workspace=workspace) as tom:
         is_direct_lake = tom.is_direct_lake()
         if read_stats_from_data and is_direct_lake and direct_lake_stats_mode == "Full":
@@ -256,7 +259,6 @@ def create_vpax(
 
             # For SQL endpoints (do once)
             dfI = fabric.list_items(workspace=workspace)
-
             # Get list of tables in Direct Lake mode which have columns that are not resident
             tbls = [
                 t
@@ -331,7 +333,7 @@ def create_vpax(
                         table_name=entity_name,
                         schema_name=schema_name,
                         column_name=list(col_dict.values()),
-                        function="distinctcount",
+                        function="distinct",
                     )
                     column_cardinalities = {
                         column_name: col_agg[source_column]
@@ -343,8 +345,11 @@ def create_vpax(
                     tbl = next(
                         table
                         for table in dax_model.Tables
-                        if str(t.TableName) == table_name
+                        if str(table.TableName) == table_name
                     )
+                    # print(
+                    #    f"{icons.in_progress} Calculating column cardinalities for the '{table_name}' table..."
+                    # )
                     cols = [
                         col
                         for col in tbl.Columns
@@ -352,6 +357,7 @@ def create_vpax(
                         and str(col.ColumnName) in column_cardinalities
                     ]
                     for col in cols:
+                        # print(str(col.ColumnName), col.ColumnCardinality)
                         col.ColumnCardinality = column_cardinalities.get(
                             str(col.ColumnName)
                         )

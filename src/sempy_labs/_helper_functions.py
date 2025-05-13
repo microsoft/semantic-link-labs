@@ -74,6 +74,15 @@ def create_abfss_path(
     return path
 
 
+def create_abfss_path_from_path(
+    lakehouse_id: UUID, workspace_id: UUID, file_path: str
+) -> str:
+
+    fp = _get_default_file_path()
+
+    return f"abfss://{workspace_id}@{fp}/{lakehouse_id}/{file_path}"
+
+
 def _get_default_file_path() -> str:
 
     default_file_storage = _get_fabric_context_setting(name="fs.defaultFS")
@@ -1547,31 +1556,10 @@ def _get_column_aggregate(
     path = create_abfss_path(lakehouse_id, workspace_id, table_name, schema_name)
     df = _read_delta_table(path)
 
+    function = function.lower()
+
     if isinstance(column_name, str):
-        result = _get_aggregate(
-            df=df,
-            column_name=column_name,
-            function=function,
-            default_value=default_value,
-        )
-    elif isinstance(column_name, list):
-        result = {}
-        for col in column_name:
-            result[col] = _get_aggregate(
-                df=df,
-                column_name=col,
-                function=function,
-                default_value=default_value,
-            )
-    else:
-        raise TypeError("column_name must be a string or a list of strings.")
-
-    return result
-
-
-def _get_aggregate(df, column_name, function, default_value: int = 0) -> int:
-
-    function = function.upper()
+        column_name = [column_name]
 
     if _pure_python_notebook():
         import polars as pl
@@ -1581,36 +1569,76 @@ def _get_aggregate(df, column_name, function, default_value: int = 0) -> int:
 
         df = pl.from_pandas(df)
 
-        # Perform aggregation
-        if "DISTINCT" in function:
-            if isinstance(df[column_name].dtype, pl.Decimal):
-                result = df[column_name].cast(pl.Float64).n_unique()
+        def get_expr(col):
+            col_dtype = df.schema[col]
+
+            if "approx" in function:
+                return pl.col(col).unique().count().alias(col)
+            elif "distinct" in function:
+                if col_dtype == pl.Decimal:
+                    return pl.col(col).cast(pl.Float64).n_unique().alias(col)
+                else:
+                    return pl.col(col).n_unique().alias(col)
+            elif function == "sum":
+                return pl.col(col).sum().alias(col)
+            elif function == "min":
+                return pl.col(col).min().alias(col)
+            elif function == "max":
+                return pl.col(col).max().alias(col)
+            elif function == "count":
+                return pl.col(col).count().alias(col)
+            elif function in {"avg", "mean"}:
+                return pl.col(col).mean().alias(col)
             else:
-                result = df[column_name].n_unique()
-        elif "APPROX" in function:
-            result = df[column_name].unique().shape[0]
-        else:
-            try:
-                result = getattr(df[column_name], function.lower())()
-            except AttributeError:
                 raise ValueError(f"Unsupported function: {function}")
 
-        return result if result is not None else default_value
-    else:
-        from pyspark.sql.functions import approx_count_distinct
-        from pyspark.sql import functions as F
+        exprs = [get_expr(col) for col in column_name]
+        aggs = df.select(exprs).to_dict(as_series=False)
 
-        if isinstance(df, pd.DataFrame):
-            df = _create_spark_dataframe(df)
-
-        if "DISTINCT" in function:
-            result = df.select(F.count_distinct(F.col(column_name)))
-        elif "APPROX" in function:
-            result = df.select(approx_count_distinct(column_name))
+        if len(column_name) == 1:
+            result = aggs[column_name[0]][0] or default_value
         else:
-            result = df.selectExpr(f"{function}({column_name})")
+            result = {col: aggs[col][0] for col in column_name}
+    else:
+        from pyspark.sql.functions import (
+            count,
+            sum,
+            min,
+            max,
+            avg,
+            approx_count_distinct,
+            countDistinct,
+        )
 
-        return result.collect()[0][0] or default_value
+        result = None
+        if "approx" in function:
+            spark_func = approx_count_distinct
+        elif "distinct" in function:
+            spark_func = countDistinct
+        elif function == "count":
+            spark_func = count
+        elif function == "sum":
+            spark_func = sum
+        elif function == "min":
+            spark_func = min
+        elif function == "max":
+            spark_func = max
+        elif function == "avg":
+            spark_func = avg
+        else:
+            raise ValueError(f"Unsupported function: {function}")
+
+        agg_exprs = []
+        for col in column_name:
+            agg_exprs.append(spark_func(col).alias(col))
+
+        aggs = df.agg(*agg_exprs).collect()[0]
+        if len(column_name) == 1:
+            result = aggs[0] or default_value
+        else:
+            result = {col: aggs[col] for col in column_name}
+
+    return result
 
 
 def _create_spark_dataframe(df: pd.DataFrame):
@@ -2222,3 +2250,23 @@ def _xml_to_dict(element):
             element.text.strip() if element.text and element.text.strip() else None
         )
     return data
+
+
+def file_exists(file_path: str) -> bool:
+    """
+    Check if a file exists in the given path.
+
+    Parameters
+    ----------
+    file_path : str
+        The path to the file.
+
+    Returns
+    -------
+    bool
+        True if the file exists, False otherwise.
+    """
+
+    import notebookutils
+
+    return len(notebookutils.fs.ls(file_path)) > 0
