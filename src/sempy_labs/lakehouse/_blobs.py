@@ -262,7 +262,7 @@ def get_user_delegation_key():
 
     utc_now = datetime.now(timezone.utc)
     start_time = utc_now + timedelta(minutes=2)
-    expiry_time = start_time + timedelta(minutes=45)
+    expiry_time = start_time + timedelta(minutes=60)
     start_str = start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
     expiry_str = expiry_time.strftime("%Y-%m-%dT%H:%M:%SZ")
 
