@@ -2241,3 +2241,23 @@ def _xml_to_dict(element):
             element.text.strip() if element.text and element.text.strip() else None
         )
     return data
+
+
+def file_exists(file_path: str) -> bool:
+    """
+    Check if a file exists in the given path.
+
+    Parameters
+    ----------
+    file_path : str
+        The path to the file.
+
+    Returns
+    -------
+    bool
+        True if the file exists, False otherwise.
+    """
+
+    import notebookutils
+
+    return len(notebookutils.fs.ls(file_path)) > 0

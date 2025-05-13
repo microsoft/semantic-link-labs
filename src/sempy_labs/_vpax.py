@@ -13,6 +13,7 @@ from sempy_labs._helper_functions import (
     _mount,
     _get_column_aggregate,
     resolve_item_type,
+    file_exists,
 )
 import sempy_labs._icons as icons
 import zipfile
@@ -206,7 +207,7 @@ def create_vpax(
     # Check if the .vpax file already exists in the lakehouse
     if not overwrite:
         new_path = f"abfss://{lakehouse_workspace_id}@onelake.dfs.fabric.microsoft.com/{lakehouse_id}/Files/{file_path}.vpax"
-        if len(notebookutils.fs.ls(new_path)) > 0:
+        if file_exists(new_path):
             print(
                 f"{icons.warning} The Files/{file_path}.vpax file already exists in the '{lakehouse_name}' lakehouse. Set overwrite=True to overwrite the file."
             )
