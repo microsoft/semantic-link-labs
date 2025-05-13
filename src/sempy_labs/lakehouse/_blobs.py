@@ -46,7 +46,7 @@ def _request_blob_api(
             method.upper(),
             full_url,
             headers=headers,
-            json=payload if method.lower() != "get" else None,
+            data=payload if method.lower() != "get" else None,
         )
 
         if response.status_code not in status_codes:
@@ -246,9 +246,17 @@ def recover_lakehouse_object(
             )
 
 
-def _get_user_delegation_key():
+def get_user_delegation_key():
+    """
+    Gets a key that can be used to sign a user delegation SAS (shared access signature). A user delegation SAS grants access to Azure Blob Storage resources by using Microsoft Entra credentials.
 
-    # https://learn.microsoft.com/rest/api/storageservices/get-user-delegation-key
+    This is a wrapper function for the following API: `Get User Delegation Key <https://learn.microsoft.com/rest/api/storageservices/get-user-delegation-key>`_.
+
+    Returns
+    -------
+    str
+        The user delegation key value.
+    """
 
     from datetime import datetime, timedelta, timezone
 
@@ -265,9 +273,11 @@ def _get_user_delegation_key():
     </KeyInfo>"""
 
     response = _request_blob_api(
-        request="restype=service&comp=userdelegationkey",
+        request="?restype=service&comp=userdelegationkey",
         method="post",
         payload=payload,
     )
 
-    return response.content
+    root = ET.fromstring(response.content)
+    response_json = _xml_to_dict(root)
+    return response_json.get("UserDelegationKey", {}).get("Value", None)
