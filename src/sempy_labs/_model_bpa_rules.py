@@ -674,8 +674,8 @@ def model_bpa_rules(
                 "Provide format string for 'Date' columns",
                 lambda obj, tom: (re.search(r"date", obj.Name, flags=re.IGNORECASE))
                 and (obj.DataType == TOM.DataType.DateTime)
-                and (obj.FormatString != "mm/dd/yyyy"),
-                'Columns of type "DateTime" that have "Month" in their names should be formatted as "mm/dd/yyyy".',
+                and (obj.FormatString.lower() not in ['mm/dd/yyyy', 'mm-dd-yyyy', 'dd/mm/yyyy', 'dd-mm-yyyy', 'yyyy-mm-dd', 'yyyy/mm/dd']),
+                'Columns of type "DateTime" that have "Date" in their names should be formatted.',
             ),
             (
                 "Formatting",
@@ -789,7 +789,7 @@ def model_bpa_rules(
                 "Formatting",
                 "Column",
                 "Warning",
-                'Provide format string for "Month" columns',
+                "Provide format string for 'Month' columns",
                 lambda obj, tom: re.search(r"month", obj.Name, flags=re.IGNORECASE)
                 and obj.DataType == TOM.DataType.DateTime
                 and obj.FormatString != "MMMM yyyy",
