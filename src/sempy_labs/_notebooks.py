@@ -7,6 +7,7 @@ import requests
 from sempy._utils._log import log
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
+    resolve_workspace_id,
     _decode_b64,
     _base_api,
     resolve_item_id,
@@ -25,7 +26,7 @@ def _get_notebook_definition_base(
     format: Optional[str] = None,
 ) -> pd.DataFrame:
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
     item_id = resolve_item_id(item=notebook_name, type="Notebook", workspace=workspace)
 
     url = f"v1/workspaces/{workspace_id}/notebooks/{item_id}/getDefinition"

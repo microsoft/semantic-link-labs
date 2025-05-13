@@ -9,8 +9,6 @@ from sempy_labs._helper_functions import (
     save_as_delta_table,
     _base_api,
     _create_dataframe,
-    resolve_workspace_id,
-    resolve_lakehouse_id,
     _read_delta_table,
     _get_delta_table,
     _mount,
@@ -85,16 +83,6 @@ def get_lakehouse_tables(
     if count_rows:  # Setting countrows defaults to extended=True
         extended = True
 
-    if (
-        workspace_id != resolve_workspace_id()
-        and lakehouse_id != resolve_lakehouse_id()
-        and count_rows
-    ):
-        raise ValueError(
-            f"{icons.red_dot} If 'count_rows' is set to True, you must run this function against the default lakehouse attached to the notebook. "
-            "Count rows runs a spark query and cross-workspace spark queries are currently not supported."
-        )
-
     responses = _base_api(
         request=f"v1/workspaces/{workspace_id}/lakehouses/{lakehouse_id}/tables",
         uses_pagination=True,
@@ -123,7 +111,7 @@ def get_lakehouse_tables(
     if extended:
         sku_value = get_sku_size(workspace_id)
         guardrail = get_directlake_guardrails_for_sku(sku_value)
-        local_path = _mount()
+        local_path = _mount(lakehouse=lakehouse_id, workspace=workspace_id)
 
         df["Files"], df["Row Groups"], df["Table Size"] = None, None, None
         if count_rows:
