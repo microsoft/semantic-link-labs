@@ -74,6 +74,15 @@ def create_abfss_path(
     return path
 
 
+def create_abfss_path_from_path(
+    lakehouse_id: UUID, workspace_id: UUID, file_path: str
+) -> str:
+
+    fp = _get_default_file_path()
+
+    return f"abfss://{workspace_id}@{fp}/{lakehouse_id}/{file_path}"
+
+
 def _get_default_file_path() -> str:
 
     default_file_storage = _get_fabric_context_setting(name="fs.defaultFS")
