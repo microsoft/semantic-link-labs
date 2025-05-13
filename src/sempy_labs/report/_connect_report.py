@@ -38,8 +38,9 @@ def decode_payload(payload):
         decoded_payload = payload
     else:
         raise ValueError("Payload must be a dictionary or a base64 encoded value.")
-    
+
     return decoded_payload
+
 
 def color_text(text, color_code):
     return f"\033[{color_code}m{text}\033[0m"
@@ -165,9 +166,9 @@ class ReportWrapper:
 
             # decoded_bytes = base64.b64decode(payload)
             # decoded_payload = json.loads(_decode_b64(payload))
-            #try:
+            # try:
             #    decoded_payload = json.loads(base64.b64decode(payload).decode("utf-8"))
-            #except Exception:
+            # except Exception:
             #    decoded_payload = base64.b64decode(payload)
             decoded_payload = decode_payload(payload)
 
@@ -195,6 +196,8 @@ class ReportWrapper:
                 {"path": path, "payload": decoded_payload}
             )
         self._current_report_definition = copy.deepcopy(self._report_definition)
+
+        helper.populate_custom_visual_display_names()
 
     def add_image(self, image_path: str, image_name: str):
         """
@@ -240,13 +243,15 @@ class ReportWrapper:
         """
 
         if image_path not in self.list_paths().get("Path").values:
-            raise ValueError(f"Image path '{image_path}' not found in the report definition.")
+            raise ValueError(
+                f"Image path '{image_path}' not found in the report definition."
+            )
         if not image_path.startswith("StaticResources/RegisteredResources/"):
             raise ValueError(
                 f"Image path must start with 'StaticResources/RegisteredResources/'. Provided: {image_path}"
             )
 
-        image_name = image_path.split('RegisteredResources/')[1]
+        image_name = image_path.split("RegisteredResources/")[1]
 
         if not file_path.endswith("/visual.json"):
             raise ValueError(
@@ -254,9 +259,11 @@ class ReportWrapper:
             )
 
         file = self.get(file_path=file_path)
-        if file.get('visual').get('visualType') != 'image':
+        if file.get("visual").get("visualType") != "image":
             raise ValueError("This function is only valid for image visuals.")
-        file.get('visual').get('objects').get('general')[0].get('properties').get('imageUrl').get('expr').get('ResourcePackageItem')['ItemName'] == image_name
+        file.get("visual").get("objects").get("general")[0].get("properties").get(
+            "imageUrl"
+        ).get("expr").get("ResourcePackageItem")["ItemName"] == image_name
 
     def get(self, file_path: str) -> dict:
         """
@@ -297,7 +304,9 @@ class ReportWrapper:
                 f"{icons.red_dot} Cannot add the '{file_path}' file as this file path already exists in the report definition."
             )
 
-        self._report_definition["parts"].append({"path": file_path, "payload": decoded_payload})
+        self._report_definition["parts"].append(
+            {"path": file_path, "payload": decoded_payload}
+        )
 
     def remove(self, file_path: str):
         """
@@ -312,13 +321,15 @@ class ReportWrapper:
         for part in self._report_definition.get("parts"):
             if part.get("path") == file_path:
                 self._report_definition["parts"].remove(part)
-                if not self._readonly:
-                    print(
-                        f"The file '{file_path}' has been removed from report definition."
-                    )
+                #if not self._readonly:
+                #    print(
+                #        f"The file '{file_path}' has been removed from report definition."
+                #    )
                 return
 
-        raise ValueError(f"The '{file_path}' file was not found in the report definition.")
+        raise ValueError(
+            f"The '{file_path}' file was not found in the report definition."
+        )
 
     def update(self, file_path: str, payload: dict | bytes):
         """
@@ -337,13 +348,15 @@ class ReportWrapper:
         for part in self._report_definition.get("parts"):
             if part.get("path") == file_path:
                 part["payload"] = decoded_payload
-                if not self._readonly:
-                    print(
-                        f"The file '{file_path}' has been updated in the report definition."
-                    )
+                #if not self._readonly:
+                #    print(
+                #        f"The file '{file_path}' has been updated in the report definition."
+                #    )
                 return
 
-        raise ValueError(f"The '{file_path}' file was not found in the report definition.")
+        raise ValueError(
+            f"The '{file_path}' file was not found in the report definition."
+        )
 
     def list_paths(self) -> pd.DataFrame:
         """
@@ -359,48 +372,6 @@ class ReportWrapper:
             part.get("path") for part in self._report_definition.get("parts")
         ]
         return pd.DataFrame(existing_paths, columns=["Path"])
-
-    def save_changes(self):
-
-        if self._readonly:
-            print(
-                f"{icons.warning} The connection is read-only. Set 'readonly' to False to save changes."
-            )
-        else:
-            # Convert the report definition to base64
-            new_report_definition = copy.deepcopy(self._report_definition)
-
-            for part in new_report_definition:
-                path = part.get("path")
-                payload = part.get("payload")
-                if isinstance(payload, dict):
-                    converted_json = json.dumps(part["payload"])
-                    part["payload"] = base64.b64encode(
-                        converted_json.encode("utf-8")
-                    ).decode("utf-8")
-                elif isinstance(payload, bytes):
-                    part["payload"] = base64.b64encode(part["payload"]).decode("utf-8")
-                elif is_base64(payload):
-                    part["payload"] = payload
-                else:
-                    raise NotImplementedError(
-                        f"{icons.red_dot} Unsupported payload type: {type(payload)} for the '{path}' file."
-                    )
-
-            # Generate payload for the updateDefinition API
-            new_payload = {"definition": {"parts": new_report_definition.get("parts")}}
-
-            # Update item definition
-            _base_api(
-                request=f"/v1/workspaces/{self._workspace_id}/reports/{self._report_id}/updateDefinition",
-                method="post",
-                payload=new_payload,
-                lro_return_status_code=True,
-                status_codes=None,
-            )
-            print(
-                f"{icons.green_dot} The report definition has been updated successfully."
-            )
 
     def __all_pages(self):
 
@@ -467,6 +438,8 @@ class ReportWrapper:
             )
         )
 
+        dataframe["Valid Semantic Model Object"] = False
+
         with connect_semantic_model(
             dataset=dataset_id, readonly=True, workspace=dataset_workspace_id
         ) as tom:
@@ -527,8 +500,6 @@ class ReportWrapper:
             A pandas dataframe containing a list of all the custom visuals used in the report.
         """
 
-        helper.populate_custom_visual_display_names()
-
         columns = {
             "Custom Visual Name": "str",
             "Custom Visual Display Name": "str",
@@ -544,9 +515,19 @@ class ReportWrapper:
             lambda x: helper.vis_type_mapping.get(x, x)
         )
 
-        df["Used in Report"] = df["Custom Visual Name"].isin(
-            self.list_visuals()["Type"]
-        )
+        visual_types = set()
+        for v in self.__all_visuals():
+            payload = v.get("payload", {})
+            visual = payload.get("visual", {})
+            visual_type = visual.get("visualType")
+            if visual_type:
+                visual_types.add(visual_type)
+
+        for _, r in df.iterrows():
+            if r["Custom Visual Name"] in visual_types:
+                df.at[_, "Used in Report"] = True
+            else:
+                df.at[_, "Used in Report"] = False
 
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
@@ -827,12 +808,12 @@ class ReportWrapper:
 
     def list_pages(self) -> pd.DataFrame:
         """
-        List all pages in the report.
+        Shows a list of all pages in the report.
 
         Returns
         -------
-        list
-            A list of page names.
+        pandas.DataFrame
+            A pandas dataframe containing a list of all pages in the report.
         """
 
         columns = {
@@ -978,7 +959,6 @@ class ReportWrapper:
         report_file = self.get(file_path=self._report_file_path)
         custom_visuals = report_file.get("publicCustomVisuals", [])
         page_mapping, visual_mapping = self.visual_page_mapping()
-        helper.populate_custom_visual_display_names()
         agg_type_map = helper._get_agg_type_mapping()
 
         def contains_key(data, keys_to_check):
@@ -1025,7 +1005,6 @@ class ReportWrapper:
             matches = parse(
                 "$.visual.visualContainerObjects.title[0].properties.text.expr"
             ).find(payload)
-            # title = matches[0].value[1:-1] if matches else ""
             title = (
                 helper._get_expression(matches[0].value, agg_type_map)
                 if matches
@@ -1036,7 +1015,6 @@ class ReportWrapper:
             matches = parse(
                 "$.visual.visualContainerObjects.subTitle[0].properties.text.expr"
             ).find(payload)
-            # sub_title = matches[0].value[1:-1] if matches else ""
             sub_title = (
                 helper._get_expression(matches[0].value, agg_type_map)
                 if matches
@@ -1047,7 +1025,6 @@ class ReportWrapper:
             matches = parse(
                 "$.visual.visualContainerObjects.general[0].properties.altText.expr"
             ).find(payload)
-            # alt_text = matches[0].value[1:-1] if matches else ""
             alt_text = (
                 helper._get_expression(matches[0].value, agg_type_map)
                 if matches
@@ -2052,16 +2029,63 @@ class ReportWrapper:
 
         return df
 
+    def save_changes(self):
+
+        if self._readonly:
+            print(
+                f"{icons.warning} The connection is read-only. Set 'readonly' to False to save changes."
+            )
+        else:
+            # Convert the report definition to base64
+            if self._current_report_definition == self._report_definition:
+                print(
+                    f"{icons.info} No changes were made to the report definition."
+                )
+                return
+            new_report_definition = copy.deepcopy(self._report_definition)
+
+            for part in new_report_definition.get('parts'):
+                part['payloadType'] = "InlineBase64"
+                path = part.get("path")
+                payload = part.get("payload")
+                if isinstance(payload, dict):
+                    converted_json = json.dumps(part["payload"])
+                    part["payload"] = base64.b64encode(
+                        converted_json.encode("utf-8")
+                    ).decode("utf-8")
+                elif isinstance(payload, bytes):
+                    part["payload"] = base64.b64encode(part["payload"]).decode("utf-8")
+                elif is_base64(payload):
+                    part["payload"] = payload
+                else:
+                    raise NotImplementedError(
+                        f"{icons.red_dot} Unsupported payload type: {type(payload)} for the '{path}' file."
+                    )
+
+            # Generate payload for the updateDefinition API
+            new_payload = {"definition": {"parts": new_report_definition.get("parts")}}
+
+            # Update item definition
+            _base_api(
+                request=f"/v1/workspaces/{self._workspace_id}/reports/{self._report_id}/updateDefinition",
+                method="post",
+                payload=new_payload,
+                lro_return_status_code=True,
+                status_codes=None,
+            )
+            print(
+                f"{icons.green_dot} The report definition has been updated successfully."
+            )
+
     def close(self):
 
         if self._show_diffs and (
             self._current_report_definition != self._report_definition
         ):
             diff_parts(self._current_report_definition, self._report_definition)
-        # Save the changes to the service if the connection is read/write and the report definition has changed
+        # Save the changes to the service if the connection is read/write
         if (
             not self._readonly
-            and self._report_definition != self._current_report_definition
         ):
             self.save_changes()
 
