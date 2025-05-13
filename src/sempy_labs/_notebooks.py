@@ -22,16 +22,16 @@ _notebook_prefix = "notebook-content."
 def _get_notebook_definition_base(
     notebook_name: str,
     workspace: Optional[str | UUID] = None,
-    format: Optional[str] = None
+    format: Optional[str] = None,
 ) -> pd.DataFrame:
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     item_id = resolve_item_id(item=notebook_name, type="Notebook", workspace=workspace)
 
     url = f"v1/workspaces/{workspace_id}/notebooks/{item_id}/getDefinition"
-    if format == 'ipynb':
+    if format == "ipynb":
         url += f"?format={format}"
-   
+
     result = _base_api(
         request=url,
         method="post",
@@ -63,7 +63,7 @@ def get_notebook_definition(
     notebook_name: str,
     workspace: Optional[str | UUID] = None,
     decode: bool = True,
-    format: Optional[str] = None
+    format: Optional[str] = None,
 ) -> str:
     """
     Obtains the notebook definition.
@@ -176,7 +176,7 @@ def create_notebook(
     type: str = "py",
     description: Optional[str] = None,
     workspace: Optional[str | UUID] = None,
-    format: Optional[str] = None
+    format: Optional[str] = None,
 ):
     """
     Creates a new notebook with a definition within a workspace.
@@ -201,7 +201,9 @@ def create_notebook(
         otherwise notebook_content should be GIT friendly format
     """
 
-    notebook_payload = base64.b64encode(notebook_content.encode("utf-8")).decode("utf-8")
+    notebook_payload = base64.b64encode(notebook_content.encode("utf-8")).decode(
+        "utf-8"
+    )
     definition_payload = {
         "parts": [
             {
@@ -212,7 +214,7 @@ def create_notebook(
         ],
     }
 
-    if format == 'ipynb':
+    if format == "ipynb":
         definition_payload["format"] = "ipynb"
 
     create_item(
@@ -228,7 +230,7 @@ def update_notebook_definition(
     name: str,
     notebook_content: str,
     workspace: Optional[str | UUID] = None,
-    format: Optional[str] = None
+    format: Optional[str] = None,
 ):
     """
     Updates an existing notebook with a new definition.
@@ -249,7 +251,9 @@ def update_notebook_definition(
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    notebook_payload = base64.b64encode(notebook_content.encode("utf-8")).decode("utf-8")
+    notebook_payload = base64.b64encode(notebook_content.encode("utf-8")).decode(
+        "utf-8"
+    )
     item_id = resolve_item_id(item=name, type="Notebook", workspace=workspace)
     type = _get_notebook_type(notebook_name=name, workspace=workspace)
 
@@ -265,7 +269,7 @@ def update_notebook_definition(
         },
     }
 
-    if format == 'ipynb':
+    if format == "ipynb":
         payload["definition"]["format"] = "ipynb"
 
     _base_api(
