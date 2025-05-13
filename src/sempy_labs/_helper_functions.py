@@ -650,7 +650,7 @@ def save_as_delta_table(
             "bool": ("pa", pa.bool_(), BooleanType()),
             "boolean": ("pa", pa.bool_(), BooleanType()),
             "date": ("pa", pa.date32(), DateType()),
-            "timestamp": ("pa", pa.timestamp("ms"), TimestampType()),
+            "timestamp": ("pa", pa.timestamp("us"), TimestampType()),
         }
         return {k: v[1] if pure_python else v[2] for k, v in common_mapping.items()}
 
