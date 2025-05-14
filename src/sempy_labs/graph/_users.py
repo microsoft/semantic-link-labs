@@ -238,6 +238,7 @@ def send_mail(
         ".pbix": "application/vnd.ms-powerbi.report",
         ".pbip": "application/vnd.ms-powerbi.report",
         ".pbit": "application/vnd.ms-powerbi.report",
+        ".vpax": "application/zip",
     }
 
     def file_path_to_content_bytes(file_path):
