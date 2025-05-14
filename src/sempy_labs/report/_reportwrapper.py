@@ -105,27 +105,40 @@ class ReportWrapper:
             )
         )
 
+        report_level_measures = list(
+            self.list_report_level_measures()["Measure Name"].values
+        )
         with connect_semantic_model(
             dataset=dataset_id, readonly=True, workspace=dataset_workspace_id
         ) as tom:
-            for index, row in dataframe.iterrows():
-                obj_type = row["Object Type"]
-                if obj_type == "Measure":
-                    dataframe.at[index, "Valid Semantic Model Object"] = any(
-                        o.Name == row["Object Name"] for o in tom.all_measures()
-                    )
-                elif obj_type == "Column":
-                    dataframe.at[index, "Valid Semantic Model Object"] = any(
-                        format_dax_object_name(c.Parent.Name, c.Name)
-                        == format_dax_object_name(row["Table Name"], row["Object Name"])
-                        for c in tom.all_columns()
-                    )
-                elif obj_type == "Hierarchy":
-                    dataframe.at[index, "Valid Semantic Model Object"] = any(
-                        format_dax_object_name(h.Parent.Name, h.Name)
-                        == format_dax_object_name(row["Table Name"], row["Object Name"])
-                        for h in tom.all_hierarchies()
-                    )
+            measure_names = {m.Name for m in tom.all_measures()}
+            measure_names.update(report_level_measures)
+            column_names = {
+                format_dax_object_name(c.Parent.Name, c.Name) for c in tom.all_columns()
+            }
+            hierarchy_names = {
+                format_dax_object_name(h.Parent.Name, h.Name)
+                for h in tom.all_hierarchies()
+            }
+
+        # Vectorized checks
+        def is_valid(row):
+            obj_type = row["Object Type"]
+            obj_name = row["Object Name"]
+            if obj_type == "Measure":
+                return obj_name in measure_names
+            elif obj_type == "Column":
+                return (
+                    format_dax_object_name(row["Table Name"], obj_name) in column_names
+                )
+            elif obj_type == "Hierarchy":
+                return (
+                    format_dax_object_name(row["Table Name"], obj_name)
+                    in hierarchy_names
+                )
+            return False
+
+        dataframe["Valid Semantic Model Object"] = dataframe.apply(is_valid, axis=1)
         return dataframe
 
     def _update_single_file(self, file_name: str, new_payload):
