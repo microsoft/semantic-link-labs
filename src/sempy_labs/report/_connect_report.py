@@ -319,7 +319,7 @@ class ReportWrapper:
         for part in self._report_definition.get("parts"):
             if part.get("path") == file_path:
                 self._report_definition["parts"].remove(part)
-                #if not self._readonly:
+                # if not self._readonly:
                 #    print(
                 #        f"The file '{file_path}' has been removed from report definition."
                 #    )
@@ -346,7 +346,7 @@ class ReportWrapper:
         for part in self._report_definition.get("parts"):
             if part.get("path") == file_path:
                 part["payload"] = decoded_payload
-                #if not self._readonly:
+                # if not self._readonly:
                 #    print(
                 #        f"The file '{file_path}' has been updated in the report definition."
                 #    )
@@ -430,35 +430,46 @@ class ReportWrapper:
 
         from sempy_labs.tom import connect_semantic_model
 
-        (dataset_id, dataset_name, dataset_workspace_id, dataset_workspace_name) = (
+        dataset_id, dataset_name, dataset_workspace_id, dataset_workspace_name = (
             resolve_dataset_from_report(
                 report=self._report_id, workspace=self._workspace_id
             )
         )
 
-        dataframe["Valid Semantic Model Object"] = False
-
+        report_level_measures = list(
+            self.list_report_level_measures()["Measure Name"].values
+        )
         with connect_semantic_model(
             dataset=dataset_id, readonly=True, workspace=dataset_workspace_id
         ) as tom:
-            for index, row in dataframe.iterrows():
-                obj_type = row["Object Type"]
-                if obj_type == "Measure":
-                    dataframe.at[index, "Valid Semantic Model Object"] = any(
-                        o.Name == row["Object Name"] for o in tom.all_measures()
-                    )
-                elif obj_type == "Column":
-                    dataframe.at[index, "Valid Semantic Model Object"] = any(
-                        format_dax_object_name(c.Parent.Name, c.Name)
-                        == format_dax_object_name(row["Table Name"], row["Object Name"])
-                        for c in tom.all_columns()
-                    )
-                elif obj_type == "Hierarchy":
-                    dataframe.at[index, "Valid Semantic Model Object"] = any(
-                        format_dax_object_name(h.Parent.Name, h.Name)
-                        == format_dax_object_name(row["Table Name"], row["Object Name"])
-                        for h in tom.all_hierarchies()
-                    )
+            measure_names = {m.Name for m in tom.all_measures()}
+            measure_names.update(report_level_measures)
+            column_names = {
+                format_dax_object_name(c.Parent.Name, c.Name) for c in tom.all_columns()
+            }
+            hierarchy_names = {
+                format_dax_object_name(h.Parent.Name, h.Name)
+                for h in tom.all_hierarchies()
+            }
+
+        # Vectorized checks
+        def is_valid(row):
+            obj_type = row["Object Type"]
+            obj_name = row["Object Name"]
+            if obj_type == "Measure":
+                return obj_name in measure_names
+            elif obj_type == "Column":
+                return (
+                    format_dax_object_name(row["Table Name"], obj_name) in column_names
+                )
+            elif obj_type == "Hierarchy":
+                return (
+                    format_dax_object_name(row["Table Name"], obj_name)
+                    in hierarchy_names
+                )
+            return False
+
+        dataframe["Valid Semantic Model Object"] = dataframe.apply(is_valid, axis=1)
         return dataframe
 
     def visual_page_mapping(self) -> Tuple[dict, dict]:
@@ -2036,14 +2047,12 @@ class ReportWrapper:
         else:
             # Convert the report definition to base64
             if self._current_report_definition == self._report_definition:
-                print(
-                    f"{icons.info} No changes were made to the report definition."
-                )
+                print(f"{icons.info} No changes were made to the report definition.")
                 return
             new_report_definition = copy.deepcopy(self._report_definition)
 
-            for part in new_report_definition.get('parts'):
-                part['payloadType'] = "InlineBase64"
+            for part in new_report_definition.get("parts"):
+                part["payloadType"] = "InlineBase64"
                 path = part.get("path")
                 payload = part.get("payload")
                 if isinstance(payload, dict):
@@ -2082,9 +2091,7 @@ class ReportWrapper:
         ):
             diff_parts(self._current_report_definition, self._report_definition)
         # Save the changes to the service if the connection is read/write
-        if (
-            not self._readonly
-        ):
+        if not self._readonly:
             self.save_changes()
 
 
