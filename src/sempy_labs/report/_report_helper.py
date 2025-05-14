@@ -1,14 +1,4 @@
-import sempy.fabric as fabric
-from typing import Tuple, Optional
-import sempy_labs._icons as icons
-import re
-import base64
-import json
 import requests
-from uuid import UUID
-from sempy_labs._helper_functions import (
-    resolve_workspace_name_and_id,
-)
 
 
 vis_type_mapping = {
@@ -70,22 +60,6 @@ page_type_mapping = {
 page_types = ["Tooltip", "Letter", "4:3", "16:9"]
 
 
-def get_web_url(report: str, workspace: Optional[str | UUID] = None):
-
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    dfR = fabric.list_reports(workspace=workspace_id)
-    dfR_filt = dfR[dfR["Name"] == report]
-
-    if len(dfR_filt) == 0:
-        raise ValueError(
-            f"{icons.red_dot} The '{report}' report does not exist within the '{workspace_name}' workspace."
-        )
-    web_url = dfR_filt["Web Url"].iloc[0]
-
-    return web_url
-
-
 def populate_custom_visual_display_names():
 
     url = "https://catalogapi.azure.com/offers?api-version=2018-08-01-beta&storefront=appsource&$filter=offerType+eq+%27PowerBIVisuals%27"
@@ -126,76 +100,6 @@ def populate_custom_visual_display_names():
         vizId = i.get("powerBIVisualId")
         displayName = i.get("displayName")
         vis_type_mapping[vizId] = displayName
-
-
-def resolve_page_name(self, page_name: str) -> Tuple[str, str, str]:
-
-    dfP = self.list_pages()
-    if any(r["Page Name"] == page_name for _, r in dfP.iterrows()):
-        valid_page_name = page_name
-        dfP_filt = dfP[dfP["Page Name"] == page_name]
-        valid_display_name = dfP_filt["Page Display Name"].iloc[0]
-        file_path = dfP_filt["File Path"].iloc[0]
-    elif any(r["Page Display Name"] == page_name for _, r in dfP.iterrows()):
-        valid_display_name = page_name
-        dfP_filt = dfP[dfP["Page Display Name"] == page_name]
-        valid_page_name = dfP_filt["Page Name"].iloc[0]
-        file_path = dfP_filt["File Path"].iloc[0]
-    else:
-        raise ValueError(
-            f"{icons.red_dot} Invalid page name. The '{page_name}' page does not exist in the '{self._report}' report within the '{self._workspace}' workspace."
-        )
-
-    return valid_page_name, valid_display_name, file_path
-
-
-def resolve_visual_name(
-    self, page_name: str, visual_name: str
-) -> Tuple[str, str, str, str]:
-    """
-    Obtains the page name, page display name, and the file path for a given page in a report.
-
-    Parameters
-    ----------
-    page_name : str
-        The name of the page of the report - either the page name (GUID) or the page display name.
-    visual_name : str
-        The name of the visual of the report.
-
-    Returns
-    -------
-    Tuple[str, str, str, str] Page name, page display name, visual name, file path from the report definition.
-
-    """
-
-    dfV = self.list_visuals()
-    if any(
-        (r["Page Name"] == page_name) & (r["Visual Name"] == visual_name)
-        for _, r in dfV.iterrows()
-    ):
-        valid_page_name = page_name
-        dfV_filt = dfV[
-            (dfV["Page Name"] == page_name) & (dfV["Visual Name"] == visual_name)
-        ]
-        file_path = dfV_filt["File Path"].iloc[0]
-        valid_display_name = dfV_filt["Page Display Name"].iloc[0]
-    elif any(
-        (r["Page Display Name"] == page_name) & (r["Visual Name"] == visual_name)
-        for _, r in dfV.iterrows()
-    ):
-        valid_display_name = page_name
-        dfV_filt = dfV[
-            (dfV["Page Display Name"] == page_name)
-            & (dfV["Visual Name"] == visual_name)
-        ]
-        file_path = dfV_filt["File Path"].iloc[0]
-        valid_page_name = dfV_filt["Page Name"].iloc[0]
-    else:
-        raise ValueError(
-            f"{icons.red_dot} Invalid page/visual name. The '{visual_name}' visual on the '{page_name}' page does not exist in the '{self._report}' report within the '{self._workspace}' workspace."
-        )
-
-    return valid_page_name, valid_display_name, visual_name, file_path
 
 
 def find_entity_property_pairs(data, result=None, keys_path=None):

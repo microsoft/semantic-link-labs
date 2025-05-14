@@ -197,6 +197,16 @@ class ReportWrapper:
 
         helper.populate_custom_visual_display_names()
 
+    def get_url(self, page_name: Optional[str] = None) -> str:
+
+        url = f"https://app.powerbi.com/groups/{self._workspace_id}/reports/{self._report_id}"
+
+        if page_name:
+            page_name = self.resolve_page_name(page_name)
+            url += f"/{page_name}"
+
+        return url
+
     def add_image(self, image_path: str, image_name: str):
         """
         Add an image to the report definition. The image will be added to the StaticResources/RegisteredResources folder in the report definition.
@@ -228,7 +238,7 @@ class ReportWrapper:
             payload=encoded_string,
         )
 
-    def _update_visual_image(self, file_path: str, image_path: str):
+    def __update_visual_image(self, file_path: str, image_path: str):
         """
         Update the image of a visual in the report definition. Only supported for 'image' visual types.
 
@@ -313,7 +323,7 @@ class ReportWrapper:
         Parameters
         ----------
         file_path : str
-            The path of the file to be removed. For example: "definition/pages/pages.json".
+            The path of the file to be removed. For example: "definition/pages/fjdis323484/page.json".
         """
 
         for part in self._report_definition.get("parts"):
@@ -388,7 +398,34 @@ class ReportWrapper:
         ]
 
     # Helper functions
-    def resolve_page_name(self, page_display_name: str) -> UUID:
+    def __resolve_page_name_and_display_name_file_path(
+        self, page: str
+    ) -> Tuple[str, str, str]:
+
+        page_map = {
+            p["path"]: [p["payload"]["name"], p["payload"]["displayName"]]
+            for p in self._report_definition.get("parts", [])
+            if p.get("path", "").endswith("/page.json") and "payload" in p
+        }
+
+        # Build lookup: page_id → (path, display_name)
+        id_lookup = {v[0]: (k, v[1]) for k, v in page_map.items()}
+
+        # Build lookup: display_name → (path, page_id)
+        name_lookup = {v[1]: (k, v[0]) for k, v in page_map.items()}
+
+        if page in id_lookup:
+            path, display_name = id_lookup[page]
+            return path, page, display_name
+        elif page in name_lookup:
+            path, page_id = name_lookup[page]
+            return path, page_id, page
+        else:
+            raise ValueError(
+                f"{icons.red_dot} Invalid page display name. The '{page}' page does not exist in the '{self._report_name}' report within the '{self._workspace_name}' workspace."
+            )
+
+    def resolve_page_name_and_display_name(self, page: str) -> Tuple[str, str]:
         """
         Obtains the page name, page display name, and the file path for a given page in a report.
 
@@ -399,21 +436,43 @@ class ReportWrapper:
 
         Returns
         -------
-        uuid.UUID
+        str
             The page name.
         """
 
-        x, y, z = helper.resolve_page_name(self, page_display_name)
+        (_, page_id, page_name) = self.resolve_page_name_and_display_name_file_path(
+            page
+        )
 
-        return x
+        return (page_id, page_name)
 
-    def resolve_page_display_name(self, page_name: UUID) -> str:
+    def resolve_page_name(self, page_display_name: str) -> str:
+        """
+        Obtains the page name, page display name, and the file path for a given page in a report.
+
+        Parameters
+        ----------
+        page_display_name : str
+            The display name of the page of the report.
+
+        Returns
+        -------
+        str
+            The page name.
+        """
+
+        (path, page_id, page_name) = self.resolve_page_name_and_display_name_file_path(
+            page_display_name
+        )
+        return page_id
+
+    def resolve_page_display_name(self, page_name: str) -> str:
         """
         Obtains the page dispaly name.
 
         Parameters
         ----------
-        page_name : uuid.UUID
+        page_name : str
             The name of the page of the report.
 
         Returns
@@ -422,9 +481,10 @@ class ReportWrapper:
             The page display name.
         """
 
-        x, y, z = helper.resolve_page_name(self, page_name=page_name)
-
-        return y
+        (path, page_id, page_name) = self.resolve_page_name_and_display_name_file_path(
+            page_name
+        )
+        return page_name
 
     def _add_extended(self, dataframe):
 
@@ -672,7 +732,7 @@ class ReportWrapper:
                             "Locked": locked,
                             "How Created": how_created,
                             "Used": filter_used,
-                            "Page URL": f"{helper.get_web_url(report=self._report_name, workspace=self._workspace_id)}/{page_id}",
+                            "Page URL": self.get_url(page_name=page_id),
                         }
 
                         dfs.append(pd.DataFrame(new_data, index=[0]))
@@ -914,7 +974,7 @@ class ReportWrapper:
                 "Data Visual Count": data_visual_count,
                 "Visible Visual Count": visible_visual_count,
                 "Page Filter Count": page_filter_count,
-                "Page URL": f"{helper.get_web_url(report=self._report_name, workspace=self._workspace_id)}/{page_name}",
+                "Page URL": self.get_url(page_name=page_name),
             }
             dfs.append(pd.DataFrame(new_data, index=[0]))
 
@@ -1486,8 +1546,8 @@ class ReportWrapper:
             bookmark_name = payload.get("name")
             bookmark_display = payload.get("displayName")
             rpt_page_id = payload.get("explorationState", {}).get("activeSection")
-            page_id, page_display, file_path = helper.resolve_page_name(
-                self, page_name=rpt_page_id
+            (page_id, page_display) = self.resolve_page_name_and_display_name(
+                rpt_page_id
             )
 
             for rptPg in payload.get("explorationState", {}).get("sections", {}):
@@ -1726,8 +1786,8 @@ class ReportWrapper:
 
         page_file = self.get(file_path=self._pages_file_path)
 
-        page_id, page_display_name, file_path = helper.resolve_page_name(
-            self, page_name=page_name
+        (page_id, page_display_name) = self.resolve_page_name_and_display_name(
+            page_name
         )
 
         page_file["activePageName"] = page_id
@@ -1771,8 +1831,8 @@ class ReportWrapper:
                 f"{icons.red_dot} Invalid page_type parameter. Valid options: ['Tooltip', 'Letter', '4:3', '16:9']."
             )
 
-        (page_id, page_display_name, file_path) = helper.resolve_page_name(
-            self, page_name=page_name
+        (file_path, page_id, page_display_name) = (
+            self.__resolve_page_name_and_display_name_file_path(page_name)
         )
 
         page_file = self.get(file_path=file_path)
@@ -1798,10 +1858,10 @@ class ReportWrapper:
             If set to True, hides the report page.
             If set to False, makes the report page visible.
         """
-
-        (page_id, page_display_name, file_path) = helper.resolve_page_name(
-            self, page_name=page_name
+        (file_path, page_id, page_display_name) = (
+            self.__resolve_page_name_and_display_name_file_path(page_name)
         )
+
         visibility = "visible" if hidden is False else "hidden"
 
         page_file = self.get(file_path=file_path)
