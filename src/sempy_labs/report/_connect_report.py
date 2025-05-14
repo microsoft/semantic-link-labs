@@ -23,6 +23,8 @@ import re
 import base64
 from pathlib import Path
 from urllib.parse import urlparse
+import difflib
+from collections import defaultdict
 
 
 def decode_payload(payload):
@@ -45,8 +47,6 @@ def color_text(text, color_code):
 
 
 def stringify(payload):
-    if isinstance(payload, str):
-        return payload
     try:
         return json.dumps(payload, indent=2, sort_keys=True)
     except Exception:
@@ -57,36 +57,112 @@ def build_path_map(parts):
     return {part["path"]: part["payload"] for part in parts}
 
 
+def extract_top_level_group(path):
+    # For something like: resourcePackages[1].items[1].name → resourcePackages[1].items[1]
+    segments = re.split(r"\.(?![^[]*\])", path)  # split on dots not in brackets
+    return ".".join(segments[:-1]) if len(segments) > 1 else segments[0]
+
+
+def get_by_path(obj, path):
+    """Navigate into nested dict/list based on a dot/bracket path like: a.b[1].c"""
+    tokens = re.findall(r"\w+|\[\d+\]", path)
+    for token in tokens:
+        if token.startswith("["):
+            index = int(token[1:-1])
+            obj = obj[index]
+        else:
+            obj = obj.get(token)
+    return obj
+
+
+def deep_diff(d1, d2, path=""):
+    diffs = []
+    if isinstance(d1, dict) and isinstance(d2, dict):
+        keys = set(d1) | set(d2)
+        for key in sorted(keys):
+            new_path = f"{path}.{key}" if path else key
+            if key not in d1:
+                diffs.append(("+", new_path, None, d2[key]))
+            elif key not in d2:
+                diffs.append(("-", new_path, d1[key], None))
+            else:
+                diffs.extend(deep_diff(d1[key], d2[key], new_path))
+    elif isinstance(d1, list) and isinstance(d2, list):
+        min_len = min(len(d1), len(d2))
+        for i in range(min_len):
+            new_path = f"{path}[{i}]"
+            diffs.extend(deep_diff(d1[i], d2[i], new_path))
+        for i in range(min_len, len(d1)):
+            diffs.append(("-", f"{path}[{i}]", d1[i], None))
+        for i in range(min_len, len(d2)):
+            diffs.append(("+", f"{path}[{i}]", None, d2[i]))
+    elif d1 != d2:
+        diffs.append(("~", path, d1, d2))
+    return diffs
+
+
 def diff_parts(d1, d2):
-
-    import difflib
-
     paths1 = build_path_map(d1.get("parts", []))
     paths2 = build_path_map(d2.get("parts", []))
-
     all_paths = set(paths1) | set(paths2)
 
-    for path in sorted(all_paths):
-        p1 = paths1.get(path)
-        p2 = paths2.get(path)
+    for part_path in sorted(all_paths):
+        p1 = paths1.get(part_path)
+        p2 = paths2.get(part_path)
 
         if p1 is None:
-            print(color_text(f"+ {path}", "32"))  # Green
+            print(color_text(f"+ {part_path}", "32"))  # Green
+            continue
         elif p2 is None:
-            print(color_text(f"- {path}", "31"))  # Red
-        elif p1 != p2:
-            print(color_text(f"~ {path}", "33"))  # Yellow
-            text1 = stringify(p1).splitlines()
-            text2 = stringify(p2).splitlines()
+            print(color_text(f"- {part_path}", "31"))  # Red
+            continue
+        elif p1 == p2:
+            continue
+
+        # Header for the changed part
+        print(color_text(f"~ {part_path}", "33"))
+
+        # Collect diffs
+        diffs = deep_diff(p1, p2)
+
+        # Group diffs by common parent path (e.g. items[1])
+        grouped = defaultdict(list)
+        for change_type, full_path, old_val, new_val in diffs:
+            group_path = extract_top_level_group(full_path)
+            grouped[group_path].append((change_type, full_path, old_val, new_val))
+
+        # Print each group once with unified diff for the full substructure
+        for group_path in sorted(grouped):
+            print("  " + color_text(f"~ {group_path}", "33"))
+
+            try:
+                old_group = get_by_path(p1, group_path)
+                new_group = get_by_path(p2, group_path)
+            except Exception:
+                old_group = new_group = None
+
+            # Skip showing diffs for empty/null groups
+            if old_group is None and new_group is None:
+                continue
+            if old_group is None:
+                old_str = []
+                new_str = stringify(new_group).splitlines()
+            elif new_group is None:
+                old_str = stringify(old_group).splitlines()
+                new_str = []
+            else:
+                old_str = stringify(old_group).splitlines()
+                new_str = stringify(new_group).splitlines()
+
             for line in difflib.unified_diff(
-                text1, text2, lineterm="", fromfile="old", tofile="new"
+                old_str, new_str, fromfile="old", tofile="new", lineterm=""
             ):
-                if line.startswith("+") and not line.startswith("+++"):
-                    print(color_text(line, "32"))
+                if line.startswith("@@"):
+                    print("  " + color_text(line, "36"))
                 elif line.startswith("-") and not line.startswith("---"):
-                    print(color_text(line, "31"))
-                elif line.startswith("@@"):
-                    print(color_text(line, "36"))
+                    print("  " + color_text(line, "31"))
+                elif line.startswith("+") and not line.startswith("+++"):
+                    print("  " + color_text(line, "32"))
 
 
 def is_base64(s):
@@ -336,7 +412,7 @@ class ReportWrapper:
         Returns
         -------
         str
-            The URL of the report or the specified page.        
+            The URL of the report or the specified page.
         """
 
         url = f"https://app.powerbi.com/groups/{self._workspace_id}/reports/{self._report_id}"
@@ -410,8 +486,8 @@ class ReportWrapper:
             The page name.
         """
 
-        (path, page_id, page_name) = self.__resolve_page_name_and_display_name_file_path(
-            page_display_name
+        (path, page_id, page_name) = (
+            self.__resolve_page_name_and_display_name_file_path(page_display_name)
         )
         return page_id
 
@@ -430,8 +506,8 @@ class ReportWrapper:
             The page display name.
         """
 
-        (path, page_id, page_name) = self.__resolve_page_name_and_display_name_file_path(
-            page_name
+        (path, page_id, page_name) = (
+            self.__resolve_page_name_and_display_name_file_path(page_name)
         )
         return page_name
 
@@ -2046,7 +2122,7 @@ class ReportWrapper:
             df = pd.concat(dfs, ignore_index=True)
 
         return df
-    
+
     def add_image(self, image_path: str, image_name: str):
         """
         Add an image to the report definition. The image will be added to the StaticResources/RegisteredResources folder in the report definition.
