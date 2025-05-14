@@ -197,82 +197,7 @@ class ReportWrapper:
 
         helper.populate_custom_visual_display_names()
 
-    def get_url(self, page_name: Optional[str] = None) -> str:
-
-        url = f"https://app.powerbi.com/groups/{self._workspace_id}/reports/{self._report_id}"
-
-        if page_name:
-            page_name = self.resolve_page_name(page_name)
-            url += f"/{page_name}"
-
-        return url
-
-    def add_image(self, image_path: str, image_name: str):
-        """
-        Add an image to the report definition. The image will be added to the StaticResources/RegisteredResources folder in the report definition.
-
-        Parameters
-        ----------
-        image_path : str
-            The path of the image file to be added. For example: "./builtin/MyImage.png".
-        image_name : str
-            The name of the image file to be added. For example: "MyImage".
-        """
-
-        if image_path.startswith("http://") or image_path.startswith("https://"):
-            response = requests.get(image_path)
-            response.raise_for_status()
-            image_bytes = response.content
-            # Extract the suffix (extension) from the URL path
-            suffix = Path(urlparse(image_path).path).suffix
-        else:
-            with open(image_path, "rb") as image_file:
-                image_bytes = image_file.read()
-            suffix = Path(image_path).suffix
-
-        encoded_string = base64.b64encode(image_bytes).decode("utf-8")
-        file_path = f"StaticResources/RegisteredResources/{image_name}{suffix}"
-
-        self.add(
-            file_path=file_path,
-            payload=encoded_string,
-        )
-
-    def __update_visual_image(self, file_path: str, image_path: str):
-        """
-        Update the image of a visual in the report definition. Only supported for 'image' visual types.
-
-        Parameters
-        ----------
-        file_path : str
-            The file path of the visual to be updated. For example: "definition/pages/ReportSection1/visuals/a1d8f99b81dcc2d59035/visual.json".
-        image_path : str
-            The name of the image file to be added. For example: "MyImage".
-        """
-
-        if image_path not in self.list_paths().get("Path").values:
-            raise ValueError(
-                f"Image path '{image_path}' not found in the report definition."
-            )
-        if not image_path.startswith("StaticResources/RegisteredResources/"):
-            raise ValueError(
-                f"Image path must start with 'StaticResources/RegisteredResources/'. Provided: {image_path}"
-            )
-
-        image_name = image_path.split("RegisteredResources/")[1]
-
-        if not file_path.endswith("/visual.json"):
-            raise ValueError(
-                f"File path must end with '/visual.json'. Provided: {file_path}"
-            )
-
-        file = self.get(file_path=file_path)
-        if file.get("visual").get("visualType") != "image":
-            raise ValueError("This function is only valid for image visuals.")
-        file.get("visual").get("objects").get("general")[0].get("properties").get(
-            "imageUrl"
-        ).get("expr").get("ResourcePackageItem")["ItemName"] == image_name
-
+    # Basic functions
     def get(self, file_path: str) -> dict:
         """
         Get the json content of the specified report definition file.
@@ -368,7 +293,7 @@ class ReportWrapper:
 
     def list_paths(self) -> pd.DataFrame:
         """
-        List all paths in the report definition.
+        List all file paths in the report definition.
 
         Returns
         -------
@@ -398,6 +323,30 @@ class ReportWrapper:
         ]
 
     # Helper functions
+    def get_url(self, page_name: Optional[str] = None) -> str:
+        """
+        Gets the URL of the report. If specified, gets the URL of the specified page.
+
+        Parameters
+        ----------
+        page_name : str, default=None
+            The name of the page. If None, gets the URL of the report.
+            If specified, gets the URL of the specified page.
+
+        Returns
+        -------
+        str
+            The URL of the report or the specified page.        
+        """
+
+        url = f"https://app.powerbi.com/groups/{self._workspace_id}/reports/{self._report_id}"
+
+        if page_name:
+            page_name = self.resolve_page_name(page_name)
+            url += f"/{page_name}"
+
+        return url
+
     def __resolve_page_name_and_display_name_file_path(
         self, page: str
     ) -> Tuple[str, str, str]:
@@ -427,20 +376,20 @@ class ReportWrapper:
 
     def resolve_page_name_and_display_name(self, page: str) -> Tuple[str, str]:
         """
-        Obtains the page name, page display name, and the file path for a given page in a report.
+        Obtains the page name, page display name for a given page in a report.
 
         Parameters
         ----------
-        page_display_name : str
-            The display name of the page of the report.
+        page : str
+            The page name or display name.
 
         Returns
         -------
-        str
-            The page name.
+        Tuple[str, str]
+            The page name and display name.
         """
 
-        (_, page_id, page_name) = self.resolve_page_name_and_display_name_file_path(
+        (_, page_id, page_name) = self.__resolve_page_name_and_display_name_file_path(
             page
         )
 
@@ -461,7 +410,7 @@ class ReportWrapper:
             The page name.
         """
 
-        (path, page_id, page_name) = self.resolve_page_name_and_display_name_file_path(
+        (path, page_id, page_name) = self.__resolve_page_name_and_display_name_file_path(
             page_display_name
         )
         return page_id
@@ -481,7 +430,7 @@ class ReportWrapper:
             The page display name.
         """
 
-        (path, page_id, page_name) = self.resolve_page_name_and_display_name_file_path(
+        (path, page_id, page_name) = self.__resolve_page_name_and_display_name_file_path(
             page_name
         )
         return page_name
@@ -532,7 +481,7 @@ class ReportWrapper:
         dataframe["Valid Semantic Model Object"] = dataframe.apply(is_valid, axis=1)
         return dataframe
 
-    def visual_page_mapping(self) -> Tuple[dict, dict]:
+    def visual_page_mapping(self) -> dict:
 
         page_mapping = {}
         visual_mapping = {}
@@ -556,7 +505,7 @@ class ReportWrapper:
                 page_mapping.get(page_name)[1],
             )
 
-        return (page_mapping, visual_mapping)
+        return visual_mapping
 
     # List functions
     def list_custom_visuals(self) -> pd.DataFrame:
@@ -779,7 +728,7 @@ class ReportWrapper:
         }
         df = _create_dataframe(columns=columns)
 
-        page_mapping, visual_mapping = self.visual_page_mapping()
+        visual_mapping = self.visual_page_mapping()
 
         dfs = []
         for v in self.__all_visuals():
@@ -1027,7 +976,7 @@ class ReportWrapper:
 
         report_file = self.get(file_path=self._report_file_path)
         custom_visuals = report_file.get("publicCustomVisuals", [])
-        page_mapping, visual_mapping = self.visual_page_mapping()
+        visual_mapping = self.visual_page_mapping()
         agg_type_map = helper._get_agg_type_mapping()
 
         def contains_key(data, keys_to_check):
@@ -1219,7 +1168,7 @@ class ReportWrapper:
             A pandas dataframe containing a list of all semantic model objects used in each visual in the report.
         """
 
-        (page_mapping, visual_mapping) = self.visual_page_mapping()
+        visual_mapping = self.visual_page_mapping()
 
         columns = {
             "Page Name": "str",
@@ -2050,7 +1999,7 @@ class ReportWrapper:
         }
         df = _create_dataframe(columns=columns)
 
-        (page_mapping, visual_mapping) = self.visual_page_mapping()
+        visual_mapping = self.visual_page_mapping()
         report_file = self.get(file_path="definition/report.json")
 
         dfs = []
@@ -2097,6 +2046,72 @@ class ReportWrapper:
             df = pd.concat(dfs, ignore_index=True)
 
         return df
+    
+    def add_image(self, image_path: str, image_name: str):
+        """
+        Add an image to the report definition. The image will be added to the StaticResources/RegisteredResources folder in the report definition.
+
+        Parameters
+        ----------
+        image_path : str
+            The path of the image file to be added. For example: "./builtin/MyImage.png".
+        image_name : str
+            The name of the image file to be added. For example: "MyImage".
+        """
+
+        if image_path.startswith("http://") or image_path.startswith("https://"):
+            response = requests.get(image_path)
+            response.raise_for_status()
+            image_bytes = response.content
+            # Extract the suffix (extension) from the URL path
+            suffix = Path(urlparse(image_path).path).suffix
+        else:
+            with open(image_path, "rb") as image_file:
+                image_bytes = image_file.read()
+            suffix = Path(image_path).suffix
+
+        encoded_string = base64.b64encode(image_bytes).decode("utf-8")
+        file_path = f"StaticResources/RegisteredResources/{image_name}{suffix}"
+
+        self.add(
+            file_path=file_path,
+            payload=encoded_string,
+        )
+
+    def __update_visual_image(self, file_path: str, image_path: str):
+        """
+        Update the image of a visual in the report definition. Only supported for 'image' visual types.
+
+        Parameters
+        ----------
+        file_path : str
+            The file path of the visual to be updated. For example: "definition/pages/ReportSection1/visuals/a1d8f99b81dcc2d59035/visual.json".
+        image_path : str
+            The name of the image file to be added. For example: "MyImage".
+        """
+
+        if image_path not in self.list_paths().get("Path").values:
+            raise ValueError(
+                f"Image path '{image_path}' not found in the report definition."
+            )
+        if not image_path.startswith("StaticResources/RegisteredResources/"):
+            raise ValueError(
+                f"Image path must start with 'StaticResources/RegisteredResources/'. Provided: {image_path}"
+            )
+
+        image_name = image_path.split("RegisteredResources/")[1]
+
+        if not file_path.endswith("/visual.json"):
+            raise ValueError(
+                f"File path must end with '/visual.json'. Provided: {file_path}"
+            )
+
+        file = self.get(file_path=file_path)
+        if file.get("visual").get("visualType") != "image":
+            raise ValueError("This function is only valid for image visuals.")
+        file.get("visual").get("objects").get("general")[0].get("properties").get(
+            "imageUrl"
+        ).get("expr").get("ResourcePackageItem")["ItemName"] == image_name
 
     def save_changes(self):
 
