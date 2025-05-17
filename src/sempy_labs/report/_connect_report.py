@@ -27,6 +27,32 @@ import difflib
 from collections import defaultdict
 
 
+def get_url_content(url: str):
+
+    if "github.com" in url and "/blob/" in url:
+        url = url.replace("github.com", "raw.githubusercontent.com")
+        url = url.replace("/blob/", "/")
+
+    response = requests.get(url)
+    if response.ok:
+        try:
+            data = response.json()  # Only works if the response is valid JSON
+        except ValueError:
+            data = response.text  # Fallback: get raw text content
+        return data
+    else:
+        print(f"Failed to fetch raw content: {response.status_code}")
+
+
+def generate_hex(length: int = 10) -> str:
+    """
+    Generate a random hex string of the specified length. Used for generating IDs for report objects (page, visual, bookmark etc.).
+    """
+    import secrets
+
+    return secrets.token_hex(length)
+
+
 def decode_payload(payload):
 
     if is_base64(payload):
@@ -48,6 +74,10 @@ def color_text(text, color_code):
 
 def stringify(payload):
     try:
+        if isinstance(payload, list):
+            return (
+                "[\n" + ",\n".join(f"  {json.dumps(item)}" for item in payload) + "\n]"
+            )
         return json.dumps(payload, indent=2, sort_keys=True)
     except Exception:
         return str(payload)
@@ -89,13 +119,13 @@ def deep_diff(d1, d2, path=""):
                 diffs.extend(deep_diff(d1[key], d2[key], new_path))
     elif isinstance(d1, list) and isinstance(d2, list):
         min_len = min(len(d1), len(d2))
+        list_changed = False
         for i in range(min_len):
-            new_path = f"{path}[{i}]"
-            diffs.extend(deep_diff(d1[i], d2[i], new_path))
-        for i in range(min_len, len(d1)):
-            diffs.append(("-", f"{path}[{i}]", d1[i], None))
-        for i in range(min_len, len(d2)):
-            diffs.append(("+", f"{path}[{i}]", None, d2[i]))
+            if d1[i] != d2[i]:
+                list_changed = True
+                break
+        if list_changed or len(d1) != len(d2):
+            diffs.append(("~", path, d1, d2))
     elif d1 != d2:
         diffs.append(("~", path, d1, d2))
     return diffs
@@ -119,11 +149,32 @@ def diff_parts(d1, d2):
         elif p1 == p2:
             continue
 
+        if p1 is None or p2 is None:
+            print(
+                color_text(f"+ {part_path}", "32")
+                if p2 and not p1
+                else color_text(f"- {part_path}", "31")
+            )
+            continue
+
         # Header for the changed part
         print(color_text(f"~ {part_path}", "33"))
 
         # Collect diffs
         diffs = deep_diff(p1, p2)
+        # If the diff is only a change of a whole list (like appending to a list), group it under its key
+        merged_list_diffs = []
+        for change_type, full_path, old_val, new_val in diffs:
+            if (
+                change_type == "~"
+                and isinstance(old_val, list)
+                and isinstance(new_val, list)
+            ):
+                merged_list_diffs.append((change_type, full_path, old_val, new_val))
+
+        # Replace individual item diffs with unified list diff
+        if merged_list_diffs:
+            diffs = merged_list_diffs
 
         # Group diffs by common parent path (e.g. items[1])
         grouped = defaultdict(list)
@@ -142,27 +193,90 @@ def diff_parts(d1, d2):
                 old_group = new_group = None
 
             # Skip showing diffs for empty/null groups
-            if old_group is None and new_group is None:
-                continue
-            if old_group is None:
-                old_str = []
-                new_str = stringify(new_group).splitlines()
-            elif new_group is None:
-                old_str = stringify(old_group).splitlines()
-                new_str = []
+            if isinstance(old_group, dict) and isinstance(new_group, dict):
+                old_keys = set(old_group.keys())
+                new_keys = set(new_group.keys())
+
+                for key in sorted(old_keys - new_keys):
+                    print(
+                        "  "
+                        + color_text(f"- {key}: {json.dumps(old_group[key])}", "31")
+                    )
+                for key in sorted(new_keys - old_keys):
+                    print(
+                        "  "
+                        + color_text(f"+ {key}: {json.dumps(new_group[key])}", "32")
+                    )
+                for key in sorted(old_keys & new_keys):
+                    if old_group[key] != new_group[key]:
+                        print("  " + color_text(f"~ {key}:", "33"))
+                        old_val_str = stringify(old_group[key]).splitlines()
+                        new_val_str = stringify(new_group[key]).splitlines()
+                        for line in difflib.unified_diff(
+                            old_val_str,
+                            new_val_str,
+                            fromfile="old",
+                            tofile="new",
+                            lineterm="",
+                        ):
+                            if line.startswith("@@"):
+                                print("    " + color_text(line, "36"))
+                            elif line.startswith("-") and not line.startswith("---"):
+                                print("    " + color_text(line, "31"))
+                            elif line.startswith("+") and not line.startswith("+++"):
+                                print("    " + color_text(line, "32"))
+            elif old_group is None and new_group is not None:
+                if isinstance(new_group, dict):
+                    # print all added keys
+                    for key, val in new_group.items():
+                        print("  " + color_text(f"+ {key}: {json.dumps(val)}", "32"))
+                elif isinstance(new_group, list):
+                    old_str = []
+                    new_str = stringify(new_group).splitlines()
+                    for line in difflib.unified_diff(
+                        old_str, new_str, fromfile="old", tofile="new", lineterm=""
+                    ):
+                        if line.startswith("@@"):
+                            print("  " + color_text(line, "36"))
+                        elif line.startswith("-") and not line.startswith("---"):
+                            print("  " + color_text(line, "31"))
+                        elif line.startswith("+") and not line.startswith("+++"):
+                            print("  " + color_text(line, "32"))
+                else:
+                    print("  " + color_text(f"+ {json.dumps(new_group)}", "32"))
+
+            elif new_group is None and old_group is not None:
+                if isinstance(old_group, dict):
+                    # print all removed keys
+                    for key, val in old_group.items():
+                        print("  " + color_text(f"- {key}: {json.dumps(val)}", "31"))
+                elif isinstance(old_group, list):
+                    old_str = stringify(old_group).splitlines()
+                    new_str = []
+                    for line in difflib.unified_diff(
+                        old_str, new_str, fromfile="old", tofile="new", lineterm=""
+                    ):
+                        if line.startswith("@@"):
+                            print("  " + color_text(line, "36"))
+                        elif line.startswith("-") and not line.startswith("---"):
+                            print("  " + color_text(line, "31"))
+                        elif line.startswith("+") and not line.startswith("+++"):
+                            print("  " + color_text(line, "32"))
+                else:
+                    print("  " + color_text(f"- {json.dumps(old_group)}", "31"))
             else:
                 old_str = stringify(old_group).splitlines()
                 new_str = stringify(new_group).splitlines()
 
-            for line in difflib.unified_diff(
-                old_str, new_str, fromfile="old", tofile="new", lineterm=""
-            ):
-                if line.startswith("@@"):
-                    print("  " + color_text(line, "36"))
-                elif line.startswith("-") and not line.startswith("---"):
-                    print("  " + color_text(line, "31"))
-                elif line.startswith("+") and not line.startswith("+++"):
-                    print("  " + color_text(line, "32"))
+                for line in difflib.unified_diff(
+                    old_str, new_str, fromfile="old", tofile="new", lineterm=""
+                ):
+                    if line.startswith("@@"):
+                        print("  " + color_text(line, "36"))
+                    elif line.startswith("-") and not line.startswith("---"):
+                        print("  " + color_text(line, "31"))
+                    elif line.startswith("+") and not line.startswith("+++"):
+                        print("  " + color_text(line, "32"))
 
 
 def is_base64(s):
@@ -184,17 +298,21 @@ class ReportWrapper:
 
     Parameters
     ----------
-    report : str
-        The name of the report.
+    report : str | uuid.UUID
+        The name or ID of the report.
     workspace : str | uuid.UUID
         The name or ID of the workspace in which the report resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    readonly: bool, default=True
+        Whether the connection is read-only or read/write. Setting this to False enables read/write which saves the changes made back to the server.
+    show_diffs: bool, default=True
+        Whether to show the differences between the current report definition in the service and the new report definition.
 
     Returns
     -------
-    pandas.DataFrame
-        A pandas dataframe containing the report metadata definition files.
+    None
+        A connection to the report is established and the report definition is retrieved.
     """
 
     _report_name: str
@@ -316,6 +434,107 @@ class ReportWrapper:
         self._report_definition["parts"].append(
             {"path": file_path, "payload": decoded_payload}
         )
+
+    def add_blank_page(
+        self,
+        name: str,
+        width: int = 1280,
+        height: int = 720,
+        display_option: str = "FitToPage",
+    ):
+
+        page_id = generate_hex()
+        payload = {
+            "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/1.4.0/schema.json",
+            "name": page_id,
+            "displayName": name,
+            "displayOption": display_option,
+            "height": height,
+            "width": width,
+        }
+        self.add(file_path=f"definition/pages/{page_id}/page.json", payload=payload)
+
+        # Add the page to the pages.json file
+        pages_file = self.get(file_path=self._pages_file_path)
+        pages_file["pageOrder"].append(page_id)
+
+    def add_page(self, payload: dict | bytes, generate_id: bool = True):
+        """
+        Add a new page to the report.
+
+        Parameters
+        ----------
+        payload : dict | bytes
+            The json content of the page to be added. This can be a dictionary or a base64 encoded string.
+        generate_id : bool, default=True
+            Whether to generate a new page ID. If False, the page ID will be taken from the payload.
+        """
+
+        page_file = decode_payload(payload)
+        page_file_copy = copy.deepcopy(page_file)
+
+        if generate_id:
+            # Generate a new page ID and update the page file accordingly
+            page_id = generate_hex()
+            page_file_copy["name"] = page_id
+        else:
+            page_id = page_file_copy.get("name")
+
+        self.add(
+            file_path=f"definition/pages/{page_id}/page.json", payload=page_file_copy
+        )
+
+    def add_visual(self, page: str, payload: dict | bytes, generate_id: bool = True):
+        """
+        Add a new visual to a page in the report.
+
+        Parameters
+        ----------
+        page : str
+            The name or display name of the page to which the visual will be added.
+        payload : dict | bytes
+            The json content of the visual to be added. This can be a dictionary or a base64 encoded string.
+        generate_id : bool, default=True
+            Whether to generate a new visual ID. If False, the visual ID will be taken from the payload.
+        """
+
+        visual_file = decode_payload(payload)
+        visual_file_copy = copy.deepcopy(visual_file)
+
+        if generate_id:
+            # Generate a new visual ID and update the visual file accordingly
+            visual_id = generate_hex()
+            visual_file_copy["name"] = visual_id
+        else:
+            visual_id = visual_file_copy.get("name")
+        (page_file_path, page_id, page_name) = (
+            self.__resolve_page_name_and_display_name_file_path(page)
+        )
+        visual_file_path = (
+            page_file_path.split("/page.json")[0] + f"/visuals/{visual_id}.json"
+        )
+
+        self.add(file_path=visual_file_path, payload=visual_file_copy)
+
+    def add_new_visual(page: str, type: str, x: int, y: int, height: int, width: int):
+
+        type = type.lower()  # resolve type
+
+        visual_id = generate_hex()
+
+        {
+            "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.0.0/schema.json",
+            "name": visual_id,
+            "position": {
+                "x": x,
+                "y": y,
+                "z": 0,
+                "height": height,
+                "width": width,
+                "tabOrder": 0,
+            },
+            "visual": {"visualType": type, "drillFilterOtherVisuals": True},
+        }
 
     def remove(self, file_path: str):
         """
