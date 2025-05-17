@@ -1,5 +1,5 @@
 from uuid import UUID
-from typing import Optional
+from typing import Optional, List
 import pandas as pd
 from sempy_labs._helper_functions import (
     _create_dataframe,
@@ -10,6 +10,7 @@ from sempy_labs._helper_functions import (
     delete_item,
 )
 import sempy_labs._icons as icons
+import re
 
 
 def get_semantic_model_refresh_schedule(
@@ -135,3 +136,94 @@ def delete_semantic_model(dataset: str | UUID, workspace: Optional[str | UUID] =
     """
 
     delete_item(item=dataset, type="SemanticModel", workspace=workspace)
+
+
+def update_semantic_model_refresh_schedule(
+    dataset: str | UUID,
+    days: Optional[str | List[str]] = None,
+    times: Optional[str | List[str]] = None,
+    time_zone: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Updates the refresh schedule for the specified dataset from the specified workspace.
+
+    This is a wrapper function for the following API: `Datasets - Update Refresh Schedule In Group <https://learn.microsoft.com/rest/api/power-bi/datasets/update-refresh-schedule-in-group>`_.
+
+    Parameters
+    ----------
+    dataset : str | uuid.UUID
+        Name or ID of the semantic model.
+    days : str | list[str], default=None
+        The days of the week to refresh the dataset.
+        Valid values are: "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday".
+        Defaults to None which means the refresh schedule will not be updated.
+    times : str | list[str], default=None
+        The times of the day to refresh the dataset.
+        Valid format is "HH:MM" (24-hour format).
+        Defaults to None which means the refresh schedule will not be updated.
+    time_zone : str, default=None
+        The time zone to use for the refresh schedule.
+        Defaults to None which means the refresh schedule will not be updated.
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace)
+
+    payload = {"value": {}}
+
+    def is_valid_time_format(time_str):
+        pattern = r"^(?:[01]\d|2[0-3]):[0-5]\d$"
+        return re.match(pattern, time_str) is not None
+
+    weekdays = [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Sunday",
+        "Saturday",
+    ]
+    if days:
+        if isinstance(days, str):
+            days = [days]
+            for i in range(len(days)):
+                days[i] = days[i].capitalize()
+                if days[i] not in weekdays:
+                    raise ValueError(
+                        f"{icons.red_dot} Invalid day '{days[i]}'. Valid days are: {weekdays}"
+                    )
+        payload["value"]["days"] = days
+    if times:
+        if isinstance(times, str):
+            times = [times]
+            for i in range(len(times)):
+                if not is_valid_time_format(times[i]):
+                    raise ValueError(
+                        f"{icons.red_dot} Invalid time '{times[i]}'. Valid time format is 'HH:MM' (24-hour format)."
+                    )
+        payload["value"]["times"] = times
+    if time_zone:
+        payload["value"]["localTimeZoneId"] = time_zone
+
+    if not payload.get("value"):
+        print(
+            f"{icons.info} No changes were made to the refresh schedule for the '{dataset_name}' within the '{workspace_name}' workspace."
+        )
+        return
+
+    _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/refreshSchedule",
+        method="patch",
+        client="fabric_sp",
+        payload=payload,
+    )
+
+    print(
+        f"{icons.green_dot} Refresh schedule for the '{dataset_name}' within the '{workspace_name}' workspace has been updated."
+    )
