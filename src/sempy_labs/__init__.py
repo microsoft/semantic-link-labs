@@ -22,6 +22,8 @@ from sempy_labs._mounted_data_factories import (
 )
 from sempy_labs._tags import (
     list_tags,
+    apply_tags,
+    unapply_tags,
 )
 from sempy_labs._semantic_models import (
     get_semantic_model_refresh_schedule,
@@ -579,4 +581,6 @@ __all__ = [
     "list_variable_libraries",
     "delete_variable_library",
     "create_vpax",
+    "apply_tags",
+    "unapply_tags",
 ]
