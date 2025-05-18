@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Literal
 from contextlib import contextmanager
 from sempy._utils._log import log
 from uuid import UUID
@@ -25,6 +25,14 @@ from pathlib import Path
 from urllib.parse import urlparse
 import difflib
 from collections import defaultdict
+import uuid
+import os
+
+
+def generate_number_guid():
+
+    guid = uuid.uuid4()
+    return str(guid.int & ((1 << 64) - 1))
 
 
 def get_url_content(url: str):
@@ -510,19 +518,22 @@ class ReportWrapper:
         (page_file_path, page_id, page_name) = (
             self.__resolve_page_name_and_display_name_file_path(page)
         )
-        visual_file_path = (
-            page_file_path.split("/page.json")[0] + f"/visuals/{visual_id}.json"
-        )
+        visual_file_path = helper.generate_visual_file_path(page_file_path, visual_id)
 
         self.add(file_path=visual_file_path, payload=visual_file_copy)
 
-    def add_new_visual(page: str, type: str, x: int, y: int, height: int, width: int):
+    def add_new_visual(
+        self, page: str, type: str, x: int, y: int, height: int, width: int
+    ):
 
-        type = type.lower()  # resolve type
-
+        type = helper.resolve_visual_type(type)
         visual_id = generate_hex()
+        (page_file_path, page_id, page_name) = (
+            self.__resolve_page_name_and_display_name_file_path(page)
+        )
+        visual_file_path = helper.generate_visual_file_path(page_file_path, visual_id)
 
-        {
+        payload = {
             "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.0.0/schema.json",
             "name": visual_id,
             "position": {
@@ -535,6 +546,8 @@ class ReportWrapper:
             },
             "visual": {"visualType": type, "drillFilterOtherVisuals": True},
         }
+
+        self.add(file_path=visual_file_path, payload=payload)
 
     def remove(self, file_path: str):
         """
@@ -618,6 +631,22 @@ class ReportWrapper:
         ]
 
     # Helper functions
+    def __resolve_page_list(self, page: Optional[str | List[str]] = None) -> List[str]:
+
+        if isinstance(page, str):
+            page = [page]
+
+        # Resolve page list
+        return (
+            [self.resolve_page_name(p) for p in page]
+            if page
+            else [
+                p["payload"]["name"]
+                for p in self.__all_pages()
+                if "payload" in p and "name" in p["payload"]
+            ]
+        )
+
     def get_url(self, page_name: Optional[str] = None) -> str:
         """
         Gets the URL of the report. If specified, gets the URL of the specified page.
@@ -729,6 +758,43 @@ class ReportWrapper:
             self.__resolve_page_name_and_display_name_file_path(page_name)
         )
         return page_name
+
+    def __add_to_registered_resources(self, name: str, path: str, type: str):
+
+        type = type.capitalize()
+
+        report_file = self.get(file_path=self._report_file_path)
+        rp_names = [rp.get("name") for rp in report_file.get("resourcePackages")]
+
+        new_item = {"name": name, "path": path, "type": type}
+        if "RegisteredResources" not in rp_names:
+            res = {
+                "name": "RegisteredResources",
+                "type": "RegisteredResources",
+                "items": [new_item],
+            }
+            report_file.get("resourcePackages").append(res)
+        else:
+            for rp in report_file.get("resourcePackages"):
+                if rp.get("name") == "RegisteredResources":
+                    for item in rp.get("items"):
+                        item_name = item.get("name")
+                        item_type = item.get("type")
+                        item_path = item.get("path")
+                        if (
+                            item_name == name
+                            and item_type == type
+                            and item_path == path
+                        ):
+                            print(
+                                f"{icons.info} The '{item_name}' {type.lower()} already exists in the report definition."
+                            )
+                            raise ValueError()
+
+                    # Add the new item to the existing RegisteredResources
+                    rp["items"].append(new_item)
+
+        self.update(file_path=self._report_file_path, payload=report_file)
 
     def _add_extended(self, dataframe):
 
@@ -2090,6 +2156,8 @@ class ReportWrapper:
                 f"{icons.green_dot} The '{page_display_name}' page has been updated to the '{page_type}' page type."
             )
 
+    # def set_page_vertical_alignment(self, page: str, vertical_alignment: Literal["Top", "Middle"] = "Top"):
+
     def set_page_visibility(self, page_name: str, hidden: bool):
         """
         Sets whether a report page is visible or hidden.
@@ -2354,6 +2422,8 @@ class ReportWrapper:
             The name of the image file to be added. For example: "MyImage".
         """
 
+        id = generate_number_guid()
+
         if image_path.startswith("http://") or image_path.startswith("https://"):
             response = requests.get(image_path)
             response.raise_for_status()
@@ -2366,12 +2436,197 @@ class ReportWrapper:
             suffix = Path(image_path).suffix
 
         encoded_string = base64.b64encode(image_bytes).decode("utf-8")
-        file_path = f"StaticResources/RegisteredResources/{image_name}{suffix}"
+        file_name = f"{image_name}{id}{suffix}"
+        file_path = f"StaticResources/RegisteredResources/{file_name}"
 
+        # Add StaticResources/RegisteredResources file
         self.add(
             file_path=file_path,
             payload=encoded_string,
         )
+
+        # Add to report.json file
+        self.__add_to_registered_resources(
+            name=file_name,
+            path=file_name,
+            type="Image",
+        )
+
+        return file_name
+
+    def remove_wallpaper(self, page: Optional[str | List[str]] = None):
+        """
+        Remove the wallpaper image from a page.
+
+        Parameters
+        ----------
+        page : str | List[str], default=None
+            The name or display name of the page(s) from which the wallpaper image will be removed.
+            If None, removes from all pages.
+        """
+
+        if isinstance(page, str):
+            page = [page]
+
+        page_list = []
+        if page:
+            for p in page:
+                page_id = self.resolve_page_name(p)
+                page_list.append(page_id)
+        else:
+            page_list = [
+                p.get("payload", {}).get("name")
+                for p in self.__all_pages()
+                if p.get("payload") and "name" in p["payload"]
+            ]
+
+        for p in self.__all_pages():
+            path = p.get("path")
+            payload = p.get("payload")
+            page_name = payload.get("name")
+            if page_name in page_list:
+                if "objects" in payload:
+                    if "outspace" in payload["objects"]:
+                        del payload["objects"]["outspace"]
+
+                self.update(file_path=path, payload=payload)
+
+    def set_wallpaper_color(
+        self,
+        color_value: str,
+        page: Optional[str | List[str]] = None,
+        transparency: int = 0,
+        theme_color_percent: float = 0.0,
+    ):
+
+        if transparency < 0 or transparency > 100:
+            raise ValueError(f"{icons.red_dot} Transparency must be between 0 and 100.")
+
+        page_list = self.__resolve_page_list(page)
+
+        # Define the color dictionary based on color_value type
+        if isinstance(color_value, int):
+            color_expr = {
+                "ThemeDataColor": {
+                    "ColorId": color_value,
+                    "Percent": theme_color_percent,
+                }
+            }
+        elif isinstance(color_value, str) and color_value.startswith("#"):
+            color_expr = {"Literal": {"Value": f"'{color_value}'"}}
+        else:
+            raise NotImplementedError(
+                f"{icons.red_dot} The color value '{color_value}' is not supported. Please provide a hex color code or an integer based on the color theme."
+            )
+
+        color_dict = {
+            "properties": {
+                "color": {"solid": {"color": {"expr": color_expr}}},
+                "transparency": {"expr": {"Literal": {"Value": f"{transparency}D"}}},
+            }
+        }
+
+        for p in self.__all_pages():
+            path = p.get("path")
+            payload = p.get("payload", {})
+            page_name = payload.get("name")
+
+            if page_name in page_list:
+                payload.setdefault("objects", {}).setdefault("outspace", [{}]).append(
+                    color_dict
+                )
+
+            self.update(file_path=path, payload=payload)
+
+    def set_wallpaper_image(
+        self,
+        image_path: str,
+        page: Optional[str | List[str]] = None,
+        transparency: int = 0,
+        image_fit: Literal["Normal", "Fit", "Fill"] = "Normal",
+    ):
+        """
+        Add an image as the wallpaper of a page.
+
+        Parameters
+        ----------
+        image_path : str
+            The path of the image file to be added. For example: "./builtin/MyImage.png".
+        page : str | List[str], default=None
+            The name or display name of the page(s) to which the wallpaper image will be applied.
+            If None, applies to all pages.
+        transparency : int, default=0
+            The transparency level of the wallpaper image. Valid values are between 0 and 100.
+        image_fit : str, default="Normal"
+            The fit type of the wallpaper image. Valid options: "Normal", "Fit", "Fill".
+        """
+
+        image_fits = ["Normal", "Fit", "Fill"]
+        image_fit = image_fit.capitalize()
+        if image_fit not in image_fits:
+            raise ValueError(
+                f"{icons.red_dot} Invalid image fit. Valid options: {image_fits}."
+            )
+        if transparency < 0 or transparency > 100:
+            raise ValueError(f"{icons.red_dot} Transparency must be between 0 and 100.")
+
+        page_list = self.__resolve_page_list(page)
+
+        image_name = os.path.splitext(os.path.basename(image_path))[0]
+        image_file_path = self.add_image(image_path=image_path, image_name=image_name)
+
+        for p in self.__all_pages():
+            path = p.get("path")
+            payload = p.get("payload")
+            page_name = payload.get("name")
+            if page_name in page_list:
+                if "objects" not in payload:
+                    payload["objects"] = {}
+
+                # Ensure "outspace" is a list inside "objects"
+                if "outspace" not in payload["objects"] or not isinstance(
+                    payload["objects"]["outspace"], list
+                ):
+                    payload["objects"]["outspace"] = [{}]
+
+                # Ensure at least one dict inside the "outspace" list
+                if not payload["objects"]["outspace"]:
+                    payload["objects"]["outspace"].append({})
+
+                outspace_item = payload["objects"]["outspace"][0]
+
+                # Ensure "properties" dict exists
+                if "properties" not in outspace_item:
+                    outspace_item["properties"] = {}
+
+                # Overwrite existing property
+                if "image" not in outspace_item["properties"]:
+                    outspace_item["properties"] = {}
+                # Assign image properties
+                outspace_item["properties"]["image"] = {
+                    "image": {
+                        "name": {
+                            "expr": {"Literal": {"Value": f"'{image_file_path}'"}}
+                        },
+                        "url": {
+                            "expr": {
+                                "ResourcePackageItem": {
+                                    "PackageName": "RegisteredResources",
+                                    "PackageType": 1,
+                                    "ItemName": image_file_path,
+                                }
+                            }
+                        },
+                        "scaling": {"expr": {"Literal": {"Value": f"'{image_fit}'"}}},
+                    }
+                }
+
+                # Assign transparency
+                outspace_item["properties"]["transparency"] = {
+                    "expr": {"Literal": {"Value": f"{transparency}D"}}
+                }
+
+                self.update(file_path=path, payload=payload)
 
     def __update_visual_image(self, file_path: str, image_path: str):
         """

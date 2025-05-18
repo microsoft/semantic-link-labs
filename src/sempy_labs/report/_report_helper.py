@@ -1,4 +1,5 @@
 import requests
+import sempy_labs._icons as icons
 
 
 vis_type_mapping = {
@@ -49,6 +50,28 @@ vis_type_mapping = {
     "shape": "Shape",
     "Group": "Group",
 }
+
+
+def generate_visual_file_path(page_file_path: str, visual_id: str) -> str:
+
+    return page_file_path.split("/page.json")[0] + f"/visuals/{visual_id}.json"
+
+
+def resolve_visual_type(visual_type: str) -> str:
+    vt_lower = visual_type.lower()
+
+    vis_map_lower = {k.lower(): v for k, v in vis_type_mapping.items()}
+    flipped_lower = {v.lower(): k for k, v in vis_type_mapping.items()}
+
+    if vt_lower in vis_map_lower:
+        resolved = vis_map_lower.get(vt_lower)
+    elif vt_lower in flipped_lower:
+        resolved = flipped_lower.get(vt_lower)
+    else:
+        raise ValueError(f"{icons.red_dot} Unknown visual type: {visual_type}")
+
+    return resolved
+
 
 page_type_mapping = {
     (320, 240): "Tooltip",
