@@ -2938,7 +2938,6 @@ class ReportWrapper:
             update_refs(query_ref_path)
             update_refs(native_query_ref_path)
 
-            print(file_path)
             self.update(file_path=file_path, payload=payload)
 
     def __update_visual_image(self, file_path: str, image_path: str):
