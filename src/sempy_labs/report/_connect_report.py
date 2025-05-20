@@ -2813,15 +2813,23 @@ class ReportWrapper:
 
             {
                 "columns": {
-                    ("TableName", "OldColumnName"): "NewColumnName",
-                    ("TableName", "OldColumnName1"): "NewColumnName2",
+                    ("TableName", "OldColumnName1"): "NewColumnName1",
+                    ("TableName", "OldColumnName2"): "NewColumnName2",
                 },
                 "measures": {
-                    ("TableName", "OldMeasureName"): "NewMeasureName",
-                    ("TableName", "OldMeasureName1"): "NewMeasureName2",
+                    ("TableName", "OldMeasureName1"): "NewMeasureName1",
+                    ("TableName", "OldMeasureName2"): "NewMeasureName2",
                 }
             }
         """
+
+        selector_mapping = {
+            key: {
+                ".".join(k): v  # join tuple with '.' to form the string
+                for k, v in value.items()
+            }
+            for key, value in mapping.items()
+        }
 
         for part in [
             part
@@ -2839,6 +2847,7 @@ class ReportWrapper:
             native_query_ref_path = parse("$..nativeQueryRef")
             filter_expr_path = parse("$..filterConfig.filters[*].filter.From")
             source_ref_path = parse("$..Expression.SourceRef.Source")
+            metadata_ref_path = parse("$..selector.metadata")
 
             # Populate table alias map
             alias_map = {}
@@ -2848,6 +2857,35 @@ class ReportWrapper:
                     alias_name = alias.get("Name")
                     alias_entity = alias.get("Entity")
                     alias_map[alias_name] = alias_entity
+
+            # Rename selector.metadata objects
+            for match in metadata_ref_path.find(payload):
+                obj = match.value
+
+                # Check both measures and columns
+                for category in ["measures", "columns"]:
+                    if obj in selector_mapping.get(category, {}):
+                        value = selector_mapping[category][obj]
+
+                        # Find original tuple key from mapping for this category
+                        for tup_key in mapping.get(category, {}).keys():
+                            if ".".join(tup_key) == obj:
+                                key = tup_key[
+                                    0
+                                ]  # first element of tuple, like table name
+                                new_value = f"{key}.{value}"
+
+                                # Update the dictionary node holding "metadata"
+                                if isinstance(match.context.value, dict):
+                                    match.context.value["metadata"] = new_value
+                                else:
+                                    print(
+                                        f"Warning: Cannot assign metadata, context is {type(match.context.value)}"
+                                    )
+                                break
+
+                        # Once found in one category, no need to check the other
+                        break
 
             # Rename Column Properties
             for match in col_expr_path.find(payload):
