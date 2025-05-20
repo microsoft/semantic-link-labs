@@ -16,6 +16,7 @@ import sempy_labs._icons as icons
 import copy
 import pandas as pd
 from jsonpath_ng.ext import parse
+from jsonpath_ng.jsonpath import Fields, Index
 import sempy_labs.report._report_helper as helper
 from sempy_labs._model_dependencies import get_measure_dependencies
 import requests
@@ -399,8 +400,30 @@ class ReportWrapper:
 
         helper.populate_custom_visual_display_names()
 
+    # class Page:
+    #    def __init__(self, FilePath, Name, DisplayName, DisplayOption, Width, Height):
+
+    #        pages_data = ReportWrapper.__all_pages()
+    #        self.FilePath = FilePath
+    #        self.Name = Name
+    #        self.DisplayName = DisplayName
+    #        self.DisplayOption = DisplayOption
+    #        self.Width = Width
+    #        self.Height = Height
+
+    #    @classmethod
+    #    def from_dict(cls, pages_data):
+    #        return cls(
+    #            FilePath=pages_data.get("Path"),
+    #            Name=data.get("Name"),
+    #            DisplayName=data.get("DisplayName"),
+    #            DisplayOption=data.get("DisplayOption"),
+    #            Width=data.get("Width"),
+    #            Height=data.get("Height"),
+    #        )
+
     # Basic functions
-    def get(self, file_path: str) -> dict:
+    def get(self, file_path: str, json_path: Optional[str] = None) -> dict:
         """
         Get the json content of the specified report definition file.
 
@@ -408,6 +431,8 @@ class ReportWrapper:
         ----------
         file_path : str
             The path of the report definition file. For example: "definition/pages/pages.json".
+        json_path : str, default=None
+            The json path to the specific part of the file to be retrieved. If None, the entire file content is returned.
 
         Returns
         -------
@@ -416,9 +441,26 @@ class ReportWrapper:
         """
         for part in self._report_definition.get("parts"):
             if part.get("path") == file_path:
-                return part.get("payload")
+                payload = part.get("payload")
+                if not json_path:
+                    return payload
+                elif not isinstance(payload, dict):
+                    raise ValueError(
+                        f"{icons.red_dot} The payload of the file '{file_path}' is not a dictionary."
+                    )
+                else:
+                    jsonpath_expr = parse(json_path)
+                    matches = jsonpath_expr.find(payload)
+                    if matches:
+                        return matches[0].value
+                    else:
+                        raise ValueError(
+                            f"{icons.red_dot} No match found for '{json_path}'."
+                        )
 
-        raise ValueError(f"File {file_path} not found in report definition.")
+        raise ValueError(
+            f"{icons.red_dot} File {file_path} not found in report definition."
+        )
 
     def add(self, file_path: str, payload: dict | bytes):
         """
@@ -443,113 +485,7 @@ class ReportWrapper:
             {"path": file_path, "payload": decoded_payload}
         )
 
-    def add_blank_page(
-        self,
-        name: str,
-        width: int = 1280,
-        height: int = 720,
-        display_option: str = "FitToPage",
-    ):
-
-        page_id = generate_hex()
-        payload = {
-            "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/1.4.0/schema.json",
-            "name": page_id,
-            "displayName": name,
-            "displayOption": display_option,
-            "height": height,
-            "width": width,
-        }
-        self.add(file_path=f"definition/pages/{page_id}/page.json", payload=payload)
-
-        # Add the page to the pages.json file
-        pages_file = self.get(file_path=self._pages_file_path)
-        pages_file["pageOrder"].append(page_id)
-
-    def add_page(self, payload: dict | bytes, generate_id: bool = True):
-        """
-        Add a new page to the report.
-
-        Parameters
-        ----------
-        payload : dict | bytes
-            The json content of the page to be added. This can be a dictionary or a base64 encoded string.
-        generate_id : bool, default=True
-            Whether to generate a new page ID. If False, the page ID will be taken from the payload.
-        """
-
-        page_file = decode_payload(payload)
-        page_file_copy = copy.deepcopy(page_file)
-
-        if generate_id:
-            # Generate a new page ID and update the page file accordingly
-            page_id = generate_hex()
-            page_file_copy["name"] = page_id
-        else:
-            page_id = page_file_copy.get("name")
-
-        self.add(
-            file_path=f"definition/pages/{page_id}/page.json", payload=page_file_copy
-        )
-
-    def add_visual(self, page: str, payload: dict | bytes, generate_id: bool = True):
-        """
-        Add a new visual to a page in the report.
-
-        Parameters
-        ----------
-        page : str
-            The name or display name of the page to which the visual will be added.
-        payload : dict | bytes
-            The json content of the visual to be added. This can be a dictionary or a base64 encoded string.
-        generate_id : bool, default=True
-            Whether to generate a new visual ID. If False, the visual ID will be taken from the payload.
-        """
-
-        visual_file = decode_payload(payload)
-        visual_file_copy = copy.deepcopy(visual_file)
-
-        if generate_id:
-            # Generate a new visual ID and update the visual file accordingly
-            visual_id = generate_hex()
-            visual_file_copy["name"] = visual_id
-        else:
-            visual_id = visual_file_copy.get("name")
-        (page_file_path, page_id, page_name) = (
-            self.__resolve_page_name_and_display_name_file_path(page)
-        )
-        visual_file_path = helper.generate_visual_file_path(page_file_path, visual_id)
-
-        self.add(file_path=visual_file_path, payload=visual_file_copy)
-
-    def add_new_visual(
-        self, page: str, type: str, x: int, y: int, height: int, width: int
-    ):
-
-        type = helper.resolve_visual_type(type)
-        visual_id = generate_hex()
-        (page_file_path, page_id, page_name) = (
-            self.__resolve_page_name_and_display_name_file_path(page)
-        )
-        visual_file_path = helper.generate_visual_file_path(page_file_path, visual_id)
-
-        payload = {
-            "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.0.0/schema.json",
-            "name": visual_id,
-            "position": {
-                "x": x,
-                "y": y,
-                "z": 0,
-                "height": height,
-                "width": width,
-                "tabOrder": 0,
-            },
-            "visual": {"visualType": type, "drillFilterOtherVisuals": True},
-        }
-
-        self.add(file_path=visual_file_path, payload=payload)
-
-    def remove(self, file_path: str):
+    def remove(self, file_path: str, json_path: Optional[str] = None):
         """
         Removes a file from the report definition.
 
@@ -557,19 +493,38 @@ class ReportWrapper:
         ----------
         file_path : str
             The path of the file to be removed. For example: "definition/pages/fjdis323484/page.json".
+        json_path : str, default=None
+            The json path to the specific part of the file to be removed. If None, the entire file is removed.
         """
 
         for part in self._report_definition.get("parts"):
             if part.get("path") == file_path:
-                self._report_definition["parts"].remove(part)
-                # if not self._readonly:
-                #    print(
-                #        f"The file '{file_path}' has been removed from report definition."
-                #    )
+                if not json_path:
+                    self._report_definition["parts"].remove(part)
+                    print(
+                        f"{icons.green_dot} The file '{file_path}' has been removed from the report definition."
+                    )
+                else:
+                    jsonpath_expr = parse(json_path)
+                    payload = part.get("payload")
+                    matches = jsonpath_expr.find(payload)
+
+                    for match in matches:
+                        parent = match.context.value
+                        path = match.path
+
+                        if isinstance(path, Fields):
+                            key = path.fields[0]
+                            if key in parent:
+                                del parent[key]
+                        elif isinstance(path, Index):
+                            index = path.index
+                            if isinstance(parent, list) and 0 <= index < len(parent):
+                                parent.pop(index)
                 return
 
         raise ValueError(
-            f"The '{file_path}' file was not found in the report definition."
+            f"{icons.red_dot} The '{file_path}' file was not found in the report definition."
         )
 
     def update(self, file_path: str, payload: dict | bytes):
@@ -598,6 +553,54 @@ class ReportWrapper:
         raise ValueError(
             f"The '{file_path}' file was not found in the report definition."
         )
+
+    def set_json(self, file_path: str, json_path: str, json_value: str | dict | List):
+        """
+        Sets the JSON value of a file in the report definition. If the json_path does not exist, it will be created.
+
+        Parameters
+        ----------
+        file_path : str
+            The file path of the JSON file to be updated. For example: "definition/pages/ReportSection1/visuals/a1d8f99b81dcc2d59035/visual.json".
+        json_path : str
+            The JSON path to the value to be updated or created. This must be a valid JSONPath expression.
+            Examples:
+                "$.objects.outspace"
+                "$.hi.def[*].vv"
+        json_value : str | dict | List
+            The new value to be set at the specified JSON path. This can be a string, dictionary, or list.
+        """
+
+        file = self.get(file_path=file_path)
+        payload = file.get("payload")
+
+        jsonpath_expr = parse(json_path)
+        matches = jsonpath_expr.find(payload)
+
+        if matches:
+            # Update all matches
+            for match in matches:
+                parent = match.context.value
+                path = match.path
+                if isinstance(path, Fields):
+                    parent[path.fields[0]] = json_value
+                elif isinstance(path, Index):
+                    parent[path.index] = json_value
+        else:
+            # Path does not exist, create it manually
+            # Parse path parts manually without JSONPath library:
+            parts = json_path.lstrip("$").strip(".").split(".")
+            current = payload
+            for i, part in enumerate(parts):
+                is_last = i == len(parts) - 1
+                if part not in current:
+                    # Create dict or set value if last part
+                    current[part] = json_value if is_last else {}
+                elif is_last:
+                    current[part] = json_value
+                current = current[part]
+
+        self.update(file_path=file_path, payload=payload)
 
     def list_paths(self) -> pd.DataFrame:
         """
@@ -2627,6 +2630,316 @@ class ReportWrapper:
                 }
 
                 self.update(file_path=path, payload=payload)
+
+    def add_blank_page(
+        self,
+        name: str,
+        width: int = 1280,
+        height: int = 720,
+        display_option: str = "FitToPage",
+    ):
+
+        page_id = generate_hex()
+        payload = {
+            "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/1.4.0/schema.json",
+            "name": page_id,
+            "displayName": name,
+            "displayOption": display_option,
+            "height": height,
+            "width": width,
+        }
+        self.add(file_path=f"definition/pages/{page_id}/page.json", payload=payload)
+
+        # Add the page to the pages.json file
+        pages_file = self.get(file_path=self._pages_file_path)
+        pages_file["pageOrder"].append(page_id)
+
+    def add_page(self, payload: dict | bytes, generate_id: bool = True):
+        """
+        Add a new page to the report.
+
+        Parameters
+        ----------
+        payload : dict | bytes
+            The json content of the page to be added. This can be a dictionary or a base64 encoded string.
+        generate_id : bool, default=True
+            Whether to generate a new page ID. If False, the page ID will be taken from the payload.
+        """
+
+        page_file = decode_payload(payload)
+        page_file_copy = copy.deepcopy(page_file)
+
+        if generate_id:
+            # Generate a new page ID and update the page file accordingly
+            page_id = generate_hex()
+            page_file_copy["name"] = page_id
+        else:
+            page_id = page_file_copy.get("name")
+
+        self.add(
+            file_path=f"definition/pages/{page_id}/page.json", payload=page_file_copy
+        )
+
+    def add_visual(self, page: str, payload: dict | bytes, generate_id: bool = True):
+        """
+        Add a new visual to a page in the report.
+
+        Parameters
+        ----------
+        page : str
+            The name or display name of the page to which the visual will be added.
+        payload : dict | bytes
+            The json content of the visual to be added. This can be a dictionary or a base64 encoded string.
+        generate_id : bool, default=True
+            Whether to generate a new visual ID. If False, the visual ID will be taken from the payload.
+        """
+
+        visual_file = decode_payload(payload)
+        visual_file_copy = copy.deepcopy(visual_file)
+
+        if generate_id:
+            # Generate a new visual ID and update the visual file accordingly
+            visual_id = generate_hex()
+            visual_file_copy["name"] = visual_id
+        else:
+            visual_id = visual_file_copy.get("name")
+        (page_file_path, page_id, page_name) = (
+            self.__resolve_page_name_and_display_name_file_path(page)
+        )
+        visual_file_path = helper.generate_visual_file_path(page_file_path, visual_id)
+
+        self.add(file_path=visual_file_path, payload=visual_file_copy)
+
+    def add_new_visual(
+        self, page: str, type: str, x: int, y: int, height: int, width: int
+    ):
+
+        type = helper.resolve_visual_type(type)
+        visual_id = generate_hex()
+        (page_file_path, page_id, page_name) = (
+            self.__resolve_page_name_and_display_name_file_path(page)
+        )
+        visual_file_path = helper.generate_visual_file_path(page_file_path, visual_id)
+
+        payload = {
+            "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.0.0/schema.json",
+            "name": visual_id,
+            "position": {
+                "x": x,
+                "y": y,
+                "z": 0,
+                "height": height,
+                "width": width,
+                "tabOrder": 0,
+            },
+            "visual": {"visualType": type, "drillFilterOtherVisuals": True},
+        }
+
+        self.add(file_path=visual_file_path, payload=payload)
+
+    def update_to_theme_colors(self, mapping: dict[str, tuple[int, float]]):
+        """
+        Updates the report definition to use theme colors instead of hex colors.
+
+        Parameters
+        ----------
+        theme_color_mapping : dict[str, tuple[int, float]
+            A dictionary mapping color names to their corresponding theme color IDs.
+            Example: {"#FF0000": (1, 0), "#00FF00": (2, 0)}
+            The first value in the tuple is the theme color ID and the second value is the percentage (a value between -0.6 and 0.6).
+        """
+
+        out_of_range = {
+            color: value
+            for color, value in mapping.items()
+            if len(value) > 1 and not (-0.6 <= value[1] <= 0.6)
+        }
+
+        if out_of_range:
+            print(
+                f"{icons.red_dot} The following mapping entries have Percent values out of range [-0.6, 0.6]:"
+            )
+            for color, val in out_of_range.items():
+                print(f"  {color}: Percent = {val[1]}")
+            raise ValueError(
+                f"{icons.red_dot} The Percent values must be between -0.6 and 0.6."
+            )
+
+        # Ensure theme color mapping is in the correct format (with Percent value)
+        mapping = {k: (v, 0) if isinstance(v, int) else v for k, v in mapping.items()}
+
+        json_path = "$..color.expr.Literal.Value"
+        jsonpath_expr = parse(json_path)
+
+        for part in [
+            part
+            for part in self._report_definition.get("parts")
+            if part.get("path").endswith(".json")
+        ]:
+            file_path = part.get("path")
+            payload = part.get("payload")
+            matches = jsonpath_expr.find(payload)
+            if matches:
+                for match in matches:
+                    color_string = match.value.strip("'")
+                    if color_string in mapping:
+                        color_data = mapping[color_string]
+                        if isinstance(color_data, int):
+                            color_data = [color_data, 0]
+
+                        # Get reference to parent of 'Value' (i.e. 'Literal')
+                        # literal_dict = match.context.value
+                        # Get reference to parent of 'Literal' (i.e. 'expr')
+                        expr_dict = match.context.context.value
+
+                        # Replace the 'expr' with new structure
+                        expr_dict.clear()
+                        expr_dict["ThemeDataColor"] = {
+                            "ColorId": color_data[0],
+                            "Percent": color_data[1],
+                        }
+
+            self.update(file_path=file_path, payload=payload)
+
+    def rename_fields(self, mapping: dict):
+        """
+        Renames fields in the report definition based on the provided rename mapping.
+
+        Parameters
+        ----------
+        mapping : dict
+            A dictionary containing the mapping of old field names to new field names.
+            Example:
+
+            {
+                "columns": {
+                    ("TableName", "OldColumnName"): "NewColumnName",
+                    ("TableName", "OldColumnName1"): "NewColumnName2",
+                },
+                "measures": {
+                    ("TableName", "OldMeasureName"): "NewMeasureName",
+                    ("TableName", "OldMeasureName1"): "NewMeasureName2",
+                }
+            }
+        """
+
+        for part in [
+            part
+            for part in self._report_definition.get("parts")
+            if part.get("path").endswith(".json")
+        ]:
+            file_path = part.get("path")
+            payload = part.get("payload")
+
+            # Paths for columns, measures, and expressions
+            col_expr_path = parse("$..Column")
+            meas_expr_path = parse("$..Measure")
+            entity_ref_path = parse("$..Expression.SourceRef.Entity")
+            query_ref_path = parse("$..queryRef")
+            native_query_ref_path = parse("$..nativeQueryRef")
+            filter_expr_path = parse("$..filterConfig.filters[*].filter.From")
+            source_ref_path = parse("$..Expression.SourceRef.Source")
+
+            # Populate table alias map
+            alias_map = {}
+            for match in filter_expr_path.find(payload):
+                alias_list = match.value
+                for alias in alias_list:
+                    alias_name = alias.get("Name")
+                    alias_entity = alias.get("Entity")
+                    alias_map[alias_name] = alias_entity
+
+            # Rename Column Properties
+            for match in col_expr_path.find(payload):
+                col_obj = match.value
+                parent = match.context.value
+
+                # Extract table name from SourceRef
+                source_matches = entity_ref_path.find(parent)
+                if source_matches:
+                    table = source_matches[0].value
+                else:
+                    alias = source_ref_path.find(parent)
+                    table = alias_map.get(alias[0].value)
+
+                if not table:
+                    continue  # skip if can't resolve table
+
+                old_name = col_obj.get("Property")
+                if (table, old_name) in mapping.get("columns", {}):
+                    col_obj["Property"] = mapping["columns"][(table, old_name)]
+
+            # Rename Measure Properties
+            for match in meas_expr_path.find(payload):
+                meas_obj = match.value
+                parent = match.context.value
+
+                source_matches = entity_ref_path.find(parent)
+                if source_matches:
+                    table = source_matches[0].value
+                else:
+                    alias = source_ref_path.find(parent)
+                    table = alias_map.get(alias[0].value)
+
+                if not table:
+                    continue  # skip if can't resolve table
+
+                old_name = meas_obj.get("Property")
+                if (table, old_name) in mapping.get("measures", {}):
+                    meas_obj["Property"] = mapping["measures"][(table, old_name)]
+
+            # Update queryRef and nativeQueryRef
+            def update_refs(path_expr):
+                for match in path_expr.find(payload):
+                    ref_key = match.path.fields[0]
+                    ref_value = match.value
+                    parent = match.context.value
+
+                    for (tbl, old_name), new_name in mapping.get("columns", {}).items():
+                        pattern = rf"\b{re.escape(tbl)}\.{re.escape(old_name)}\b"
+                        if re.search(pattern, ref_value):
+                            if ref_key == "queryRef":
+                                ref_value = re.sub(
+                                    pattern, f"{tbl}.{new_name}", ref_value
+                                )
+                            elif ref_key == "nativeQueryRef":
+                                agg_match = re.match(
+                                    rf"(?i)([a-z]+)\s*\(\s*{re.escape(tbl)}\.{re.escape(old_name)}\s*\)",
+                                    ref_value,
+                                )
+                                if agg_match:
+                                    func = agg_match.group(1).capitalize()
+                                    ref_value = f"{func} of {new_name}"
+                                else:
+                                    ref_value = ref_value.replace(old_name, new_name)
+                            parent[ref_key] = ref_value
+
+                    for (tbl, old_name), new_name in mapping.get(
+                        "measures", {}
+                    ).items():
+                        pattern = rf"\b{re.escape(tbl)}\.{re.escape(old_name)}\b"
+                        if re.search(pattern, ref_value):
+                            if ref_key == "queryRef":
+                                ref_value = re.sub(
+                                    pattern, f"{tbl}.{new_name}", ref_value
+                                )
+                            elif ref_key == "nativeQueryRef":
+                                agg_match = re.match(
+                                    rf"(?i)([a-z]+)\s*\(\s*{re.escape(tbl)}\.{re.escape(old_name)}\s*\)",
+                                    ref_value,
+                                )
+                                if agg_match:
+                                    func = agg_match.group(1).capitalize()
+                                    ref_value = f"{func} of {new_name}"
+                                else:
+                                    ref_value = ref_value.replace(old_name, new_name)
+                            parent[ref_key] = ref_value
+
+            update_refs(query_ref_path)
+            update_refs(native_query_ref_path)
+
+            print(file_path)
+            self.update(file_path=file_path, payload=payload)
 
     def __update_visual_image(self, file_path: str, image_path: str):
         """
