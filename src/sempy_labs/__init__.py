@@ -27,6 +27,7 @@ from sempy_labs._semantic_models import (
     get_semantic_model_refresh_schedule,
     enable_semantic_model_scheduled_refresh,
     delete_semantic_model,
+    update_semantic_model_refresh_schedule,
 )
 from sempy_labs._graphQL import (
     list_graphql_apis,
@@ -579,4 +580,5 @@ __all__ = [
     "list_variable_libraries",
     "delete_variable_library",
     "create_vpax",
+    "update_semantic_model_refresh_schedule",
 ]
