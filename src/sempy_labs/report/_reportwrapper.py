@@ -28,6 +28,7 @@ import difflib
 from collections import defaultdict
 import uuid
 import os
+import fnmatch
 
 
 def generate_number_guid():
@@ -429,23 +430,61 @@ class ReportWrapper:
     #        )
 
     # Basic functions
-    def get(self, file_path: str, json_path: Optional[str] = None) -> dict:
+    def get(
+        self, file_path: str, json_path: Optional[str] = None
+    ) -> dict | List[Tuple[str, dict]]:
         """
         Get the json content of the specified report definition file.
 
         Parameters
         ----------
         file_path : str
-            The path of the report definition file. For example: "definition/pages/pages.json".
+            The path of the report definition file. For example: "definition/pages/pages.json". You may also use wildcards. For example: "definition/pages/*/page.json".
         json_path : str, default=None
             The json path to the specific part of the file to be retrieved. If None, the entire file content is returned.
 
         Returns
         -------
-        dict
+        dict | List[Tuple[str, dict]]
             The json content of the specified report definition file.
         """
-        for part in self._report_definition.get("parts"):
+
+        parts = self._report_definition.get("parts")
+
+        # Find matching parts
+        if "*" in file_path:
+            matching_parts = [
+                (part.get("path"), part.get("payload"))
+                for part in parts
+                if fnmatch.fnmatch(part.get("path"), file_path)
+            ]
+
+            if not matching_parts:
+                raise ValueError(
+                    f"{icons.red_dot} No files match the wildcard path '{file_path}'."
+                )
+
+            results = []
+            for path, payload in matching_parts:
+                if not json_path:
+                    results.append((path, payload))
+                elif not isinstance(payload, dict):
+                    raise ValueError(
+                        f"{icons.red_dot} The payload of the file '{path}' is not a dictionary."
+                    )
+                else:
+                    jsonpath_expr = parse(json_path)
+                    matches = jsonpath_expr.find(payload)
+                    if matches:
+                        results.append((path, matches[0].value))
+                    else:
+                        raise ValueError(
+                            f"{icons.red_dot} No match found for '{json_path}' in '{path}'."
+                        )
+            return results
+
+        # Exact path match
+        for part in parts:
             if part.get("path") == file_path:
                 payload = part.get("payload")
                 if not json_path:
@@ -465,7 +504,7 @@ class ReportWrapper:
                         )
 
         raise ValueError(
-            f"{icons.red_dot} File {file_path} not found in report definition."
+            f"{icons.red_dot} File '{file_path}' not found in report definition."
         )
 
     def add(self, file_path: str, payload: dict | bytes):
@@ -567,7 +606,7 @@ class ReportWrapper:
         Parameters
         ----------
         file_path : str
-            The file path of the JSON file to be updated. For example: "definition/pages/ReportSection1/visuals/a1d8f99b81dcc2d59035/visual.json".
+            The file path of the JSON file to be updated. For example: "definition/pages/ReportSection1/visuals/a1d8f99b81dcc2d59035/visual.json". Also supports wildcards.
         json_path : str
             The JSON path to the value to be updated or created. This must be a valid JSONPath expression.
             Examples:
@@ -577,35 +616,42 @@ class ReportWrapper:
             The new value to be set at the specified JSON path. This can be a string, dictionary, or list.
         """
 
-        payload = self.get(file_path=file_path)
+        files = self.get(file_path=file_path)
 
-        jsonpath_expr = parse(json_path)
-        matches = jsonpath_expr.find(payload)
+        if isinstance(files, dict):
+            files = [(file_path, files)]
 
-        if matches:
-            # Update all matches
-            for match in matches:
-                parent = match.context.value
-                path = match.path
-                if isinstance(path, Fields):
-                    parent[path.fields[0]] = json_value
-                elif isinstance(path, Index):
-                    parent[path.index] = json_value
-        else:
-            # Path does not exist, create it manually
-            # Parse path parts manually without JSONPath library:
-            parts = json_path.lstrip("$").strip(".").split(".")
-            current = payload
-            for i, part in enumerate(parts):
-                is_last = i == len(parts) - 1
-                if part not in current:
-                    # Create dict or set value if last part
-                    current[part] = json_value if is_last else {}
-                elif is_last:
-                    current[part] = json_value
-                current = current[part]
+        for file in files:
+            path = file[0]
+            payload = file[1]
 
-        self.update(file_path=file_path, payload=payload)
+            jsonpath_expr = parse(json_path)
+            matches = jsonpath_expr.find(payload)
+
+            if matches:
+                # Update all matches
+                for match in matches:
+                    parent = match.context.value
+                    path = match.path
+                    if isinstance(path, Fields):
+                        parent[path.fields[0]] = json_value
+                    elif isinstance(path, Index):
+                        parent[path.index] = json_value
+            else:
+                # Path does not exist, create it manually
+                # Parse path parts manually without JSONPath library:
+                parts = json_path.lstrip("$").strip(".").split(".")
+                current = payload
+                for i, part in enumerate(parts):
+                    is_last = i == len(parts) - 1
+                    if part not in current:
+                        # Create dict or set value if last part
+                        current[part] = json_value if is_last else {}
+                    elif is_last:
+                        current[part] = json_value
+                    current = current[part]
+
+            self.update(file_path=file_path, payload=payload)
 
     def list_paths(self) -> pd.DataFrame:
         """
@@ -2418,16 +2464,21 @@ class ReportWrapper:
 
         return df
 
-    def add_image(self, image_path: str, image_name: str):
+    def add_image(self, image_path: str, image_name: Optional[str] = None) -> str:
         """
-        Add an image to the report definition. The image will be added to the StaticResources/RegisteredResources folder in the report definition.
+        Add an image to the report definition. The image will be added to the StaticResources/RegisteredResources folder in the report definition. If the image_name already exists as a file in the report definition it will be updated.
 
         Parameters
         ----------
         image_path : str
             The path of the image file to be added. For example: "./builtin/MyImage.png".
-        image_name : str
-            The name of the image file to be added. For example: "MyImage".
+        image_name : str, default=None
+            The name of the image file to be added. For example: "MyImage". If not specified, the name will be derived from the image path and a unique ID will be appended to it.
+
+        Returns
+        -------
+        str
+            The name of the image file added to the report definition.
         """
 
         id = generate_number_guid()
@@ -2444,14 +2495,22 @@ class ReportWrapper:
             suffix = Path(image_path).suffix
 
         encoded_string = base64.b64encode(image_bytes).decode("utf-8")
-        file_name = f"{image_name}{id}{suffix}"
+        if image_name is None:
+            image_name = os.path.splitext(os.path.basename(image_path))[0]
+            file_name = f"{image_name}{id}{suffix}"
+        else:
+            file_name = f"{image_name}{suffix}"
         file_path = f"StaticResources/RegisteredResources/{file_name}"
 
-        # Add StaticResources/RegisteredResources file
-        self.add(
-            file_path=file_path,
-            payload=encoded_string,
-        )
+        # Add StaticResources/RegisteredResources file. If the file already exists, update it.
+        try:
+            self.get(file_path=file_path)
+            self.update(file_path=file_path, payload=encoded_string)
+        except Exception:
+            self.add(
+                file_path=file_path,
+                payload=encoded_string,
+            )
 
         # Add to report.json file
         self.__add_to_registered_resources(
