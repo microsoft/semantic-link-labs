@@ -3,6 +3,7 @@ from sempy_labs._helper_functions import (
     _base_api,
     resolve_lakehouse_name_and_id,
     resolve_item_name_and_id,
+    _get_fabric_context_setting,
 )
 from typing import Optional
 import sempy_labs._icons as icons
@@ -85,4 +86,7 @@ def generate_shared_expression(
         return f"{start_expr}{mid_expr}{end_expr}"
     else:
         # Build DL/OL expression
-        return f"""let\n\tSource = AzureStorage.DataLake("onelake.dfs.fabric.microsoft.com/{workspace_id}/{item_id}")\nin\n\tSource"""
+        env = _get_fabric_context_setting("spark.trident.pbienv").lower()
+        env = "" if env == "prod" else f"{env}-"
+
+        return f"""let\n\tSource = AzureStorage.DataLake("https://{env}onelake.dfs.fabric.microsoft.com/{workspace_id}/{item_id}")\nin\n\tSource"""

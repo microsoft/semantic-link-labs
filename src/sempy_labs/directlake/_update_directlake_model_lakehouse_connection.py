@@ -7,7 +7,7 @@ from sempy_labs._helper_functions import (
 )
 from sempy._utils._log import log
 from sempy_labs.tom import connect_semantic_model
-from typing import Optional
+from typing import Optional, List
 import sempy_labs._icons as icons
 from uuid import UUID
 import re
@@ -19,7 +19,9 @@ def _extract_expression_list(expression):
     """
 
     pattern_sql = r'Sql\.Database\s*\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\)'
-    pattern_no_sql = r'AzureStorage\.DataLake\(".*?/([0-9a-fA-F\-]{36})/([0-9a-fA-F\-]{36})"'
+    pattern_no_sql = (
+        r'AzureStorage\.DataLake\(".*?/([0-9a-fA-F\-]{36})/([0-9a-fA-F\-]{36})"'
+    )
 
     match_sql = re.search(pattern_sql, expression)
     match_no_sql = re.search(pattern_no_sql, expression)
@@ -102,7 +104,7 @@ def update_direct_lake_model_connection(
     source_type: str = "Lakehouse",
     source_workspace: Optional[str | UUID] = None,
     use_sql_endpoint: bool = True,
-    tables: Optional[str] = None,
+    tables: Optional[str | List[str]] = None,
 ):
     """
     Remaps a Direct Lake semantic model's SQL Endpoint connection to a new lakehouse/warehouse.
@@ -127,6 +129,10 @@ def update_direct_lake_model_connection(
     use_sql_endpoint : bool, default=True
         If True, the SQL Endpoint will be used for the connection.
         If False, Direct Lake over OneLake will be used.
+    tables : str | List[str], default=None
+        The name(s) of the table(s) to update in the Direct Lake semantic model.
+        If None, all tables will be updated (if there is only one expression).
+        If multiple tables are specified, they must be provided as a list.
     """
     if use_sql_endpoint:
         icons.sll_tags.append("UpdateDLConnection_SQL")
@@ -192,11 +198,16 @@ def update_direct_lake_model_connection(
             )
         else:
             import sempy
+
             sempy.fabric._client._utils._init_analysis_services()
             import Microsoft.AnalysisServices.Tabular as TOM
+
             expr_list = _extract_expression_list(shared_expression)
 
-            expr_name = next((name for name, exp in expression_dict.items() if exp == expr_list), None)
+            expr_name = next(
+                (name for name, exp in expression_dict.items() if exp == expr_list),
+                None,
+            )
 
             # If the expression does not already exist, create it
             def generate_unique_name(existing_names):
@@ -218,15 +229,9 @@ def update_direct_lake_model_connection(
                         f"{icons.red_dot} The table '{t_name}' does not exist in the '{dataset_name}' semantic model within the '{workspace_name}' workspace."
                     )
                 p = next(p for p in tom.model.Tables[t_name].Partitions)
-                entity_name = p.EntityName
-                schema_name = p.SchemaName
                 if p.Mode != TOM.ModeType.DirectLake:
                     raise ValueError(
                         f"{icons.red_dot} The table '{t_name}' in the '{dataset_name}' semantic model within the '{workspace_name}' workspace is not in Direct Lake mode. This function is only applicable to Direct Lake tables."
                     )
 
-                ep = TOM.EntityPartitionSource()
-                ep.Source.EntityName = entity_name
-                ep.ExpressionSource = tom.model.Expressions[expr_name]
-                ep.Source.SchemaName = schema_name
-                p.Source = ep
+                p.Source.ExpressionSource = tom.model.Expressions[expr_name]
