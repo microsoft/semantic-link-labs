@@ -92,10 +92,6 @@ def stringify(payload):
         return str(payload)
 
 
-def build_path_map(parts):
-    return {part["path"]: part["payload"] for part in parts}
-
-
 def extract_top_level_group(path):
     # For something like: resourcePackages[1].items[1].name → resourcePackages[1].items[1]
     segments = re.split(r"\.(?![^[]*\])", path)  # split on dots not in brackets
@@ -141,8 +137,18 @@ def deep_diff(d1, d2, path=""):
 
 
 def diff_parts(d1, d2):
-    paths1 = build_path_map(d1.get("parts", []))
-    paths2 = build_path_map(d2.get("parts", []))
+
+    def build_path_map(parts):
+        return {part["path"]: part["payload"] for part in parts}
+
+    try:
+        paths1 = build_path_map(d1)
+    except Exception:
+        paths1 = d1
+    try:
+        paths2 = build_path_map(d2)
+    except Exception:
+        paths2 = d2
     all_paths = set(paths1) | set(paths2)
 
     for part_path in sorted(all_paths):
@@ -3070,7 +3076,7 @@ class ReportWrapper:
         if self._show_diffs and (
             self._current_report_definition != self._report_definition
         ):
-            diff_parts(self._current_report_definition, self._report_definition)
+            diff_parts(self._current_report_definition.get('parts'), self._report_definition.get('parts'))
         # Save the changes to the service if the connection is read/write
         if not self._readonly:
             self.save_changes()
