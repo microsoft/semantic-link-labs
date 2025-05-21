@@ -224,7 +224,7 @@ def update_direct_lake_model_connection(
                     raise ValueError(
                         f"{icons.red_dot} The table '{t_name}' in the '{dataset_name}' semantic model within the '{workspace_name}' workspace is not in Direct Lake mode. This function is only applicable to Direct Lake tables."
                     )
-                
+
                 ep = TOM.EntityPartitionSource()
                 ep.Source.EntityName = entity_name
                 ep.ExpressionSource = tom.model.Expressions[expr_name]
