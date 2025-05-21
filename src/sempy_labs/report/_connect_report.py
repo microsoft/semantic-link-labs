@@ -2711,7 +2711,13 @@ class ReportWrapper:
         self.add(file_path=visual_file_path, payload=visual_file_copy)
 
     def add_new_visual(
-        self, page: str, type: str, x: int, y: int, height: int, width: int
+        self,
+        page: str,
+        type: str,
+        x: int,
+        y: int,
+        height: int = 720,
+        width: int = 1280,
     ):
 
         type = helper.resolve_visual_type(type)
