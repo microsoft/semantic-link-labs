@@ -2760,6 +2760,9 @@ class ReportWrapper:
             The first value in the tuple is the theme color ID and the second value is the percentage (a value between -0.6 and 0.6).
         """
 
+        # Ensure theme color mapping is in the correct format (with Percent value)
+        mapping = {k: (v, 0) if isinstance(v, int) else v for k, v in mapping.items()}
+
         out_of_range = {
             color: value
             for color, value in mapping.items()
@@ -2775,9 +2778,6 @@ class ReportWrapper:
             raise ValueError(
                 f"{icons.red_dot} The Percent values must be between -0.6 and 0.6."
             )
-
-        # Ensure theme color mapping is in the correct format (with Percent value)
-        mapping = {k: (v, 0) if isinstance(v, int) else v for k, v in mapping.items()}
 
         json_path = "$..color.expr.Literal.Value"
         jsonpath_expr = parse(json_path)
