@@ -1,0 +1,141 @@
+from typing import Optional, Literal
+from uuid import UUID
+import pandas as pd
+from sempy_labs._helper_functions import (
+    _base_api,
+    _create_dataframe,
+    resolve_workspace_name_and_id,
+    resolve_item_name_and_id,
+)
+import sempy_labs._icons as icons
+
+
+def list_sql_endpoints(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
+    """
+    Shows the SQL endpoints within a workspace.
+
+    Parameters
+    ----------
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the SQL endpoints within a workspace.
+    """
+
+    columns = {
+        "SQL Endpoint Id": "string",
+        "SQL Endpoint Name": "string",
+        "Description": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    responses = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/sqlEndpoints", uses_pagination=True
+    )
+
+    for r in responses:
+        for v in r.get("value", []):
+
+            new_data = {
+                "SQL Endpoint Id": v.get("id"),
+                "SQL Endpoint Name": v.get("displayName"),
+                "Description": v.get("description"),
+            }
+            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    return df
+
+
+def refresh_sql_endpoint_metadata(
+    item: str | UUID,
+    type: Literal["Lakehouse", "MirroredDatabase"],
+    workspace: Optional[str | UUID] = None,
+    tables: dict[str, list[str]] = None,
+):
+    """
+    Refreshes the metadata of a SQL endpoint.
+
+    Parameters
+    ----------
+    item : str | uuid.UUID
+        The name or ID of the item (Lakehouse or MirroredDatabase).
+    type : str
+        The type of the item. Must be 'Lakehouse' or 'MirroredDatabase'.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    tables : dict[str, list[str]], default=None
+        A dictionary where the keys are schema names and the values are lists of table names.
+        If empty, all table metadata will be refreshed.
+
+        Example:
+        {
+            "dbo": ["DimDate", "DimGeography"],
+            "sls": ["FactSales", "FactBudget"],
+        }
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    (item_name, item_id) = resolve_item_name_and_id(
+        item=item, type=type, workspace=workspace
+    )
+
+    if type == "Lakehouse":
+        response = _base_api(
+            request=f"/v1/workspaces/{workspace_id}/lakehouses/{item_id}",
+            client="fabric_sp",
+        )
+        sql_endpoint_id = (
+            response.json()
+            .get("properties", {})
+            .get("sqlEndpointProperties", {})
+            .get("id")
+        )
+    elif type == "MirroredDatabase":
+        response = _base_api(
+            request=f"/v1/workspaces/{workspace_id}/mirroredDatabases/{item_id}",
+            client="fabric_sp",
+        )
+        sql_endpoint_id = (
+            response.json()
+            .get("properties", {})
+            .get("sqlEndpointProperties", {})
+            .get("id")
+        )
+    else:
+        raise ValueError("Invalid type. Must be 'Lakehouse' or 'MirroredDatabase'.")
+
+    payload = {}
+    if tables:
+        payload = {
+            "tableDefinitions": [
+                {"schema": schema, "tableNames": tables}
+                for schema, tables in tables.items()
+            ]
+        }
+
+    _base_api(
+        request=f"v1/workspaces/{workspace_id}/sqlEndpoints/{sql_endpoint_id}/refreshMetadata",
+        method="post",
+        status_codes=[200, 202],
+        lro_return_status_code=True,
+        payload=payload,
+    )
+
+    if tables:
+        print(
+            f"{icons.green_dot} The metadata of the SQL endpoint for the '{item_name}' {type} has been refreshed for the following tables: {tables}."
+        )
+    else:
+        print(
+            f"{icons.green_dot} The metadata of the SQL endpoint for the '{item_name}' {type} has been refreshed for all tables."
+        )

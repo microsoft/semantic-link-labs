@@ -642,49 +642,6 @@ def list_lakehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     return df
 
 
-def list_sql_endpoints(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
-    """
-    Shows the SQL endpoints within a workspace.
-
-    Parameters
-    ----------
-    workspace : str | uuid.UUID, default=None
-        The Fabric workspace name or ID.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-    pandas.DataFrame
-        A pandas dataframe showing the SQL endpoints within a workspace.
-    """
-
-    columns = {
-        "SQL Endpoint Id": "string",
-        "SQL Endpoint Name": "string",
-        "Description": "string",
-    }
-    df = _create_dataframe(columns=columns)
-
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    responses = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/sqlEndpoints", uses_pagination=True
-    )
-
-    for r in responses:
-        for v in r.get("value", []):
-
-            new_data = {
-                "SQL Endpoint Id": v.get("id"),
-                "SQL Endpoint Name": v.get("displayName"),
-                "Description": v.get("description"),
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    return df
-
-
 def list_datamarts(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the datamarts within a workspace.
