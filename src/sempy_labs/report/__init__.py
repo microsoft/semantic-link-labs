@@ -3,6 +3,7 @@ from sempy_labs.report._save_report import (
 )
 from sempy_labs.report._reportwrapper import (
     ReportWrapper,
+    connect_report,
 )
 from sempy_labs.report._paginated import (
     get_report_datasources,
@@ -50,4 +51,5 @@ __all__ = [
     "get_report_datasources",
     "download_report",
     "save_report_as_pbip",
+    "connect_report",
 ]
