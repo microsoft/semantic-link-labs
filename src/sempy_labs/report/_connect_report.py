@@ -577,8 +577,7 @@ class ReportWrapper:
             The new value to be set at the specified JSON path. This can be a string, dictionary, or list.
         """
 
-        file = self.get(file_path=file_path)
-        payload = file.get("payload")
+        payload = self.get(file_path=file_path)
 
         jsonpath_expr = parse(json_path)
         matches = jsonpath_expr.find(payload)
