@@ -108,9 +108,9 @@ def update_direct_lake_model_connection(
 
     Parameters
     ----------
-    dataset : str | UUID
+    dataset : str | uuid.UUID
         Name or ID of the semantic model.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID in which the semantic model exists.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -119,7 +119,7 @@ def update_direct_lake_model_connection(
         Defaults to None which resolves to the lakehouse attached to the notebook.
     source_type : str, default="Lakehouse"
         The type of source for the Direct Lake semantic model. Valid options: "Lakehouse", "Warehouse".
-    source_workspace : str | UUID, default=None
+    source_workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID used by the lakehouse/warehouse.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
