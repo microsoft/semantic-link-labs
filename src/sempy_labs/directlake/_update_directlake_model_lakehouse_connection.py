@@ -7,7 +7,7 @@ from sempy_labs._helper_functions import (
 )
 from sempy._utils._log import log
 from sempy_labs.tom import connect_semantic_model
-from typing import Optional
+from typing import Optional, List
 import sempy_labs._icons as icons
 from uuid import UUID
 import re
@@ -19,7 +19,9 @@ def _extract_expression_list(expression):
     """
 
     pattern_sql = r'Sql\.Database\s*\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\)'
-    pattern_no_sql = r'AzureDataLakeStorage\s*\{\s*"server".*?:\s*onelake\.dfs\.fabric\.microsoft\.com"\s*,\s*"path"\s*:\s*"/([\da-fA-F-]+)\s*/\s*([\da-fA-F-]+)\s*/"\s*\}'
+    pattern_no_sql = (
+        r'AzureStorage\.DataLake\(".*?/([0-9a-fA-F\-]{36})/([0-9a-fA-F\-]{36})"'
+    )
 
     match_sql = re.search(pattern_sql, expression)
     match_no_sql = re.search(pattern_no_sql, expression)
@@ -102,6 +104,7 @@ def update_direct_lake_model_connection(
     source_type: str = "Lakehouse",
     source_workspace: Optional[str | UUID] = None,
     use_sql_endpoint: bool = True,
+    tables: Optional[str | List[str]] = None,
 ):
     """
     Remaps a Direct Lake semantic model's SQL Endpoint connection to a new lakehouse/warehouse.
@@ -126,11 +129,18 @@ def update_direct_lake_model_connection(
     use_sql_endpoint : bool, default=True
         If True, the SQL Endpoint will be used for the connection.
         If False, Direct Lake over OneLake will be used.
+    tables : str | List[str], default=None
+        The name(s) of the table(s) to update in the Direct Lake semantic model.
+        If None, all tables will be updated (if there is only one expression).
+        If multiple tables are specified, they must be provided as a list.
     """
     if use_sql_endpoint:
         icons.sll_tags.append("UpdateDLConnection_SQL")
     else:
         icons.sll_tags.append("UpdateDLConnection_DLOL")
+
+    if isinstance(tables, str):
+        tables = [tables]
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
@@ -174,7 +184,12 @@ def update_direct_lake_model_connection(
             )
 
         # Update the single connection expression
-        if len(expressions) == 1:
+        if len(expressions) > 1 and not tables:
+            print(
+                f"{icons.info} Multiple expressions found in the model. Please specify the tables to update using the 'tables parameter."
+            )
+            return
+        elif len(expressions) == 1 and not tables:
             expr = expressions[0]
             tom.model.Expressions[expr].Expression = shared_expression
 
@@ -182,6 +197,41 @@ def update_direct_lake_model_connection(
                 f"{icons.green_dot} The expression in the '{dataset_name}' semantic model within the '{workspace_name}' workspace has been updated to point to the '{source}' {source_type.lower()} in the '{source_workspace}' workspace."
             )
         else:
-            print(
-                f"{icons.info} Multiple expressions found in the model. Please use the update_direct_lake_partition_entity function to update specific tables."
+            import sempy
+
+            sempy.fabric._client._utils._init_analysis_services()
+            import Microsoft.AnalysisServices.Tabular as TOM
+
+            expr_list = _extract_expression_list(shared_expression)
+
+            expr_name = next(
+                (name for name, exp in expression_dict.items() if exp == expr_list),
+                None,
             )
+
+            # If the expression does not already exist, create it
+            def generate_unique_name(existing_names):
+                i = 1
+                while True:
+                    candidate = f"DatabaseQuery{i}"
+                    if candidate not in existing_names:
+                        return candidate
+                    i += 1
+
+            if not expr_name:
+                expr_name = generate_unique_name(expressions)
+                tom.add_expression(name=expr_name, expression=shared_expression)
+
+            all_tables = [t.Name for t in tom.model.Tables]
+            for t_name in tables:
+                if t_name not in all_tables:
+                    raise ValueError(
+                        f"{icons.red_dot} The table '{t_name}' does not exist in the '{dataset_name}' semantic model within the '{workspace_name}' workspace."
+                    )
+                p = next(p for p in tom.model.Tables[t_name].Partitions)
+                if p.Mode != TOM.ModeType.DirectLake:
+                    raise ValueError(
+                        f"{icons.red_dot} The table '{t_name}' in the '{dataset_name}' semantic model within the '{workspace_name}' workspace is not in Direct Lake mode. This function is only applicable to Direct Lake tables."
+                    )
+
+                p.Source.ExpressionSource = tom.model.Expressions[expr_name]
