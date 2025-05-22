@@ -131,11 +131,8 @@ def refresh_sql_endpoint_metadata(
         payload=payload,
     )
 
+    printout = f"{icons.green_dot} The metadata of the SQL endpoint for the '{item_name}' {type.lower()} within the '{workspace_name}' workspace has been refreshed"
     if tables:
-        print(
-            f"{icons.green_dot} The metadata of the SQL endpoint for the '{item_name}' {type} has been refreshed for the following tables: {tables}."
-        )
+        print(f"{printout} for the following tables: {tables}.")
     else:
-        print(
-            f"{icons.green_dot} The metadata of the SQL endpoint for the '{item_name}' {type} has been refreshed for all tables."
-        )
+        print(f"{printout} for all tables.")
