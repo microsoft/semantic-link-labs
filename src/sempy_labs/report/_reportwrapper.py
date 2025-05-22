@@ -10,6 +10,13 @@ from sempy_labs._helper_functions import (
     _update_dataframe_datatypes,
     format_dax_object_name,
     resolve_dataset_from_report,
+    generate_number_guid,
+    decode_payload,
+    is_base64,
+    generate_hex,
+)
+from sempy_labs._dictionary_diffs import (
+    diff_parts,
 )
 import json
 import sempy_labs._icons as icons
@@ -24,286 +31,8 @@ import re
 import base64
 from pathlib import Path
 from urllib.parse import urlparse
-import difflib
-from collections import defaultdict
-import uuid
 import os
 import fnmatch
-
-
-def generate_number_guid():
-
-    guid = uuid.uuid4()
-    return str(guid.int & ((1 << 64) - 1))
-
-
-def get_url_content(url: str):
-
-    if "github.com" in url and "/blob/" in url:
-        url = url.replace("github.com", "raw.githubusercontent.com")
-        url = url.replace("/blob/", "/")
-
-    response = requests.get(url)
-    if response.ok:
-        try:
-            data = response.json()  # Only works if the response is valid JSON
-        except ValueError:
-            data = response.text  # Fallback: get raw text content
-        return data
-    else:
-        print(f"Failed to fetch raw content: {response.status_code}")
-
-
-def generate_hex(length: int = 10) -> str:
-    """
-    Generate a random hex string of the specified length. Used for generating IDs for report objects (page, visual, bookmark etc.).
-    """
-    import secrets
-
-    return secrets.token_hex(length)
-
-
-def decode_payload(payload):
-
-    if is_base64(payload):
-        try:
-            decoded_payload = json.loads(base64.b64decode(payload).decode("utf-8"))
-        except Exception:
-            decoded_payload = base64.b64decode(payload)
-    elif isinstance(payload, dict):
-        decoded_payload = payload
-    else:
-        raise ValueError("Payload must be a dictionary or a base64 encoded value.")
-
-    return decoded_payload
-
-
-def color_text(text, color_code):
-    return f"\033[{color_code}m{text}\033[0m"
-
-
-def stringify(payload):
-    try:
-        if isinstance(payload, list):
-            return (
-                "[\n" + ",\n".join(f"  {json.dumps(item)}" for item in payload) + "\n]"
-            )
-        return json.dumps(payload, indent=2, sort_keys=True)
-    except Exception:
-        return str(payload)
-
-
-def extract_top_level_group(path):
-    # For something like: resourcePackages[1].items[1].name → resourcePackages[1].items[1]
-    segments = re.split(r"\.(?![^[]*\])", path)  # split on dots not in brackets
-    return ".".join(segments[:-1]) if len(segments) > 1 else segments[0]
-
-
-def get_by_path(obj, path):
-    """Navigate into nested dict/list based on a dot/bracket path like: a.b[1].c"""
-    tokens = re.findall(r"\w+|\[\d+\]", path)
-    for token in tokens:
-        if token.startswith("["):
-            index = int(token[1:-1])
-            obj = obj[index]
-        else:
-            obj = obj.get(token)
-    return obj
-
-
-def deep_diff(d1, d2, path=""):
-    diffs = []
-    if isinstance(d1, dict) and isinstance(d2, dict):
-        keys = set(d1) | set(d2)
-        for key in sorted(keys):
-            new_path = f"{path}.{key}" if path else key
-            if key not in d1:
-                diffs.append(("+", new_path, None, d2[key]))
-            elif key not in d2:
-                diffs.append(("-", new_path, d1[key], None))
-            else:
-                diffs.extend(deep_diff(d1[key], d2[key], new_path))
-    elif isinstance(d1, list) and isinstance(d2, list):
-        min_len = min(len(d1), len(d2))
-        list_changed = False
-        for i in range(min_len):
-            if d1[i] != d2[i]:
-                list_changed = True
-                break
-        if list_changed or len(d1) != len(d2):
-            diffs.append(("~", path, d1, d2))
-    elif d1 != d2:
-        diffs.append(("~", path, d1, d2))
-    return diffs
-
-
-def diff_parts(d1, d2):
-
-    def build_path_map(parts):
-        return {part["path"]: part["payload"] for part in parts}
-
-    try:
-        paths1 = build_path_map(d1)
-    except Exception:
-        paths1 = d1
-    try:
-        paths2 = build_path_map(d2)
-    except Exception:
-        paths2 = d2
-    all_paths = set(paths1) | set(paths2)
-
-    for part_path in sorted(all_paths):
-        p1 = paths1.get(part_path)
-        p2 = paths2.get(part_path)
-
-        if p1 is None:
-            print(color_text(f"+ {part_path}", "32"))  # Green
-            continue
-        elif p2 is None:
-            print(color_text(f"- {part_path}", "31"))  # Red
-            continue
-        elif p1 == p2:
-            continue
-
-        if p1 is None or p2 is None:
-            print(
-                color_text(f"+ {part_path}", "32")
-                if p2 and not p1
-                else color_text(f"- {part_path}", "31")
-            )
-            continue
-
-        # Header for the changed part
-        print(color_text(f"~ {part_path}", "33"))
-
-        # Collect diffs
-        diffs = deep_diff(p1, p2)
-        # If the diff is only a change of a whole list (like appending to a list), group it under its key
-        merged_list_diffs = []
-        for change_type, full_path, old_val, new_val in diffs:
-            if (
-                change_type == "~"
-                and isinstance(old_val, list)
-                and isinstance(new_val, list)
-            ):
-                merged_list_diffs.append((change_type, full_path, old_val, new_val))
-
-        # Replace individual item diffs with unified list diff
-        if merged_list_diffs:
-            diffs = merged_list_diffs
-
-        # Group diffs by common parent path (e.g. items[1])
-        grouped = defaultdict(list)
-        for change_type, full_path, old_val, new_val in diffs:
-            group_path = extract_top_level_group(full_path)
-            grouped[group_path].append((change_type, full_path, old_val, new_val))
-
-        # Print each group once with unified diff for the full substructure
-        for group_path in sorted(grouped):
-            print("  " + color_text(f"~ {group_path}", "33"))
-
-            try:
-                old_group = get_by_path(p1, group_path)
-                new_group = get_by_path(p2, group_path)
-            except Exception:
-                old_group = new_group = None
-
-            # Skip showing diffs for empty/null groups
-            if isinstance(old_group, dict) and isinstance(new_group, dict):
-                old_keys = set(old_group.keys())
-                new_keys = set(new_group.keys())
-
-                for key in sorted(old_keys - new_keys):
-                    print(
-                        "  "
-                        + color_text(f"- {key}: {json.dumps(old_group[key])}", "31")
-                    )
-                for key in sorted(new_keys - old_keys):
-                    print(
-                        "  "
-                        + color_text(f"+ {key}: {json.dumps(new_group[key])}", "32")
-                    )
-                for key in sorted(old_keys & new_keys):
-                    if old_group[key] != new_group[key]:
-                        print("  " + color_text(f"~ {key}:", "33"))
-                        old_val_str = stringify(old_group[key]).splitlines()
-                        new_val_str = stringify(new_group[key]).splitlines()
-                        for line in difflib.unified_diff(
-                            old_val_str,
-                            new_val_str,
-                            fromfile="old",
-                            tofile="new",
-                            lineterm="",
-                        ):
-                            if line.startswith("@@"):
-                                print("    " + color_text(line, "36"))
-                            elif line.startswith("-") and not line.startswith("---"):
-                                print("    " + color_text(line, "31"))
-                            elif line.startswith("+") and not line.startswith("+++"):
-                                print("    " + color_text(line, "32"))
-            elif old_group is None and new_group is not None:
-                if isinstance(new_group, dict):
-                    # print all added keys
-                    for key, val in new_group.items():
-                        print("  " + color_text(f"+ {key}: {json.dumps(val)}", "32"))
-                elif isinstance(new_group, list):
-                    old_str = []
-                    new_str = stringify(new_group).splitlines()
-                    for line in difflib.unified_diff(
-                        old_str, new_str, fromfile="old", tofile="new", lineterm=""
-                    ):
-                        if line.startswith("@@"):
-                            print("  " + color_text(line, "36"))
-                        elif line.startswith("-") and not line.startswith("---"):
-                            print("  " + color_text(line, "31"))
-                        elif line.startswith("+") and not line.startswith("+++"):
-                            print("  " + color_text(line, "32"))
-                else:
-                    print("  " + color_text(f"+ {json.dumps(new_group)}", "32"))
-
-            elif new_group is None and old_group is not None:
-                if isinstance(old_group, dict):
-                    # print all removed keys
-                    for key, val in old_group.items():
-                        print("  " + color_text(f"- {key}: {json.dumps(val)}", "31"))
-                elif isinstance(old_group, list):
-                    old_str = stringify(old_group).splitlines()
-                    new_str = []
-                    for line in difflib.unified_diff(
-                        old_str, new_str, fromfile="old", tofile="new", lineterm=""
-                    ):
-                        if line.startswith("@@"):
-                            print("  " + color_text(line, "36"))
-                        elif line.startswith("-") and not line.startswith("---"):
-                            print("  " + color_text(line, "31"))
-                        elif line.startswith("+") and not line.startswith("+++"):
-                            print("  " + color_text(line, "32"))
-                else:
-                    print("  " + color_text(f"- {json.dumps(old_group)}", "31"))
-            else:
-                old_str = stringify(old_group).splitlines()
-                new_str = stringify(new_group).splitlines()
-
-                for line in difflib.unified_diff(
-                    old_str, new_str, fromfile="old", tofile="new", lineterm=""
-                ):
-                    if line.startswith("@@"):
-                        print("  " + color_text(line, "36"))
-                    elif line.startswith("-") and not line.startswith("---"):
-                        print("  " + color_text(line, "31"))
-                    elif line.startswith("+") and not line.startswith("+++"):
-                        print("  " + color_text(line, "32"))
-
-
-def is_base64(s):
-    try:
-        # Add padding if needed
-        s_padded = s + "=" * (-len(s) % 4)
-        decoded = base64.b64decode(s_padded, validate=True)
-        # Optional: check if re-encoding gives the original (excluding padding)
-        return base64.b64encode(decoded).decode().rstrip("=") == s.rstrip("=")
-    except Exception:
-        return False
 
 
 class ReportWrapper:
@@ -367,10 +96,16 @@ class ReportWrapper:
         # def is_zip_file(data: bytes) -> bool:
         #    return data.startswith(b"PK\x03\x04")
 
+        # Check that the report is in the PBIR format
+        parts = result.get("definition", {}).get("parts", [])
+        if "definition/report.json" not in [p.get("path") for p in parts]:
+            self.format = "PBIR-Legacy"
+        else:
+            self.format = "PBIR"
         self._report_definition = {"parts": []}
-        for parts in result.get("definition", {}).get("parts", []):
-            path = parts.get("path")
-            payload = parts.get("payload")
+        for part in parts:
+            path = part.get("path")
+            payload = part.get("payload")
 
             # decoded_bytes = base64.b64decode(payload)
             # decoded_payload = json.loads(_decode_b64(payload))
@@ -403,31 +138,85 @@ class ReportWrapper:
             self._report_definition["parts"].append(
                 {"path": path, "payload": decoded_payload}
             )
+
         self._current_report_definition = copy.deepcopy(self._report_definition)
+
+        # self.report = self.Report.from_dict()
 
         helper.populate_custom_visual_display_names()
 
-    # class Page:
-    #    def __init__(self, FilePath, Name, DisplayName, DisplayOption, Width, Height):
+    def __ensure_pbir(self):
 
-    #        pages_data = ReportWrapper.__all_pages()
-    #        self.FilePath = FilePath
-    #        self.Name = Name
-    #        self.DisplayName = DisplayName
-    #        self.DisplayOption = DisplayOption
-    #        self.Width = Width
-    #        self.Height = Height
+        if self.format != "PBIR":
+            raise NotImplementedError(
+                f"{icons.red_dot} This ReportWrapper function requires the report to be in the PBIR format."
+                "See here for details: https://powerbi.microsoft.com/blog/power-bi-enhanced-report-format-pbir-in-power-bi-desktop-developer-mode-preview/"
+            )
 
-    #    @classmethod
-    #    def from_dict(cls, pages_data):
-    #        return cls(
-    #            FilePath=pages_data.get("Path"),
-    #            Name=data.get("Name"),
-    #            DisplayName=data.get("DisplayName"),
-    #            DisplayOption=data.get("DisplayOption"),
-    #            Width=data.get("Width"),
-    #            Height=data.get("Height"),
-    #        )
+    class Report:
+        def __init__(self, ObjectType, Name, Pages=None):
+            self.ObjectType = ObjectType
+            self.Name = Name
+            self.Pages = Pages if Pages else ReportWrapper.PageCollection()
+
+        @classmethod
+        def from_dict(cls):
+            Pages = ReportWrapper.PageCollection.from_list()
+            return cls(
+                ObjectType="Report",
+                Name=ReportWrapper._report_name,
+                Pages=Pages,
+            )
+
+    class Page:
+        def __init__(self, FilePath, Name, DisplayName, DisplayOption, Width, Height):
+            self.FilePath = FilePath
+            self.Name = Name
+            self.DisplayName = DisplayName
+            self.DisplayOption = DisplayOption
+            self.Width = Width
+            self.Height = Height
+
+        @classmethod
+        def from_dict(cls, file_path, page_data):
+            return cls(
+                FilePath=file_path,
+                Name=page_data.get("name"),
+                DisplayName=page_data.get("displayName"),
+                DisplayOption=page_data.get("displayOption"),
+                Width=page_data.get("width"),
+                Height=page_data.get("height"),
+            )
+
+        @classmethod
+        def load_all(cls):
+            pages = []
+            wrapper = ReportWrapper()
+            for file_path, payload in wrapper.get(
+                file_path="definition/pages/*/page.json"
+            ):
+                page = cls.from_dict(file_path, payload)
+                pages.append(page)
+            return pages
+
+    class PageCollection:
+        def __init__(self, Pages=None):
+            self.Pages = Pages if Pages else []
+
+        @classmethod
+        def from_list(cls):
+            pages = ReportWrapper.Page.load_all()
+            return cls(pages)
+
+        @property
+        def Count(self):
+            return len(self.Pages)
+
+        def __getitem__(self, key):
+            return self.Pages[key]
+
+        def __iter__(self):
+            return iter(self.Pages)
 
     # Basic functions
     def get(
@@ -477,10 +266,14 @@ class ReportWrapper:
                     matches = jsonpath_expr.find(payload)
                     if matches:
                         results.append((path, matches[0].value))
-                    else:
-                        raise ValueError(
-                            f"{icons.red_dot} No match found for '{json_path}' in '{path}'."
-                        )
+                    # else:
+                    #    raise ValueError(
+                    #        f"{icons.red_dot} No match found for '{json_path}' in '{path}'."
+                    #    )
+            if not results:
+                raise ValueError(
+                    f"{icons.red_dot} No match found for '{json_path}' in any of the files matching the wildcard path '{file_path}'."
+                )
             return results
 
         # Exact path match
@@ -539,38 +332,66 @@ class ReportWrapper:
         file_path : str
             The path of the file to be removed. For example: "definition/pages/fjdis323484/page.json".
         json_path : str, default=None
-            The json path to the specific part of the file to be removed. If None, the entire file is removed.
+            The json path to the specific part of the file to be removed. If None, the entire file is removed. Wildcards are supported (i.e. "definition/pages/*/page.json").
         """
 
-        for part in self._report_definition.get("parts"):
-            if part.get("path") == file_path:
-                if not json_path:
-                    self._report_definition["parts"].remove(part)
-                    print(
-                        f"{icons.green_dot} The file '{file_path}' has been removed from the report definition."
+        parts = self._report_definition.get("parts")
+        matching_parts = []
+
+        if "*" in file_path:
+            matching_parts = [
+                part for part in parts if fnmatch.fnmatch(part.get("path"), file_path)
+            ]
+        else:
+            matching_parts = [part for part in parts if part.get("path") == file_path]
+
+        if not matching_parts:
+            raise ValueError(
+                f"{icons.red_dot} No file(s) found for path '{file_path}'."
+            )
+
+        for part in matching_parts:
+            path = part.get("path")
+
+            if not json_path:
+                self._report_definition["parts"].remove(part)
+                print(
+                    f"{icons.green_dot} The file '{path}' has been removed from the report definition."
+                )
+            else:
+                payload = part.get("payload")
+                if not isinstance(payload, dict):
+                    raise ValueError(
+                        f"{icons.red_dot} Cannot apply json_path to non-dictionary payload in '{path}'."
                     )
-                else:
-                    jsonpath_expr = parse(json_path)
-                    payload = part.get("payload")
-                    matches = jsonpath_expr.find(payload)
 
-                    for match in matches:
-                        parent = match.context.value
-                        path = match.path
+                jsonpath_expr = parse(json_path)
+                matches = jsonpath_expr.find(payload)
 
-                        if isinstance(path, Fields):
-                            key = path.fields[0]
-                            if key in parent:
-                                del parent[key]
-                        elif isinstance(path, Index):
-                            index = path.index
-                            if isinstance(parent, list) and 0 <= index < len(parent):
-                                parent.pop(index)
-                return
+                if not matches:
+                    print(
+                        f"{icons.red_dot} No match found for '{json_path}' in '{path}'. Skipping."
+                    )
+                    continue
 
-        raise ValueError(
-            f"{icons.red_dot} The '{file_path}' file was not found in the report definition."
-        )
+                for match in matches:
+                    parent = match.context.value
+                    path_expr = match.path
+
+                    if isinstance(path_expr, Fields):
+                        key = path_expr.fields[0]
+                        if key in parent:
+                            del parent[key]
+                            print(
+                                f"{icons.green_dot} Removed key '{key}' from '{path}'."
+                            )
+                    elif isinstance(path_expr, Index):
+                        index = path_expr.index
+                        if isinstance(parent, list) and 0 <= index < len(parent):
+                            parent.pop(index)
+                            print(
+                                f"{icons.green_dot} Removed index [{index}] from '{path}'."
+                            )
 
     def update(self, file_path: str, payload: dict | bytes):
         """
@@ -670,6 +491,8 @@ class ReportWrapper:
 
     def __all_pages(self):
 
+        self.__ensure_pbir()
+
         return [
             o
             for o in self._report_definition.get("parts")
@@ -677,6 +500,8 @@ class ReportWrapper:
         ]
 
     def __all_visuals(self):
+
+        self.__ensure_pbir()
 
         return [
             o
@@ -729,6 +554,7 @@ class ReportWrapper:
         self, page: str
     ) -> Tuple[str, str, str]:
 
+        self.__ensure_pbir()
         page_map = {
             p["path"]: [p["payload"]["name"], p["payload"]["displayName"]]
             for p in self._report_definition.get("parts", [])
@@ -897,6 +723,7 @@ class ReportWrapper:
         return dataframe
 
     def visual_page_mapping(self) -> dict:
+        self.__ensure_pbir()
 
         page_mapping = {}
         visual_mapping = {}
@@ -932,6 +759,7 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe containing a list of all the custom visuals used in the report.
         """
+        self.__ensure_pbir()
 
         columns = {
             "Custom Visual Name": "str",
@@ -941,7 +769,7 @@ class ReportWrapper:
 
         df = _create_dataframe(columns=columns)
 
-        report_file = self.get(file_path="definition/report.json")
+        report_file = self.get(file_path=self._report_file_path)
 
         df["Custom Visual Name"] = report_file.get("publicCustomVisuals")
         df["Custom Visual Display Name"] = df["Custom Visual Name"].apply(
@@ -982,7 +810,9 @@ class ReportWrapper:
             A pandas dataframe containing a list of all the report filters used in the report.
         """
 
-        report_file = self.get(file_path="definition/report.json")
+        self.__ensure_pbir()
+
+        report_file = self.get(file_path=self._report_file_path)
 
         columns = {
             "Filter Name": "str",
@@ -1050,6 +880,7 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe containing a list of all the page filters used in the report.
         """
+        self.__ensure_pbir()
 
         columns = {
             "Page Name": "str",
@@ -1126,6 +957,7 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe containing a list of all the visual filters used in the report.
         """
+        self.__ensure_pbir()
 
         columns = {
             "Page Name": "str",
@@ -1204,6 +1036,7 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe containing a list of all modified visual interactions used in the report.
         """
+        self.__ensure_pbir()
 
         columns = {
             "Page Name": "str",
@@ -1248,6 +1081,7 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe containing a list of all pages in the report.
         """
+        self.__ensure_pbir()
 
         columns = {
             "File Path": "str",
@@ -1358,6 +1192,7 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe containing a list of all visuals in the report.
         """
+        self.__ensure_pbir()
 
         columns = {
             "File Path": "str",
@@ -1582,6 +1417,7 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe containing a list of all semantic model objects used in each visual in the report.
         """
+        self.__ensure_pbir()
 
         visual_mapping = self.visual_page_mapping()
 
@@ -1739,6 +1575,7 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe showing the semantic model objects used in the report.
         """
+        self.__ensure_pbir()
 
         from sempy_labs.tom import connect_semantic_model
 
@@ -1883,6 +1720,7 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe containing a list of all bookmarks in the report.
         """
+        self.__ensure_pbir()
 
         columns = {
             "File Path": "str",
@@ -1967,6 +1805,8 @@ class ReportWrapper:
             A pandas dataframe containing a list of all report-level measures in the report.
         """
 
+        self.__ensure_pbir()
+
         columns = {
             "Measure Name": "str",
             "Table Name": "str",
@@ -1977,7 +1817,7 @@ class ReportWrapper:
 
         df = _create_dataframe(columns=columns)
 
-        report_file = self.get(file_path="definition/reportExtensions.json")
+        report_file = self.get(file_path=self._report_extensions_path)
 
         dfs = []
         if report_file:
@@ -2018,6 +1858,8 @@ class ReportWrapper:
         dict
             The theme.json file
         """
+
+        self.__ensure_pbir()
 
         theme_types = ["baseTheme", "customTheme"]
         theme_type = theme_type.lower()
@@ -2063,6 +1905,7 @@ class ReportWrapper:
             Example for web url: file_path = 'https://raw.githubusercontent.com/PowerBiDevCamp/FabricUserApiDemo/main/FabricUserApiDemo/DefinitionTemplates/Shared/Reports/StaticResources/SharedResources/BaseThemes/CY23SU08.json'
         """
 
+        self.__ensure_pbir()
         theme_version = "5.5.4"
 
         # Open file
@@ -2147,6 +1990,7 @@ class ReportWrapper:
         page_name : str
             The page name or page display name of the report.
         """
+        self.__ensure_pbir()
 
         page_file = self.get(file_path=self._pages_file_path)
 
@@ -2174,6 +2018,7 @@ class ReportWrapper:
         page_type : str
             The page type. Valid page types: 'Tooltip', 'Letter', '4:3', '16:9'.
         """
+        self.__ensure_pbir()
 
         if page_type not in helper.page_types:
             raise ValueError(
@@ -2224,6 +2069,7 @@ class ReportWrapper:
             If set to True, hides the report page.
             If set to False, makes the report page visible.
         """
+        self.__ensure_pbir()
         (file_path, page_id, page_display_name) = (
             self.__resolve_page_name_and_display_name_file_path(page_name)
         )
@@ -2330,6 +2176,7 @@ class ReportWrapper:
             A measure or list of measures to move to the semantic model.
             Defaults to None which resolves to moving all report-level measures to the semantic model.
         """
+        self.__ensure_pbir()
 
         from sempy_labs.tom import connect_semantic_model
 
@@ -2464,7 +2311,7 @@ class ReportWrapper:
 
         return df
 
-    def add_image(self, image_path: str, image_name: Optional[str] = None) -> str:
+    def add_image(self, image_path: str, resource_name: Optional[str] = None) -> str:
         """
         Add an image to the report definition. The image will be added to the StaticResources/RegisteredResources folder in the report definition. If the image_name already exists as a file in the report definition it will be updated.
 
@@ -2472,14 +2319,15 @@ class ReportWrapper:
         ----------
         image_path : str
             The path of the image file to be added. For example: "./builtin/MyImage.png".
-        image_name : str, default=None
-            The name of the image file to be added. For example: "MyImage". If not specified, the name will be derived from the image path and a unique ID will be appended to it.
+        resource_name : str, default=None
+            The name of the image file to be added. For example: "MyImage.png". If not specified, the name will be derived from the image path and a unique ID will be appended to it.
 
         Returns
         -------
         str
             The name of the image file added to the report definition.
         """
+        self.__ensure_pbir()
 
         id = generate_number_guid()
 
@@ -2494,22 +2342,22 @@ class ReportWrapper:
                 image_bytes = image_file.read()
             suffix = Path(image_path).suffix
 
-        encoded_string = base64.b64encode(image_bytes).decode("utf-8")
-        if image_name is None:
-            image_name = os.path.splitext(os.path.basename(image_path))[0]
-            file_name = f"{image_name}{id}{suffix}"
+        payload = base64.b64encode(image_bytes).decode("utf-8")
+        if resource_name is None:
+            resource_name = os.path.splitext(os.path.basename(image_path))[0]
+            file_name = f"{resource_name}{id}{suffix}"
         else:
-            file_name = f"{image_name}{suffix}"
+            file_name = resource_name
         file_path = f"StaticResources/RegisteredResources/{file_name}"
 
         # Add StaticResources/RegisteredResources file. If the file already exists, update it.
         try:
             self.get(file_path=file_path)
-            self.update(file_path=file_path, payload=encoded_string)
+            self.update(file_path=file_path, payload=payload)
         except Exception:
             self.add(
                 file_path=file_path,
-                payload=encoded_string,
+                payload=payload,
             )
 
         # Add to report.json file
@@ -2531,6 +2379,7 @@ class ReportWrapper:
             The name or display name of the page(s) from which the wallpaper image will be removed.
             If None, removes from all pages.
         """
+        self.__ensure_pbir()
 
         if isinstance(page, str):
             page = [page]
@@ -2551,12 +2400,12 @@ class ReportWrapper:
             path = p.get("path")
             payload = p.get("payload")
             page_name = payload.get("name")
+            page_display_name = payload.get("displayName")
             if page_name in page_list:
-                if "objects" in payload:
-                    if "outspace" in payload["objects"]:
-                        del payload["objects"]["outspace"]
-
-                self.update(file_path=path, payload=payload)
+                self.remove(file_path=path, json_path="$.objects.outspace")
+                print(
+                    f"{icons.green_dot} The wallpaper has been removed from the '{page_display_name}' page."
+                )
 
     def set_wallpaper_color(
         self,
@@ -2565,9 +2414,30 @@ class ReportWrapper:
         transparency: int = 0,
         theme_color_percent: float = 0.0,
     ):
+        """
+        Set the wallpaper color of a page (or pages).
+
+        Parameters
+        ----------
+        color_value : str
+            The color value to be set. This can be a hex color code (e.g., "#FF5733") or an integer based on the theme color.
+        page : str | List[str], default=None
+            The name or display name of the page(s) to which the wallpaper color will be applied.
+            If None, applies to all pages.
+        transparency : int, default=0
+            The transparency level of the wallpaper color. Valid values are between 0 and 100.
+        theme_color_percent : float, default=0.0
+            The percentage of the theme color to be applied. Valid values are between -0.6 and 0.6.
+        """
+        self.__ensure_pbir()
 
         if transparency < 0 or transparency > 100:
             raise ValueError(f"{icons.red_dot} Transparency must be between 0 and 100.")
+
+        if theme_color_percent < -0.6 or theme_color_percent > 0.6:
+            raise ValueError(
+                f"{icons.red_dot} Theme color percentage must be between -0.6 and 0.6."
+            )
 
         page_list = self.__resolve_page_list(page)
 
@@ -2586,12 +2456,8 @@ class ReportWrapper:
                 f"{icons.red_dot} The color value '{color_value}' is not supported. Please provide a hex color code or an integer based on the color theme."
             )
 
-        color_dict = {
-            "properties": {
-                "color": {"solid": {"color": {"expr": color_expr}}},
-                "transparency": {"expr": {"Literal": {"Value": f"{transparency}D"}}},
-            }
-        }
+        color_dict = ({"solid": {"color": {"expr": color_expr}}},)
+        transparency_dict = {"expr": {"Literal": {"Value": f"{transparency}D"}}}
 
         for p in self.__all_pages():
             path = p.get("path")
@@ -2599,11 +2465,16 @@ class ReportWrapper:
             page_name = payload.get("name")
 
             if page_name in page_list:
-                payload.setdefault("objects", {}).setdefault("outspace", [{}]).append(
-                    color_dict
+                self.set_json(
+                    file_path=path,
+                    json_path="$.objects.outspace[*].properties.color",
+                    json_value=color_dict,
                 )
-
-            self.update(file_path=path, payload=payload)
+                self.set_json(
+                    file_path=path,
+                    json_path="$.objects.outspace[*].properties.transparency",
+                    json_value=transparency_dict,
+                )
 
     def set_wallpaper_image(
         self,
@@ -2627,6 +2498,7 @@ class ReportWrapper:
         image_fit : str, default="Normal"
             The fit type of the wallpaper image. Valid options: "Normal", "Fit", "Fill".
         """
+        self.__ensure_pbir()
 
         image_fits = ["Normal", "Fit", "Fill"]
         image_fit = image_fit.capitalize()
@@ -2642,58 +2514,38 @@ class ReportWrapper:
         image_name = os.path.splitext(os.path.basename(image_path))[0]
         image_file_path = self.add_image(image_path=image_path, image_name=image_name)
 
+        image_dict = {
+            "image": {
+                "name": {"expr": {"Literal": {"Value": f"'{image_file_path}'"}}},
+                "url": {
+                    "expr": {
+                        "ResourcePackageItem": {
+                            "PackageName": "RegisteredResources",
+                            "PackageType": 1,
+                            "ItemName": image_file_path,
+                        }
+                    }
+                },
+                "scaling": {"expr": {"Literal": {"Value": f"'{image_fit}'"}}},
+            }
+        }
+        transparency_dict = {"expr": {"Literal": {"Value": f"{transparency}D"}}}
+
         for p in self.__all_pages():
             path = p.get("path")
             payload = p.get("payload")
             page_name = payload.get("name")
             if page_name in page_list:
-                if "objects" not in payload:
-                    payload["objects"] = {}
-
-                # Ensure "outspace" is a list inside "objects"
-                if "outspace" not in payload["objects"] or not isinstance(
-                    payload["objects"]["outspace"], list
-                ):
-                    payload["objects"]["outspace"] = [{}]
-
-                # Ensure at least one dict inside the "outspace" list
-                if not payload["objects"]["outspace"]:
-                    payload["objects"]["outspace"].append({})
-
-                outspace_item = payload["objects"]["outspace"][0]
-
-                # Ensure "properties" dict exists
-                if "properties" not in outspace_item:
-                    outspace_item["properties"] = {}
-
-                # Overwrite existing property
-                if "image" not in outspace_item["properties"]:
-                    outspace_item["properties"] = {}
-                # Assign image properties
-                outspace_item["properties"]["image"] = {
-                    "image": {
-                        "name": {
-                            "expr": {"Literal": {"Value": f"'{image_file_path}'"}}
-                        },
-                        "url": {
-                            "expr": {
-                                "ResourcePackageItem": {
-                                    "PackageName": "RegisteredResources",
-                                    "PackageType": 1,
-                                    "ItemName": image_file_path,
-                                }
-                            }
-                        },
-                        "scaling": {"expr": {"Literal": {"Value": f"'{image_fit}'"}}},
-                    }
-                }
-
-                # Assign transparency
-                outspace_item["properties"]["transparency"] = {
-                    "expr": {"Literal": {"Value": f"{transparency}D"}}
-                }
-
-                self.update(file_path=path, payload=payload)
+                self.set_json(
+                    file_path=path,
+                    json_path="$.objects.outspace[*].properties.image",
+                    json_value=image_dict,
+                )
+                self.set_json(
+                    file_path=path,
+                    json_path="$.objects.outspace[*].properties.transparency",
+                    json_value=transparency_dict,
+                )
 
     def add_blank_page(
         self,
@@ -2702,6 +2554,7 @@ class ReportWrapper:
         height: int = 720,
         display_option: str = "FitToPage",
     ):
+        self.__ensure_pbir()
 
         page_id = generate_hex()
         payload = {
@@ -2729,6 +2582,7 @@ class ReportWrapper:
         generate_id : bool, default=True
             Whether to generate a new page ID. If False, the page ID will be taken from the payload.
         """
+        self.__ensure_pbir()
 
         page_file = decode_payload(payload)
         page_file_copy = copy.deepcopy(page_file)
@@ -2757,6 +2611,7 @@ class ReportWrapper:
         generate_id : bool, default=True
             Whether to generate a new visual ID. If False, the visual ID will be taken from the payload.
         """
+        self.__ensure_pbir()
 
         visual_file = decode_payload(payload)
         visual_file_copy = copy.deepcopy(visual_file)
@@ -2783,6 +2638,7 @@ class ReportWrapper:
         height: int = 720,
         width: int = 1280,
     ):
+        self.__ensure_pbir()
 
         type = helper.resolve_visual_type(type)
         visual_id = generate_hex()
@@ -2813,11 +2669,12 @@ class ReportWrapper:
 
         Parameters
         ----------
-        theme_color_mapping : dict[str, tuple[int, float]
+        mapping : dict[str, tuple[int, float]
             A dictionary mapping color names to their corresponding theme color IDs.
             Example: {"#FF0000": (1, 0), "#00FF00": (2, 0)}
             The first value in the tuple is the theme color ID and the second value is the percentage (a value between -0.6 and 0.6).
         """
+        self.__ensure_pbir()
 
         # Ensure theme color mapping is in the correct format (with Percent value)
         mapping = {k: (v, 0) if isinstance(v, int) else v for k, v in mapping.items()}
@@ -2892,6 +2749,7 @@ class ReportWrapper:
                 }
             }
         """
+        self.__ensure_pbir()
 
         selector_mapping = {
             key: {
@@ -3047,6 +2905,21 @@ class ReportWrapper:
             update_refs(native_query_ref_path)
 
             self.update(file_path=file_path, payload=payload)
+
+    def list_color_codes(self) -> List[str]:
+        """
+        Shows a list of all the hex color codes used in the report.
+
+        Returns
+        -------
+        list[str]
+            A list of hex color codes used in the report.
+        """
+        self.__ensure_pbir()
+
+        file = self.get("*.json", json_path="$..color.expr.Literal.Value")
+
+        return [x[1].strip("'") for x in file]
 
     def __update_visual_image(self, file_path: str, image_path: str):
         """

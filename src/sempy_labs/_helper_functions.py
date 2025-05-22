@@ -2215,3 +2215,61 @@ def _xml_to_dict(element):
             element.text.strip() if element.text and element.text.strip() else None
         )
     return data
+
+
+def generate_number_guid():
+
+    guid = uuid.uuid4()
+    return str(guid.int & ((1 << 64) - 1))
+
+
+def get_url_content(url: str):
+
+    if "github.com" in url and "/blob/" in url:
+        url = url.replace("github.com", "raw.githubusercontent.com")
+        url = url.replace("/blob/", "/")
+
+    response = requests.get(url)
+    if response.ok:
+        try:
+            data = response.json()  # Only works if the response is valid JSON
+        except ValueError:
+            data = response.text  # Fallback: get raw text content
+        return data
+    else:
+        print(f"Failed to fetch raw content: {response.status_code}")
+
+
+def generate_hex(length: int = 10) -> str:
+    """
+    Generate a random hex string of the specified length. Used for generating IDs for report objects (page, visual, bookmark etc.).
+    """
+    import secrets
+
+    return secrets.token_hex(length)
+
+
+def decode_payload(payload):
+
+    if is_base64(payload):
+        try:
+            decoded_payload = json.loads(base64.b64decode(payload).decode("utf-8"))
+        except Exception:
+            decoded_payload = base64.b64decode(payload)
+    elif isinstance(payload, dict):
+        decoded_payload = payload
+    else:
+        raise ValueError("Payload must be a dictionary or a base64 encoded value.")
+
+    return decoded_payload
+
+
+def is_base64(s):
+    try:
+        # Add padding if needed
+        s_padded = s + "=" * (-len(s) % 4)
+        decoded = base64.b64decode(s_padded, validate=True)
+        # Optional: check if re-encoding gives the original (excluding padding)
+        return base64.b64encode(decoded).decode().rstrip("=") == s.rstrip("=")
+    except Exception:
+        return False
