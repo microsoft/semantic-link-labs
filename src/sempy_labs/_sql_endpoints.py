@@ -66,7 +66,7 @@ def refresh_sql_endpoint_metadata(
     ----------
     item : str | uuid.UUID
         The name or ID of the item (Lakehouse or MirroredDatabase).
-    type : str
+    type : Literal['Lakehouse', 'MirroredDatabase']
         The type of the item. Must be 'Lakehouse' or 'MirroredDatabase'.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
