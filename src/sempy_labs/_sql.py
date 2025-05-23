@@ -82,7 +82,7 @@ class ConnectBase:
             )
 
         # Set up the connection string
-        access_token = SynapseTokenProvider()()
+        access_token = SynapseTokenProvider()("sql")
         tokenstruct = _bytes2mswin_bstr(access_token.encode())
         if endpoint_type == "sqldatabase":
             conn_str = f"DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={tds_endpoint};DATABASE={resource_name}-{resource_id};Encrypt=Yes;"
