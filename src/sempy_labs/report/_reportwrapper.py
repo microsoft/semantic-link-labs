@@ -201,6 +201,7 @@ class ReportWrapper:
                     data=page_data, path="$.filterConfig.filters", default=[]
                 )
             )
+            self.URL = wrapper.__get_url(page_name=self.Name)
             self._wrapper = wrapper
             self._visuals = None
 
@@ -246,7 +247,8 @@ class ReportWrapper:
             return len(self._pages)
 
     class Visual:
-        def __init__(self, file_path, visual_data):
+        def __init__(self, file_path, visual_data, wrapper):
+            self._wrapper = wrapper
             self.FilePath = file_path
             self.Name = visual_data.get("name")
             self.ObjectType = "Visual"
@@ -257,6 +259,15 @@ class ReportWrapper:
             self.Width = get_jsonpath_value(visual_data, "$.position.width")
             self.TabOrder = get_jsonpath_value(visual_data, "$.position.tabOrder")
             self.Type = get_jsonpath_value(visual_data, "$.visual.visualType", "Group")
+            self.IsHidden = get_jsonpath_value(visual_data, "$.isHidden", default=False)
+            self.ShowItemsWithNoData = (
+                get_jsonpath_value(data=visual_data, path="$..showAll", default=False),
+            )
+            report_file = self._wrapper.get(file_path=self._wrapper._report_file_path)
+            custom_visuals = report_file.get("publicCustomVisuals", [])
+            self.IsCustomVisual = self.Type in custom_visuals
+            self.DataLimit = get_jsonpath_value(data=visual_data, path='$.filterConfig.filters[?(@.type == "VisualTopN")].filter.Where[*].Condition.VisualTopN.ItemCount', default=0)
+            self.FilterCount = len(get_jsonpath_value(data=visual_data, path="$.filterConfig.filters", default=[]))
             self.Title = get_jsonpath_value(
                 visual_data,
                 "$.visual.visualContainerObjects.title[*].properties.text.expr.Literal.Value",
@@ -267,10 +278,30 @@ class ReportWrapper:
                 "$.visual.visualContainerObjects.subTitle[*].properties.text.expr.Literal.Value",
                 remove_quotes=True,
             )
-            self.IsHidden = get_jsonpath_value(visual_data, "$.isHidden", default=False)
-            self.ShowItemsWithNoData = (
-                get_jsonpath_value(data=visual_data, path="$..showAll", default=False),
+            agg_type_map = helper._get_agg_type_mapping()
+            self.AltText = helper._get_expression(get_jsonpath_value(
+                    visual_data,
+                    "$.visual.visualContainerObjects.general[*].properties.altText.expr",
+                    remove_quotes=True, default=-1,
+                ), agg_type_map)
+
+            self.Divider = get_jsonpath_value(data=visual_data, path="$.visual.visualContainerObjects.divider[0].properties.show.expr.Literal.Value")
+
+            self.SlicerType = get_jsonpath_value(data=visual_data, path="$.visual.objects.data[*].properties.mode.expr.Literal.Value", default="N/A", remove_quotes=True)
+
+            data_keys = [
+                "Aggregation",
+                "Column",
+                "Measure",
+                "HierarchyLevel",
+                "NativeVisualCalculation",
+            ]
+
+            self.IsDataVisual = any(
+                get_jsonpath_value(data=visual_data, path=f"$..{key}") for key in data_keys
             )
+
+            self.HasSparkline = get_jsonpath_value(data=visual_data, path="$..SparklineData") is not None
 
     class VisualCollection:
         def __init__(self, wrapper, page_file_path=None):
@@ -656,7 +687,7 @@ class ReportWrapper:
             ]
         )
 
-    def get_url(self, page_name: Optional[str] = None) -> str:
+    def __get_url(self, page_name: Optional[str] = None) -> str:
         """
         Gets the URL of the report. If specified, gets the URL of the specified page.
 
@@ -675,7 +706,6 @@ class ReportWrapper:
         url = f"https://app.powerbi.com/groups/{self._workspace_id}/reports/{self._report_id}"
 
         if page_name:
-            page_name = self.resolve_page_name(page_name)
             url += f"/{page_name}"
 
         return url
@@ -1057,7 +1087,7 @@ class ReportWrapper:
                             "Locked": locked,
                             "How Created": how_created,
                             "Used": filter_used,
-                            "Page URL": self.get_url(page_name=page_id),
+                            "Page URL": self.__get_url(page_name=page_id),
                         }
 
                         dfs.append(pd.DataFrame(new_data, index=[0]))
@@ -1303,7 +1333,7 @@ class ReportWrapper:
                 "Data Visual Count": data_visual_count,
                 "Visible Visual Count": visible_visual_count,
                 "Page Filter Count": page_filter_count,
-                "Page URL": self.get_url(page_name=page_name),
+                "Page URL": self.__get_url(page_name=page_name),
             }
             dfs.append(pd.DataFrame(new_data, index=[0]))
 
