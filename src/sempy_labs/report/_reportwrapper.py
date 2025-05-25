@@ -35,6 +35,14 @@ import os
 import fnmatch
 
 
+def get_jsonpath_value(data, path, default=None, remove_quotes=False):
+    matches = parse(path).find(data)
+    result = matches[0].value if matches else default
+    if result and remove_quotes and isinstance(result, str):
+        result = result[1:-1]
+    return result
+
+
 class ReportWrapper:
     """
     Connects to a Power BI report and retrieves its definition.
@@ -141,7 +149,7 @@ class ReportWrapper:
 
         self._current_report_definition = copy.deepcopy(self._report_definition)
 
-        # self.report = self.Report.from_dict()
+        self.report = self.Report(self)
 
         helper.populate_custom_visual_display_names()
 
@@ -154,73 +162,191 @@ class ReportWrapper:
             )
 
     class Report:
-        def __init__(self, ObjectType, Name, Pages=None):
-            self.ObjectType = ObjectType
-            self.Name = Name
-            self.Pages = Pages if Pages else ReportWrapper.PageCollection()
+        def __init__(self, wrapper):
+            self.ObjectType = "Report"
+            self.Name = wrapper._report_name
+            self._wrapper = wrapper
+            self._pages = None
+            self._custom_visuals = None
 
-        @classmethod
-        def from_dict(cls):
-            Pages = ReportWrapper.PageCollection.from_list()
-            return cls(
-                ObjectType="Report",
-                Name=ReportWrapper._report_name,
-                Pages=Pages,
-            )
+        @property
+        def Pages(self):
+            if self._pages is None:
+                self._pages = ReportWrapper.PageCollection(self._wrapper)
+            return self._pages
+
+        @property
+        def CustomVisuals(self):
+            if self._custom_visuals is None:
+                self._custom_visuals = ReportWrapper.CustomVisualCollection(
+                    self._wrapper
+                )
+            return self._custom_visuals
 
     class Page:
-        def __init__(self, FilePath, Name, DisplayName, DisplayOption, Width, Height):
-            self.FilePath = FilePath
-            self.Name = Name
-            self.DisplayName = DisplayName
-            self.DisplayOption = DisplayOption
-            self.Width = Width
-            self.Height = Height
-
-        @classmethod
-        def from_dict(cls, file_path, page_data):
-            return cls(
-                FilePath=file_path,
-                Name=page_data.get("name"),
-                DisplayName=page_data.get("displayName"),
-                DisplayOption=page_data.get("displayOption"),
-                Width=page_data.get("width"),
-                Height=page_data.get("height"),
+        def __init__(self, file_path, page_data, is_active, wrapper):
+            self.FilePath = file_path
+            self.Name = page_data.get("name")
+            self.DisplayName = page_data.get("displayName")
+            self.DisplayOption = page_data.get("displayOption")
+            self.Width = page_data.get("width")
+            self.Height = page_data.get("height")
+            self.IsActive = is_active
+            self.IsHidden = (
+                get_jsonpath_value(data=page_data, path="$.visibility")
+                == "HiddenInViewMode"
             )
+            self.FilterCount = len(
+                get_jsonpath_value(
+                    data=page_data, path="$.filterConfig.filters", default=[]
+                )
+            )
+            self._wrapper = wrapper
+            self._visuals = None
 
-        @classmethod
-        def load_all(cls):
-            pages = []
-            wrapper = ReportWrapper()
-            for file_path, payload in wrapper.get(
-                file_path="definition/pages/*/page.json"
-            ):
-                page = cls.from_dict(file_path, payload)
-                pages.append(page)
-            return pages
+        @property
+        def Visuals(self):
+            if self._visuals is None:
+                self._visuals = ReportWrapper.VisualCollection(
+                    self._wrapper, self.FilePath
+                )
+            return self._visuals
 
     class PageCollection:
-        def __init__(self, Pages=None):
-            self.Pages = Pages if Pages else []
+        def __init__(self, wrapper):
+            self._wrapper = wrapper
+            self._pages = None
 
-        @classmethod
-        def from_list(cls):
-            pages = ReportWrapper.Page.load_all()
-            return cls(pages)
+        def _load_pages(self):
+            active_page = self._wrapper.get(
+                file_path=self._wrapper._pages_file_path, json_path="$.activePageName"
+            )
+            parts = self._wrapper.get(file_path="definition/pages/*/page.json")
+            self._pages = [
+                ReportWrapper.Page(
+                    file_path, data, data.get("name") == active_page, self._wrapper
+                )
+                for file_path, data in parts
+            ]
+
+        def __iter__(self):
+            if self._pages is None:
+                self._load_pages()
+            return iter(self._pages)
+
+        def __getitem__(self, key):
+            if self._pages is None:
+                self._load_pages()
+            return self._pages[key]
 
         @property
         def Count(self):
-            return len(self.Pages)
+            if self._pages is None:
+                self._load_pages()
+            return len(self._pages)
 
-        def __getitem__(self, key):
-            return self.Pages[key]
+    class Visual:
+        def __init__(self, file_path, visual_data):
+            self.FilePath = file_path
+            self.Name = visual_data.get("name")
+            self.ObjectType = "Visual"
+            self.X = get_jsonpath_value(visual_data, "$.position.x")
+            self.Y = get_jsonpath_value(visual_data, "$.position.y")
+            self.Z = get_jsonpath_value(visual_data, "$.position.z")
+            self.Height = get_jsonpath_value(visual_data, "$.position.height")
+            self.Width = get_jsonpath_value(visual_data, "$.position.width")
+            self.TabOrder = get_jsonpath_value(visual_data, "$.position.tabOrder")
+            self.Type = get_jsonpath_value(visual_data, "$.visual.visualType", "Group")
+            self.Title = get_jsonpath_value(
+                visual_data,
+                "$.visual.visualContainerObjects.title[*].properties.text.expr.Literal.Value",
+                remove_quotes=True,
+            )
+            self.SubTitle = get_jsonpath_value(
+                visual_data,
+                "$.visual.visualContainerObjects.subTitle[*].properties.text.expr.Literal.Value",
+                remove_quotes=True,
+            )
+            self.IsHidden = get_jsonpath_value(visual_data, "$.isHidden", default=False)
+            self.ShowItemsWithNoData = (
+                get_jsonpath_value(data=visual_data, path="$..showAll", default=False),
+            )
+
+    class VisualCollection:
+        def __init__(self, wrapper, page_file_path=None):
+            self._wrapper = wrapper
+            self._page_file_path = page_file_path
+            self._visuals = None
+
+        def _load_visuals(self):
+            all_visuals = []
+            parts = self._wrapper.get(file_path="definition/pages/*/visual.json")
+            for file_path, data in parts:
+                if self._page_file_path:
+                    page_dir = "/".join(self._page_file_path.split("/")[:3])
+                    if not file_path.startswith(page_dir):
+                        continue
+                all_visuals.append(ReportWrapper.Visual(file_path, data))
+            self._visuals = all_visuals
 
         def __iter__(self):
-            return iter(self.Pages)
+            if self._visuals is None:
+                self._load_visuals()
+            return iter(self._visuals)
+
+        def __getitem__(self, key):
+            if self._visuals is None:
+                self._load_visuals()
+            return self._visuals[key]
+
+        @property
+        def Count(self):
+            if self._visuals is None:
+                self._load_visuals()
+            return len(self._visuals)
+
+    class CustomVisual:
+        def __init__(self, name):
+            self.ObjectType = "Custom Visual"
+            self.Name = name
+            self.DisplayName = helper.vis_type_mapping.get(name, name)
+
+    class CustomVisualCollection:
+        def __init__(self, wrapper):
+            self._wrapper = wrapper
+            self._custom_visuals = None
+
+        def _load_custom_visuals(self):
+            raw = (
+                self._wrapper.get(
+                    file_path=self._wrapper._report_file_path,
+                    json_path="$.publicCustomVisuals",
+                )
+                or []
+            )
+            self._custom_visuals = [ReportWrapper.CustomVisual(name) for name in raw]
+
+        def __iter__(self):
+            if self._custom_visuals is None:
+                self._load_custom_visuals()
+            return iter(self._custom_visuals)
+
+        def __getitem__(self, key):
+            if self._custom_visuals is None:
+                self._load_custom_visuals()
+            return self._custom_visuals[key]
+
+        @property
+        def Count(self):
+            if self._custom_visuals is None:
+                self._load_custom_visuals()
+            return len(self._custom_visuals)
 
     # Basic functions
     def get(
-        self, file_path: str, json_path: Optional[str] = None
+        self,
+        file_path: str,
+        json_path: Optional[str] = None,
     ) -> dict | List[Tuple[str, dict]]:
         """
         Get the json content of the specified report definition file.
@@ -323,7 +449,7 @@ class ReportWrapper:
             {"path": file_path, "payload": decoded_payload}
         )
 
-    def remove(self, file_path: str, json_path: Optional[str] = None):
+    def remove(self, file_path: str, json_path: Optional[str] = None, verbose=True):
         """
         Removes a file from the report definition.
 
@@ -333,6 +459,8 @@ class ReportWrapper:
             The path of the file to be removed. For example: "definition/pages/fjdis323484/page.json".
         json_path : str, default=None
             The json path to the specific part of the file to be removed. If None, the entire file is removed. Wildcards are supported (i.e. "definition/pages/*/page.json").
+        verbose : bool, default=True
+            If True, prints messages about the removal process. If False, suppresses these messages.
         """
 
         parts = self._report_definition.get("parts")
@@ -368,7 +496,7 @@ class ReportWrapper:
                 jsonpath_expr = parse(json_path)
                 matches = jsonpath_expr.find(payload)
 
-                if not matches:
+                if not matches and verbose:
                     print(
                         f"{icons.red_dot} No match found for '{json_path}' in '{path}'. Skipping."
                     )
@@ -382,16 +510,18 @@ class ReportWrapper:
                         key = path_expr.fields[0]
                         if key in parent:
                             del parent[key]
-                            print(
-                                f"{icons.green_dot} Removed key '{key}' from '{path}'."
-                            )
+                            if verbose:
+                                print(
+                                    f"{icons.green_dot} Removed key '{key}' from '{path}'."
+                                )
                     elif isinstance(path_expr, Index):
                         index = path_expr.index
                         if isinstance(parent, list) and 0 <= index < len(parent):
                             parent.pop(index)
-                            print(
-                                f"{icons.green_dot} Removed index [{index}] from '{path}'."
-                            )
+                            if verbose:
+                                print(
+                                    f"{icons.green_dot} Removed index [{index}] from '{path}'."
+                                )
 
     def update(self, file_path: str, payload: dict | bytes):
         """
@@ -1118,11 +1248,11 @@ class ReportWrapper:
             width = payload.get("width")
 
             # Alignment
-            matches = parse(
-                "$.objects.displayArea[0].properties.verticalAlignment.expr.Literal.Value"
-            ).find(payload)
-            alignment_value = (
-                matches[0].value[1:-1] if matches and matches[0].value else "Top"
+            alignment_value = get_jsonpath_value(
+                data=payload,
+                path="$.objects.displayArea[*].properties.verticalAlignment.expr.Literal.Value",
+                default="Top",
+                remove_quotes=True,
             )
 
             # Drillthrough
@@ -1147,9 +1277,10 @@ class ReportWrapper:
             )
 
             # Page Filter Count
-            matches = parse("$.filterConfig.filters").find(payload)
-            page_filter_count = (
-                len(matches[0].value) if matches and matches[0].value else 0
+            page_filter_count = len(
+                get_jsonpath_value(
+                    data=payload, path="$.filterConfig.filters", default=[]
+                )
             )
 
             # Hidden
@@ -1906,7 +2037,7 @@ class ReportWrapper:
         """
 
         self.__ensure_pbir()
-        theme_version = "5.5.4"
+        theme_version = "5.6.4"
 
         # Open file
         if not theme_file_path.endswith(".json"):
@@ -1916,7 +2047,9 @@ class ReportWrapper:
         elif theme_file_path.startswith("https://"):
             response = requests.get(theme_file_path)
             theme_file = response.json()
-        elif theme_file_path.startswith("/lakehouse"):
+        elif theme_file_path.startswith("/lakehouse") or theme_file_path.startswith(
+            "/synfs/"
+        ):
             with open(theme_file_path, "r", encoding="utf-8-sig") as file:
                 theme_file = json.load(file)
         else:
@@ -1927,55 +2060,56 @@ class ReportWrapper:
         theme_name = theme_file.get("name")
         theme_name_full = f"{theme_name}.json"
 
-        # Add theme.json file to request_body
+        # Add theme.json file
         self.add(
             file_path=f"StaticResources/RegisteredResources/{theme_name_full}",
             payload=theme_file,
         )
 
-        new_theme = {
+        custom_theme = {
+            "name": theme_name_full,
+            "reportVersionAtImport": theme_version,
+            "type": "RegisteredResources",
+        }
+
+        self.set_json(
+            file_path=self._report_file_path,
+            json_path="$.themeCollection.customTheme",
+            json_value=custom_theme,
+        )
+
+        # Update
+        report_file = self.get(
+            file_path=self._report_file_path, json_path="$.resourcePackages"
+        )
+        new_item = {
             "name": theme_name_full,
             "path": theme_name_full,
             "type": "CustomTheme",
         }
+        # Find or create RegisteredResources
+        registered = next(
+            (res for res in report_file if res["name"] == "RegisteredResources"), None
+        )
 
-        # Update the report.json file
-        report_file = self.get(file_path=self._report_file_path)
-        resource_type = "RegisteredResources"
-
-        # Add to theme collection
-        if "customTheme" not in report_file["themeCollection"]:
-            report_file["themeCollection"]["customTheme"] = {
-                "name": theme_name_full,
-                "reportVersionAtImport": theme_version,
-                "type": resource_type,
+        if not registered:
+            registered = {
+                "name": "RegisteredResources",
+                "type": "RegisteredResources",
+                "items": [new_item],
             }
+            report_file.append(registered)
         else:
-            report_file["themeCollection"]["customTheme"]["name"] = theme_name_full
-            report_file["themeCollection"]["customTheme"]["type"] = resource_type
+            # Check for duplicate by 'name'
+            if all(item["name"] != new_item["name"] for item in registered["items"]):
+                registered["items"].append(new_item)
 
-        for package in report_file["resourcePackages"]:
-            package["items"] = [
-                item for item in package["items"] if item["type"] != "CustomTheme"
-            ]
+        self.set_json(
+            file_path=self._report_file_path,
+            json_path="$.resourcePackages",
+            json_value=report_file,
+        )
 
-        if not any(
-            package["name"] == resource_type
-            for package in report_file["resourcePackages"]
-        ):
-            new_registered_resources = {
-                "name": resource_type,
-                "type": resource_type,
-                "items": [new_theme],
-            }
-            report_file["resourcePackages"].append(new_registered_resources)
-        else:
-            names = [rp["name"] for rp in report_file["resourcePackages"][1]["items"]]
-
-            if theme_name_full not in names:
-                report_file["resourcePackages"][1]["items"].append(new_theme)
-
-        self.update(file_path=self._report_file_path, payload=report_file)
         if not self._readonly:
             print(
                 f"{icons.green_dot} The '{theme_name}' theme has been set as the theme for the '{self._report_name}' report within the '{self._workspace_name}' workspace."
@@ -1992,15 +2126,14 @@ class ReportWrapper:
         """
         self.__ensure_pbir()
 
-        page_file = self.get(file_path=self._pages_file_path)
-
         (page_id, page_display_name) = self.resolve_page_name_and_display_name(
             page_name
         )
-
-        page_file["activePageName"] = page_id
-
-        self.update(file_path=self._pages_file_path, payload=page_file)
+        self.set_json(
+            file_path=self._pages_file_path,
+            json_path="$.activePageName",
+            json_value=page_id,
+        )
 
         if not self._readonly:
             print(
@@ -2044,11 +2177,8 @@ class ReportWrapper:
             self.__resolve_page_name_and_display_name_file_path(page_name)
         )
 
-        page_file = self.get(file_path=file_path)
-        page_file["width"] = width
-        page_file["height"] = height
-
-        self.update(file_path=file_path, payload=page_file)
+        self.set_json(file_path=file_path, json_path="$.width", json_value=width)
+        self.set_json(file_path=file_path, json_path="$.height", json_value=height)
 
         if not self._readonly:
             print(
@@ -2074,17 +2204,16 @@ class ReportWrapper:
             self.__resolve_page_name_and_display_name_file_path(page_name)
         )
 
-        visibility = "visible" if hidden is False else "hidden"
-
-        page_file = self.get(file_path=file_path)
-
         if hidden:
-            page_file["visibility"] = "HiddenInViewMode"
+            self.set_json(
+                file_path=file_path,
+                json_path="$.visibility",
+                json_value="HiddenInViewMode",
+            )
         else:
-            if "visibility" in page_file:
-                del page_file["visibility"]
+            self.remove(file_path=file_path, json_path="$.visibility", verbose=False)
 
-        self.update(file_path=file_path, payload=page_file)
+        visibility = "visible" if hidden is False else "hidden"
 
         if not self._readonly:
             print(
@@ -2116,21 +2245,11 @@ class ReportWrapper:
         Disables the `show items with no data <https://learn.microsoft.com/power-bi/create-reports/desktop-show-items-no-data>`_ property in all visuals within the report.
         """
 
-        def delete_key_in_json(obj, key_to_delete):
-            if isinstance(obj, dict):
-                if key_to_delete in obj:
-                    del obj[key_to_delete]
-                for key, value in obj.items():
-                    delete_key_in_json(value, key_to_delete)
-            elif isinstance(obj, list):
-                for item in obj:
-                    delete_key_in_json(item, key_to_delete)
-
-        for v in self.__all_visuals():
-            path = v.get("path")
-            payload = v.get("payload")
-            delete_key_in_json(payload, "showAll")
-            self.update(file_path=path, payload=payload)
+        self.remove(
+            file_path="definition/pages/*/visual.json",
+            json_path="$..showAll",
+            verbose=False,
+        )
 
         if not self._readonly:
             print(
@@ -2154,12 +2273,16 @@ class ReportWrapper:
             )
             return
 
-        report_file = self.get(file_path=self._report_file_path)
-        report_file["publicCustomVisuals"] = [
-            item for item in report_file["publicCustomVisuals"] if item not in cv_remove
+        json_path = "$.publicCustomVisuals"
+        custom_visuals = self.get(file_path=self._report_file_path, json_path=json_path)
+        updated_custom_visuals = [
+            item for item in custom_visuals if item not in cv_remove
         ]
-
-        self.update(file_path=self._report_file_path, payload=report_file)
+        self.set_json(
+            file_path=self._report_path,
+            json_path=json_path,
+            json_value=updated_custom_visuals,
+        )
 
         if not self._readonly:
             print(
