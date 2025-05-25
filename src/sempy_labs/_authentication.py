@@ -168,9 +168,13 @@ token_provider = contextvars.ContextVar("token_provider", default=None)
 
 
 @contextmanager
-def set_sp(token):
+def set_sp(token_provider):
     prev_func = getattr(SynapseTokenProvider, "__call__")
-    setattr(SynapseTokenProvider, "__call__", lambda _, aud="pbi": token)
+
+    def new_call(self, audience=None):
+        return token_provider(audience="pbi")
+
+    setattr(SynapseTokenProvider, "__call__", new_call)
     try:
         yield
     finally:
