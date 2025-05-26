@@ -17,6 +17,7 @@ import numpy as np
 from IPython.display import display, HTML
 import requests
 import sempy_labs._authentication as auth
+from jsonpath_ng.ext import parse
 
 
 def _build_url(url: str, params: dict) -> str:
@@ -2273,3 +2274,11 @@ def is_base64(s):
         return base64.b64encode(decoded).decode().rstrip("=") == s.rstrip("=")
     except Exception:
         return False
+
+
+def get_jsonpath_value(data, path, default=None, remove_quotes=False):
+    matches = parse(path).find(data)
+    result = matches[0].value if matches else default
+    if result and remove_quotes and isinstance(result, str):
+        result = result[1:-1]
+    return result
