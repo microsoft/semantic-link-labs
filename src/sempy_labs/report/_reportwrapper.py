@@ -51,18 +51,38 @@ def set_json_value(payload: dict, json_path: str, json_value: str | dict | List)
             elif isinstance(path, Index):
                 parent[path.index] = json_value
     else:
-        # Path does not exist, create it manually
-        # Parse path parts manually without JSONPath library:
+        # Handle creation
         parts = json_path.lstrip("$").strip(".").split(".")
         current = payload
+
         for i, part in enumerate(parts):
             is_last = i == len(parts) - 1
-            if part not in current:
-                # Create dict or set value if last part
-                current[part] = json_value if is_last else {}
-            elif is_last:
-                current[part] = json_value
-            current = current[part]
+
+            # Detect list syntax like "lockAspect[*]"
+            list_match = re.match(r"(\w+)\[\*\]", part)
+            if list_match:
+                list_key = list_match.group(1)
+                if list_key not in current or not isinstance(current[list_key], list):
+                    # Initialize with one dict element
+                    current[list_key] = [{}]
+
+                for item in current[list_key]:
+                    if is_last:
+                        # Last part, assign value
+                        item = json_value
+                    else:
+                        # Proceed to next level
+                        if not isinstance(item, dict):
+                            raise ValueError(f"Expected dict in list for key '{list_key}', got {type(item)}")
+                        next_part = ".".join(parts[i+1:])
+                        set_json_value(item, "$." + next_part, json_value)
+                return payload
+            else:
+                if part not in current or not isinstance(current[part], dict):
+                    current[part] = {} if not is_last else json_value
+                elif is_last:
+                    current[part] = json_value
+                current = current[part]
 
     return payload
 
@@ -100,6 +120,12 @@ class ReportWrapper:
     _report_file_path = "definition/report.json"
     _pages_file_path = "definition/pages/pages.json"
     _report_extensions_path = "definition/reportExtensions.json"
+
+    # Visuals
+    _title_path = "$.visual.visualContainerObjects.title[*].properties.text.expr.Literal.Value"
+    _subtitle_path = "$.visual.visualContainerObjects.subTitle[*].properties.text.expr.Literal.Value"
+    _visual_x_path = "$.position.x"
+    _visual_y_path = "$.position.y"
 
     @log
     def __init__(
@@ -215,11 +241,6 @@ class ReportWrapper:
             self.FilePath = file_path
             self.Name = page_data.get("name")
             self.DisplayOption = page_data.get("displayOption")
-            self.IsActive = is_active
-            # self.IsHidden = (
-            #    get_jsonpath_value(data=page_data, path="$.visibility")
-            #    == "HiddenInViewMode"
-            # )
             self.FilterCount = len(
                 get_jsonpath_value(
                     data=page_data, path="$.filterConfig.filters", default=[]
@@ -247,6 +268,13 @@ class ReportWrapper:
                 file_path=self.FilePath,
                 json_path=json_path,
                 json_value=value,
+            )
+
+        def _remove_property(self, json_path):
+            self._wrapper.remove(
+                file_path=self.FilePath,
+                json_path=json_path,
+                verbose=False
             )
 
         @property
@@ -280,26 +308,32 @@ class ReportWrapper:
             self._set_property(path, value)
 
         @property
+        def IsActive(self):
+            return self._wrapper.get(file_path=ReportWrapper._pages_file_path, json_path="$.activePageName") == self.Name
+
+        @IsActive.setter
+        def IsActive(self, value: bool):
+            if not isinstance(value, bool):
+                raise TypeError(f"IsActive must be a bool, got {type(value).__name__}")
+            if not value:
+                raise ValueError("IsActive can only be set to True.")
+            self._wrapper.set_json(file_path=ReportWrapper._pages_file_path, json_path="$.activePageName", json_value=self.Name)
+
+        @property
         def IsHidden(self):
-            return (
-                get_jsonpath_value(data=self._data, path="$.visibility")
-                == "HiddenInViewMode"
-            )
+            return self._get_property(path="$.visibility") == "HiddenInViewMode"
 
         @IsHidden.setter
         def IsHidden(self, value: bool):
             if not isinstance(value, bool):
                 raise TypeError(f"IsHidden must be a bool, got {type(value).__name__}")
             if value:
-                self._wrapper.set_json(
-                    file_path=self.FilePath,
+                self._set_property(
                     json_path="$.visibility",
-                    json_value="HiddenInViewMode",
+                    json_value="HiddenInViewMode"
                 )
             else:
-                self._wrapper.remove(
-                    file_path=self.FilePath, json_path="$.visibility", verbose=False
-                )
+                self._remove_property("$.visibility")
 
         @property
         def Visuals(self):
@@ -365,10 +399,6 @@ class ReportWrapper:
             self.TabOrder = get_jsonpath_value(visual_data, "$.position.tabOrder")
             self.Type = get_jsonpath_value(visual_data, "$.visual.visualType", "Group")
             self.DisplayType = helper.vis_type_mapping.get(self.Type, self.Type)
-            self.IsHidden = get_jsonpath_value(visual_data, "$.isHidden", default=False)
-            self.ShowItemsWithNoData = (
-                get_jsonpath_value(data=visual_data, path="$..showAll", default=False),
-            )
             report_file = self._wrapper.get(file_path=self._wrapper._report_file_path)
             custom_visuals = report_file.get("publicCustomVisuals", [])
             self.IsCustomVisual = self.Type in custom_visuals
@@ -429,49 +459,46 @@ class ReportWrapper:
                 json_value=value,
             )
 
+        def _remove_property(self, json_path):
+            self._wrapper.remove(
+                file_path=self.FilePath,
+                json_path=json_path,
+                verbose=False
+            )
+
+        # Title
         @property
         def Title(self):
-            path = "$.visual.visualContainerObjects.title[*].properties.text.expr.Literal.Value"
-            return self._get_property(path, remove_quotes=True)
-
-        @Title.setter
-        def Title(self, value: str):
-            path = "$.visual.visualContainerObjects.title[*].properties.text.expr.Literal.Value"
-            self._set_property(path, value, add_quotes=True)
+            base_path = "$.visual.visualContainerObjects.title[*].properties"
+            return TitleObject(self, base_path)
 
         @property
         def SubTitle(self):
-            path = "$.visual.visualContainerObjects.subTitle[*].properties.text.expr.Literal.Value"
-            return self._get_property(path, remove_quotes=True)
-
-        @SubTitle.setter
-        def SubTitle(self, value: str):
-            path = "$.visual.visualContainerObjects.subTitle[*].properties.text.expr.Literal.Value"
-            self._set_property(path, value, add_quotes=True)
+            base_path = "$.visual.visualContainerObjects.subTitle[*].properties"
+            return TitleObject(self, base_path)
 
         @property
         def X(self):
-            path = "$.position.x"
+            path = ReportWrapper._visual_x_path
             return self._get_property(path)
 
         @X.setter
         def X(self, value: int):
-
             if not isinstance(value, int):
                 raise TypeError(f"X must be an integer, got {type(value).__name__}")
-            path = "$.position.x"
+            path = ReportWrapper._visual_x_path
             self._set_property(path, value)
 
         @property
         def Y(self):
-            path = "$.position.y"
+            path = ReportWrapper._visual_y_path
             return self._get_property(path)
 
         @Y.setter
         def Y(self, value: int):
             if not isinstance(value, int):
                 raise TypeError(f"Y must be an integer, got {type(value).__name__}")
-            path = "$.position.y"
+            path = ReportWrapper._visual_y_path
             self._set_property(path, value)
 
         @property
@@ -489,6 +516,57 @@ class ReportWrapper:
         @Width.setter
         def Width(self, value):
             self._set_property("$.position.width", value)
+
+        @property
+        def IsHidden(self):
+            return self._get_property("$.isHidden", default=False)
+
+        @IsHidden.setter
+        def IsHidden(self, value: bool):
+            if not isinstance(value, bool):
+                raise TypeError(f"IsHidden must be a bool, got {type(value).__name__}")
+            if value:
+                self._set_property("$.isHidden", True)
+            else:
+                self._remove_property("$.isHidden")
+
+        @property
+        def ShowItemsWithNoData(self):
+            return self._get_property("$..showAll", default=False)
+
+        @ShowItemsWithNoData.setter
+        def ShowItemsWithNoData(self, value: bool):
+            if not isinstance(value, bool):
+                raise TypeError(f"ShowItemsWithNoData must be a bool, got {type(value).__name__}")
+            if value:
+                self._set_property(
+                    file_path=self.FilePath,
+                    json_path="$..showAll",
+                    json_value=True)
+            else:
+                self._remove_property(
+                    json_path="$..showAll"
+                )
+
+        @property
+        def LockAspectRatio(self):
+            return self._get_property("$.visual.visualContainerObjects.lockAspect[*].properties.show.expr.Literal.Value", default=False)
+
+        @LockAspectRatio.setter
+        def LockAspectRatio(self, value: bool):
+            if not isinstance(value, bool):
+                raise TypeError(f"LockAspectRatio must be a bool, got {type(value).__name__}")
+            if value:
+                self._set_property(
+                    file_path=self.FilePath,
+                    json_path="$.visual.visualContainerObjects.lockAspect[*].properties.show.expr.Literal.Value",
+                    json_value="true",
+                )
+            else:
+                self._remove_property(
+                    file_path=self.FilePath,
+                    json_path="$.visual.visualContainerObjects.lockAspect[*].properties.show.expr.Literal.Value",
+                )
 
     class VisualCollection:
         def __init__(self, wrapper, page_file_path=None):
@@ -3383,3 +3461,40 @@ def connect_report(
         yield rw
     finally:
         rw.close()
+
+
+class TitleObject:
+    def __init__(self, visual, base_path: str):
+        self.visual = visual
+        self.base_path = base_path
+
+    @property
+    def Text(self):
+        path = f"{self.base_path}.text.expr.Literal.Value"
+        return self.visual._get_property(path, remove_quotes=True)
+
+    @Text.setter
+    def Text(self, value: str):
+        path = f"{self.base_path}.text.expr.Literal.Value"
+        self.visual._set_property(path, value, add_quotes=True)
+
+    @property
+    def Show(self):
+        path = f"{self.base_path}.show.expr.Literal.Value"
+        value = self.visual._get_property(path)
+        if value == 'true':
+            return True
+        else:
+            return False
+
+    @Show.setter
+    def Show(self, value: bool):
+        if not isinstance(value, bool):
+            raise ValueError(
+                f"{icons.red_dot} The value for 'Show' must be a boolean. Provided: {type(value)}"
+            )
+        path = f"{self.base_path}.show.expr.Literal.Value"
+        if value:
+            self.visual._set_property(path, "true")
+        else:
+            self.visual._remove_property(path)
