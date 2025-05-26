@@ -340,6 +340,9 @@ from sempy_labs._vertipaq import (
     vertipaq_analyzer,
     import_vertipaq_analyzer,
 )
+from sempy_labs._user_delegation_key import (
+    get_user_delegation_key,
+)
 
 __all__ = [
     "resolve_warehouse_id",
@@ -585,4 +588,5 @@ __all__ = [
     "update_semantic_model_refresh_schedule",
     "apply_tags",
     "unapply_tags",
+    "get_user_delegation_key",
 ]
