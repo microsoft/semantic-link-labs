@@ -1,3 +1,7 @@
+from sempy_labs._sql_endpoints import (
+    list_sql_endpoints,
+    refresh_sql_endpoint_metadata,
+)
 from sempy_labs._variable_libraries import (
     list_variable_libraries,
     delete_variable_library,
@@ -275,7 +279,6 @@ from sempy_labs._list_functions import (
     get_object_level_security,
     list_datamarts,
     list_lakehouses,
-    list_sql_endpoints,
     update_item,
     list_server_properties,
     list_semantic_model_errors,
@@ -585,4 +588,5 @@ __all__ = [
     "update_semantic_model_refresh_schedule",
     "apply_tags",
     "unapply_tags",
+    "refresh_sql_endpoint_metadata",
 ]
