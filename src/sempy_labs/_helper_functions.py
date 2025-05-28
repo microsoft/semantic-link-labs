@@ -18,6 +18,7 @@ from IPython.display import display, HTML
 import requests
 import sempy_labs._authentication as auth
 from jsonpath_ng.ext import parse
+from jsonpath_ng.jsonpath import Fields, Index
 
 
 def _build_url(url: str, params: dict) -> str:
@@ -2276,9 +2277,105 @@ def is_base64(s):
         return False
 
 
-def get_jsonpath_value(data, path, default=None, remove_quotes=False):
+def get_jsonpath_value(
+    data, path, default=None, remove_quotes=False, fix_true: bool = False
+):
     matches = parse(path).find(data)
     result = matches[0].value if matches else default
     if result and remove_quotes and isinstance(result, str):
         result = result[1:-1]
+    if fix_true and isinstance(result, str):
+        if result.lower() == "true":
+            result = True
+        elif result.lower() == "false":
+            result = False
     return result
+
+
+def set_json_value(payload: dict, json_path: str, json_value: str | dict | List):
+
+    jsonpath_expr = parse(json_path)
+    matches = jsonpath_expr.find(payload)
+
+    if matches:
+        # Update all matches
+        for match in matches:
+            parent = match.context.value
+            path = match.path
+            if isinstance(path, Fields):
+                parent[path.fields[0]] = json_value
+            elif isinstance(path, Index):
+                parent[path.index] = json_value
+    else:
+        # Handle creation
+        parts = json_path.lstrip("$").strip(".").split(".")
+        current = payload
+
+        for i, part in enumerate(parts):
+            is_last = i == len(parts) - 1
+
+            # Detect list syntax like "lockAspect[*]"
+            list_match = re.match(r"(\w+)\[\*\]", part)
+            if list_match:
+                list_key = list_match.group(1)
+                if list_key not in current or not isinstance(current[list_key], list):
+                    # Initialize with one dict element
+                    current[list_key] = [{}]
+
+                for item in current[list_key]:
+                    if is_last:
+                        # Last part, assign value
+                        item = json_value
+                    else:
+                        # Proceed to next level
+                        if not isinstance(item, dict):
+                            raise ValueError(
+                                f"Expected dict in list for key '{list_key}', got {type(item)}"
+                            )
+                        next_part = ".".join(parts[i + 1 :])
+                        set_json_value(item, "$." + next_part, json_value)
+                return payload
+            else:
+                if part not in current or not isinstance(current[part], dict):
+                    current[part] = {} if not is_last else json_value
+                elif is_last:
+                    current[part] = json_value
+                current = current[part]
+
+    return payload
+
+
+def remove_json_value(path: str, payload: dict, json_path: str, verbose: bool = True):
+
+    if not isinstance(payload, dict):
+        raise ValueError(
+            f"{icons.red_dot} Cannot apply json_path to non-dictionary payload in '{path}'."
+        )
+
+    jsonpath_expr = parse(json_path)
+    matches = jsonpath_expr.find(payload)
+
+    if not matches and verbose:
+        print(
+            f"{icons.red_dot} No match found for '{json_path}' in '{path}'. Skipping."
+        )
+        return payload
+
+    for match in matches:
+        parent = match.context.value
+        path_expr = match.path
+
+        if isinstance(path_expr, Fields):
+            key = path_expr.fields[0]
+            if key in parent:
+                del parent[key]
+                if verbose:
+                    print(f"{icons.green_dot} Removed key '{key}' from '{path}'.")
+        elif isinstance(path_expr, Index):
+            index = path_expr.index
+            if isinstance(parent, list) and 0 <= index < len(parent):
+                parent.pop(index)
+                if verbose:
+                    print(f"{icons.green_dot} Removed index [{index}] from '{path}'.")
+
+    return payload

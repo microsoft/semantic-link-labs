@@ -15,6 +15,8 @@ from sempy_labs._helper_functions import (
     is_base64,
     generate_hex,
     get_jsonpath_value,
+    set_json_value,
+    remove_json_value,
 )
 from sempy_labs._dictionary_diffs import (
     diff_parts,
@@ -24,7 +26,6 @@ import sempy_labs._icons as icons
 import copy
 import pandas as pd
 from jsonpath_ng.ext import parse
-from jsonpath_ng.jsonpath import Fields, Index
 import sempy_labs.report._report_helper as helper
 from sempy_labs._model_dependencies import get_measure_dependencies
 import requests
@@ -34,57 +35,6 @@ from pathlib import Path
 from urllib.parse import urlparse
 import os
 import fnmatch
-
-
-def set_json_value(payload: dict, json_path: str, json_value: str | dict | List):
-
-    jsonpath_expr = parse(json_path)
-    matches = jsonpath_expr.find(payload)
-
-    if matches:
-        # Update all matches
-        for match in matches:
-            parent = match.context.value
-            path = match.path
-            if isinstance(path, Fields):
-                parent[path.fields[0]] = json_value
-            elif isinstance(path, Index):
-                parent[path.index] = json_value
-    else:
-        # Handle creation
-        parts = json_path.lstrip("$").strip(".").split(".")
-        current = payload
-
-        for i, part in enumerate(parts):
-            is_last = i == len(parts) - 1
-
-            # Detect list syntax like "lockAspect[*]"
-            list_match = re.match(r"(\w+)\[\*\]", part)
-            if list_match:
-                list_key = list_match.group(1)
-                if list_key not in current or not isinstance(current[list_key], list):
-                    # Initialize with one dict element
-                    current[list_key] = [{}]
-
-                for item in current[list_key]:
-                    if is_last:
-                        # Last part, assign value
-                        item = json_value
-                    else:
-                        # Proceed to next level
-                        if not isinstance(item, dict):
-                            raise ValueError(f"Expected dict in list for key '{list_key}', got {type(item)}")
-                        next_part = ".".join(parts[i+1:])
-                        set_json_value(item, "$." + next_part, json_value)
-                return payload
-            else:
-                if part not in current or not isinstance(current[part], dict):
-                    current[part] = {} if not is_last else json_value
-                elif is_last:
-                    current[part] = json_value
-                current = current[part]
-
-    return payload
 
 
 class ReportWrapper:
@@ -122,8 +72,12 @@ class ReportWrapper:
     _report_extensions_path = "definition/reportExtensions.json"
 
     # Visuals
-    _title_path = "$.visual.visualContainerObjects.title[*].properties.text.expr.Literal.Value"
-    _subtitle_path = "$.visual.visualContainerObjects.subTitle[*].properties.text.expr.Literal.Value"
+    _title_path = (
+        "$.visual.visualContainerObjects.title[*].properties.text.expr.Literal.Value"
+    )
+    _subtitle_path = (
+        "$.visual.visualContainerObjects.subTitle[*].properties.text.expr.Literal.Value"
+    )
     _visual_x_path = "$.position.x"
     _visual_y_path = "$.position.y"
 
@@ -203,7 +157,7 @@ class ReportWrapper:
 
         helper.populate_custom_visual_display_names()
 
-    def __ensure_pbir(self):
+    def _ensure_pbir(self):
 
         if self.format != "PBIR":
             raise NotImplementedError(
@@ -218,6 +172,8 @@ class ReportWrapper:
             self._wrapper = wrapper
             self._pages = None
             self._custom_visuals = None
+            self._filters = None
+            self._wrapper._ensure_pbir()
 
         @property
         def Pages(self):
@@ -233,9 +189,17 @@ class ReportWrapper:
                 )
             return self._custom_visuals
 
+        @property
+        def Filters(self):
+            if self._filters is None:
+                self._filters = ReportFilterCollection(self._wrapper)
+            return self._filters
+
     class Page:
-        def __init__(self, file_path, page_data, is_active, wrapper):
+        def __init__(self, file_path, page_data, wrapper):
             self._wrapper = wrapper
+            self._visuals = None
+            self._filters = None
             self._data = page_data
             self.ObjectType = "Page"
             self.FilePath = file_path
@@ -247,7 +211,6 @@ class ReportWrapper:
                 )
             )
             self.URL = wrapper._get_url(page_name=self.Name)
-            self._visuals = None
 
         def _get_property(
             self, json_path: str, default=None, remove_quotes: bool = False
@@ -272,9 +235,13 @@ class ReportWrapper:
 
         def _remove_property(self, json_path):
             self._wrapper.remove(
-                file_path=self.FilePath,
+                file_path=self.FilePath, json_path=json_path, verbose=False
+            )
+            remove_json_value(
+                path=self.FilePath,
+                payload=self._data,
                 json_path=json_path,
-                verbose=False
+                verbose=False,
             )
 
         @property
@@ -283,7 +250,7 @@ class ReportWrapper:
             return self._get_property(path)
 
         @DisplayName.setter
-        def DisplayName(self, value):
+        def DisplayName(self, value: str):
             path = "$.displayName"
             self._set_property(path, value)
 
@@ -293,7 +260,11 @@ class ReportWrapper:
             return self._get_property(path)
 
         @Height.setter
-        def Height(self, value):
+        def Height(self, value: int):
+            if not isinstance(value, int):
+                raise TypeError(
+                    f"Height must be an integer, got {type(value).__name__}"
+                )
             path = "$.height"
             self._set_property(path, value)
 
@@ -303,13 +274,21 @@ class ReportWrapper:
             return self._get_property(path)
 
         @Width.setter
-        def Width(self, value):
+        def Width(self, value: int):
+            if not isinstance(value, int):
+                raise TypeError(f"Width must be an integer, got {type(value).__name__}")
             path = "$.width"
             self._set_property(path, value)
 
         @property
         def IsActive(self):
-            return self._wrapper.get(file_path=ReportWrapper._pages_file_path, json_path="$.activePageName") == self.Name
+            return (
+                self._wrapper.get(
+                    file_path=ReportWrapper._pages_file_path,
+                    json_path="$.activePageName",
+                )
+                == self.Name
+            )
 
         @IsActive.setter
         def IsActive(self, value: bool):
@@ -317,7 +296,11 @@ class ReportWrapper:
                 raise TypeError(f"IsActive must be a bool, got {type(value).__name__}")
             if not value:
                 raise ValueError("IsActive can only be set to True.")
-            self._wrapper.set_json(file_path=ReportWrapper._pages_file_path, json_path="$.activePageName", json_value=self.Name)
+            self._wrapper.set_json(
+                file_path=ReportWrapper._pages_file_path,
+                json_path="$.activePageName",
+                json_value=self.Name,
+            )
 
         @property
         def IsHidden(self):
@@ -329,8 +312,7 @@ class ReportWrapper:
                 raise TypeError(f"IsHidden must be a bool, got {type(value).__name__}")
             if value:
                 self._set_property(
-                    json_path="$.visibility",
-                    json_value="HiddenInViewMode"
+                    json_path="$.visibility", json_value="HiddenInViewMode"
                 )
             else:
                 self._remove_property("$.visibility")
@@ -343,20 +325,21 @@ class ReportWrapper:
                 )
             return self._visuals
 
+        @property
+        def Filters(self):
+            if self._filters is None:
+                self._filters = PageFilterCollection(self._wrapper, self.FilePath)
+            return self._filters
+
     class PageCollection:
         def __init__(self, wrapper):
             self._wrapper = wrapper
             self._pages = None
 
         def _load_pages(self):
-            active_page = self._wrapper.get(
-                file_path=self._wrapper._pages_file_path, json_path="$.activePageName"
-            )
             parts = self._wrapper.get(file_path="definition/pages/*/page.json")
             self._pages = [
-                ReportWrapper.Page(
-                    file_path, data, data.get("name") == active_page, self._wrapper
-                )
+                ReportWrapper.Page(file_path, data, self._wrapper)
                 for file_path, data in parts
             ]
 
@@ -392,7 +375,10 @@ class ReportWrapper:
         def __init__(self, file_path, visual_data, wrapper):
             self._wrapper = wrapper
             self._data = visual_data
+            self._filters = None
+            self._page = None
             self.FilePath = file_path
+            self._page_file_path = self.FilePath.split("/visuals/")[0] + "/page.json"
             self.ObjectType = "Visual"
             self.Name = get_jsonpath_value(visual_data, "$.name")
             self.Z = get_jsonpath_value(visual_data, "$.position.z")
@@ -438,11 +424,27 @@ class ReportWrapper:
                 for key in data_keys
             )
 
+        @property
+        def Page(self):
+            return ReportWrapper.Page(
+                file_path=self._page_file_path,
+                page_data=self._wrapper.get(file_path=self._page_file_path),
+                wrapper=self._wrapper,
+            )
+
         def _get_property(
-            self, json_path: str, default=None, remove_quotes: bool = False
+            self,
+            json_path: str,
+            default=None,
+            remove_quotes: bool = False,
+            fix_true: bool = False,
         ):
             return get_jsonpath_value(
-                self._data, json_path, default=default, remove_quotes=remove_quotes
+                self._data,
+                json_path,
+                default=default,
+                remove_quotes=remove_quotes,
+                fix_true=fix_true,
             )
 
         def _set_property(self, json_path, value, add_quotes: bool = False):
@@ -461,9 +463,13 @@ class ReportWrapper:
 
         def _remove_property(self, json_path):
             self._wrapper.remove(
-                file_path=self.FilePath,
+                file_path=self.FilePath, json_path=json_path, verbose=False
+            )
+            remove_json_value(
+                path=self.FilePath,
+                payload=self._data,
                 json_path=json_path,
-                verbose=False
+                verbose=False,
             )
 
         # Title
@@ -483,8 +489,8 @@ class ReportWrapper:
             return self._get_property(path)
 
         @X.setter
-        def X(self, value: int):
-            if not isinstance(value, int):
+        def X(self, value: float | int):
+            if not isinstance(value, float | int):
                 raise TypeError(f"X must be an integer, got {type(value).__name__}")
             path = ReportWrapper._visual_x_path
             self._set_property(path, value)
@@ -495,8 +501,8 @@ class ReportWrapper:
             return self._get_property(path)
 
         @Y.setter
-        def Y(self, value: int):
-            if not isinstance(value, int):
+        def Y(self, value: float | int):
+            if not isinstance(value, float | int):
                 raise TypeError(f"Y must be an integer, got {type(value).__name__}")
             path = ReportWrapper._visual_y_path
             self._set_property(path, value)
@@ -506,7 +512,7 @@ class ReportWrapper:
             return self._get_property("$.position.height")
 
         @Height.setter
-        def Height(self, value):
+        def Height(self, value: float | int):
             self._set_property("$.position.height", value)
 
         @property
@@ -514,7 +520,7 @@ class ReportWrapper:
             return self._get_property("$.position.width")
 
         @Width.setter
-        def Width(self, value):
+        def Width(self, value: float | int):
             self._set_property("$.position.width", value)
 
         @property
@@ -537,25 +543,30 @@ class ReportWrapper:
         @ShowItemsWithNoData.setter
         def ShowItemsWithNoData(self, value: bool):
             if not isinstance(value, bool):
-                raise TypeError(f"ShowItemsWithNoData must be a bool, got {type(value).__name__}")
+                raise TypeError(
+                    f"ShowItemsWithNoData must be a bool, got {type(value).__name__}"
+                )
             if value:
                 self._set_property(
-                    file_path=self.FilePath,
-                    json_path="$..showAll",
-                    json_value=True)
-            else:
-                self._remove_property(
-                    json_path="$..showAll"
+                    file_path=self.FilePath, json_path="$..showAll", json_value=True
                 )
+            else:
+                self._remove_property(json_path="$..showAll")
 
         @property
         def LockAspectRatio(self):
-            return self._get_property("$.visual.visualContainerObjects.lockAspect[*].properties.show.expr.Literal.Value", default=False)
+            return self._get_property(
+                "$.visual.visualContainerObjects.lockAspect[*].properties.show.expr.Literal.Value",
+                default=False,
+                fix_true=True,
+            )
 
         @LockAspectRatio.setter
         def LockAspectRatio(self, value: bool):
             if not isinstance(value, bool):
-                raise TypeError(f"LockAspectRatio must be a bool, got {type(value).__name__}")
+                raise TypeError(
+                    f"LockAspectRatio must be a bool, got {type(value).__name__}"
+                )
             if value:
                 self._set_property(
                     file_path=self.FilePath,
@@ -565,8 +576,56 @@ class ReportWrapper:
             else:
                 self._remove_property(
                     file_path=self.FilePath,
-                    json_path="$.visual.visualContainerObjects.lockAspect[*].properties.show.expr.Literal.Value",
+                    json_path="$.visual.visualContainerObjects.lockAspect",
                 )
+
+        @property
+        def MaintainLayerOrder(self):
+            return self._get_property(
+                "$.visual.visualContainerObjects.general[*].properties.keepLayerOrder.expr.Literal.Value",
+                default=False,
+                fix_true=True,
+            )
+
+        @MaintainLayerOrder.setter
+        def MaintainLayerOrder(self, value: bool):
+            if not isinstance(value, bool):
+                raise TypeError(
+                    f"MaintainLayerOrder must be a bool, got {type(value).__name__}"
+                )
+            if value:
+                self._set_property(
+                    "$.visual.visualContainerObjects.general[*].properties.keepLayerOrder.expr.Literal.Value",
+                    "true",
+                )
+            else:
+                self._remove_property(
+                    "$.visual.visualContainerObjects.general[*].properties.keepLayerOrder",
+                )
+
+        @property
+        def AltText(self):
+            return self._get_property(
+                "$.visual.visualContainerObjects.general[*].properties.altText.expr.Literal.Value"
+            )
+
+        @AltText.setter
+        def AltText(self, value: str):
+            if value:
+                self._set_property(
+                    "$.visual.visualContainerObjects.general[*].properties.altText.expr.Literal.Value",
+                    value,
+                )
+            else:
+                self._remove_property(
+                    "$.visual.visualContainerObjects.general[*].properties.altText"
+                )
+
+        @property
+        def Filters(self):
+            if self._filters is None:
+                self._filters = VisualFilterCollection(self._wrapper, self.FilePath)
+            return self._filters
 
     class VisualCollection:
         def __init__(self, wrapper, page_file_path=None):
@@ -786,6 +845,7 @@ class ReportWrapper:
 
         for part in matching_parts:
             path = part.get("path")
+            payload = part.get("payload")
 
             if not json_path:
                 self._report_definition["parts"].remove(part)
@@ -793,41 +853,9 @@ class ReportWrapper:
                     f"{icons.green_dot} The file '{path}' has been removed from the report definition."
                 )
             else:
-                payload = part.get("payload")
-                if not isinstance(payload, dict):
-                    raise ValueError(
-                        f"{icons.red_dot} Cannot apply json_path to non-dictionary payload in '{path}'."
-                    )
-
-                jsonpath_expr = parse(json_path)
-                matches = jsonpath_expr.find(payload)
-
-                if not matches and verbose:
-                    print(
-                        f"{icons.red_dot} No match found for '{json_path}' in '{path}'. Skipping."
-                    )
-                    continue
-
-                for match in matches:
-                    parent = match.context.value
-                    path_expr = match.path
-
-                    if isinstance(path_expr, Fields):
-                        key = path_expr.fields[0]
-                        if key in parent:
-                            del parent[key]
-                            if verbose:
-                                print(
-                                    f"{icons.green_dot} Removed key '{key}' from '{path}'."
-                                )
-                    elif isinstance(path_expr, Index):
-                        index = path_expr.index
-                        if isinstance(parent, list) and 0 <= index < len(parent):
-                            parent.pop(index)
-                            if verbose:
-                                print(
-                                    f"{icons.green_dot} Removed index [{index}] from '{path}'."
-                                )
+                remove_json_value(
+                    path=path, payload=payload, json_path=json_path, verbose=verbose
+                )
 
     def update(self, file_path: str, payload: dict | bytes):
         """
@@ -904,7 +932,7 @@ class ReportWrapper:
 
     def __all_pages(self):
 
-        self.__ensure_pbir()
+        self._ensure_pbir()
 
         return [
             o
@@ -914,7 +942,7 @@ class ReportWrapper:
 
     def __all_visuals(self):
 
-        self.__ensure_pbir()
+        self._ensure_pbir()
 
         return [
             o
@@ -966,7 +994,7 @@ class ReportWrapper:
         self, page: str
     ) -> Tuple[str, str, str]:
 
-        self.__ensure_pbir()
+        self._ensure_pbir()
         page_map = {
             p["path"]: [p["payload"]["name"], p["payload"]["displayName"]]
             for p in self._report_definition.get("parts", [])
@@ -1135,7 +1163,7 @@ class ReportWrapper:
         return dataframe
 
     def visual_page_mapping(self) -> dict:
-        self.__ensure_pbir()
+        self._ensure_pbir()
 
         page_mapping = {}
         visual_mapping = {}
@@ -1171,7 +1199,7 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe containing a list of all the custom visuals used in the report.
         """
-        self.__ensure_pbir()
+        self._ensure_pbir()
 
         columns = {
             "Custom Visual Name": "str",
@@ -1222,7 +1250,7 @@ class ReportWrapper:
             A pandas dataframe containing a list of all the report filters used in the report.
         """
 
-        self.__ensure_pbir()
+        self._ensure_pbir()
 
         report_file = self.get(file_path=self._report_file_path)
 
@@ -1292,7 +1320,7 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe containing a list of all the page filters used in the report.
         """
-        self.__ensure_pbir()
+        self._ensure_pbir()
 
         columns = {
             "Page Name": "str",
@@ -1369,7 +1397,7 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe containing a list of all the visual filters used in the report.
         """
-        self.__ensure_pbir()
+        self._ensure_pbir()
 
         columns = {
             "Page Name": "str",
@@ -1448,7 +1476,7 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe containing a list of all modified visual interactions used in the report.
         """
-        self.__ensure_pbir()
+        self._ensure_pbir()
 
         columns = {
             "Page Name": "str",
@@ -1493,7 +1521,7 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe containing a list of all pages in the report.
         """
-        self.__ensure_pbir()
+        self._ensure_pbir()
 
         columns = {
             "File Path": "str",
@@ -1605,7 +1633,7 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe containing a list of all visuals in the report.
         """
-        self.__ensure_pbir()
+        self._ensure_pbir()
 
         columns = {
             "File Path": "str",
@@ -1830,7 +1858,7 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe containing a list of all semantic model objects used in each visual in the report.
         """
-        self.__ensure_pbir()
+        self._ensure_pbir()
 
         visual_mapping = self.visual_page_mapping()
 
@@ -1988,7 +2016,7 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe showing the semantic model objects used in the report.
         """
-        self.__ensure_pbir()
+        self._ensure_pbir()
 
         from sempy_labs.tom import connect_semantic_model
 
@@ -2133,7 +2161,7 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe containing a list of all bookmarks in the report.
         """
-        self.__ensure_pbir()
+        self._ensure_pbir()
 
         columns = {
             "File Path": "str",
@@ -2218,7 +2246,7 @@ class ReportWrapper:
             A pandas dataframe containing a list of all report-level measures in the report.
         """
 
-        self.__ensure_pbir()
+        self._ensure_pbir()
 
         columns = {
             "Measure Name": "str",
@@ -2272,7 +2300,7 @@ class ReportWrapper:
             The theme.json file
         """
 
-        self.__ensure_pbir()
+        self._ensure_pbir()
 
         theme_types = ["baseTheme", "customTheme"]
         theme_type = theme_type.lower()
@@ -2318,7 +2346,7 @@ class ReportWrapper:
             Example for web url: file_path = 'https://raw.githubusercontent.com/PowerBiDevCamp/FabricUserApiDemo/main/FabricUserApiDemo/DefinitionTemplates/Shared/Reports/StaticResources/SharedResources/BaseThemes/CY23SU08.json'
         """
 
-        self.__ensure_pbir()
+        self._ensure_pbir()
         theme_version = "5.6.4"
 
         # Open file
@@ -2406,7 +2434,7 @@ class ReportWrapper:
         page_name : str
             The page name or page display name of the report.
         """
-        self.__ensure_pbir()
+        self._ensure_pbir()
 
         (page_id, page_display_name) = self.resolve_page_name_and_display_name(
             page_name
@@ -2433,7 +2461,7 @@ class ReportWrapper:
         page_type : str
             The page type. Valid page types: 'Tooltip', 'Letter', '4:3', '16:9'.
         """
-        self.__ensure_pbir()
+        self._ensure_pbir()
 
         if page_type not in helper.page_types:
             raise ValueError(
@@ -2481,7 +2509,7 @@ class ReportWrapper:
             If set to True, hides the report page.
             If set to False, makes the report page visible.
         """
-        self.__ensure_pbir()
+        self._ensure_pbir()
         (file_path, page_id, page_display_name) = (
             self.__resolve_page_name_and_display_name_file_path(page_name)
         )
@@ -2581,7 +2609,7 @@ class ReportWrapper:
             A measure or list of measures to move to the semantic model.
             Defaults to None which resolves to moving all report-level measures to the semantic model.
         """
-        self.__ensure_pbir()
+        self._ensure_pbir()
 
         from sempy_labs.tom import connect_semantic_model
 
@@ -2732,7 +2760,7 @@ class ReportWrapper:
         str
             The name of the image file added to the report definition.
         """
-        self.__ensure_pbir()
+        self._ensure_pbir()
 
         id = generate_number_guid()
 
@@ -2784,7 +2812,7 @@ class ReportWrapper:
             The name or display name of the page(s) from which the wallpaper image will be removed.
             If None, removes from all pages.
         """
-        self.__ensure_pbir()
+        self._ensure_pbir()
 
         if isinstance(page, str):
             page = [page]
@@ -2834,7 +2862,7 @@ class ReportWrapper:
         theme_color_percent : float, default=0.0
             The percentage of the theme color to be applied. Valid values are between -0.6 and 0.6.
         """
-        self.__ensure_pbir()
+        self._ensure_pbir()
 
         if transparency < 0 or transparency > 100:
             raise ValueError(f"{icons.red_dot} Transparency must be between 0 and 100.")
@@ -2903,7 +2931,7 @@ class ReportWrapper:
         image_fit : str, default="Normal"
             The fit type of the wallpaper image. Valid options: "Normal", "Fit", "Fill".
         """
-        self.__ensure_pbir()
+        self._ensure_pbir()
 
         image_fits = ["Normal", "Fit", "Fill"]
         image_fit = image_fit.capitalize()
@@ -2959,7 +2987,7 @@ class ReportWrapper:
         height: int = 720,
         display_option: str = "FitToPage",
     ):
-        self.__ensure_pbir()
+        self._ensure_pbir()
 
         page_id = generate_hex()
         payload = {
@@ -2987,7 +3015,7 @@ class ReportWrapper:
         generate_id : bool, default=True
             Whether to generate a new page ID. If False, the page ID will be taken from the payload.
         """
-        self.__ensure_pbir()
+        self._ensure_pbir()
 
         page_file = decode_payload(payload)
         page_file_copy = copy.deepcopy(page_file)
@@ -3016,7 +3044,7 @@ class ReportWrapper:
         generate_id : bool, default=True
             Whether to generate a new visual ID. If False, the visual ID will be taken from the payload.
         """
-        self.__ensure_pbir()
+        self._ensure_pbir()
 
         visual_file = decode_payload(payload)
         visual_file_copy = copy.deepcopy(visual_file)
@@ -3043,7 +3071,7 @@ class ReportWrapper:
         height: int = 720,
         width: int = 1280,
     ):
-        self.__ensure_pbir()
+        self._ensure_pbir()
 
         type = helper.resolve_visual_type(type)
         visual_id = generate_hex()
@@ -3079,7 +3107,7 @@ class ReportWrapper:
             Example: {"#FF0000": (1, 0), "#00FF00": (2, 0)}
             The first value in the tuple is the theme color ID and the second value is the percentage (a value between -0.6 and 0.6).
         """
-        self.__ensure_pbir()
+        self._ensure_pbir()
 
         # Ensure theme color mapping is in the correct format (with Percent value)
         mapping = {k: (v, 0) if isinstance(v, int) else v for k, v in mapping.items()}
@@ -3154,7 +3182,7 @@ class ReportWrapper:
                 }
             }
         """
-        self.__ensure_pbir()
+        self._ensure_pbir()
 
         selector_mapping = {
             key: {
@@ -3320,7 +3348,7 @@ class ReportWrapper:
         list[str]
             A list of hex color codes used in the report.
         """
-        self.__ensure_pbir()
+        self._ensure_pbir()
 
         file = self.get("*.json", json_path="$..color.expr.Literal.Value")
 
@@ -3468,6 +3496,7 @@ class TitleObject:
         self.visual = visual
         self.base_path = base_path
 
+    # Text
     @property
     def Text(self):
         path = f"{self.base_path}.text.expr.Literal.Value"
@@ -3478,14 +3507,11 @@ class TitleObject:
         path = f"{self.base_path}.text.expr.Literal.Value"
         self.visual._set_property(path, value, add_quotes=True)
 
+    # Show
     @property
     def Show(self):
         path = f"{self.base_path}.show.expr.Literal.Value"
-        value = self.visual._get_property(path)
-        if value == 'true':
-            return True
-        else:
-            return False
+        return self.visual._get_property(path, fix_true=True)
 
     @Show.setter
     def Show(self, value: bool):
@@ -3498,3 +3524,281 @@ class TitleObject:
             self.visual._set_property(path, "true")
         else:
             self.visual._remove_property(path)
+
+    # Font
+    @property
+    def Font(self):
+        path = f"{self.base_path}.fontFamily.expr.Literal.Value"
+        value = self.visual._get_property(path)
+        if value:
+            value = value.strip("'")
+        return value
+
+    @Font.setter
+    def Font(self, value: str):
+        path = f"{self.base_path}.fontFamily.expr.Literal.Value"
+        self.visual._set_property(path, f"'''{value}'''")
+
+    # Font Size
+    @property
+    def FontSize(self):
+        path = f"{self.base_path}.fontSize.expr.Literal.Value"
+        value = self.visual._get_property(path)
+        if value:
+            value = value.rstrip("D")
+        return value
+
+    @FontSize.setter
+    def FontSize(self, value: int):
+        if not isinstance(value, int):
+            raise ValueError(
+                f"{icons.red_dot} The value for 'FontSize' must be an integer. Provided: {type(value)}"
+            )
+        path = f"{self.base_path}.fontSize.expr.Literal.Value"
+        self.visual._set_property(path, f"{value}D")
+
+    # Bold
+    @property
+    def Bold(self):
+        path = f"{self.base_path}.bold.expr.Literal.Value"
+        return self.visual._get_property(path, fix_true=True)
+
+    @Bold.setter
+    def Bold(self, value: bool):
+        if not isinstance(value, bool):
+            raise ValueError(
+                f"{icons.red_dot} The value for 'Bold' must be a bool. Provided: {type(value)}"
+            )
+        path = f"{self.base_path}.bold.expr.Literal.Value"
+        if value:
+            self.visual._set_property(path, "true")
+        else:
+            self.visual._remove_property(path)
+
+    # Italic
+    @property
+    def Italic(self):
+        path = f"{self.base_path}.italic.expr.Literal.Value"
+        return self.visual._get_property(path, fix_true=True)
+
+    @Italic.setter
+    def Italic(self, value: bool):
+        if not isinstance(value, bool):
+            raise ValueError(
+                f"{icons.red_dot} The value for 'Italic' must be a bool. Provided: {type(value)}"
+            )
+        path = f"{self.base_path}.italic.expr.Literal.Value"
+        if value:
+            self.visual._set_property(path, "true")
+        else:
+            self.visual._remove_property(path)
+
+    # Underline
+    @property
+    def Underline(self):
+        path = f"{self.base_path}.underline.expr.Literal.Value"
+        return self.visual._get_property(path, fix_true=True)
+
+    @Underline.setter
+    def Underline(self, value: bool):
+        if not isinstance(value, bool):
+            raise ValueError(
+                f"{icons.red_dot} The value for 'Underline' must be a bool. Provided: {type(value)}"
+            )
+        path = f"{self.base_path}.underline.expr.Literal.Value"
+        if value:
+            self.visual._set_property(path, "true")
+        else:
+            self.visual._remove_property(path)
+
+    # Font Color
+
+    # Alignment
+    @property
+    def Alignment(self):
+        path = f"{self.base_path}.alignment.expr.Literal.Value"
+        value = self.visual._get_property(path, remove_quotes=True)
+        if value:
+            value = value.capitalize()
+        return value
+
+    @Alignment.setter
+    def Alignment(self, value: Literal["Left", "Center", "Right"]):
+        value = value.capitalize()
+        if value not in ["Left", "Center", "Right"]:
+            raise ValueError(
+                f"{icons.red_dot} The value for 'Alignment' must be one of 'Left', 'Center', or 'Right'. Provided: {value}"
+            )
+        path = f"{self.base_path}.alignment.expr.Literal.Value"
+        self.visual._set_property(path, f"{value.lower()}", add_quotes=True)
+
+    # Text Wrap
+    @property
+    def TextWrap(self):
+        path = f"{self.base_path}.titleWrap.expr.Literal.Value"
+        return self.visual._get_property(path, fix_true=True)
+
+    @TextWrap.setter
+    def TextWrap(self, value: bool):
+        if not isinstance(value, bool):
+            raise ValueError(
+                f"{icons.red_dot} The value for 'TextWrap' must be a bool. Provided: {type(value)}"
+            )
+        path = f"{self.base_path}.underline.expr.Literal.Value"
+        if not value:
+            self.visual._set_property(path, "false")
+        else:
+            self.visual._remove_property(path)
+
+
+class Filter:
+    def __init__(self, file_path, filter_data, wrapper):
+        self._wrapper = wrapper
+        self._data = filter_data
+        self.FilePath = file_path
+        self.ObjectType = "Filter"
+        self.Name = filter_data.get("name")
+        self.Ordinal = filter_data.get("ordinal")
+        self.HowCreated = filter_data.get("howCreated", "Unknown")
+        self.Locked = filter_data.get("isLockedInViewMode", False)
+        self.Hidden = filter_data.get("isHiddenInViewMode", False)
+        self.Type = filter_data.get("type", "Basic")
+        self.IsUsed = True if "Where" in filter_data.get("filter", {}) else False
+
+        # Initialize fields
+        self.TableName = None
+        self.ObjectName = None
+        self.ObjectType = None
+
+        field = filter_data.get("field", {})
+
+        # Case 1: Simple column
+        if "Column" in field:
+            col = field["Column"]
+            self.TableName = (
+                col.get("Expression", {}).get("SourceRef", {}).get("Entity")
+            )
+            self.ObjectName = col.get("Property")
+            self.ObjectType = "Column"
+
+        # Case 2: Aggregation over column (still a column)
+        elif "Aggregation" in field:
+            col = field.get("Aggregation", {}).get("Expression", {}).get("Column", {})
+            self.TableName = (
+                col.get("Expression", {}).get("SourceRef", {}).get("Entity")
+            )
+            self.ObjectName = col.get("Property")
+            self.ObjectType = "Column"
+
+        # Case 3: Measure
+        elif "Measure" in field:
+            measure = field["Measure"]
+            self.TableName = (
+                measure.get("Expression", {}).get("SourceRef", {}).get("Entity")
+            )
+            self.ObjectName = measure.get("Property")
+            self.ObjectType = "Measure"
+
+    def to_dict(self):
+        return {
+            **self._data,
+            "TableName": self.TableName,
+            "ObjectName": self.ObjectName,
+            "ObjectType": self.ObjectType,
+        }
+
+
+class ReportFilterCollection:
+    def __init__(self, wrapper):
+        self._wrapper = wrapper
+        self._filters = None
+
+    def _load_filters(self):
+        data = self._wrapper.get(file_path=ReportWrapper._report_file_path)
+        raw_filters = get_jsonpath_value(
+            data=data, path="$.filterConfig.filters", default=[]
+        )
+        self._filters = [
+            Filter(ReportWrapper._report_file_path, f, self._wrapper)
+            for f in raw_filters
+        ]
+
+    def __iter__(self):
+        if self._filters is None:
+            self._load_filters()
+        return iter(self._filters)
+
+    def __getitem__(self, index):
+        if self._filters is None:
+            self._load_filters()
+        return self._filters[index]
+
+    @property
+    def Count(self):
+        if self._filters is None:
+            self._load_filters()
+        return len(self._filters)
+
+
+class PageFilterCollection:
+    def __init__(self, wrapper, page_file_path=None):
+        self._wrapper = wrapper
+        self._page_filters = None
+        self._page_file_path = page_file_path
+
+    def _load_filters(self):
+        data = self._wrapper.get(file_path=self._page_file_path)
+        filter_list = get_jsonpath_value(
+            data, path="$.filterConfig.filters", default=[]
+        )
+        self._page_filters = [
+            Filter(self._page_file_path, f, self._wrapper) for f in filter_list
+        ]
+
+    def __iter__(self):
+        if self._page_filters is None:
+            self._load_filters()
+        return iter(self._page_filters)
+
+    def __getitem__(self, index):
+        if self._page_filters is None:
+            self._load_filters()
+        return self._page_filters[index]
+
+    @property
+    def Count(self):
+        if self._page_filters is None:
+            self._load_filters()
+        return len(self._page_filters)
+
+
+class VisualFilterCollection:
+    def __init__(self, wrapper, visual_file_path=None):
+        self._wrapper = wrapper
+        self._visual_filters = None
+        self._visual_file_path = visual_file_path
+
+    def _load_filters(self):
+        data = self._wrapper.get(file_path=self._visual_file_path)
+        filter_list = get_jsonpath_value(
+            data, path="$.filterConfig.filters", default=[]
+        )
+        self._visual_filters = [
+            Filter(self._visual_file_path, f, self._wrapper) for f in filter_list
+        ]
+
+    def __iter__(self):
+        if self._visual_filters is None:
+            self._load_filters()
+        return iter(self._visual_filters)
+
+    def __getitem__(self, index):
+        if self._visual_filters is None:
+            self._load_filters()
+        return self._visual_filters[index]
+
+    @property
+    def Count(self):
+        if self._visual_filters is None:
+            self._load_filters()
+        return len(self._visual_filters)

@@ -38,10 +38,9 @@ vis_type_mapping = {
     "decompositionTreeVisual": "Decomposition tree",
     "qnaVisual": "Q&A",
     "aiNarratives": "Narrative",
-    "scorecard": "Metrics (Preview)",
+    "scorecard": "Goals (Preview)",
     "rdlVisual": "Paginated report",
     "cardVisual": "Card (new)",
-    "advancedSlicerVisual": "Slicer (new)",
     "actionButton": "Button",
     "bookmarkNavigator": "Bookmark navigator",
     "image": "Image",
@@ -49,6 +48,9 @@ vis_type_mapping = {
     "pageNavigator": "Page navigator",
     "shape": "Shape",
     "Group": "Group",
+    "listSlicer": "List Slicer",
+    "advancedSlicerVisual": "Button Slicer",
+    "FlowVisual_C29F1DCC_81F5_4973_94AD_0517D44CC06A": "Power Automate for Power BI",
 }
 
 
