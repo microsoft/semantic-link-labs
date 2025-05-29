@@ -17,6 +17,8 @@ import numpy as np
 from IPython.display import display, HTML
 import requests
 import sempy_labs._authentication as auth
+from jsonpath_ng.ext import parse
+from jsonpath_ng.jsonpath import Fields, Index
 
 
 def _build_url(url: str, params: dict) -> str:
@@ -2270,3 +2272,166 @@ def file_exists(file_path: str) -> bool:
     import notebookutils
 
     return len(notebookutils.fs.ls(file_path)) > 0
+
+
+def generate_number_guid():
+
+    guid = uuid.uuid4()
+    return str(guid.int & ((1 << 64) - 1))
+
+
+def get_url_content(url: str):
+
+    if "github.com" in url and "/blob/" in url:
+        url = url.replace("github.com", "raw.githubusercontent.com")
+        url = url.replace("/blob/", "/")
+
+    response = requests.get(url)
+    if response.ok:
+        try:
+            data = response.json()  # Only works if the response is valid JSON
+        except ValueError:
+            data = response.text  # Fallback: get raw text content
+        return data
+    else:
+        print(f"Failed to fetch raw content: {response.status_code}")
+
+
+def generate_hex(length: int = 10) -> str:
+    """
+    Generate a random hex string of the specified length. Used for generating IDs for report objects (page, visual, bookmark etc.).
+    """
+    import secrets
+
+    return secrets.token_hex(length)
+
+
+def decode_payload(payload):
+
+    if is_base64(payload):
+        try:
+            decoded_payload = json.loads(base64.b64decode(payload).decode("utf-8"))
+        except Exception:
+            decoded_payload = base64.b64decode(payload)
+    elif isinstance(payload, dict):
+        decoded_payload = payload
+    else:
+        raise ValueError("Payload must be a dictionary or a base64 encoded value.")
+
+    return decoded_payload
+
+
+def is_base64(s):
+    try:
+        # Add padding if needed
+        s_padded = s + "=" * (-len(s) % 4)
+        decoded = base64.b64decode(s_padded, validate=True)
+        # Optional: check if re-encoding gives the original (excluding padding)
+        return base64.b64encode(decoded).decode().rstrip("=") == s.rstrip("=")
+    except Exception:
+        return False
+
+
+def get_jsonpath_value(
+    data, path, default=None, remove_quotes=False, fix_true: bool = False
+):
+    matches = parse(path).find(data)
+    result = matches[0].value if matches else default
+    if result and remove_quotes and isinstance(result, str):
+        if result.startswith("'") and result.endswith("'"):
+            result = result[1:-1]
+    if fix_true and isinstance(result, str):
+        if result.lower() == "true":
+            result = True
+        elif result.lower() == "false":
+            result = False
+    return result
+
+
+def set_json_value(payload: dict, json_path: str, json_value: str | dict | List):
+
+    jsonpath_expr = parse(json_path)
+    matches = jsonpath_expr.find(payload)
+
+    if matches:
+        # Update all matches
+        for match in matches:
+            parent = match.context.value
+            path = match.path
+            if isinstance(path, Fields):
+                parent[path.fields[0]] = json_value
+            elif isinstance(path, Index):
+                parent[path.index] = json_value
+    else:
+        # Handle creation
+        parts = json_path.lstrip("$").strip(".").split(".")
+        current = payload
+
+        for i, part in enumerate(parts):
+            is_last = i == len(parts) - 1
+
+            # Detect list syntax like "lockAspect[*]"
+            list_match = re.match(r"(\w+)\[\*\]", part)
+            if list_match:
+                list_key = list_match.group(1)
+                if list_key not in current or not isinstance(current[list_key], list):
+                    # Initialize with one dict element
+                    current[list_key] = [{}]
+
+                for item in current[list_key]:
+                    if is_last:
+                        # Last part, assign value
+                        item = json_value
+                    else:
+                        # Proceed to next level
+                        if not isinstance(item, dict):
+                            raise ValueError(
+                                f"Expected dict in list for key '{list_key}', got {type(item)}"
+                            )
+                        next_part = ".".join(parts[i + 1 :])
+                        set_json_value(item, "$." + next_part, json_value)
+                return payload
+            else:
+                if part not in current or not isinstance(current[part], dict):
+                    current[part] = {} if not is_last else json_value
+                elif is_last:
+                    current[part] = json_value
+                current = current[part]
+
+    return payload
+
+
+def remove_json_value(path: str, payload: dict, json_path: str, verbose: bool = True):
+
+    if not isinstance(payload, dict):
+        raise ValueError(
+            f"{icons.red_dot} Cannot apply json_path to non-dictionary payload in '{path}'."
+        )
+
+    jsonpath_expr = parse(json_path)
+    matches = jsonpath_expr.find(payload)
+
+    if not matches and verbose:
+        print(
+            f"{icons.red_dot} No match found for '{json_path}' in '{path}'. Skipping."
+        )
+        return payload
+
+    for match in matches:
+        parent = match.context.value
+        path_expr = match.path
+
+        if isinstance(path_expr, Fields):
+            key = path_expr.fields[0]
+            if key in parent:
+                del parent[key]
+                if verbose:
+                    print(f"{icons.green_dot} Removed key '{key}' from '{path}'.")
+        elif isinstance(path_expr, Index):
+            index = path_expr.index
+            if isinstance(parent, list) and 0 <= index < len(parent):
+                parent.pop(index)
+                if verbose:
+                    print(f"{icons.green_dot} Removed index [{index}] from '{path}'.")
+
+    return payload

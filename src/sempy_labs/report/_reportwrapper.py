@@ -1,28 +1,40 @@
+from typing import Optional, Tuple, List, Literal
+from contextlib import contextmanager
+from sempy._utils._log import log
+from uuid import UUID
 from sempy_labs._helper_functions import (
-    resolve_report_id,
-    format_dax_object_name,
-    resolve_dataset_from_report,
-    _conv_b64,
-    _extract_json,
-    _add_part,
-    _decode_b64,
     resolve_workspace_name_and_id,
-    _update_dataframe_datatypes,
+    resolve_item_name_and_id,
     _base_api,
     _create_dataframe,
+    _update_dataframe_datatypes,
+    format_dax_object_name,
+    resolve_dataset_from_report,
+    generate_number_guid,
+    decode_payload,
+    is_base64,
+    generate_hex,
+    get_jsonpath_value,
+    set_json_value,
+    remove_json_value,
 )
-from typing import Optional, List
-import pandas as pd
+from sempy_labs._dictionary_diffs import (
+    diff_parts,
+)
 import json
-import base64
-from uuid import UUID
-from sempy._utils._log import log
 import sempy_labs._icons as icons
+import copy
+import pandas as pd
+from jsonpath_ng.ext import parse
 import sempy_labs.report._report_helper as helper
 from sempy_labs._model_dependencies import get_measure_dependencies
-from jsonpath_ng.ext import parse
-import warnings
 import requests
+import re
+import base64
+from pathlib import Path
+from urllib.parse import urlparse
+import os
+import fnmatch
 
 
 class ReportWrapper:
@@ -33,75 +45,542 @@ class ReportWrapper:
 
     Parameters
     ----------
-    report : str
-        The name of the report.
+    report : str | uuid.UUID
+        The name or ID of the report.
     workspace : str | uuid.UUID
         The name or ID of the workspace in which the report resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    readonly: bool, default=True
+        Whether the connection is read-only or read/write. Setting this to False enables read/write which saves the changes made back to the server.
+    show_diffs: bool, default=True
+        Whether to show the differences between the current report definition in the service and the new report definition.
 
     Returns
     -------
-    pandas.DataFrame
-        A pandas dataframe containing the report metadata definition files.
+    None
+        A connection to the report is established and the report definition is retrieved.
     """
 
-    _report: str
-    _workspace: str
+    _report_name: str
+    _report_id: str
+    _workspace_name: str
+    _workspace_id: str
+    _readonly: bool
+    _report_file_path = "definition/report.json"
+    _pages_file_path = "definition/pages/pages.json"
+    _report_extensions_path = "definition/reportExtensions.json"
+
+    # Visuals
+    _title_path = (
+        "$.visual.visualContainerObjects.title[*].properties.text.expr.Literal.Value"
+    )
+    _subtitle_path = (
+        "$.visual.visualContainerObjects.subTitle[*].properties.text.expr.Literal.Value"
+    )
+    _visual_x_path = "$.position.x"
+    _visual_y_path = "$.position.y"
 
     @log
     def __init__(
         self,
-        report: str,
+        report: str | UUID,
         workspace: Optional[str | UUID] = None,
+        readonly: bool = True,
+        show_diffs: bool = True,
     ):
-        """
-        Connects to a Power BI report and retrieves its definition.
+        (self._workspace_name, self._workspace_id) = resolve_workspace_name_and_id(
+            workspace
+        )
+        (self._report_name, self._report_id) = resolve_item_name_and_id(
+            item=report, type="Report", workspace=self._workspace_id
+        )
+        self._readonly = readonly
+        self._show_diffs = show_diffs
 
-        The ReportWrapper and all functions which depend on it require the report to be in the `PBIR <https://powerbi.microsoft.com/blog/power-bi-enhanced-report-format-pbir-in-power-bi-desktop-developer-mode-preview>`_ format.
+        result = _base_api(
+            request=f"/v1/workspaces/{self._workspace_id}/items/{self._report_id}/getDefinition",
+            method="post",
+            status_codes=None,
+            lro_return_json=True,
+        )
+
+        # def is_zip_file(data: bytes) -> bool:
+        #    return data.startswith(b"PK\x03\x04")
+
+        # Check that the report is in the PBIR format
+        parts = result.get("definition", {}).get("parts", [])
+        if self._report_file_path not in [p.get("path") for p in parts]:
+            self.format = "PBIR-Legacy"
+        else:
+            self.format = "PBIR"
+        self._report_definition = {"parts": []}
+        for part in parts:
+            path = part.get("path")
+            payload = part.get("payload")
+
+            # decoded_bytes = base64.b64decode(payload)
+            # decoded_payload = json.loads(_decode_b64(payload))
+            # try:
+            #    decoded_payload = json.loads(base64.b64decode(payload).decode("utf-8"))
+            # except Exception:
+            #    decoded_payload = base64.b64decode(payload)
+            decoded_payload = decode_payload(payload)
+
+            # if is_zip_file(decoded_bytes):
+            #    merged_payload = {}
+            #    with zipfile.ZipFile(BytesIO(decoded_bytes)) as zip_file:
+            #        for filename in zip_file.namelist():
+            #            if filename.endswith(".json"):
+            #                with zip_file.open(filename) as f:
+            #                    content = f.read()
+            #                    part_data = json.loads(content.decode("utf-8"))
+
+            #                    if isinstance(part_data, dict):
+            #                        merged_payload.update(part_data)
+            #                    else:
+            #                        # For non-dict top-level json (rare), store under filename
+            #                        merged_payload[filename] = part_data
+
+            #    self._report_definition["parts"].append(
+            #        {"path": path, "payload": merged_payload}
+            #   )
+            # else:
+            #    decoded_payload = json.loads(decoded_bytes.decode("utf-8"))
+            self._report_definition["parts"].append(
+                {"path": path, "payload": decoded_payload}
+            )
+
+        self._current_report_definition = copy.deepcopy(self._report_definition)
+
+        #self.report = self.Report(self)
+
+        helper.populate_custom_visual_display_names()
+
+    def _ensure_pbir(self):
+
+        if self.format != "PBIR":
+            raise NotImplementedError(
+                f"{icons.red_dot} This ReportWrapper function requires the report to be in the PBIR format."
+                "See here for details: https://powerbi.microsoft.com/blog/power-bi-enhanced-report-format-pbir-in-power-bi-desktop-developer-mode-preview/"
+            )
+
+    # Basic functions
+    def get(
+        self,
+        file_path: str,
+        json_path: Optional[str] = None,
+    ) -> dict | List[Tuple[str, dict]]:
+        """
+        Get the json content of the specified report definition file.
 
         Parameters
         ----------
-        report : str
-            The name of the report.
-        workspace : str | UUID
-            The name or ID of the workspace in which the report resides.
-            Defaults to None which resolves to the workspace of the attached lakehouse
-            or if no lakehouse attached, resolves to the workspace of the notebook.
+        file_path : str
+            The path of the report definition file. For example: "definition/pages/pages.json". You may also use wildcards. For example: "definition/pages/*/page.json".
+        json_path : str, default=None
+            The json path to the specific part of the file to be retrieved. If None, the entire file content is returned.
+
+        Returns
+        -------
+        dict | List[Tuple[str, dict]]
+            The json content of the specified report definition file.
+        """
+
+        parts = self._report_definition.get("parts")
+
+        # Find matching parts
+        if "*" in file_path:
+            matching_parts = [
+                (part.get("path"), part.get("payload"))
+                for part in parts
+                if fnmatch.fnmatch(part.get("path"), file_path)
+            ]
+
+            if not matching_parts:
+                raise ValueError(
+                    f"{icons.red_dot} No files match the wildcard path '{file_path}'."
+                )
+
+            results = []
+            for path, payload in matching_parts:
+                if not json_path:
+                    results.append((path, payload))
+                elif not isinstance(payload, dict):
+                    raise ValueError(
+                        f"{icons.red_dot} The payload of the file '{path}' is not a dictionary."
+                    )
+                else:
+                    jsonpath_expr = parse(json_path)
+                    matches = jsonpath_expr.find(payload)
+                    if matches:
+                        results.append((path, matches[0].value))
+                    # else:
+                    #    raise ValueError(
+                    #        f"{icons.red_dot} No match found for '{json_path}' in '{path}'."
+                    #    )
+            if not results:
+                raise ValueError(
+                    f"{icons.red_dot} No match found for '{json_path}' in any of the files matching the wildcard path '{file_path}'."
+                )
+            return results
+
+        # Exact path match
+        for part in parts:
+            if part.get("path") == file_path:
+                payload = part.get("payload")
+                if not json_path:
+                    return payload
+                elif not isinstance(payload, dict):
+                    raise ValueError(
+                        f"{icons.red_dot} The payload of the file '{file_path}' is not a dictionary."
+                    )
+                else:
+                    jsonpath_expr = parse(json_path)
+                    matches = jsonpath_expr.find(payload)
+                    if matches:
+                        return matches[0].value
+                    else:
+                        raise ValueError(
+                            f"{icons.red_dot} No match found for '{json_path}'."
+                        )
+
+        raise ValueError(
+            f"{icons.red_dot} File '{file_path}' not found in report definition."
+        )
+
+    def add(self, file_path: str, payload: dict | bytes):
+        """
+        Add a new file to the report definition.
+
+        Parameters
+        ----------
+        file_path : str
+            The path of the file to be added. For example: "definition/pages/pages.json".
+        payload : dict | bytes
+            The json content of the file to be added. This can be a dictionary or a base64 encoded string.
+        """
+
+        decoded_payload = decode_payload(payload)
+
+        if file_path in self.list_paths().get("Path").values:
+            raise ValueError(
+                f"{icons.red_dot} Cannot add the '{file_path}' file as this file path already exists in the report definition."
+            )
+
+        self._report_definition["parts"].append(
+            {"path": file_path, "payload": decoded_payload}
+        )
+
+    def remove(self, file_path: str, json_path: Optional[str] = None, verbose=True):
+        """
+        Removes a file from the report definition.
+
+        Parameters
+        ----------
+        file_path : str
+            The path of the file to be removed. For example: "definition/pages/fjdis323484/page.json".
+        json_path : str, default=None
+            The json path to the specific part of the file to be removed. If None, the entire file is removed. Wildcards are supported (i.e. "definition/pages/*/page.json").
+        verbose : bool, default=True
+            If True, prints messages about the removal process. If False, suppresses these messages.
+        """
+
+        parts = self._report_definition.get("parts")
+        matching_parts = []
+
+        if "*" in file_path:
+            matching_parts = [
+                part for part in parts if fnmatch.fnmatch(part.get("path"), file_path)
+            ]
+        else:
+            matching_parts = [part for part in parts if part.get("path") == file_path]
+
+        if not matching_parts:
+            raise ValueError(
+                f"{icons.red_dot} No file(s) found for path '{file_path}'."
+            )
+
+        for part in matching_parts:
+            path = part.get("path")
+            payload = part.get("payload")
+
+            if not json_path:
+                self._report_definition["parts"].remove(part)
+                print(
+                    f"{icons.green_dot} The file '{path}' has been removed from the report definition."
+                )
+            else:
+                remove_json_value(
+                    path=path, payload=payload, json_path=json_path, verbose=verbose
+                )
+
+    def update(self, file_path: str, payload: dict | bytes):
+        """
+        Updates the payload of a file in the report definition.
+
+        Parameters
+        ----------
+        file_path : str
+            The path of the file to be updated. For example: "definition/pages/pages.json".
+        payload : dict | bytes
+            The new json content of the file to be updated. This can be a dictionary or a base64 encoded string.
+        """
+
+        decoded_payload = decode_payload(payload)
+
+        for part in self._report_definition.get("parts"):
+            if part.get("path") == file_path:
+                part["payload"] = decoded_payload
+                # if not self._readonly:
+                #    print(
+                #        f"The file '{file_path}' has been updated in the report definition."
+                #    )
+                return
+
+        raise ValueError(
+            f"The '{file_path}' file was not found in the report definition."
+        )
+
+    def set_json(self, file_path: str, json_path: str, json_value: str | dict | List):
+        """
+        Sets the JSON value of a file in the report definition. If the json_path does not exist, it will be created.
+
+        Parameters
+        ----------
+        file_path : str
+            The file path of the JSON file to be updated. For example: "definition/pages/ReportSection1/visuals/a1d8f99b81dcc2d59035/visual.json". Also supports wildcards.
+        json_path : str
+            The JSON path to the value to be updated or created. This must be a valid JSONPath expression.
+            Examples:
+                "$.objects.outspace"
+                "$.hi.def[*].vv"
+        json_value : str | dict | List
+            The new value to be set at the specified JSON path. This can be a string, dictionary, or list.
+        """
+
+        files = self.get(file_path=file_path)
+
+        if isinstance(files, dict):
+            files = [(file_path, files)]
+
+        for file in files:
+            path = file[0]
+            payload = file[1]
+            new_payload = set_json_value(
+                payload=payload, json_path=json_path, json_value=json_value
+            )
+
+            self.update(file_path=path, payload=new_payload)
+
+    def list_paths(self) -> pd.DataFrame:
+        """
+        List all file paths in the report definition.
 
         Returns
         -------
         pandas.DataFrame
-            A pandas dataframe containing the report metadata definition files.
+            A pandas dataframe containing a list of all paths in the report definition.
         """
 
-        from sempy_labs.report import get_report_definition
+        existing_paths = [
+            part.get("path") for part in self._report_definition.get("parts")
+        ]
+        return pd.DataFrame(existing_paths, columns=["Path"])
 
-        warnings.simplefilter(action="ignore", category=FutureWarning)
+    def __all_pages(self):
 
-        self._report = report
-        (self._workspace_name, self._workspace_id) = resolve_workspace_name_and_id(
-            workspace
-        )
-        self._report_id = resolve_report_id(report, self._workspace_id)
-        self.rdef = get_report_definition(
-            report=self._report, workspace=self._workspace_id
-        )
+        self._ensure_pbir()
 
-        if len(self.rdef[self.rdef["path"] == "definition/report.json"]) == 0:
-            raise ValueError(
-                f"{icons.red_dot} The ReportWrapper function requires the report to be in the PBIR format."
-                "See here for details: https://powerbi.microsoft.com/blog/power-bi-enhanced-report-format-pbir-in-power-bi-desktop-developer-mode-preview/"
-            )
+        return [
+            o
+            for o in self._report_definition.get("parts")
+            if o.get("path").endswith("/page.json")
+        ]
+
+    def __all_visuals(self):
+
+        self._ensure_pbir()
+
+        return [
+            o
+            for o in self._report_definition.get("parts")
+            if o.get("path").endswith("/visual.json")
+        ]
 
     # Helper functions
+    def __resolve_page_list(self, page: Optional[str | List[str]] = None) -> List[str]:
+
+        if isinstance(page, str):
+            page = [page]
+
+        # Resolve page list
+        return (
+            [self.resolve_page_name(p) for p in page]
+            if page
+            else [
+                p["payload"]["name"]
+                for p in self.__all_pages()
+                if "payload" in p and "name" in p["payload"]
+            ]
+        )
+
+    def _get_url(self, page_name: Optional[str] = None) -> str:
+        """
+        Gets the URL of the report. If specified, gets the URL of the specified page.
+
+        Parameters
+        ----------
+        page_name : str, default=None
+            The name of the page. If None, gets the URL of the report.
+            If specified, gets the URL of the specified page.
+
+        Returns
+        -------
+        str
+            The URL of the report or the specified page.
+        """
+
+        url = f"https://app.powerbi.com/groups/{self._workspace_id}/reports/{self._report_id}"
+
+        if page_name:
+            url += f"/{page_name}"
+
+        return url
+
+    def __resolve_page_name_and_display_name_file_path(
+        self, page: str
+    ) -> Tuple[str, str, str]:
+
+        self._ensure_pbir()
+        page_map = {
+            p["path"]: [p["payload"]["name"], p["payload"]["displayName"]]
+            for p in self._report_definition.get("parts", [])
+            if p.get("path", "").endswith("/page.json") and "payload" in p
+        }
+
+        # Build lookup: page_id → (path, display_name)
+        id_lookup = {v[0]: (k, v[1]) for k, v in page_map.items()}
+
+        # Build lookup: display_name → (path, page_id)
+        name_lookup = {v[1]: (k, v[0]) for k, v in page_map.items()}
+
+        if page in id_lookup:
+            path, display_name = id_lookup[page]
+            return path, page, display_name
+        elif page in name_lookup:
+            path, page_id = name_lookup[page]
+            return path, page_id, page
+        else:
+            raise ValueError(
+                f"{icons.red_dot} Invalid page display name. The '{page}' page does not exist in the '{self._report_name}' report within the '{self._workspace_name}' workspace."
+            )
+
+    def _resolve_page_name_and_display_name(self, page: str) -> Tuple[str, str]:
+        """
+        Obtains the page name, page display name for a given page in a report.
+
+        Parameters
+        ----------
+        page : str
+            The page name or display name.
+
+        Returns
+        -------
+        Tuple[str, str]
+            The page name and display name.
+        """
+
+        (_, page_id, page_name) = self.__resolve_page_name_and_display_name_file_path(
+            page
+        )
+
+        return (page_id, page_name)
+
+    def resolve_page_name(self, page_display_name: str) -> str:
+        """
+        Obtains the page name, page display name, and the file path for a given page in a report.
+
+        Parameters
+        ----------
+        page_display_name : str
+            The display name of the page of the report.
+
+        Returns
+        -------
+        str
+            The page name.
+        """
+
+        (path, page_id, page_name) = (
+            self.__resolve_page_name_and_display_name_file_path(page_display_name)
+        )
+        return page_id
+
+    def resolve_page_display_name(self, page_name: str) -> str:
+        """
+        Obtains the page dispaly name.
+
+        Parameters
+        ----------
+        page_name : str
+            The name of the page of the report.
+
+        Returns
+        -------
+        str
+            The page display name.
+        """
+
+        (path, page_id, page_name) = (
+            self.__resolve_page_name_and_display_name_file_path(page_name)
+        )
+        return page_name
+
+    def __add_to_registered_resources(self, name: str, path: str, type: str):
+
+        type = type.capitalize()
+
+        report_file = self.get(file_path=self._report_file_path)
+        rp_names = [rp.get("name") for rp in report_file.get("resourcePackages")]
+
+        new_item = {"name": name, "path": path, "type": type}
+        if "RegisteredResources" not in rp_names:
+            res = {
+                "name": "RegisteredResources",
+                "type": "RegisteredResources",
+                "items": [new_item],
+            }
+            report_file.get("resourcePackages").append(res)
+        else:
+            for rp in report_file.get("resourcePackages"):
+                if rp.get("name") == "RegisteredResources":
+                    for item in rp.get("items"):
+                        item_name = item.get("name")
+                        item_type = item.get("type")
+                        item_path = item.get("path")
+                        if (
+                            item_name == name
+                            and item_type == type
+                            and item_path == path
+                        ):
+                            print(
+                                f"{icons.info} The '{item_name}' {type.lower()} already exists in the report definition."
+                            )
+                            raise ValueError()
+
+                    # Add the new item to the existing RegisteredResources
+                    rp["items"].append(new_item)
+
+        self.update(file_path=self._report_file_path, payload=report_file)
+
     def _add_extended(self, dataframe):
 
         from sempy_labs.tom import connect_semantic_model
 
         dataset_id, dataset_name, dataset_workspace_id, dataset_workspace_name = (
             resolve_dataset_from_report(
-                report=self._report, workspace=self._workspace_id
+                report=self._report_id, workspace=self._workspace_id
             )
         )
 
@@ -141,119 +620,32 @@ class ReportWrapper:
         dataframe["Valid Semantic Model Object"] = dataframe.apply(is_valid, axis=1)
         return dataframe
 
-    def _update_single_file(self, file_name: str, new_payload):
-        """
-        Updates a single file within the PBIR structure
-        """
+    def _visual_page_mapping(self) -> dict:
+        self._ensure_pbir()
 
-        request_body = {"definition": {"parts": []}}
-        for _, r in self.rdef.iterrows():
-            path = r["path"]
-            payload = r["payload"]
-            if path == file_name:
-                _add_part(request_body, path=path, payload=new_payload)
-            else:
-                _add_part(request_body, path=path, payload=payload)
+        page_mapping = {}
+        visual_mapping = {}
 
-        self.update_report(request_body)
+        for p in self.__all_pages():
+            path = p.get("path")
+            payload = p.get("payload")
+            pattern_page = r"/pages/(.*?)/page.json"
+            page_name = re.search(pattern_page, path).group(1)
+            page_id = payload.get("name")
+            page_display = payload.get("displayName")
+            page_mapping[page_name] = (page_id, page_display)
 
-    def update_report(self, request_body: dict):
-
-        _base_api(
-            request=f"/v1/workspaces/{self._workspace_id}/reports/{self._report_id}/updateDefinition",
-            method="post",
-            payload=request_body,
-            lro_return_status_code=True,
-            status_codes=None,
-        )
-
-    def resolve_page_name(self, page_display_name: str) -> UUID:
-        """
-        Obtains the page name, page display name, and the file path for a given page in a report.
-
-        Parameters
-        ----------
-        page_display_name : str
-            The display name of the page of the report.
-
-        Returns
-        -------
-        UUID
-            The page name.
-        """
-
-        x, y, z = helper.resolve_page_name(self, page_display_name)
-
-        return x
-
-    def resolve_page_display_name(self, page_name: UUID) -> str:
-        """
-        Obtains the page dispaly name.
-
-        Parameters
-        ----------
-        page_name : UUID
-            The name of the page of the report.
-
-        Returns
-        -------
-        str
-            The page display name.
-        """
-
-        x, y, z = helper.resolve_page_name(self, page_name=page_name)
-
-        return y
-
-    def get_theme(self, theme_type: str = "baseTheme") -> dict:
-        """
-        Obtains the theme file of the report.
-
-        Parameters
-        ----------
-        theme_type : str, default="baseTheme"
-            The theme type. Options: "baseTheme", "customTheme".
-
-        Returns
-        -------
-        dict
-            The theme.json file
-        """
-
-        theme_types = ["baseTheme", "customTheme"]
-        theme_type = theme_type.lower()
-
-        if "custom" in theme_type:
-            theme_type = "customTheme"
-        elif "base" in theme_type:
-            theme_type = "baseTheme"
-        if theme_type not in theme_types:
-            raise ValueError(
-                f"{icons.red_dot} Invalid theme type. Valid options: {theme_types}."
+        for v in self.__all_visuals():
+            path = v.get("path")
+            payload = v.get("payload")
+            pattern_page = r"/pages/(.*?)/visuals/"
+            page_name = re.search(pattern_page, path).group(1)
+            visual_mapping[path] = (
+                page_mapping.get(page_name)[0],
+                page_mapping.get(page_name)[1],
             )
 
-        rptdef = self.rdef[self.rdef["path"] == "definition/report.json"]
-        rptJson = _extract_json(rptdef)
-        theme_collection = rptJson.get("themeCollection", {})
-        if theme_type not in theme_collection:
-            raise ValueError(
-                f"{icons.red_dot} The {self._report} report within the '{self._workspace_name} workspace has no custom theme."
-            )
-        ct = theme_collection.get(theme_type)
-        theme_name = ct["name"]
-        theme_location = ct["type"]
-        theme_file_path = f"StaticResources/{theme_location}/{theme_name}"
-        if theme_type == "baseTheme":
-            theme_file_path = (
-                f"StaticResources/{theme_location}/BaseThemes/{theme_name}"
-            )
-        if not theme_file_path.endswith(".json"):
-            theme_file_path = f"{theme_file_path}.json"
-
-        theme_df = self.rdef[self.rdef["path"] == theme_file_path]
-        theme_json = _extract_json(theme_df)
-
-        return theme_json
+        return visual_mapping
 
     # List functions
     def list_custom_visuals(self) -> pd.DataFrame:
@@ -265,8 +657,7 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe containing a list of all the custom visuals used in the report.
         """
-
-        helper.populate_custom_visual_display_names()
+        self._ensure_pbir()
 
         columns = {
             "Custom Visual Name": "str",
@@ -275,17 +666,27 @@ class ReportWrapper:
         }
 
         df = _create_dataframe(columns=columns)
-        rd = self.rdef
-        rd_filt = rd[rd["path"] == "definition/report.json"]
-        rptJson = _extract_json(rd_filt)
-        df["Custom Visual Name"] = rptJson.get("publicCustomVisuals")
+
+        report_file = self.get(file_path=self._report_file_path)
+
+        df["Custom Visual Name"] = report_file.get("publicCustomVisuals")
         df["Custom Visual Display Name"] = df["Custom Visual Name"].apply(
             lambda x: helper.vis_type_mapping.get(x, x)
         )
 
-        df["Used in Report"] = df["Custom Visual Name"].isin(
-            self.list_visuals()["Type"]
-        )
+        visual_types = set()
+        for v in self.__all_visuals():
+            payload = v.get("payload", {})
+            visual = payload.get("visual", {})
+            visual_type = visual.get("visualType")
+            if visual_type:
+                visual_types.add(visual_type)
+
+        for _, r in df.iterrows():
+            if r["Custom Visual Name"] in visual_types:
+                df.at[_, "Used in Report"] = True
+            else:
+                df.at[_, "Used in Report"] = False
 
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
@@ -307,7 +708,9 @@ class ReportWrapper:
             A pandas dataframe containing a list of all the report filters used in the report.
         """
 
-        rd_filt = self.rdef[self.rdef["path"] == "definition/report.json"]
+        self._ensure_pbir()
+
+        report_file = self.get(file_path=self._report_file_path)
 
         columns = {
             "Filter Name": "str",
@@ -322,35 +725,36 @@ class ReportWrapper:
         }
         df = _create_dataframe(columns=columns)
 
-        if len(rd_filt) == 1:
-            rpt_json = _extract_json(rd_filt)
-            if "filterConfig" in rpt_json:
-                for flt in rpt_json.get("filterConfig", {}).get("filters", {}):
-                    filter_name = flt.get("name")
-                    how_created = flt.get("howCreated")
-                    locked = flt.get("isLockedInViewMode", False)
-                    hidden = flt.get("isHiddenInViewMode", False)
-                    filter_type = flt.get("type", "Basic")
-                    filter_used = True if "Where" in flt.get("filter", {}) else False
+        dfs = []
 
-                    entity_property_pairs = helper.find_entity_property_pairs(flt)
+        if "filterConfig" in report_file:
+            for flt in report_file.get("filterConfig", {}).get("filters", {}):
+                filter_name = flt.get("name")
+                how_created = flt.get("howCreated")
+                locked = flt.get("isLockedInViewMode", False)
+                hidden = flt.get("isHiddenInViewMode", False)
+                filter_type = flt.get("type", "Basic")
+                filter_used = True if "Where" in flt.get("filter", {}) else False
 
-                    for object_name, properties in entity_property_pairs.items():
-                        new_data = {
-                            "Filter Name": filter_name,
-                            "Type": filter_type,
-                            "Table Name": properties[0],
-                            "Object Name": object_name,
-                            "Object Type": properties[1],
-                            "Hidden": hidden,
-                            "Locked": locked,
-                            "How Created": how_created,
-                            "Used": filter_used,
-                        }
+                entity_property_pairs = helper.find_entity_property_pairs(flt)
 
-                        df = pd.concat(
-                            [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                        )
+                for object_name, properties in entity_property_pairs.items():
+                    new_data = {
+                        "Filter Name": filter_name,
+                        "Type": filter_type,
+                        "Table Name": properties[0],
+                        "Object Name": object_name,
+                        "Object Type": properties[1],
+                        "Hidden": hidden,
+                        "Locked": locked,
+                        "How Created": how_created,
+                        "Used": filter_used,
+                    }
+
+                    dfs.append(pd.DataFrame(new_data, index=[0]))
+
+        if dfs:
+            df = pd.concat(dfs, ignore_index=True)
 
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
@@ -374,6 +778,7 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe containing a list of all the page filters used in the report.
         """
+        self._ensure_pbir()
 
         columns = {
             "Page Name": "str",
@@ -390,51 +795,43 @@ class ReportWrapper:
         }
         df = _create_dataframe(columns=columns)
 
-        for _, r in self.rdef.iterrows():
-            path = r["path"]
-            payload = r["payload"]
-            if path.endswith("/page.json"):
-                obj_file = base64.b64decode(payload).decode("utf-8")
-                obj_json = json.loads(obj_file)
-                page_id = obj_json.get("name")
-                page_display = obj_json.get("displayName")
+        dfs = []
+        for p in self.__all_pages():
+            payload = p.get("payload")
+            page_id = payload.get("name")
+            page_display = payload.get("displayName")
 
-                if "filterConfig" in obj_json:
-                    for flt in obj_json.get("filterConfig", {}).get("filters", {}):
-                        filter_name = flt.get("name")
-                        how_created = flt.get("howCreated")
-                        locked = flt.get("isLockedInViewMode", False)
-                        hidden = flt.get("isHiddenInViewMode", False)
-                        filter_type = flt.get("type", "Basic")
-                        filter_used = (
-                            True if "Where" in flt.get("filter", {}) else False
-                        )
+            if "filterConfig" in payload:
+                for flt in payload.get("filterConfig", {}).get("filters", {}):
+                    filter_name = flt.get("name")
+                    how_created = flt.get("howCreated")
+                    locked = flt.get("isLockedInViewMode", False)
+                    hidden = flt.get("isHiddenInViewMode", False)
+                    filter_type = flt.get("type", "Basic")
+                    filter_used = True if "Where" in flt.get("filter", {}) else False
 
-                        entity_property_pairs = helper.find_entity_property_pairs(flt)
+                    entity_property_pairs = helper.find_entity_property_pairs(flt)
 
-                        for object_name, properties in entity_property_pairs.items():
-                            new_data = {
-                                "Page Name": page_id,
-                                "Page Display Name": page_display,
-                                "Filter Name": filter_name,
-                                "Type": filter_type,
-                                "Table Name": properties[0],
-                                "Object Name": object_name,
-                                "Object Type": properties[1],
-                                "Hidden": hidden,
-                                "Locked": locked,
-                                "How Created": how_created,
-                                "Used": filter_used,
-                            }
+                    for object_name, properties in entity_property_pairs.items():
+                        new_data = {
+                            "Page Name": page_id,
+                            "Page Display Name": page_display,
+                            "Filter Name": filter_name,
+                            "Type": filter_type,
+                            "Table Name": properties[0],
+                            "Object Name": object_name,
+                            "Object Type": properties[1],
+                            "Hidden": hidden,
+                            "Locked": locked,
+                            "How Created": how_created,
+                            "Used": filter_used,
+                            "Page URL": self._get_url(page_name=page_id),
+                        }
 
-                            df = pd.concat(
-                                [df, pd.DataFrame(new_data, index=[0])],
-                                ignore_index=True,
-                            )
+                        dfs.append(pd.DataFrame(new_data, index=[0]))
 
-        df["Page URL"] = df["Page Name"].apply(
-            lambda page_name: f"{helper.get_web_url(report=self._report, workspace=self._workspace_id)}/{page_name}"
-        )
+        if dfs:
+            df = pd.concat(dfs, ignore_index=True)
 
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
@@ -458,6 +855,7 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe containing a list of all the visual filters used in the report.
         """
+        self._ensure_pbir()
 
         columns = {
             "Page Name": "str",
@@ -475,51 +873,47 @@ class ReportWrapper:
         }
         df = _create_dataframe(columns=columns)
 
-        page_mapping, visual_mapping = helper.visual_page_mapping(self)
+        visual_mapping = self._visual_page_mapping()
 
-        for _, r in self.rdef.iterrows():
-            path = r["path"]
-            payload = r["payload"]
-            if path.endswith("/visual.json"):
-                obj_file = base64.b64decode(payload).decode("utf-8")
-                obj_json = json.loads(obj_file)
-                page_id = visual_mapping.get(path)[0]
-                page_display = visual_mapping.get(path)[1]
-                visual_name = obj_json.get("name")
+        dfs = []
+        for v in self.__all_visuals():
+            path = v.get("path")
+            payload = v.get("payload")
+            page_id = visual_mapping.get(path)[0]
+            page_display = visual_mapping.get(path)[1]
+            visual_name = payload.get("name")
 
-                if "filterConfig" in obj_json:
-                    for flt in obj_json.get("filterConfig", {}).get("filters", {}):
-                        filter_name = flt.get("name")
-                        how_created = flt.get("howCreated")
-                        locked = flt.get("isLockedInViewMode", False)
-                        hidden = flt.get("isHiddenInViewMode", False)
-                        filter_type = flt.get("type", "Basic")
-                        filter_used = (
-                            True if "Where" in flt.get("filter", {}) else False
-                        )
+            if "filterConfig" in payload:
+                for flt in payload.get("filterConfig", {}).get("filters", {}):
+                    filter_name = flt.get("name")
+                    how_created = flt.get("howCreated")
+                    locked = flt.get("isLockedInViewMode", False)
+                    hidden = flt.get("isHiddenInViewMode", False)
+                    filter_type = flt.get("type", "Basic")
+                    filter_used = True if "Where" in flt.get("filter", {}) else False
 
-                        entity_property_pairs = helper.find_entity_property_pairs(flt)
+                    entity_property_pairs = helper.find_entity_property_pairs(flt)
 
-                        for object_name, properties in entity_property_pairs.items():
-                            new_data = {
-                                "Page Name": page_id,
-                                "Page Display Name": page_display,
-                                "Visual Name": visual_name,
-                                "Filter Name": filter_name,
-                                "Type": filter_type,
-                                "Table Name": properties[0],
-                                "Object Name": object_name,
-                                "Object Type": properties[1],
-                                "Hidden": hidden,
-                                "Locked": locked,
-                                "How Created": how_created,
-                                "Used": filter_used,
-                            }
+                    for object_name, properties in entity_property_pairs.items():
+                        new_data = {
+                            "Page Name": page_id,
+                            "Page Display Name": page_display,
+                            "Visual Name": visual_name,
+                            "Filter Name": filter_name,
+                            "Type": filter_type,
+                            "Table Name": properties[0],
+                            "Object Name": object_name,
+                            "Object Type": properties[1],
+                            "Hidden": hidden,
+                            "Locked": locked,
+                            "How Created": how_created,
+                            "Used": filter_used,
+                        }
 
-                            df = pd.concat(
-                                [df, pd.DataFrame(new_data, index=[0])],
-                                ignore_index=True,
-                            )
+                        dfs.append(pd.DataFrame(new_data, index=[0]))
+
+        if dfs:
+            df = pd.concat(dfs, ignore_index=True)
 
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
@@ -540,6 +934,7 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe containing a list of all modified visual interactions used in the report.
         """
+        self._ensure_pbir()
 
         columns = {
             "Page Name": "str",
@@ -550,30 +945,28 @@ class ReportWrapper:
         }
         df = _create_dataframe(columns=columns)
 
-        for _, r in self.rdef.iterrows():
-            file_path = r["path"]
-            payload = r["payload"]
-            if file_path.endswith("/page.json"):
-                obj_file = base64.b64decode(payload).decode("utf-8")
-                obj_json = json.loads(obj_file)
-                page_name = obj_json.get("name")
-                page_display = obj_json.get("displayName")
+        dfs = []
+        for p in self.__all_pages():
+            payload = p.get("payload")
+            page_name = payload.get("name")
+            page_display = payload.get("displayName")
 
-                for vizInt in obj_json.get("visualInteractions", []):
-                    sourceVisual = vizInt.get("source")
-                    targetVisual = vizInt.get("target")
-                    vizIntType = vizInt.get("type")
+            for vizInt in payload.get("visualInteractions", []):
+                sourceVisual = vizInt.get("source")
+                targetVisual = vizInt.get("target")
+                vizIntType = vizInt.get("type")
 
-                    new_data = {
-                        "Page Name": page_name,
-                        "Page Display Name": page_display,
-                        "Source Visual Name": sourceVisual,
-                        "Target Visual Name": targetVisual,
-                        "Type": vizIntType,
-                    }
-                    df = pd.concat(
-                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                    )
+                new_data = {
+                    "Page Name": page_name,
+                    "Page Display Name": page_display,
+                    "Source Visual Name": sourceVisual,
+                    "Target Visual Name": targetVisual,
+                    "Type": vizIntType,
+                }
+                dfs.append(pd.DataFrame(new_data, index=[0]))
+
+        if dfs:
+            df = pd.concat(dfs, ignore_index=True)
 
         return df
 
@@ -586,6 +979,7 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe containing a list of all pages in the report.
         """
+        self._ensure_pbir()
 
         columns = {
             "File Path": "str",
@@ -607,46 +1001,42 @@ class ReportWrapper:
         }
         df = _create_dataframe(columns=columns)
 
+        page = self.get(file_path=self._pages_file_path)
+        active_page = page.get("activePageName")
+
         dfV = self.list_visuals()
 
-        page_rows = self.rdef[self.rdef["path"].str.endswith("/page.json")]
-        pages_row = self.rdef[self.rdef["path"] == "definition/pages/pages.json"]
-
-        for _, r in page_rows.iterrows():
-            file_path = r["path"]
-            payload = r["payload"]
-
-            pageFile = base64.b64decode(payload).decode("utf-8")
+        dfs = []
+        for p in self.__all_pages():
+            file_path = p.get("path")
             page_prefix = file_path[0:-9]
-            pageJson = json.loads(pageFile)
-            page_name = pageJson.get("name")
-            height = pageJson.get("height")
-            width = pageJson.get("width")
+            payload = p.get("payload")
+            page_name = payload.get("name")
+            height = payload.get("height")
+            width = payload.get("width")
 
             # Alignment
-            matches = parse(
-                "$.objects.displayArea[0].properties.verticalAlignment.expr.Literal.Value"
-            ).find(pageJson)
-            alignment_value = (
-                matches[0].value[1:-1] if matches and matches[0].value else "Top"
+            alignment_value = get_jsonpath_value(
+                data=payload,
+                path="$.objects.displayArea[*].properties.verticalAlignment.expr.Literal.Value",
+                default="Top",
+                remove_quotes=True,
             )
 
             # Drillthrough
-            matches = parse("$.filterConfig.filters[*].howCreated").find(pageJson)
+            matches = parse("$.filterConfig.filters[*].howCreated").find(payload)
             how_created_values = [match.value for match in matches]
             drill_through = any(value == "Drillthrough" for value in how_created_values)
-            # matches = parse("$.filterConfig.filters[*]").find(pageJson)
-            # drill_through = any(
-            #    filt.get("howCreated") == "Drillthrough"
-            #    for filt in (match.value for match in matches)
-            # )
 
             visual_count = len(
-                self.rdef[
-                    self.rdef["path"].str.endswith("/visual.json")
-                    & (self.rdef["path"].str.startswith(page_prefix))
+                [
+                    v
+                    for v in self._report_definition.get("parts")
+                    if v.get("path").endswith("/visual.json")
+                    and v.get("path").startswith(page_prefix)
                 ]
             )
+
             data_visual_count = len(
                 dfV[(dfV["Page Name"] == page_name) & (dfV["Data Visual"])]
             )
@@ -655,24 +1045,25 @@ class ReportWrapper:
             )
 
             # Page Filter Count
-            matches = parse("$.filterConfig.filters").find(pageJson)
-            page_filter_count = (
-                len(matches[0].value) if matches and matches[0].value else 0
+            page_filter_count = len(
+                get_jsonpath_value(
+                    data=payload, path="$.filterConfig.filters", default=[]
+                )
             )
 
             # Hidden
-            matches = parse("$.visibility").find(pageJson)
+            matches = parse("$.visibility").find(payload)
             is_hidden = any(match.value == "HiddenInViewMode" for match in matches)
 
             new_data = {
                 "File Path": file_path,
                 "Page Name": page_name,
-                "Page Display Name": pageJson.get("displayName"),
-                "Display Option": pageJson.get("displayOption"),
+                "Page Display Name": payload.get("displayName"),
+                "Display Option": payload.get("displayOption"),
                 "Height": height,
                 "Width": width,
                 "Hidden": is_hidden,
-                "Active": False,
+                "Active": True if page_name == active_page else False,
                 "Type": helper.page_type_mapping.get((width, height), "Custom"),
                 "Alignment": alignment_value,
                 "Drillthrough Target Page": drill_through,
@@ -680,24 +1071,16 @@ class ReportWrapper:
                 "Data Visual Count": data_visual_count,
                 "Visible Visual Count": visible_visual_count,
                 "Page Filter Count": page_filter_count,
+                "Page URL": self._get_url(page_name=page_name),
             }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            dfs.append(pd.DataFrame(new_data, index=[0]))
 
-        page_payload = pages_row["payload"].iloc[0]
-        pageFile = base64.b64decode(page_payload).decode("utf-8")
-        pageJson = json.loads(pageFile)
-        activePage = pageJson["activePageName"]
-
-        df.loc[df["Page Name"] == activePage, "Active"] = True
-
-        df["Page URL"] = df["Page Name"].apply(
-            lambda page_name: f"{helper.get_web_url(report=self._report, workspace=self._workspace_id)}/{page_name}"
-        )
+        if dfs:
+            df = pd.concat(dfs, ignore_index=True)
 
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
         return df
-        # return df.style.format({"Page URL": _make_clickable})
 
     def list_visuals(self) -> pd.DataFrame:
         """
@@ -708,6 +1091,7 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe containing a list of all visuals in the report.
         """
+        self._ensure_pbir()
 
         columns = {
             "File Path": "str",
@@ -739,12 +1123,9 @@ class ReportWrapper:
         }
         df = _create_dataframe(columns=columns)
 
-        rd_filt = self.rdef[self.rdef["path"] == "definition/report.json"]
-        payload = rd_filt["payload"].iloc[0]
-        rptJson = _extract_json(rd_filt)
-        custom_visuals = rptJson.get("publicCustomVisuals", [])
-        page_mapping, visual_mapping = helper.visual_page_mapping(self)
-        helper.populate_custom_visual_display_names()
+        report_file = self.get(file_path=self._report_file_path)
+        custom_visuals = report_file.get("publicCustomVisuals", [])
+        visual_mapping = self._visual_page_mapping()
         agg_type_map = helper._get_agg_type_mapping()
 
         def contains_key(data, keys_to_check):
@@ -761,150 +1142,144 @@ class ReportWrapper:
 
             return any(key in all_keys for key in keys_to_check)
 
-        for _, r in self.rdef.iterrows():
-            file_path = r["path"]
-            payload = r["payload"]
-            if file_path.endswith("/visual.json"):
-                visual_file = base64.b64decode(payload).decode("utf-8")
-                visual_json = json.loads(visual_file)
-                page_id = visual_mapping.get(file_path)[0]
-                page_display = visual_mapping.get(file_path)[1]
-                pos = visual_json.get("position")
+        dfs = []
 
-                # Visual Type
-                matches = parse("$.visual.visualType").find(visual_json)
-                visual_type = matches[0].value if matches else "Group"
+        for v in self.__all_visuals():
+            path = v.get("path")
+            payload = v.get("payload")
+            page_id = visual_mapping.get(path)[0]
+            page_display = visual_mapping.get(path)[1]
+            pos = payload.get("position")
 
-                visual_type_display = helper.vis_type_mapping.get(
-                    visual_type, visual_type
-                )
-                cst_value, rst_value, slicer_type = False, False, "N/A"
+            # Visual Type
+            matches = parse("$.visual.visualType").find(payload)
+            visual_type = matches[0].value if matches else "Group"
 
-                # Visual Filter Count
-                matches = parse("$.filterConfig.filters[*]").find(visual_json)
-                visual_filter_count = len(matches)
+            visual_type_display = helper.vis_type_mapping.get(visual_type, visual_type)
+            cst_value, rst_value, slicer_type = False, False, "N/A"
 
-                # Data Limit
+            # Visual Filter Count
+            matches = parse("$.filterConfig.filters[*]").find(payload)
+            visual_filter_count = len(matches)
+
+            # Data Limit
+            matches = parse(
+                '$.filterConfig.filters[?(@.type == "VisualTopN")].filter.Where[*].Condition.VisualTopN.ItemCount'
+            ).find(payload)
+            data_limit = matches[0].value if matches else 0
+
+            # Title
+            matches = parse(
+                "$.visual.visualContainerObjects.title[0].properties.text.expr"
+            ).find(payload)
+            title = (
+                helper._get_expression(matches[0].value, agg_type_map)
+                if matches
+                else ""
+            )
+
+            # SubTitle
+            matches = parse(
+                "$.visual.visualContainerObjects.subTitle[0].properties.text.expr"
+            ).find(payload)
+            sub_title = (
+                helper._get_expression(matches[0].value, agg_type_map)
+                if matches
+                else ""
+            )
+
+            # Alt Text
+            matches = parse(
+                "$.visual.visualContainerObjects.general[0].properties.altText.expr"
+            ).find(payload)
+            alt_text = (
+                helper._get_expression(matches[0].value, agg_type_map)
+                if matches
+                else ""
+            )
+
+            # Show items with no data
+            def find_show_all_with_jsonpath(obj):
+                matches = parse("$..showAll").find(obj)
+                return any(match.value is True for match in matches)
+
+            show_all_data = find_show_all_with_jsonpath(payload)
+
+            # Divider
+            matches = parse(
+                "$.visual.visualContainerObjects.divider[0].properties.show.expr.Literal.Value"
+            ).find(payload)
+            divider = matches[0] if matches else ""
+
+            # Row/Column Subtotals
+            if visual_type == "pivotTable":
+                cst_matches = parse(
+                    "$.visual.objects.subTotals[0].properties.columnSubtotals.expr.Literal.Value"
+                ).find(payload)
+                rst_matches = parse(
+                    "$.visual.objects.subTotals[0].properties.rowSubtotals.expr.Literal.Value"
+                ).find(payload)
+
+                if cst_matches:
+                    cst_value = False if cst_matches[0].value == "false" else True
+
+                if rst_matches:
+                    rst_value = False if rst_matches[0].value == "false" else True
+
+            # Slicer Type
+            if visual_type == "slicer":
                 matches = parse(
-                    '$.filterConfig.filters[?(@.type == "VisualTopN")].filter.Where[*].Condition.VisualTopN.ItemCount'
-                ).find(visual_json)
-                data_limit = matches[0].value if matches else 0
+                    "$.visual.objects.data[0].properties.mode.expr.Literal.Value"
+                ).find(payload)
+                slicer_type = matches[0].value[1:-1] if matches else "N/A"
 
-                # Title
-                matches = parse(
-                    "$.visual.visualContainerObjects.title[0].properties.text.expr"
-                ).find(visual_json)
-                # title = matches[0].value[1:-1] if matches else ""
-                title = (
-                    helper._get_expression(matches[0].value, agg_type_map)
-                    if matches
-                    else ""
-                )
+            # Data Visual
+            is_data_visual = contains_key(
+                payload,
+                [
+                    "Aggregation",
+                    "Column",
+                    "Measure",
+                    "HierarchyLevel",
+                    "NativeVisualCalculation",
+                ],
+            )
 
-                # SubTitle
-                matches = parse(
-                    "$.visual.visualContainerObjects.subTitle[0].properties.text.expr"
-                ).find(visual_json)
-                # sub_title = matches[0].value[1:-1] if matches else ""
-                sub_title = (
-                    helper._get_expression(matches[0].value, agg_type_map)
-                    if matches
-                    else ""
-                )
+            # Sparkline
+            has_sparkline = contains_key(payload, ["SparklineData"])
 
-                # Alt Text
-                matches = parse(
-                    "$.visual.visualContainerObjects.general[0].properties.altText.expr"
-                ).find(visual_json)
-                # alt_text = matches[0].value[1:-1] if matches else ""
-                alt_text = (
-                    helper._get_expression(matches[0].value, agg_type_map)
-                    if matches
-                    else ""
-                )
+            new_data = {
+                "File Path": path,
+                "Page Name": page_id,
+                "Page Display Name": page_display,
+                "Visual Name": payload.get("name"),
+                "X": pos.get("x"),
+                "Y": pos.get("y"),
+                "Z": pos.get("z"),
+                "Width": pos.get("width"),
+                "Height": pos.get("height"),
+                "Tab Order": pos.get("tabOrder"),
+                "Hidden": payload.get("isHidden", False),
+                "Type": visual_type,
+                "Display Type": visual_type_display,
+                "Title": title,
+                "SubTitle": sub_title,
+                "Custom Visual": visual_type in custom_visuals,
+                "Alt Text": alt_text,
+                "Show Items With No Data": show_all_data,
+                "Divider": divider,
+                "Row SubTotals": rst_value,
+                "Column SubTotals": cst_value,
+                "Slicer Type": slicer_type,
+                "Data Visual": is_data_visual,
+                "Has Sparkline": has_sparkline,
+                "Visual Filter Count": visual_filter_count,
+                "Data Limit": data_limit,
+            }
+            dfs.append(pd.DataFrame(new_data, index=[0]))
 
-                # Show items with no data
-                def find_show_all_with_jsonpath(obj):
-                    matches = parse("$..showAll").find(obj)
-                    return any(match.value is True for match in matches)
-
-                show_all_data = find_show_all_with_jsonpath(visual_json)
-
-                # Divider
-                matches = parse(
-                    "$.visual.visualContainerObjects.divider[0].properties.show.expr.Literal.Value"
-                ).find(visual_json)
-                divider = matches[0] if matches else ""
-
-                # Row/Column Subtotals
-                if visual_type == "pivotTable":
-                    cst_matches = parse(
-                        "$.visual.objects.subTotals[0].properties.columnSubtotals.expr.Literal.Value"
-                    ).find(visual_json)
-                    rst_matches = parse(
-                        "$.visual.objects.subTotals[0].properties.rowSubtotals.expr.Literal.Value"
-                    ).find(visual_json)
-
-                    if cst_matches:
-                        cst_value = False if cst_matches[0].value == "false" else True
-
-                    if rst_matches:
-                        rst_value = False if rst_matches[0].value == "false" else True
-
-                # Slicer Type
-                if visual_type == "slicer":
-                    matches = parse(
-                        "$.visual.objects.data[0].properties.mode.expr.Literal.Value"
-                    ).find(visual_json)
-                    slicer_type = matches[0].value[1:-1] if matches else "N/A"
-
-                # Data Visual
-                is_data_visual = contains_key(
-                    visual_json,
-                    [
-                        "Aggregation",
-                        "Column",
-                        "Measure",
-                        "HierarchyLevel",
-                        "NativeVisualCalculation",
-                    ],
-                )
-
-                # Sparkline
-                has_sparkline = contains_key(visual_json, ["SparklineData"])
-
-                new_data = {
-                    "File Path": file_path,
-                    "Page Name": page_id,
-                    "Page Display Name": page_display,
-                    "Visual Name": visual_json.get("name"),
-                    "X": pos.get("x"),
-                    "Y": pos.get("y"),
-                    "Z": pos.get("z"),
-                    "Width": pos.get("width"),
-                    "Height": pos.get("height"),
-                    "Tab Order": pos.get("tabOrder"),
-                    "Hidden": visual_json.get("isHidden", False),
-                    "Type": visual_type,
-                    "Display Type": visual_type_display,
-                    "Title": title,
-                    "SubTitle": sub_title,
-                    "Custom Visual": visual_type in custom_visuals,
-                    "Alt Text": alt_text,
-                    "Show Items With No Data": show_all_data,
-                    "Divider": divider,
-                    "Row SubTotals": rst_value,
-                    "Column SubTotals": cst_value,
-                    "Slicer Type": slicer_type,
-                    "Data Visual": is_data_visual,
-                    "Has Sparkline": has_sparkline,
-                    "Visual Filter Count": visual_filter_count,
-                    "Data Limit": data_limit,
-                }
-
-                df = pd.concat(
-                    [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                )
+        if dfs:
+            df = pd.concat(dfs, ignore_index=True)
 
         grouped_df = (
             self.list_visual_objects()
@@ -941,8 +1316,9 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe containing a list of all semantic model objects used in each visual in the report.
         """
+        self._ensure_pbir()
 
-        page_mapping, visual_mapping = helper.visual_page_mapping(self)
+        visual_mapping = self._visual_page_mapping()
 
         columns = {
             "Page Name": "str",
@@ -1022,59 +1398,58 @@ class ReportWrapper:
 
             return result
 
-        for _, r in self.rdef.iterrows():
-            file_path = r["path"]
-            payload = r["payload"]
-            if file_path.endswith("/visual.json"):
-                visual_file = base64.b64decode(payload).decode("utf-8")
-                visual_json = json.loads(visual_file)
-                page_id = visual_mapping.get(file_path)[0]
-                page_display = visual_mapping.get(file_path)[1]
+        dfs = []
+        for v in self.__all_visuals():
+            path = v.get("path")
+            payload = v.get("payload")
+            page_id = visual_mapping.get(path)[0]
+            page_display = visual_mapping.get(path)[1]
 
-                entity_property_pairs = find_entity_property_pairs(visual_json)
-                query_state = (
-                    visual_json.get("visual", {}).get("query", {}).get("queryState", {})
-                )
+            entity_property_pairs = find_entity_property_pairs(payload)
+            query_state = (
+                payload.get("visual", {}).get("query", {}).get("queryState", {})
+            )
 
-                format_mapping = {}
-                obj_display_mapping = {}
-                for a, p in query_state.items():
-                    for proj in p.get("projections", []):
-                        query_ref = proj.get("queryRef")
-                        fmt = proj.get("format")
-                        obj_display_name = proj.get("displayName")
-                        if fmt is not None:
-                            format_mapping[query_ref] = fmt
-                        obj_display_mapping[query_ref] = obj_display_name
+            format_mapping = {}
+            obj_display_mapping = {}
+            for a, p in query_state.items():
+                for proj in p.get("projections", []):
+                    query_ref = proj.get("queryRef")
+                    fmt = proj.get("format")
+                    obj_display_name = proj.get("displayName")
+                    if fmt is not None:
+                        format_mapping[query_ref] = fmt
+                    obj_display_mapping[query_ref] = obj_display_name
 
-                for object_name, properties in entity_property_pairs.items():
-                    table_name = properties[0]
-                    obj_full = f"{table_name}.{object_name}"
-                    is_agg = properties[2]
-                    format_value = format_mapping.get(obj_full)
-                    obj_display = obj_display_mapping.get(obj_full)
+            for object_name, properties in entity_property_pairs.items():
+                table_name = properties[0]
+                obj_full = f"{table_name}.{object_name}"
+                is_agg = properties[2]
+                format_value = format_mapping.get(obj_full)
+                obj_display = obj_display_mapping.get(obj_full)
 
-                    if is_agg:
-                        for k, v in format_mapping.items():
-                            if obj_full in k:
-                                format_value = v
-                    new_data = {
-                        "Page Name": page_id,
-                        "Page Display Name": page_display,
-                        "Visual Name": visual_json.get("name"),
-                        "Table Name": table_name,
-                        "Object Name": object_name,
-                        "Object Type": properties[1],
-                        "Implicit Measure": is_agg,
-                        "Sparkline": properties[4],
-                        "Visual Calc": properties[3],
-                        "Format": format_value,
-                        "Object Display Name": obj_display,
-                    }
+                if is_agg:
+                    for k, v in format_mapping.items():
+                        if obj_full in k:
+                            format_value = v
+                new_data = {
+                    "Page Name": page_id,
+                    "Page Display Name": page_display,
+                    "Visual Name": payload.get("name"),
+                    "Table Name": table_name,
+                    "Object Name": object_name,
+                    "Object Type": properties[1],
+                    "Implicit Measure": is_agg,
+                    "Sparkline": properties[4],
+                    "Visual Calc": properties[3],
+                    "Format": format_value,
+                    "Object Display Name": obj_display,
+                }
 
-                    df = pd.concat(
-                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                    )
+                dfs.append(pd.DataFrame(new_data, index=[0]))
+
+        if dfs:
+            df = pd.concat(dfs, ignore_index=True)
 
         if extended:
             df = self._add_extended(dataframe=df)
@@ -1099,6 +1474,7 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe showing the semantic model objects used in the report.
         """
+        self._ensure_pbir()
 
         from sempy_labs.tom import connect_semantic_model
 
@@ -1118,7 +1494,7 @@ class ReportWrapper:
 
         rf_subset = rf[["Table Name", "Object Name", "Object Type"]].copy()
         rf_subset["Report Source"] = "Report Filter"
-        rf_subset["Report Source Object"] = self._report
+        rf_subset["Report Source Object"] = self._report_name
 
         pf_subset = pf[
             ["Table Name", "Object Name", "Object Type", "Page Display Name"]
@@ -1162,9 +1538,9 @@ class ReportWrapper:
         )
 
         if extended:
-            dataset_id, dataset_name, dataset_workspace_id, dataset_workspace_name = (
+            (dataset_id, dataset_name, dataset_workspace_id, dataset_workspace_name) = (
                 resolve_dataset_from_report(
-                    report=self._report, workspace=self._workspace_id
+                    report=self._report_id, workspace=self._workspace_id
                 )
             )
 
@@ -1208,7 +1584,7 @@ class ReportWrapper:
         )
         dataset_id, dataset_name, dataset_workspace_id, dataset_workspace_name = (
             resolve_dataset_from_report(
-                report=self._report, workspace=self._workspace_id
+                report=self._report_id, workspace=self._workspace_id
             )
         )
         dep = get_measure_dependencies(
@@ -1243,8 +1619,7 @@ class ReportWrapper:
         pandas.DataFrame
             A pandas dataframe containing a list of all bookmarks in the report.
         """
-
-        rd = self.rdef
+        self._ensure_pbir()
 
         columns = {
             "File Path": "str",
@@ -1257,31 +1632,34 @@ class ReportWrapper:
         }
         df = _create_dataframe(columns=columns)
 
-        bookmark_rows = rd[rd["path"].str.endswith(".bookmark.json")]
+        bookmarks = [
+            o
+            for o in self._report_definition.get("parts")
+            if o.get("path").endswith("/bookmark.json")
+        ]
 
-        for _, r in bookmark_rows.iterrows():
-            path = r["path"]
-            payload = r["payload"]
+        dfs = []
 
-            obj_file = base64.b64decode(payload).decode("utf-8")
-            obj_json = json.loads(obj_file)
+        for b in bookmarks:
+            path = b.get("path")
+            payload = b.get("payload")
 
-            bookmark_name = obj_json.get("name")
-            bookmark_display = obj_json.get("displayName")
-            rpt_page_id = obj_json.get("explorationState", {}).get("activeSection")
-            page_id, page_display, file_path = helper.resolve_page_name(
-                self, page_name=rpt_page_id
+            bookmark_name = payload.get("name")
+            bookmark_display = payload.get("displayName")
+            rpt_page_id = payload.get("explorationState", {}).get("activeSection")
+            (page_id, page_display) = self._resolve_page_name_and_display_name(
+                rpt_page_id
             )
 
-            for rptPg in obj_json.get("explorationState", {}).get("sections", {}):
+            for rptPg in payload.get("explorationState", {}).get("sections", {}):
                 for visual_name in (
-                    obj_json.get("explorationState", {})
+                    payload.get("explorationState", {})
                     .get("sections", {})
                     .get(rptPg, {})
                     .get("visualContainers", {})
                 ):
                     if (
-                        obj_json.get("explorationState", {})
+                        payload.get("explorationState", {})
                         .get("sections", {})
                         .get(rptPg, {})
                         .get("visualContainers", {})
@@ -1304,9 +1682,10 @@ class ReportWrapper:
                         "Visual Name": visual_name,
                         "Visual Hidden": visual_hidden,
                     }
-                    df = pd.concat(
-                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                    )
+                    dfs.append(pd.DataFrame(new_data, index=[0]))
+
+        if dfs:
+            df = pd.concat(dfs, ignore_index=True)
 
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
@@ -1325,6 +1704,8 @@ class ReportWrapper:
             A pandas dataframe containing a list of all report-level measures in the report.
         """
 
+        self._ensure_pbir()
+
         columns = {
             "Measure Name": "str",
             "Table Name": "str",
@@ -1335,14 +1716,12 @@ class ReportWrapper:
 
         df = _create_dataframe(columns=columns)
 
-        rd_filt = self.rdef[self.rdef["path"] == "definition/reportExtensions.json"]
+        report_file = self.get(file_path=self._report_extensions_path)
 
-        if len(rd_filt) == 1:
-            payload = rd_filt["payload"].iloc[0]
-            obj_file = base64.b64decode(payload).decode("utf-8")
-            obj_json = json.loads(obj_file)
-
-            for e in obj_json.get("entities", []):
+        dfs = []
+        if report_file:
+            payload = report_file.get("payload")
+            for e in payload.get("entities", []):
                 table_name = e.get("name")
                 for m in e.get("measures", []):
                     measure_name = m.get("name")
@@ -1357,82 +1736,62 @@ class ReportWrapper:
                         "Data Type": data_type,
                         "Format String": format_string,
                     }
-                    df = pd.concat(
-                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                    )
+                    dfs.append(pd.DataFrame(new_data, index=[0]))
+
+        if dfs:
+            df = pd.concat(dfs, ignore_index=True)
 
         return df
 
-    def _list_annotations(self) -> pd.DataFrame:
+    def get_theme(self, theme_type: str = "baseTheme") -> dict:
         """
-        Shows a list of annotations in the report.
+        Obtains the theme file of the report.
+
+        Parameters
+        ----------
+        theme_type : str, default="baseTheme"
+            The theme type. Options: "baseTheme", "customTheme".
 
         Returns
         -------
-        pandas.DataFrame
-            A pandas dataframe showing a list of report, page and visual annotations in the report.
+        dict
+            The theme.json file
         """
 
-        columns = {
-            "Type": "str",
-            "Object Name": "str",
-            "Annotation Name": "str",
-            "Annotation Value": "str",
-        }
-        df = _create_dataframe(columns=columns)
+        self._ensure_pbir()
 
-        page_mapping, visual_mapping = helper.visual_page_mapping(self)
-        for _, r in self.rdef.iterrows():
-            payload = r["payload"]
-            path = r["path"]
-            if path == "definition/report.json":
-                file = _decode_b64(payload)
-                json_file = json.loads(file)
-                if "annotations" in json_file:
-                    for ann in json_file["annotations"]:
-                        new_data = {
-                            "Type": "Report",
-                            "Object Name": self._report,
-                            "Annotation Name": ann.get("name"),
-                            "Annotation Value": ann.get("value"),
-                        }
-                        df = pd.concat(
-                            [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                        )
-            elif path.endswith("/page.json"):
-                file = _decode_b64(payload)
-                json_file = json.loads(file)
-                if "annotations" in json_file:
-                    for ann in json_file["annotations"]:
-                        new_data = {
-                            "Type": "Page",
-                            "Object Name": json_file.get("displayName"),
-                            "Annotation Name": ann.get("name"),
-                            "Annotation Value": ann.get("value"),
-                        }
-                        df = pd.concat(
-                            [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                        )
-            elif path.endswith("/visual.json"):
-                file = _decode_b64(payload)
-                json_file = json.loads(file)
-                page_display = visual_mapping.get(path)[1]
-                visual_name = json_file.get("name")
-                if "annotations" in json_file:
-                    for ann in json_file["annotations"]:
-                        new_data = {
-                            "Type": "Visual",
-                            "Object Name": f"'{page_display}'[{visual_name}]",
-                            "Annotation Name": ann.get("name"),
-                            "Annotation Value": ann.get("value"),
-                        }
-                        df = pd.concat(
-                            [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                        )
+        theme_types = ["baseTheme", "customTheme"]
+        theme_type = theme_type.lower()
 
-        return df
+        if "custom" in theme_type:
+            theme_type = "customTheme"
+        elif "base" in theme_type:
+            theme_type = "baseTheme"
+        if theme_type not in theme_types:
+            raise ValueError(
+                f"{icons.red_dot} Invalid theme type. Valid options: {theme_types}."
+            )
 
-    # Automation functions
+        report_file = self.get(file_path=self._report_file_path)
+        theme_collection = report_file.get("themeCollection", {})
+        if theme_type not in theme_collection:
+            raise ValueError(
+                f"{icons.red_dot} The {self._report} report within the '{self._workspace_name} workspace has no custom theme."
+            )
+        ct = theme_collection.get(theme_type)
+        theme_name = ct["name"]
+        theme_location = ct["type"]
+        theme_file_path = f"StaticResources/{theme_location}/{theme_name}"
+        if theme_type == "baseTheme":
+            theme_file_path = (
+                f"StaticResources/{theme_location}/BaseThemes/{theme_name}"
+            )
+        if not theme_file_path.endswith(".json"):
+            theme_file_path = f"{theme_file_path}.json"
+
+        return self.get(file_path=theme_file_path)
+
+    # Action functions
     def set_theme(self, theme_file_path: str):
         """
         Sets a custom theme for a report based on a theme .json file.
@@ -1445,97 +1804,84 @@ class ReportWrapper:
             Example for web url: file_path = 'https://raw.githubusercontent.com/PowerBiDevCamp/FabricUserApiDemo/main/FabricUserApiDemo/DefinitionTemplates/Shared/Reports/StaticResources/SharedResources/BaseThemes/CY23SU08.json'
         """
 
-        report_path = "definition/report.json"
-        theme_version = "5.5.4"
-        request_body = {"definition": {"parts": []}}
+        self._ensure_pbir()
+        theme_version = "5.6.4"
 
+        # Open file
         if not theme_file_path.endswith(".json"):
             raise ValueError(
                 f"{icons.red_dot} The '{theme_file_path}' theme file path must be a .json file."
             )
         elif theme_file_path.startswith("https://"):
             response = requests.get(theme_file_path)
-            json_file = response.json()
-        elif theme_file_path.startswith("/lakehouse"):
+            theme_file = response.json()
+        elif theme_file_path.startswith("/lakehouse") or theme_file_path.startswith(
+            "/synfs/"
+        ):
             with open(theme_file_path, "r", encoding="utf-8-sig") as file:
-                json_file = json.load(file)
+                theme_file = json.load(file)
         else:
             ValueError(
                 f"{icons.red_dot} Incorrect theme file path value '{theme_file_path}'."
             )
 
-        theme_name = json_file["name"]
+        theme_name = theme_file.get("name")
         theme_name_full = f"{theme_name}.json"
-        rd = self.rdef
 
-        # Add theme.json file to request_body
-        file_payload = _conv_b64(json_file)
-        filePath = f"StaticResources/RegisteredResources/{theme_name_full}"
+        # Add theme.json file
+        self.add(
+            file_path=f"StaticResources/RegisteredResources/{theme_name_full}",
+            payload=theme_file,
+        )
 
-        _add_part(request_body, filePath, file_payload)
+        custom_theme = {
+            "name": theme_name_full,
+            "reportVersionAtImport": theme_version,
+            "type": "RegisteredResources",
+        }
 
-        new_theme = {
+        self.set_json(
+            file_path=self._report_file_path,
+            json_path="$.themeCollection.customTheme",
+            json_value=custom_theme,
+        )
+
+        # Update
+        report_file = self.get(
+            file_path=self._report_file_path, json_path="$.resourcePackages"
+        )
+        new_item = {
             "name": theme_name_full,
             "path": theme_name_full,
             "type": "CustomTheme",
         }
-
-        for _, r in rd.iterrows():
-            path = r["path"]
-            payload = r["payload"]
-            if path == filePath:
-                pass
-            elif path != report_path:
-                _add_part(request_body, path, payload)
-            # Update the report.json file
-            else:
-                rptFile = base64.b64decode(payload).decode("utf-8")
-                rptJson = json.loads(rptFile)
-                resource_type = "RegisteredResources"
-
-                # Add to theme collection
-                if "customTheme" not in rptJson["themeCollection"]:
-                    rptJson["themeCollection"]["customTheme"] = {
-                        "name": theme_name_full,
-                        "reportVersionAtImport": theme_version,
-                        "type": resource_type,
-                    }
-                else:
-                    rptJson["themeCollection"]["customTheme"]["name"] = theme_name_full
-                    rptJson["themeCollection"]["customTheme"]["type"] = resource_type
-
-                for package in rptJson["resourcePackages"]:
-                    package["items"] = [
-                        item
-                        for item in package["items"]
-                        if item["type"] != "CustomTheme"
-                    ]
-
-                if not any(
-                    package["name"] == resource_type
-                    for package in rptJson["resourcePackages"]
-                ):
-                    new_registered_resources = {
-                        "name": resource_type,
-                        "type": resource_type,
-                        "items": [new_theme],
-                    }
-                    rptJson["resourcePackages"].append(new_registered_resources)
-                else:
-                    names = [
-                        rp["name"] for rp in rptJson["resourcePackages"][1]["items"]
-                    ]
-
-                    if theme_name_full not in names:
-                        rptJson["resourcePackages"][1]["items"].append(new_theme)
-
-                file_payload = _conv_b64(rptJson)
-                _add_part(request_body, path, file_payload)
-
-        self.update_report(request_body=request_body)
-        print(
-            f"{icons.green_dot} The '{theme_name}' theme has been set as the theme for the '{self._report}' report within the '{self._workspace_name}' workspace."
+        # Find or create RegisteredResources
+        registered = next(
+            (res for res in report_file if res["name"] == "RegisteredResources"), None
         )
+
+        if not registered:
+            registered = {
+                "name": "RegisteredResources",
+                "type": "RegisteredResources",
+                "items": [new_item],
+            }
+            report_file.append(registered)
+        else:
+            # Check for duplicate by 'name'
+            if all(item["name"] != new_item["name"] for item in registered["items"]):
+                registered["items"].append(new_item)
+
+        self.set_json(
+            file_path=self._report_file_path,
+            json_path="$.resourcePackages",
+            json_value=report_file,
+        )
+
+        if not self._readonly:
+            print(
+                f"{icons.green_dot} The '{theme_name}' theme has been set as the theme for the '{self._report_name}' report within the '{self._workspace_name}' workspace."
+            )
 
     def set_active_page(self, page_name: str):
         """
@@ -1546,24 +1892,21 @@ class ReportWrapper:
         page_name : str
             The page name or page display name of the report.
         """
+        self._ensure_pbir()
 
-        pages_file = "definition/pages/pages.json"
-        page_id, page_display_name, file_path = helper.resolve_page_name(
-            self, page_name=page_name
+        (page_id, page_display_name) = self._resolve_page_name_and_display_name(
+            page_name
+        )
+        self.set_json(
+            file_path=self._pages_file_path,
+            json_path="$.activePageName",
+            json_value=page_id,
         )
 
-        pagePath = self.rdef[self.rdef["path"] == pages_file]
-        payload = pagePath["payload"].iloc[0]
-        page_file = _decode_b64(payload)
-        json_file = json.loads(page_file)
-        json_file["activePageName"] = page_id
-        file_payload = _conv_b64(json_file)
-
-        self._update_single_file(file_name=pages_file, new_payload=file_payload)
-
-        print(
-            f"{icons.green_dot} The '{page_display_name}' page has been set as the active page in the '{self._report}' report within the '{self._workspace_name}' workspace."
-        )
+        if not self._readonly:
+            print(
+                f"{icons.green_dot} The '{page_display_name}' page has been set as the active page in the '{self._report_name}' report within the '{self._workspace_name}' workspace."
+            )
 
     def set_page_type(self, page_name: str, page_type: str):
         """
@@ -1576,6 +1919,7 @@ class ReportWrapper:
         page_type : str
             The page type. Valid page types: 'Tooltip', 'Letter', '4:3', '16:9'.
         """
+        self._ensure_pbir()
 
         if page_type not in helper.page_types:
             raise ValueError(
@@ -1597,156 +1941,19 @@ class ReportWrapper:
                 f"{icons.red_dot} Invalid page_type parameter. Valid options: ['Tooltip', 'Letter', '4:3', '16:9']."
             )
 
-        page_id, page_display_name, file_path = helper.resolve_page_name(
-            self, page_name=page_name
-        )
-        rd_filt = self.rdef[self.rdef["path"] == file_path]
-        payload = rd_filt["payload"].iloc[0]
-        page_file = _decode_b64(payload)
-        json_file = json.loads(page_file)
-        json_file["width"] = width
-        json_file["height"] = height
-        file_payload = _conv_b64(json_file)
-
-        self._update_single_file(file_name=file_path, new_payload=file_payload)
-
-        print(
-            f"{icons.green_dot} The '{page_display_name}' page has been updated to the '{page_type}' page type."
+        (file_path, page_id, page_display_name) = (
+            self.__resolve_page_name_and_display_name_file_path(page_name)
         )
 
-    def remove_unnecessary_custom_visuals(self):
-        """
-        Removes any custom visuals within the report that are not used in the report.
-        """
+        self.set_json(file_path=file_path, json_path="$.width", json_value=width)
+        self.set_json(file_path=file_path, json_path="$.height", json_value=height)
 
-        dfCV = self.list_custom_visuals()
-        dfV = self.list_visuals()
-        rd = self.rdef
-        cv_remove = []
-        cv_remove_display = []
-        request_body = {"definition": {"parts": []}}
-
-        for _, r in dfCV.iterrows():
-            cv = r["Custom Visual Name"]
-            cv_display = r["Custom Visual Display Name"]
-            dfV_filt = dfV[dfV["Type"] == cv]
-            if len(dfV_filt) == 0:
-                cv_remove.append(cv)  # Add to the list for removal
-                cv_remove_display.append(cv_display)
-        if len(cv_remove) == 0:
+        if not self._readonly:
             print(
-                f"{icons.green_dot} There are no unnecessary custom visuals in the '{self._report}' report within the '{self._workspace_name}' workspace."
+                f"{icons.green_dot} The '{page_display_name}' page has been updated to the '{page_type}' page type."
             )
-            return
 
-        for _, r in rd.iterrows():
-            file_path = r["path"]
-            payload = r["payload"]
-            if file_path == "definition/report.json":
-                rpt_file = base64.b64decode(payload).decode("utf-8")
-                rpt_json = json.loads(rpt_file)
-                rpt_json["publicCustomVisuals"] = [
-                    item
-                    for item in rpt_json["publicCustomVisuals"]
-                    if item not in cv_remove
-                ]
-
-                payload = _conv_b64(rpt_json)
-
-            _add_part(request_body, file_path, payload)
-
-        self.update_report(request_body=request_body)
-        print(
-            f"{icons.green_dot} The {cv_remove_display} custom visuals have been removed from the '{self._report}' report within the '{self._workspace_name}' workspace."
-        )
-
-    def migrate_report_level_measures(self, measures: Optional[str | List[str]] = None):
-        """
-        Moves all report-level measures from the report to the semantic model on which the report is based.
-
-        Parameters
-        ----------
-        measures : str | List[str], default=None
-            A measure or list of measures to move to the semantic model.
-            Defaults to None which resolves to moving all report-level measures to the semantic model.
-        """
-
-        from sempy_labs.tom import connect_semantic_model
-
-        rlm = self.list_report_level_measures()
-        if len(rlm) == 0:
-            print(
-                f"{icons.green_dot} The '{self._report}' report within the '{self._workspace_name}' workspace has no report-level measures."
-            )
-            return
-
-        dataset_id, dataset_name, dataset_workspace_id, dataset_workspace_name = (
-            resolve_dataset_from_report(
-                report=self._report, workspace=self._workspace_id
-            )
-        )
-
-        if isinstance(measures, str):
-            measures = [measures]
-
-        request_body = {"definition": {"parts": []}}
-        rpt_file = "definition/reportExtensions.json"
-
-        rd = self.rdef
-        rd_filt = rd[rd["path"] == rpt_file]
-        payload = rd_filt["payload"].iloc[0]
-        extFile = base64.b64decode(payload).decode("utf-8")
-        extJson = json.loads(extFile)
-
-        mCount = 0
-        with connect_semantic_model(
-            dataset=dataset_id, readonly=False, workspace=dataset_workspace_id
-        ) as tom:
-            for _, r in rlm.iterrows():
-                tableName = r["Table Name"]
-                mName = r["Measure Name"]
-                mExpr = r["Expression"]
-                # mDataType = r["Data Type"]
-                mformatString = r["Format String"]
-                # Add measures to the model
-                if mName in measures or measures is None:
-                    tom.add_measure(
-                        table_name=tableName,
-                        measure_name=mName,
-                        expression=mExpr,
-                        format_string=mformatString,
-                    )
-                    tom.set_annotation(
-                        object=tom.model.Tables[tableName].Measures[mName],
-                        name="semanticlinklabs",
-                        value="reportlevelmeasure",
-                    )
-                mCount += 1
-            # Remove measures from the json
-            if measures is not None and len(measures) < mCount:
-                for e in extJson["entities"]:
-                    e["measures"] = [
-                        measure
-                        for measure in e["measures"]
-                        if measure["name"] not in measures
-                    ]
-                extJson["entities"] = [
-                    entity for entity in extJson["entities"] if entity["measures"]
-                ]
-                file_payload = _conv_b64(extJson)
-                _add_part(request_body, rpt_file, file_payload)
-
-        # Add unchanged payloads
-        for _, r in rd.iterrows():
-            path = r["path"]
-            payload = r["payload"]
-            if path != rpt_file:
-                _add_part(request_body, path, payload)
-
-        self.update_report(request_body=request_body)
-        print(
-            f"{icons.green_dot} The report-level measures have been migrated to the '{dataset_name}' semantic model within the '{dataset_workspace_name}' workspace."
-        )
+    # def set_page_vertical_alignment(self, page: str, vertical_alignment: Literal["Top", "Middle"] = "Top"):
 
     def set_page_visibility(self, page_name: str, hidden: bool):
         """
@@ -1760,28 +1967,26 @@ class ReportWrapper:
             If set to True, hides the report page.
             If set to False, makes the report page visible.
         """
-
-        page_id, page_display_name, file_path = helper.resolve_page_name(
-            self, page_name=page_name
+        self._ensure_pbir()
+        (file_path, page_id, page_display_name) = (
+            self.__resolve_page_name_and_display_name_file_path(page_name)
         )
+
+        if hidden:
+            self.set_json(
+                file_path=file_path,
+                json_path="$.visibility",
+                json_value="HiddenInViewMode",
+            )
+        else:
+            self.remove(file_path=file_path, json_path="$.visibility", verbose=False)
+
         visibility = "visible" if hidden is False else "hidden"
 
-        rd_filt = self.rdef[self.rdef["path"] == file_path]
-        payload = rd_filt["payload"].iloc[0]
-        obj_file = _decode_b64(payload)
-        obj_json = json.loads(obj_file)
-        if hidden:
-            obj_json["visibility"] = "HiddenInViewMode"
-        else:
-            if "visibility" in obj_json:
-                del obj_json["visibility"]
-        new_payload = _conv_b64(obj_json)
-
-        self._update_single_file(file_name=file_path, new_payload=new_payload)
-
-        print(
-            f"{icons.green_dot} The '{page_display_name}' page has been set to {visibility}."
-        )
+        if not self._readonly:
+            print(
+                f"{icons.green_dot} The '{page_display_name}' page has been set to '{visibility}' in the '{self._report_name}' report within the '{self._workspace_name}' workspace."
+            )
 
     def hide_tooltip_drillthrough_pages(self):
         """
@@ -1793,9 +1998,9 @@ class ReportWrapper:
             (dfP["Type"] == "Tooltip") | (dfP["Drillthrough Target Page"] == True)
         ]
 
-        if len(dfP_filt) == 0:
+        if dfP_filt.empty:
             print(
-                f"{icons.green_dot} There are no Tooltip or Drillthrough pages in the '{self._report}' report within the '{self._workspace_name}' workspace."
+                f"{icons.green_dot} There are no Tooltip or Drillthrough pages in the '{self._report_name}' report within the '{self._workspace_name}' workspace."
             )
             return
 
@@ -1808,417 +2013,937 @@ class ReportWrapper:
         Disables the `show items with no data <https://learn.microsoft.com/power-bi/create-reports/desktop-show-items-no-data>`_ property in all visuals within the report.
         """
 
-        request_body = {"definition": {"parts": []}}
-
-        def delete_key_in_json(obj, key_to_delete):
-            if isinstance(obj, dict):
-                if key_to_delete in obj:
-                    del obj[key_to_delete]
-                for key, value in obj.items():
-                    delete_key_in_json(value, key_to_delete)
-            elif isinstance(obj, list):
-                for item in obj:
-                    delete_key_in_json(item, key_to_delete)
-
-        rd = self.rdef
-        for _, r in rd.iterrows():
-            file_path = r["path"]
-            payload = r["payload"]
-            if file_path.endswith("/visual.json"):
-                objFile = base64.b64decode(payload).decode("utf-8")
-                objJson = json.loads(objFile)
-                delete_key_in_json(objJson, "showAll")
-                _add_part(request_body, file_path, _conv_b64(objJson))
-            else:
-                _add_part(request_body, file_path, payload)
-
-        self.update_report(request_body=request_body)
-        print(
-            f"{icons.green_dot} Show items with data has been disabled for all visuals in the '{self._report}' report within the '{self._workspace_name}' workspace."
+        self.remove(
+            file_path="definition/pages/*/visual.json",
+            json_path="$..showAll",
+            verbose=False,
         )
 
-    # Set Annotations
-    def __set_annotation(self, json_file: dict, name: str, value: str) -> dict:
+        if not self._readonly:
+            print(
+                f"{icons.green_dot} Show items with data has been disabled for all visuals in the '{self._report_name}' report within the '{self._workspace_name}' workspace."
+            )
 
-        if "annotations" in json_file:
-            if any(
-                annotation["name"] == name for annotation in json_file["annotations"]
-            ):
-                for annotation in json_file["annotations"]:
-                    if annotation["name"] == name:
-                        annotation["value"] = value
-                        break
-            else:
-                json_file["annotations"].append({"name": name, "value": value})
-        else:
-            json_file["annotations"] = []
-            json_file["annotations"].append({"name": name, "value": value})
-
-        return json_file
-
-    def _set_annotation(
-        self,
-        annotation_name: str,
-        annotation_value: str,
-        page_name: Optional[str] = None,
-        visual_name: Optional[str] = None,
-    ):
+    def remove_unnecessary_custom_visuals(self):
         """
-        Sets an annotation on the report/page/visual. If the annotation already exists, the annotation value is updated.
-        In order to set a report annotation, leave page_name=None, visual_name=None.
-        In order to set a page annotation, leave visual_annotation=None.
-        In order to set a visual annotation, set all parameters.
-
-        Parameters
-        ----------
-        annotation_name : str
-            Name of the annotation.
-        annotation_value : str
-            Value of the annotation.
-        page_name : str, default=None
-            The page name or page display name.
-            Set this annotation when setting an annotation on a page or visual.
-        visual_name : str, default=None
-            The visual name.
-            Set this property when setting an annotation on a visual.
+        Removes any custom visuals within the report that are not used in the report.
         """
 
-        if page_name is None and visual_name is None:
-            file_path = "definition/report.json"
-        elif page_name is not None and visual_name is None:
-            page_id, page_display, file_path = helper.resolve_page_name(
-                self, page_name=page_name
-            )
-        elif page_name is not None and visual_name is not None:
-            page_name, page_display_name, visual_name, file_path = (
-                helper.resolve_visual_name(
-                    self, page_name=page_name, visual_name=visual_name
-                )
-            )
+        dfCV = self.list_custom_visuals()
+        df = dfCV[dfCV["Used in Report"] == False]
+
+        if not df.empty:
+            cv_remove = df["Custom Visual Name"].values()
+            cv_remove_display = df["Custom Visual Display Name"].values()
         else:
-            raise ValueError(
-                f"{icons.red_dot} Invalid parameters. If specifying a visual_name you must specify the page_name."
+            print(
+                f"{icons.red_dot} There are no unnecessary custom visuals in the '{self._report_name}' report within the '{self._workspace_name}' workspace."
             )
+            return
 
-        payload = self.rdef[self.rdef["path"] == file_path]["payload"].iloc[0]
-        file = _decode_b64(payload)
-        json_file = json.loads(file)
-
-        new_file = self.__set_annotation(
-            json_file, name=annotation_name, value=annotation_value
+        json_path = "$.publicCustomVisuals"
+        custom_visuals = self.get(file_path=self._report_file_path, json_path=json_path)
+        updated_custom_visuals = [
+            item for item in custom_visuals if item not in cv_remove
+        ]
+        self.set_json(
+            file_path=self._report_path,
+            json_path=json_path,
+            json_value=updated_custom_visuals,
         )
-        new_payload = _conv_b64(new_file)
 
-        self._update_single_file(file_name=file_path, new_payload=new_payload)
+        if not self._readonly:
+            print(
+                f"{icons.green_dot} The {cv_remove_display} custom visuals have been removed from the '{self._report_name}' report within the '{self._workspace_name}' workspace."
+            )
 
-    # Remove Annotations
-    def __remove_annotation(self, json_file: dict, name: str) -> dict:
-
-        if "annotations" in json_file:
-            json_file["annotations"] = [
-                annotation
-                for annotation in json_file["annotations"]
-                if annotation["name"] != name
-            ]
-
-        return json_file
-
-    def _remove_annotation(
-        self,
-        annotation_name: str,
-        page_name: Optional[str] = None,
-        visual_name: Optional[str] = None,
-    ):
+    def migrate_report_level_measures(self, measures: Optional[str | List[str]] = None):
         """
-        Removes an annotation on the report/page/visual.
-        In order to remove a report annotation, leave page_name=None, visual_name=None.
-        In order to remove a page annotation, leave visual_annotation=None.
-        In order to remove a visual annotation, set all parameters.
+        Moves all report-level measures from the report to the semantic model on which the report is based.
 
         Parameters
         ----------
-        annotation_name : str
-            Name of the annotation.
-        page_name : str, default=None
-            The page name or page display name.
-            Set this annotation when setting an annotation on a page or visual.
-        visual_name : str, default=None
-            The visual name.
-            Set this property when setting an annotation on a visual.
+        measures : str | List[str], default=None
+            A measure or list of measures to move to the semantic model.
+            Defaults to None which resolves to moving all report-level measures to the semantic model.
+        """
+        self._ensure_pbir()
+
+        from sempy_labs.tom import connect_semantic_model
+
+        rlm = self.list_report_level_measures()
+        if rlm.empty:
+            print(
+                f"{icons.info} The '{self._report_name}' report within the '{self._workspace_name}' workspace has no report-level measures."
+            )
+            return
+
+        dataset_id, dataset_name, dataset_workspace_id, dataset_workspace_name = (
+            resolve_dataset_from_report(
+                report=self._report_id, workspace=self._workspace_id
+            )
+        )
+
+        if isinstance(measures, str):
+            measures = [measures]
+
+        file = self.get(file_path=self._report_extensions_path)
+
+        mCount = 0
+        with connect_semantic_model(
+            dataset=dataset_id, readonly=False, workspace=dataset_workspace_id
+        ) as tom:
+            existing_measures = [m.Name for m in tom.all_measures()]
+            for _, r in rlm.iterrows():
+                table_name = r["Table Name"]
+                measure_name = r["Measure Name"]
+                expr = r["Expression"]
+                # mDataType = r["Data Type"]
+                format_string = r["Format String"]
+                # Add measures to the model
+                if (
+                    measure_name in measures or measures is None
+                ) and measure_name not in existing_measures:
+                    tom.add_measure(
+                        table_name=table_name,
+                        measure_name=measure_name,
+                        expression=expr,
+                        format_string=format_string,
+                    )
+                    tom.set_annotation(
+                        object=tom.model.Tables[table_name].Measures[measure_name],
+                        name="semanticlinklabs",
+                        value="reportlevelmeasure",
+                    )
+                mCount += 1
+            # Remove measures from the json
+            if measures is not None and len(measures) < mCount:
+                for e in file["entities"]:
+                    e["measures"] = [
+                        measure
+                        for measure in e["measures"]
+                        if measure["name"] not in measures
+                    ]
+                file["entities"] = [
+                    entity for entity in file["entities"] if entity["measures"]
+                ]
+                self.update(file_path=self._report_extensions_path, payload=file)
+            # what about if measures is None?
+
+        if not self._readonly:
+            print(
+                f"{icons.green_dot} The report-level measures have been migrated to the '{dataset_name}' semantic model within the '{dataset_workspace_name}' workspace."
+            )
+
+    # In progress...
+    def _list_annotations(self) -> pd.DataFrame:
+        """
+        Shows a list of annotations in the report.
+
+        Returns
+        -------
+        pandas.DataFrame
+            A pandas dataframe showing a list of report, page and visual annotations in the report.
         """
 
-        if page_name is None and visual_name is None:
-            file_path = "definition/report.json"
-        elif page_name is not None and visual_name is None:
-            page_id, page_display, file_path = helper.resolve_page_name(
-                self, page_name=page_name
-            )
-        elif page_name is not None and visual_name is not None:
-            page_name, page_display_name, visual_name, file_path = (
-                helper.resolve_visual_name(
-                    self, page_name=page_name, visual_name=visual_name
-                )
-            )
-        else:
-            raise ValueError(
-                f"{icons.red_dot} Invalid parameters. If specifying a visual_name you must specify the page_name."
-            )
+        columns = {
+            "Type": "str",
+            "Object Name": "str",
+            "Annotation Name": "str",
+            "Annotation Value": "str",
+        }
+        df = _create_dataframe(columns=columns)
 
-        payload = self.rdef[self.rdef["path"] == file_path]["payload"].iloc[0]
-        file = _decode_b64(payload)
-        json_file = json.loads(file)
+        visual_mapping = self._visual_page_mapping()
+        report_file = self.get(file_path="definition/report.json")
 
-        new_file = self.__remove_annotation(json_file, name=annotation_name)
-        new_payload = _conv_b64(new_file)
+        dfs = []
+        if "annotations" in report_file:
+            for ann in report_file["annotations"]:
+                new_data = {
+                    "Type": "Report",
+                    "Object Name": self._report_name,
+                    "Annotation Name": ann.get("name"),
+                    "Annotation Value": ann.get("value"),
+                }
+                dfs.append(pd.DataFrame(new_data, index=[0]))
 
-        self._update_single_file(file_name=file_path, new_payload=new_payload)
+        for p in self.__all_pages():
+            path = p.get("path")
+            payload = p.get("payload")
+            page_name = payload.get("displayName")
+            if "annotations" in payload:
+                for ann in payload["annotations"]:
+                    new_data = {
+                        "Type": "Page",
+                        "Object Name": page_name,
+                        "Annotation Name": ann.get("name"),
+                        "Annotation Value": ann.get("value"),
+                    }
+                    dfs.append(pd.DataFrame(new_data, index=[0]))
 
-    # Get Annotation Value
-    def __get_annotation_value(self, json_file: dict, name: str) -> str:
+        for v in self.__all_visuals():
+            path = v.get("path")
+            payload = v.get("payload")
+            page_display = visual_mapping.get(path)[1]
+            visual_name = payload.get("name")
+            if "annotations" in payload:
+                for ann in payload["annotations"]:
+                    new_data = {
+                        "Type": "Visual",
+                        "Object Name": f"'{page_display}'[{visual_name}]",
+                        "Annotation Name": ann.get("name"),
+                        "Annotation Value": ann.get("value"),
+                    }
+                    dfs.append(pd.DataFrame(new_data, index=[0]))
 
-        if "annotations" in json_file:
-            for ann in json_file["annotations"]:
-                if ann.get("name") == name:
-                    return ann.get("value")
+        if dfs:
+            df = pd.concat(dfs, ignore_index=True)
 
-    def _get_annotation_value(
-        self,
-        annotation_name: str,
-        page_name: Optional[str] = None,
-        visual_name: Optional[str] = None,
-    ) -> str:
+        return df
+
+    def _add_image(self, image_path: str, resource_name: Optional[str] = None) -> str:
         """
-        Retrieves the annotation value of an annotation on the report/page/visual.
-        In order to retrieve a report annotation value, leave page_name=None, visual_name=None.
-        In order to retrieve a page annotation value, leave visual_annotation=None.
-        In order to retrieve a visual annotation value, set all parameters.
+        Add an image to the report definition. The image will be added to the StaticResources/RegisteredResources folder in the report definition. If the image_name already exists as a file in the report definition it will be updated.
 
         Parameters
         ----------
-        annotation_name : str
-            Name of the annotation.
-        page_name : str, default=None
-            The page name or page display name.
-            Set this annotation when setting an annotation on a page or visual.
-        visual_name : str, default=None
-            The visual name.
-            Set this property when setting an annotation on a visual.
+        image_path : str
+            The path of the image file to be added. For example: "./builtin/MyImage.png".
+        resource_name : str, default=None
+            The name of the image file to be added. For example: "MyImage.png". If not specified, the name will be derived from the image path and a unique ID will be appended to it.
 
         Returns
         -------
         str
-            The annotation value.
+            The name of the image file added to the report definition.
         """
+        self._ensure_pbir()
 
-        if page_name is None and visual_name is None:
-            file_path = "definition/report.json"
-        elif page_name is not None and visual_name is None:
-            page_id, page_display, file_path = helper.resolve_page_name(
-                self, page_name=page_name
+        id = generate_number_guid()
+
+        if image_path.startswith("http://") or image_path.startswith("https://"):
+            response = requests.get(image_path)
+            response.raise_for_status()
+            image_bytes = response.content
+            # Extract the suffix (extension) from the URL path
+            suffix = Path(urlparse(image_path).path).suffix
+        else:
+            with open(image_path, "rb") as image_file:
+                image_bytes = image_file.read()
+            suffix = Path(image_path).suffix
+
+        payload = base64.b64encode(image_bytes).decode("utf-8")
+        if resource_name is None:
+            resource_name = os.path.splitext(os.path.basename(image_path))[0]
+            file_name = f"{resource_name}{id}{suffix}"
+        else:
+            file_name = resource_name
+        file_path = f"StaticResources/RegisteredResources/{file_name}"
+
+        # Add StaticResources/RegisteredResources file. If the file already exists, update it.
+        try:
+            self.get(file_path=file_path)
+            self.update(file_path=file_path, payload=payload)
+        except Exception:
+            self.add(
+                file_path=file_path,
+                payload=payload,
             )
-        elif page_name is not None and visual_name is not None:
-            page_name, page_display_name, visual_name, file_path = (
-                helper.resolve_visual_name(
-                    self, page_name=page_name, visual_name=visual_name
+
+        # Add to report.json file
+        self.__add_to_registered_resources(
+            name=file_name,
+            path=file_name,
+            type="Image",
+        )
+
+        return file_name
+
+    def _remove_wallpaper(self, page: Optional[str | List[str]] = None):
+        """
+        Remove the wallpaper image from a page.
+
+        Parameters
+        ----------
+        page : str | List[str], default=None
+            The name or display name of the page(s) from which the wallpaper image will be removed.
+            If None, removes from all pages.
+        """
+        self._ensure_pbir()
+
+        if isinstance(page, str):
+            page = [page]
+
+        page_list = []
+        if page:
+            for p in page:
+                page_id = self.resolve_page_name(p)
+                page_list.append(page_id)
+        else:
+            page_list = [
+                p.get("payload", {}).get("name")
+                for p in self.__all_pages()
+                if p.get("payload") and "name" in p["payload"]
+            ]
+
+        for p in self.__all_pages():
+            path = p.get("path")
+            payload = p.get("payload")
+            page_name = payload.get("name")
+            page_display_name = payload.get("displayName")
+            if page_name in page_list:
+                self.remove(file_path=path, json_path="$.objects.outspace")
+                print(
+                    f"{icons.green_dot} The wallpaper has been removed from the '{page_display_name}' page."
                 )
+
+    def _set_wallpaper_color(
+        self,
+        color_value: str,
+        page: Optional[str | List[str]] = None,
+        transparency: int = 0,
+        theme_color_percent: float = 0.0,
+    ):
+        """
+        Set the wallpaper color of a page (or pages).
+
+        Parameters
+        ----------
+        color_value : str
+            The color value to be set. This can be a hex color code (e.g., "#FF5733") or an integer based on the theme color.
+        page : str | List[str], default=None
+            The name or display name of the page(s) to which the wallpaper color will be applied.
+            If None, applies to all pages.
+        transparency : int, default=0
+            The transparency level of the wallpaper color. Valid values are between 0 and 100.
+        theme_color_percent : float, default=0.0
+            The percentage of the theme color to be applied. Valid values are between -0.6 and 0.6.
+        """
+        self._ensure_pbir()
+
+        if transparency < 0 or transparency > 100:
+            raise ValueError(f"{icons.red_dot} Transparency must be between 0 and 100.")
+
+        if theme_color_percent < -0.6 or theme_color_percent > 0.6:
+            raise ValueError(
+                f"{icons.red_dot} Theme color percentage must be between -0.6 and 0.6."
             )
+
+        page_list = self.__resolve_page_list(page)
+
+        # Define the color dictionary based on color_value type
+        if isinstance(color_value, int):
+            color_expr = {
+                "ThemeDataColor": {
+                    "ColorId": color_value,
+                    "Percent": theme_color_percent,
+                }
+            }
+        elif isinstance(color_value, str) and color_value.startswith("#"):
+            color_expr = {"Literal": {"Value": f"'{color_value}'"}}
         else:
-            raise ValueError(
-                f"{icons.red_dot} Invalid parameters. If specifying a visual_name you must specify the page_name."
+            raise NotImplementedError(
+                f"{icons.red_dot} The color value '{color_value}' is not supported. Please provide a hex color code or an integer based on the color theme."
             )
 
-        payload = self.rdef[self.rdef["path"] == file_path]["payload"].iloc[0]
-        file = _decode_b64(payload)
-        json_file = json.loads(file)
+        color_dict = ({"solid": {"color": {"expr": color_expr}}},)
+        transparency_dict = {"expr": {"Literal": {"Value": f"{transparency}D"}}}
 
-        return self.__get_annotation_value(json_file, name=annotation_name)
+        for p in self.__all_pages():
+            path = p.get("path")
+            payload = p.get("payload", {})
+            page_name = payload.get("name")
 
-    def __adjust_settings(
-        self, setting_type: str, setting_name: str, setting_value: bool
-    ):  # Meta function
+            if page_name in page_list:
+                self.set_json(
+                    file_path=path,
+                    json_path="$.objects.outspace[*].properties.color",
+                    json_value=color_dict,
+                )
+                self.set_json(
+                    file_path=path,
+                    json_path="$.objects.outspace[*].properties.transparency",
+                    json_value=transparency_dict,
+                )
 
-        valid_setting_types = ["settings", "slowDataSourceSettings"]
-        valid_settings = [
-            "isPersistentUserStateDisabled",
-            "hideVisualContainerHeader",
-            "defaultFilterActionIsDataFilter",
-            "useStylableVisualContainerHeader",
-            "useDefaultAggregateDisplayName",
-            "useEnhancedTooltips",
-            "allowChangeFilterTypes",
-            "disableFilterPaneSearch",
-            "useCrossReportDrillthrough",
-        ]
-        valid_slow_settings = [
-            "isCrossHighlightingDisabled",
-            "isSlicerSelectionsButtonEnabled",
-        ]
+    def _set_wallpaper_image(
+        self,
+        image_path: str,
+        page: Optional[str | List[str]] = None,
+        transparency: int = 0,
+        image_fit: Literal["Normal", "Fit", "Fill"] = "Normal",
+    ):
+        """
+        Add an image as the wallpaper of a page.
 
-        if setting_type not in valid_setting_types:
+        Parameters
+        ----------
+        image_path : str
+            The path of the image file to be added. For example: "./builtin/MyImage.png".
+        page : str | List[str], default=None
+            The name or display name of the page(s) to which the wallpaper image will be applied.
+            If None, applies to all pages.
+        transparency : int, default=0
+            The transparency level of the wallpaper image. Valid values are between 0 and 100.
+        image_fit : str, default="Normal"
+            The fit type of the wallpaper image. Valid options: "Normal", "Fit", "Fill".
+        """
+        self._ensure_pbir()
+
+        image_fits = ["Normal", "Fit", "Fill"]
+        image_fit = image_fit.capitalize()
+        if image_fit not in image_fits:
             raise ValueError(
-                f"Invalid setting_type. Valid options: {valid_setting_types}."
+                f"{icons.red_dot} Invalid image fit. Valid options: {image_fits}."
             )
-        if setting_type == "settings" and setting_name not in valid_settings:
-            raise ValueError(
-                f"The '{setting_name}' is not a valid setting. Valid options: {valid_settings}."
+        if transparency < 0 or transparency > 100:
+            raise ValueError(f"{icons.red_dot} Transparency must be between 0 and 100.")
+
+        page_list = self.__resolve_page_list(page)
+
+        image_name = os.path.splitext(os.path.basename(image_path))[0]
+        image_file_path = self._add_image(image_path=image_path, image_name=image_name)
+
+        image_dict = {
+            "image": {
+                "name": {"expr": {"Literal": {"Value": f"'{image_file_path}'"}}},
+                "url": {
+                    "expr": {
+                        "ResourcePackageItem": {
+                            "PackageName": "RegisteredResources",
+                            "PackageType": 1,
+                            "ItemName": image_file_path,
+                        }
+                    }
+                },
+                "scaling": {"expr": {"Literal": {"Value": f"'{image_fit}'"}}},
+            }
+        }
+        transparency_dict = {"expr": {"Literal": {"Value": f"{transparency}D"}}}
+
+        for p in self.__all_pages():
+            path = p.get("path")
+            payload = p.get("payload")
+            page_name = payload.get("name")
+            if page_name in page_list:
+                self.set_json(
+                    file_path=path,
+                    json_path="$.objects.outspace[*].properties.image",
+                    json_value=image_dict,
+                )
+                self.set_json(
+                    file_path=path,
+                    json_path="$.objects.outspace[*].properties.transparency",
+                    json_value=transparency_dict,
+                )
+
+    def _add_blank_page(
+        self,
+        name: str,
+        width: int = 1280,
+        height: int = 720,
+        display_option: str = "FitToPage",
+    ):
+        self._ensure_pbir()
+
+        page_id = generate_hex()
+        payload = {
+            "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/1.4.0/schema.json",
+            "name": page_id,
+            "displayName": name,
+            "displayOption": display_option,
+            "height": height,
+            "width": width,
+        }
+        self.add(file_path=f"definition/pages/{page_id}/page.json", payload=payload)
+
+        # Add the page to the pages.json file
+        pages_file = self.get(file_path=self._pages_file_path)
+        pages_file["pageOrder"].append(page_id)
+
+    def _add_page(self, payload: dict | bytes, generate_id: bool = True):
+        """
+        Add a new page to the report.
+
+        Parameters
+        ----------
+        payload : dict | bytes
+            The json content of the page to be added. This can be a dictionary or a base64 encoded string.
+        generate_id : bool, default=True
+            Whether to generate a new page ID. If False, the page ID will be taken from the payload.
+        """
+        self._ensure_pbir()
+
+        page_file = decode_payload(payload)
+        page_file_copy = copy.deepcopy(page_file)
+
+        if generate_id:
+            # Generate a new page ID and update the page file accordingly
+            page_id = generate_hex()
+            page_file_copy["name"] = page_id
+        else:
+            page_id = page_file_copy.get("name")
+
+        self.add(
+            file_path=f"definition/pages/{page_id}/page.json", payload=page_file_copy
+        )
+
+    def _add_visual(self, page: str, payload: dict | bytes, generate_id: bool = True):
+        """
+        Add a new visual to a page in the report.
+
+        Parameters
+        ----------
+        page : str
+            The name or display name of the page to which the visual will be added.
+        payload : dict | bytes
+            The json content of the visual to be added. This can be a dictionary or a base64 encoded string.
+        generate_id : bool, default=True
+            Whether to generate a new visual ID. If False, the visual ID will be taken from the payload.
+        """
+        self._ensure_pbir()
+
+        visual_file = decode_payload(payload)
+        visual_file_copy = copy.deepcopy(visual_file)
+
+        if generate_id:
+            # Generate a new visual ID and update the visual file accordingly
+            visual_id = generate_hex()
+            visual_file_copy["name"] = visual_id
+        else:
+            visual_id = visual_file_copy.get("name")
+        (page_file_path, page_id, page_name) = (
+            self.__resolve_page_name_and_display_name_file_path(page)
+        )
+        visual_file_path = helper.generate_visual_file_path(page_file_path, visual_id)
+
+        self.add(file_path=visual_file_path, payload=visual_file_copy)
+
+    def _add_new_visual(
+        self,
+        page: str,
+        type: str,
+        x: int,
+        y: int,
+        height: int = 720,
+        width: int = 1280,
+    ):
+        self._ensure_pbir()
+
+        type = helper.resolve_visual_type(type)
+        visual_id = generate_hex()
+        (page_file_path, page_id, page_name) = (
+            self.__resolve_page_name_and_display_name_file_path(page)
+        )
+        visual_file_path = helper.generate_visual_file_path(page_file_path, visual_id)
+
+        payload = {
+            "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.0.0/schema.json",
+            "name": visual_id,
+            "position": {
+                "x": x,
+                "y": y,
+                "z": 0,
+                "height": height,
+                "width": width,
+                "tabOrder": 0,
+            },
+            "visual": {"visualType": type, "drillFilterOtherVisuals": True},
+        }
+
+        self.add(file_path=visual_file_path, payload=payload)
+
+    def _update_to_theme_colors(self, mapping: dict[str, tuple[int, float]]):
+        """
+        Updates the report definition to use theme colors instead of hex colors.
+
+        Parameters
+        ----------
+        mapping : dict[str, tuple[int, float]
+            A dictionary mapping color names to their corresponding theme color IDs.
+            Example: {"#FF0000": (1, 0), "#00FF00": (2, 0)}
+            The first value in the tuple is the theme color ID and the second value is the percentage (a value between -0.6 and 0.6).
+        """
+        self._ensure_pbir()
+
+        # Ensure theme color mapping is in the correct format (with Percent value)
+        mapping = {k: (v, 0) if isinstance(v, int) else v for k, v in mapping.items()}
+
+        out_of_range = {
+            color: value
+            for color, value in mapping.items()
+            if len(value) > 1 and not (-0.6 <= value[1] <= 0.6)
+        }
+
+        if out_of_range:
+            print(
+                f"{icons.red_dot} The following mapping entries have Percent values out of range [-0.6, 0.6]:"
             )
-        if (
-            setting_type == "slowDataSourceSettings"
-            and setting_name not in valid_slow_settings
-        ):
+            for color, val in out_of_range.items():
+                print(f"  {color}: Percent = {val[1]}")
             raise ValueError(
-                f"The '{setting_name}' is not a valid setting. Valid options: {valid_slow_settings}."
+                f"{icons.red_dot} The Percent values must be between -0.6 and 0.6."
             )
 
-        request_body = {"definition": {"parts": []}}
+        json_path = "$..color.expr.Literal.Value"
+        jsonpath_expr = parse(json_path)
 
-        rd = self.rdef
-        for _, r in rd.iterrows():
-            path = r["path"]
-            payload = r["payload"]
-            if path == "definition/report.json":
-                obj_file = base64.b64decode(payload).decode("utf-8")
-                obj_json = json.loads(obj_file)
-                if setting_value is False:
-                    if setting_name in obj_json.get(setting_type, {}):
-                        del obj_json[setting_type][setting_name]
+        for part in [
+            part
+            for part in self._report_definition.get("parts")
+            if part.get("path").endswith(".json")
+        ]:
+            file_path = part.get("path")
+            payload = part.get("payload")
+            matches = jsonpath_expr.find(payload)
+            if matches:
+                for match in matches:
+                    color_string = match.value.strip("'")
+                    if color_string in mapping:
+                        color_data = mapping[color_string]
+                        if isinstance(color_data, int):
+                            color_data = [color_data, 0]
+
+                        # Get reference to parent of 'Value' (i.e. 'Literal')
+                        # literal_dict = match.context.value
+                        # Get reference to parent of 'Literal' (i.e. 'expr')
+                        expr_dict = match.context.context.value
+
+                        # Replace the 'expr' with new structure
+                        expr_dict.clear()
+                        expr_dict["ThemeDataColor"] = {
+                            "ColorId": color_data[0],
+                            "Percent": color_data[1],
+                        }
+
+            self.update(file_path=file_path, payload=payload)
+
+    def _rename_fields(self, mapping: dict):
+        """
+        Renames fields in the report definition based on the provided rename mapping.
+
+        Parameters
+        ----------
+        mapping : dict
+            A dictionary containing the mapping of old field names to new field names.
+            Example:
+
+            {
+                "columns": {
+                    ("TableName", "OldColumnName1"): "NewColumnName1",
+                    ("TableName", "OldColumnName2"): "NewColumnName2",
+                },
+                "measures": {
+                    ("TableName", "OldMeasureName1"): "NewMeasureName1",
+                    ("TableName", "OldMeasureName2"): "NewMeasureName2",
+                }
+            }
+        """
+        self._ensure_pbir()
+
+        selector_mapping = {
+            key: {
+                ".".join(k): v  # join tuple with '.' to form the string
+                for k, v in value.items()
+            }
+            for key, value in mapping.items()
+        }
+
+        for part in [
+            part
+            for part in self._report_definition.get("parts")
+            if part.get("path").endswith(".json")
+        ]:
+            file_path = part.get("path")
+            payload = part.get("payload")
+
+            # Paths for columns, measures, and expressions
+            col_expr_path = parse("$..Column")
+            meas_expr_path = parse("$..Measure")
+            entity_ref_path = parse("$..Expression.SourceRef.Entity")
+            query_ref_path = parse("$..queryRef")
+            native_query_ref_path = parse("$..nativeQueryRef")
+            filter_expr_path = parse("$..filterConfig.filters[*].filter.From")
+            source_ref_path = parse("$..Expression.SourceRef.Source")
+            metadata_ref_path = parse("$..selector.metadata")
+
+            # Populate table alias map
+            alias_map = {}
+            for match in filter_expr_path.find(payload):
+                alias_list = match.value
+                for alias in alias_list:
+                    alias_name = alias.get("Name")
+                    alias_entity = alias.get("Entity")
+                    alias_map[alias_name] = alias_entity
+
+            # Rename selector.metadata objects
+            for match in metadata_ref_path.find(payload):
+                obj = match.value
+
+                # Check both measures and columns
+                for category in ["measures", "columns"]:
+                    if obj in selector_mapping.get(category, {}):
+                        value = selector_mapping[category][obj]
+
+                        # Find original tuple key from mapping for this category
+                        for tup_key in mapping.get(category, {}).keys():
+                            if ".".join(tup_key) == obj:
+                                key = tup_key[
+                                    0
+                                ]  # first element of tuple, like table name
+                                new_value = f"{key}.{value}"
+
+                                # Update the dictionary node holding "metadata"
+                                if isinstance(match.context.value, dict):
+                                    match.context.value["metadata"] = new_value
+                                else:
+                                    print(
+                                        f"Warning: Cannot assign metadata, context is {type(match.context.value)}"
+                                    )
+                                break
+
+                        # Once found in one category, no need to check the other
+                        break
+
+            # Rename Column Properties
+            for match in col_expr_path.find(payload):
+                col_obj = match.value
+                parent = match.context.value
+
+                # Extract table name from SourceRef
+                source_matches = entity_ref_path.find(parent)
+                if source_matches:
+                    table = source_matches[0].value
                 else:
-                    if setting_name not in obj_json.get(setting_type, {}):
-                        obj_json[setting_type][setting_name] = True
+                    alias = source_ref_path.find(parent)
+                    table = alias_map.get(alias[0].value)
 
-                _add_part(request_body, path, _conv_b64(obj_json))
-            else:
-                _add_part(request_body, path, payload)
+                if not table:
+                    continue  # skip if can't resolve table
 
-        upd = self.update_report(request_body=request_body)
-        if upd == 200:
-            print(f"{icons.green_dot}")
+                old_name = col_obj.get("Property")
+                if (table, old_name) in mapping.get("columns", {}):
+                    col_obj["Property"] = mapping["columns"][(table, old_name)]
+
+            # Rename Measure Properties
+            for match in meas_expr_path.find(payload):
+                meas_obj = match.value
+                parent = match.context.value
+
+                source_matches = entity_ref_path.find(parent)
+                if source_matches:
+                    table = source_matches[0].value
+                else:
+                    alias = source_ref_path.find(parent)
+                    table = alias_map.get(alias[0].value)
+
+                if not table:
+                    continue  # skip if can't resolve table
+
+                old_name = meas_obj.get("Property")
+                if (table, old_name) in mapping.get("measures", {}):
+                    meas_obj["Property"] = mapping["measures"][(table, old_name)]
+
+            # Update queryRef and nativeQueryRef
+            def update_refs(path_expr):
+                for match in path_expr.find(payload):
+                    ref_key = match.path.fields[0]
+                    ref_value = match.value
+                    parent = match.context.value
+
+                    for (tbl, old_name), new_name in mapping.get("columns", {}).items():
+                        pattern = rf"\b{re.escape(tbl)}\.{re.escape(old_name)}\b"
+                        if re.search(pattern, ref_value):
+                            if ref_key == "queryRef":
+                                ref_value = re.sub(
+                                    pattern, f"{tbl}.{new_name}", ref_value
+                                )
+                            elif ref_key == "nativeQueryRef":
+                                agg_match = re.match(
+                                    rf"(?i)([a-z]+)\s*\(\s*{re.escape(tbl)}\.{re.escape(old_name)}\s*\)",
+                                    ref_value,
+                                )
+                                if agg_match:
+                                    func = agg_match.group(1).capitalize()
+                                    ref_value = f"{func} of {new_name}"
+                                else:
+                                    ref_value = ref_value.replace(old_name, new_name)
+                            parent[ref_key] = ref_value
+
+                    for (tbl, old_name), new_name in mapping.get(
+                        "measures", {}
+                    ).items():
+                        pattern = rf"\b{re.escape(tbl)}\.{re.escape(old_name)}\b"
+                        if re.search(pattern, ref_value):
+                            if ref_key == "queryRef":
+                                ref_value = re.sub(
+                                    pattern, f"{tbl}.{new_name}", ref_value
+                                )
+                            elif ref_key == "nativeQueryRef":
+                                agg_match = re.match(
+                                    rf"(?i)([a-z]+)\s*\(\s*{re.escape(tbl)}\.{re.escape(old_name)}\s*\)",
+                                    ref_value,
+                                )
+                                if agg_match:
+                                    func = agg_match.group(1).capitalize()
+                                    ref_value = f"{func} of {new_name}"
+                                else:
+                                    ref_value = ref_value.replace(old_name, new_name)
+                            parent[ref_key] = ref_value
+
+            update_refs(query_ref_path)
+            update_refs(native_query_ref_path)
+
+            self.update(file_path=file_path, payload=payload)
+
+    def _list_color_codes(self) -> List[str]:
+        """
+        Shows a list of all the hex color codes used in the report.
+
+        Returns
+        -------
+        list[str]
+            A list of hex color codes used in the report.
+        """
+        self._ensure_pbir()
+
+        file = self.get("*.json", json_path="$..color.expr.Literal.Value")
+
+        return [x[1].strip("'") for x in file]
+
+    def __update_visual_image(self, file_path: str, image_path: str):
+        """
+        Update the image of a visual in the report definition. Only supported for 'image' visual types.
+
+        Parameters
+        ----------
+        file_path : str
+            The file path of the visual to be updated. For example: "definition/pages/ReportSection1/visuals/a1d8f99b81dcc2d59035/visual.json".
+        image_path : str
+            The name of the image file to be added. For example: "MyImage".
+        """
+
+        if image_path not in self.list_paths().get("Path").values:
+            raise ValueError(
+                f"Image path '{image_path}' not found in the report definition."
+            )
+        if not image_path.startswith("StaticResources/RegisteredResources/"):
+            raise ValueError(
+                f"Image path must start with 'StaticResources/RegisteredResources/'. Provided: {image_path}"
+            )
+
+        image_name = image_path.split("RegisteredResources/")[1]
+
+        if not file_path.endswith("/visual.json"):
+            raise ValueError(
+                f"File path must end with '/visual.json'. Provided: {file_path}"
+            )
+
+        file = self.get(file_path=file_path)
+        if file.get("visual").get("visualType") != "image":
+            raise ValueError("This function is only valid for image visuals.")
+        file.get("visual").get("objects").get("general")[0].get("properties").get(
+            "imageUrl"
+        ).get("expr").get("ResourcePackageItem")["ItemName"] == image_name
+
+    def save_changes(self):
+
+        if self._readonly:
+            print(
+                f"{icons.warning} The connection is read-only. Set 'readonly' to False to save changes."
+            )
         else:
-            print(f"{icons.red_dot}")
+            # Convert the report definition to base64
+            if self._current_report_definition == self._report_definition:
+                print(f"{icons.info} No changes were made to the report definition.")
+                return
+            new_report_definition = copy.deepcopy(self._report_definition)
 
-    def __persist_filters(self, value: Optional[bool] = False):
-        """
-        Don't allow end user to save filters on this file in the Power BI service.
-        """
+            for part in new_report_definition.get("parts"):
+                part["payloadType"] = "InlineBase64"
+                path = part.get("path")
+                payload = part.get("payload")
+                if isinstance(payload, dict):
+                    converted_json = json.dumps(part["payload"])
+                    part["payload"] = base64.b64encode(
+                        converted_json.encode("utf-8")
+                    ).decode("utf-8")
+                elif isinstance(payload, bytes):
+                    part["payload"] = base64.b64encode(part["payload"]).decode("utf-8")
+                elif is_base64(payload):
+                    part["payload"] = payload
+                else:
+                    raise NotImplementedError(
+                        f"{icons.red_dot} Unsupported payload type: {type(payload)} for the '{path}' file."
+                    )
 
-        self.adjust_settings(
-            setting_type="settings",
-            setting_name="isPersistentUserStateDisabled",
-            setting_value=value,
-        )
+            # Generate payload for the updateDefinition API
+            new_payload = {"definition": {"parts": new_report_definition.get("parts")}}
 
-    def __hide_visual_header(self, value: Optional[bool] = False):
-        """
-        Hide the visual header in reading view.
-        """
+            # Update item definition
+            _base_api(
+                request=f"/v1/workspaces/{self._workspace_id}/reports/{self._report_id}/updateDefinition",
+                method="post",
+                payload=new_payload,
+                lro_return_status_code=True,
+                status_codes=None,
+            )
+            print(
+                f"{icons.green_dot} The report definition has been updated successfully."
+            )
 
-        self.adjust_settings(
-            setting_type="settings",
-            setting_name="hideVisualContainerHeader",
-            setting_value=value,
-        )
+    def close(self):
 
-    def __default_cross_filtering(self, value: Optional[bool] = False):
-        """
-        Change the default visual interaction from cross highlighting to cross filtering.
-        """
+        if self._show_diffs and (
+            self._current_report_definition != self._report_definition
+        ):
+            diff_parts(
+                self._current_report_definition.get("parts"),
+                self._report_definition.get("parts"),
+            )
+        # Save the changes to the service if the connection is read/write
+        if not self._readonly:
+            self.save_changes()
 
-        self.adjust_settings(
-            setting_type="settings",
-            setting_name="defaultFilterActionIsDataFilter",
-            setting_value=value,
-        )
 
-    def __modern_visual_header(self, value: Optional[bool] = True):
-        """
-        Use the modern visual header with updated styling options.
-        """
+@log
+@contextmanager
+def connect_report(
+    report: str | UUID,
+    workspace: Optional[str | UUID] = None,
+    readonly: bool = True,
+    show_diffs: bool = True,
+):
+    """
+    Connects to the report.
 
-        self.adjust_settings(
-            setting_type="settings",
-            setting_name="useStylableVisualContainerHeader",
-            setting_value=value,
-        )
+    Parameters
+    ----------
+    report : str | uuid.UUID
+        Name or ID of the report.
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    readonly: bool, default=True
+        Whether the connection is read-only or read/write. Setting this to False enables read/write which saves the changes made back to the server.
+    show_diffs: bool, default=True
+        Whether to show the differences between the current report definition in the service and the new report definition.
 
-    def __show_default_summarization_type(self, value: Optional[bool] = True):
-        """
-        For aggregated fields, always show the default summarization type.
-        """
+    Returns
+    -------
+    typing.Iterator[ReportWrapper]
+        A connection to the report's metadata.
+    """
 
-        self.adjust_settings(
-            setting_type="settings",
-            setting_name="useDefaultAggregateDisplayName",
-            setting_value=value,
-        )
-
-    def __modern_visual_tooltips(self, value: Optional[bool] = True):
-        """
-        Use modern visual tooltips with drill actions and updated styling.
-        """
-
-        self.adjust_settings(
-            setting_type="settings",
-            setting_name="useEnhancedTooltips",
-            setting_value=value,
-        )
-
-    def __user_can_change_filter_types(self, value: Optional[bool] = True):
-        """
-        Allow users to change filter types.
-        """
-
-        self.adjust_settings(
-            setting_type="settings",
-            setting_name="allowChangeFilterTypes",
-            setting_value=value,
-        )
-
-    def __disable_search_filter_pane(self, value: Optional[bool] = False):
-        """
-        Enable search for the filter pane.
-        """
-
-        self.adjust_settings(
-            setting_type="settings",
-            setting_name="disableFilterPaneSearch",
-            setting_value=value,
-        )
-
-    def __enable_cross_report_drillthrough(self, value: Optional[bool] = False):
-        """
-        Allow visuals in this report to use drillthrough targets from other reports.
-        """
-
-        self.adjust_settings(
-            setting_type="settings",
-            setting_name="useCrossReportDrillthrough",
-            setting_value=value,
-        )
-
-    def __disable_default_cross_highlighting(self, value: Optional[bool] = False):
-        """
-        Disable cross highlighting/filtering by default.
-        """
-
-        self.adjust_settings(
-            setting_type="slowDataSourceSettings",
-            setting_name="isCrossHighlightingDisabled",
-            setting_value=value,
-        )
-
-    def __add_slicer_apply_button(self, value: Optional[bool] = False):
-        """
-        Add an Apply button to each individual slicer (not recommended).
-        """
-
-        self.adjust_settings(
-            setting_type="slowDataSourceSettings",
-            setting_name="isSlicerSelectionsButtonEnabled",
-            setting_value=value,
-        )
-
-    # def close(self):
-    # if not self._readonly and self._report is not None:
-    #    print("saving...")
-
-    #    self._report = None
+    rw = ReportWrapper(
+        report=report,
+        workspace=workspace,
+        readonly=readonly,
+        show_diffs=show_diffs,
+    )
+    try:
+        yield rw
+    finally:
+        rw.close()

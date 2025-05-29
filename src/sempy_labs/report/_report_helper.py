@@ -1,14 +1,5 @@
-import sempy.fabric as fabric
-from typing import Tuple, Optional
-import sempy_labs._icons as icons
-import re
-import base64
-import json
 import requests
-from uuid import UUID
-from sempy_labs._helper_functions import (
-    resolve_workspace_name_and_id,
-)
+import sempy_labs._icons as icons
 
 
 vis_type_mapping = {
@@ -47,10 +38,9 @@ vis_type_mapping = {
     "decompositionTreeVisual": "Decomposition tree",
     "qnaVisual": "Q&A",
     "aiNarratives": "Narrative",
-    "scorecard": "Metrics (Preview)",
+    "scorecard": "Goals (Preview)",
     "rdlVisual": "Paginated report",
     "cardVisual": "Card (new)",
-    "advancedSlicerVisual": "Slicer (new)",
     "actionButton": "Button",
     "bookmarkNavigator": "Bookmark navigator",
     "image": "Image",
@@ -58,7 +48,32 @@ vis_type_mapping = {
     "pageNavigator": "Page navigator",
     "shape": "Shape",
     "Group": "Group",
+    "listSlicer": "List Slicer",
+    "advancedSlicerVisual": "Button Slicer",
+    "FlowVisual_C29F1DCC_81F5_4973_94AD_0517D44CC06A": "Power Automate for Power BI",
 }
+
+
+def generate_visual_file_path(page_file_path: str, visual_id: str) -> str:
+
+    return page_file_path.split("/page.json")[0] + f"/visuals/{visual_id}.json"
+
+
+def resolve_visual_type(visual_type: str) -> str:
+    vt_lower = visual_type.lower()
+
+    vis_map_lower = {k.lower(): v for k, v in vis_type_mapping.items()}
+    flipped_lower = {v.lower(): k for k, v in vis_type_mapping.items()}
+
+    if vt_lower in vis_map_lower:
+        resolved = vis_map_lower.get(vt_lower)
+    elif vt_lower in flipped_lower:
+        resolved = flipped_lower.get(vt_lower)
+    else:
+        raise ValueError(f"{icons.red_dot} Unknown visual type: {visual_type}")
+
+    return resolved
+
 
 page_type_mapping = {
     (320, 240): "Tooltip",
@@ -68,22 +83,6 @@ page_type_mapping = {
 }
 
 page_types = ["Tooltip", "Letter", "4:3", "16:9"]
-
-
-def get_web_url(report: str, workspace: Optional[str | UUID] = None):
-
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    dfR = fabric.list_reports(workspace=workspace_id)
-    dfR_filt = dfR[dfR["Name"] == report]
-
-    if len(dfR_filt) == 0:
-        raise ValueError(
-            f"{icons.red_dot} The '{report}' report does not exist within the '{workspace_name}' workspace."
-        )
-    web_url = dfR_filt["Web Url"].iloc[0]
-
-    return web_url
 
 
 def populate_custom_visual_display_names():
@@ -126,106 +125,6 @@ def populate_custom_visual_display_names():
         vizId = i.get("powerBIVisualId")
         displayName = i.get("displayName")
         vis_type_mapping[vizId] = displayName
-
-
-def resolve_page_name(self, page_name: str) -> Tuple[str, str, str]:
-
-    dfP = self.list_pages()
-    if any(r["Page Name"] == page_name for _, r in dfP.iterrows()):
-        valid_page_name = page_name
-        dfP_filt = dfP[dfP["Page Name"] == page_name]
-        valid_display_name = dfP_filt["Page Display Name"].iloc[0]
-        file_path = dfP_filt["File Path"].iloc[0]
-    elif any(r["Page Display Name"] == page_name for _, r in dfP.iterrows()):
-        valid_display_name = page_name
-        dfP_filt = dfP[dfP["Page Display Name"] == page_name]
-        valid_page_name = dfP_filt["Page Name"].iloc[0]
-        file_path = dfP_filt["File Path"].iloc[0]
-    else:
-        raise ValueError(
-            f"{icons.red_dot} Invalid page name. The '{page_name}' page does not exist in the '{self._report}' report within the '{self._workspace}' workspace."
-        )
-
-    return valid_page_name, valid_display_name, file_path
-
-
-def visual_page_mapping(self) -> Tuple[dict, dict]:
-
-    page_mapping = {}
-    visual_mapping = {}
-    rd = self.rdef
-    for _, r in rd.iterrows():
-        file_path = r["path"]
-        payload = r["payload"]
-        if file_path.endswith("/page.json"):
-            pattern_page = r"/pages/(.*?)/page.json"
-            page_name = re.search(pattern_page, file_path).group(1)
-            obj_file = base64.b64decode(payload).decode("utf-8")
-            obj_json = json.loads(obj_file)
-            page_id = obj_json.get("name")
-            page_display = obj_json.get("displayName")
-            page_mapping[page_name] = (page_id, page_display)
-    for _, r in rd.iterrows():
-        file_path = r["path"]
-        payload = r["payload"]
-        if file_path.endswith("/visual.json"):
-            pattern_page = r"/pages/(.*?)/visuals/"
-            page_name = re.search(pattern_page, file_path).group(1)
-            visual_mapping[file_path] = (
-                page_mapping.get(page_name)[0],
-                page_mapping.get(page_name)[1],
-            )
-
-    return page_mapping, visual_mapping
-
-
-def resolve_visual_name(
-    self, page_name: str, visual_name: str
-) -> Tuple[str, str, str, str]:
-    """
-    Obtains the page name, page display name, and the file path for a given page in a report.
-
-    Parameters
-    ----------
-    page_name : str
-        The name of the page of the report - either the page name (GUID) or the page display name.
-    visual_name : str
-        The name of the visual of the report.
-
-    Returns
-    -------
-    Tuple[str, str, str, str] Page name, page display name, visual name, file path from the report definition.
-
-    """
-
-    dfV = self.list_visuals()
-    if any(
-        (r["Page Name"] == page_name) & (r["Visual Name"] == visual_name)
-        for _, r in dfV.iterrows()
-    ):
-        valid_page_name = page_name
-        dfV_filt = dfV[
-            (dfV["Page Name"] == page_name) & (dfV["Visual Name"] == visual_name)
-        ]
-        file_path = dfV_filt["File Path"].iloc[0]
-        valid_display_name = dfV_filt["Page Display Name"].iloc[0]
-    elif any(
-        (r["Page Display Name"] == page_name) & (r["Visual Name"] == visual_name)
-        for _, r in dfV.iterrows()
-    ):
-        valid_display_name = page_name
-        dfV_filt = dfV[
-            (dfV["Page Display Name"] == page_name)
-            & (dfV["Visual Name"] == visual_name)
-        ]
-        file_path = dfV_filt["File Path"].iloc[0]
-        valid_page_name = dfV_filt["Page Name"].iloc[0]
-    else:
-        raise ValueError(
-            f"{icons.red_dot} Invalid page/visual name. The '{visual_name}' visual on the '{page_name}' page does not exist in the '{self._report}' report within the '{self._workspace}' workspace."
-        )
-
-    return valid_page_name, valid_display_name, visual_name, file_path
 
 
 def find_entity_property_pairs(data, result=None, keys_path=None):
