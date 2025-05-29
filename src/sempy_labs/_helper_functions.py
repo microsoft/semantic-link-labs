@@ -2283,7 +2283,8 @@ def get_jsonpath_value(
     matches = parse(path).find(data)
     result = matches[0].value if matches else default
     if result and remove_quotes and isinstance(result, str):
-        result = result[1:-1]
+        if result.startswith("'") and result.endswith("'"):
+            result = result[1:-1]
     if fix_true and isinstance(result, str):
         if result.lower() == "true":
             result = True
