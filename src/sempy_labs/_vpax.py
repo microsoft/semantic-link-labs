@@ -16,6 +16,7 @@ from sempy_labs._helper_functions import (
     file_exists,
     create_abfss_path_from_path,
 )
+from sempy._utils._log import log
 import sempy_labs._icons as icons
 import zipfile
 import requests
@@ -134,6 +135,7 @@ def init_vertipaq_analyzer():
     _vpa_initialized = True
 
 
+@log
 def create_vpax(
     dataset: str | UUID,
     workspace: Optional[str | UUID] = None,
