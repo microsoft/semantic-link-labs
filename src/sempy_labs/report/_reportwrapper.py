@@ -164,6 +164,548 @@ class ReportWrapper:
                 f"{icons.red_dot} This ReportWrapper function requires the report to be in the PBIR format."
                 "See here for details: https://powerbi.microsoft.com/blog/power-bi-enhanced-report-format-pbir-in-power-bi-desktop-developer-mode-preview/"
             )
+    
+    class Report:
+        def __init__(self, wrapper):
+            self.ObjectType = "Report"
+            self.Name = wrapper._report_name
+            self._wrapper = wrapper
+            self._pages = None
+            self._custom_visuals = None
+            self._filters = None
+            self._wrapper._ensure_pbir()
+
+        @property
+        def Pages(self):
+            if self._pages is None:
+                self._pages = ReportWrapper.PageCollection(self._wrapper)
+            return self._pages
+
+        @property
+        def CustomVisuals(self):
+            if self._custom_visuals is None:
+                self._custom_visuals = ReportWrapper.CustomVisualCollection(
+                    self._wrapper
+                )
+            return self._custom_visuals
+
+        @property
+        def Filters(self):
+            if self._filters is None:
+                self._filters = ReportFilterCollection(self._wrapper)
+            return self._filters
+
+    class Page:
+        def __init__(self, file_path, page_data, wrapper):
+            self._wrapper = wrapper
+            self._visuals = None
+            self._filters = None
+            self._data = page_data
+            self.ObjectType = "Page"
+            self.FilePath = file_path
+            self.Name = page_data.get("name")
+            self.DisplayOption = page_data.get("displayOption")
+            self.FilterCount = len(
+                get_jsonpath_value(
+                    data=page_data, path="$.filterConfig.filters", default=[]
+                )
+            )
+            self.URL = wrapper._get_url(page_name=self.Name)
+
+        def _get_property(
+            self, json_path: str, default=None, remove_quotes: bool = False
+        ):
+            return get_jsonpath_value(
+                self._data, json_path, default=default, remove_quotes=remove_quotes
+            )
+
+        def _set_property(self, json_path, value, add_quotes: bool = False):
+            if add_quotes:
+                value = f"'{value}'"
+            self._data = set_json_value(
+                payload=self._data,
+                json_path=json_path,
+                json_value=value,
+            )
+            self._wrapper.set_json(
+                file_path=self.FilePath,
+                json_path=json_path,
+                json_value=value,
+            )
+
+        def _remove_property(self, json_path):
+            self._wrapper.remove(
+                file_path=self.FilePath, json_path=json_path, verbose=False
+            )
+            remove_json_value(
+                path=self.FilePath,
+                payload=self._data,
+                json_path=json_path,
+                verbose=False,
+            )
+
+        @property
+        def DisplayName(self):
+            path = "$.displayName"
+            return self._get_property(path)
+
+        @DisplayName.setter
+        def DisplayName(self, value: str):
+            path = "$.displayName"
+            self._set_property(path, value)
+
+        @property
+        def Height(self):
+            path = "$.height"
+            return self._get_property(path)
+
+        @Height.setter
+        def Height(self, value: int):
+            if not isinstance(value, int):
+                raise TypeError(
+                    f"Height must be an integer, got {type(value).__name__}"
+                )
+            path = "$.height"
+            self._set_property(path, value)
+
+        @property
+        def Width(self):
+            path = "$.width"
+            return self._get_property(path)
+
+        @Width.setter
+        def Width(self, value: int):
+            if not isinstance(value, int):
+                raise TypeError(f"Width must be an integer, got {type(value).__name__}")
+            path = "$.width"
+            self._set_property(path, value)
+
+        @property
+        def IsActive(self):
+            return (
+                self._wrapper.get(
+                    file_path=ReportWrapper._pages_file_path,
+                    json_path="$.activePageName",
+                )
+                == self.Name
+            )
+
+        @IsActive.setter
+        def IsActive(self, value: bool):
+            if not isinstance(value, bool):
+                raise TypeError(f"IsActive must be a bool, got {type(value).__name__}")
+            if not value:
+                raise ValueError("IsActive can only be set to True.")
+            self._wrapper.set_json(
+                file_path=ReportWrapper._pages_file_path,
+                json_path="$.activePageName",
+                json_value=self.Name,
+            )
+
+        @property
+        def IsHidden(self):
+            return self._get_property(path="$.visibility") == "HiddenInViewMode"
+
+        @IsHidden.setter
+        def IsHidden(self, value: bool):
+            if not isinstance(value, bool):
+                raise TypeError(f"IsHidden must be a bool, got {type(value).__name__}")
+            if value:
+                self._set_property(
+                    json_path="$.visibility", json_value="HiddenInViewMode"
+                )
+            else:
+                self._remove_property("$.visibility")
+
+        @property
+        def Visuals(self):
+            if self._visuals is None:
+                self._visuals = ReportWrapper.VisualCollection(
+                    self._wrapper, self.FilePath
+                )
+            return self._visuals
+
+        @property
+        def Filters(self):
+            if self._filters is None:
+                self._filters = PageFilterCollection(self._wrapper, self.FilePath)
+            return self._filters
+
+    class PageCollection:
+        def __init__(self, wrapper):
+            self._wrapper = wrapper
+            self._pages = None
+
+        def _load_pages(self):
+            parts = self._wrapper.get(file_path="definition/pages/*/page.json")
+            self._pages = [
+                ReportWrapper.Page(file_path, data, self._wrapper)
+                for file_path, data in parts
+            ]
+
+        def __iter__(self):
+            if self._pages is None:
+                self._load_pages()
+            return iter(self._pages)
+
+        def __getitem__(self, key):
+            if self._pages is None:
+                self._load_pages()
+
+            if isinstance(key, int):
+                return self._pages[key]
+
+            # Support lookup by Name or DisplayName
+            for page in self._pages:
+                if (
+                    getattr(page, "Name", None) == key
+                    or getattr(page, "DisplayName", None) == key
+                ):
+                    return page
+
+            raise KeyError(f"No page found with Name or DisplayName = '{key}'")
+
+        @property
+        def Count(self):
+            if self._pages is None:
+                self._load_pages()
+            return len(self._pages)
+
+    class Visual:
+        def __init__(self, file_path, visual_data, wrapper):
+            self._wrapper = wrapper
+            self._data = visual_data
+            self._filters = None
+            self._page = None
+            self.FilePath = file_path
+            self._page_file_path = self.FilePath.split("/visuals/")[0] + "/page.json"
+            self.ObjectType = "Visual"
+            self.Name = get_jsonpath_value(visual_data, "$.name")
+            self.Z = get_jsonpath_value(visual_data, "$.position.z")
+            self.TabOrder = get_jsonpath_value(visual_data, "$.position.tabOrder")
+            self.Type = get_jsonpath_value(visual_data, "$.visual.visualType", "Group")
+            self.DisplayType = helper.vis_type_mapping.get(self.Type, self.Type)
+            report_file = self._wrapper.get(file_path=self._wrapper._report_file_path)
+            custom_visuals = report_file.get("publicCustomVisuals", [])
+            self.IsCustomVisual = self.Type in custom_visuals
+            self.DataLimit = get_jsonpath_value(
+                data=visual_data,
+                path='$.filterConfig.filters[?(@.type == "VisualTopN")].filter.Where[*].Condition.VisualTopN.ItemCount',
+                default=0,
+            )
+            self.FilterCount = len(
+                get_jsonpath_value(
+                    data=visual_data, path="$.filterConfig.filters", default=[]
+                )
+            )
+            self.SlicerType = get_jsonpath_value(
+                data=visual_data,
+                path="$.visual.objects.data[*].properties.mode.expr.Literal.Value",
+                default="N/A",
+                remove_quotes=True,
+            )
+            self.HowCreated = get_jsonpath_value(
+                data=visual_data, path="$.visual.howCreated", default="Unknown"
+            )
+            self.HasSparkline = (
+                get_jsonpath_value(data=visual_data, path="$..SparklineData")
+                is not None
+            )
+            data_keys = [
+                "Aggregation",
+                "Column",
+                "Measure",
+                "HierarchyLevel",
+                "NativeVisualCalculation",
+            ]
+
+            self.IsDataVisual = any(
+                get_jsonpath_value(data=visual_data, path=f"$..{key}")
+                for key in data_keys
+            )
+
+        @property
+        def Page(self):
+            return ReportWrapper.Page(
+                file_path=self._page_file_path,
+                page_data=self._wrapper.get(file_path=self._page_file_path),
+                wrapper=self._wrapper,
+            )
+
+        def _get_property(
+            self,
+            json_path: str,
+            default=None,
+            remove_quotes: bool = False,
+            fix_true: bool = False,
+        ):
+            return get_jsonpath_value(
+                self._data,
+                json_path,
+                default=default,
+                remove_quotes=remove_quotes,
+                fix_true=fix_true,
+            )
+
+        def _set_property(self, json_path, value, add_quotes: bool = False):
+            if add_quotes:
+                value = f"'{value}'"
+            self._data = set_json_value(
+                payload=self._data,
+                json_path=json_path,
+                json_value=value,
+            )
+            self._wrapper.set_json(
+                file_path=self.FilePath,
+                json_path=json_path,
+                json_value=value,
+            )
+
+        def _remove_property(self, json_path):
+            self._wrapper.remove(
+                file_path=self.FilePath, json_path=json_path, verbose=False
+            )
+            remove_json_value(
+                path=self.FilePath,
+                payload=self._data,
+                json_path=json_path,
+                verbose=False,
+            )
+
+        # Title
+        @property
+        def Title(self):
+            base_path = "$.visual.visualContainerObjects.title[*].properties"
+            return TitleObject(self, base_path)
+
+        @property
+        def SubTitle(self):
+            base_path = "$.visual.visualContainerObjects.subTitle[*].properties"
+            return TitleObject(self, base_path)
+
+        @property
+        def X(self):
+            path = ReportWrapper._visual_x_path
+            return self._get_property(path)
+
+        @X.setter
+        def X(self, value: float | int):
+            if not isinstance(value, float | int):
+                raise TypeError(f"X must be an integer, got {type(value).__name__}")
+            path = ReportWrapper._visual_x_path
+            self._set_property(path, value)
+
+        @property
+        def Y(self):
+            path = ReportWrapper._visual_y_path
+            return self._get_property(path)
+
+        @Y.setter
+        def Y(self, value: float | int):
+            if not isinstance(value, float | int):
+                raise TypeError(f"Y must be an integer, got {type(value).__name__}")
+            path = ReportWrapper._visual_y_path
+            self._set_property(path, value)
+
+        @property
+        def Height(self):
+            return self._get_property("$.position.height")
+
+        @Height.setter
+        def Height(self, value: float | int):
+            self._set_property("$.position.height", value)
+
+        @property
+        def Width(self):
+            return self._get_property("$.position.width")
+
+        @Width.setter
+        def Width(self, value: float | int):
+            self._set_property("$.position.width", value)
+
+        @property
+        def IsHidden(self):
+            return self._get_property("$.isHidden", default=False)
+
+        @IsHidden.setter
+        def IsHidden(self, value: bool):
+            if not isinstance(value, bool):
+                raise TypeError(f"IsHidden must be a bool, got {type(value).__name__}")
+            if value:
+                self._set_property("$.isHidden", True)
+            else:
+                self._remove_property("$.isHidden")
+
+        @property
+        def ShowItemsWithNoData(self):
+            return self._get_property("$..showAll", default=False)
+
+        @ShowItemsWithNoData.setter
+        def ShowItemsWithNoData(self, value: bool):
+            if not isinstance(value, bool):
+                raise TypeError(
+                    f"ShowItemsWithNoData must be a bool, got {type(value).__name__}"
+                )
+            if value:
+                self._set_property(
+                    file_path=self.FilePath, json_path="$..showAll", json_value=True
+                )
+            else:
+                self._remove_property(json_path="$..showAll")
+
+        @property
+        def LockAspectRatio(self):
+            return self._get_property(
+                "$.visual.visualContainerObjects.lockAspect[*].properties.show.expr.Literal.Value",
+                default=False,
+                fix_true=True,
+            )
+
+        @LockAspectRatio.setter
+        def LockAspectRatio(self, value: bool):
+            if not isinstance(value, bool):
+                raise TypeError(
+                    f"LockAspectRatio must be a bool, got {type(value).__name__}"
+                )
+            if value:
+                self._set_property(
+                    file_path=self.FilePath,
+                    json_path="$.visual.visualContainerObjects.lockAspect[*].properties.show.expr.Literal.Value",
+                    json_value="true",
+                )
+            else:
+                self._remove_property(
+                    file_path=self.FilePath,
+                    json_path="$.visual.visualContainerObjects.lockAspect",
+                )
+
+        @property
+        def MaintainLayerOrder(self):
+            return self._get_property(
+                "$.visual.visualContainerObjects.general[*].properties.keepLayerOrder.expr.Literal.Value",
+                default=False,
+                fix_true=True,
+            )
+
+        @MaintainLayerOrder.setter
+        def MaintainLayerOrder(self, value: bool):
+            if not isinstance(value, bool):
+                raise TypeError(
+                    f"MaintainLayerOrder must be a bool, got {type(value).__name__}"
+                )
+            if value:
+                self._set_property(
+                    "$.visual.visualContainerObjects.general[*].properties.keepLayerOrder.expr.Literal.Value",
+                    "true",
+                )
+            else:
+                self._remove_property(
+                    "$.visual.visualContainerObjects.general[*].properties.keepLayerOrder",
+                )
+
+        @property
+        def AltText(self):
+            return self._get_property(
+                "$.visual.visualContainerObjects.general[*].properties.altText.expr.Literal.Value"
+            )
+
+        @AltText.setter
+        def AltText(self, value: str):
+            if value:
+                self._set_property(
+                    "$.visual.visualContainerObjects.general[*].properties.altText.expr.Literal.Value",
+                    value,
+                )
+            else:
+                self._remove_property(
+                    "$.visual.visualContainerObjects.general[*].properties.altText"
+                )
+
+        @property
+        def Filters(self):
+            if self._filters is None:
+                self._filters = VisualFilterCollection(self._wrapper, self.FilePath)
+            return self._filters
+
+    class VisualCollection:
+        def __init__(self, wrapper, page_file_path=None):
+            self._wrapper = wrapper
+            self._page_file_path = page_file_path
+            self._visuals = None
+
+        def _load_visuals(self):
+            all_visuals = []
+            parts = self._wrapper.get(file_path="definition/pages/*/visual.json")
+            for file_path, data in parts:
+                if self._page_file_path:
+                    page_dir = "/".join(self._page_file_path.split("/")[:3])
+                    if not file_path.startswith(page_dir):
+                        continue
+                all_visuals.append(ReportWrapper.Visual(file_path, data, self._wrapper))
+            self._visuals = all_visuals
+
+        def __iter__(self):
+            if self._visuals is None:
+                self._load_visuals()
+            return iter(self._visuals)
+
+        def __getitem__(self, key):
+            if self._visuals is None:
+                self._load_visuals()
+
+            # If key is an int, return by index
+            if isinstance(key, int):
+                return self._visuals[key]
+
+            # Otherwise, search for a visual by name
+            for visual in self._visuals:
+                if visual.Name == key:
+                    return visual
+
+            raise KeyError(f"Visual '{key}' not found")
+
+        @property
+        def Count(self):
+            if self._visuals is None:
+                self._load_visuals()
+            return len(self._visuals)
+
+    class CustomVisual:
+        def __init__(self, name):
+            self.ObjectType = "Custom Visual"
+            self.Name = name
+            self.DisplayName = helper.vis_type_mapping.get(name, name)
+
+    class CustomVisualCollection:
+        def __init__(self, wrapper):
+            self._wrapper = wrapper
+            self._custom_visuals = None
+
+        def _load_custom_visuals(self):
+            raw = (
+                self._wrapper.get(
+                    file_path=self._wrapper._report_file_path,
+                    json_path="$.publicCustomVisuals",
+                )
+                or []
+            )
+            self._custom_visuals = [ReportWrapper.CustomVisual(name) for name in raw]
+
+        def __iter__(self):
+            if self._custom_visuals is None:
+                self._load_custom_visuals()
+            return iter(self._custom_visuals)
+
+        def __getitem__(self, key):
+            if self._custom_visuals is None:
+                self._load_custom_visuals()
+            return self._custom_visuals[key]
+
+        @property
+        def Count(self):
+            if self._custom_visuals is None:
+                self._load_custom_visuals()
+            return len(self._custom_visuals)
 
     # Basic functions
     def get(
@@ -2947,3 +3489,317 @@ def connect_report(
         yield rw
     finally:
         rw.close()
+
+
+# Supplementary classes
+class TitleObject:
+    def __init__(self, visual, base_path: str):
+        self.visual = visual
+        self.base_path = base_path
+
+    # Text
+    @property
+    def Text(self):
+        path = f"{self.base_path}.text.expr.Literal.Value"
+        return self.visual._get_property(path, remove_quotes=True)
+
+    @Text.setter
+    def Text(self, value: str):
+        path = f"{self.base_path}.text.expr.Literal.Value"
+        self.visual._set_property(path, value, add_quotes=True)
+
+    # Show
+    @property
+    def Show(self):
+        path = f"{self.base_path}.show.expr.Literal.Value"
+        return self.visual._get_property(path, fix_true=True)
+
+    @Show.setter
+    def Show(self, value: bool):
+        if not isinstance(value, bool):
+            raise ValueError(
+                f"{icons.red_dot} The value for 'Show' must be a boolean. Provided: {type(value)}"
+            )
+        path = f"{self.base_path}.show.expr.Literal.Value"
+        if value:
+            self.visual._set_property(path, "true")
+        else:
+            self.visual._remove_property(path)
+
+    # Font
+    @property
+    def Font(self):
+        path = f"{self.base_path}.fontFamily.expr.Literal.Value"
+        value = self.visual._get_property(path)
+        if value:
+            value = value.strip("'")
+        return value
+
+    @Font.setter
+    def Font(self, value: str):
+        path = f"{self.base_path}.fontFamily.expr.Literal.Value"
+        self.visual._set_property(path, f"'''{value}'''")
+
+    # Font Size
+    @property
+    def FontSize(self):
+        path = f"{self.base_path}.fontSize.expr.Literal.Value"
+        value = self.visual._get_property(path)
+        if value:
+            value = value.rstrip("D")
+        return value
+
+    @FontSize.setter
+    def FontSize(self, value: int):
+        if not isinstance(value, int):
+            raise ValueError(
+                f"{icons.red_dot} The value for 'FontSize' must be an integer. Provided: {type(value)}"
+            )
+        path = f"{self.base_path}.fontSize.expr.Literal.Value"
+        self.visual._set_property(path, f"{value}D")
+
+    # Bold
+    @property
+    def Bold(self):
+        path = f"{self.base_path}.bold.expr.Literal.Value"
+        return self.visual._get_property(path, fix_true=True)
+
+    @Bold.setter
+    def Bold(self, value: bool):
+        if not isinstance(value, bool):
+            raise ValueError(
+                f"{icons.red_dot} The value for 'Bold' must be a bool. Provided: {type(value)}"
+            )
+        path = f"{self.base_path}.bold.expr.Literal.Value"
+        if value:
+            self.visual._set_property(path, "true")
+        else:
+            self.visual._remove_property(path)
+
+    # Italic
+    @property
+    def Italic(self):
+        path = f"{self.base_path}.italic.expr.Literal.Value"
+        return self.visual._get_property(path, fix_true=True)
+
+    @Italic.setter
+    def Italic(self, value: bool):
+        if not isinstance(value, bool):
+            raise ValueError(
+                f"{icons.red_dot} The value for 'Italic' must be a bool. Provided: {type(value)}"
+            )
+        path = f"{self.base_path}.italic.expr.Literal.Value"
+        if value:
+            self.visual._set_property(path, "true")
+        else:
+            self.visual._remove_property(path)
+
+    # Underline
+    @property
+    def Underline(self):
+        path = f"{self.base_path}.underline.expr.Literal.Value"
+        return self.visual._get_property(path, fix_true=True)
+
+    @Underline.setter
+    def Underline(self, value: bool):
+        if not isinstance(value, bool):
+            raise ValueError(
+                f"{icons.red_dot} The value for 'Underline' must be a bool. Provided: {type(value)}"
+            )
+        path = f"{self.base_path}.underline.expr.Literal.Value"
+        if value:
+            self.visual._set_property(path, "true")
+        else:
+            self.visual._remove_property(path)
+
+    # Font Color
+
+    # Alignment
+    @property
+    def Alignment(self):
+        path = f"{self.base_path}.alignment.expr.Literal.Value"
+        value = self.visual._get_property(path, remove_quotes=True)
+        if value:
+            value = value.capitalize()
+        return value
+
+    @Alignment.setter
+    def Alignment(self, value: Literal["Left", "Center", "Right"]):
+        value = value.capitalize()
+        if value not in ["Left", "Center", "Right"]:
+            raise ValueError(
+                f"{icons.red_dot} The value for 'Alignment' must be one of 'Left', 'Center', or 'Right'. Provided: {value}"
+            )
+        path = f"{self.base_path}.alignment.expr.Literal.Value"
+        self.visual._set_property(path, f"{value.lower()}", add_quotes=True)
+
+    # Text Wrap
+    @property
+    def TextWrap(self):
+        path = f"{self.base_path}.titleWrap.expr.Literal.Value"
+        return self.visual._get_property(path, fix_true=True)
+
+    @TextWrap.setter
+    def TextWrap(self, value: bool):
+        if not isinstance(value, bool):
+            raise ValueError(
+                f"{icons.red_dot} The value for 'TextWrap' must be a bool. Provided: {type(value)}"
+            )
+        path = f"{self.base_path}.underline.expr.Literal.Value"
+        if not value:
+            self.visual._set_property(path, "false")
+        else:
+            self.visual._remove_property(path)
+
+
+class Filter:
+    def __init__(self, file_path, filter_data, wrapper):
+        self._wrapper = wrapper
+        self._data = filter_data
+        self.FilePath = file_path
+        self.ObjectType = "Filter"
+        self.Name = filter_data.get("name")
+        self.Ordinal = filter_data.get("ordinal")
+        self.HowCreated = filter_data.get("howCreated", "Unknown")
+        self.Locked = filter_data.get("isLockedInViewMode", False)
+        self.Hidden = filter_data.get("isHiddenInViewMode", False)
+        self.Type = filter_data.get("type", "Basic")
+        self.IsUsed = True if "Where" in filter_data.get("filter", {}) else False
+
+        # Initialize fields
+        self.TableName = None
+        self.ObjectName = None
+        self.ObjectType = None
+
+        field = filter_data.get("field", {})
+
+        # Case 1: Simple column
+        if "Column" in field:
+            col = field["Column"]
+            self.TableName = (
+                col.get("Expression", {}).get("SourceRef", {}).get("Entity")
+            )
+            self.ObjectName = col.get("Property")
+            self.ObjectType = "Column"
+
+        # Case 2: Aggregation over column (still a column)
+        elif "Aggregation" in field:
+            col = field.get("Aggregation", {}).get("Expression", {}).get("Column", {})
+            self.TableName = (
+                col.get("Expression", {}).get("SourceRef", {}).get("Entity")
+            )
+            self.ObjectName = col.get("Property")
+            self.ObjectType = "Column"
+
+        # Case 3: Measure
+        elif "Measure" in field:
+            measure = field["Measure"]
+            self.TableName = (
+                measure.get("Expression", {}).get("SourceRef", {}).get("Entity")
+            )
+            self.ObjectName = measure.get("Property")
+            self.ObjectType = "Measure"
+
+    def to_dict(self):
+        return {
+            **self._data,
+            "TableName": self.TableName,
+            "ObjectName": self.ObjectName,
+            "ObjectType": self.ObjectType,
+        }
+
+
+class ReportFilterCollection:
+    def __init__(self, wrapper):
+        self._wrapper = wrapper
+        self._filters = None
+
+    def _load_filters(self):
+        data = self._wrapper.get(file_path=ReportWrapper._report_file_path)
+        raw_filters = get_jsonpath_value(
+            data=data, path="$.filterConfig.filters", default=[]
+        )
+        self._filters = [
+            Filter(ReportWrapper._report_file_path, f, self._wrapper)
+            for f in raw_filters
+        ]
+
+    def __iter__(self):
+        if self._filters is None:
+            self._load_filters()
+        return iter(self._filters)
+
+    def __getitem__(self, index):
+        if self._filters is None:
+            self._load_filters()
+        return self._filters[index]
+
+    @property
+    def Count(self):
+        if self._filters is None:
+            self._load_filters()
+        return len(self._filters)
+
+
+class PageFilterCollection:
+    def __init__(self, wrapper, page_file_path=None):
+        self._wrapper = wrapper
+        self._page_filters = None
+        self._page_file_path = page_file_path
+
+    def _load_filters(self):
+        data = self._wrapper.get(file_path=self._page_file_path)
+        filter_list = get_jsonpath_value(
+            data, path="$.filterConfig.filters", default=[]
+        )
+        self._page_filters = [
+            Filter(self._page_file_path, f, self._wrapper) for f in filter_list
+        ]
+
+    def __iter__(self):
+        if self._page_filters is None:
+            self._load_filters()
+        return iter(self._page_filters)
+
+    def __getitem__(self, index):
+        if self._page_filters is None:
+            self._load_filters()
+        return self._page_filters[index]
+
+    @property
+    def Count(self):
+        if self._page_filters is None:
+            self._load_filters()
+        return len(self._page_filters)
+
+
+class VisualFilterCollection:
+    def __init__(self, wrapper, visual_file_path=None):
+        self._wrapper = wrapper
+        self._visual_filters = None
+        self._visual_file_path = visual_file_path
+
+    def _load_filters(self):
+        data = self._wrapper.get(file_path=self._visual_file_path)
+        filter_list = get_jsonpath_value(
+            data, path="$.filterConfig.filters", default=[]
+        )
+        self._visual_filters = [
+            Filter(self._visual_file_path, f, self._wrapper) for f in filter_list
+        ]
+
+    def __iter__(self):
+        if self._visual_filters is None:
+            self._load_filters()
+        return iter(self._visual_filters)
+
+    def __getitem__(self, index):
+        if self._visual_filters is None:
+            self._load_filters()
+        return self._visual_filters[index]
+
+    @property
+    def Count(self):
+        if self._visual_filters is None:
+            self._load_filters()
+        return len(self._visual_filters)
