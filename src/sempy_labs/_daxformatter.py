@@ -1,11 +1,16 @@
 import requests
-from typing import List
+from typing import List, Optional
 
 
-def _format_dax(expressions: str | List[str], skip_space_after_function_name: bool = False) -> List[str]:
+def _format_dax(
+    expressions: str | List[str],
+    skip_space_after_function_name: bool = False,
+    metadata: Optional[List[dict]] = None,
+) -> List[str]:
 
     if isinstance(expressions, str):
         expressions = [expressions]
+        metadata = [metadata] if metadata else [{}]
 
     url = "https://daxformatter.azurewebsites.net/api/daxformatter/daxtextformatmulti"
 
@@ -24,16 +29,37 @@ def _format_dax(expressions: str | List[str], skip_space_after_function_name: bo
         "Content-Type": "application/json; charset=UTF-8",
         "Host": "daxformatter.azurewebsites.net",
         "Expect": "100-continue",
-        "Connection": "Keep-Alive"
+        "Connection": "Keep-Alive",
     }
 
     response = requests.post(url, json=payload, headers=headers)
     result = []
-    for dax in response.json():
-        formatted_dax = dax.get('formatted')
-        errors = dax.get('errors')
+    for idx, dax in enumerate(response.json()):
+        formatted_dax = dax.get("formatted")
+        errors = dax.get("errors")
         if errors:
-            raise ValueError(errors)
+            meta = metadata[idx] if metadata and idx < len(metadata) else {}
+            obj_name = meta.get("name", "Unknown")
+            table_name = meta.get("table", "Unknown")
+            obj_type = meta.get("type", "Unknown")
+            if obj_type == "calculated_tables":
+                raise ValueError(
+                    f"DAX formatting failed for the '{obj_name}' calculated table: {errors}"
+                )
+            elif obj_type == "calculated_columns":
+                raise ValueError(
+                    f"DAX formatting failed for the '{table_name}'[{obj_name}] calculated column: {errors}"
+                )
+            elif obj_type == "calculation_items":
+                raise ValueError(
+                    f"DAX formatting failed for the '{table_name}'[{obj_name}] calculation item: {errors}"
+                )
+            elif obj_type == "measures":
+                raise ValueError(
+                    f"DAX formatting failed for the '{obj_name}' measure: {errors}"
+                )
+            else:
+                NotImplementedError()
         else:
             result.append(formatted_dax)
     return result

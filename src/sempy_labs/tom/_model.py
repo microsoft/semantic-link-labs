@@ -5144,7 +5144,17 @@ class TOMWrapper:
                 f"{icons.green_dot} The '{object.Name}' {str(object.ObjectType).lower()} has been copied to the '{target_dataset}' semantic model within the '{target_workspace}' workspace."
             )
 
-    def format_dax(self, object: Optional[Union["TOM.Measure", "TOM.CalcultedColumn", "TOM.CalculationItem", "TOM.CalculatedTable"]] = None):
+    def format_dax(
+        self,
+        object: Optional[
+            Union[
+                "TOM.Measure",
+                "TOM.CalcultedColumn",
+                "TOM.CalculationItem",
+                "TOM.CalculatedTable",
+            ]
+        ] = None,
+    ):
         """
         Formats the DAX expressions of measures, calculated columns, calculation items, and calculated tables in the semantic model.
 
@@ -5182,37 +5192,47 @@ class TOMWrapper:
                         name = obj.Name
                         expr = obj.Expression
                         table = obj.Table.Name
-                    self._dax_formatting[key].append({
-                        "name": name,
-                        "expression": expr,
-                        "table": table,
-                    })
+                    self._dax_formatting[key].append(
+                        {
+                            "name": name,
+                            "expression": expr,
+                            "table": table,
+                        }
+                    )
             return
 
         if object.ObjectType == TOM.ObjectType.Measure:
-            self._dax_formatting["measures"].append({
-                "name": object.Name,
-                "expression": object.Expression,
-                "table": object.Parent.Name,
-            })
+            self._dax_formatting["measures"].append(
+                {
+                    "name": object.Name,
+                    "expression": object.Expression,
+                    "table": object.Parent.Name,
+                }
+            )
         elif object.ObjectType == TOM.ObjectType.CalculatedColumn:
-            self._dax_formatting["measures"].append({
-                "name": object.Name,
-                "expression": object.Expression,
-                "table": object.Parent.Name,
-            })
+            self._dax_formatting["measures"].append(
+                {
+                    "name": object.Name,
+                    "expression": object.Expression,
+                    "table": object.Parent.Name,
+                }
+            )
         elif object.ObjectType == TOM.ObjectType.CalculationItem:
-            self._dax_formatting["measures"].append({
-                "name": object.Name,
-                "expression": object.Expression,
-                "table": object.Parent.Name,
-            })
+            self._dax_formatting["measures"].append(
+                {
+                    "name": object.Name,
+                    "expression": object.Expression,
+                    "table": object.Parent.Name,
+                }
+            )
         elif object.ObjectType == TOM.ObjectType.CalculatedTable:
-            self._dax_formatting["measures"].append({
-                "name": object.Name,
-                "expression": object.Expression,
-                "table": object.Name,
-            })
+            self._dax_formatting["measures"].append(
+                {
+                    "name": object.Name,
+                    "expression": object.Expression,
+                    "table": object.Name,
+                }
+            )
         else:
             raise ValueError(
                 f"{icons.red_dot} The '{str(object.ObjectType)}' object type is not supported for DAX formatting."
@@ -5226,11 +5246,16 @@ class TOMWrapper:
         def _process_dax_objects(object_type, model_accessor=None):
             items = self._dax_formatting.get(object_type, [])
             if not items:
-                return
+                return False
 
             # Extract and format expressions
             expressions = [item["expression"] for item in items]
-            formatted_expressions = _format_dax(expressions)
+            metadata = [
+                {"name": item["name"], "table": item["table"], "type": object_type}
+                for item in items
+            ]
+
+            formatted_expressions = _format_dax(expressions, metadata=metadata)
 
             # Update the expressions in the original structure
             for item, formatted in zip(items, formatted_expressions):
@@ -5238,7 +5263,11 @@ class TOMWrapper:
 
             # Apply updated expressions to the model
             for item in items:
-                table_name = item["table"] if object_type != "calculated_tables" else item["name"]
+                table_name = (
+                    item["table"]
+                    if object_type != "calculated_tables"
+                    else item["name"]
+                )
                 name = item["name"]
                 expression = item["expression"]
 
@@ -5247,15 +5276,33 @@ class TOMWrapper:
                     p = next(p for p in t.Partitions)
                     p.Source.Expression = expression
                 elif object_type == "calculation_items":
-                    self.model.Tables[table_name].CalculationGroup.CalculationItems[name].Expression = expression
+                    self.model.Tables[table_name].CalculationGroup.CalculationItems[
+                        name
+                    ].Expression = expression
                 else:
-                    getattr(self.model.Tables[table_name], model_accessor)[name].Expression = expression
+                    getattr(self.model.Tables[table_name], model_accessor)[
+                        name
+                    ].Expression = expression
+            return True
 
         # Use the helper for each object type
-        _process_dax_objects("measures", "Measures")
-        _process_dax_objects("calculated_columns", "Columns")
-        _process_dax_objects("calculation_items")
-        _process_dax_objects("calculated_tables")
+        a = _process_dax_objects("measures", "Measures")
+        b = _process_dax_objects("calculated_columns", "Columns")
+        c = _process_dax_objects("calculation_items")
+        d = _process_dax_objects("calculated_tables")
+        if any([a, b, c, d]) and not self._readonly:
+            from IPython.display import display, HTML
+
+            html = """
+            <span style="font-family: Segoe UI, Arial, sans-serif; color: #cccccc;">
+                CODE BEAUTIFIED WITH 
+            </span>
+            <a href="https://www.daxformatter.com" target="_blank" style="font-family: Segoe UI, Arial, sans-serif; color: #ff5a5a; font-weight: bold; text-decoration: none;">
+                DAX FORMATTER
+            </a>
+            """
+
+            display(HTML(html))
 
         if not self._readonly and self.model is not None:
 
