@@ -5152,18 +5152,19 @@ class TOMWrapper:
                 "TOM.CalcultedColumn",
                 "TOM.CalculationItem",
                 "TOM.CalculatedTable",
+                "TOM.TablePermission",
             ]
         ] = None,
     ):
         """
-        Formats the DAX expressions of measures, calculated columns, calculation items, and calculated tables in the semantic model.
+        Formats the DAX expressions of measures, calculated columns, calculation items, calculated tables and row level security expressions in the semantic model.
 
         This function uses the `DAX Formatter API <https://www.daxformatter.com/>`_.
 
         Parameters
         ----------
         object : TOM Object, default=None
-            The TOM object to format. If None, formats all measures, calculated columns, calculation items, and calculated tables in the semantic model.
+            The TOM object to format. If None, formats all measures, calculated columns, calculation items, calculated tables and row level security expressions in the semantic model.
             If a specific object is provided, only that object will be formatted.
         """
 
@@ -5175,6 +5176,7 @@ class TOMWrapper:
                 "calculated_columns": self.all_calculated_columns,
                 "calculation_items": self.all_calculation_items,
                 "calculated_tables": self.all_calculated_tables,
+                "rls": self.all_rls,
             }
 
             for key, func in object_map.items():
@@ -5188,6 +5190,10 @@ class TOMWrapper:
                         name = obj.Name
                         expr = obj.Expression
                         table = obj.Parent.Table.Name
+                    elif key == "rls":
+                        name = obj.Role.Name
+                        expr = obj.FilterExpression
+                        table = obj.Table.Name
                     else:
                         name = obj.Name
                         expr = obj.Expression
@@ -5275,6 +5281,10 @@ class TOMWrapper:
                     t = self.model.Tables[table_name]
                     p = next(p for p in t.Partitions)
                     p.Source.Expression = expression
+                elif object_type == "rls":
+                    self.model.Roles[name].TablePermissions[
+                        table_name
+                    ].FilterExpression = expression
                 elif object_type == "calculation_items":
                     self.model.Tables[table_name].CalculationGroup.CalculationItems[
                         name
@@ -5290,7 +5300,8 @@ class TOMWrapper:
         b = _process_dax_objects("calculated_columns", "Columns")
         c = _process_dax_objects("calculation_items")
         d = _process_dax_objects("calculated_tables")
-        if any([a, b, c, d]) and not self._readonly:
+        e = _process_dax_objects("rls")
+        if any([a, b, c, d, e]) and not self._readonly:
             from IPython.display import display, HTML
 
             html = """

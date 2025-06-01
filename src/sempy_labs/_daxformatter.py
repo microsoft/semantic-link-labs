@@ -1,5 +1,6 @@
 import requests
 from typing import List, Optional
+from sempy_labs._a_lib_info import lib_name, lib_version
 
 
 def _format_dax(
@@ -30,6 +31,8 @@ def _format_dax(
         "Host": "daxformatter.azurewebsites.net",
         "Expect": "100-continue",
         "Connection": "Keep-Alive",
+        "CallerApp": lib_name,
+        "CallerVersion": lib_version,
     }
 
     response = requests.post(url, json=payload, headers=headers)
