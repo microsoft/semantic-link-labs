@@ -52,6 +52,7 @@ class TOMWrapper:
         "calculated_columns": [],
         "calculated_tables": [],
         "calculation_items": [],
+        "rls": [],
     }
 
     def __init__(self, dataset, workspace, readonly):
