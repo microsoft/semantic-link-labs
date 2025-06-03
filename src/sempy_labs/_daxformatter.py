@@ -13,6 +13,9 @@ def _format_dax(
         expressions = [expressions]
         metadata = [metadata] if metadata else [{}]
 
+    # Add variable assignment to each expression
+    expressions = [f'x :={item}' for item in expressions]
+
     url = "https://daxformatter.azurewebsites.net/api/daxformatter/daxtextformatmulti"
 
     payload = {
@@ -64,5 +67,8 @@ def _format_dax(
             else:
                 NotImplementedError()
         else:
+            if formatted_dax.startswith("x :="):
+                formatted_dax = formatted_dax[4:]
+            formatted_dax = formatted_dax.strip()
             result.append(formatted_dax)
     return result
