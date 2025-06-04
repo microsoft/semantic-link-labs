@@ -153,7 +153,7 @@ class ReportWrapper:
 
         self._current_report_definition = copy.deepcopy(self._report_definition)
 
-        # self.report = self.Report(self)
+        self.report = self.Report(self)
 
         helper.populate_custom_visual_display_names()
 
