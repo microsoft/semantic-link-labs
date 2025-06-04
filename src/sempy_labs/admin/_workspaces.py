@@ -2,7 +2,9 @@ from sempy_labs._helper_functions import (
     _base_api,
     _build_url,
     _encode_user,
+
 )
+
 from uuid import UUID
 from typing import Optional
 from sempy_labs.admin._basic_functions import (
@@ -165,14 +167,9 @@ def list_orphaned_workspaces(top: int = 100) -> pd.DataFrame:
     Returns
     -------
     pandas.DataFrame
-        A pandas dataframe showing a list of orphaned workspaces.
-    """
-    columns = {
-        "Workspace Id": "string",
-        "Workspace Name": "string",
-    }
-    df = _create_dataframe(columns=columns)
+        A pandas dataframe showing a list of orphaned workspaces, with all columns from the API. 
 
+    """
     url = (
         "/v1.0/myorg/admin/groups?"
         "$expand=users&"
@@ -184,13 +181,9 @@ def list_orphaned_workspaces(top: int = 100) -> pd.DataFrame:
     response = _base_api(request=url, client="fabric_sp")
     values = response.json().get("value", [])
 
-    rows = []
-    for v in values:
-        rows.append({
-            "Workspace Id": v.get("id"),
-            "Workspace Name": v.get("name"),
-        })
-    if rows:
-        df = pd.DataFrame(rows, columns=list(columns.keys()))
+    # Create dataframe with all columns from the API
+    df = pd.json_normalize(values)
+    # Rename columns
+    df = df.rename(columns={"id": "workspace_id", "name": "workspace_name"})
 
     return df
