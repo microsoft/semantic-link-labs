@@ -9,6 +9,7 @@ from sempy_labs.admin._basic_functions import (
     _resolve_workspace_name_and_id,
 )
 import sempy_labs._icons as icons
+import pandas as pd
 
 
 def add_user_to_workspace(
