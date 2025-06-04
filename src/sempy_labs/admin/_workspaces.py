@@ -146,3 +146,50 @@ def restore_deleted_workspace(workspace_id: UUID, name: str, email_address: str)
     print(
         f"{icons.green_dot} The '{workspace_id}' workspace has been restored as '{name}'."
     )
+
+def list_orphaned_workspaces(top: int = 100) -> pd.DataFrame:
+    """
+    Shows a list of orphaned workspaces (those with no users or no admins).
+
+    This is a wrapper function for the following API: 
+    `Admin - Groups ListGroupsAsAdmin <https://learn.microsoft.com/rest/api/power-bi/admin/groups-get-groups-as-admin>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    top : int, default=100
+        The maximum number of results to return.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of orphaned workspaces.
+    """
+    columns = {
+        "Workspace Id": "string",
+        "Workspace Name": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    url = (
+        "/v1.0/myorg/admin/groups?"
+        "$expand=users&"
+        "$filter=(not users/any()) or "
+        "(not users/any(u: u/groupUserAccessRight eq Microsoft.PowerBI.ServiceContracts.Api.GroupUserAccessRight'Admin'))&"
+        f"$top={top}"
+    )
+
+    response = _base_api(request=url, client="fabric_sp")
+    values = response.json().get("value", [])
+
+    rows = []
+    for v in values:
+        rows.append({
+            "Workspace Id": v.get("id"),
+            "Workspace Name": v.get("name"),
+        })
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+
+    return df
