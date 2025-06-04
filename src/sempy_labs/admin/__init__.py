@@ -6,6 +6,7 @@ from sempy_labs.admin._workspaces import (
     add_user_to_workspace,
     delete_user_from_workspace,
     restore_deleted_workspace,
+    list_orphaned_workspaces
 )
 from sempy_labs.admin._artifacts import (
     list_unused_artifacts,
