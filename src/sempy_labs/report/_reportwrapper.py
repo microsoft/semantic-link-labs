@@ -35,6 +35,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 import os
 import fnmatch
+from sempy_labs.tom import connect_semantic_model
 
 
 class ReportWrapper:
@@ -164,7 +165,7 @@ class ReportWrapper:
                 f"{icons.red_dot} This ReportWrapper function requires the report to be in the PBIR format."
                 "See here for details: https://powerbi.microsoft.com/blog/power-bi-enhanced-report-format-pbir-in-power-bi-desktop-developer-mode-preview/"
             )
-    
+
     class Report:
         def __init__(self, wrapper):
             self.ObjectType = "Report"
@@ -243,6 +244,20 @@ class ReportWrapper:
                 json_path=json_path,
                 verbose=False,
             )
+
+        @property
+        def json(self):
+            return self._data
+
+        @json.setter
+        def json(self, value):
+            if isinstance(value, dict):
+                self._data = value
+            else:
+                raise ValueError("json must be a dictionary")
+
+        def set_json(self, json_path: str, json_value: str | dict | List):
+            ReportWrapper.set_json(self=self._wrapper, file_path=self.FilePath, json_path=json_path, json_value=json_value)
 
         @property
         def DisplayName(self):
@@ -707,6 +722,106 @@ class ReportWrapper:
                 self._load_custom_visuals()
             return len(self._custom_visuals)
 
+    # Report Level Measures
+    class ReportLevelMeasure:
+        def __init__(self, name, table_name, expr, format_string):
+            self.ObjectType = "Report Level Measure"
+            self.MeasureName = name
+            self.TableName = table_name
+            self.Expression = expr
+            self.FormatString = format_string
+
+    class ReportLevelMeasureCollection:
+        def __init__(self, wrapper):
+            self._wrapper = wrapper
+            self._report_level_measures = None
+
+        def _load_report_level_measures(self):
+            payload = self._wrapper.get(
+                file_path=self._wrapper._report_file_path,
+                json_path="$.entities",
+            ) or []
+
+            measures = []
+            for entity in payload:
+                table_name = entity.get("name")
+                for m in entity.get("measures", []):
+                    measure_name = m.get("name")
+                    expr = m.get("expression")
+                    format_string = m.get("formatString")
+                    measure = ReportWrapper.ReportLevelMeasure(
+                        name=measure_name,
+                        table_name=table_name,
+                        expr=expr,
+                        format_string=format_string,
+                    )
+                    measures.append(measure)
+
+            self._report_level_measures = measures
+
+        def __iter__(self):
+            if self._report_level_measures is None:
+                self._load_report_level_measures()
+            return iter(self._report_level_measures)
+
+        def __getitem__(self, key):
+            if self._report_level_measures is None:
+                self._load_report_level_measures()
+            return self._report_level_measures[key]
+
+        @property
+        def Count(self):
+            if self._report_level_measures is None:
+                self._load_report_level_measures()
+            return len(self._report_level_measures)
+
+    # Bookmarks
+    class Bookmark:
+        def __init__(self, file_path, data, wrapper):
+            self.ObjectType = "Bookmark"
+            self._wrapper = wrapper
+            self._data = data
+            self.FilePath = file_path
+            self.Name = get_jsonpath_value(data, "$.name")
+
+        @property
+        def DisplayName(self):
+            path = "$.displayName"
+            return self._get_property(path)
+
+        @DisplayName.setter
+        def DisplayName(self, value: str):
+            path = "$.displayName"
+            self._set_property(path, value)
+
+    class BookmarkCollection:
+        def __init__(self, wrapper):
+            self._wrapper = wrapper
+            self._bookmarks = None
+
+        def _load_bookmarks(self):
+            all_bookmarks = []
+            parts = self._wrapper.get(file_path="definition/bookmarks/*/bookmark.json")
+            for file_path, data in parts:
+                all_bookmarks.append(ReportWrapper.Visual(file_path, data, self._wrapper))
+            self._bookmarks = all_bookmarks
+
+        def __iter__(self):
+            if self._bookmarks is None:
+                self._load_bookmarks()
+            return iter(self._bookmarks)
+
+        def __getitem__(self, key):
+            if self._bookmarks is None:
+                self._load_bookmarks()
+            return self._bookmarks[key]
+
+        @property
+        def Count(self):
+            if self._bookmarks is None:
+                self._load_bookmarks()
+            return len(self._bookmarks)
+
     # Basic functions
     def get(
         self,
@@ -1117,8 +1232,6 @@ class ReportWrapper:
         self.update(file_path=self._report_file_path, payload=report_file)
 
     def _add_extended(self, dataframe):
-
-        from sempy_labs.tom import connect_semantic_model
 
         dataset_id, dataset_name, dataset_workspace_id, dataset_workspace_name = (
             resolve_dataset_from_report(
@@ -2018,8 +2131,6 @@ class ReportWrapper:
         """
         self._ensure_pbir()
 
-        from sempy_labs.tom import connect_semantic_model
-
         columns = {
             "Table Name": "str",
             "Object Name": "str",
@@ -2610,8 +2721,6 @@ class ReportWrapper:
             Defaults to None which resolves to moving all report-level measures to the semantic model.
         """
         self._ensure_pbir()
-
-        from sempy_labs.tom import connect_semantic_model
 
         rlm = self.list_report_level_measures()
         if rlm.empty:
