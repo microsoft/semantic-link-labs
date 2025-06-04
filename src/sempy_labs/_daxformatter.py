@@ -14,7 +14,7 @@ def _format_dax(
         metadata = [metadata] if metadata else [{}]
 
     # Add variable assignment to each expression
-    expressions = [f'x :={item}' for item in expressions]
+    expressions = [f"x :={item}" for item in expressions]
 
     url = "https://daxformatter.azurewebsites.net/api/daxformatter/daxtextformatmulti"
 
@@ -63,6 +63,10 @@ def _format_dax(
             elif obj_type == "measures":
                 raise ValueError(
                     f"DAX formatting failed for the '{obj_name}' measure: {errors}"
+                )
+            elif obj_type == "rls":
+                raise ValueError(
+                    f"DAX formatting failed for the row level security expression on the '{table_name}' table within the '{obj_name}' role: {errors}"
                 )
             else:
                 NotImplementedError()
