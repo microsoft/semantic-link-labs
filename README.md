@@ -30,6 +30,7 @@ Check out the video below for an introduction to Semantic Link, Semantic Link La
     * [Migrating an import/DirectQuery semantic model to Direct Lake](https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#direct-lake-migration)
     * [Model Best Practice Analyzer (BPA)](https://github.com/microsoft/semantic-link-labs/wiki/Code-Examples#model-best-practice-analyzer)
     * [Vertipaq Analyzer](https://github.com/microsoft/semantic-link-labs/wiki/Code-Examples#vertipaq-analyzer)
+    * [Create a .vpax file](https://github.com/microsoft/semantic-link-labs/wiki/Code-Examples#create-a-vpax-file)
     * [Tabular Object Model](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Tabular%20Object%20Model.ipynb) [(TOM)](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.tom.html)
     * [Translate a semantic model's metadata](https://github.com/microsoft/semantic-link-labs/wiki/Code-Examples#translate-a-semantic-model)
     * [Check Direct Lake Guardrails](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.lakehouse.html#sempy_labs.lakehouse.get_lakehouse_tables)
