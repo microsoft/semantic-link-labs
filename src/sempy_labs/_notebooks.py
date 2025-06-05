@@ -159,6 +159,7 @@ def import_notebook_from_web(
             notebook_content=response.content,
             workspace=workspace_id,
             description=description,
+            format='ipynb',
         )
     elif len(dfI_filt) > 0 and overwrite:
         print(f"{icons.info} Overwrite of notebooks is currently not supported.")
@@ -202,9 +203,8 @@ def create_notebook(
         otherwise notebook_content should be GIT friendly format
     """
 
-    notebook_payload = base64.b64encode(notebook_content.encode("utf-8")).decode(
-        "utf-8"
-    )
+    notebook_payload = base64.b64encode(notebook_content).decode('utf-8')
+    
     definition_payload = {
         "parts": [
             {
