@@ -8,6 +8,8 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
     delete_item,
+    resolve_workspace_id,
+    resolve_dataset_id,
 )
 import sempy_labs._icons as icons
 import re
@@ -227,3 +229,80 @@ def update_semantic_model_refresh_schedule(
     print(
         f"{icons.green_dot} Refresh schedule for the '{dataset_name}' within the '{workspace_name}' workspace has been updated."
     )
+
+
+def list_semantic_model_datasources(
+    dataset: str | UUID, workspace: Optional[str | UUID] = None
+) -> pd.DataFrame:
+    """
+    Lists the data sources for the specified semantic model.
+
+    This is a wrapper function for the following API: `Datasets - Get Datasources In Group <https://learn.microsoft.com/rest/api/power-bi/datasets/get-datasources-in-group>`_.
+
+    Parameters
+    ----------
+    dataset : str | uuid.UUID
+        Name or ID of the semantic model.
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        DataFrame containing the data sources for the specified semantic model.
+    """
+
+    workspace_id = resolve_workspace_name_and_id(workspace)
+    dataset_id = resolve_dataset_id(dataset, workspace_id)
+
+    columns = {
+        "Datasource Type": "str",
+        "Connection Server": "str",
+        "Connection Database": "str",
+        "Connection Path": "str",
+        "Connection Account": "str",
+        "Connection Domain": "str",
+        "Connection Kind": "str",
+        "Connection Email Address": "str",
+        "Connection URL": "str",
+        "Connection Class Info": "str",
+        "Connection Login Server": "str",
+        "Datasource Id": "str",
+        "Gateway Id": "str",
+    }
+
+    df = _create_dataframe(columns)
+
+    response = _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/datasources"
+    )
+
+    dfs = []
+    for item in response.json().get("value", []):
+
+        conn_details = item.get("connectionDetails", {})
+
+        new_data = {
+            "Datasource Type": item.get("datasourceType"),
+            "Connection Server": conn_details.get("server"),
+            "Connection Database": conn_details.get("database"),
+            "Connection Path": conn_details.get("path"),
+            "Connection Account": conn_details.get("account"),
+            "Connection Domain": conn_details.get("domain"),
+            "Connection Kind": conn_details.get("kind"),
+            "Connection Email Address": conn_details.get("emailAddress"),
+            "Connection URL": conn_details.get("url"),
+            "Connection Class Info": conn_details.get("classInfo"),
+            "Connection Login Server": conn_details.get("loginServer"),
+            "Datasource Id": item.get("datasourceId"),
+            "Gateway Id": item.get("gatewayId"),
+        }
+
+        dfs.append(pd.DataFrame(new_data, index=[0]))
+
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
+
+    return df
