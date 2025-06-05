@@ -4716,7 +4716,12 @@ class TOMWrapper:
             TOM.ValueFilterBehaviorType, value_filter_behavior
         )
 
-    def add_role_member(self, role_name: str, member: str | List[str]):
+    def add_role_member(
+        self,
+        role_name: str,
+        member: str | List[str],
+        role_member_type: Optional[str] = "User",
+    ):
         """
         Adds an external model role member (AzureAD) to a role.
 
@@ -4726,12 +4731,22 @@ class TOMWrapper:
             The role name.
         member : str | List[str]
             The email address(es) of the member(s) to add.
+        role_member_type : str, default="User"
+            The type of the role member. Default is "User". Other options include "Group" for Azure AD groups.
+            All members must be of the same role_member_type.
         """
 
         import Microsoft.AnalysisServices.Tabular as TOM
+        import System
 
         if isinstance(member, str):
             member = [member]
+
+        role_member_type = role_member_type.capitalize()
+        if role_member_type not in ["User", "Group"]:
+            raise ValueError(
+                f"{icons.red_dot} The '{role_member_type}' is not a valid role member type. Valid options: 'User', 'Group'."
+            )
 
         role = self.model.Roles[role_name]
         current_members = [m.MemberName for m in role.Members]
@@ -4741,6 +4756,7 @@ class TOMWrapper:
                 rm = TOM.ExternalModelRoleMember()
                 rm.IdentityProvider = "AzureAD"
                 rm.MemberName = m
+                rm.MemberType = System.Enum.Parse(TOM.RoleMemberType, role_member_type)
                 role.Members.Add(rm)
                 print(
                     f"{icons.green_dot} '{m}' has been added as a member of the '{role_name}' role."
