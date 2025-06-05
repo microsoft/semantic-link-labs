@@ -724,12 +724,13 @@ class ReportWrapper:
 
     # Report Level Measures
     class ReportLevelMeasure:
-        def __init__(self, name, table_name, expr, format_string):
+        def __init__(self, name, table_name, expr, format_string, data_category):
             self.ObjectType = "Report Level Measure"
             self.MeasureName = name
             self.TableName = table_name
             self.Expression = expr
             self.FormatString = format_string
+            self.DataCategory = data_category
 
     class ReportLevelMeasureCollection:
         def __init__(self, wrapper):
@@ -737,10 +738,13 @@ class ReportWrapper:
             self._report_level_measures = None
 
         def _load_report_level_measures(self):
-            payload = self._wrapper.get(
-                file_path=self._wrapper._report_file_path,
-                json_path="$.entities",
-            ) or []
+            if self._wrapper._report_file_path not in self._wrapper.list_paths()['Paths'].values:
+                payload = []
+            else:
+                payload = self._wrapper.get(
+                    file_path=self._wrapper._report_file_path,
+                    json_path="$.entities",
+                ) or []
 
             measures = []
             for entity in payload:
@@ -749,11 +753,13 @@ class ReportWrapper:
                     measure_name = m.get("name")
                     expr = m.get("expression")
                     format_string = m.get("formatString")
+                    data_category = m.get("dataCategory")
                     measure = ReportWrapper.ReportLevelMeasure(
                         name=measure_name,
                         table_name=table_name,
                         expr=expr,
                         format_string=format_string,
+                        data_category=data_category,
                     )
                     measures.append(measure)
 
@@ -2365,31 +2371,36 @@ class ReportWrapper:
             "Expression": "str",
             "Data Type": "str",
             "Format String": "str",
+            "Data Category": "str",
         }
 
         df = _create_dataframe(columns=columns)
 
+        # If no report extensions path, return empty DataFrame
+        if self._report_extensions_path not in self.list_paths()["Path"].values:
+            return df
+
         report_file = self.get(file_path=self._report_extensions_path)
 
         dfs = []
-        if report_file:
-            payload = report_file.get("payload")
-            for e in payload.get("entities", []):
-                table_name = e.get("name")
-                for m in e.get("measures", []):
-                    measure_name = m.get("name")
-                    expr = m.get("expression")
-                    data_type = m.get("dataType")
-                    format_string = m.get("formatString")
+        for e in report_file.get("entities", []):
+            table_name = e.get("name")
+            for m in e.get("measures", []):
+                measure_name = m.get("name")
+                expr = m.get("expression")
+                data_type = m.get("dataType")
+                format_string = m.get("formatString")
+                data_category = m.get("dataCategory")
 
-                    new_data = {
-                        "Measure Name": measure_name,
-                        "Table Name": table_name,
-                        "Expression": expr,
-                        "Data Type": data_type,
-                        "Format String": format_string,
-                    }
-                    dfs.append(pd.DataFrame(new_data, index=[0]))
+                new_data = {
+                    "Measure Name": measure_name,
+                    "Table Name": table_name,
+                    "Expression": expr,
+                    "Data Type": data_type,
+                    "Format String": format_string,
+                    "Data Category": data_category,
+                }
+                dfs.append(pd.DataFrame(new_data, index=[0]))
 
         if dfs:
             df = pd.concat(dfs, ignore_index=True)
