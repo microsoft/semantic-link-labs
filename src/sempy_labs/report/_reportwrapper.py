@@ -246,18 +246,23 @@ class ReportWrapper:
             )
 
         @property
-        def json(self):
+        def Metadata(self):
             return self._data
 
-        @json.setter
-        def json(self, value):
+        @Metadata.setter
+        def Metadata(self, value):
             if isinstance(value, dict):
                 self._data = value
             else:
-                raise ValueError("json must be a dictionary")
+                raise ValueError("Metadata must be a dictionary")
 
         def set_json(self, json_path: str, json_value: str | dict | List):
-            ReportWrapper.set_json(self=self._wrapper, file_path=self.FilePath, json_path=json_path, json_value=json_value)
+            ReportWrapper.set_json(
+                self=self._wrapper,
+                file_path=self.FilePath,
+                json_path=json_path,
+                json_value=json_value,
+            )
 
         @property
         def DisplayName(self):
@@ -392,6 +397,7 @@ class ReportWrapper:
             self._data = visual_data
             self._filters = None
             self._page = None
+            self._fields = None
             self.FilePath = file_path
             self._page_file_path = self.FilePath.split("/visuals/")[0] + "/page.json"
             self.ObjectType = "Visual"
@@ -439,14 +445,6 @@ class ReportWrapper:
                 for key in data_keys
             )
 
-        @property
-        def Page(self):
-            return ReportWrapper.Page(
-                file_path=self._page_file_path,
-                page_data=self._wrapper.get(file_path=self._page_file_path),
-                wrapper=self._wrapper,
-            )
-
         def _get_property(
             self,
             json_path: str,
@@ -485,6 +483,33 @@ class ReportWrapper:
                 payload=self._data,
                 json_path=json_path,
                 verbose=False,
+            )
+
+        @property
+        def Metadata(self):
+            return self._data
+
+        @Metadata.setter
+        def Metadata(self, value):
+            if isinstance(value, dict):
+                self._data = value
+            else:
+                raise ValueError("Metadata must be a dictionary")
+
+        def set_json(self, json_path: str, json_value: str | dict | List):
+            ReportWrapper.set_json(
+                self=self._wrapper,
+                file_path=self.FilePath,
+                json_path=json_path,
+                json_value=json_value,
+            )
+
+        @property
+        def Page(self):
+            return ReportWrapper.Page(
+                file_path=self._page_file_path,
+                page_data=self._wrapper.get(file_path=self._page_file_path),
+                wrapper=self._wrapper,
             )
 
         # Title
@@ -724,13 +749,16 @@ class ReportWrapper:
 
     # Report Level Measures
     class ReportLevelMeasure:
-        def __init__(self, name, table_name, expr, format_string, data_category):
+        def __init__(self, name, table_name, expr, format_string, data_category, hidden, description, display_folder):
             self.ObjectType = "Report Level Measure"
             self.MeasureName = name
             self.TableName = table_name
             self.Expression = expr
             self.FormatString = format_string
             self.DataCategory = data_category
+            self.Hidden = hidden
+            self.Description = description
+            self.DisplayFolder = display_folder
 
     class ReportLevelMeasureCollection:
         def __init__(self, wrapper):
@@ -738,13 +766,19 @@ class ReportWrapper:
             self._report_level_measures = None
 
         def _load_report_level_measures(self):
-            if self._wrapper._report_file_path not in self._wrapper.list_paths()['Paths'].values:
+            if (
+                self._wrapper._report_file_path
+                not in self._wrapper.list_paths()["Paths"].values
+            ):
                 payload = []
             else:
-                payload = self._wrapper.get(
-                    file_path=self._wrapper._report_file_path,
-                    json_path="$.entities",
-                ) or []
+                payload = (
+                    self._wrapper.get(
+                        file_path=self._wrapper._report_file_path,
+                        json_path="$.entities",
+                    )
+                    or []
+                )
 
             measures = []
             for entity in payload:
@@ -752,14 +786,20 @@ class ReportWrapper:
                 for m in entity.get("measures", []):
                     measure_name = m.get("name")
                     expr = m.get("expression")
-                    format_string = m.get("formatString")
-                    data_category = m.get("dataCategory")
+                    format_string = m.get("formatString", "")
+                    data_category = m.get("dataCategory", "")
+                    hidden = m.get("hidden", False)
+                    description = m.get("description", "")
+                    display_folder = m.get("displayFolder", "")
                     measure = ReportWrapper.ReportLevelMeasure(
                         name=measure_name,
                         table_name=table_name,
                         expr=expr,
                         format_string=format_string,
                         data_category=data_category,
+                        hidden=hidden,
+                        description=description,
+                        display_folder=display_folder,
                     )
                     measures.append(measure)
 
@@ -809,7 +849,9 @@ class ReportWrapper:
             all_bookmarks = []
             parts = self._wrapper.get(file_path="definition/bookmarks/*/bookmark.json")
             for file_path, data in parts:
-                all_bookmarks.append(ReportWrapper.Visual(file_path, data, self._wrapper))
+                all_bookmarks.append(
+                    ReportWrapper.Visual(file_path, data, self._wrapper)
+                )
             self._bookmarks = all_bookmarks
 
         def __iter__(self):
@@ -827,6 +869,19 @@ class ReportWrapper:
             if self._bookmarks is None:
                 self._load_bookmarks()
             return len(self._bookmarks)
+
+    @property
+    def all_pages(self):
+
+        for page in self.report.Pages:
+            yield page
+
+    @property
+    def all_visuals(self):
+
+        for page in self.report.Pages:
+            for visual in page.Visuals:
+                yield visual
 
     # Basic functions
     def get(
@@ -1230,7 +1285,7 @@ class ReportWrapper:
                             print(
                                 f"{icons.info} The '{item_name}' {type.lower()} already exists in the report definition."
                             )
-                            raise ValueError()
+                            return
 
                     # Add the new item to the existing RegisteredResources
                     rp["items"].append(new_item)
@@ -2864,7 +2919,7 @@ class ReportWrapper:
 
         return df
 
-    def _add_image(self, image_path: str, resource_name: Optional[str] = None) -> str:
+    def add_image(self, image_path: str, resource_name: Optional[str] = None) -> str:
         """
         Add an image to the report definition. The image will be added to the StaticResources/RegisteredResources folder in the report definition. If the image_name already exists as a file in the report definition it will be updated.
 
@@ -2885,6 +2940,9 @@ class ReportWrapper:
         id = generate_number_guid()
 
         if image_path.startswith("http://") or image_path.startswith("https://"):
+            if "github.com" in image_path and "/blob/" in image_path:
+                image_path = image_path.replace("github.com", "raw.githubusercontent.com")
+                image_path = image_path.replace("/blob/", "/")
             response = requests.get(image_path)
             response.raise_for_status()
             image_bytes = response.content
@@ -3786,39 +3844,8 @@ class Filter:
         self.Type = filter_data.get("type", "Basic")
         self.IsUsed = True if "Where" in filter_data.get("filter", {}) else False
 
-        # Initialize fields
-        self.TableName = None
-        self.ObjectName = None
-        self.ObjectType = None
-
-        field = filter_data.get("field", {})
-
-        # Case 1: Simple column
-        if "Column" in field:
-            col = field["Column"]
-            self.TableName = (
-                col.get("Expression", {}).get("SourceRef", {}).get("Entity")
-            )
-            self.ObjectName = col.get("Property")
-            self.ObjectType = "Column"
-
-        # Case 2: Aggregation over column (still a column)
-        elif "Aggregation" in field:
-            col = field.get("Aggregation", {}).get("Expression", {}).get("Column", {})
-            self.TableName = (
-                col.get("Expression", {}).get("SourceRef", {}).get("Entity")
-            )
-            self.ObjectName = col.get("Property")
-            self.ObjectType = "Column"
-
-        # Case 3: Measure
-        elif "Measure" in field:
-            measure = field["Measure"]
-            self.TableName = (
-                measure.get("Expression", {}).get("SourceRef", {}).get("Entity")
-            )
-            self.ObjectName = measure.get("Property")
-            self.ObjectType = "Measure"
+        field_data = filter_data.get("field", {})
+        self.Field = Field.from_dict(field_data)
 
     def to_dict(self):
         return {
@@ -3827,6 +3854,17 @@ class Filter:
             "ObjectName": self.ObjectName,
             "ObjectType": self.ObjectType,
         }
+
+    @property
+    def Metadata(self):
+        return self._data
+
+    @Metadata.setter
+    def Metadata(self, value):
+        if isinstance(value, dict):
+            self._data = value
+        else:
+            raise ValueError("Metadata must be a dictionary")
 
 
 class ReportFilterCollection:
@@ -3923,3 +3961,57 @@ class VisualFilterCollection:
         if self._visual_filters is None:
             self._load_filters()
         return len(self._visual_filters)
+
+
+class Field:
+    def __init__(self, table_name=None, object_name=None, object_type=None):
+        self.TableName = table_name
+        self.ObjectName = object_name
+        self.ObjectType = object_type
+
+    @classmethod
+    def from_dict(cls, field: dict):
+        # Case 1: Simple column
+        if "Column" in field:
+            col = field["Column"]
+            table_name = col.get("Expression", {}).get("SourceRef", {}).get("Entity")
+            object_name = col.get("Property")
+            object_type = "Column"
+            return cls(table_name, object_name, object_type)
+
+        # Case 2: Measure
+        elif "Measure" in field:
+            measure = field["Measure"]
+            table_name = measure.get("Expression", {}).get("SourceRef", {}).get("Entity")
+            object_name = measure.get("Property")
+            object_type = "Measure"
+            return cls(table_name, object_name, object_type)
+
+        # Case 3: Aggregation over column
+        elif "Aggregation" in field:
+            col = field.get("Aggregation", {}).get("Expression", {}).get("Column", {})
+            table_name = col.get("Expression", {}).get("SourceRef", {}).get("Entity")
+            object_name = col.get("Property")
+            object_type = "Column"
+            return cls(table_name, object_name, object_type)
+
+        elif "SparklineData" in field:
+            m = field.get('SparklineData').get('Measure')
+            if "Measure" in m:
+                measure = m["Measure"]
+                table_name = measure.get("Expression", {}).get("SourceRef", {}).get("Entity")
+                object_name = measure.get("Property")
+                object_type = "Measure"
+                return cls(table_name, object_name, object_type)
+            elif "Aggregation" in m:
+                col = m.get("Aggregation", {}).get("Expression", {}).get("Column", {})
+                table_name = col.get("Expression", {}).get("SourceRef", {}).get("Entity")
+                object_name = col.get("Property")
+                object_type = "Column"
+                return cls(table_name, object_name, object_type)
+
+        # If no recognized key found, return empty Field
+        return cls()
+
+    def __repr__(self):
+        return f"Field(TableName={self.TableName}, ObjectName={self.ObjectName}, ObjectType={self.ObjectType})"
