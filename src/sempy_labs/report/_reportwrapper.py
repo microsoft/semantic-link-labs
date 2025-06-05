@@ -1712,31 +1712,36 @@ class ReportWrapper:
             "Expression": "str",
             "Data Type": "str",
             "Format String": "str",
+            "Data Category": "str",
         }
 
         df = _create_dataframe(columns=columns)
 
+        # If no report extensions path, return empty DataFrame
+        if self._report_extensions_path not in self.list_paths()["Path"].values:
+            return df
+
         report_file = self.get(file_path=self._report_extensions_path)
 
         dfs = []
-        if report_file:
-            payload = report_file.get("payload")
-            for e in payload.get("entities", []):
-                table_name = e.get("name")
-                for m in e.get("measures", []):
-                    measure_name = m.get("name")
-                    expr = m.get("expression")
-                    data_type = m.get("dataType")
-                    format_string = m.get("formatString")
+        for e in report_file.get("entities", []):
+            table_name = e.get("name")
+            for m in e.get("measures", []):
+                measure_name = m.get("name")
+                expr = m.get("expression")
+                data_type = m.get("dataType")
+                format_string = m.get("formatString")
+                data_category = m.get("dataCategory")
 
-                    new_data = {
-                        "Measure Name": measure_name,
-                        "Table Name": table_name,
-                        "Expression": expr,
-                        "Data Type": data_type,
-                        "Format String": format_string,
-                    }
-                    dfs.append(pd.DataFrame(new_data, index=[0]))
+                new_data = {
+                    "Measure Name": measure_name,
+                    "Table Name": table_name,
+                    "Expression": expr,
+                    "Data Type": data_type,
+                    "Format String": format_string,
+                    "Data Category": data_category,
+                }
+                dfs.append(pd.DataFrame(new_data, index=[0]))
 
         if dfs:
             df = pd.concat(dfs, ignore_index=True)
