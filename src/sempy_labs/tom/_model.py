@@ -4716,7 +4716,12 @@ class TOMWrapper:
             TOM.ValueFilterBehaviorType, value_filter_behavior
         )
 
-    def add_role_member(self, role_name: str, member: str | List[str], role_member_type: Optional[str] = "User"):
+    def add_role_member(
+        self,
+        role_name: str,
+        member: str | List[str],
+        role_member_type: Optional[str] = "User",
+    ):
         """
         Adds an external model role member (AzureAD) to a role.
 
@@ -4739,7 +4744,9 @@ class TOMWrapper:
 
         role_member_type = role_member_type.capitalize()
         if role_member_type not in ["User", "Group"]:
-            raise ValueError(f"{icons.red_dot} The '{role_member_type}' is not a valid role member type. Valid options: 'User', 'Group'.")
+            raise ValueError(
+                f"{icons.red_dot} The '{role_member_type}' is not a valid role member type. Valid options: 'User', 'Group'."
+            )
 
         role = self.model.Roles[role_name]
         current_members = [m.MemberName for m in role.Members]
