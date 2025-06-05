@@ -17,6 +17,7 @@ from sempy_labs._helper_functions import (
     get_jsonpath_value,
     set_json_value,
     remove_json_value,
+    fix_github_url,
 )
 from sempy_labs._dictionary_diffs import (
     diff_parts,
@@ -749,7 +750,17 @@ class ReportWrapper:
 
     # Report Level Measures
     class ReportLevelMeasure:
-        def __init__(self, name, table_name, expr, format_string, data_category, hidden, description, display_folder):
+        def __init__(
+            self,
+            name,
+            table_name,
+            expr,
+            format_string,
+            data_category,
+            hidden,
+            description,
+            display_folder,
+        ):
             self.ObjectType = "Report Level Measure"
             self.MeasureName = name
             self.TableName = table_name
@@ -2532,6 +2543,7 @@ class ReportWrapper:
                 f"{icons.red_dot} The '{theme_file_path}' theme file path must be a .json file."
             )
         elif theme_file_path.startswith("https://"):
+            theme_file_path = fix_github_url(theme_file_path)
             response = requests.get(theme_file_path)
             theme_file = response.json()
         elif theme_file_path.startswith("/lakehouse") or theme_file_path.startswith(
@@ -2940,9 +2952,7 @@ class ReportWrapper:
         id = generate_number_guid()
 
         if image_path.startswith("http://") or image_path.startswith("https://"):
-            if "github.com" in image_path and "/blob/" in image_path:
-                image_path = image_path.replace("github.com", "raw.githubusercontent.com")
-                image_path = image_path.replace("/blob/", "/")
+            image_path = fix_github_url(image_path)
             response = requests.get(image_path)
             response.raise_for_status()
             image_bytes = response.content
@@ -3982,7 +3992,9 @@ class Field:
         # Case 2: Measure
         elif "Measure" in field:
             measure = field["Measure"]
-            table_name = measure.get("Expression", {}).get("SourceRef", {}).get("Entity")
+            table_name = (
+                measure.get("Expression", {}).get("SourceRef", {}).get("Entity")
+            )
             object_name = measure.get("Property")
             object_type = "Measure"
             return cls(table_name, object_name, object_type)
@@ -3996,16 +4008,20 @@ class Field:
             return cls(table_name, object_name, object_type)
 
         elif "SparklineData" in field:
-            m = field.get('SparklineData').get('Measure')
+            m = field.get("SparklineData").get("Measure")
             if "Measure" in m:
                 measure = m["Measure"]
-                table_name = measure.get("Expression", {}).get("SourceRef", {}).get("Entity")
+                table_name = (
+                    measure.get("Expression", {}).get("SourceRef", {}).get("Entity")
+                )
                 object_name = measure.get("Property")
                 object_type = "Measure"
                 return cls(table_name, object_name, object_type)
             elif "Aggregation" in m:
                 col = m.get("Aggregation", {}).get("Expression", {}).get("Column", {})
-                table_name = col.get("Expression", {}).get("SourceRef", {}).get("Entity")
+                table_name = (
+                    col.get("Expression", {}).get("SourceRef", {}).get("Entity")
+                )
                 object_name = col.get("Property")
                 object_type = "Column"
                 return cls(table_name, object_name, object_type)

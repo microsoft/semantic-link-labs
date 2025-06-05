@@ -12,29 +12,29 @@ from typing import Optional, Tuple, List, Dict
 from uuid import UUID
 import sempy_labs._icons as icons
 from azure.core.credentials import TokenCredential, AccessToken
-import urllib.parse
 import numpy as np
 from IPython.display import display, HTML
 import requests
 import sempy_labs._authentication as auth
 from jsonpath_ng.ext import parse
 from jsonpath_ng.jsonpath import Fields, Index
+from urllib.parse import urlparse, urlunparse, urlencode, quote
 
 
 def _build_url(url: str, params: dict) -> str:
     """
     Build the url with a list of parameters
     """
-    url_parts = list(urllib.parse.urlparse(url))
-    url_parts[4] = urllib.parse.urlencode(params)
-    url = urllib.parse.urlunparse(url_parts)
+    url_parts = list(urlparse(url))
+    url_parts[4] = urlencode(params)
+    url = urlunparse(url_parts)
 
     return url
 
 
 def _encode_user(user: str) -> str:
 
-    return urllib.parse.quote(user, safe="@")
+    return quote(user, safe="@")
 
 
 def create_abfss_path(
@@ -94,7 +94,7 @@ def _get_default_file_path() -> str:
 
 def _split_abfss_path(path: str) -> Tuple[UUID, UUID, str]:
 
-    parsed_url = urllib.parse.urlparse(path)
+    parsed_url = urlparse(path)
 
     workspace_id = parsed_url.netloc.split("@")[0]
     item_id = parsed_url.path.lstrip("/").split("/")[0]
@@ -1092,7 +1092,7 @@ def resolve_workspace_capacity(
     from sempy_labs._capacities import list_capacities
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    filter_condition = urllib.parse.quote(workspace_id)
+    filter_condition = quote(workspace_id)
     dfW = fabric.list_workspaces(filter=f"id eq '{filter_condition}'")
     capacity_id = dfW["Capacity Id"].iloc[0]
     dfC = list_capacities()
@@ -1126,7 +1126,7 @@ def get_capacity_id(workspace: Optional[str | UUID] = None) -> UUID:
         capacity_id = _get_fabric_context_setting(name="trident.capacity.id")
     else:
         (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-        filter_condition = urllib.parse.quote(workspace_id)
+        filter_condition = quote(workspace_id)
         dfW = fabric.list_workspaces(filter=f"id eq '{filter_condition}'")
         if len(dfW) == 0:
             raise ValueError(f"{icons.red_dot} The '{workspace_name}' does not exist'.")
@@ -2435,3 +2435,19 @@ def remove_json_value(path: str, payload: dict, json_path: str, verbose: bool = 
                     print(f"{icons.green_dot} Removed index [{index}] from '{path}'.")
 
     return payload
+
+
+def fix_github_url(url: str) -> str:
+    parsed = urlparse(url)
+
+    # Check for valid scheme and correct host
+    if parsed.scheme in ("http", "https") and parsed.netloc == "github.com":
+        path_parts = parsed.path.split("/")
+        if len(path_parts) > 4 and path_parts[3] == "blob":
+            # Convert to raw.githubusercontent.com
+            new_netloc = "raw.githubusercontent.com"
+            new_path = "/".join(path_parts[:3] + path_parts[4:])  # remove 'blob'
+            new_url = urlunparse(("https", new_netloc, new_path, "", "", ""))
+            return new_url
+
+    return url  # return original if not a valid GitHub blob URL
