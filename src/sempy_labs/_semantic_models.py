@@ -8,8 +8,8 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
     delete_item,
-    resolve_workspace_id,
     resolve_dataset_id,
+    resolve_workspace_id,
 )
 import sempy_labs._icons as icons
 import re
@@ -232,7 +232,9 @@ def update_semantic_model_refresh_schedule(
 
 
 def list_semantic_model_datasources(
-    dataset: str | UUID, workspace: Optional[str | UUID] = None
+    dataset: str | UUID,
+    workspace: Optional[str | UUID] = None,
+    expand_details: bool = True,
 ) -> pd.DataFrame:
     """
     Lists the data sources for the specified semantic model.
@@ -247,6 +249,8 @@ def list_semantic_model_datasources(
         The workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    expand_details : bool, default=True
+        If True, expands the connection details for each data source.
 
     Returns
     -------
@@ -254,53 +258,71 @@ def list_semantic_model_datasources(
         DataFrame containing the data sources for the specified semantic model.
     """
 
-    workspace_id = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
     dataset_id = resolve_dataset_id(dataset, workspace_id)
 
-    columns = {
-        "Datasource Type": "str",
-        "Connection Server": "str",
-        "Connection Database": "str",
-        "Connection Path": "str",
-        "Connection Account": "str",
-        "Connection Domain": "str",
-        "Connection Kind": "str",
-        "Connection Email Address": "str",
-        "Connection URL": "str",
-        "Connection Class Info": "str",
-        "Connection Login Server": "str",
-        "Datasource Id": "str",
-        "Gateway Id": "str",
-    }
+    if expand_details:
+        columns = {
+            "Datasource Type": "str",
+            "Connection Server": "str",
+            "Connection Database": "str",
+            "Connection Path": "str",
+            "Connection Account": "str",
+            "Connection Domain": "str",
+            "Connection Kind": "str",
+            "Connection Email Address": "str",
+            "Connection URL": "str",
+            "Connection Class Info": "str",
+            "Connection Login Server": "str",
+            "Datasource Id": "str",
+            "Gateway Id": "str",
+        }
+    else:
+        columns = {
+            "Datasource Type": "str",
+            "Connection Details": "str",
+            "Datasource Id": "str",
+            "Gateway Id": "str",
+        }
 
     df = _create_dataframe(columns)
 
     response = _base_api(
-        request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/datasources"
+        request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/datasources",
+        client="fabric_sp",
     )
 
     dfs = []
     for item in response.json().get("value", []):
-
+        ds_type = item.get("datasourceType")
         conn_details = item.get("connectionDetails", {})
-
-        new_data = {
-            "Datasource Type": item.get("datasourceType"),
-            "Connection Server": conn_details.get("server"),
-            "Connection Database": conn_details.get("database"),
-            "Connection Path": conn_details.get("path"),
-            "Connection Account": conn_details.get("account"),
-            "Connection Domain": conn_details.get("domain"),
-            "Connection Kind": conn_details.get("kind"),
-            "Connection Email Address": conn_details.get("emailAddress"),
-            "Connection URL": conn_details.get("url"),
-            "Connection Class Info": conn_details.get("classInfo"),
-            "Connection Login Server": conn_details.get("loginServer"),
-            "Datasource Id": item.get("datasourceId"),
-            "Gateway Id": item.get("gatewayId"),
-        }
-
-        dfs.append(pd.DataFrame(new_data, index=[0]))
+        ds_id = item.get("datasourceId")
+        gateway_id = item.get("gatewayId")
+        if expand_details:
+            new_data = {
+                "Datasource Type": ds_type,
+                "Connection Server": conn_details.get("server"),
+                "Connection Database": conn_details.get("database"),
+                "Connection Path": conn_details.get("path"),
+                "Connection Account": conn_details.get("account"),
+                "Connection Domain": conn_details.get("domain"),
+                "Connection Kind": conn_details.get("kind"),
+                "Connection Email Address": conn_details.get("emailAddress"),
+                "Connection URL": conn_details.get("url"),
+                "Connection Class Info": conn_details.get("classInfo"),
+                "Connection Login Server": conn_details.get("loginServer"),
+                "Datasource Id": ds_id,
+                "Gateway Id": gateway_id,
+            }
+            dfs.append(pd.DataFrame(new_data, index=[0]))
+        else:
+            new_data = {
+                "Datasource Type": ds_type,
+                "Connection Details": conn_details,
+                "Datasource Id": ds_id,
+                "Gateway Id": gateway_id,
+            }
+            dfs.append(pd.DataFrame([new_data]))
 
     if dfs:
         df = pd.concat(dfs, ignore_index=True)
