@@ -30,6 +30,7 @@ from sempy_labs._semantic_models import (
     enable_semantic_model_scheduled_refresh,
     delete_semantic_model,
     update_semantic_model_refresh_schedule,
+    list_semantic_model_datasources,
 )
 from sempy_labs._graphQL import (
     list_graphql_apis,
@@ -589,4 +590,5 @@ __all__ = [
     "apply_tags",
     "unapply_tags",
     "get_user_delegation_key",
+    "list_semantic_model_datasources",
 ]
