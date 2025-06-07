@@ -1,5 +1,9 @@
+from sempy_labs.report._save_report import (
+    save_report_as_pbip,
+)
 from sempy_labs.report._reportwrapper import (
     ReportWrapper,
+    connect_report,
 )
 from sempy_labs.report._paginated import (
     get_report_datasources,
@@ -46,4 +50,6 @@ __all__ = [
     "run_report_bpa",
     "get_report_datasources",
     "download_report",
+    "save_report_as_pbip",
+    "connect_report",
 ]

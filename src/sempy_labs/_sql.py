@@ -34,7 +34,7 @@ def _bytes2mswin_bstr(value: bytes) -> bytes:
 class ConnectBase:
     def __init__(
         self,
-        item: str,
+        item: str | UUID,
         workspace: Optional[Union[str, UUID]] = None,
         timeout: Optional[int] = None,
         endpoint_type: str = "warehouse",
@@ -45,22 +45,34 @@ class ConnectBase:
         (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
         # Resolve the appropriate ID and name (warehouse or lakehouse)
-        if endpoint_type == "warehouse":
+        if endpoint_type == "sqldatabase":
+            # SQLDatabase is has special case for resolving the name and id
             (resource_name, resource_id) = resolve_item_name_and_id(
-                item=item, type=endpoint_type.capitalize(), workspace=workspace_id
+                item=item, type="SQLDatabase", workspace=workspace_id
+            )
+        elif endpoint_type == "lakehouse":
+            (resource_name, resource_id) = resolve_lakehouse_name_and_id(
+                lakehouse=item,
+                workspace=workspace_id,
             )
         else:
-            (resource_name, resource_id) = resolve_lakehouse_name_and_id(
-                lakehouse=item, workspace=workspace_id
+            (resource_name, resource_id) = resolve_item_name_and_id(
+                item=item, workspace=workspace_id, type=endpoint_type.capitalize()
             )
+
+        endpoint_for_url = (
+            "sqlDatabases" if endpoint_type == "sqldatabase" else f"{endpoint_type}s"
+        )
 
         # Get the TDS endpoint
         response = _base_api(
-            request=f"v1/workspaces/{workspace_id}/{endpoint_type}s/{resource_id}"
+            request=f"v1/workspaces/{workspace_id}/{endpoint_for_url}/{resource_id}"
         )
 
         if endpoint_type == "warehouse":
             tds_endpoint = response.json().get("properties", {}).get("connectionString")
+        elif endpoint_type == "sqldatabase":
+            tds_endpoint = response.json().get("properties", {}).get("serverFqdn")
         else:
             tds_endpoint = (
                 response.json()
@@ -70,9 +82,12 @@ class ConnectBase:
             )
 
         # Set up the connection string
-        access_token = SynapseTokenProvider()()
+        access_token = SynapseTokenProvider()("sql")
         tokenstruct = _bytes2mswin_bstr(access_token.encode())
-        conn_str = f"DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={tds_endpoint};DATABASE={resource_name};Encrypt=Yes;"
+        if endpoint_type == "sqldatabase":
+            conn_str = f"DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={tds_endpoint};DATABASE={resource_name}-{resource_id};Encrypt=Yes;"
+        else:
+            conn_str = f"DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={tds_endpoint};DATABASE={resource_name};Encrypt=Yes;"
 
         if timeout is not None:
             conn_str += f"Connect Timeout={timeout};"
@@ -141,10 +156,24 @@ class ConnectBase:
 class ConnectWarehouse(ConnectBase):
     def __init__(
         self,
-        warehouse: str,
+        warehouse: str | UUID,
         workspace: Optional[Union[str, UUID]] = None,
-        timeout: Optional[int] = None,
+        timeout: int = 30,
     ):
+        """
+        Run a SQL or T-SQL query against a Fabric Warehouse.
+
+        Parameters
+        ----------
+        warehouse : str | uuid.UUID
+            The name or ID of the Fabric warehouse.
+        workspace : str | uuid.UUID, default=None
+            The name or ID of the workspace.
+            Defaults to None which resolves to the workspace of the attached lakehouse
+            or if no lakehouse attached, resolves to the workspace of the notebook.
+        timeout : int, default=30
+            The timeout for the connection in seconds.
+        """
         super().__init__(
             item=warehouse,
             workspace=workspace,
@@ -156,13 +185,57 @@ class ConnectWarehouse(ConnectBase):
 class ConnectLakehouse(ConnectBase):
     def __init__(
         self,
-        lakehouse: str,
+        lakehouse: Optional[str | UUID] = None,
         workspace: Optional[Union[str, UUID]] = None,
-        timeout: Optional[int] = None,
+        timeout: int = 30,
     ):
+        """
+        Run a SQL or T-SQL query against a Fabric lakehouse.
+
+        Parameters
+        ----------
+        lakehouse : str | uuid.UUID, default=None
+            The name or ID of the Fabric lakehouse.
+            Defaults to None which resolves to the lakehouse attached to the notebook.
+        workspace : str | uuid.UUID, default=None
+            The name or ID of the workspace.
+            Defaults to None which resolves to the workspace of the attached lakehouse
+            or if no lakehouse attached, resolves to the workspace of the notebook.
+        timeout : int, default=30
+            The timeout for the connection in seconds.
+        """
         super().__init__(
             item=lakehouse,
             workspace=workspace,
             timeout=timeout,
             endpoint_type="lakehouse",
+        )
+
+
+class ConnectSQLDatabase(ConnectBase):
+    def __init__(
+        self,
+        sql_database: str | UUID,
+        workspace: Optional[Union[str, UUID]] = None,
+        timeout: int = 30,
+    ):
+        """
+        Run a SQL or T-SQL query against a Fabric SQL database.
+
+        Parameters
+        ----------
+        sql_database : str | uuid.UUID
+            The name or ID of the Fabric SQL database.
+        workspace : str | uuid.UUID, default=None
+            The name or ID of the workspace.
+            Defaults to None which resolves to the workspace of the attached lakehouse
+            or if no lakehouse attached, resolves to the workspace of the notebook.
+        timeout : int, default=30
+            The timeout for the connection in seconds.
+        """
+        super().__init__(
+            item=sql_database,
+            workspace=workspace,
+            timeout=timeout,
+            endpoint_type="sqldatabase",
         )

@@ -1,4 +1,3 @@
-import sempy.fabric as fabric
 import pandas as pd
 from typing import Optional
 from sempy_labs._helper_functions import (
@@ -7,6 +6,7 @@ from sempy_labs._helper_functions import (
     _update_dataframe_datatypes,
     _base_api,
     _create_dataframe,
+    resolve_item_id,
 )
 from uuid import UUID
 import sempy_labs._icons as icons
@@ -230,9 +230,7 @@ def list_item_connections(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     item_type = item_type[0].upper() + item_type[1:]
-    item_id = fabric.resolve_item_id(
-        item_name=item_name, type=item_type, workspace=workspace_id
-    )
+    item_id = resolve_item_id(item=item_name, type=item_type, workspace=workspace_id)
 
     columns = {
         "Connection Name": "string",

@@ -1,9 +1,9 @@
-import sempy.fabric as fabric
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _base_api,
     _create_dataframe,
     _update_dataframe_datatypes,
+    delete_item,
 )
 import pandas as pd
 from typing import Optional
@@ -16,7 +16,7 @@ def create_warehouse(
     description: Optional[str] = None,
     case_insensitive_collation: bool = False,
     workspace: Optional[str | UUID] = None,
-):
+) -> UUID:
     """
     Creates a Fabric warehouse.
 
@@ -34,6 +34,11 @@ def create_warehouse(
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    uuid.UUID
+        The ID of the created warehouse.
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -48,11 +53,11 @@ def create_warehouse(
             "defaultCollation"
         ] = "Latin1_General_100_CI_AS_KS_WS_SC_UTF8"
 
-    _base_api(
+    result = _base_api(
         request=f"/v1/workspaces/{workspace_id}/warehouses",
         payload=payload,
         method="post",
-        lro_return_status_code=True,
+        lro_return_json=True,
         status_codes=[201, 202],
     )
 
@@ -60,12 +65,16 @@ def create_warehouse(
         f"{icons.green_dot} The '{warehouse}' warehouse has been created within the '{workspace_name}' workspace."
     )
 
+    return result.get("id")
+
 
 def list_warehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the warehouses within a workspace.
 
     This is a wrapper function for the following API: `Items - List Warehouses <https://learn.microsoft.com/rest/api/fabric/warehouse/items/list-warehouses>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -93,7 +102,9 @@ def list_warehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     responses = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/warehouses", uses_pagination=True
+        request=f"/v1/workspaces/{workspace_id}/warehouses",
+        uses_pagination=True,
+        client="fabric_sp",
     )
 
     for r in responses:
@@ -115,7 +126,7 @@ def list_warehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     return df
 
 
-def delete_warehouse(name: str, workspace: Optional[str | UUID] = None):
+def delete_warehouse(name: str | UUID, workspace: Optional[str | UUID] = None):
     """
     Deletes a Fabric warehouse.
 
@@ -123,27 +134,15 @@ def delete_warehouse(name: str, workspace: Optional[str | UUID] = None):
 
     Parameters
     ----------
-    name: str
-        Name of the warehouse.
+    name: str | uuid.UUID
+        Name or ID of the warehouse.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    item_id = fabric.resolve_item_id(
-        item_name=name, type="Warehouse", workspace=workspace_id
-    )
-
-    _base_api(
-        request=f"/v1/workspaces/{workspace_id}/warehouses/{item_id}", method="delete"
-    )
-
-    print(
-        f"{icons.green_dot} The '{name}' warehouse within the '{workspace_name}' workspace has been deleted."
-    )
+    delete_item(item=name, type="Warehouse", workspace=workspace)
 
 
 def get_warehouse_tables(

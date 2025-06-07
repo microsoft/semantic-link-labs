@@ -6,6 +6,7 @@ from sempy_labs._helper_functions import (
     _create_dataframe,
     _update_dataframe_datatypes,
 )
+from sempy._utils._log import log
 import sempy_labs._icons as icons
 from typing import List, Literal
 
@@ -38,6 +39,7 @@ def resolve_group_id(group: str | UUID) -> UUID:
     return group_id
 
 
+@log
 def list_groups() -> pd.DataFrame:
     """
     Shows a list of groups and their properties.
@@ -158,6 +160,7 @@ def _get_group(group_id: UUID) -> pd.DataFrame:
     return df
 
 
+@log
 def list_group_members(group: str | UUID) -> pd.DataFrame:
     """
     Shows a list of the members of a group.
@@ -217,6 +220,7 @@ def list_group_members(group: str | UUID) -> pd.DataFrame:
     return df
 
 
+@log
 def list_group_owners(group: str | UUID) -> pd.DataFrame:
     """
     Shows a list of the owners of a group.
@@ -332,6 +336,7 @@ def _base_add_to_group(
     )
 
 
+@log
 def add_group_members(
     group: str | UUID,
     user: str | UUID | List[str | UUID],
@@ -376,6 +381,7 @@ def add_group_owners(
     _base_add_to_group(group=group, object=user, object_type="owners")
 
 
+@log
 def renew_group(group: str | UUID):
     """
     Renews the group.

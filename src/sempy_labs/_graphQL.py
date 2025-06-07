@@ -5,7 +5,7 @@ from sempy_labs._helper_functions import (
     _base_api,
     _create_dataframe,
     resolve_workspace_name_and_id,
-    _print_success,
+    create_item,
 )
 
 
@@ -14,6 +14,8 @@ def list_graphql_apis(workspace: Optional[str | UUID]) -> pd.DataFrame:
     Shows the Graph QL APIs within a workspace.
 
     This is a wrapper function for the following API: `Items - List GraphQLApis <https://learn.microsoft.com/rest/api/fabric/graphqlapi/items/list-graphqlapi-s>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -38,7 +40,9 @@ def list_graphql_apis(workspace: Optional[str | UUID]) -> pd.DataFrame:
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     responses = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/GraphQLApis", uses_pagination=True
+        request=f"/v1/workspaces/{workspace_id}/GraphQLApis",
+        uses_pagination=True,
+        client="fabric_sp",
     )
 
     for r in responses:
@@ -73,23 +77,6 @@ def create_graphql_api(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    payload = {"displayName": name}
-
-    if description:
-        payload["description"] = description
-
-    _base_api(
-        request=f"/v1/workspaces/{workspace_id}/GraphQLApis",
-        method="post",
-        status_codes=[201, 202],
-        payload=payload,
-        lro_return_status_code=True,
-    )
-    _print_success(
-        item_name=name,
-        item_type="GraphQL API",
-        workspace_name=workspace_name,
-        action="created",
+    create_item(
+        name=name, description=description, type="GraphQLApi", workspace=workspace
     )

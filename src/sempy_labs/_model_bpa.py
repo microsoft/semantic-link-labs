@@ -6,7 +6,6 @@ from IPython.display import display, HTML
 from sempy_labs._model_dependencies import get_model_calc_dependencies
 from sempy_labs._helper_functions import (
     format_dax_object_name,
-    resolve_lakehouse_name,
     create_relationship_name,
     save_as_delta_table,
     resolve_workspace_capacity,
@@ -42,6 +41,8 @@ def run_model_bpa(
 ):
     """
     Displays an HTML visualization of the results of the Best Practice Analyzer scan for a semantic model.
+
+    The Best Practice Analyzer rules are based on the rules defined `here <https://github.com/microsoft/Analysis-Services/tree/master/BestPracticeRules>`_. The framework for the Best Practice Analyzer and rules are based on the foundation set by `Tabular Editor <https://github.com/TabularEditor/TabularEditor>`_.
 
     Parameters
     ----------
@@ -274,12 +275,17 @@ def run_model_bpa(
                 tom.all_columns(),
                 lambda obj: format_dax_object_name(obj.Parent.Name, obj.Name),
             ),
+            "Calculated Column": (
+                tom.all_calculated_columns(),
+                lambda obj: format_dax_object_name(obj.Parent.Name, obj.Name),
+            ),
             "Measure": (tom.all_measures(), lambda obj: obj.Name),
             "Hierarchy": (
                 tom.all_hierarchies(),
                 lambda obj: format_dax_object_name(obj.Parent.Name, obj.Name),
             ),
             "Table": (tom.model.Tables, lambda obj: obj.Name),
+            "Calculated Table": (tom.all_calculated_tables(), lambda obj: obj.Name),
             "Role": (tom.model.Roles, lambda obj: obj.Name),
             "Model": (tom.model, lambda obj: obj.Model.Name),
             "Calculation Item": (
@@ -322,6 +328,10 @@ def run_model_bpa(
                     x = [nm(obj) for obj in tom.all_hierarchies() if expr(obj, tom)]
                 elif scope == "Table":
                     x = [nm(obj) for obj in tom.model.Tables if expr(obj, tom)]
+                elif scope == "Calculated Table":
+                    x = [
+                        nm(obj) for obj in tom.all_calculated_tables() if expr(obj, tom)
+                    ]
                 elif scope == "Relationship":
                     x = [nm(obj) for obj in tom.model.Relationships if expr(obj, tom)]
                 elif scope == "Role":
@@ -331,6 +341,12 @@ def run_model_bpa(
                 elif scope == "Calculation Item":
                     x = [
                         nm(obj) for obj in tom.all_calculation_items() if expr(obj, tom)
+                    ]
+                elif scope == "Calculated Column":
+                    x = [
+                        nm(obj)
+                        for obj in tom.all_calculated_columns()
+                        if expr(obj, tom)
                     ]
 
                 if len(x) > 0:
@@ -372,13 +388,7 @@ def run_model_bpa(
         dfExport = finalDF.copy()
         delta_table_name = "modelbparesults"
 
-        lakehouse_id = fabric.get_lakehouse_id()
-        lake_workspace = fabric.get_workspace_id()
-        lakehouse = resolve_lakehouse_name(
-            lakehouse_id=lakehouse_id, workspace=lake_workspace
-        )
-
-        lakeT = get_lakehouse_tables(lakehouse=lakehouse, workspace=lake_workspace)
+        lakeT = get_lakehouse_tables()
         lakeT_filt = lakeT[lakeT["Table Name"] == delta_table_name]
 
         dfExport["Severity"].replace(icons.severity_mapping, inplace=True)
@@ -386,9 +396,7 @@ def run_model_bpa(
         if len(lakeT_filt) == 0:
             runId = 1
         else:
-            max_run_id = _get_column_aggregate(
-                lakehouse=lakehouse, table_name=delta_table_name
-            )
+            max_run_id = _get_column_aggregate(table_name=delta_table_name)
             runId = max_run_id + 1
 
         now = datetime.datetime.now()

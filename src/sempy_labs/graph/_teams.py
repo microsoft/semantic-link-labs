@@ -1,5 +1,6 @@
 import pandas as pd
 from uuid import UUID
+from sempy._utils._log import log
 from sempy_labs._helper_functions import (
     _base_api,
     _create_dataframe,
@@ -7,6 +8,7 @@ from sempy_labs._helper_functions import (
 )
 
 
+@log
 def list_teams() -> pd.DataFrame:
     """
     Shows a list of teams and their properties.

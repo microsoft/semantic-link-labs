@@ -1,4 +1,3 @@
-import sempy.fabric as fabric
 from typing import Optional, List, Tuple
 from sempy._utils._log import log
 import sempy_labs._icons as icons
@@ -242,7 +241,7 @@ def list_vcores() -> pd.DataFrame:
 
 def get_capacity_resource_governance(capacity_name: str):
 
-    dfC = fabric.list_capacities()
+    dfC = list_capacities()
     dfC_filt = dfC[dfC["Display Name"] == capacity_name]
     capacity_id = dfC_filt["Id"].iloc[0].upper()
 
@@ -256,7 +255,6 @@ def suspend_fabric_capacity(
     capacity_name: str,
     azure_subscription_id: str,
     resource_group: str,
-    **kwargs,
 ):
     """
     This function suspends a Fabric capacity.
@@ -275,26 +273,9 @@ def suspend_fabric_capacity(
         The name of the Azure resource group.
     """
 
-    token_provider = auth.token_provider.get()
-    if token_provider is None:
-        token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
-            key_vault_uri=kwargs["key_vault_uri"],
-            key_vault_tenant_id=kwargs["key_vault_tenant_id"],
-            key_vault_client_id=kwargs["key_vault_client_id"],
-            key_vault_client_secret=kwargs["key_vault_client_secret"],
-        )
-        print(
-            f"{icons.info} Please use the 'token_provider' parameter instead of the key vault parameters within this function as the key vault parameters have been deprecated."
-        )
-
-    headers = _get_headers(token_provider, audience="azure")
-
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}/suspend?api-version={icons.azure_api_version}"
 
-    response = requests.post(url, headers=headers)
-
-    if response.status_code != 202:
-        raise FabricHTTPException(response)
+    _base_api(request=url, client="azure", method="post", status_codes=202)
 
     print(f"{icons.green_dot} The '{capacity_name}' capacity has been suspended.")
 
@@ -304,7 +285,6 @@ def resume_fabric_capacity(
     capacity_name: str,
     azure_subscription_id: str,
     resource_group: str,
-    **kwargs,
 ):
     """
     This function resumes a Fabric capacity.
@@ -323,26 +303,9 @@ def resume_fabric_capacity(
         The name of the Azure resource group.
     """
 
-    token_provider = auth.token_provider.get()
-    if token_provider is None:
-        token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
-            key_vault_uri=kwargs["key_vault_uri"],
-            key_vault_tenant_id=kwargs["key_vault_tenant_id"],
-            key_vault_client_id=kwargs["key_vault_client_id"],
-            key_vault_client_secret=kwargs["key_vault_client_secret"],
-        )
-        print(
-            f"{icons.info} Please use the 'token_provider' parameter instead of the key vault parameters within this function as the key vault parameters have been deprecated."
-        )
-
-    headers = _get_headers(token_provider, audience="azure")
-
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}/resume?api-version={icons.azure_api_version}"
 
-    response = requests.post(url, headers=headers)
-
-    if response.status_code != 202:
-        raise FabricHTTPException(response)
+    _base_api(request=url, client="azure", method="post", status_codes=202)
 
     print(f"{icons.green_dot} The '{capacity_name}' capacity has been resumed.")
 
@@ -352,7 +315,6 @@ def delete_embedded_capacity(
     capacity_name: str,
     azure_subscription_id: str,
     resource_group: str,
-    **kwargs,
 ):
     """
     This function deletes a Power BI Embedded capacity.
@@ -369,53 +331,36 @@ def delete_embedded_capacity(
         The name of the Azure resource group.
     """
 
-    token_provider = auth.token_provider.get()
-    if token_provider is None:
-        token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
-            key_vault_uri=kwargs["key_vault_uri"],
-            key_vault_tenant_id=kwargs["key_vault_tenant_id"],
-            key_vault_client_id=kwargs["key_vault_client_id"],
-            key_vault_client_secret=kwargs["key_vault_client_secret"],
-        )
-        print(
-            f"{icons.info} Please use the 'token_provider' parameter instead of the key vault parameters within this function as the key vault parameters have been deprecated."
-        )
-
-    headers = _get_headers(token_provider, audience="azure")
-
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.PowerBIDedicated/capacities/{capacity_name}?api-version={icons.azure_api_version}"
 
-    response = requests.delete(url, headers=headers)
-
-    if response.status_code not in [200, 202]:
-        raise FabricHTTPException(response)
+    _base_api(request=url, client="azure", method="delete", status_codes=[200, 202])
 
     print(f"{icons.green_dot} The '{capacity_name}' capacity has been deleted.")
 
 
 @log
-def delete_premium_capacity(capacity_name: str):
+def delete_premium_capacity(capacity: str | UUID, **kwargs):
     """
     This function deletes a Power BI Premium capacity.
 
     Parameters
     ----------
-    capacity_name : str
-        Name of the Fabric capacity.
+    capacity : str | uuid.UUID
+        Name or ID of the Fabric capacity.
     """
+    from sempy_labs._helper_functions import resolve_capacity_id
 
-    dfC = fabric.list_capacities()
-
-    dfC_filt = dfC[dfC["Display Name"] == capacity_name]
-    if len(dfC_filt) == 0:
-        raise ValueError(
-            f"{icons.red_dot} The '{capacity_name}' capacity does not exist."
+    if "capacity_name" in kwargs:
+        capacity = kwargs["capacity_name"]
+        print(
+            f"{icons.warning} The 'capacity_name' parameter is deprecated. Please use 'capacity' instead."
         )
-    capacity_id = dfC_filt["Id"].iloc[0].upper()
+
+    capacity_id = resolve_capacity_id(capacity=capacity).upper()
 
     _base_api(request=f"capacities/{capacity_id}", method="delete", status_codes=204)
 
-    print(f"{icons.green_dot} The '{capacity_name}' capacity has been deleted.")
+    print(f"{icons.green_dot} The '{capacity}' capacity has been deleted.")
 
 
 @log
@@ -423,7 +368,6 @@ def delete_fabric_capacity(
     capacity_name: str,
     azure_subscription_id: str,
     resource_group: str,
-    **kwargs,
 ):
     """
     This function deletes a Fabric capacity.
@@ -442,26 +386,9 @@ def delete_fabric_capacity(
         The name of the Azure resource group.
     """
 
-    token_provider = auth.token_provider.get()
-    if token_provider is None:
-        token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
-            key_vault_uri=kwargs["key_vault_uri"],
-            key_vault_tenant_id=kwargs["key_vault_tenant_id"],
-            key_vault_client_id=kwargs["key_vault_client_id"],
-            key_vault_client_secret=kwargs["key_vault_client_secret"],
-        )
-        print(
-            f"{icons.info} Please use the 'token_provider' parameter instead of the key vault parameters within this function as the key vault parameters have been deprecated."
-        )
-
-    headers = _get_headers(token_provider, audience="azure")
-
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}?api-version={icons.azure_api_version}"
 
-    response = requests.delete(url, headers=headers)
-
-    if response.status_code != 202:
-        raise FabricHTTPException(response)
+    _base_api(request=url, client="azure", method="delete", status_codes=202)
 
     print(f"{icons.green_dot} The '{capacity_name}' capacity has been deleted.")
 
@@ -474,7 +401,6 @@ def update_fabric_capacity(
     sku: Optional[str] = None,
     admin_members: Optional[str | List[str]] = None,
     tags: Optional[dict] = None,
-    **kwargs,
 ):
     """
     This function updates a Fabric capacity's properties.
@@ -499,25 +425,9 @@ def update_fabric_capacity(
         Tag(s) to add to the capacity. Example: {'tagName': 'tagValue'}.
     """
 
-    token_provider = auth.token_provider.get()
-    if token_provider is None:
-        token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
-            key_vault_uri=kwargs["key_vault_uri"],
-            key_vault_tenant_id=kwargs["key_vault_tenant_id"],
-            key_vault_client_id=kwargs["key_vault_client_id"],
-            key_vault_client_secret=kwargs["key_vault_client_secret"],
-        )
-        print(
-            f"{icons.info} Please use the 'token_provider' parameter instead of the key vault parameters within this function as the key vault parameters have been deprecated."
-        )
-
-    headers = _get_headers(token_provider, audience="azure")
-
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity_name}?api-version={icons.azure_api_version}"
 
-    get_response = requests.get(url, headers=headers)
-    if get_response.status_code != 200:
-        raise FabricHTTPException(get_response)
+    get_response = _base_api(request=url, client="azure")
 
     get_json = get_response.json()
     current_sku = get_json.get("sku", {}).get("name")
@@ -549,10 +459,9 @@ def update_fabric_capacity(
         return
 
     payload = _add_sll_tag(payload, tags)
-    response = requests.patch(url, headers=headers, json=payload)
-
-    if response.status_code != 202:
-        raise FabricHTTPException(response)
+    _base_api(
+        request=url, client="azure", method="patch", payload=payload, status_codes=202
+    )
 
     print(
         f"{icons.green_dot} The '{capacity_name}' capacity has been updated accordingly."
@@ -588,28 +497,13 @@ def check_fabric_capacity_name_availablility(
         An indication as to whether the Fabric capacity name is available or not.
     """
 
-    token_provider = auth.token_provider.get()
-    if token_provider is None:
-        token_provider = ServicePrincipalTokenProvider.from_azure_key_vault(
-            key_vault_uri=kwargs["key_vault_uri"],
-            key_vault_tenant_id=kwargs["key_vault_tenant_id"],
-            key_vault_client_id=kwargs["key_vault_client_id"],
-            key_vault_client_secret=kwargs["key_vault_client_secret"],
-        )
-        print(
-            f"{icons.info} Please use the 'token_provider' parameter instead of the key vault parameters within this function as the key vault parameters have been deprecated."
-        )
-
-    headers = _get_headers(token_provider, audience="azure")
-
     payload = {"name": capacity_name, "type": "Microsoft.Fabric/capacities"}
 
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/providers/Microsoft.Fabric/locations/{region}/checkNameAvailability?api-version={icons.azure_api_version}"
 
-    response = requests.post(url, headers=headers, json=payload)
-
-    if response.status_code != 202:
-        raise FabricHTTPException(response)
+    response = _base_api(
+        request=url, client="azure", method="post", payload=payload, status_codes=202
+    )
 
     return bool(response.json().get("nameAvailable"))
 
@@ -1236,3 +1130,39 @@ def get_resource_group(azure_subscription_id: str, resource_group: str) -> pd.Da
     }
 
     return pd.DataFrame(new_data, index=[0])
+
+
+def list_capacities() -> pd.DataFrame:
+    """
+    Shows the capacities and their properties.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the capacities and their properties
+    """
+
+    columns = {
+        "Id": "string",
+        "Display Name": "string",
+        "Sku": "string",
+        "Region": "string",
+        "State": "string",
+        "Admins": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    response = _base_api(request="/v1.0/myorg/capacities", client="fabric_sp")
+
+    for i in response.json().get("value", []):
+        new_data = {
+            "Id": i.get("id").lower(),
+            "Display Name": i.get("displayName"),
+            "Sku": i.get("sku"),
+            "Region": i.get("region"),
+            "State": i.get("state"),
+            "Admins": [i.get("admins", [])],
+        }
+        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+    return df

@@ -7,7 +7,7 @@ name="semantic-link-labs"
 authors = [
     { name = "Microsoft Corporation" },
 ]
-version="0.9.3"
+version="0.10.0"
 description="Semantic Link Labs for Microsoft Fabric"
 readme="README.md"
 requires-python=">=3.10,<3.12"
@@ -23,7 +23,7 @@ classifiers = [
 license= { text = "MIT License" }
 
 dependencies = [
-    "semantic-link-sempy>=0.8.5",
+    "semantic-link-sempy>=0.10.2",
     "anytree",
     "powerbiclient",
     "polib",

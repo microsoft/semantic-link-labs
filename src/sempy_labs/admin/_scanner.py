@@ -1,4 +1,3 @@
-import sempy.fabric as fabric
 from typing import Optional, List
 from uuid import UUID
 from sempy.fabric.exceptions import FabricHTTPException
@@ -10,6 +9,7 @@ from sempy_labs._helper_functions import (
     _base_api,
     _is_valid_uuid,
     _build_url,
+    resolve_workspace_name,
 )
 
 
@@ -54,7 +54,7 @@ def scan_workspaces(
     """
 
     if workspace is None:
-        workspace = fabric.resolve_workspace_name()
+        workspace = resolve_workspace_name()
 
     if isinstance(workspace, str):
         workspace = [workspace]
@@ -114,7 +114,5 @@ def scan_workspaces(
         request=f"/v1.0/myorg/admin/workspaces/scanResult/{scan_id}",
         client="fabric_sp",
     )
-
-    print(f"{icons.green_dot} Status: {scan_status}")
 
     return response.json()

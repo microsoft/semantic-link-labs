@@ -1,10 +1,9 @@
-import sempy.fabric as fabric
 from sempy_labs._helper_functions import (
-    resolve_lakehouse_name,
-    resolve_lakehouse_id,
-    resolve_warehouse_id,
     resolve_workspace_name_and_id,
     _base_api,
+    resolve_lakehouse_name_and_id,
+    resolve_item_name_and_id,
+    _get_fabric_context_setting,
 )
 from typing import Optional
 import sempy_labs._icons as icons
@@ -15,6 +14,7 @@ def generate_shared_expression(
     item_name: Optional[str] = None,
     item_type: str = "Lakehouse",
     workspace: Optional[str | UUID] = None,
+    use_sql_endpoint: bool = True,
 ) -> str:
     """
     Dynamically generates the M expression used by a Direct Lake model for a given lakehouse/warehouse.
@@ -30,6 +30,9 @@ def generate_shared_expression(
         The Fabric workspace name or ID used by the item.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    use_sql_endpoint : bool, default=True
+        Whether to use the SQL Endpoint for the lakehouse/warehouse.
+        If False, the expression will be generated without using the SQL Endpoint.
 
     Returns
     -------
@@ -45,38 +48,45 @@ def generate_shared_expression(
             f"{icons.red_dot} Invalid item type. Valid options: {item_types}."
         )
 
-    if item_name is None:
-        item_id = fabric.get_lakehouse_id()
-        item_name = resolve_lakehouse_name(item_id, workspace_id)
-    elif item_name is not None and item_type == "Lakehouse":
-        item_id = resolve_lakehouse_id(lakehouse=item_name, workspace=workspace_id)
-    elif item_type == "Warehouse":
-        item_id = resolve_warehouse_id(warehouse=item_name, workspace=workspace_id)
-
-    item_type_rest = f"{item_type.lower()}s"
-    response = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/{item_type_rest}/{item_id}"
-    )
-
-    prop = response.json().get("properties")
-
     if item_type == "Lakehouse":
-        sqlprop = prop.get("sqlEndpointProperties")
-        sqlEPCS = sqlprop.get("connectionString")
-        sqlepid = sqlprop.get("id")
-        provStatus = sqlprop.get("provisioningStatus")
-    elif item_type == "Warehouse":
-        sqlEPCS = prop.get("connectionString")
-        sqlepid = item_id
-        provStatus = None
-
-    if provStatus == "InProgress":
-        raise ValueError(
-            f"{icons.red_dot} The SQL Endpoint for the '{item_name}' lakehouse within the '{workspace_name}' workspace has not yet been provisioned. Please wait until it has been provisioned."
+        (item_name, item_id) = resolve_lakehouse_name_and_id(
+            lakehouse=item_name, workspace=workspace_id
+        )
+    else:
+        (item_name, item_id) = resolve_item_name_and_id(
+            item=item_name, type=item_type, workspace=workspace_id
         )
 
-    start_expr = "let\n\tdatabase = "
-    end_expr = "\nin\n\tdatabase"
-    mid_expr = f'Sql.Database("{sqlEPCS}", "{sqlepid}")'
+    if use_sql_endpoint:
+        item_type_rest = f"{item_type.lower()}s"
+        response = _base_api(
+            request=f"/v1/workspaces/{workspace_id}/{item_type_rest}/{item_id}"
+        )
 
-    return f"{start_expr}{mid_expr}{end_expr}"
+        prop = response.json().get("properties")
+
+        if item_type == "Lakehouse":
+            sqlprop = prop.get("sqlEndpointProperties")
+            sqlEPCS = sqlprop.get("connectionString")
+            sqlepid = sqlprop.get("id")
+            provStatus = sqlprop.get("provisioningStatus")
+        elif item_type == "Warehouse":
+            sqlEPCS = prop.get("connectionString")
+            sqlepid = item_id
+            provStatus = None
+
+        if provStatus == "InProgress":
+            raise ValueError(
+                f"{icons.red_dot} The SQL Endpoint for the '{item_name}' {item_type.lower()} within the '{workspace_name}' workspace has not yet been provisioned. Please wait until it has been provisioned."
+            )
+
+        start_expr = "let\n\tdatabase = "
+        end_expr = "\nin\n\tdatabase"
+        mid_expr = f'Sql.Database("{sqlEPCS}", "{sqlepid}")'
+        return f"{start_expr}{mid_expr}{end_expr}"
+    else:
+        # Build DL/OL expression
+        env = _get_fabric_context_setting("spark.trident.pbienv").lower()
+        env = "" if env == "prod" else f"{env}-"
+
+        return f"""let\n\tSource = AzureStorage.DataLake("https://{env}onelake.dfs.fabric.microsoft.com/{workspace_id}/{item_id}")\nin\n\tSource"""

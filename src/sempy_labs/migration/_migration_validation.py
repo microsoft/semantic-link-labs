@@ -42,10 +42,6 @@ def migration_validation(
             f"{icons.red_dot} The 'dataset' and 'new_dataset' parameters are both set to '{dataset}'. These parameters must be set to different values."
         )
 
-    workspace = fabric.resolve_workspace_name(workspace)
-    if new_dataset_workspace is None:
-        new_dataset_workspace = workspace
-
     icons.sll_tags.append("DirectLakeMigration")
 
     dfA = list_semantic_model_objects(dataset=dataset, workspace=workspace)

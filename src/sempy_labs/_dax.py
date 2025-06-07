@@ -62,9 +62,23 @@ def evaluate_dax_impersonation(
         payload=payload,
     )
     data = response.json()["results"][0]["tables"]
-    column_names = data[0]["rows"][0].keys()
-    data_rows = [row.values() for item in data for row in item["rows"]]
-    df = pd.DataFrame(data_rows, columns=column_names)
+
+    # Get all possible column names from all rows because null columns aren't returned
+    all_columns = set()
+    for item in data:
+        for row in item["rows"]:
+            all_columns.update(row.keys())
+
+    # Create rows with all columns, filling missing values with None
+    rows = []
+    for item in data:
+        for row in item["rows"]:
+            # Create a new row with all columns, defaulting to None
+            new_row = {col: row.get(col) for col in all_columns}
+            rows.append(new_row)
+
+    # Create DataFrame from the processed rows
+    df = pd.DataFrame(rows)
 
     return df
 
@@ -192,9 +206,15 @@ def get_dax_query_dependencies(
     ].reset_index(drop=True)
 
     if put_in_memory:
-        not_in_memory = dfC_filtered[dfC_filtered["Is Resident"] == False]
+        # Only put columns in memory if they are in a Direct Lake table (and are not already in memory)
+        dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
+        dl_tables = dfP[dfP["Mode"] == "DirectLake"]["Table Name"].unique().tolist()
+        not_in_memory = dfC_filtered[
+            (dfC_filtered["Table Name"].isin(dl_tables))
+            & (dfC_filtered["Is Resident"] == False)
+        ]
 
-        if len(not_in_memory) > 0:
+        if not not_in_memory.empty:
             _put_columns_into_memory(
                 dataset=dataset,
                 workspace=workspace,

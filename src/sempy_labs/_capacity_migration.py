@@ -16,6 +16,7 @@ from sempy_labs._helper_functions import (
     _base_api,
 )
 from sempy_labs._capacities import create_fabric_capacity
+from uuid import UUID
 
 
 def _migrate_settings(source_capacity: str, target_capacity: str):
@@ -105,17 +106,13 @@ def migrate_workspaces(
     migrated_workspaces = []
 
     for i, r in dfW.iterrows():
-        workspace = r["Name"]
-
-        if workspaces is None or workspace in workspaces:
-            pass
-        else:
-            continue
-
-        if assign_workspace_to_capacity(
-            capacity_name=target_capacity, workspace=workspace
-        ):
-            migrated_workspaces.append(workspace)
+        workspace_id = r["Id"]
+        workspace_name = r["Name"]
+        if workspaces is None or workspace_name in workspaces:
+            assign_workspace_to_capacity(
+                capacity=target_capacity, workspace=workspace_id
+            )
+            migrated_workspaces.append(workspace_name)
 
     if len(migrated_workspaces) < workspace_count:
         print(
@@ -123,10 +120,11 @@ def migrate_workspaces(
         )
         print(f"{icons.in_progress} Initiating rollback...")
         for i, r in dfW.iterrows():
-            workspace = r["Name"]
-            if workspace in migrated_workspaces:
+            workspace_id = r["Id"]
+            workspace_name = r["Name"]
+            if workspace_name in migrated_workspaces:
                 assign_workspace_to_capacity(
-                    capacity_name=source_capacity, workspace=workspace
+                    capacity=source_capacity, workspace=workspace_id
                 )
         print(
             f"{icons.green_dot} Rollback of the workspaces to the '{source_capacity}' capacity is complete."
@@ -531,7 +529,7 @@ def _migrate_delegated_tenant_settings(source_capacity: str, target_capacity: st
 
 
 @log
-def _migrate_spark_settings(source_capacity: str, target_capacity: str):
+def _migrate_spark_settings(source_capacity: str | UUID, target_capacity: str | UUID):
     """
     This function migrates a capacity's spark settings to another capacity.
 
@@ -539,14 +537,14 @@ def _migrate_spark_settings(source_capacity: str, target_capacity: str):
 
     Parameters
     ----------
-    source_capacity : str
-        Name of the source capacity.
-    target_capacity : str
-        Name of the target capacity.
+    source_capacity : str | uuid.UUID
+        Name or ID of the source capacity.
+    target_capacity : str | uuid.UUID
+        Name or ID of the target capacity.
     """
 
-    source_capacity_id = resolve_capacity_id(capacity_name=source_capacity)
-    target_capacity_id = resolve_capacity_id(capacity_name=target_capacity)
+    source_capacity_id = resolve_capacity_id(capacity=source_capacity)
+    target_capacity_id = resolve_capacity_id(capacity=target_capacity)
 
     # Get source capacity server dns
     response = _base_api(request=f"metadata/capacityInformation/{source_capacity_id}")

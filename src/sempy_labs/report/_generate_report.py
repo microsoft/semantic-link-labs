@@ -11,6 +11,7 @@ from sempy_labs._helper_functions import (
     _update_dataframe_datatypes,
     _base_api,
     resolve_item_id,
+    get_item_definition,
 )
 import sempy_labs._icons as icons
 from sempy._utils._log import log
@@ -177,8 +178,11 @@ def update_report_from_reportjson(
     )
 
 
+@log
 def get_report_definition(
-    report: str, workspace: Optional[str | UUID] = None, return_dataframe: bool = True
+    report: str | UUID,
+    workspace: Optional[str | UUID] = None,
+    return_dataframe: bool = True,
 ) -> pd.DataFrame | dict:
     """
     Gets the collection of definition files of a report.
@@ -187,8 +191,8 @@ def get_report_definition(
 
     Parameters
     ----------
-    report : str
-        Name of the report.
+    report : str | uuid.UUID
+        Name or ID of the report.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID in which the report resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -198,24 +202,16 @@ def get_report_definition(
 
     Returns
     -------
-    pandas.DataFrame | dict
+    pandas.DataFrame
         The collection of report definition files within a pandas dataframe.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    report_id = resolve_item_id(item=report, type="Report", workspace=workspace)
-
-    result = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/reports/{report_id}/getDefinition",
-        method="post",
-        lro_return_json=True,
-        status_codes=None,
+    return get_item_definition(
+        item=report,
+        type="Report",
+        workspace=workspace,
+        return_dataframe=return_dataframe,
     )
-
-    if return_dataframe:
-        return pd.json_normalize(result["definition"]["parts"])
-    else:
-        return result
 
 
 @log
@@ -327,9 +323,9 @@ def _create_report(
 
     from sempy_labs.report import report_rebind
 
-    report_workspace = fabric.resolve_workspace_name(report_workspace)
-    report_workspace_id = fabric.resolve_workspace_id(report_workspace)
-    dataset_workspace = fabric.resolve_workspace_name(dataset_workspace)
+    (report_workspace_name, report_workspace_id) = resolve_workspace_name_and_id(
+        workspace=report_workspace
+    )
 
     dfR = fabric.list_reports(workspace=report_workspace)
     dfR_filt = dfR[dfR["Name"] == report]
@@ -346,7 +342,7 @@ def _create_report(
         )
 
         print(
-            f"{icons.green_dot} The '{report}' report has been created within the '{report_workspace}'"
+            f"{icons.green_dot} The '{report}' report has been created within the '{report_workspace_name}'"
         )
         updated_report = True
     # Update the report if it exists
@@ -360,12 +356,12 @@ def _create_report(
             status_codes=None,
         )
         print(
-            f"{icons.green_dot} The '{report}' report has been updated within the '{report_workspace}'"
+            f"{icons.green_dot} The '{report}' report has been updated within the '{report_workspace_name}'"
         )
         updated_report = True
     else:
         raise ValueError(
-            f"{icons.red_dot} The '{report}' report within the '{report_workspace}' workspace already exists and the 'overwrite' parameter was set to False."
+            f"{icons.red_dot} The '{report}' report within the '{report_workspace_name}' workspace already exists and the 'overwrite' parameter was set to False."
         )
 
     # Rebind the report to the semantic model to make sure it is pointed at the correct semantic model

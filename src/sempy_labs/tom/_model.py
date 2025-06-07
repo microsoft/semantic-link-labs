@@ -2,6 +2,7 @@ import sempy
 import sempy.fabric as fabric
 import pandas as pd
 import re
+import json
 from datetime import datetime
 from sempy_labs._helper_functions import (
     format_dax_object_name,
@@ -10,6 +11,9 @@ from sempy_labs._helper_functions import (
     resolve_dataset_name_and_id,
     resolve_workspace_name_and_id,
     _base_api,
+    resolve_workspace_id,
+    resolve_item_id,
+    resolve_lakehouse_id,
 )
 from sempy_labs._list_functions import list_relationships
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
@@ -43,6 +47,13 @@ class TOMWrapper:
     _tables_added: List[str]
     _table_map = dict
     _column_map = dict
+    _dax_formatting = {
+        "measures": [],
+        "calculated_columns": [],
+        "calculated_tables": [],
+        "calculation_items": [],
+        "rls": [],
+    }
 
     def __init__(self, dataset, workspace, readonly):
 
@@ -83,7 +94,7 @@ class TOMWrapper:
         # No token provider (standard authentication)
         if self._token_provider is None:
             self._tom_server = fabric.create_tom_server(
-                readonly=readonly, workspace=workspace_id
+                dataset=dataset, readonly=readonly, workspace=workspace_id
             )
         # Service Principal Authentication for Azure AS via token provider
         elif self._is_azure_as:
@@ -798,23 +809,27 @@ class TOMWrapper:
         if permission not in ["Read", "None", "Default"]:
             raise ValueError(f"{icons.red_dot} Invalid 'permission' value.")
 
-        cp = TOM.ColumnPermission()
-        cp.Column = self.model.Tables[table_name].Columns[column_name]
-        cp.MetadataPermission = System.Enum.Parse(TOM.MetadataPermission, permission)
-
-        if any(
-            c.Name == column_name and t.Name == table_name and r.Name == role_name
-            for r in self.model.Roles
-            for t in r.TablePermissions
-            for c in t.ColumnPermissions
-        ):
-            self.model.Roles[role_name].TablePermissions[table_name].ColumnPermissions[
+        r = self.model.Roles[role_name]
+        tables = [t.Name for t in r.TablePermissions]
+        # Add table permission if it does not exist
+        if table_name not in tables:
+            tp = TOM.TablePermission()
+            tp.Table = self.model.Tables[table_name]
+            r.TablePermissions.Add(tp)
+        columns = [c.Name for c in r.TablePermissions[table_name].ColumnPermissions]
+        # Add column permission if it does not exist
+        if column_name not in columns:
+            cp = TOM.ColumnPermission()
+            cp.Column = self.model.Tables[table_name].Columns[column_name]
+            cp.MetadataPermission = System.Enum.Parse(
+                TOM.MetadataPermission, permission
+            )
+            r.TablePermissions[table_name].ColumnPermissions.Add(cp)
+        # Set column permission if it already exists
+        else:
+            r.TablePermissions[table_name].ColumnPermissions[
                 column_name
             ].MetadataPermission = System.Enum.Parse(TOM.MetadataPermission, permission)
-        else:
-            self.model.Roles[role_name].TablePermissions[
-                table_name
-            ].ColumnPermissions.Add(cp)
 
     def add_hierarchy(
         self,
@@ -934,19 +949,23 @@ class TOMWrapper:
         import Microsoft.AnalysisServices.Tabular as TOM
         import System
 
-        if cross_filtering_behavior is None:
+        if not cross_filtering_behavior:
             cross_filtering_behavior = "Automatic"
-        if security_filtering_behavior is None:
+        if not security_filtering_behavior:
             security_filtering_behavior = "OneDirection"
 
-        from_cardinality = from_cardinality.capitalize()
-        to_cardinality = to_cardinality.capitalize()
-        cross_filtering_behavior = cross_filtering_behavior.capitalize()
-        security_filtering_behavior = security_filtering_behavior.capitalize()
+        for var_name in [
+            "from_cardinality",
+            "to_cardinality",
+            "cross_filtering_behavior",
+            "security_filtering_behavior",
+        ]:
+            locals()[var_name] = locals()[var_name].capitalize()
+
+        cross_filtering_behavior = cross_filtering_behavior.replace("direct", "Direct")
         security_filtering_behavior = security_filtering_behavior.replace(
             "direct", "Direct"
         )
-        cross_filtering_behavior = cross_filtering_behavior.replace("direct", "Direct")
 
         rel = TOM.SingleColumnRelationship()
         rel.FromColumn = self.model.Tables[from_table].Columns[from_column]
@@ -958,13 +977,16 @@ class TOMWrapper:
             TOM.RelationshipEndCardinality, to_cardinality
         )
         rel.IsActive = is_active
-        rel.CrossFilteringBehavior = System.Enum.Parse(
-            TOM.CrossFilteringBehavior, cross_filtering_behavior
-        )
-        rel.SecurityFilteringBehavior = System.Enum.Parse(
-            TOM.SecurityFilteringBehavior, security_filtering_behavior
-        )
-        rel.RelyOnReferentialIntegrity = rely_on_referential_integrity
+        if cross_filtering_behavior != "Automatic":
+            rel.CrossFilteringBehavior = System.Enum.Parse(
+                TOM.CrossFilteringBehavior, cross_filtering_behavior
+            )
+        if security_filtering_behavior != "OneDirection":
+            rel.SecurityFilteringBehavior = System.Enum.Parse(
+                TOM.SecurityFilteringBehavior, security_filtering_behavior
+            )
+        if rely_on_referential_integrity:
+            rel.RelyOnReferentialIntegrity = True
 
         self.model.Relationships.Add(rel)
 
@@ -1171,8 +1193,8 @@ class TOMWrapper:
             Name of the table.
         entity_name : str
             Name of the lakehouse/warehouse table.
-        expression : TOM Object, default=None
-            The expression used by the table.
+        expression : str, default=None
+            The name of the expression used by the partition.
             Defaults to None which resolves to the 'DatabaseQuery' expression.
         description : str, default=None
             A description for the partition.
@@ -1542,6 +1564,7 @@ class TOMWrapper:
         self,
         object: Union["TOM.Table", "TOM.Column", "TOM.Measure", "TOM.Hierarchy"],
         perspective_name: str,
+        include_all: bool = True,
     ):
         """
         Adds an object to a `perspective <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.perspective?view=analysisservices-dotnet>`_.
@@ -1552,6 +1575,8 @@ class TOMWrapper:
             An object (i.e. table/column/measure) within a semantic model.
         perspective_name : str
             Name of the perspective.
+        include_all : bool, default=True
+            Relevant to tables only, if set to True, includes all columns, measures, and hierarchies within that table in the perspective.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
@@ -1577,6 +1602,8 @@ class TOMWrapper:
 
         if objectType == TOM.ObjectType.Table:
             pt = TOM.PerspectiveTable()
+            if include_all:
+                pt.IncludeAll = True
             pt.Table = object
             object.Model.Perspectives[perspective_name].PerspectiveTables.Add(pt)
         elif objectType == TOM.ObjectType.Column:
@@ -2251,7 +2278,7 @@ class TOMWrapper:
 
         if validate:
             dax_query = f"""
-            define measure '{table_name}'[test] = 
+            define measure '{table_name}'[test] =
             var mn = MIN('{table_name}'[{column_name}])
             var ma = MAX('{table_name}'[{column_name}])
             var x = COUNTROWS(DISTINCT('{table_name}'[{column_name}]))
@@ -3274,17 +3301,28 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        objType = object.ObjectType
-        objName = object.Name
-        objParentName = object.Parent.Name
+        obj_type = object.ObjectType
+        obj_name = object.Name
 
-        if objType == TOM.ObjectType.Table:
-            objParentName = objName
+        if object.ObjectType == TOM.ObjectType.CalculationItem:
+            obj_parent_name = object.Parent.Table.Name
+        else:
+            obj_parent_name = object.Parent.Name
+
+        if obj_type == TOM.ObjectType.Table:
+            obj_parent_name = obj_name
+            object_types = ["Table", "Calc Table"]
+        elif obj_type == TOM.ObjectType.Column:
+            object_types = ["Column", "Calc Column"]
+        elif obj_type == TOM.ObjectType.CalculationItem:
+            object_types = ["Calculation Item"]
+        else:
+            object_types = [str(obj_type)]
 
         fil = dependencies[
-            (dependencies["Object Type"] == str(objType))
-            & (dependencies["Table Name"] == objParentName)
-            & (dependencies["Object Name"] == objName)
+            (dependencies["Object Type"].isin(object_types))
+            & (dependencies["Table Name"] == obj_parent_name)
+            & (dependencies["Object Name"] == obj_name)
         ]
         meas = (
             fil[fil["Referenced Object Type"] == "Measure"]["Referenced Object"]
@@ -3292,14 +3330,16 @@ class TOMWrapper:
             .tolist()
         )
         cols = (
-            fil[fil["Referenced Object Type"] == "Column"][
+            fil[fil["Referenced Object Type"].isin(["Column", "Calc Column"])][
                 "Referenced Full Object Name"
             ]
             .unique()
             .tolist()
         )
         tbls = (
-            fil[fil["Referenced Object Type"] == "Table"]["Referenced Table"]
+            fil[fil["Referenced Object Type"].isin(["Table", "Calc Table"])][
+                "Referenced Table"
+            ]
             .unique()
             .tolist()
         )
@@ -3364,6 +3404,41 @@ class TOMWrapper:
             if t.Name in tbls:
                 yield t
 
+    def _get_expression(self, object):
+        """
+        Helper function to get the expression for any given TOM object.
+        """
+
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        valid_objects = [
+            TOM.ObjectType.Measure,
+            TOM.ObjectType.Table,
+            TOM.ObjectType.Column,
+            TOM.ObjectType.CalculationItem,
+        ]
+
+        if object.ObjectType not in valid_objects:
+            raise ValueError(
+                f"{icons.red_dot} The 'object' parameter must be one of these types: {valid_objects}."
+            )
+
+        if object.ObjectType == TOM.ObjectType.Measure:
+            expr = object.Expression
+        elif object.ObjectType == TOM.ObjectType.Table:
+            part = next(p for p in object.Partitions)
+            if part.SourceType == TOM.PartitionSourceType.Calculated:
+                expr = part.Source.Expression
+        elif object.ObjectType == TOM.ObjectType.Column:
+            if object.Type == TOM.ColumnType.Calculated:
+                expr = object.Expression
+        elif object.ObjectType == TOM.ObjectType.CalculationItem:
+            expr = object.Expression
+        else:
+            return
+
+        return expr
+
     def fully_qualified_measures(
         self, object: "TOM.Measure", dependencies: pd.DataFrame
     ):
@@ -3388,15 +3463,16 @@ class TOMWrapper:
             dependencies["Object Name"] == dependencies["Parent Node"]
         ]
 
+        expr = self._get_expression(object=object)
+
         for obj in self.depends_on(object=object, dependencies=dependencies):
             if obj.ObjectType == TOM.ObjectType.Measure:
-                if (f"{obj.Parent.Name}[{obj.Name}]" in object.Expression) or (
-                    format_dax_object_name(obj.Parent.Name, obj.Name)
-                    in object.Expression
+                if (f"{obj.Parent.Name}[{obj.Name}]" in expr) or (
+                    format_dax_object_name(obj.Parent.Name, obj.Name) in expr
                 ):
                     yield obj
 
-    def unqualified_columns(self, object: "TOM.Column", dependencies: pd.DataFrame):
+    def unqualified_columns(self, object, dependencies: pd.DataFrame):
         """
         Obtains all unqualified column references for a given object.
 
@@ -3418,6 +3494,8 @@ class TOMWrapper:
             dependencies["Object Name"] == dependencies["Parent Node"]
         ]
 
+        expr = self._get_expression(object=object)
+
         def create_pattern(tableList, b):
             patterns = [
                 r"(?<!" + re.escape(table) + r")(?<!'" + re.escape(table) + r"')"
@@ -3434,8 +3512,8 @@ class TOMWrapper:
                         tableList.append(c.Parent.Name)
                 if (
                     re.search(
-                        create_pattern(tableList, re.escape(obj.Name)),
-                        object.Expression,
+                        create_pattern(tableList, obj.Name),
+                        expr,
                     )
                     is not None
                 ):
@@ -3467,14 +3545,14 @@ class TOMWrapper:
 
         return usingView
 
-    def has_incremental_refresh_policy(self, table_name: str):
+    def has_incremental_refresh_policy(self, object):
         """
         Identifies whether a table has an `incremental refresh <https://learn.microsoft.com/power-bi/connect-data/incremental-refresh-overview>`_ policy.
 
         Parameters
         ----------
-        table_name : str
-            Name of the table.
+        object : TOM Object
+            The TOM object within the semantic model. Accepts either a table or the model object.
 
         Returns
         -------
@@ -3482,13 +3560,21 @@ class TOMWrapper:
             An indicator whether a table has an incremental refresh policy.
         """
 
-        hasRP = False
-        rp = self.model.Tables[table_name].RefreshPolicy
+        import Microsoft.AnalysisServices.Tabular as TOM
 
-        if rp is not None:
-            hasRP = True
-
-        return hasRP
+        if object.ObjectType == TOM.ObjectType.Table:
+            if object.RefreshPolicy is not None:
+                return True
+            else:
+                return False
+        elif object.ObjectType == TOM.ObjectType.Model:
+            rp = False
+            for t in self.model.Tables:
+                if t.RefreshPolicy is not None:
+                    rp = True
+            return rp
+        else:
+            raise NotImplementedError
 
     def show_incremental_refresh_policy(self, table_name: str):
         """
@@ -3587,25 +3673,27 @@ class TOMWrapper:
         import Microsoft.AnalysisServices.Tabular as TOM
         import System
 
-        if not self.has_incremental_refresh_policy(table_name=table_name):
+        if not self.has_incremental_refresh_policy(
+            object=self.model.Tables[table_name]
+        ):
             print(
                 f"The '{table_name}' table does not have an incremental refresh policy."
             )
             return
 
-        incGran = ["Day", "Month", "Quarter", "Year"]
+        granularities = ["Day", "Month", "Quarter", "Year"]
 
         incremental_granularity = incremental_granularity.capitalize()
         rolling_window_granularity = rolling_window_granularity.capitalize()
 
-        if incremental_granularity not in incGran:
+        if incremental_granularity not in granularities:
             raise ValueError(
-                f"{icons.red_dot} Invalid 'incremental_granularity' value. Please choose from the following options: {incGran}."
+                f"{icons.red_dot} Invalid 'incremental_granularity' value. Please choose from the following options: {granularities}."
             )
 
-        if rolling_window_granularity not in incGran:
+        if rolling_window_granularity not in granularities:
             raise ValueError(
-                f"{icons.red_dot} Invalid 'rolling_window_granularity' value. Please choose from the following options: {incGran}."
+                f"{icons.red_dot} Invalid 'rolling_window_granularity' value. Please choose from the following options: {granularities}."
             )
 
         if rolling_window_periods < 1:
@@ -4635,7 +4723,12 @@ class TOMWrapper:
             TOM.ValueFilterBehaviorType, value_filter_behavior
         )
 
-    def add_role_member(self, role_name: str, member: str | List[str]):
+    def add_role_member(
+        self,
+        role_name: str,
+        member: str | List[str],
+        role_member_type: Optional[str] = "User",
+    ):
         """
         Adds an external model role member (AzureAD) to a role.
 
@@ -4645,12 +4738,22 @@ class TOMWrapper:
             The role name.
         member : str | List[str]
             The email address(es) of the member(s) to add.
+        role_member_type : str, default="User"
+            The type of the role member. Default is "User". Other options include "Group" for Azure AD groups.
+            All members must be of the same role_member_type.
         """
 
         import Microsoft.AnalysisServices.Tabular as TOM
+        import System
 
         if isinstance(member, str):
             member = [member]
+
+        role_member_type = role_member_type.capitalize()
+        if role_member_type not in ["User", "Group"]:
+            raise ValueError(
+                f"{icons.red_dot} The '{role_member_type}' is not a valid role member type. Valid options: 'User', 'Group'."
+            )
 
         role = self.model.Roles[role_name]
         current_members = [m.MemberName for m in role.Members]
@@ -4660,6 +4763,7 @@ class TOMWrapper:
                 rm = TOM.ExternalModelRoleMember()
                 rm.IdentityProvider = "AzureAD"
                 rm.MemberName = m
+                rm.MemberType = System.Enum.Parse(TOM.RoleMemberType, role_member_type)
                 role.Members.Add(rm)
                 print(
                     f"{icons.green_dot} '{m}' has been added as a member of the '{role_name}' role."
@@ -4698,7 +4802,535 @@ class TOMWrapper:
                     f"{icons.yellow_dot} '{m}' is not a member of the '{role_name}' role."
                 )
 
+    def get_bim(self) -> dict:
+        """
+        Retrieves the .bim file for the semantic model.
+
+        Returns
+        -------
+        dict
+            The .bim file.
+        """
+
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        bim = (
+            json.loads(TOM.JsonScripter.ScriptCreate(self.model.Database))
+            .get("create")
+            .get("database")
+        )
+
+        return bim
+
+    def _reduce_model(self, perspective_name: str):
+        """
+        Reduces a model's objects based on a perspective. Adds the dependent objects within a perspective to that perspective.
+        """
+
+        import Microsoft.AnalysisServices.Tabular as TOM
+        from sempy_labs._model_dependencies import get_model_calc_dependencies
+
+        fabric.refresh_tom_cache(workspace=self._workspace_id)
+        dfP = fabric.list_perspectives(
+            dataset=self._dataset_id, workspace=self._workspace_id
+        )
+        dfP = dfP[dfP["Perspective Name"] == perspective_name]
+        if dfP.empty:
+            raise ValueError(
+                f"{icons.red_dot} The '{perspective_name}' is not a valid perspective in the '{self._dataset_name}' semantic model within the '{self._workspace_name}' workspace."
+            )
+
+        dep = get_model_calc_dependencies(
+            dataset=self._dataset_id, workspace=self._workspace_id
+        )
+        dep_filt = dep[
+            dep["Object Type"].isin(
+                [
+                    "Rows Allowed",
+                    "Measure",
+                    "Calc Item",
+                    "Calc Column",
+                    "Calc Table",
+                    "Hierarchy",
+                ]
+            )
+        ]
+
+        tables = dfP[dfP["Object Type"] == "Table"]["Table Name"].tolist()
+        measures = dfP[dfP["Object Type"] == "Measure"]["Object Name"].tolist()
+        columns = dfP[dfP["Object Type"] == "Column"][["Table Name", "Object Name"]]
+        cols = [
+            f"'{row[0]}'[{row[1]}]"
+            for row in columns.itertuples(index=False, name=None)
+        ]
+        hierarchies = dfP[dfP["Object Type"] == "Hierarchy"][
+            ["Table Name", "Object Name"]
+        ]
+        hier = [
+            f"'{row[0]}'[{row[1]}]"
+            for row in hierarchies.itertuples(index=False, name=None)
+        ]
+        filt = dep_filt[
+            (dep_filt["Object Type"].isin(["Rows Allowed", "Calc Item"]))
+            | (dep_filt["Object Type"] == "Measure")
+            & (dep_filt["Object Name"].isin(measures))
+            | (dep_filt["Object Type"] == "Calc Table")
+            & (dep_filt["Object Name"].isin(tables))
+            | (
+                (dep_filt["Object Type"].isin(["Calc Column"]))
+                & (
+                    dep_filt.apply(
+                        lambda row: f"'{row['Table Name']}'[{row['Object Name']}]",
+                        axis=1,
+                    ).isin(cols)
+                )
+            )
+            | (
+                (dep_filt["Object Type"].isin(["Hierarchy"]))
+                & (
+                    dep_filt.apply(
+                        lambda row: f"'{row['Table Name']}'[{row['Object Name']}]",
+                        axis=1,
+                    ).isin(hier)
+                )
+            )
+        ]
+
+        result_df = pd.DataFrame(columns=["Table Name", "Object Name", "Object Type"])
+
+        def add_to_result(table_name, object_name, object_type, dataframe):
+
+            new_data = {
+                "Table Name": table_name,
+                "Object Name": object_name,
+                "Object Type": object_type,
+            }
+
+            return pd.concat(
+                [dataframe, pd.DataFrame(new_data, index=[0])], ignore_index=True
+            )
+
+        for _, r in filt.iterrows():
+            added = False
+            obj_type = r["Referenced Object Type"]
+            table_name = r["Referenced Table"]
+            object_name = r["Referenced Object"]
+            if obj_type in ["Column", "Attribute Hierarchy"]:
+                obj = self.model.Tables[table_name].Columns[object_name]
+                if not self.in_perspective(
+                    object=obj, perspective_name=perspective_name
+                ):
+                    self.add_to_perspective(
+                        object=obj, perspective_name=perspective_name, include_all=False
+                    )
+                    added = True
+            elif obj_type == "Measure":
+                obj = self.model.Tables[table_name].Measures[object_name]
+                if not self.in_perspective(
+                    object=obj, perspective_name=perspective_name
+                ):
+                    self.add_to_perspective(
+                        object=obj, perspective_name=perspective_name, include_all=False
+                    )
+                    added = True
+            elif obj_type == "Table":
+                obj = self.model.Tables[table_name]
+                if not self.in_perspective(
+                    object=obj, perspective_name=perspective_name
+                ):
+                    self.add_to_perspective(
+                        object=obj, perspective_name=perspective_name, include_all=False
+                    )
+                    added = True
+            if added:
+                result_df = add_to_result(table_name, object_name, obj_type, result_df)
+
+        # Reduce model...
+
+        # Remove unnecessary relationships
+        for r in self.model.Relationships:
+            if (
+                not self.in_perspective(
+                    object=r.FromTable, perspective_name=perspective_name
+                )
+            ) or (
+                not self.in_perspective(
+                    object=r.ToTable, perspective_name=perspective_name
+                )
+            ):
+                self.remove_object(object=r)
+
+        # Ensure relationships in reduced model have base columns
+        for r in self.model.Relationships:
+            if not self.in_perspective(r.FromColumn, perspective_name=perspective_name):
+                self.add_to_perspective(
+                    object=r.FromColumn, perspective_name=perspective_name
+                )
+
+                result_df = add_to_result(
+                    r.FromTable.Name, r.FromColumn.Name, "Column", result_df
+                )
+            if not self.in_perspective(r.ToColumn, perspective_name=perspective_name):
+                table_name = r.ToTable.Name
+                object_name = r.ToColumn.Name
+                self.add_to_perspective(
+                    object=r.ToColumn, perspective_name=perspective_name
+                )
+
+                result_df = add_to_result(
+                    r.ToTable.Name, r.ToColumn.Name, "Column", result_df
+                )
+
+        # Remove objects not in the perspective
+        for t in self.model.Tables:
+            if not self.in_perspective(object=t, perspective_name=perspective_name):
+                self.remove_object(object=t)
+            else:
+                for attr in ["Columns", "Measures", "Hierarchies"]:
+                    for obj in getattr(t, attr):
+                        if attr == "Columns" and obj.Type == TOM.ColumnType.RowNumber:
+                            pass
+                        elif not self.in_perspective(
+                            object=obj, perspective_name=perspective_name
+                        ):
+                            self.remove_object(object=obj)
+
+        # Return the objects added to the perspective based on dependencies
+        return result_df.drop_duplicates()
+
+    def convert_direct_lake_to_import(
+        self,
+        table_name: str,
+        entity_name: Optional[str] = None,
+        schema: Optional[str] = None,
+        source: Optional[str | UUID] = None,
+        source_type: str = "Lakehouse",
+        source_workspace: Optional[str | UUID] = None,
+    ):
+        """
+        Converts a Direct Lake table's partition to an import-mode partition.
+
+        The entity_name and schema parameters default to using the existing values in the Direct Lake partition. The source, source_type, and source_workspace
+        parameters do not default to existing values. This is because it may not always be possible to reconcile the source and its workspace.
+
+        Parameters
+        ----------
+        table_name : str
+            The table name.
+        entity_name : str, default=None
+            The entity name of the Direct Lake partition (the table name in the source).
+        schema : str, default=None
+            The schema of the source table. Defaults to None which resolves to the existing schema.
+        source : str | uuid.UUID, default=None
+            The source name or ID. This is the name or ID of the Lakehouse or Warehouse.
+        source_type : str, default="Lakehouse"
+            The source type (i.e. "Lakehouse" or "Warehouse").
+        source_workspace: str | uuid.UUID, default=None
+            The workspace name or ID of the source. This is the workspace in which the Lakehouse or Warehouse exists.
+            Defaults to None which resolves to the workspace of the attached lakehouse
+            or if no lakehouse attached, resolves to the workspace of the notebook.
+        """
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        p = next(p for p in self.model.Tables[table_name].Partitions)
+        if p.Mode != TOM.ModeType.DirectLake:
+            print(f"{icons.info} The '{table_name}' table is not in Direct Lake mode.")
+            return
+
+        partition_name = p.Name
+        partition_entity_name = entity_name or p.Source.EntityName
+        partition_schema = schema or p.Source.SchemaName
+
+        # Update name of the Direct Lake partition (will be removed later)
+        self.model.Tables[table_name].Partitions[
+            partition_name
+        ].Name = f"{partition_name}_remove"
+
+        source_workspace_id = resolve_workspace_id(workspace=source_workspace)
+        if source_type == "Lakehouse":
+            item_id = resolve_lakehouse_id(
+                lakehouse=source, workspace=source_workspace_id
+            )
+        else:
+            item_id = resolve_item_id(
+                item=source, type=source_type, workspace=source_workspace_id
+            )
+
+        def _generate_m_expression(
+            workspace_id, artifact_id, artifact_type, table_name, schema_name
+        ):
+            """
+            Generates the M expression for the import partition.
+            """
+
+            if artifact_type == "Lakehouse":
+                type_id = "lakehouseId"
+            elif artifact_type == "Warehouse":
+                type_id = "warehouseId"
+            else:
+                raise NotImplementedError
+
+            full_table_name = (
+                f"{schema_name}.{table_name}" if schema_name else table_name
+            )
+
+            return f"""let
+                Source = {artifact_type}.Contents(null),
+                #"Workspace" = Source{{[workspaceId="{workspace_id}"]}}[Data],
+                #"Artifact" = #"Workspace"{{[{type_id}="{artifact_id}"]}}[Data],
+                result = #"Artifact"{{[Id="{full_table_name}",ItemKind="Table"]}}[Data]
+            in
+                result
+            """
+
+        m_expression = _generate_m_expression(
+            source_workspace_id,
+            item_id,
+            source_type,
+            partition_entity_name,
+            partition_schema,
+        )
+
+        # Add the import partition
+        self.add_m_partition(
+            table_name=table_name,
+            partition_name=f"{partition_name}",
+            expression=m_expression,
+            mode="Import",
+        )
+        # Remove the Direct Lake partition
+        self.remove_object(object=p)
+
+        print(
+            f"{icons.green_dot} The '{table_name}' table has been converted to Import mode."
+        )
+
+    def copy_object(
+        self,
+        object,
+        target_dataset: str | UUID,
+        target_workspace: Optional[str | UUID] = None,
+        readonly: bool = False,
+    ):
+        """
+        Copies a semantic model object from the current semantic model to the target semantic model.
+
+        Parameters
+        ----------
+        object : TOM Object
+            The TOM object to be copied to the target semantic model. For example: tom.model.Tables['Sales'].
+        target_dataset : str | uuid.UUID
+            Name or ID of the target semantic model.
+        target_workspace : str | uuid.UUID, default=None
+            The Fabric workspace name or ID.
+            Defaults to None which resolves to the workspace of the attached lakehouse
+            or if no lakehouse attached, resolves to the workspace of the notebook.
+        readonly : bool, default=False
+            Whether the connection is read-only or read/write. Setting this to False enables read/write which saves the changes made back to the server.
+        """
+
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        clone = object.Clone()
+        with connect_semantic_model(
+            dataset=target_dataset,
+            workspace=target_workspace,
+            readonly=readonly,
+        ) as target_tom:
+            if isinstance(object, TOM.Table):
+                target_tom.model.Tables.Add(clone)
+            elif isinstance(object, TOM.Column):
+                target_tom.model.Tables[object.Parent.Name].Columns.Add(clone)
+            elif isinstance(object, TOM.Measure):
+                target_tom.model.Tables[object.Parent.Name].Measures.Add(clone)
+            elif isinstance(object, TOM.Hierarchy):
+                target_tom.model.Tables[object.Parent.Name].Hierarchies.Add(clone)
+            elif isinstance(object, TOM.Level):
+                target_tom.model.Tables[object.Parent.Parent.Name].Hierarchies[
+                    object.Parent.Name
+                ].Levels.Add(clone)
+            elif isinstance(object, TOM.Role):
+                target_tom.model.Roles.Add(clone)
+            elif isinstance(object, TOM.Relationship):
+                target_tom.model.Relationships.Add(clone)
+            else:
+                raise NotImplementedError(
+                    f"{icons.red_dot} The '{object.ObjectType}' object type is not supported."
+                )
+            print(
+                f"{icons.green_dot} The '{object.Name}' {str(object.ObjectType).lower()} has been copied to the '{target_dataset}' semantic model within the '{target_workspace}' workspace."
+            )
+
+    def format_dax(
+        self,
+        object: Optional[
+            Union[
+                "TOM.Measure",
+                "TOM.CalcultedColumn",
+                "TOM.CalculationItem",
+                "TOM.CalculatedTable",
+                "TOM.TablePermission",
+            ]
+        ] = None,
+    ):
+        """
+        Formats the DAX expressions of measures, calculated columns, calculation items, calculated tables and row level security expressions in the semantic model.
+
+        This function uses the `DAX Formatter API <https://www.daxformatter.com/>`_.
+
+        Parameters
+        ----------
+        object : TOM Object, default=None
+            The TOM object to format. If None, formats all measures, calculated columns, calculation items, calculated tables and row level security expressions in the semantic model.
+            If a specific object is provided, only that object will be formatted.
+        """
+
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        if object is None:
+            object_map = {
+                "measures": self.all_measures,
+                "calculated_columns": self.all_calculated_columns,
+                "calculation_items": self.all_calculation_items,
+                "calculated_tables": self.all_calculated_tables,
+                "rls": self.all_rls,
+            }
+
+            for key, func in object_map.items():
+                for obj in func():
+                    if key == "calculated_tables":
+                        p = next(p for p in obj.Partitions)
+                        name = obj.Name
+                        expr = p.Source.Expression
+                        table = obj.Name
+                    elif key == "calculation_items":
+                        name = obj.Name
+                        expr = obj.Expression
+                        table = obj.Parent.Table.Name
+                    elif key == "rls":
+                        name = obj.Role.Name
+                        expr = obj.FilterExpression
+                        table = obj.Table.Name
+                    else:
+                        name = obj.Name
+                        expr = obj.Expression
+                        table = obj.Table.Name
+                    self._dax_formatting[key].append(
+                        {
+                            "name": name,
+                            "expression": expr,
+                            "table": table,
+                        }
+                    )
+            return
+
+        if object.ObjectType == TOM.ObjectType.Measure:
+            self._dax_formatting["measures"].append(
+                {
+                    "name": object.Name,
+                    "expression": object.Expression,
+                    "table": object.Parent.Name,
+                }
+            )
+        elif object.ObjectType == TOM.ObjectType.CalculatedColumn:
+            self._dax_formatting["measures"].append(
+                {
+                    "name": object.Name,
+                    "expression": object.Expression,
+                    "table": object.Parent.Name,
+                }
+            )
+        elif object.ObjectType == TOM.ObjectType.CalculationItem:
+            self._dax_formatting["measures"].append(
+                {
+                    "name": object.Name,
+                    "expression": object.Expression,
+                    "table": object.Parent.Name,
+                }
+            )
+        elif object.ObjectType == TOM.ObjectType.CalculatedTable:
+            self._dax_formatting["measures"].append(
+                {
+                    "name": object.Name,
+                    "expression": object.Expression,
+                    "table": object.Name,
+                }
+            )
+        else:
+            raise ValueError(
+                f"{icons.red_dot} The '{str(object.ObjectType)}' object type is not supported for DAX formatting."
+            )
+
     def close(self):
+
+        # DAX Formatting
+        from sempy_labs._daxformatter import _format_dax
+
+        def _process_dax_objects(object_type, model_accessor=None):
+            items = self._dax_formatting.get(object_type, [])
+            if not items:
+                return False
+
+            # Extract and format expressions
+            expressions = [item["expression"] for item in items]
+            metadata = [
+                {"name": item["name"], "table": item["table"], "type": object_type}
+                for item in items
+            ]
+
+            formatted_expressions = _format_dax(expressions, metadata=metadata)
+
+            # Update the expressions in the original structure
+            for item, formatted in zip(items, formatted_expressions):
+                item["expression"] = formatted
+
+            # Apply updated expressions to the model
+            for item in items:
+                table_name = (
+                    item["table"]
+                    if object_type != "calculated_tables"
+                    else item["name"]
+                )
+                name = item["name"]
+                expression = item["expression"]
+
+                if object_type == "calculated_tables":
+                    t = self.model.Tables[table_name]
+                    p = next(p for p in t.Partitions)
+                    p.Source.Expression = expression
+                elif object_type == "rls":
+                    self.model.Roles[name].TablePermissions[
+                        table_name
+                    ].FilterExpression = expression
+                elif object_type == "calculation_items":
+                    self.model.Tables[table_name].CalculationGroup.CalculationItems[
+                        name
+                    ].Expression = expression
+                else:
+                    getattr(self.model.Tables[table_name], model_accessor)[
+                        name
+                    ].Expression = expression
+            return True
+
+        # Use the helper for each object type
+        a = _process_dax_objects("measures", "Measures")
+        b = _process_dax_objects("calculated_columns", "Columns")
+        c = _process_dax_objects("calculation_items")
+        d = _process_dax_objects("calculated_tables")
+        e = _process_dax_objects("rls")
+        if any([a, b, c, d, e]) and not self._readonly:
+            from IPython.display import display, HTML
+
+            html = """
+            <span style="font-family: Segoe UI, Arial, sans-serif; color: #cccccc;">
+                CODE BEAUTIFIED WITH 
+            </span>
+            <a href="https://www.daxformatter.com" target="_blank" style="font-family: Segoe UI, Arial, sans-serif; color: #ff5a5a; font-weight: bold; text-decoration: none;">
+                DAX FORMATTER
+            </a>
+            """
+
+            display(HTML(html))
 
         if not self._readonly and self.model is not None:
 
@@ -4711,18 +5343,25 @@ class TOMWrapper:
                         p.SourceType == TOM.PartitionSourceType.Entity
                         for p in t.Partitions
                     ):
-                        if t.LineageTag in list(self._table_map.keys()):
-                            if self._table_map.get(t.LineageTag) != t.Name:
-                                self.add_changed_property(object=t, property="Name")
+                        entity_name = next(p.Source.EntityName for p in t.Partitions)
+                        if t.Name != entity_name:
+                            self.add_changed_property(object=t, property="Name")
+                        # if t.LineageTag in list(self._table_map.keys()):
+                        #    if self._table_map.get(t.LineageTag) != t.Name:
+                        #        self.add_changed_property(object=t, property="Name")
 
                 for c in self.all_columns():
+                    # if c.LineageTag in list(self._column_map.keys()):
+                    if any(
+                        p.SourceType == TOM.PartitionSourceType.Entity
+                        for p in c.Parent.Partitions
+                    ):
+                        if c.Name != c.SourceColumn:
+                            self.add_changed_property(object=c, property="Name")
+                        # c.SourceLineageTag = c.SourceColumn
+                        # if self._column_map.get(c.LineageTag)[0] != c.Name:
+                        #    self.add_changed_property(object=c, property="Name")
                     if c.LineageTag in list(self._column_map.keys()):
-                        if any(
-                            p.SourceType == TOM.PartitionSourceType.Entity
-                            for p in c.Parent.Partitions
-                        ):
-                            if self._column_map.get(c.LineageTag)[0] != c.Name:
-                                self.add_changed_property(object=c, property="Name")
                         if self._column_map.get(c.LineageTag)[1] != c.DataType:
                             self.add_changed_property(object=c, property="DataType")
 
@@ -4787,6 +5426,7 @@ def connect_semantic_model(
         If connecting to Azure Analysis Services, enter the workspace parameter in the following format: 'asazure://<region>.asazure.windows.net/<server_name>'.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+
     Returns
     -------
     typing.Iterator[TOMWrapper]

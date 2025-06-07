@@ -249,133 +249,6 @@ def unassign_workspaces_from_capacity(
     )
 
 
-@log
-def list_tenant_settings() -> pd.DataFrame:
-    """
-    Lists all tenant settings.
-
-    This is a wrapper function for the following API: `Tenants - List Tenant Settings <https://learn.microsoft.com/rest/api/fabric/admin/tenants/list-tenant-settings>`_.
-
-    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
-
-    Returns
-    -------
-    pandas.DataFrame
-        A pandas dataframe showing the tenant settings.
-    """
-
-    columns = {
-        "Setting Name": "string",
-        "Title": "string",
-        "Enabled": "bool",
-        "Can Specify Security Groups": "bool",
-        "Tenant Setting Group": "string",
-        "Enabled Security Groups": "string",
-    }
-    df = _create_dataframe(columns=columns)
-
-    response = _base_api(request="/v1/admin/tenantsettings", client="fabric_sp")
-
-    for i in response.json().get("value", []):
-        new_data = {
-            "Setting Name": i.get("settingName"),
-            "Title": i.get("title"),
-            "Enabled": i.get("enabled"),
-            "Can Specify Security Groups": i.get("canSpecifySecurityGroups"),
-            "Tenant Setting Group": i.get("tenantSettingGroup"),
-            "Enabled Security Groups": [i.get("enabledSecurityGroups", [])],
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
-
-    return df
-
-
-def list_capacities_delegated_tenant_settings(
-    return_dataframe: bool = True,
-) -> pd.DataFrame | dict:
-    """
-    Returns list of tenant setting overrides that override at the capacities.
-
-    This is a wrapper function for the following API: `Tenants - List Capacities Tenant Settings Overrides <https://learn.microsoft.com/rest/api/fabric/admin/tenants/list-capacities-tenant-settings-overrides>`_.
-
-    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
-
-    Parameters
-    ----------
-    return_dataframe : bool, default=True
-        If True, returns a dataframe. If False, returns a dictionary.
-
-    Returns
-    -------
-    pandas.DataFrame | dict
-        A pandas dataframe showing a list of tenant setting overrides that override at the capacities.
-    """
-
-    columns = {
-        "Capacity Id": "string",
-        "Setting Name": "string",
-        "Setting Title": "string",
-        "Setting Enabled": "bool",
-        "Can Specify Security Groups": "bool",
-        "Enabled Security Groups": "string",
-        "Tenant Setting Group": "string",
-        "Tenant Setting Properties": "string",
-        "Delegate to Workspace": "bool",
-        "Delegated From": "string",
-    }
-    df = _create_dataframe(columns=columns)
-
-    responses = _base_api(
-        request="/v1/admin/capacities/delegatedTenantSettingOverrides",
-        client="fabric_sp",
-        uses_pagination=True,
-    )
-
-    if return_dataframe:
-        for r in responses:
-            for i in r.get("Overrides", []):
-                tenant_settings = i.get("tenantSettings", [])
-                for setting in tenant_settings:
-                    new_data = {
-                        "Capacity Id": i.get("id"),
-                        "Setting Name": setting.get("settingName"),
-                        "Setting Title": setting.get("title"),
-                        "Setting Enabled": setting.get("enabled"),
-                        "Can Specify Security Groups": setting.get(
-                            "canSpecifySecurityGroups"
-                        ),
-                        "Enabled Security Groups": [
-                            setting.get("enabledSecurityGroups", [])
-                        ],
-                        "Tenant Setting Group": setting.get("tenantSettingGroup"),
-                        "Tenant Setting Properties": [setting.get("properties", [])],
-                        "Delegate to Workspace": setting.get("delegateToWorkspace"),
-                        "Delegated From": setting.get("delegatedFrom"),
-                    }
-
-                    df = pd.concat(
-                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                    )
-
-            _update_dataframe_datatypes(dataframe=df, column_map=columns)
-
-            return df
-    else:
-        combined_response = {
-            "overrides": [],
-            "continuationUri": "",
-            "continuationToken": "",
-        }
-        for r in responses:
-            combined_response["overrides"].extend(r["Overrides"])
-            combined_response["continuationUri"] = r["continuationUri"]
-            combined_response["continuationToken"] = r["continuationToken"]
-
-        return combined_response
-
-
 def list_modified_workspaces(
     modified_since: Optional[str] = None,
     exclude_inactive_workspaces: Optional[bool] = False,
@@ -421,58 +294,6 @@ def list_modified_workspaces(
     response = _base_api(request=url, client="fabric_sp")
 
     df = pd.DataFrame(response.json()).rename(columns={"id": "Workspace Id"})
-
-    return df
-
-
-def list_access_entities(
-    user_email_address: str,
-) -> pd.DataFrame:
-    """
-    Shows a list of permission details for Fabric and Power BI items the specified user can access.
-
-    This is a wrapper function for the following API: `Users - List Access Entities <https://learn.microsoft.com/rest/api/fabric/admin/users/list-access-entities>`_.
-
-    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
-
-    Parameters
-    ----------
-    user_email_address : str
-        The user's email address.
-
-    Returns
-    -------
-    pandas.DataFrame
-        A pandas dataframe showing a list of permission details for Fabric and Power BI items the specified user can access.
-    """
-
-    columns = {
-        "Item Id": "string",
-        "Item Name": "string",
-        "Item Type": "string",
-        "Permissions": "string",
-        "Additional Permissions": "string",
-    }
-    df = _create_dataframe(columns=columns)
-
-    responses = _base_api(
-        request=f"/v1/admin/users/{user_email_address}/access",
-        client="fabric_sp",
-        uses_pagination=True,
-    )
-
-    for r in responses:
-        for v in r.get("accessEntities", []):
-            new_data = {
-                "Item Id": v.get("id"),
-                "Item Name": v.get("displayName"),
-                "Item Type": v.get("itemAccessDetails", {}).get("type"),
-                "Permissions": v.get("itemAccessDetails", {}).get("permissions"),
-                "Additional Permissions": v.get("itemAccessDetails", {}).get(
-                    "additionalPermissions"
-                ),
-            }
-            df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
 
     return df
 
@@ -529,13 +350,40 @@ def list_workspace_access_details(
     return df
 
 
+def _resolve_workspace_name(workspace_id: Optional[UUID] = None) -> str:
+    from sempy_labs._helper_functions import _get_fabric_context_setting
+    from sempy.fabric.exceptions import FabricHTTPException
+
+    if workspace_id is None:
+        workspace_id = _get_fabric_context_setting(name="trident.workspace.id")
+
+    try:
+        workspace_name = (
+            _base_api(
+                request=f"/v1/admin/workspaces/{workspace_id}", client="fabric_sp"
+            )
+            .json()
+            .get("name")
+        )
+    except FabricHTTPException:
+        raise ValueError(
+            f"{icons.red_dot} The '{workspace_id}' workspace was not found."
+        )
+    return workspace_name
+
+
 def _resolve_workspace_name_and_id(
     workspace: str | UUID,
 ) -> Tuple[str, UUID]:
 
+    from sempy_labs._helper_functions import _get_fabric_context_setting
+
     if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace_name = fabric.resolve_workspace_name(workspace_id)
+        workspace_id = _get_fabric_context_setting(name="trident.workspace.id")
+        workspace_name = _resolve_workspace_name(workspace_id)
+    elif _is_valid_uuid(workspace):
+        workspace_id = workspace
+        workspace_name = _resolve_workspace_name(workspace_id)
     else:
         dfW = list_workspaces(workspace=workspace)
         if not dfW.empty:

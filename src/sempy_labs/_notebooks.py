@@ -7,9 +7,11 @@ import requests
 from sempy._utils._log import log
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
+    resolve_workspace_id,
     _decode_b64,
     _base_api,
     resolve_item_id,
+    create_item,
 )
 from sempy.fabric.exceptions import FabricHTTPException
 import os
@@ -19,13 +21,20 @@ _notebook_prefix = "notebook-content."
 
 
 def _get_notebook_definition_base(
-    notebook_name: str, workspace: Optional[str | UUID] = None
+    notebook_name: str,
+    workspace: Optional[str | UUID] = None,
+    format: Optional[str] = None,
 ) -> pd.DataFrame:
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
     item_id = resolve_item_id(item=notebook_name, type="Notebook", workspace=workspace)
+
+    url = f"v1/workspaces/{workspace_id}/notebooks/{item_id}/getDefinition"
+    if format == "ipynb":
+        url += f"?format={format}"
+
     result = _base_api(
-        request=f"v1/workspaces/{workspace_id}/notebooks/{item_id}/getDefinition",
+        request=url,
         method="post",
         lro_return_json=True,
         status_codes=None,
@@ -52,7 +61,10 @@ def _get_notebook_type(
 
 
 def get_notebook_definition(
-    notebook_name: str, workspace: Optional[str | UUID] = None, decode: bool = True
+    notebook_name: str,
+    workspace: Optional[str | UUID] = None,
+    decode: bool = True,
+    format: Optional[str] = None,
 ) -> str:
     """
     Obtains the notebook definition.
@@ -70,6 +82,9 @@ def get_notebook_definition(
     decode : bool, default=True
         If True, decodes the notebook definition file into .ipynb format.
         If False, obtains the notebook definition file in base64 format.
+    format : str, default=None
+        The only supported value is ipynb
+        If provided the format will be in standard .ipynb otherwise the format will be in source code format which is GIT friendly ipynb
 
     Returns
     -------
@@ -78,7 +93,7 @@ def get_notebook_definition(
     """
 
     df_items = _get_notebook_definition_base(
-        notebook_name=notebook_name, workspace=workspace
+        notebook_name=notebook_name, workspace=workspace, format=format
     )
     df_items_filt = df_items[df_items["path"].str.startswith(_notebook_prefix)]
     payload = df_items_filt["payload"].iloc[0]
@@ -144,6 +159,7 @@ def import_notebook_from_web(
             notebook_content=response.content,
             workspace=workspace_id,
             description=description,
+            format="ipynb",
         )
     elif len(dfI_filt) > 0 and overwrite:
         print(f"{icons.info} Overwrite of notebooks is currently not supported.")
@@ -162,6 +178,7 @@ def create_notebook(
     type: str = "py",
     description: Optional[str] = None,
     workspace: Optional[str | UUID] = None,
+    format: Optional[str] = None,
 ):
     """
     Creates a new notebook with a definition within a workspace.
@@ -181,42 +198,40 @@ def create_notebook(
         The name or ID of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    format : str, default=None
+        If 'ipynb' is provided than notebook_content should be standard ipynb format
+        otherwise notebook_content should be GIT friendly format
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     notebook_payload = base64.b64encode(notebook_content).decode("utf-8")
 
-    payload = {
-        "displayName": name,
-        "definition": {
-            "format": "ipynb",
-            "parts": [
-                {
-                    "path": f"{_notebook_prefix}.{type}",
-                    "payload": notebook_payload,
-                    "payloadType": "InlineBase64",
-                }
-            ],
-        },
+    definition_payload = {
+        "parts": [
+            {
+                "path": f"{_notebook_prefix}{type}",
+                "payload": notebook_payload,
+                "payloadType": "InlineBase64",
+            }
+        ],
     }
-    if description is not None:
-        payload["description"] = description
 
-    _base_api(
-        request=f"v1/workspaces/{workspace_id}/notebooks",
-        payload=payload,
-        method="post",
-        lro_return_status_code=True,
-        status_codes=[201, 202],
-    )
+    if format == "ipynb":
+        definition_payload["format"] = "ipynb"
 
-    print(
-        f"{icons.green_dot} The '{name}' notebook was created within the '{workspace_name}' workspace."
+    create_item(
+        name=name,
+        type="Notebook",
+        workspace=workspace,
+        description=description,
+        definition=definition_payload,
     )
 
 
 def update_notebook_definition(
-    name: str, notebook_content: str, workspace: Optional[str | UUID] = None
+    name: str,
+    notebook_content: str,
+    workspace: Optional[str | UUID] = None,
+    format: Optional[str] = None,
 ):
     """
     Updates an existing notebook with a new definition.
@@ -231,10 +246,15 @@ def update_notebook_definition(
         The name or ID of the workspace.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    format : str, default=None
+        If 'ipynb' is provided than notebook_content should be standard ipynb format
+        otherwise notebook_content should be GIT friendly format
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    notebook_payload = base64.b64encode(notebook_content)
+    notebook_payload = base64.b64encode(notebook_content.encode("utf-8")).decode(
+        "utf-8"
+    )
     item_id = resolve_item_id(item=name, type="Notebook", workspace=workspace)
     type = _get_notebook_type(notebook_name=name, workspace=workspace)
 
@@ -242,13 +262,16 @@ def update_notebook_definition(
         "definition": {
             "parts": [
                 {
-                    "path": f"{_notebook_prefix}.{type}",
+                    "path": f"{_notebook_prefix}{type}",
                     "payload": notebook_payload,
                     "payloadType": "InlineBase64",
                 }
             ],
         },
     }
+
+    if format == "ipynb":
+        payload["definition"]["format"] = "ipynb"
 
     _base_api(
         request=f"v1/workspaces/{workspace_id}/notebooks/{item_id}/updateDefinition",

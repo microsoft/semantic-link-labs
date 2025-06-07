@@ -314,7 +314,7 @@ def create_vnet_gateway(
         The name of the subnet.
     """
 
-    capacity_id = resolve_capacity_id(capacity)
+    capacity_id = resolve_capacity_id(capacity=capacity)
     payload = {
         "type": "VirtualNetwork",
         "displayName": name,
@@ -343,7 +343,7 @@ def create_vnet_gateway(
 
 
 def update_on_premises_gateway(
-    gateway: str,
+    gateway: str | UUID,
     allow_cloud_connection_refresh: Optional[bool] = None,
     allow_custom_connectors: Optional[bool] = None,
     load_balancing_setting: Optional[str] = None,
@@ -396,7 +396,7 @@ def update_on_premises_gateway(
 
 
 def update_vnet_gateway(
-    gateway: str,
+    gateway: str | UUID,
     capacity: str | UUID,
     inactivity_minutes_before_sleep: Optional[int] = None,
     number_of_member_gateways: Optional[int] = None,
@@ -425,7 +425,7 @@ def update_vnet_gateway(
     payload = {}
 
     if capacity is not None:
-        capacity_id = resolve_capacity_id(capacity)
+        capacity_id = resolve_capacity_id(capacity=capacity)
         payload["capacityId"] = capacity_id
     if inactivity_minutes_before_sleep is not None:
         payload["inactivityMinutesBeforeSleep"] = inactivity_minutes_before_sleep

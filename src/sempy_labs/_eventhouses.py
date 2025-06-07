@@ -1,14 +1,15 @@
-import sempy.fabric as fabric
 import pandas as pd
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _base_api,
-    _print_success,
     resolve_item_id,
     _create_dataframe,
     _conv_b64,
     _decode_b64,
+    delete_item,
+    create_item,
+    get_item_definition,
 )
 from uuid import UUID
 import sempy_labs._icons as icons
@@ -39,18 +40,11 @@ def create_eventhouse(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    if definition is not None and not isinstance(definition, dict):
+        raise ValueError(f"{icons.red_dot} The definition must be a dictionary.")
 
-    payload = {"displayName": name}
-
-    if description:
-        payload["description"] = description
-
-    if definition is not None:
-        if not isinstance(definition, dict):
-            raise ValueError(f"{icons.red_dot} The definition must be a dictionary.")
-
-        payload["definition"] = {
+    definition_payload = (
+        {
             "parts": [
                 {
                     "path": "EventhouseProperties.json",
@@ -59,19 +53,16 @@ def create_eventhouse(
                 }
             ]
         }
-
-    _base_api(
-        request=f"/v1/workspaces/{workspace_id}/eventhouses",
-        method="post",
-        status_codes=[201, 202],
-        payload=payload,
-        lro_return_status_code=True,
+        if definition is not None
+        else None
     )
-    _print_success(
-        item_name=name,
-        item_type="eventhouse",
-        workspace_name=workspace_name,
-        action="created",
+
+    create_item(
+        name=name,
+        type="Eventhouse",
+        workspace=workspace,
+        description=description,
+        definition=definition_payload,
     )
 
 
@@ -80,6 +71,8 @@ def list_eventhouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     Shows the eventhouses within a workspace.
 
     This is a wrapper function for the following API: `Items - List Eventhouses <https://learn.microsoft.com/rest/api/fabric/environment/items/list-eventhouses>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -104,7 +97,9 @@ def list_eventhouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     responses = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/eventhouses", uses_pagination=True
+        request=f"/v1/workspaces/{workspace_id}/eventhouses",
+        uses_pagination=True,
+        client="fabric_sp",
     )
 
     for r in responses:
@@ -135,16 +130,7 @@ def delete_eventhouse(name: str, workspace: Optional[str | UUID] = None):
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    item_id = resolve_item_id(item=name, type="Eventhouse", workspace=workspace)
-
-    fabric.delete_item(item_id=item_id, workspace=workspace)
-    _print_success(
-        item_name=name,
-        item_type="eventhouse",
-        workspace_name=workspace_name,
-        action="deleted",
-    )
+    delete_item(item=name, type="Eventhouse", workspace=workspace)
 
 
 def get_eventhouse_definition(
@@ -174,21 +160,9 @@ def get_eventhouse_definition(
         The eventhouse definition in .json format or as a pandas dataframe.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    item_id = resolve_item_id(item=eventhouse, type="Eventhouse", workspace=workspace)
-
-    result = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/eventhouses/{item_id}/getDefinition",
-        method="post",
-        status_codes=None,
-        lro_return_json=True,
+    return get_item_definition(
+        item=eventhouse,
+        type="Eventhouse",
+        workspace=workspace,
+        return_dataframe=return_dataframe,
     )
-
-    df = pd.json_normalize(result["definition"]["parts"])
-
-    if return_dataframe:
-        return df
-    else:
-        df_filt = df[df["path"] == "EventhouseProperties.json"]
-        payload = df_filt["payload"].iloc[0]
-        return _decode_b64(payload)

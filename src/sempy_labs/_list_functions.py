@@ -2,8 +2,6 @@ import sempy.fabric as fabric
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     create_relationship_name,
-    resolve_lakehouse_id,
-    resolve_item_type,
     format_dax_object_name,
     resolve_dataset_name_and_id,
     _update_dataframe_datatypes,
@@ -43,54 +41,32 @@ def get_object_level_security(
 
     from sempy_labs.tom import connect_semantic_model
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
-
     columns = {
         "Role Name": "string",
         "Object Type": "string",
         "Table Name": "string",
         "Object Name": "string",
+        "Metadata Permission": "string",
     }
     df = _create_dataframe(columns=columns)
 
     with connect_semantic_model(
-        dataset=dataset_id, readonly=True, workspace=workspace_id
+        dataset=dataset, readonly=True, workspace=workspace
     ) as tom:
 
         for r in tom.model.Roles:
             for tp in r.TablePermissions:
-                if len(tp.FilterExpression) == 0:
-                    columnCount = 0
-                    try:
-                        columnCount = len(tp.ColumnPermissions)
-                    except Exception:
-                        pass
-                    objectType = "Table"
-                    if columnCount == 0:
-                        new_data = {
-                            "Role Name": r.Name,
-                            "Object Type": objectType,
-                            "Table Name": tp.Name,
-                            "Object Name": tp.Name,
-                        }
-                        df = pd.concat(
-                            [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
-                        )
-                    else:
-                        objectType = "Column"
-                        for cp in tp.ColumnPermissions:
-                            new_data = {
-                                "Role Name": r.Name,
-                                "Object Type": objectType,
-                                "Table Name": tp.Name,
-                                "Object Name": cp.Name,
-                            }
-                            df = pd.concat(
-                                [df, pd.DataFrame(new_data, index=[0])],
-                                ignore_index=True,
-                            )
-
+                for cp in tp.ColumnPermissions:
+                    new_data = {
+                        "Role Name": r.Name,
+                        "Object Type": "Column",
+                        "Table Name": tp.Name,
+                        "Object Name": cp.Name,
+                        "Metadata Permission": cp.Permission,
+                    }
+                    df = pd.concat(
+                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    )
         return df
 
 
@@ -242,7 +218,11 @@ def list_tables(
                         "Columns": sum(
                             1 for c in t.Columns if str(c.Type) != "RowNumber"
                         ),
-                        "% DB": round((total_size / model_size) * 100, 2),
+                        "% DB": (
+                            round((total_size / model_size) * 100, 2)
+                            if model_size not in (0, None, float("nan"))
+                            else 0.0
+                        ),
                     }
                 )
 
@@ -534,7 +514,6 @@ def list_columns(
     from sempy_labs.directlake._get_directlake_lakehouse import (
         get_direct_lake_lakehouse,
     )
-    from pyspark.sql import SparkSession
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
@@ -604,60 +583,11 @@ def list_columns(
     return dfC
 
 
-def list_dashboards(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
-    """
-    Shows a list of the dashboards within a workspace.
-
-    Parameters
-    ----------
-    workspace : str | uuid.UUID, default=None
-        The Fabric workspace name or ID.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
-
-    Returns
-    -------
-    pandas.DataFrame
-        A pandas dataframe showing the dashboards within a workspace.
-    """
-
-    columns = {
-        "Dashboard ID": "string",
-        "Dashboard Name": "string",
-        "Read Only": "bool",
-        "Web URL": "string",
-        "Embed URL": "string",
-        "Data Classification": "string",
-        "Users": "string",
-        "Subscriptions": "string",
-    }
-    df = _create_dataframe(columns=columns)
-
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    response = _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/dashboards")
-
-    for v in response.json().get("value", []):
-        new_data = {
-            "Dashboard ID": v.get("id"),
-            "Dashboard Name": v.get("displayName"),
-            "Read Only": v.get("isReadOnly"),
-            "Web URL": v.get("webUrl"),
-            "Embed URL": v.get("embedUrl"),
-            "Data Classification": v.get("dataClassification"),
-            "Users": v.get("users"),
-            "Subscriptions": v.get("subscriptions"),
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
-
-    return df
-
-
 def list_lakehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the lakehouses within a workspace.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -687,7 +617,9 @@ def list_lakehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     responses = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/lakehouses", uses_pagination=True
+        request=f"/v1/workspaces/{workspace_id}/lakehouses",
+        uses_pagination=True,
+        client="fabric_sp",
     )
 
     for r in responses:
@@ -1189,10 +1121,14 @@ def list_semantic_model_objects(
 
 
 def list_shortcuts(
-    lakehouse: Optional[str] = None, workspace: Optional[str | UUID] = None
+    lakehouse: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
+    path: Optional[str] = None,
 ) -> pd.DataFrame:
     """
     Shows all shortcuts which exist in a Fabric lakehouse and their properties.
+
+    *** NOTE: This function has been moved to the lakehouse subpackage. Please repoint your code to use that location. ***
 
     Parameters
     ----------
@@ -1203,6 +1139,9 @@ def list_shortcuts(
         The name or ID of the Fabric workspace in which lakehouse resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    path: str, default=None
+        The path within lakehouse where to look for shortcuts. If provied, must start with either "Files" or "Tables". Examples: Tables/FolderName/SubFolderName; Files/FolderName/SubFolderName.
+        Defaults to None which will retun all shortcuts on the given lakehouse
 
     Returns
     -------
@@ -1210,126 +1149,13 @@ def list_shortcuts(
         A pandas dataframe showing all the shortcuts which exist in the specified lakehouse.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    from sempy_labs.lakehouse._shortcuts import list_shortcuts
 
-    if lakehouse is None:
-        lakehouse_id = fabric.get_lakehouse_id()
-    else:
-        lakehouse_id = resolve_lakehouse_id(lakehouse, workspace_id)
-
-    columns = {
-        "Shortcut Name": "string",
-        "Shortcut Path": "string",
-        "Source Type": "string",
-        "Source Workspace Id": "string",
-        "Source Workspace Name": "string",
-        "Source Item Id": "string",
-        "Source Item Name": "string",
-        "Source Item Type": "string",
-        "OneLake Path": "string",
-        "Connection Id": "string",
-        "Location": "string",
-        "Bucket": "string",
-        "SubPath": "string",
-    }
-    df = _create_dataframe(columns=columns)
-
-    responses = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/items/{lakehouse_id}/shortcuts",
-        uses_pagination=True,
+    print(
+        f"{icons.warning} This function has been moved to the lakehouse subpackage. Please repoint your code to use that location."
     )
 
-    sources = ["s3Compatible", "googleCloudStorage", "externalDataShare", "amazonS3", "adlsGen2", "dataverse"]
-    sources_locpath = ["s3Compatible", "googleCloudStorage", "amazonS3", "adlsGen2"]
-
-    for r in responses:
-        for i in r.get("value", []):
-            tgt = i.get("target", {})
-            one_lake = tgt.get("oneLake", {})
-            connection_id = next(
-                (tgt.get(source, {}).get("connectionId") for source in sources if tgt.get(source)), 
-                None
-            )
-            location = next(
-                (tgt.get(source, {}).get("location") for source in sources_locpath if tgt.get(source)), 
-                None
-            )
-            sub_path = next(
-                (tgt.get(source, {}).get("subpath") for source in sources_locpath if tgt.get(source)), 
-                None
-            )
-            source_workspace_id = one_lake.get("workspaceId")
-            source_item_id = one_lake.get("itemId")
-            source_workspace_name = (
-                fabric.resolve_workspace_name(source_workspace_id)
-                if source_workspace_id is not None
-                else None
-            )
-
-            new_data = {
-                "Shortcut Name": i.get("name"),
-                "Shortcut Path": i.get("path"),
-                "Source Type": tgt.get("type"),
-                "Source Workspace Id": source_workspace_id,
-                "Source Workspace Name": source_workspace_name,
-                "Source Item Id": source_item_id,
-                "Source Item Name": (
-                    fabric.resolve_item_name(
-                        source_item_id, workspace=source_workspace_name
-                    )
-                    if source_item_id is not None
-                    else None
-                ),
-                "Source Item Type": (
-                    resolve_item_type(source_item_id, workspace=source_workspace_name)
-                    if source_item_id is not None
-                    else None
-                ),
-                "OneLake Path": one_lake.get("path"),
-                "Connection Id": connection_id,
-                "Location": location,
-                "Bucket": tgt.get("s3Compatible", {}).get("bucket"),
-                "SubPath": sub_path,
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    return df
-
-
-def list_capacities() -> pd.DataFrame:
-    """
-    Shows the capacities and their properties.
-
-    Returns
-    -------
-    pandas.DataFrame
-        A pandas dataframe showing the capacities and their properties
-    """
-
-    columns = {
-        "Id": "string",
-        "Display Name": "string",
-        "Sku": "string",
-        "Region": "string",
-        "State": "string",
-        "Admins": "string",
-    }
-    df = _create_dataframe(columns=columns)
-
-    response = _base_api(request="/v1.0/myorg/capacities")
-
-    for i in response.json().get("value", []):
-        new_data = {
-            "Id": i.get("id").lower(),
-            "Display Name": i.get("displayName"),
-            "Sku": i.get("sku"),
-            "Region": i.get("region"),
-            "State": i.get("state"),
-            "Admins": [i.get("admins", [])],
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    return df
+    return list_shortcuts(lakehouse=lakehouse, workspace=workspace, path=path)
 
 
 def list_reports_using_semantic_model(
@@ -1371,7 +1197,7 @@ def list_reports_using_semantic_model(
         & (dfR["Dataset Workspace Id"] == workspace_id)
     ][["Name", "Id"]]
     dfR_filt.rename(columns={"Name": "Report Name", "Id": "Report Id"}, inplace=True)
-    dfR_filt["Report Worskpace Name"] = workspace_name
+    dfR_filt["Report Workspace Name"] = workspace_name
     dfR_filt["Report Workspace Id"] = workspace_id
 
     return dfR_filt
@@ -1632,7 +1458,9 @@ def list_server_properties(workspace: Optional[str | UUID] = None) -> pd.DataFra
         A pandas dataframe showing a list of the server properties.
     """
 
-    tom_server = fabric.create_tom_server(readonly=True, workspace=workspace)
+    tom_server = fabric.create_tom_server(
+        dataset=None, readonly=True, workspace=workspace
+    )
 
     rows = [
         {

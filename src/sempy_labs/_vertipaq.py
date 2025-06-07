@@ -8,17 +8,17 @@ import datetime
 import warnings
 from sempy_labs._helper_functions import (
     format_dax_object_name,
-    resolve_lakehouse_name,
     save_as_delta_table,
     resolve_workspace_capacity,
     _get_column_aggregate,
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
     _create_spark_session,
+    resolve_workspace_id,
+    resolve_workspace_name,
 )
 from sempy_labs._list_functions import list_relationships, list_tables
 from sempy_labs.lakehouse import lakehouse_attached, get_lakehouse_tables
-from sempy_labs.directlake import get_direct_lake_source
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
@@ -33,9 +33,11 @@ def vertipaq_analyzer(
     export: Optional[str] = None,
     read_stats_from_data: bool = False,
     **kwargs,
-):
+) -> dict[str, pd.DataFrame]:
     """
-    Displays an HTML visualization of the Vertipaq Analyzer statistics from a semantic model.
+    Displays an HTML visualization of the `Vertipaq Analyzer <https://www.sqlbi.com/tools/vertipaq-analyzer/>`_ statistics from a semantic model.
+
+    `Vertipaq Analyzer <https://www.sqlbi.com/tools/vertipaq-analyzer/>`_ is an open-sourced tool built by SQLBI. It provides a detailed analysis of the VertiPaq engine, which is the in-memory engine used by Power BI and Analysis Services Tabular models.
 
     Parameters
     ----------
@@ -51,6 +53,11 @@ def vertipaq_analyzer(
         Default value: None.
     read_stats_from_data : bool, default=False
         Setting this parameter to true has the function get Column Cardinality and Missing Rows using DAX (Direct Lake semantic models achieve this using a Spark query to the lakehouse).
+
+    Returns
+    -------
+    dict[str, pandas.DataFrame]
+        A dictionary of pandas dataframes showing the vertipaq analyzer statistics.
     """
 
     from sempy_labs.tom import connect_semantic_model
@@ -167,10 +174,12 @@ def vertipaq_analyzer(
     )
 
     artifact_type = None
-    if is_direct_lake:
-        artifact_type, lakehouse_name, lakehouse_id, lakehouse_workspace_id = (
-            get_direct_lake_source(dataset=dataset_id, workspace=workspace_id)
-        )
+    lakehouse_workspace_id = None
+    lakehouse_name = None
+    # if is_direct_lake:
+    #    artifact_type, lakehouse_name, lakehouse_id, lakehouse_workspace_id = (
+    #        get_direct_lake_source(dataset=dataset_id, workspace=workspace_id)
+    #    )
 
     dfR["Missing Rows"] = 0
     dfR["Missing Rows"] = dfR["Missing Rows"].astype(int)
@@ -189,8 +198,10 @@ def vertipaq_analyzer(
                 & (~dfC["Column Name"].str.startswith("RowNumber-"))
             ]
 
-            object_workspace = fabric.resolve_workspace_name(lakehouse_workspace_id)
-            current_workspace_id = fabric.get_workspace_id()
+            object_workspace = resolve_workspace_name(
+                workspace_id=lakehouse_workspace_id
+            )
+            current_workspace_id = resolve_workspace_id()
             if current_workspace_id != lakehouse_workspace_id:
                 lakeTables = get_lakehouse_tables(
                     lakehouse=lakehouse_name, workspace=object_workspace
@@ -502,6 +513,14 @@ def vertipaq_analyzer(
 
     if export is None:
         visualize_vertipaq(dfs)
+        return {
+            "Model Summary": export_Model,
+            "Tables": export_Table,
+            "Partitions": export_Part,
+            "Columns": export_Col,
+            "Relationships": export_Rel,
+            "Hierarchies": export_Hier,
+        }
 
     # Export vertipaq to delta tables in lakehouse
     if export in ["table", "zip"]:
@@ -511,22 +530,15 @@ def vertipaq_analyzer(
             )
 
     if export == "table":
-        lakehouse_id = fabric.get_lakehouse_id()
-        lake_workspace = fabric.resolve_workspace_name()
-        lakehouse = resolve_lakehouse_name(
-            lakehouse_id=lakehouse_id, workspace=lake_workspace
-        )
         lakeTName = "vertipaqanalyzer_model"
 
-        lakeT = get_lakehouse_tables(lakehouse=lakehouse, workspace=lake_workspace)
+        lakeT = get_lakehouse_tables()
         lakeT_filt = lakeT[lakeT["Table Name"] == lakeTName]
 
         if len(lakeT_filt) == 0:
             runId = 1
         else:
-            max_run_id = _get_column_aggregate(
-                lakehouse=lakehouse, table_name=lakeTName
-            )
+            max_run_id = _get_column_aggregate(table_name=lakeTName)
             runId = max_run_id + 1
 
         dfMap = {

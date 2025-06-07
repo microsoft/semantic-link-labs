@@ -5,12 +5,13 @@ import os
 from typing import Optional, List
 from sempy._utils._log import log
 from sempy_labs._helper_functions import (
-    resolve_lakehouse_name,
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
     _conv_b64,
     _decode_b64,
     _base_api,
+    _mount,
+    resolve_workspace_id,
 )
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 import sempy_labs._icons as icons
@@ -252,6 +253,7 @@ def deploy_semantic_model(
     target_workspace: Optional[str | UUID] = None,
     refresh_target_dataset: bool = True,
     overwrite: bool = False,
+    perspective: Optional[str] = None,
 ):
     """
     Deploys a semantic model based on an existing semantic model.
@@ -274,6 +276,8 @@ def deploy_semantic_model(
         If set to True, this will initiate a full refresh of the target semantic model in the target workspace.
     overwrite : bool, default=False
         If set to True, overwrites the existing semantic model in the workspace if it exists.
+    perspective : str, default=None
+        Set this to the name of a perspective in the model and it will reduce the deployed model down to the tables/columns/measures/hierarchies within that perspective.
     """
 
     (source_workspace_name, source_workspace_id) = resolve_workspace_name_and_id(
@@ -282,7 +286,7 @@ def deploy_semantic_model(
 
     if target_workspace is None:
         target_workspace_name = source_workspace_name
-        target_workspace_id = fabric.resolve_workspace_id(target_workspace_name)
+        target_workspace_id = resolve_workspace_id(workspace=target_workspace_name)
     else:
         (target_workspace_name, target_workspace_id) = resolve_workspace_name_and_id(
             target_workspace
@@ -307,7 +311,21 @@ def deploy_semantic_model(
             f"{icons.warning} The '{target_dataset}' semantic model already exists within the '{target_workspace_name}' workspace. The 'overwrite' parameter is set to False so the source semantic model was not deployed to the target destination."
         )
 
-    bim = get_semantic_model_bim(dataset=source_dataset, workspace=source_workspace_id)
+    if perspective is not None:
+
+        from sempy_labs.tom import connect_semantic_model
+
+        with connect_semantic_model(
+            dataset=source_dataset, workspace=source_workspace, readonly=True
+        ) as tom:
+
+            df_added = tom._reduce_model(perspective_name=perspective)
+            bim = tom.get_bim()
+
+    else:
+        bim = get_semantic_model_bim(
+            dataset=source_dataset, workspace=source_workspace_id
+        )
 
     # Create the semantic model if the model does not exist
     if dfD_filt.empty:
@@ -324,6 +342,9 @@ def deploy_semantic_model(
 
     if refresh_target_dataset:
         refresh_semantic_model(dataset=target_dataset, workspace=target_workspace_id)
+
+    if perspective is not None:
+        return df_added
 
 
 @log
@@ -368,16 +389,16 @@ def get_semantic_model_bim(
                 f"{icons.red_dot} In order to save the model.bim file, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
             )
 
-        lakehouse = resolve_lakehouse_name()
-        folderPath = "/lakehouse/default/Files"
-        fileExt = ".bim"
-        if not save_to_file_name.endswith(fileExt):
-            save_to_file_name = f"{save_to_file_name}{fileExt}"
-        filePath = os.path.join(folderPath, save_to_file_name)
-        with open(filePath, "w") as json_file:
+        local_path = _mount()
+        save_folder = f"{local_path}/Files"
+        file_ext = ".bim"
+        if not save_to_file_name.endswith(file_ext):
+            save_to_file_name = f"{save_to_file_name}{file_ext}"
+        file_path = os.path.join(save_folder, save_to_file_name)
+        with open(file_path, "w") as json_file:
             json.dump(bimJson, json_file, indent=4)
         print(
-            f"{icons.green_dot} The {fileExt} file for the '{dataset_name}' semantic model has been saved to the '{lakehouse}' in this location: '{filePath}'.\n\n"
+            f"{icons.green_dot} The {file_ext} file for the '{dataset_name}' semantic model has been saved to the lakehouse attached to the notebook within: 'Files/{save_to_file_name}'.\n\n"
         )
 
     return bimJson
@@ -472,23 +493,20 @@ def get_semantic_model_size(
     Returns
     -------
     int
-        The size of the semantic model in
+        The size of the semantic model in bytes
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
-
     dict = fabric.evaluate_dax(
-        dataset=dataset_id,
-        workspace=workspace_id,
+        dataset=dataset,
+        workspace=workspace,
         dax_string="""
         EVALUATE SELECTCOLUMNS(FILTER(INFO.STORAGETABLECOLUMNS(), [COLUMN_TYPE] = "BASIC_DATA"),[DICTIONARY_SIZE])
         """,
     )
 
     used_size = fabric.evaluate_dax(
-        dataset=dataset_id,
-        workspace=workspace_id,
+        dataset=dataset,
+        workspace=workspace,
         dax_string="""
         EVALUATE SELECTCOLUMNS(INFO.STORAGETABLECOLUMNSEGMENTS(),[USED_SIZE])
         """,
@@ -503,5 +521,7 @@ def get_semantic_model_size(
         result = model_size / (1024**2) * 10**6
     elif model_size >= 10**3:
         result = model_size / (1024) * 10**3
+    else:
+        result = model_size
 
     return result

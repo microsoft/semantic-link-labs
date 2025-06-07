@@ -3,9 +3,11 @@ import sempy_labs._icons as icons
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
-    resolve_lakehouse_name,
+    resolve_lakehouse_name_and_id,
     _base_api,
     resolve_item_id,
+    _mount,
+    resolve_workspace_name,
 )
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from uuid import UUID
@@ -20,7 +22,7 @@ def download_report(
     """
     Downloads the specified report from the specified workspace to a Power BI .pbix file.
 
-    This is a wrapper function for the following API: `Reports - Export Report In Group <https://learn.microsoft.com/rest/api/power-bi/reports/export-report-in-group>`.
+    This is a wrapper function for the following API: `Reports - Export Report In Group <https://learn.microsoft.com/rest/api/power-bi/reports/export-report-in-group>`_.
 
     Parameters
     ----------
@@ -43,11 +45,8 @@ def download_report(
         )
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    lakehouse_id = fabric.get_lakehouse_id()
-    lakehouse_workspace = fabric.resolve_workspace_name()
-    lakehouse_name = resolve_lakehouse_name(
-        lakehouse_id=lakehouse_id, workspace=lakehouse_workspace
-    )
+    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id()
+    lakehouse_workspace = resolve_workspace_name()
 
     download_types = ["LiveConnect", "IncludeModel"]
     if download_type not in download_types:
@@ -63,7 +62,9 @@ def download_report(
     )
 
     # Save file to the attached lakehouse
-    with open(f"/lakehouse/default/Files/{file_name}.pbix", "wb") as file:
+    local_path = _mount()
+    save_file = f"{local_path}/Files/{file_name}.pbix"
+    with open(save_file, "wb") as file:
         file.write(response.content)
 
     print(
