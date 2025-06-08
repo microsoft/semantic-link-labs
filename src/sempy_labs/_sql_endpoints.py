@@ -6,6 +6,7 @@ from sempy_labs._helper_functions import (
     _create_dataframe,
     resolve_workspace_name_and_id,
     resolve_item_name_and_id,
+    _update_dataframe_datatypes,
 )
 import sempy_labs._icons as icons
 
@@ -58,7 +59,7 @@ def refresh_sql_endpoint_metadata(
     type: Literal["Lakehouse", "MirroredDatabase"],
     workspace: Optional[str | UUID] = None,
     tables: dict[str, list[str]] = None,
-):
+) -> pd.DataFrame:
     """
     Refreshes the metadata of a SQL endpoint.
 
@@ -83,6 +84,11 @@ def refresh_sql_endpoint_metadata(
             "dbo": ["DimDate", "DimGeography"],
             "sls": ["FactSales", "FactBudget"],
         }
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the status of the metadata refresh operation.
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -125,16 +131,55 @@ def refresh_sql_endpoint_metadata(
             ]
         }
 
-    _base_api(
+    result = _base_api(
         request=f"v1/workspaces/{workspace_id}/sqlEndpoints/{sql_endpoint_id}/refreshMetadata?preview=true",
         method="post",
         status_codes=[200, 202],
-        lro_return_status_code=True,
+        lro_return_json=True,
         payload=payload,
     )
+
+    columns = {
+        "Table Name": "string",
+        "Status": "string",
+        "Start Time": "datetime",
+        "End Time": "datetime",
+        "Last Successful Sync Time": "datetime",
+        "Error Code": "string",
+        "Error Message": "string",
+    }
+
+    df = pd.json_normalize(result)
+
+    # Extract error code and message, set to None if no error
+    df['Error Code'] = df.get('error.errorCode', None)
+    df['Error Message'] = df.get('error.message', None)
+
+    # Friendly column renaming
+    df.rename(columns={
+        'tableName': 'Table Name',
+        'startDateTime': 'Start Time',
+        'endDateTime': 'End Time',
+        'status': 'Status',
+        'lastSuccessfulSyncDateTime': 'Last Successful Sync Time'
+    }, inplace=True)
+
+    # Drop the original 'error' column if present
+    df.drop(columns=[col for col in ['error'] if col in df.columns], inplace=True)
+
+    # Optional: Reorder columns
+    column_order = [
+        'Table Name', 'Status', 'Start Time', 'End Time',
+        'Last Successful Sync Time', 'Error Code', 'Error Message'
+    ]
+    df = df[column_order]
+
+    _update_dataframe_datatypes(df, columns)
 
     printout = f"{icons.green_dot} The metadata of the SQL endpoint for the '{item_name}' {type.lower()} within the '{workspace_name}' workspace has been refreshed"
     if tables:
         print(f"{printout} for the following tables: {tables}.")
     else:
         print(f"{printout} for all tables.")
+
+    return df
