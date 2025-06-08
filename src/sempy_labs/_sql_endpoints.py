@@ -62,6 +62,8 @@ def refresh_sql_endpoint_metadata(
     """
     Refreshes the metadata of a SQL endpoint.
 
+    This is a wrapper function for the following API: `Items - Refresh Sql Endpoint Metadata <https://learn.microsoft.com/rest/api/fabric/sqlendpoint/items/refresh-sql-endpoint-metadata>`_.
+
     Parameters
     ----------
     item : str | uuid.UUID
@@ -124,7 +126,7 @@ def refresh_sql_endpoint_metadata(
         }
 
     _base_api(
-        request=f"v1/workspaces/{workspace_id}/sqlEndpoints/{sql_endpoint_id}/refreshMetadata",
+        request=f"v1/workspaces/{workspace_id}/sqlEndpoints/{sql_endpoint_id}/refreshMetadata?preview=true",
         method="post",
         status_codes=[200, 202],
         lro_return_status_code=True,
