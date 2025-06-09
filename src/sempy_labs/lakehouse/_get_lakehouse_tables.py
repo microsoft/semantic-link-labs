@@ -40,6 +40,8 @@ def get_lakehouse_tables(
     This function can be executed in either a PySpark or pure Python notebook.
 
     This is a wrapper function for the following API: `Tables - List Tables <https://learn.microsoft.com/rest/api/fabric/lakehouse/tables/list-tables>`_ plus extended capabilities.
+    However, the above mentioned API does not support Lakehouse schemas (Preview) until it is in GA (General Availability). This version also supports schema
+    enabled Lakehouses.
 
     Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
@@ -83,27 +85,60 @@ def get_lakehouse_tables(
     if count_rows:  # Setting countrows defaults to extended=True
         extended = True
 
-    responses = _base_api(
-        request=f"v1/workspaces/{workspace_id}/lakehouses/{lakehouse_id}/tables",
-        uses_pagination=True,
-        client="fabric_sp",
-    )
+    ### Begin Schema Lakehouse
+    local_path = _mount(lakehouse=lakehouse_id, workspace=workspace_id)
 
-    if not responses[0].get("data"):
-        return df
+    API_called = True
+    try:
+        responses = _base_api(
+            request=f"v1/workspaces/{workspace_id}/lakehouses/{lakehouse_id}/tables",
+            uses_pagination=True,
+            client="fabric_sp",
+        )
+
+    except Exception as e:
+        API_called = False
 
     dfs = []
-    for r in responses:
-        for i in r.get("data", []):
-            new_data = {
-                "Workspace Name": workspace_name,
-                "Lakehouse Name": lakehouse_name,
-                "Table Name": i.get("name"),
-                "Format": i.get("format"),
-                "Type": i.get("type"),
-                "Location": i.get("location"),
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
+    if API_called:
+        if not responses[0].get("data"):
+            return df
+
+        for r in responses:
+            for i in r.get("data", []):
+                new_data = {
+                    "Workspace Name": workspace_name,
+                    "Lakehouse Name": lakehouse_name,
+                    "Table Name": i.get("name"),
+                    "Format": i.get("format"),
+                    "Type": i.get("type"),
+                    "Location": i.get("location"),
+                }
+                dfs.append(pd.DataFrame(new_data, index=[0]))
+    else:
+        # Get schema list
+        tablesPath = os.path.join(local_path, "Tables")
+        lstSchema = os.listdir(tablesPath)
+        # Iterate lstSchema
+        for schema in lstSchema:
+            schemaName = schema
+            # Get table list for schema
+            schemaTablePath = os.path.join(local_path, "Tables", schemaName)
+            lstTables = os.listdir(schemaTablePath)
+            for table in lstTables:
+                tableName = table
+                schemaTableName = f"{schemaName}/{tableName}"
+                locationPath = f"abfss://{workspace_id}@onelake.dfs.fabric.microsoft.com/{lakehouse_id}/Tables/{schemaTableName}"
+                new_data = {
+                    "Workspace Name": workspace_name,
+                    "Lakehouse Name": lakehouse_name,
+                    "Table Name": schemaTableName,
+                    "Format": "delta",
+                    "Type": "Managed",
+                    "Location": locationPath
+                }
+                dfs.append(pd.DataFrame(new_data, index=[0]))
+    ### End Schema Lakehouse
 
     if dfs:
         df = pd.concat(dfs, ignore_index=True)
@@ -111,7 +146,9 @@ def get_lakehouse_tables(
     if extended:
         sku_value = get_sku_size(workspace_id)
         guardrail = get_directlake_guardrails_for_sku(sku_value)
-        local_path = _mount(lakehouse=lakehouse_id, workspace=workspace_id)
+        ### Begin Schema Lakehouse
+        # local_path = _mount(lakehouse=lakehouse_id, workspace=workspace_id)
+        ### End Schema Lakehouse
 
         df["Files"], df["Row Groups"], df["Table Size"] = None, None, None
         if count_rows:
