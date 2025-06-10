@@ -172,7 +172,7 @@ def list_orphaned_workspaces(top: int = 100) -> pd.DataFrame:
         A pandas dataframe showing a list of orphaned workspaces.
     """
     
-    # Define column structure with proper data types
+    # column structure with proper data types
     columns = {
         "Workspace Name": "string",
         "Workspace Id": "string",
@@ -197,11 +197,9 @@ def list_orphaned_workspaces(top: int = 100) -> pd.DataFrame:
 
     response = _base_api(request=url, client="fabric_sp")
     values = response.json().get("value", [])
-
-    # Create dataframe with all columns from the API, then rename appropriately
     df_raw = pd.json_normalize(values)
     
-    # Rename columns to friendly names and reorder
+    # friendly names and reorder
     if not df_raw.empty:
         df_raw = df_raw.rename(columns={
             "name": "Workspace Name", 
@@ -215,12 +213,15 @@ def list_orphaned_workspaces(top: int = 100) -> pd.DataFrame:
             "users": "Users"
         })
         
-        # Select only the columns we want in the final output, in the desired order
         df = df_raw[list(columns.keys())].copy()
+        
+        # Convert empty lists to a more readable format for Users column
+        if 'Users' in df.columns:
+            df['Users'] = df['Users'].apply(lambda x: x if (x is not None and len(x) > 0) else [])
     else:
         df = _create_dataframe(columns=columns)
     
-    # Apply proper data types
+    # proper data types
     _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
