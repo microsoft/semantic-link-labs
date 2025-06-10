@@ -2,6 +2,8 @@ from sempy_labs._helper_functions import (
     _base_api,
     _build_url,
     _encode_user,
+    _update_dataframe_datatypes,
+    _create_dataframe
 
 )
 
@@ -167,9 +169,24 @@ def list_orphaned_workspaces(top: int = 100) -> pd.DataFrame:
     Returns
     -------
     pandas.DataFrame
-        A pandas dataframe showing a list of orphaned workspaces, with all columns from the API. 
-
+        A pandas dataframe showing a list of orphaned workspaces.
     """
+    
+    # Define column structure with proper data types
+    columns = {
+        "Workspace Name": "string",
+        "Workspace Id": "string",
+        "Type": "string", 
+        "State": "string",
+        "Is Read Only": "bool",
+        "Is On Dedicated Capacity": "bool",
+        "Capacity Migration Status": "string",
+        "Has Workspace Level Settings": "bool",
+        "Users": "list",
+    }
+    
+    df = _create_dataframe(columns=columns)
+    
     url = (
         "/v1.0/myorg/admin/groups?"
         "$expand=users&"
@@ -181,9 +198,29 @@ def list_orphaned_workspaces(top: int = 100) -> pd.DataFrame:
     response = _base_api(request=url, client="fabric_sp")
     values = response.json().get("value", [])
 
-    # Create dataframe with all columns from the API
-    df = pd.json_normalize(values)
-    # Rename columns
-    df = df.rename(columns={"id": "workspace_id", "name": "workspace_name"})
+    # Create dataframe with all columns from the API, then rename appropriately
+    df_raw = pd.json_normalize(values)
+    
+    # Rename columns to friendly names and reorder
+    if not df_raw.empty:
+        df_raw = df_raw.rename(columns={
+            "name": "Workspace Name", 
+            "id": "Workspace Id",
+            "type": "Type",
+            "state": "State", 
+            "isReadOnly": "Is Read Only",
+            "isOnDedicatedCapacity": "Is On Dedicated Capacity",
+            "capacityMigrationStatus": "Capacity Migration Status",
+            "hasWorkspaceLevelSettings ": "Has Workspace Level Settings",  # Note the space in original
+            "users": "Users"
+        })
+        
+        # Select only the columns we want in the final output, in the desired order
+        df = df_raw[list(columns.keys())].copy()
+    else:
+        df = _create_dataframe(columns=columns)
+    
+    # Apply proper data types
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
