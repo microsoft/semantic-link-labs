@@ -3349,7 +3349,7 @@ class ReportWrapper:
 
             self.update(file_path=file_path, payload=payload)
 
-    def _rename_fields(self, mapping: dict):
+    def rename_fields(self, mapping: dict):
         """
         Renames fields in the report definition based on the provided rename mapping.
 
