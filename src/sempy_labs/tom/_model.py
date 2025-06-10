@@ -47,6 +47,13 @@ class TOMWrapper:
     _tables_added: List[str]
     _table_map = dict
     _column_map = dict
+    _dax_formatting = {
+        "measures": [],
+        "calculated_columns": [],
+        "calculated_tables": [],
+        "calculation_items": [],
+        "rls": [],
+    }
 
     def __init__(self, dataset, workspace, readonly):
 
@@ -4716,7 +4723,12 @@ class TOMWrapper:
             TOM.ValueFilterBehaviorType, value_filter_behavior
         )
 
-    def add_role_member(self, role_name: str, member: str | List[str]):
+    def add_role_member(
+        self,
+        role_name: str,
+        member: str | List[str],
+        role_member_type: Optional[str] = "User",
+    ):
         """
         Adds an external model role member (AzureAD) to a role.
 
@@ -4726,12 +4738,22 @@ class TOMWrapper:
             The role name.
         member : str | List[str]
             The email address(es) of the member(s) to add.
+        role_member_type : str, default="User"
+            The type of the role member. Default is "User". Other options include "Group" for Azure AD groups.
+            All members must be of the same role_member_type.
         """
 
         import Microsoft.AnalysisServices.Tabular as TOM
+        import System
 
         if isinstance(member, str):
             member = [member]
+
+        role_member_type = role_member_type.capitalize()
+        if role_member_type not in ["User", "Group"]:
+            raise ValueError(
+                f"{icons.red_dot} The '{role_member_type}' is not a valid role member type. Valid options: 'User', 'Group'."
+            )
 
         role = self.model.Roles[role_name]
         current_members = [m.MemberName for m in role.Members]
@@ -4741,6 +4763,7 @@ class TOMWrapper:
                 rm = TOM.ExternalModelRoleMember()
                 rm.IdentityProvider = "AzureAD"
                 rm.MemberName = m
+                rm.MemberType = System.Enum.Parse(TOM.RoleMemberType, role_member_type)
                 role.Members.Add(rm)
                 print(
                     f"{icons.green_dot} '{m}' has been added as a member of the '{role_name}' role."
@@ -5138,7 +5161,176 @@ class TOMWrapper:
                 f"{icons.green_dot} The '{object.Name}' {str(object.ObjectType).lower()} has been copied to the '{target_dataset}' semantic model within the '{target_workspace}' workspace."
             )
 
+    def format_dax(
+        self,
+        object: Optional[
+            Union[
+                "TOM.Measure",
+                "TOM.CalcultedColumn",
+                "TOM.CalculationItem",
+                "TOM.CalculatedTable",
+                "TOM.TablePermission",
+            ]
+        ] = None,
+    ):
+        """
+        Formats the DAX expressions of measures, calculated columns, calculation items, calculated tables and row level security expressions in the semantic model.
+
+        This function uses the `DAX Formatter API <https://www.daxformatter.com/>`_.
+
+        Parameters
+        ----------
+        object : TOM Object, default=None
+            The TOM object to format. If None, formats all measures, calculated columns, calculation items, calculated tables and row level security expressions in the semantic model.
+            If a specific object is provided, only that object will be formatted.
+        """
+
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        if object is None:
+            object_map = {
+                "measures": self.all_measures,
+                "calculated_columns": self.all_calculated_columns,
+                "calculation_items": self.all_calculation_items,
+                "calculated_tables": self.all_calculated_tables,
+                "rls": self.all_rls,
+            }
+
+            for key, func in object_map.items():
+                for obj in func():
+                    if key == "calculated_tables":
+                        p = next(p for p in obj.Partitions)
+                        name = obj.Name
+                        expr = p.Source.Expression
+                        table = obj.Name
+                    elif key == "calculation_items":
+                        name = obj.Name
+                        expr = obj.Expression
+                        table = obj.Parent.Table.Name
+                    elif key == "rls":
+                        name = obj.Role.Name
+                        expr = obj.FilterExpression
+                        table = obj.Table.Name
+                    else:
+                        name = obj.Name
+                        expr = obj.Expression
+                        table = obj.Table.Name
+                    self._dax_formatting[key].append(
+                        {
+                            "name": name,
+                            "expression": expr,
+                            "table": table,
+                        }
+                    )
+            return
+
+        if object.ObjectType == TOM.ObjectType.Measure:
+            self._dax_formatting["measures"].append(
+                {
+                    "name": object.Name,
+                    "expression": object.Expression,
+                    "table": object.Parent.Name,
+                }
+            )
+        elif object.ObjectType == TOM.ObjectType.CalculatedColumn:
+            self._dax_formatting["measures"].append(
+                {
+                    "name": object.Name,
+                    "expression": object.Expression,
+                    "table": object.Parent.Name,
+                }
+            )
+        elif object.ObjectType == TOM.ObjectType.CalculationItem:
+            self._dax_formatting["measures"].append(
+                {
+                    "name": object.Name,
+                    "expression": object.Expression,
+                    "table": object.Parent.Name,
+                }
+            )
+        elif object.ObjectType == TOM.ObjectType.CalculatedTable:
+            self._dax_formatting["measures"].append(
+                {
+                    "name": object.Name,
+                    "expression": object.Expression,
+                    "table": object.Name,
+                }
+            )
+        else:
+            raise ValueError(
+                f"{icons.red_dot} The '{str(object.ObjectType)}' object type is not supported for DAX formatting."
+            )
+
     def close(self):
+
+        # DAX Formatting
+        from sempy_labs._daxformatter import _format_dax
+
+        def _process_dax_objects(object_type, model_accessor=None):
+            items = self._dax_formatting.get(object_type, [])
+            if not items:
+                return False
+
+            # Extract and format expressions
+            expressions = [item["expression"] for item in items]
+            metadata = [
+                {"name": item["name"], "table": item["table"], "type": object_type}
+                for item in items
+            ]
+
+            formatted_expressions = _format_dax(expressions, metadata=metadata)
+
+            # Update the expressions in the original structure
+            for item, formatted in zip(items, formatted_expressions):
+                item["expression"] = formatted
+
+            # Apply updated expressions to the model
+            for item in items:
+                table_name = (
+                    item["table"]
+                    if object_type != "calculated_tables"
+                    else item["name"]
+                )
+                name = item["name"]
+                expression = item["expression"]
+
+                if object_type == "calculated_tables":
+                    t = self.model.Tables[table_name]
+                    p = next(p for p in t.Partitions)
+                    p.Source.Expression = expression
+                elif object_type == "rls":
+                    self.model.Roles[name].TablePermissions[
+                        table_name
+                    ].FilterExpression = expression
+                elif object_type == "calculation_items":
+                    self.model.Tables[table_name].CalculationGroup.CalculationItems[
+                        name
+                    ].Expression = expression
+                else:
+                    getattr(self.model.Tables[table_name], model_accessor)[
+                        name
+                    ].Expression = expression
+            return True
+
+        # Use the helper for each object type
+        a = _process_dax_objects("measures", "Measures")
+        b = _process_dax_objects("calculated_columns", "Columns")
+        c = _process_dax_objects("calculation_items")
+        d = _process_dax_objects("calculated_tables")
+        e = _process_dax_objects("rls")
+        if any([a, b, c, d, e]) and not self._readonly:
+            from IPython.display import display, HTML
+
+            html = """
+            <span style="font-family: Segoe UI, Arial, sans-serif; color: #cccccc;">
+                CODE BEAUTIFIED WITH 
+            </span>
+            <a href="https://www.daxformatter.com" target="_blank" style="font-family: Segoe UI, Arial, sans-serif; color: #ff5a5a; font-weight: bold; text-decoration: none;">
+                DAX FORMATTER
+            </a>
+            """
+
+            display(HTML(html))
 
         if not self._readonly and self.model is not None:
 

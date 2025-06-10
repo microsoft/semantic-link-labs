@@ -1,7 +1,7 @@
 # Semantic Link Labs
 
 [![PyPI version](https://badge.fury.io/py/semantic-link-labs.svg)](https://badge.fury.io/py/semantic-link-labs)
-[![Read The Docs](https://readthedocs.org/projects/semantic-link-labs/badge/?version=0.10.0&style=flat)](https://readthedocs.org/projects/semantic-link-labs/)
+[![Read The Docs](https://readthedocs.org/projects/semantic-link-labs/badge/?version=0.10.1&style=flat)](https://readthedocs.org/projects/semantic-link-labs/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Downloads](https://static.pepy.tech/badge/semantic-link-labs)](https://pepy.tech/project/semantic-link-labs)
 
@@ -30,6 +30,7 @@ Check out the video below for an introduction to Semantic Link, Semantic Link La
     * [Migrating an import/DirectQuery semantic model to Direct Lake](https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#direct-lake-migration)
     * [Model Best Practice Analyzer (BPA)](https://github.com/microsoft/semantic-link-labs/wiki/Code-Examples#model-best-practice-analyzer)
     * [Vertipaq Analyzer](https://github.com/microsoft/semantic-link-labs/wiki/Code-Examples#vertipaq-analyzer)
+    * [Create a .vpax file](https://github.com/microsoft/semantic-link-labs/wiki/Code-Examples#create-a-vpax-file)
     * [Tabular Object Model](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Tabular%20Object%20Model.ipynb) [(TOM)](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.tom.html)
     * [Translate a semantic model's metadata](https://github.com/microsoft/semantic-link-labs/wiki/Code-Examples#translate-a-semantic-model)
     * [Check Direct Lake Guardrails](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.lakehouse.html#sempy_labs.lakehouse.get_lakehouse_tables)
@@ -128,6 +129,7 @@ An even better way to ensure the semantic-link-labs library is available in your
 2. Select your newly created environment within the 'Environment' drop down in the navigation bar at the top of the notebook
 
 ## Version History
+* [0.10.1](https://github.com/microsoft/semantic-link-labs/releases/tag/0.10.1) (June 10, 2025)
 * [0.10.0](https://github.com/microsoft/semantic-link-labs/releases/tag/0.10.0) (May 30, 2025)
 * [0.9.11](https://github.com/microsoft/semantic-link-labs/releases/tag/0.9.11) (May 22, 2025)
 * [0.9.10](https://github.com/microsoft/semantic-link-labs/releases/tag/0.9.10) (April 24, 2025)
