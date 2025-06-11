@@ -439,9 +439,6 @@ __all__ = [
     "resolve_capacity_name",
     "run_model_bpa_bulk",
     "create_model_bpa_semantic_model",
-    "list_deployment_pipeline_stage_items",
-    "list_deployment_pipeline_stages",
-    "list_deployment_pipelines",
     "get_git_connection",
     "get_git_status",
     "commit_to_git",
@@ -595,4 +592,7 @@ __all__ = [
     "get_user_delegation_key",
     "refresh_sql_endpoint_metadata",
     "list_semantic_model_datasources",
+    "list_deployment_pipeline_stage_items",
+    "list_deployment_pipeline_stages",
+    "list_deployment_pipelines",
 ]
