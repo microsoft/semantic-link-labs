@@ -5,6 +5,7 @@ from sempy_labs._helper_functions import (
     _update_dataframe_datatypes,
     _create_dataframe,
 )
+from sempy._utils._log import log
 import sempy_labs._icons as icons
 from uuid import UUID
 
@@ -27,7 +28,7 @@ def resolve_deployment_pipeline_id(deployment_pipeline: str | UUID) -> UUID:
     if _is_valid_uuid(deployment_pipeline):
         return deployment_pipeline
     else:
-        dfP = list_deployment_pipelines()
+        dfP = list()
         dfP_filt = dfP[dfP["Deployment Pipeline Name"] == deployment_pipeline]
         if len(dfP_filt) == 0:
             raise ValueError(
@@ -38,9 +39,7 @@ def resolve_deployment_pipeline_id(deployment_pipeline: str | UUID) -> UUID:
 
 def resolve_stage_id(deployment_pipeline_id: UUID, stage: str | UUID):
 
-    dfPS = list_stages(
-        deployment_pipeline=deployment_pipeline_id
-    )
+    dfPS = list_stages(deployment_pipeline=deployment_pipeline_id)
 
     if _is_valid_uuid(stage):
         dfPS_filt = dfPS[dfPS["Deployment Pipeline Stage Id"] == stage]
@@ -53,7 +52,8 @@ def resolve_stage_id(deployment_pipeline_id: UUID, stage: str | UUID):
     return dfPS_filt["Deployment Pipeline Stage Id"].iloc[0]
 
 
-def list_deployment_pipelines() -> pd.DataFrame:
+@log
+def list() -> pd.DataFrame:
     """
     Shows a list of deployment pipelines the user can access.
 
@@ -90,6 +90,7 @@ def list_deployment_pipelines() -> pd.DataFrame:
     return df
 
 
+@log
 def list_stages(deployment_pipeline: str | UUID) -> pd.DataFrame:
     """
     Shows the specified deployment pipeline stages.
@@ -146,6 +147,7 @@ def list_stages(deployment_pipeline: str | UUID) -> pd.DataFrame:
     return df
 
 
+@log
 def list_stage_items(
     deployment_pipeline: str | UUID,
     stage: str | UUID,
@@ -205,6 +207,7 @@ def list_stage_items(
     return df
 
 
+@log
 def list_role_assignments(
     deployment_pipeline: str | UUID,
 ) -> pd.DataFrame:
@@ -259,7 +262,8 @@ def list_role_assignments(
     return df
 
 
-def delete_deployment_pipeline(
+@log
+def delete(
     deployment_pipeline: str | UUID,
 ):
     """

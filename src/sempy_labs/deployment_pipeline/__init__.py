@@ -1,17 +1,19 @@
-from sempy_labs._deployment_pipelines import (
-    list_deployment_pipeline_stage_items,
-    list_deployment_pipeline_stages,
-    list_deployment_pipelines,
-    list_deployment_pipeline_role_assignments,
-    delete_deployment_pipeline,
-    list_deployment_pipeline_operations,
+from ._dp import (
+    list,
+    list_stages,
+    list_stage_items,
+    list_role_assignments,
+    delete,
+    list_operations,
+    unassign_workspace_from_stage,
 )
 
 __all__ = [
-    "list_deployment_pipeline_stage_items",
-    "list_deployment_pipeline_stages",
-    "list_deployment_pipelines",
-    "list_deployment_pipeline_role_assignments",
-    "delete_deployment_pipeline",
-    "list_deployment_pipeline_operations",
+    "list",
+    "list_stages",
+    "list_stage_items",
+    "list_role_assignments",
+    "delete",
+    "list_operations",
+    "unassign_workspace_from_stage",
 ]
