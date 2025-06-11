@@ -1311,36 +1311,6 @@ def pagination(client, response):
     return responses
 
 
-def resolve_deployment_pipeline_id(deployment_pipeline: str | UUID) -> UUID:
-    """
-    Obtains the Id for a given deployment pipeline.
-
-    Parameters
-    ----------
-    deployment_pipeline : str | uuid.UUID
-        The deployment pipeline name or ID.
-
-    Returns
-    -------
-    uuid.UUID
-        The deployment pipeline Id.
-    """
-
-    from sempy_labs._deployment_pipelines import list_deployment_pipelines
-
-    if _is_valid_uuid(deployment_pipeline):
-        return deployment_pipeline
-    else:
-
-        dfP = list_deployment_pipelines()
-        dfP_filt = dfP[dfP["Deployment Pipeline Name"] == deployment_pipeline]
-        if len(dfP_filt) == 0:
-            raise ValueError(
-                f"{icons.red_dot} The '{deployment_pipeline}' deployment pipeline is not valid."
-            )
-        return dfP_filt["Deployment Pipeline Id"].iloc[0]
-
-
 class FabricTokenCredential(TokenCredential):
 
     def get_token(

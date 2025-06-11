@@ -3,8 +3,7 @@ from sempy_labs._helper_functions import (
     _build_url,
     _encode_user,
     _update_dataframe_datatypes,
-    _create_dataframe
-
+    _create_dataframe,
 )
 
 from uuid import UUID
@@ -152,11 +151,12 @@ def restore_deleted_workspace(workspace_id: UUID, name: str, email_address: str)
         f"{icons.green_dot} The '{workspace_id}' workspace has been restored as '{name}'."
     )
 
+
 def list_orphaned_workspaces(top: int = 100) -> pd.DataFrame:
     """
     Shows a list of orphaned workspaces (those with no users or no admins).
 
-    This is a wrapper function for the following API: 
+    This is a wrapper function for the following API:
     `Admin - Groups ListGroupsAsAdmin <https://learn.microsoft.com/rest/api/power-bi/admin/groups-get-groups-as-admin>`_.
 
     Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
@@ -171,12 +171,12 @@ def list_orphaned_workspaces(top: int = 100) -> pd.DataFrame:
     pandas.DataFrame
         A pandas dataframe showing a list of orphaned workspaces.
     """
-    
+
     # column structure with proper data types
     columns = {
         "Workspace Name": "string",
         "Workspace Id": "string",
-        "Type": "string", 
+        "Type": "string",
         "State": "string",
         "Is Read Only": "bool",
         "Is On Dedicated Capacity": "bool",
@@ -184,9 +184,9 @@ def list_orphaned_workspaces(top: int = 100) -> pd.DataFrame:
         "Has Workspace Level Settings": "bool",
         "Users": "list",
     }
-    
+
     df = _create_dataframe(columns=columns)
-    
+
     url = (
         "/v1.0/myorg/admin/groups?"
         "$expand=users&"
@@ -198,29 +198,33 @@ def list_orphaned_workspaces(top: int = 100) -> pd.DataFrame:
     response = _base_api(request=url, client="fabric_sp")
     values = response.json().get("value", [])
     df_raw = pd.json_normalize(values)
-    
+
     # friendly names and reorder
     if not df_raw.empty:
-        df_raw = df_raw.rename(columns={
-            "name": "Workspace Name", 
-            "id": "Workspace Id",
-            "type": "Type",
-            "state": "State", 
-            "isReadOnly": "Is Read Only",
-            "isOnDedicatedCapacity": "Is On Dedicated Capacity",
-            "capacityMigrationStatus": "Capacity Migration Status",
-            "hasWorkspaceLevelSettings ": "Has Workspace Level Settings",  # Note the space in original
-            "users": "Users"
-        })
-        
+        df_raw = df_raw.rename(
+            columns={
+                "name": "Workspace Name",
+                "id": "Workspace Id",
+                "type": "Type",
+                "state": "State",
+                "isReadOnly": "Is Read Only",
+                "isOnDedicatedCapacity": "Is On Dedicated Capacity",
+                "capacityMigrationStatus": "Capacity Migration Status",
+                "hasWorkspaceLevelSettings ": "Has Workspace Level Settings",  # Note the space in original
+                "users": "Users",
+            }
+        )
+
         df = df_raw[list(columns.keys())].copy()
-        
+
         # Convert empty lists to a more readable format for Users column
-        if 'Users' in df.columns:
-            df['Users'] = df['Users'].apply(lambda x: x if (x is not None and len(x) > 0) else [])
+        if "Users" in df.columns:
+            df["Users"] = df["Users"].apply(
+                lambda x: x if (x is not None and len(x) > 0) else []
+            )
     else:
         df = _create_dataframe(columns=columns)
-    
+
     # proper data types
     _update_dataframe_datatypes(dataframe=df, column_map=columns)
 

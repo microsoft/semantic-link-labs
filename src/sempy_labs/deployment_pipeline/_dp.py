@@ -36,6 +36,23 @@ def resolve_deployment_pipeline_id(deployment_pipeline: str | UUID) -> UUID:
         return dfP_filt["Deployment Pipeline Id"].iloc[0]
 
 
+def resolve_stage_id(deployment_pipeline_id: UUID, stage: str | UUID):
+
+    dfPS = list_stages(
+        deployment_pipeline=deployment_pipeline_id
+    )
+
+    if _is_valid_uuid(stage):
+        dfPS_filt = dfPS[dfPS["Deployment Pipeline Stage Id"] == stage]
+    else:
+        dfPS_filt = dfPS[dfPS["Deployment Pipeline Stage Name"] == stage]
+    if dfPS.empty:
+        raise ValueError(
+            f"{icons.red_dot} The '{stage}' stage does not exist within the '{deployment_pipeline_id}' deployment pipeline."
+        )
+    return dfPS_filt["Deployment Pipeline Stage Id"].iloc[0]
+
+
 def list_deployment_pipelines() -> pd.DataFrame:
     """
     Shows a list of deployment pipelines the user can access.
@@ -73,7 +90,7 @@ def list_deployment_pipelines() -> pd.DataFrame:
     return df
 
 
-def list_deployment_pipeline_stages(deployment_pipeline: str | UUID) -> pd.DataFrame:
+def list_stages(deployment_pipeline: str | UUID) -> pd.DataFrame:
     """
     Shows the specified deployment pipeline stages.
 
@@ -129,7 +146,7 @@ def list_deployment_pipeline_stages(deployment_pipeline: str | UUID) -> pd.DataF
     return df
 
 
-def list_deployment_pipeline_stage_items(
+def list_stage_items(
     deployment_pipeline: str | UUID,
     stage: str | UUID,
 ) -> pd.DataFrame:
@@ -165,25 +182,7 @@ def list_deployment_pipeline_stage_items(
         deployment_pipeline=deployment_pipeline
     )
 
-    def resolve_deployment_pipeline_stage_id(
-        deployment_pipeline_id: UUID, stage: str | UUID
-    ):
-
-        dfPS = list_deployment_pipeline_stages(
-            deployment_pipeline=deployment_pipeline_id
-        )
-
-        if _is_valid_uuid(stage):
-            dfPS_filt = dfPS[dfPS["Deployment Pipeline Stage Id"] == stage]
-        else:
-            dfPS_filt = dfPS[dfPS["Deployment Pipeline Stage Name"] == stage]
-        if dfPS.empty:
-            raise ValueError(
-                f"{icons.red_dot} The '{stage}' stage does not exist within the '{deployment_pipeline}' deployment pipeline."
-            )
-        return dfPS_filt["Deployment Pipeline Stage Id"].iloc[0]
-
-    stage_id = resolve_deployment_pipeline_stage_id(deployment_pipeline_id, stage)
+    stage_id = resolve_stage_id(deployment_pipeline_id, stage)
 
     responses = _base_api(
         request=f"/v1/deploymentPipelines/{deployment_pipeline_id}/stages/{stage_id}/items",
@@ -206,7 +205,7 @@ def list_deployment_pipeline_stage_items(
     return df
 
 
-def list_deployment_pipeline_role_assignments(
+def list_role_assignments(
     deployment_pipeline: str | UUID,
 ) -> pd.DataFrame:
     """
@@ -289,7 +288,7 @@ def delete_deployment_pipeline(
     )
 
 
-def list_deployment_pipeline_operations(
+def list_operations(
     deployment_pipeline: str | UUID,
 ) -> pd.DataFrame:
     """
@@ -386,25 +385,7 @@ def unassign_workspace_from_stage(
         deployment_pipeline=deployment_pipeline
     )
 
-    def resolve_deployment_pipeline_stage_id(
-        deployment_pipeline_id: UUID, stage: str | UUID
-    ):
-
-        dfPS = list_deployment_pipeline_stages(
-            deployment_pipeline=deployment_pipeline_id
-        )
-
-        if _is_valid_uuid(stage):
-            dfPS_filt = dfPS[dfPS["Deployment Pipeline Stage Id"] == stage]
-        else:
-            dfPS_filt = dfPS[dfPS["Deployment Pipeline Stage Name"] == stage]
-        if dfPS.empty:
-            raise ValueError(
-                f"{icons.red_dot} The '{stage}' stage does not exist within the '{deployment_pipeline}' deployment pipeline."
-            )
-        return dfPS_filt["Deployment Pipeline Stage Id"].iloc[0]
-
-    stage_id = resolve_deployment_pipeline_stage_id(deployment_pipeline_id, stage)
+    stage_id = resolve_stage_id(deployment_pipeline_id, stage)
 
     _base_api(
         request=f"/v1/deploymentPipelines/{deployment_pipeline_id}/stages/{stage_id}/unassignWorkspace",
