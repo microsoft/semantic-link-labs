@@ -14,7 +14,7 @@ from sempy_labs._helper_functions import (
 from typing import Optional, Tuple
 import sempy_labs._icons as icons
 from uuid import UUID
-from jsonpath_ng.parser import parse
+from jsonpath_ng.ext import parse
 import json
 
 
@@ -407,6 +407,7 @@ def upgrade_dataflow(
     matches = parse("$.annotations[?(@.name=='pbi:QueryGroups')].value").find(
         definition
     )
+
     query_groups_value = json.loads(matches[0].value) if matches else []
 
     # Prepare the dataflow definition
