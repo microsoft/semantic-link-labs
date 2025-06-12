@@ -70,6 +70,7 @@ def get_lakehouse_tables(
     columns = {
         "Workspace Name": "string",
         "Lakehouse Name": "string",
+        "Schema Name": "string",
         "Table Name": "string",
         "Format": "string",
         "Type": "string",
@@ -85,9 +86,6 @@ def get_lakehouse_tables(
     if count_rows:  # Setting countrows defaults to extended=True
         extended = True
 
-    ### Begin Schema Lakehouse
-    local_path = _mount(lakehouse=lakehouse_id, workspace=workspace_id)
-
     API_called = True
     try:
         responses = _base_api(
@@ -100,6 +98,7 @@ def get_lakehouse_tables(
         API_called = False
 
     dfs = []
+    local_path = None
     if API_called:
         if not responses[0].get("data"):
             return df
@@ -109,6 +108,7 @@ def get_lakehouse_tables(
                 new_data = {
                     "Workspace Name": workspace_name,
                     "Lakehouse Name": lakehouse_name,
+                    "Schema Name": "dbo",
                     "Table Name": i.get("name"),
                     "Format": i.get("format"),
                     "Type": i.get("type"),
@@ -116,29 +116,25 @@ def get_lakehouse_tables(
                 }
                 dfs.append(pd.DataFrame(new_data, index=[0]))
     else:
-        # Get schema list
-        tablesPath = os.path.join(local_path, "Tables")
-        lstSchema = os.listdir(tablesPath)
-        # Iterate lstSchema
-        for schema in lstSchema:
-            schemaName = schema
-            # Get table list for schema
-            schemaTablePath = os.path.join(local_path, "Tables", schemaName)
-            lstTables = os.listdir(schemaTablePath)
-            for table in lstTables:
-                tableName = table
-                schemaTableName = f"{schemaName}/{tableName}"
-                locationPath = f"abfss://{workspace_id}@onelake.dfs.fabric.microsoft.com/{lakehouse_id}/Tables/{schemaTableName}"
+        local_path = _mount(lakehouse=lakehouse_id, workspace=workspace_id)
+        tables_path = os.path.join(local_path, "Tables")
+        list_schema = os.listdir(tables_path)
+
+        for schema_name in list_schema:
+            schema_table_path = os.path.join(local_path, "Tables", schema_name)
+            list_tables = os.listdir(schema_table_path)
+            for table_name in list_tables:
+                location_path = create_abfss_path(lakehouse_id, workspace_id, table_name, schema_name)
                 new_data = {
                     "Workspace Name": workspace_name,
                     "Lakehouse Name": lakehouse_name,
-                    "Table Name": schemaTableName,
+                    "Schema Name": schema_name,
+                    "Table Name": table_name,
                     "Format": "delta",
                     "Type": "Managed",
-                    "Location": locationPath
+                    "Location": location_path
                 }
                 dfs.append(pd.DataFrame(new_data, index=[0]))
-    ### End Schema Lakehouse
 
     if dfs:
         df = pd.concat(dfs, ignore_index=True)
@@ -146,25 +142,40 @@ def get_lakehouse_tables(
     if extended:
         sku_value = get_sku_size(workspace_id)
         guardrail = get_directlake_guardrails_for_sku(sku_value)
-        ### Begin Schema Lakehouse
-        # local_path = _mount(lakehouse=lakehouse_id, workspace=workspace_id)
-        ### End Schema Lakehouse
+        # Avoid mounting the lakehouse if is already mounted
+        if not local_path:
+            local_path = _mount(lakehouse=lakehouse_id, workspace=workspace_id)
 
         df["Files"], df["Row Groups"], df["Table Size"] = None, None, None
         if count_rows:
             df["Row Count"] = None
 
         for i, r in df.iterrows():
+            use_schema = True
+            schema_name = r["Schema Name"]
             table_name = r["Table Name"]
             if r["Type"] == "Managed" and r["Format"] == "delta":
-                delta_table_path = create_abfss_path(
+                delta_table_path_with_schema = create_abfss_path(
+                    lakehouse_id, workspace_id, table_name, schema_name
+                )
+
+                delta_table_path_without_schema = create_abfss_path(
                     lakehouse_id, workspace_id, table_name
                 )
 
+                delta_table_path = None
                 if _pure_python_notebook():
                     from deltalake import DeltaTable
 
-                    delta_table = DeltaTable(delta_table_path)
+                    try:
+                        delta_table_path = delta_table_path_with_schema
+                        delta_table = DeltaTable(delta_table_path)
+                    
+                    except Exception as e:
+                        use_schema = False
+                        delta_table_path = delta_table_path_without_schema
+                        delta_table = DeltaTable(delta_table_path)
+
                     latest_files = [
                         file["path"]
                         for file in delta_table.get_add_actions().to_pylist()
@@ -178,20 +189,35 @@ def get_lakehouse_tables(
                             size_in_bytes += os.path.getsize(local_file_path)
                     num_latest_files = len(latest_files)
                 else:
-                    delta_table = _get_delta_table(delta_table_path)
+                    try:
+                        delta_table_path = delta_table_path_with_schema
+                        delta_table = _get_delta_table(delta_table_path)
+                    except Exception as e:
+                        use_schema = False
+                        delta_table_path = delta_table_path_without_schema
+                        delta_table = _get_delta_table(delta_table_path)
+
                     latest_files = _read_delta_table(delta_table_path).inputFiles()
                     table_df = delta_table.toDF()
                     table_details = delta_table.detail().collect()[0].asDict()
                     num_latest_files = table_details.get("numFiles", 0)
                     size_in_bytes = table_details.get("sizeInBytes", 0)
 
-                table_path = os.path.join(local_path, "Tables", table_name)
+
+                table_path = os.path.join(local_path, "Tables", schema_name, table_name)
+                if not use_schema:
+                    table_path = os.path.join(local_path, "Tables", table_name)
+
                 file_paths = [os.path.basename(f) for f in latest_files]
 
                 num_rowgroups = 0
                 for filename in file_paths:
-                    parquet_file = pq.ParquetFile(f"{table_path}/{filename}")
-                    num_rowgroups += parquet_file.num_row_groups
+                    parquet_file_path = f"{table_path}/{filename}"
+                    # If the table is partitioned and non-partitioned since the last VACUUM, then some files cannot be opened
+                    if os.path.exists(parquet_file_path):
+                        parquet_file = pq.ParquetFile(parquet_file_path)
+                        num_rowgroups += parquet_file.num_row_groups
+
                 df.at[i, "Files"] = num_latest_files
                 df.at[i, "Row Groups"] = num_rowgroups
                 df.at[i, "Table Size"] = size_in_bytes
