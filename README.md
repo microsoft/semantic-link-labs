@@ -25,6 +25,30 @@ Check out the video below for an introduction to Semantic Link, Semantic Link La
 
 [![Semantic Link Labs Video](https://img.youtube.com/vi/LSoWDEZk9b0/0.jpg)](https://www.youtube.com/watch?v=LSoWDEZk9b0)
 
+## Getting Started Videos
+Not sure where to start, here are some good videos to start with, PowerBI.tips starts with simple concepts and then shows additional examples how to use Semantic Link Labs to accomplish various tasks. The following video series focuses on Python notebooks built in fabric. Thanks [Mike](https://www.linkedin.com/in/michaelcarlo/) and [James](https://www.linkedin.com/in/jamesdbartlett3/) for putting this together.
+
+### How to use Semantic Link Labs
+Explains what the project is and how to start with your very first python notebook.  
+
+[![Introduction to Semantic Link Labs](https://img.youtube.com/vi/KmgE5u42h1c/0.jpg)](https://www.youtube.com/watch?v=KmgE5u42h1c)
+
+### Generate a URL for DAX Query View using Semantic Link Labs
+Create a custom URL using Semenatic Link Labs that can be used with DAX Query View in PowerBI.com  
+[![Generate URLs using Labs for DAX Query View](https://img.youtube.com/vi/ZgLGvsXNXks/0.jpg)](https://www.youtube.com/watch?v=ZgLGvsXNXks)  
+
+### Find and Filter Power BI and Fabric Items
+Simple examples of using Labs to get lists of items from Fabric and Power BI and then filtering those lists  
+[![Find and Filter Items from Fabric and Power BI](https://img.youtube.com/vi/zR2ax4Fjytk/0.jpg)](https://www.youtube.com/watch?v=zR2ax4Fjytk)  
+
+### Create Delta Tables using Labs
+Use labs to create delta tables  
+[![Create Delta Tables](https://img.youtube.com/vi/IUsGE4pS9VU/0.jpg)](https://www.youtube.com/watch?v=IUsGE4pS9VU)
+
+### Run SQL Queries Against Fabric Lakehouse and Warehouse
+Use labs to create delta tables  
+[![Create Delta Tables](https://img.youtube.com/vi/MQmdwiAuXHg/0.jpg)](https://www.youtube.com/watch?v=MQmdwiAuXHg)
+
 ## Featured Scenarios
 * Semantic Models
     * [Migrating an import/DirectQuery semantic model to Direct Lake](https://github.com/microsoft/semantic-link-labs?tab=readme-ov-file#direct-lake-migration)
