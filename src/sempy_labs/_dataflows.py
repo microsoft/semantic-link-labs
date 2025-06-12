@@ -356,6 +356,7 @@ def upgrade_dataflow(
         Defaults to None which resolves to the existing workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
+    from sempy_labs._connections import list_connections
 
     # Resolve the workspace name and ID
     (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -409,6 +410,25 @@ def upgrade_dataflow(
     )
     query_groups_value = json.loads(matches[0].value) if matches else []
 
+    connections = []
+    dfC = list_connections()
+    for conn in definition.get('pbi:mashup', {}).get('connectionOverrides', []):
+        path = conn.get('path')
+        kind = conn.get('kind')
+        df_filt = dfC[dfC['Connection Path'] == path]
+        if df_filt.empty:
+            raise ValueError()
+        datasource_id = df_filt['Connection Id'].iloc[0]
+
+        cluster_id = "1"  # Need to identify the cluster ID for the connection
+        connection = {
+            "path": path,
+            "kind": kind,
+            "connectionId": f"""{{"ClusterId":{cluster_id},"DatasourceId":"{datasource_id}"}}"""
+
+        }
+        connections.append(connection)
+
     # Prepare the dataflow definition
     query_metadata = {
         "formatVersion": "202502",
@@ -425,7 +445,7 @@ def upgrade_dataflow(
         "allowNativeQueries": get_jsonpath_value(
             data=definition, path="$['pbi:mashup'].allowNativeQueries", default=False
         ),
-        "connections": [],  # Need to update this!
+        "connections": connections,
     }
 
     mashup_doc = get_jsonpath_value(data=definition, path="$['pbi:mashup'].document")
