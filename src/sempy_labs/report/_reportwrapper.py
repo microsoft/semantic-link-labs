@@ -17,6 +17,7 @@ from sempy_labs._helper_functions import (
     get_jsonpath_value,
     set_json_value,
     remove_json_value,
+    get_tenant_id,
 )
 from sempy_labs._dictionary_diffs import (
     diff_parts,
@@ -446,11 +447,13 @@ class ReportWrapper:
         url = f"https://app.powerbi.com/groups/{self._workspace_id}/reports/{self._report_id}"
 
         if page_name:
+            if page_name in [page["payload"]["name"] for page in self.__all_pages()]:
+                pass
+            else:
+                page_name = self.resolve_page_name(page_name)
             url += f"/{page_name}"
 
             if visual_name:
-                from sempy_labs._helper_functions import get_tenant_id
-
                 tenant_id = get_tenant_id()
                 url += f"?ctid={tenant_id}&pbi_source=shareVisual&visual={visual_name}"
 
