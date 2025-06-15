@@ -441,7 +441,7 @@ def upgrade_dataflow(
             },
             {
                 "path": "mashup.pq",
-                "payload": _conv_b64(mashup_doc),
+                "payload": _conv_b64(mashup_doc, json_dumps=False),
                 "payloadType": "InlineBase64",
             },
         ]

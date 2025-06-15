@@ -241,6 +241,8 @@ from sempy_labs._dataflows import (
     assign_workspace_to_dataflow_storage,
     list_dataflows,
     list_upstream_dataflows,
+    upgrade_dataflow,
+    get_dataflow_definition,
 )
 from sempy_labs._connections import (
     list_connections,
@@ -595,4 +597,6 @@ __all__ = [
     "get_user_delegation_key",
     "refresh_sql_endpoint_metadata",
     "list_semantic_model_datasources",
+    "upgrade_dataflow",
+    "get_dataflow_definition",
 ]
