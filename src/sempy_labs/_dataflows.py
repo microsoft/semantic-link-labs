@@ -407,7 +407,6 @@ def upgrade_dataflow(
     matches = parse("$.annotations[?(@.name=='pbi:QueryGroups')].value").find(
         definition
     )
-
     query_groups_value = json.loads(matches[0].value) if matches else []
 
     # Prepare the dataflow definition
@@ -432,7 +431,7 @@ def upgrade_dataflow(
     mashup_doc = get_jsonpath_value(data=definition, path="$['pbi:mashup'].document")
 
     # Add the dataflow definition to the payload
-    payload["definition"] = {
+    new_definition = {
         "parts": [
             {
                 "path": "queryMetadata.json",
@@ -447,9 +446,49 @@ def upgrade_dataflow(
         ]
     }
 
-    # Post the payload to create the new dataflow
+    create_dataflow(
+        name=new_dataflow_name,
+        workspace=new_dataflow_workspace,
+        definition=new_definition,
+    )
+
+
+def create_dataflow(
+    name: str,
+    workspace: Optional[str | UUID] = None,
+    description: Optional[str] = None,
+    definition: Optional[dict] = None,
+):
+    """
+    Creates a native Fabric Dataflow Gen2 CI/CD item.
+
+    Parameters
+    ----------
+    name : str
+        The name the dataflow.
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    description : str, default=None
+        The description of the dataflow.
+    definition : dict, default=None
+        The definition of the dataflow in the form of a dictionary.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    payload = {
+        "displayName": name,
+    }
+    if description:
+        payload["description"] = description
+
+    if definition:
+        payload["definition"] = definition
+
     _base_api(
-        request=f"/v1/workspaces/{new_dataflow_workspace_id}/dataflows",
+        request=f"/v1/workspaces/{workspace_id}/dataflows",
         method="post",
         payload=payload,
         client="fabric_sp",
@@ -458,5 +497,5 @@ def upgrade_dataflow(
     )
 
     print(
-        f"{icons.green_dot} The dataflow '{new_dataflow_name}' has been created within the '{new_dataflow_workspace}' workspace."
+        f"{icons.green_dot} The dataflow '{name}' has been created within the '{workspace_name}' workspace."
     )
