@@ -183,8 +183,14 @@ def get_lakehouse_tables(
                     size_in_bytes = 0
                     for f in latest_files:
                         local_file_path = os.path.join(
-                            local_path, "Tables", table_name, os.path.basename(f)
+                            local_path, "Tables", schema_name, table_name, f
                         )
+                        
+                        if not use_schema:
+                            local_file_path = os.path.join(
+                                local_path, "Tables", table_name, f
+                            )
+    
                         if os.path.exists(local_file_path):
                             size_in_bytes += os.path.getsize(local_file_path)
                     num_latest_files = len(latest_files)
