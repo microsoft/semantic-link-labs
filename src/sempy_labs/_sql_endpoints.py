@@ -152,25 +152,33 @@ def refresh_sql_endpoint_metadata(
     df = pd.json_normalize(result)
 
     # Extract error code and message, set to None if no error
-    df['Error Code'] = df.get('error.errorCode', None)
-    df['Error Message'] = df.get('error.message', None)
+    df["Error Code"] = df.get("error.errorCode", None)
+    df["Error Message"] = df.get("error.message", None)
 
     # Friendly column renaming
-    df.rename(columns={
-        'tableName': 'Table Name',
-        'startDateTime': 'Start Time',
-        'endDateTime': 'End Time',
-        'status': 'Status',
-        'lastSuccessfulSyncDateTime': 'Last Successful Sync Time'
-    }, inplace=True)
+    df.rename(
+        columns={
+            "tableName": "Table Name",
+            "startDateTime": "Start Time",
+            "endDateTime": "End Time",
+            "status": "Status",
+            "lastSuccessfulSyncDateTime": "Last Successful Sync Time",
+        },
+        inplace=True,
+    )
 
     # Drop the original 'error' column if present
-    df.drop(columns=[col for col in ['error'] if col in df.columns], inplace=True)
+    df.drop(columns=[col for col in ["error"] if col in df.columns], inplace=True)
 
     # Optional: Reorder columns
     column_order = [
-        'Table Name', 'Status', 'Start Time', 'End Time',
-        'Last Successful Sync Time', 'Error Code', 'Error Message'
+        "Table Name",
+        "Status",
+        "Start Time",
+        "End Time",
+        "Last Successful Sync Time",
+        "Error Code",
+        "Error Message",
     ]
     df = df[column_order]
 
