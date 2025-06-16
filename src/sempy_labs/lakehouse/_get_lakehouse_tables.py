@@ -214,7 +214,7 @@ def get_lakehouse_tables(
                 if not use_schema:
                     table_path = os.path.join(local_path, "Tables", table_name)
 
-                file_paths = [os.path.basename(f) for f in latest_files]
+                file_paths = [f for f in latest_files]
 
                 num_rowgroups = 0
                 for filename in file_paths:
