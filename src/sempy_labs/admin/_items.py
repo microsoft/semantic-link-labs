@@ -150,6 +150,7 @@ def list_items(
 
     responses = _base_api(request=url, client="fabric_sp", uses_pagination=True)
 
+    dfs = []
     for r in responses:
         for v in r.get("itemEntities", []):
             new_data = {
@@ -170,7 +171,10 @@ def list_items(
                 "Workspace Id": v.get("workspaceId"),
                 "Capacity Id": v.get("capacityId"),
             }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            dfs.append(pd.DataFrame(new_data, index=[0]))
+
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
 
     if item is not None:
         if _is_valid_uuid(item):
@@ -246,6 +250,7 @@ def list_item_access_details(
         client="fabric_sp",
     )
 
+    dfs = []
     for v in response.json().get("accessDetails", []):
         new_data = {
             "User Id": v.get("principal", {}).get("id"),
@@ -262,6 +267,9 @@ def list_item_access_details(
             "Item Name": item_name,
             "Item Id": item_id,
         }
-        df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
+        dfs.append(pd.DataFrame(new_data, index=[0]))
+
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
 
     return df

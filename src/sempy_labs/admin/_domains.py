@@ -119,6 +119,7 @@ def list_domains(non_empty_only: bool = False) -> pd.DataFrame:
 
     response = _base_api(request=url, client="fabric_sp")
 
+    dfs = []
     for v in response.json().get("domains", []):
         new_data = {
             "Domain ID": v.get("id"),
@@ -127,7 +128,10 @@ def list_domains(non_empty_only: bool = False) -> pd.DataFrame:
             "Parent Domain ID": v.get("parentDomainId"),
             "Contributors Scope": v.get("contributorsScope"),
         }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+        dfs.append(pd.DataFrame(new_data, index=[0]))
+
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
 
     return df
 

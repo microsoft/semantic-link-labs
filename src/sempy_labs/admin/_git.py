@@ -40,6 +40,7 @@ def list_git_connections() -> pd.DataFrame:
         uses_pagination=True,
     )
 
+    dfs = []
     for r in responses:
         for v in r.get("value", []):
             git = v.get("gitProviderDetails", {})
@@ -54,16 +55,18 @@ def list_git_connections() -> pd.DataFrame:
                 "Directory Name": git.get("directoryName"),
             }
 
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            dfs.append(pd.DataFrame(new_data, index=[0]))
 
-    dfW = list_workspaces()
-    df = pd.merge(
-        df, dfW[["Id", "Name"]], left_on="Workspace Id", right_on="Id", how="left"
-    )
-    new_col_name = "Workspace Name"
-    df = df.rename(columns={"Name": new_col_name})
-    df.insert(1, new_col_name, df.pop(new_col_name))
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
+        dfW = list_workspaces()
+        df = pd.merge(
+            df, dfW[["Id", "Name"]], left_on="Workspace Id", right_on="Id", how="left"
+        )
+        new_col_name = "Workspace Name"
+        df = df.rename(columns={"Name": new_col_name})
+        df.insert(1, new_col_name, df.pop(new_col_name))
 
-    df = df.drop(columns=["Id"])
+        df = df.drop(columns=["Id"])
 
     return df

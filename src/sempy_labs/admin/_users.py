@@ -45,6 +45,7 @@ def list_access_entities(
         uses_pagination=True,
     )
 
+    dfs = []
     for r in responses:
         for v in r.get("accessEntities", []):
             new_data = {
@@ -56,7 +57,10 @@ def list_access_entities(
                     "additionalPermissions"
                 ),
             }
-            df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
+            dfs.append(pd.DataFrame(new_data, index=[0]))
+
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
 
     return df
 

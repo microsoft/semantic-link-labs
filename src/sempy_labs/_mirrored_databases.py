@@ -9,6 +9,7 @@ from sempy_labs._helper_functions import (
     delete_item,
     create_item,
     get_item_definition,
+    resolve_workspace_id,
 )
 import sempy_labs._icons as icons
 import base64
@@ -50,13 +51,14 @@ def list_mirrored_databases(workspace: Optional[str | UUID] = None) -> pd.DataFr
     }
     df = _create_dataframe(columns=columns)
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
     responses = _base_api(
         request=f"/v1/workspaces/{workspace_id}/mirroredDatabases",
         uses_pagination=True,
         client="fabric_sp",
     )
 
+    dfs = []
     for r in responses:
         for v in r.get("value", []):
             prop = v.get("properties", {})
@@ -71,7 +73,10 @@ def list_mirrored_databases(workspace: Optional[str | UUID] = None) -> pd.DataFr
                 "Provisioning Status": sql.get("provisioningStatus"),
                 "Default Schema": prop.get("defaultSchema"),
             }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            dfs.append(pd.DataFrame(new_data, index=[0]))
+
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
 
     return df
 

@@ -47,27 +47,32 @@ def list_dataflows(workspace: Optional[str | UUID] = None):
     }
     df = _create_dataframe(columns=columns)
 
-    response = _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/dataflows")
+    response = _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}/dataflows", client="fabric_sp"
+    )
 
-    records = []
+    dfs = []
     for v in response.json().get("value", []):
         gen = v.get("generation")
-        records.append(
-            {
-                "Dataflow Id": v.get("objectId"),
-                "Dataflow Name": v.get("name"),
-                "Description": "",
-                "Configured By": v.get("configuredBy"),
-                "Users": ", ".join(v.get("users", [])),
-                "Generation": "Gen2" if gen == 2 else "Gen1",
-            }
-        )
+        new_data = {
+            "Dataflow Id": v.get("objectId"),
+            "Dataflow Name": v.get("name"),
+            "Description": "",
+            "Configured By": v.get("configuredBy"),
+            "Users": ", ".join(v.get("users", [])),
+            "Generation": "Gen2" if gen == 2 else "Gen1",
+        }
+        dfs.append(pd.DataFrame(new_data, index=[0]))
 
-    response = _base_api(request=f"/v1/workspaces/{workspace_id}/dataflows")
-    for v in response.json().get("value", []):
-        gen = v.get("generation")
-        records.append(
-            {
+    responses = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/dataflows",
+        client="fabric_sp",
+        uses_pagination=True,
+    )
+    for r in responses:
+        for v in r.get("value", []):
+            gen = v.get("generation")
+            new_data = {
                 "Dataflow Id": v.get("id"),
                 "Dataflow Name": v.get("displayName"),
                 "Description": v.get("description"),
@@ -75,10 +80,10 @@ def list_dataflows(workspace: Optional[str | UUID] = None):
                 "Users": "",
                 "Generation": "Gen2 CI/CD",
             }
-        )
+            dfs.append(pd.DataFrame(new_data, index=[0]))
 
-    if records:
-        df = pd.DataFrame(records)
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
@@ -339,7 +344,7 @@ def upgrade_dataflow(
     new_dataflow_workspace: Optional[str | UUID] = None,
 ):
     """
-    Creates a native Fabric Dataflow Gen2 item based on the mashup definition from an existing dataflow.
+    Creates a Dataflow Gen2 CI/CD item based on the mashup definition from an existing Gen1/Gen2 dataflow.
 
     Parameters
     ----------

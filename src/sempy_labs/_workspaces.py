@@ -144,6 +144,7 @@ def list_workspace_users(workspace: Optional[str | UUID] = None) -> pd.DataFrame
         client="fabric_sp",
     )
 
+    dfs = []
     for r in responses:
         for v in r.get("value", []):
             p = v.get("principal", {})
@@ -154,7 +155,10 @@ def list_workspace_users(workspace: Optional[str | UUID] = None) -> pd.DataFrame
                 "Role": v.get("role"),
                 "Email Address": p.get("userDetails", {}).get("userPrincipalName"),
             }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            dfs.append(pd.DataFrame(new_data, index=[0]))
+
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
 
     return df
 

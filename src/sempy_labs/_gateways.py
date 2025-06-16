@@ -47,6 +47,7 @@ def list_gateways() -> pd.DataFrame:
         request="/v1/gateways", client="fabric_sp", uses_pagination=True
     )
 
+    dfs = []
     for r in responses:
         for v in r.get("value", []):
             new_data = {
@@ -62,9 +63,11 @@ def list_gateways() -> pd.DataFrame:
                 "Allow Custom Connectors": v.get("allowCustomConnectors"),
             }
 
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            dfs.append(pd.DataFrame(new_data, index=[0]))
 
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -138,6 +141,7 @@ def list_gateway_role_assigments(gateway: str | UUID) -> pd.DataFrame:
         uses_pagination=True,
     )
 
+    dfs = []
     for r in responses:
         for v in r.get("value", []):
             new_data = {
@@ -147,7 +151,10 @@ def list_gateway_role_assigments(gateway: str | UUID) -> pd.DataFrame:
                 "Role": v.get("role"),
             }
 
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            dfs.append(pd.DataFrame(new_data, index=[0]))
+
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
 
     return df
 
@@ -267,6 +274,7 @@ def list_gateway_members(gateway: str | UUID) -> pd.DataFrame:
         request=f"/v1/gateways/{gateway_id}/members", client="fabric_sp"
     )
 
+    dfs = []
     for v in response.json().get("value", []):
         new_data = {
             "Member Id": v.get("id"),
@@ -277,9 +285,11 @@ def list_gateway_members(gateway: str | UUID) -> pd.DataFrame:
             "Enabled": v.get("enabled"),
         }
 
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+        dfs.append(pd.DataFrame(new_data, index=[0]))
 
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 

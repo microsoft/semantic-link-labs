@@ -41,6 +41,7 @@ def list_external_data_shares() -> pd.DataFrame:
 
     response = _base_api(request="/v1/admin/items/externalDataShares")
 
+    dfs = []
     for i in response.json().get("value", []):
         cp = i.get("creatorPrincipal", {})
         new_data = {
@@ -58,9 +59,11 @@ def list_external_data_shares() -> pd.DataFrame:
             "Invitation URL": i.get("invitationUrl"),
         }
 
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+        dfs.append(pd.DataFrame(new_data, index=[0]))
 
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 

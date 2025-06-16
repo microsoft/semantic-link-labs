@@ -38,6 +38,7 @@ def list_tenant_settings() -> pd.DataFrame:
 
     response = _base_api(request="/v1/admin/tenantsettings", client="fabric_sp")
 
+    dfs = []
     for i in response.json().get("value", []):
         new_data = {
             "Setting Name": i.get("settingName"),
@@ -47,9 +48,11 @@ def list_tenant_settings() -> pd.DataFrame:
             "Tenant Setting Group": i.get("tenantSettingGroup"),
             "Enabled Security Groups": [i.get("enabledSecurityGroups", [])],
         }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+        dfs.append(pd.DataFrame(new_data, index=[0]))
 
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 

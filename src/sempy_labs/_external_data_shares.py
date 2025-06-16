@@ -146,8 +146,8 @@ def list_external_data_shares_in_item(
         request=f"/v1/workspaces/{workspace_id}/items/{item_id}/externalDataShares",
         uses_pagination=True,
     )
-    dfs = []
 
+    dfs = []
     for r in responses:
         for i in r.get("value", []):
             item_id = i.get("itemId")

@@ -4,6 +4,7 @@ from sempy_labs._helper_functions import (
     _create_dataframe,
     _update_dataframe_datatypes,
     delete_item,
+    resolve_workspace_id,
 )
 import pandas as pd
 from typing import Optional
@@ -102,7 +103,7 @@ def list_warehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     }
     df = _create_dataframe(columns=columns)
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
 
     responses = _base_api(
         request=f"/v1/workspaces/{workspace_id}/warehouses",
@@ -110,6 +111,7 @@ def list_warehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         client="fabric_sp",
     )
 
+    dfs = []
     for r in responses:
         for v in r.get("value", []):
             prop = v.get("properties", {})
@@ -122,9 +124,11 @@ def list_warehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
                 "Created Date": prop.get("createdDate"),
                 "Last Updated Time": prop.get("lastUpdatedTime"),
             }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            dfs.append(pd.DataFrame(new_data, index=[0]))
 
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 

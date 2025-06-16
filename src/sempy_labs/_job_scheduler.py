@@ -7,6 +7,7 @@ from sempy_labs._helper_functions import (
     _update_dataframe_datatypes,
     _base_api,
     _create_dataframe,
+    resolve_workspace_id,
 )
 from uuid import UUID
 import sempy_labs._icons as icons
@@ -38,9 +39,9 @@ def list_item_job_instances(
         Shows a list of job instances for the specified item.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
     (item_name, item_id) = resolve_item_name_and_id(
-        item=item, type=type, workspace=workspace
+        item=item, type=type, workspace=workspace_id
     )
 
     columns = {
@@ -87,8 +88,7 @@ def list_item_job_instances(
 
     if dfs:
         df = pd.concat(dfs, ignore_index=True)
-
-    df = _update_dataframe_datatypes(dataframe=df, column_map=columns)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -124,9 +124,9 @@ def list_item_schedules(
         Shows a list of scheduling settings for one specific item.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
     (item_name, item_id) = resolve_item_name_and_id(
-        item=item, type=type, workspace=workspace
+        item=item, type=type, workspace=workspace_id
     )
 
     columns = {
@@ -149,6 +149,7 @@ def list_item_schedules(
         request=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/{job_type}/schedules"
     )
 
+    dfs = []
     for v in response.json().get("value", []):
         config = v.get("configuration", {})
         own = v.get("owner", {})
@@ -167,9 +168,11 @@ def list_item_schedules(
             "Owner Type": own.get("type"),
         }
 
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+        dfs.append(pd.DataFrame(new_data, index=[0]))
 
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 

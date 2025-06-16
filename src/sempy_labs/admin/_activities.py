@@ -107,6 +107,8 @@ def list_activity_events(
 
     responses = _base_api(request=url, client="fabric_sp", uses_pagination=True)
 
+    dfs = []
+
     for r in responses:
         if return_dataframe:
             for i in r.get("activityEventEntities", []):
@@ -150,17 +152,16 @@ def list_activity_events(
                     "Consumption Method": i.get("ConsumptionMethod"),
                     "Artifact Kind": i.get("ArtifactKind"),
                 }
-                df = pd.concat(
-                    [df, pd.DataFrame(new_data, index=[0])],
-                    ignore_index=True,
-                )
+                dfs.append(pd.DataFrame(new_data, index=[0]))
         else:
             response_json["activityEventEntities"].extend(
                 r.get("activityEventEntities")
             )
 
     if return_dataframe:
-        _update_dataframe_datatypes(dataframe=df, column_map=columns)
+        if dfs:
+            df = pd.concat(dfs, ignore_index=True)
+            _update_dataframe_datatypes(dataframe=df, column_map=columns)
         return df
     else:
         return response_json

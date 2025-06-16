@@ -27,7 +27,7 @@ def list_unused_artifacts(workspace: Optional[str | UUID] = None) -> pd.DataFram
         A pandas dataframe showing a list of datasets, reports, and dashboards that have not been used within 30 days for the specified workspace.
     """
 
-    (workspace_name, workspace_id) = _resolve_workspace_name_and_id(workspace)
+    (_, workspace_id) = _resolve_workspace_name_and_id(workspace)
 
     columns = {
         "Artifact Name": "string",

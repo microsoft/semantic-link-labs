@@ -47,7 +47,7 @@ def list_kql_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     }
     df = _create_dataframe(columns=columns)
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
 
     responses = _base_api(
         request=f"v1/workspaces/{workspace_id}/kqlDatabases",
@@ -55,6 +55,7 @@ def list_kql_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         client="fabric_sp",
     )
 
+    dfs = []
     for r in responses:
         for v in r.get("value", []):
             prop = v.get("properties", {})
@@ -68,7 +69,10 @@ def list_kql_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
                 "Ingestion Service URI": prop.get("ingestionServiceUri"),
                 "Database Type": prop.get("databaseType"),
             }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            dfs.append(pd.DataFrame(new_data, index=[0]))
+
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
 
     return df
 

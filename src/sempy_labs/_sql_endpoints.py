@@ -7,6 +7,7 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_item_name_and_id,
     _update_dataframe_datatypes,
+    resolve_workspace_id,
 )
 import sempy_labs._icons as icons
 from sempy._utils._log import log
@@ -37,12 +38,13 @@ def list_sql_endpoints(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     }
     df = _create_dataframe(columns=columns)
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
 
     responses = _base_api(
         request=f"/v1/workspaces/{workspace_id}/sqlEndpoints", uses_pagination=True
     )
 
+    dfs = []
     for r in responses:
         for v in r.get("value", []):
 
@@ -51,7 +53,10 @@ def list_sql_endpoints(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
                 "SQL Endpoint Name": v.get("displayName"),
                 "Description": v.get("description"),
             }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            dfs.append(pd.DataFrame(new_data, index=[0]))
+
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
 
     return df
 

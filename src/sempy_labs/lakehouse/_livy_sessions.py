@@ -87,7 +87,6 @@ def list_livy_sessions(
     )
 
     dfs = []
-
     for r in responses:
         for v in r.get("value", []):
             queued_duration = v.get("queuedDuration", {})

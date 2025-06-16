@@ -75,6 +75,7 @@ def list_groups() -> pd.DataFrame:
 
     df = _create_dataframe(columns=columns)
 
+    dfs = []
     for v in result.get("value"):
         new_data = {
             "Group Id": v.get("id"),
@@ -91,10 +92,11 @@ def list_groups() -> pd.DataFrame:
             "Visibility": v.get("visibility"),
             "Security Identifier": v.get("securityIdentifier"),
         }
+        dfs.append(pd.DataFrame(new_data, index=[0]))
 
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -138,6 +140,7 @@ def _get_group(group_id: UUID) -> pd.DataFrame:
     }
     df = _create_dataframe(columns=columns)
 
+    dfs = []
     for v in result.get("value"):
         new_data = {
             "Group Id": v.get("id"),
@@ -155,9 +158,11 @@ def _get_group(group_id: UUID) -> pd.DataFrame:
             "Security Identifier": v.get("securityIdentifier"),
         }
 
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+        dfs.append(pd.DataFrame(new_data, index=[0]))
 
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -202,6 +207,7 @@ def list_group_members(group: str | UUID) -> pd.DataFrame:
 
     df = _create_dataframe(columns=columns)
 
+    dfs = []
     for v in result.get("value"):
         new_data = {
             "Member Id": v.get("id"),
@@ -216,8 +222,10 @@ def list_group_members(group: str | UUID) -> pd.DataFrame:
             "Given Name": v.get("givenName"),
             "Surname": v.get("surname"),
         }
+        dfs.append(pd.DataFrame(new_data, index=[0]))
 
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
 
     return df
 
@@ -262,6 +270,7 @@ def list_group_owners(group: str | UUID) -> pd.DataFrame:
 
     df = _create_dataframe(columns=columns)
 
+    dfs = []
     for v in result.get("value"):
         new_data = {
             "Owner Id": v.get("id"),
@@ -276,8 +285,10 @@ def list_group_owners(group: str | UUID) -> pd.DataFrame:
             "Given Name": v.get("givenName"),
             "Surname": v.get("surname"),
         }
+        dfs.append(pd.DataFrame(new_data, index=[0]))
 
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
 
     return df
 

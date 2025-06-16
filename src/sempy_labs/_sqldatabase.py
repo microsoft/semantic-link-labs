@@ -1,5 +1,5 @@
 from sempy_labs._helper_functions import (
-    resolve_workspace_name_and_id,
+    resolve_workspace_id,
     _base_api,
     _create_dataframe,
     _update_dataframe_datatypes,
@@ -82,7 +82,7 @@ def list_sql_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing a list of SQL databases in the Fabric workspace.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
 
     columns = {
         "SQL Database Name": "string",
@@ -100,6 +100,7 @@ def list_sql_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         client="fabric_sp",
     )
 
+    dfs = []
     for r in responses:
         for v in r.get("value", []):
             prop = v.get("properties", {})
@@ -112,9 +113,11 @@ def list_sql_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
                 "Server FQDN": prop.get("serverFqdn"),
             }
 
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            dfs.append(pd.DataFrame(new_data, index=[0]))
 
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 

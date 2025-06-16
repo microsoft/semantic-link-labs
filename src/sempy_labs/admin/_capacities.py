@@ -106,6 +106,7 @@ def _list_capacities_meta() -> pd.DataFrame:
         request="/v1.0/myorg/admin/capacities", client="fabric_sp", uses_pagination=True
     )
 
+    dfs = []
     for r in responses:
         for i in r.get("value", []):
             new_data = {
@@ -116,7 +117,10 @@ def _list_capacities_meta() -> pd.DataFrame:
                 "State": i.get("state"),
                 "Admins": [i.get("admins", [])],
             }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            dfs.append(pd.DataFrame(new_data, index=[0]))
+
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
 
     return df
 
@@ -254,6 +258,7 @@ def list_capacities(
         request="/v1.0/myorg/admin/capacities", client="fabric_sp", uses_pagination=True
     )
 
+    dfs = []
     for r in responses:
         for i in r.get("value", []):
             new_data = {
@@ -264,7 +269,10 @@ def list_capacities(
                 "State": i.get("state"),
                 "Admins": [i.get("admins", [])],
             }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            dfs.append(pd.DataFrame(new_data, index=[0]))
+
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
 
     if capacity is not None:
         if _is_valid_uuid(capacity):
@@ -295,7 +303,7 @@ def list_capacity_users(capacity: str | UUID) -> pd.DataFrame:
         A pandas dataframe showing a list of users that have access to the specified workspace.
     """
 
-    (capacity_name, capacity_id) = _resolve_capacity_name_and_id(capacity)
+    (_, capacity_id) = _resolve_capacity_name_and_id(capacity)
 
     columns = {
         "User Name": "string",
@@ -314,25 +322,23 @@ def list_capacity_users(capacity: str | UUID) -> pd.DataFrame:
         request=f"/v1.0/myorg/admin/capacities/{capacity_id}/users", client="fabric_sp"
     )
 
-    rows = []
+    dfs = []
     for v in response.json().get("value", []):
-        rows.append(
-            {
-                "User Name": v.get("displayName"),
-                "Email Address": v.get("emailAddress"),
-                "Capacity User Access Right": v.get("capacityUserAccessRight"),
-                "Identifier": v.get("identifier"),
-                "Graph Id": v.get("graphId"),
-                "Principal Type": v.get("principalType"),
-                "User Type": v.get("userType"),
-                "Profile": v.get("profile"),
-            }
-        )
+        new_data = {
+            "User Name": v.get("displayName"),
+            "Email Address": v.get("emailAddress"),
+            "Capacity User Access Right": v.get("capacityUserAccessRight"),
+            "Identifier": v.get("identifier"),
+            "Graph Id": v.get("graphId"),
+            "Principal Type": v.get("principalType"),
+            "User Type": v.get("userType"),
+            "Profile": v.get("profile"),
+        }
+        dfs.append(pd.DataFrame(new_data, index=[0]))
 
-    if rows:
-        df = pd.DataFrame(rows, columns=list(columns.keys()))
-
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -426,11 +432,10 @@ def get_refreshables(
 
     url = _build_url(url, params)
 
-    responses = _base_api(request=url, client="fabric_sp")
+    response = _base_api(request=url, client="fabric_sp")
 
-    refreshables = []
-
-    for i in responses.json().get("value", []):
+    dfs = []
+    for i in response.json().get("value", []):
         last_refresh = i.get("lastRefresh", {})
         refresh_schedule = i.get("refreshSchedule", {})
         new_data = {
@@ -468,11 +473,10 @@ def get_refreshables(
             "Refresh Schedule Notify Option": refresh_schedule.get("notifyOption"),
             "Configured By": i.get("configuredBy"),
         }
+        dfs.append(pd.DataFrame(new_data, index=[0]))
 
-        refreshables.append(new_data)
-
-    if len(refreshables) > 0:
-        df = pd.DataFrame(refreshables)
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
