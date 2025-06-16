@@ -11,8 +11,10 @@ from sempy_labs._helper_functions import (
 )
 from uuid import UUID
 import sempy_labs._icons as icons
+from sempy._utils._log import log
 
 
+@log
 def list_kql_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the KQL databases within a workspace.
@@ -71,6 +73,7 @@ def list_kql_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     return df
 
 
+@log
 def _create_kql_database(
     name: str, description: Optional[str] = None, workspace: Optional[str | UUID] = None
 ):
@@ -96,6 +99,7 @@ def _create_kql_database(
     )
 
 
+@log
 def delete_kql_database(
     kql_database: str | UUID,
     workspace: Optional[str | UUID] = None,
@@ -125,6 +129,7 @@ def delete_kql_database(
     delete_item(item=kql_database, type="KQLDatabase", workspace=workspace)
 
 
+@log
 def _resolve_cluster_uri(
     kql_database: str | UUID, workspace: Optional[str | UUID] = None
 ) -> str:

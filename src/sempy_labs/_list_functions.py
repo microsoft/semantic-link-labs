@@ -18,6 +18,7 @@ import json
 from collections import defaultdict
 
 
+@log
 def get_object_level_security(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
@@ -70,6 +71,7 @@ def get_object_level_security(
         return df
 
 
+@log
 def list_tables(
     dataset: str | UUID, workspace: Optional[str | UUID] = None, extended: bool = False
 ) -> pd.DataFrame:
@@ -249,6 +251,7 @@ def list_tables(
     return df
 
 
+@log
 def list_annotations(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
@@ -481,6 +484,7 @@ def list_annotations(
         return df
 
 
+@log
 def list_columns(
     dataset: str | UUID,
     workspace: Optional[str | UUID] = None,
@@ -583,6 +587,7 @@ def list_columns(
     return dfC
 
 
+@log
 def list_lakehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the lakehouses within a workspace.
@@ -642,6 +647,7 @@ def list_lakehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     return df
 
 
+@log
 def list_datamarts(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the datamarts within a workspace.
@@ -684,6 +690,7 @@ def list_datamarts(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     return df
 
 
+@log
 def update_item(
     item_type: str,
     current_name: str,
@@ -749,6 +756,7 @@ def update_item(
         )
 
 
+@log
 def list_relationships(
     dataset: str | UUID, workspace: Optional[str | UUID] = None, extended: bool = False
 ) -> pd.DataFrame:
@@ -839,6 +847,7 @@ def list_relationships(
     return dfR
 
 
+@log
 def list_kpis(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
@@ -907,6 +916,7 @@ def list_kpis(
         return df
 
 
+@log
 def list_semantic_model_objects(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
@@ -1077,6 +1087,7 @@ def list_semantic_model_objects(
     return df
 
 
+@log
 def list_shortcuts(
     lakehouse: Optional[str] = None,
     workspace: Optional[str | UUID] = None,
@@ -1115,6 +1126,7 @@ def list_shortcuts(
     return list_shortcuts(lakehouse=lakehouse, workspace=workspace, path=path)
 
 
+@log
 def list_reports_using_semantic_model(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
@@ -1179,6 +1191,7 @@ def list_reports_using_semantic_model(
     #        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
 
+@log
 def list_report_semantic_model_objects(
     dataset: str | UUID, workspace: Optional[str | UUID] = None, extended: bool = False
 ) -> pd.DataFrame:
@@ -1273,6 +1286,7 @@ def list_report_semantic_model_objects(
     return dfRO
 
 
+@log
 def list_semantic_model_object_report_usage(
     dataset: str | UUID,
     workspace: Optional[str | UUID] = None,
@@ -1398,6 +1412,7 @@ def list_semantic_model_object_report_usage(
     return final_df
 
 
+@log
 def list_server_properties(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Lists the `properties <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.serverproperty?view=analysisservices-dotnet>`_ of the Analysis Services instance.
@@ -1445,6 +1460,7 @@ def list_server_properties(workspace: Optional[str | UUID] = None) -> pd.DataFra
     return df
 
 
+@log
 def list_semantic_model_errors(
     dataset: str | UUID, workspace: Optional[str | UUID]
 ) -> pd.DataFrame:

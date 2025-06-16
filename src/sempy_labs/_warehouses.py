@@ -9,8 +9,10 @@ import pandas as pd
 from typing import Optional
 import sempy_labs._icons as icons
 from uuid import UUID
+from sempy._utils._log import log
 
 
+@log
 def create_warehouse(
     warehouse: str,
     description: Optional[str] = None,
@@ -68,6 +70,7 @@ def create_warehouse(
     return result.get("id")
 
 
+@log
 def list_warehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the warehouses within a workspace.
@@ -126,6 +129,7 @@ def list_warehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     return df
 
 
+@log
 def delete_warehouse(name: str | UUID, workspace: Optional[str | UUID] = None):
     """
     Deletes a Fabric warehouse.
@@ -145,6 +149,7 @@ def delete_warehouse(name: str | UUID, workspace: Optional[str | UUID] = None):
     delete_item(item=name, type="Warehouse", workspace=workspace)
 
 
+@log
 def get_warehouse_tables(
     warehouse: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
@@ -180,6 +185,7 @@ def get_warehouse_tables(
     return df
 
 
+@log
 def get_warehouse_columns(
     warehouse: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:

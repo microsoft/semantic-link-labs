@@ -13,8 +13,10 @@ from sempy_labs.admin._basic_functions import (
 )
 import sempy_labs._icons as icons
 import pandas as pd
+from sempy._utils._log import log
 
 
+@log
 def add_user_to_workspace(
     user: str | UUID,
     role: str = "Member",
@@ -72,6 +74,7 @@ def add_user_to_workspace(
     )
 
 
+@log
 def delete_user_from_workspace(
     user: str | UUID,
     workspace: Optional[str | UUID] = None,
@@ -120,6 +123,7 @@ def delete_user_from_workspace(
     )
 
 
+@log
 def restore_deleted_workspace(workspace_id: UUID, name: str, email_address: str):
     """
     Restores a deleted workspace.
@@ -152,6 +156,7 @@ def restore_deleted_workspace(workspace_id: UUID, name: str, email_address: str)
     )
 
 
+@log
 def list_orphaned_workspaces(top: int = 100) -> pd.DataFrame:
     """
     Shows a list of orphaned workspaces (those with no users or no admins).

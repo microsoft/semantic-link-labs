@@ -7,8 +7,10 @@ from sempy_labs._helper_functions import (
     _create_dataframe,
     _update_dataframe_datatypes,
 )
+from sempy._utils._log import log
 
 
+@log
 def list_external_data_shares() -> pd.DataFrame:
     """
     Lists external data shares in the tenant. This function is for admins.
@@ -63,6 +65,7 @@ def list_external_data_shares() -> pd.DataFrame:
     return df
 
 
+@log
 def revoke_external_data_share(
     external_data_share_id: UUID, item_id: UUID, workspace: str | UUID
 ):

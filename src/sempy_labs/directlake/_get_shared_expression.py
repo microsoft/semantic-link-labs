@@ -1,7 +1,9 @@
 from typing import Optional
 from uuid import UUID
+from sempy._utils._log import log
 
 
+@log
 def get_shared_expression(
     lakehouse: Optional[str] = None, workspace: Optional[str | UUID] = None
 ) -> str:

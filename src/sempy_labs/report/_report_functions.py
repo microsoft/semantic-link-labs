@@ -26,6 +26,7 @@ import sempy_labs._icons as icons
 from uuid import UUID
 
 
+@log
 def get_report_json(
     report: str,
     workspace: Optional[str | UUID] = None,
@@ -90,6 +91,7 @@ def get_report_json(
     return report_json
 
 
+@log
 def report_dependency_tree(workspace: Optional[str | UUID] = None):
     """
     Prints a dependency between reports and semantic models.
@@ -142,6 +144,7 @@ def report_dependency_tree(workspace: Optional[str | UUID] = None):
         print(f"{pre}{node.custom_property}'{node.name}'")
 
 
+@log
 def clone_report(
     report: str,
     cloned_report: str,
@@ -221,6 +224,7 @@ def clone_report(
     )
 
 
+@log
 def launch_report(report: str, workspace: Optional[str | UUID] = None):
     """
     Shows a Power BI report within a Fabric notebook.
@@ -249,6 +253,7 @@ def launch_report(report: str, workspace: Optional[str | UUID] = None):
     return report
 
 
+@log
 def list_report_pages(report: str, workspace: Optional[str | UUID] = None):
     """
     Shows the properties of all pages within a Power BI report.
@@ -316,6 +321,7 @@ def list_report_pages(report: str, workspace: Optional[str | UUID] = None):
     return df
 
 
+@log
 def list_report_visuals(report: str, workspace: Optional[str | UUID] = None):
     """
     Shows the properties of all visuals within a Power BI report.
@@ -369,6 +375,7 @@ def list_report_visuals(report: str, workspace: Optional[str | UUID] = None):
     return df
 
 
+@log
 def list_report_bookmarks(report: str, workspace: Optional[str | UUID] = None):
     """
     Shows the properties of all bookmarks within a Power BI report.

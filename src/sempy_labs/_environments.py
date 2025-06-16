@@ -11,8 +11,10 @@ from sempy_labs._helper_functions import (
     create_item,
 )
 from uuid import UUID
+from sempy._utils._log import log
 
 
+@log
 def create_environment(
     environment: str,
     description: Optional[str] = None,
@@ -43,6 +45,7 @@ def create_environment(
     )
 
 
+@log
 def list_environments(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the environments within a workspace.
@@ -108,6 +111,7 @@ def list_environments(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     return df
 
 
+@log
 def delete_environment(environment: str | UUID, workspace: Optional[str | UUID] = None):
     """
     Deletes a Fabric environment.
@@ -127,6 +131,7 @@ def delete_environment(environment: str | UUID, workspace: Optional[str | UUID] 
     delete_item(item=environment, type="Environment", workspace=workspace)
 
 
+@log
 def publish_environment(
     environment: str | UUID, workspace: Optional[str | UUID] = None
 ):

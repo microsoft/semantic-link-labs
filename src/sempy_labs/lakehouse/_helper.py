@@ -54,6 +54,7 @@ def is_v_ordered(
     return any(b"vorder" in key for key in ds_schema.keys())
 
 
+@log
 def delete_lakehouse(
     lakehouse: str | UUID, workspace: Optional[str | UUID] = None
 ) -> None:
@@ -77,6 +78,7 @@ def delete_lakehouse(
     delete_item(item=lakehouse, item_type="lakehouse", workspace=workspace)
 
 
+@log
 def update_lakehouse(
     name: Optional[str] = None,
     description: Optional[str] = None,

@@ -19,6 +19,7 @@ import requests
 import sempy_labs._authentication as auth
 from jsonpath_ng.ext import parse
 from jsonpath_ng.jsonpath import Fields, Index
+from sempy._utils._log import log
 
 
 def _build_url(url: str, params: dict) -> str:
@@ -37,6 +38,7 @@ def _encode_user(user: str) -> str:
     return urllib.parse.quote(user, safe="@")
 
 
+@log
 def create_abfss_path(
     lakehouse_id: UUID,
     lakehouse_workspace_id: UUID,
@@ -76,6 +78,7 @@ def create_abfss_path(
     return path
 
 
+@log
 def create_abfss_path_from_path(
     lakehouse_id: UUID, workspace_id: UUID, file_path: str
 ) -> str:
@@ -103,6 +106,7 @@ def _split_abfss_path(path: str) -> Tuple[UUID, UUID, str]:
     return workspace_id, item_id, delta_table_name
 
 
+@log
 def format_dax_object_name(table: str, column: str) -> str:
     """
     Formats a table/column combination to the 'Table Name'[Column Name] format.
@@ -123,6 +127,7 @@ def format_dax_object_name(table: str, column: str) -> str:
     return "'" + table + "'[" + column + "]"
 
 
+@log
 def create_relationship_name(
     from_table: str, from_column: str, to_table: str, to_column: str
 ) -> str:
@@ -153,6 +158,7 @@ def create_relationship_name(
     )
 
 
+@log
 def resolve_report_id(
     report: str | UUID, workspace: Optional[str | UUID] = None
 ) -> UUID:
@@ -177,6 +183,7 @@ def resolve_report_id(
     return resolve_item_id(item=report, type="Report", workspace=workspace)
 
 
+@log
 def resolve_report_name(report_id: UUID, workspace: Optional[str | UUID] = None) -> str:
     """
     Obtains the name of the Power BI report.
@@ -199,6 +206,7 @@ def resolve_report_name(report_id: UUID, workspace: Optional[str | UUID] = None)
     return resolve_item_name(item_id=report_id, workspace=workspace)
 
 
+@log
 def delete_item(
     item: str | UUID, type: str, workspace: Optional[str | UUID] = None
 ) -> None:
@@ -230,6 +238,7 @@ def delete_item(
     )
 
 
+@log
 def create_item(
     name: str,
     type: str,
@@ -281,6 +290,7 @@ def create_item(
     )
 
 
+@log
 def get_item_definition(
     item: str | UUID,
     type: str,
@@ -319,6 +329,7 @@ def get_item_definition(
         return value
 
 
+@log
 def resolve_lakehouse_name_and_id(
     lakehouse: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None
 ) -> Tuple[str, UUID]:
@@ -344,6 +355,7 @@ def resolve_lakehouse_name_and_id(
     return lakehouse_name, lakehouse_id
 
 
+@log
 def resolve_dataset_name_and_id(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> Tuple[str, UUID]:
@@ -355,6 +367,7 @@ def resolve_dataset_name_and_id(
     return dataset_name, dataset_id
 
 
+@log
 def resolve_dataset_id(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> UUID:
@@ -379,6 +392,7 @@ def resolve_dataset_id(
     return resolve_item_id(item=dataset, type="SemanticModel", workspace=workspace)
 
 
+@log
 def resolve_dataset_name(
     dataset_id: UUID, workspace: Optional[str | UUID] = None
 ) -> str:
@@ -403,6 +417,7 @@ def resolve_dataset_name(
     return resolve_item_name(item_id=dataset_id, workspace=workspace)
 
 
+@log
 def resolve_lakehouse_name(
     lakehouse_id: Optional[UUID] = None, workspace: Optional[str | UUID] = None
 ) -> str:
@@ -435,6 +450,7 @@ def resolve_lakehouse_name(
     return resolve_item_name(item_id=lakehouse_id, workspace=workspace)
 
 
+@log
 def resolve_lakehouse_id(
     lakehouse: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None
 ) -> UUID:
@@ -470,6 +486,7 @@ def resolve_lakehouse_id(
     return lakehouse_id
 
 
+@log
 def get_direct_lake_sql_endpoint(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> UUID:
@@ -517,6 +534,7 @@ def get_direct_lake_sql_endpoint(
         return sqlEndpointId
 
 
+@log
 def generate_embedded_filter(filter: str) -> str:
     """
     Converts the filter expression to a filter expression which can be used by a Power BI embedded URL.
@@ -582,6 +600,7 @@ def generate_embedded_filter(filter: str) -> str:
     return revised_filter
 
 
+@log
 def save_as_delta_table(
     dataframe,
     delta_table_name: str,
@@ -735,6 +754,7 @@ def save_as_delta_table(
     )
 
 
+@log
 def language_validate(language: str):
     """
     Validateds that the language specified exists within the supported langauges.
@@ -771,6 +791,7 @@ def language_validate(language: str):
     return lang
 
 
+@log
 def resolve_workspace_id(
     workspace: Optional[str | UUID] = None,
 ) -> UUID:
@@ -803,6 +824,7 @@ def resolve_workspace_id(
     return workspace_id
 
 
+@log
 def resolve_workspace_name(workspace_id: Optional[UUID] = None) -> str:
 
     if workspace_id is None:
@@ -820,6 +842,7 @@ def resolve_workspace_name(workspace_id: Optional[UUID] = None) -> str:
     return response.get("displayName")
 
 
+@log
 def resolve_workspace_name_and_id(
     workspace: Optional[str | UUID] = None,
 ) -> Tuple[str, str]:
@@ -865,6 +888,7 @@ def resolve_workspace_name_and_id(
     return workspace_name, workspace_id
 
 
+@log
 def resolve_item_id(
     item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None
 ) -> UUID:
@@ -909,6 +933,7 @@ def resolve_item_id(
     return item_id
 
 
+@log
 def resolve_item_name_and_id(
     item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None
 ) -> Tuple[str, UUID]:
@@ -926,6 +951,7 @@ def resolve_item_name_and_id(
     return item_name, item_id
 
 
+@log
 def resolve_item_name(item_id: UUID, workspace: Optional[str | UUID] = None) -> str:
 
     workspace_id = resolve_workspace_id(workspace)
@@ -946,6 +972,7 @@ def resolve_item_name(item_id: UUID, workspace: Optional[str | UUID] = None) -> 
     return item_name
 
 
+@log
 def _extract_json(dataframe: pd.DataFrame) -> dict:
 
     payload = dataframe["payload"].iloc[0]
@@ -954,6 +981,7 @@ def _extract_json(dataframe: pd.DataFrame) -> dict:
     return json.loads(json_file)
 
 
+@log
 def _conv_b64(file):
 
     loadJson = json.dumps(file)
@@ -962,11 +990,13 @@ def _conv_b64(file):
     return f
 
 
+@log
 def _decode_b64(file, format: Optional[str] = "utf-8"):
 
     return base64.b64decode(file).decode(format)
 
 
+@log
 def is_default_semantic_model(
     dataset: str, workspace: Optional[str | UUID] = None
 ) -> bool:
@@ -1000,6 +1030,7 @@ def is_default_semantic_model(
     return dataset in default_semantic_models
 
 
+@log
 def resolve_item_type(item_id: UUID, workspace: Optional[str | UUID] = None) -> str:
     """
     Obtains the item type for a given Fabric Item Id within a Fabric workspace.
@@ -1030,6 +1061,7 @@ def resolve_item_type(item_id: UUID, workspace: Optional[str | UUID] = None) -> 
     return dfI_filt["Type"].iloc[0]
 
 
+@log
 def resolve_dataset_from_report(
     report: str | UUID, workspace: Optional[str | UUID] = None
 ) -> Tuple[UUID, str, UUID, str]:
@@ -1071,6 +1103,7 @@ def _add_part(target_dict, path, payload):
     target_dict["definition"]["parts"].append(part)
 
 
+@log
 def resolve_workspace_capacity(
     workspace: Optional[str | UUID] = None,
 ) -> Tuple[UUID, str]:
@@ -1105,6 +1138,7 @@ def resolve_workspace_capacity(
     return capacity_id, capacity_name
 
 
+@log
 def get_capacity_id(workspace: Optional[str | UUID] = None) -> UUID:
     """
     Obtains the Capacity Id for a given workspace.
@@ -1136,6 +1170,7 @@ def get_capacity_id(workspace: Optional[str | UUID] = None) -> UUID:
     return capacity_id
 
 
+@log
 def get_capacity_name(workspace: Optional[str | UUID] = None) -> str:
     """
     Obtains the capacity name for a given workspace.
@@ -1166,6 +1201,7 @@ def get_capacity_name(workspace: Optional[str | UUID] = None) -> str:
     return dfC_filt["Display Name"].iloc[0]
 
 
+@log
 def resolve_capacity_name(capacity_id: Optional[UUID] = None) -> str:
     """
     Obtains the capacity name for a given capacity Id.
@@ -1198,6 +1234,7 @@ def resolve_capacity_name(capacity_id: Optional[UUID] = None) -> str:
     return dfC_filt["Display Name"].iloc[0]
 
 
+@log
 def resolve_capacity_id(capacity: Optional[str | UUID] = None, **kwargs) -> UUID:
     """
     Obtains the capacity Id for a given capacity name.
@@ -1381,6 +1418,7 @@ def _get_blob_client(workspace_id: UUID, item_id: UUID):
     return BlobServiceClient(url, credential=FabricTokenCredential())
 
 
+@log
 def resolve_warehouse_id(
     warehouse: str | UUID, workspace: Optional[str | UUID]
 ) -> UUID:
@@ -1461,6 +1499,7 @@ def convert_to_alphanumeric_lowercase(input_string):
     return cleaned_string
 
 
+@log
 def resolve_environment_id(
     environment: str | UUID, workspace: Optional[str | UUID] = None
 ) -> UUID:
@@ -1490,6 +1529,7 @@ def _make_clickable(val):
     return f'<a target="_blank" href="{val}">{val}</a>'
 
 
+@log
 def convert_to_friendly_case(text: str) -> str:
     """
     Converts a string of pascal/camel/snake case to business-friendly case.
@@ -1514,6 +1554,7 @@ def convert_to_friendly_case(text: str) -> str:
     return text
 
 
+@log
 def resolve_notebook_id(
     notebook: str | UUID, workspace: Optional[str | UUID] = None
 ) -> UUID:
@@ -1543,6 +1584,7 @@ def generate_guid():
     return str(uuid.uuid4())
 
 
+@log
 def _get_column_aggregate(
     table_name: str,
     column_name: str | List[str] = "RunId",

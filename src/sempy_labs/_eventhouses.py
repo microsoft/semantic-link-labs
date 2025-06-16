@@ -3,18 +3,18 @@ from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _base_api,
-    resolve_item_id,
     _create_dataframe,
     _conv_b64,
-    _decode_b64,
     delete_item,
     create_item,
     get_item_definition,
 )
 from uuid import UUID
 import sempy_labs._icons as icons
+from sempy._utils._log import log
 
 
+@log
 def create_eventhouse(
     name: str,
     definition: Optional[dict],
@@ -66,6 +66,7 @@ def create_eventhouse(
     )
 
 
+@log
 def list_eventhouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the eventhouses within a workspace.
@@ -114,6 +115,7 @@ def list_eventhouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     return df
 
 
+@log
 def delete_eventhouse(name: str, workspace: Optional[str | UUID] = None):
     """
     Deletes a Fabric eventhouse.
@@ -133,6 +135,7 @@ def delete_eventhouse(name: str, workspace: Optional[str | UUID] = None):
     delete_item(item=name, type="Eventhouse", workspace=workspace)
 
 
+@log
 def get_eventhouse_definition(
     eventhouse: str | UUID,
     workspace: Optional[str | UUID] = None,

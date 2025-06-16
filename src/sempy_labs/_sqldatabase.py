@@ -9,8 +9,10 @@ from sempy_labs._helper_functions import (
 import pandas as pd
 from typing import Optional
 from uuid import UUID
+from sempy._utils._log import log
 
 
+@log
 def create_sql_database(
     name: str, description: Optional[str] = None, workspace: Optional[str | UUID] = None
 ):
@@ -36,6 +38,7 @@ def create_sql_database(
     )
 
 
+@log
 def delete_sql_database(
     sql_database: str | UUID, workspace: Optional[str | UUID] = None
 ):
@@ -57,6 +60,7 @@ def delete_sql_database(
     delete_item(item=sql_database, type="SQLDatabase", workspace=workspace)
 
 
+@log
 def list_sql_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Lists all SQL databases in the Fabric workspace.
@@ -115,6 +119,7 @@ def list_sql_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     return df
 
 
+@log
 def get_sql_database_tables(
     sql_database: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
@@ -150,6 +155,7 @@ def get_sql_database_tables(
     return df
 
 
+@log
 def get_sql_database_columns(
     sql_database: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:

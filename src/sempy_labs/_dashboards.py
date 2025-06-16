@@ -7,8 +7,10 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _update_dataframe_datatypes,
 )
+from sempy._utils._log import log
 
 
+@log
 def list_dashboards(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows a list of the dashboards within a workspace.

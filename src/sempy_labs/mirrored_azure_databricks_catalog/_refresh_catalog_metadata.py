@@ -6,8 +6,10 @@ from sempy_labs._helper_functions import (
     _base_api,
 )
 import sempy_labs._icons as icons
+from sempy._utils._log import log
 
 
+@log
 def refresh_catalog_metadata(
     mirrored_azure_databricks_catalog: str | UUID,
     workspace: Optional[str | UUID] = None,

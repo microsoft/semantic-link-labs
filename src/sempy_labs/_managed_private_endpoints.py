@@ -9,8 +9,10 @@ from sempy_labs._helper_functions import (
     _create_dataframe,
 )
 from uuid import UUID
+from sempy._utils._log import log
 
 
+@log
 def create_managed_private_endpoint(
     name: str,
     target_private_link_resource_id: UUID,
@@ -72,6 +74,7 @@ def create_managed_private_endpoint(
     )
 
 
+@log
 def list_managed_private_endpoints(
     workspace: Optional[str | UUID] = None,
 ) -> pd.DataFrame:
@@ -131,6 +134,7 @@ def list_managed_private_endpoints(
     return df
 
 
+@log
 def delete_managed_private_endpoint(
     managed_private_endpoint: str | UUID, workspace: Optional[str | UUID] = None
 ):

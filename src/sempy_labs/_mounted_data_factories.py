@@ -1,20 +1,19 @@
 import pandas as pd
-import json
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _base_api,
     _create_dataframe,
     _update_dataframe_datatypes,
-    resolve_item_id,
-    _decode_b64,
-    delete_item,
     get_item_definition,
+    delete_item,
 )
 
 from uuid import UUID
+from sempy._utils._log import log
 
 
+@log
 def list_mounted_data_factories(
     workspace: Optional[str | UUID] = None,
 ) -> pd.DataFrame:
@@ -65,6 +64,7 @@ def list_mounted_data_factories(
     return df
 
 
+@log
 def get_mounted_data_factory_definition(
     mounted_data_factory: str | UUID, workspace: Optional[str | UUID] = None
 ) -> dict:
@@ -96,6 +96,7 @@ def get_mounted_data_factory_definition(
     )
 
 
+@log
 def delete_mounted_data_factory(
     mounted_data_factory: str | UUID, workspace: Optional[str | UUID]
 ):

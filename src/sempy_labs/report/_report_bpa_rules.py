@@ -1,6 +1,8 @@
 import pandas as pd
+from sempy._utils._log import log
 
 
+@log
 def report_bpa_rules() -> pd.DataFrame:
     """
     Shows the default rules for the report BPA used by the run_report_bpa function.

@@ -10,8 +10,10 @@ import pandas as pd
 from typing import Optional, List
 from uuid import UUID
 import sempy_labs._icons as icons
+from sempy._utils._log import log
 
 
+@log
 def list_tags() -> pd.DataFrame:
     """
     Shows a list of all the tenant's tags.
@@ -39,7 +41,6 @@ def list_tags() -> pd.DataFrame:
     )
 
     dfs = []
-
     for r in responses:
         for v in r.get("value", []):
             new_data = {
@@ -55,6 +56,7 @@ def list_tags() -> pd.DataFrame:
     return df
 
 
+@log
 def resolve_tags(tags: str | List[str]) -> List[str]:
     """
     Resolves the tags to a list of strings.
@@ -92,6 +94,7 @@ def resolve_tags(tags: str | List[str]) -> List[str]:
     return tag_list
 
 
+@log
 def apply_tags(
     item: str | UUID,
     type: str,
@@ -143,6 +146,7 @@ def apply_tags(
     )
 
 
+@log
 def unapply_tags(
     item: str | UUID,
     type: str,

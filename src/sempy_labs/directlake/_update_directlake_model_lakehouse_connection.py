@@ -13,6 +13,7 @@ from uuid import UUID
 import re
 
 
+@log
 def _extract_expression_list(expression):
     """
     Finds the pattern for DL/SQL & DL/OL expressions in the semantic model.
@@ -37,6 +38,7 @@ def _extract_expression_list(expression):
     return result
 
 
+@log
 def _get_direct_lake_expressions(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> dict:

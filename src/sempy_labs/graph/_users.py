@@ -10,6 +10,7 @@ from sempy_labs._helper_functions import (
 from sempy._utils._log import log
 
 
+@log
 def resolve_user_id(user: str | UUID) -> UUID:
     """
     Resolves the user ID from the user principal name or ID.

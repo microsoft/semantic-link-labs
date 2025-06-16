@@ -249,6 +249,7 @@ def unassign_workspaces_from_capacity(
     )
 
 
+@log
 def list_modified_workspaces(
     modified_since: Optional[str] = None,
     exclude_inactive_workspaces: Optional[bool] = False,
@@ -298,6 +299,7 @@ def list_modified_workspaces(
     return df
 
 
+@log
 def list_workspace_access_details(
     workspace: Optional[Union[str, UUID]] = None,
 ) -> pd.DataFrame:
@@ -350,6 +352,7 @@ def list_workspace_access_details(
     return df
 
 
+@log
 def _resolve_workspace_name(workspace_id: Optional[UUID] = None) -> str:
     from sempy_labs._helper_functions import _get_fabric_context_setting
     from sempy.fabric.exceptions import FabricHTTPException
@@ -372,6 +375,7 @@ def _resolve_workspace_name(workspace_id: Optional[UUID] = None) -> str:
     return workspace_name
 
 
+@log
 def _resolve_workspace_name_and_id(
     workspace: str | UUID,
 ) -> Tuple[str, UUID]:
@@ -397,6 +401,7 @@ def _resolve_workspace_name_and_id(
     return workspace_name, workspace_id
 
 
+@log
 def list_workspace_users(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows a list of users that have access to the specified workspace.

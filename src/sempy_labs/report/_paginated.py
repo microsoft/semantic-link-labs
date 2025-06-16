@@ -7,8 +7,10 @@ from sempy_labs._helper_functions import (
     resolve_item_id,
     _create_dataframe,
 )
+from sempy._utils._log import log
 
 
+@log
 def get_report_datasources(
     report: str | UUID,
     workspace: Optional[str | UUID] = None,

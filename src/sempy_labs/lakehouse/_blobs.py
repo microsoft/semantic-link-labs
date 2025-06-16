@@ -14,6 +14,7 @@ import pandas as pd
 from sempy.fabric.exceptions import FabricHTTPException
 
 
+@log
 def _request_blob_api(
     request: str,
     method: str = "get",

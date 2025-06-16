@@ -4,8 +4,10 @@ from sempy_labs._helper_functions import (
 )
 import pandas as pd
 from sempy_labs.admin._basic_functions import list_workspaces
+from sempy._utils._log import log
 
 
+@log
 def list_git_connections() -> pd.DataFrame:
     """
     Shows a list of Git connections.

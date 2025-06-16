@@ -1,4 +1,3 @@
-import sempy.fabric as fabric
 import sempy_labs._icons as icons
 from typing import Optional
 from sempy_labs._helper_functions import (
@@ -11,8 +10,10 @@ from sempy_labs._helper_functions import (
 )
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from uuid import UUID
+from sempy._utils._log import log
 
 
+@log
 def download_report(
     report: str | UUID,
     file_name: Optional[str] = None,

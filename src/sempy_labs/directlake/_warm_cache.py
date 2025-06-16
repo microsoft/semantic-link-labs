@@ -182,6 +182,7 @@ def warm_direct_lake_cache_isresident(
     )
 
 
+@log
 def _put_columns_into_memory(dataset, workspace, col_df, return_dataframe: bool = True):
 
     row_limit = 1000000

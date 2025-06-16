@@ -9,8 +9,10 @@ from sempy_labs._helper_functions import (
 )
 from uuid import UUID
 import sempy_labs._icons as icons
+from sempy._utils._log import log
 
 
+@log
 def list_apps(
     top: Optional[int] = 1000,
     skip: Optional[int] = None,
@@ -76,6 +78,7 @@ def list_apps(
     return df
 
 
+@log
 def _resolve_app_id(app: str | UUID) -> str:
     if _is_valid_uuid(app):
         return app
@@ -87,6 +90,7 @@ def _resolve_app_id(app: str | UUID) -> str:
         return df_filt["App Id"].iloc[0]
 
 
+@log
 def list_app_users(app: str | UUID) -> pd.DataFrame:
     """
     Shows a list of users that have access to the specified app.

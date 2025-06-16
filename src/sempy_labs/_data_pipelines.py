@@ -10,8 +10,10 @@ from sempy_labs._helper_functions import (
     create_item,
 )
 from uuid import UUID
+from sempy._utils._log import log
 
 
+@log
 def list_data_pipelines(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the data pipelines within a workspace.
@@ -56,6 +58,7 @@ def list_data_pipelines(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     return df
 
 
+@log
 def create_data_pipeline(
     name: str, description: Optional[str] = None, workspace: Optional[str | UUID] = None
 ):
@@ -81,6 +84,7 @@ def create_data_pipeline(
     )
 
 
+@log
 def delete_data_pipeline(name: str | UUID, workspace: Optional[str | UUID] = None):
     """
     Deletes a Fabric data pipeline.
@@ -100,6 +104,7 @@ def delete_data_pipeline(name: str | UUID, workspace: Optional[str | UUID] = Non
     delete_item(item=name, type="DataPipeline", workspace=workspace)
 
 
+@log
 def get_data_pipeline_definition(
     name: str | UUID, workspace: Optional[str | UUID] = None, decode: bool = True
 ) -> dict | pd.DataFrame:

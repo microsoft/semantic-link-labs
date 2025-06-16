@@ -13,6 +13,7 @@ from sempy_labs._helper_functions import (
 )
 
 
+@log
 def patch_capacity(capacity: str | UUID, tenant_key_id: UUID):
     """
     Changes specific capacity information. Currently, this API call only supports changing the capacity's encryption key.
@@ -44,6 +45,7 @@ def patch_capacity(capacity: str | UUID, tenant_key_id: UUID):
     )
 
 
+@log
 def _resolve_capacity_name_and_id(
     capacity: str | UUID,
 ) -> Tuple[str, UUID]:
@@ -58,6 +60,7 @@ def _resolve_capacity_name_and_id(
     return capacity_name, capacity_id
 
 
+@log
 def _resolve_capacity_id(
     capacity: str | UUID,
 ) -> UUID:
@@ -76,6 +79,7 @@ def _resolve_capacity_id(
     return capacity_id
 
 
+@log
 def _list_capacities_meta() -> pd.DataFrame:
     """
     Shows the a list of capacities and their properties. This function is the admin version.
@@ -117,6 +121,7 @@ def _list_capacities_meta() -> pd.DataFrame:
     return df
 
 
+@log
 def get_capacity_assignment_status(
     workspace: Optional[str | UUID] = None,
 ) -> pd.DataFrame:
@@ -178,6 +183,7 @@ def get_capacity_assignment_status(
     return df
 
 
+@log
 def get_capacity_state(capacity: Optional[str | UUID] = None):
     """
     Gets the state of a capacity.
@@ -269,6 +275,7 @@ def list_capacities(
     return df
 
 
+@log
 def list_capacity_users(capacity: str | UUID) -> pd.DataFrame:
     """
     Shows a list of users that have access to the specified workspace.

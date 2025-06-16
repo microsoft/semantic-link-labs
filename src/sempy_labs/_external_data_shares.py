@@ -8,8 +8,10 @@ from sempy_labs._helper_functions import (
     _create_dataframe,
     resolve_item_id,
 )
+from sempy._utils._log import log
 
 
+@log
 def create_external_data_share(
     item_name: str,
     item_type: str,
@@ -57,6 +59,7 @@ def create_external_data_share(
     )
 
 
+@log
 def revoke_external_data_share(
     external_data_share_id: UUID,
     item_name: str,
@@ -94,6 +97,7 @@ def revoke_external_data_share(
     )
 
 
+@log
 def list_external_data_shares_in_item(
     item_name: str, item_type: str, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
@@ -164,6 +168,8 @@ def list_external_data_shares_in_item(
                 "Invitation URL": i.get("invitationUrl"),
             }
             dfs.append(pd.DataFrame(new_data, index=[0]))
-    df = pd.concat(dfs, ignore_index=True)
+
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
 
     return df

@@ -1,5 +1,4 @@
 from sempy_labs._helper_functions import (
-    resolve_workspace_name_and_id,
     resolve_workspace_id,
     _base_api,
     _create_dataframe,
@@ -9,8 +8,10 @@ from sempy_labs._helper_functions import (
 import pandas as pd
 from typing import Optional
 from uuid import UUID
+from sempy._utils._log import log
 
 
+@log
 def list_variable_libraries(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the variable libraries within a workspace.
@@ -68,6 +69,7 @@ def list_variable_libraries(workspace: Optional[str | UUID] = None) -> pd.DataFr
     return df
 
 
+@log
 def delete_variable_library(
     variable_library: str | UUID, workspace: Optional[str | UUID] = None
 ):

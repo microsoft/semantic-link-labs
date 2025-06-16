@@ -2,8 +2,10 @@ import sempy
 import sempy.fabric as fabric
 import pandas as pd
 from typing import List, Optional
+from sempy._utils._log import log
 
 
+@log
 def list_all_items(workspaces: Optional[str | List[str]] = None):
 
     df = pd.DataFrame(
@@ -41,6 +43,7 @@ def list_all_items(workspaces: Optional[str | List[str]] = None):
     return df
 
 
+@log
 def data_dictionary(dataset: str, workspace: Optional[str | None] = None):
 
     from sempy_labs.tom import connect_semantic_model

@@ -6,8 +6,10 @@ from uuid import UUID
 from sempy_labs._tags import list_tags
 import sempy_labs._icons as icons
 from typing import List
+from sempy._utils._log import log
 
 
+@log
 def resolve_tag_id(tag: str | UUID):
 
     if _is_valid_uuid(tag):
@@ -22,6 +24,7 @@ def resolve_tag_id(tag: str | UUID):
     return tag_id
 
 
+@log
 def create_tags(tags: str | List[str]):
     """
     Creates a new tag or tags.
@@ -77,6 +80,7 @@ def create_tags(tags: str | List[str]):
     print(f"{icons.green_dot} The '{available_tags}' tag(s) have been created.")
 
 
+@log
 def delete_tag(tag: str | UUID):
     """
     Deletes a tag.
@@ -98,6 +102,7 @@ def delete_tag(tag: str | UUID):
     print(f"{icons.green_dot} The '{tag}' tag has been deleted.")
 
 
+@log
 def update_tag(name: str, tag: str | UUID):
     """
     Updates the name of a tag.

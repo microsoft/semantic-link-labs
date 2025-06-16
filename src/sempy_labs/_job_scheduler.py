@@ -215,6 +215,7 @@ def run_on_demand_item_job(
     print(f"{icons.green_dot} The '{item_name}' {type.lower()} has been executed.")
 
 
+@log
 def create_item_schedule_cron(
     item: str | UUID,
     type: str,
@@ -283,6 +284,7 @@ def create_item_schedule_cron(
     )
 
 
+@log
 def create_item_schedule_daily(
     item: str | UUID,
     type: str,
@@ -351,6 +353,7 @@ def create_item_schedule_daily(
     )
 
 
+@log
 def create_item_schedule_weekly(
     item: str | UUID,
     type: str,

@@ -8,8 +8,10 @@ from sempy_labs._helper_functions import (
 )
 from uuid import UUID
 import sempy_labs._icons as icons
+from sempy._utils._log import log
 
 
+@log
 def list_reports(
     top: Optional[int] = None,
     skip: Optional[int] = None,
@@ -98,6 +100,7 @@ def list_reports(
     return df
 
 
+@log
 def _resolve_report_id(report: str | UUID) -> str:
     if _is_valid_uuid(report):
         return report
@@ -109,6 +112,7 @@ def _resolve_report_id(report: str | UUID) -> str:
         return df_filt["Report Id"].iloc[0]
 
 
+@log
 def list_report_users(report: str | UUID) -> pd.DataFrame:
     """
     Shows a list of users that have access to the specified report.
@@ -159,12 +163,12 @@ def list_report_users(report: str | UUID) -> pd.DataFrame:
 
     if rows:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
-
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
 
+@log
 def list_report_subscriptions(report: str | UUID) -> pd.DataFrame:
     """
     Shows a list of report subscriptions along with subscriber details. This is a preview API call.
@@ -233,7 +237,6 @@ def list_report_subscriptions(report: str | UUID) -> pd.DataFrame:
 
     if rows:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
-
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df

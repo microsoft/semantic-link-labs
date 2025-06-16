@@ -8,8 +8,10 @@ from sempy_labs._helper_functions import (
     create_item,
 )
 from uuid import UUID
+from sempy._utils._log import log
 
 
+@log
 def list_ml_models(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the ML models within a workspace.
@@ -60,6 +62,7 @@ def list_ml_models(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     return df
 
 
+@log
 def create_ml_model(
     name: str, description: Optional[str] = None, workspace: Optional[str | UUID] = None
 ):
@@ -83,6 +86,7 @@ def create_ml_model(
     create_item(name=name, description=description, type="MLModel", workspace=workspace)
 
 
+@log
 def delete_ml_model(name: str | UUID, workspace: Optional[str | UUID] = None):
     """
     Deletes a Fabric ML model.

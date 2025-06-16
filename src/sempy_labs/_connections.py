@@ -11,8 +11,10 @@ from sempy_labs._helper_functions import (
 from uuid import UUID
 import sempy_labs._icons as icons
 from sempy_labs._gateways import _resolve_gateway_id
+from sempy._utils._log import log
 
 
+@log
 def delete_connection(connection: str | UUID):
     """
     Delete a connection.
@@ -34,6 +36,7 @@ def delete_connection(connection: str | UUID):
     print(f"{icons.green_dot} The '{connection}' connection has been deleted.")
 
 
+@log
 def delete_connection_role_assignment(connection: str | UUID, role_assignment_id: UUID):
     """
     Delete the specified role assignment for the connection.
@@ -62,6 +65,7 @@ def delete_connection_role_assignment(connection: str | UUID, role_assignment_id
     )
 
 
+@log
 def _resolve_connection_id(connection: str | UUID) -> UUID:
 
     dfC = list_connections()
@@ -78,6 +82,7 @@ def _resolve_connection_id(connection: str | UUID) -> UUID:
     return dfC_filt["Connection Id"].iloc[0]
 
 
+@log
 def list_connection_role_assignments(connection: str | UUID) -> pd.DataFrame:
     """
     Returns a list of connection role assignments.
@@ -128,6 +133,7 @@ def list_connection_role_assignments(connection: str | UUID) -> pd.DataFrame:
     return df
 
 
+@log
 def list_connections() -> pd.DataFrame:
     """
     Lists all available connections.
@@ -201,6 +207,7 @@ def list_connections() -> pd.DataFrame:
     return df
 
 
+@log
 def list_item_connections(
     item_name: str, item_type: str, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
@@ -264,6 +271,7 @@ def list_item_connections(
     return df
 
 
+@log
 def _list_supported_connection_types(
     gateway: Optional[str | UUID] = None, show_all_creation_methods: bool = False
 ) -> pd.DataFrame:
@@ -310,6 +318,7 @@ def _list_supported_connection_types(
     return df
 
 
+@log
 def create_cloud_connection(
     name: str,
     server_name: str,
@@ -390,6 +399,7 @@ def create_cloud_connection(
     print(f"{icons.green_dot} The '{name}' cloud connection has been created.")
 
 
+@log
 def create_on_prem_connection(
     name: str,
     gateway: str | UUID,
@@ -474,6 +484,7 @@ def create_on_prem_connection(
     print(f"{icons.green_dot} The '{name}' on-prem connection has been created.")
 
 
+@log
 def create_vnet_connection(
     name: str,
     gateway: str | UUID,

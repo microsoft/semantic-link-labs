@@ -60,6 +60,7 @@ def _get_notebook_type(
     return file_extension[1:]
 
 
+@log
 def get_notebook_definition(
     notebook_name: str,
     workspace: Optional[str | UUID] = None,
@@ -172,6 +173,7 @@ def import_notebook_from_web(
         )
 
 
+@log
 def create_notebook(
     name: str,
     notebook_content: str,
@@ -227,6 +229,7 @@ def create_notebook(
     )
 
 
+@log
 def update_notebook_definition(
     name: str,
     notebook_content: str,

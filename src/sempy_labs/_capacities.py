@@ -218,6 +218,7 @@ def create_fabric_capacity(
     )
 
 
+@log
 def list_vcores() -> pd.DataFrame:
 
     columns = {
@@ -239,6 +240,7 @@ def list_vcores() -> pd.DataFrame:
     return df
 
 
+@log
 def get_capacity_resource_governance(capacity_name: str):
 
     dfC = list_capacities()

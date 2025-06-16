@@ -8,8 +8,10 @@ from sempy_labs._helper_functions import (
     create_item,
 )
 from uuid import UUID
+from sempy._utils._log import log
 
 
+@log
 def list_ml_experiments(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the ML experiments within a workspace.
@@ -60,6 +62,7 @@ def list_ml_experiments(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     return df
 
 
+@log
 def create_ml_experiment(
     name: str, description: Optional[str] = None, workspace: Optional[str | UUID] = None
 ):
@@ -85,6 +88,7 @@ def create_ml_experiment(
     )
 
 
+@log
 def delete_ml_experiment(name: str, workspace: Optional[str | UUID] = None):
     """
     Deletes a Fabric ML experiment.

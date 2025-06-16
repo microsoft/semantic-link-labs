@@ -4,8 +4,10 @@ from sempy_labs._helper_functions import (
 )
 from datetime import datetime, timedelta, timezone
 import xml.etree.ElementTree as ET
+from sempy._utils._log import log
 
 
+@log
 def get_user_delegation_key():
     """
     Gets a key that can be used to sign a user delegation SAS (shared access signature). A user delegation SAS grants access to Azure Blob Storage resources by using Microsoft Entra credentials.

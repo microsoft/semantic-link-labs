@@ -18,6 +18,7 @@ from sempy._utils._log import log
 from uuid import UUID
 
 
+@log
 def create_report_from_reportjson(
     report: str,
     dataset: str | UUID,
@@ -119,6 +120,7 @@ def create_report_from_reportjson(
     )
 
 
+@log
 def update_report_from_reportjson(
     report: str | UUID, report_json: dict, workspace: Optional[str | UUID] = None
 ):

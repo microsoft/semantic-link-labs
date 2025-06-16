@@ -7,8 +7,10 @@ from sempy_labs._helper_functions import (
     _create_dataframe,
 )
 from uuid import UUID
+from sempy._utils._log import log
 
 
+@log
 def connect_workspace_to_azure_dev_ops(
     organization_name: str,
     project_name: str,
@@ -64,6 +66,7 @@ def connect_workspace_to_azure_dev_ops(
     )
 
 
+@log
 def connect_workspace_to_github(
     owner_name: str,
     repository_name: str,
@@ -125,6 +128,7 @@ def connect_workspace_to_github(
     )
 
 
+@log
 def disconnect_workspace_from_git(workspace: Optional[str | UUID] = None):
     """
     Disconnects a workspace from a git repository.
@@ -148,6 +152,7 @@ def disconnect_workspace_from_git(workspace: Optional[str | UUID] = None):
     )
 
 
+@log
 def get_git_status(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Obtains the Git status of items in the workspace, that can be committed to Git.
@@ -209,6 +214,7 @@ def get_git_status(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     return df
 
 
+@log
 def get_git_connection(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Obtains the Git status of items in the workspace, that can be committed to Git.
@@ -265,6 +271,7 @@ def get_git_connection(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     return df
 
 
+@log
 def initialize_git_connection(workspace: Optional[str | UUID] = None) -> str:
     """
     Initializes a connection for a workspace that is connected to Git.
@@ -300,6 +307,7 @@ def initialize_git_connection(workspace: Optional[str | UUID] = None) -> str:
     return response_json.get("remoteCommitHash")
 
 
+@log
 def commit_to_git(
     comment: str,
     item_ids: UUID | List[UUID] = None,
@@ -368,6 +376,7 @@ def commit_to_git(
         )
 
 
+@log
 def update_from_git(
     remote_commit_hash: str,
     conflict_resolution_policy: str,
@@ -435,6 +444,7 @@ def update_from_git(
     )
 
 
+@log
 def get_my_git_credentials(
     workspace: Optional[str | UUID] = None,
 ) -> pd.DataFrame:
@@ -476,6 +486,7 @@ def get_my_git_credentials(
     return df
 
 
+@log
 def update_my_git_credentials(
     source: str,
     connection_id: Optional[UUID] = None,

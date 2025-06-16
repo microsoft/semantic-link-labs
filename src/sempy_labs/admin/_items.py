@@ -14,8 +14,10 @@ from sempy_labs._helper_functions import (
     _base_api,
     _create_dataframe,
 )
+from sempy._utils._log import log
 
 
+@log
 def _resolve_item_id(
     item: str,
     type: Optional[str] = None,
@@ -39,6 +41,7 @@ def _resolve_item_id(
     return item_id
 
 
+@log
 def _resolve_item_name_and_id(
     item: str,
     type: Optional[str] = None,
@@ -70,6 +73,7 @@ def _resolve_item_name_and_id(
     return item_name, item_id
 
 
+@log
 def list_items(
     capacity: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
@@ -177,6 +181,7 @@ def list_items(
     return df
 
 
+@log
 def list_item_access_details(
     item: str | UUID = None,
     type: str = None,

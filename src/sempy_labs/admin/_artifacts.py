@@ -9,8 +9,10 @@ from sempy_labs.admin._basic_functions import (
     _create_dataframe,
     _update_dataframe_datatypes,
 )
+from sempy._utils._log import log
 
 
+@log
 def list_unused_artifacts(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Returns a list of datasets, reports, and dashboards that have not been used within 30 days for the specified workspace.
@@ -44,6 +46,7 @@ def list_unused_artifacts(workspace: Optional[str | UUID] = None) -> pd.DataFram
         uses_pagination=True,
     )
 
+    dfs = []
     for r in responses:
         for i in r.get("unusedArtifactEntities", []):
             new_data = {
@@ -55,8 +58,10 @@ def list_unused_artifacts(workspace: Optional[str | UUID] = None) -> pd.DataFram
                 "Last Accessed Date Time": i.get("lastAccessedDateTime"),
             }
 
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            dfs.append(pd.DataFrame(new_data, index=[0]))
 
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df

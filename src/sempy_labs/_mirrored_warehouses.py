@@ -6,8 +6,10 @@ from sempy_labs._helper_functions import (
     _create_dataframe,
 )
 from uuid import UUID
+from sempy._utils._log import log
 
 
+@log
 def list_mirrored_warehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the mirrored warehouses within a workspace.

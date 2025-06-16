@@ -13,6 +13,7 @@ import sempy_labs._icons as icons
 import re
 
 
+@log
 def lakehouse_attached() -> bool:
     """
     Identifies if a lakehouse is attached to the notebook.
@@ -33,6 +34,7 @@ def lakehouse_attached() -> bool:
         return False
 
 
+@log
 def _optimize_table(path):
 
     if _pure_python_notebook():
@@ -46,6 +48,7 @@ def _optimize_table(path):
         DeltaTable.forPath(spark, path).optimize().executeCompaction()
 
 
+@log
 def _vacuum_table(path, retain_n_hours):
 
     if _pure_python_notebook():
@@ -145,6 +148,7 @@ def vacuum_lakehouse_tables(
         _vacuum_table(path=path, retain_n_hours=retain_n_hours)
 
 
+@log
 def run_table_maintenance(
     table_name: str,
     optimize: bool = False,

@@ -2,8 +2,10 @@ import sempy
 import pandas as pd
 import re
 from typing import Optional
+from sempy._utils._log import log
 
 
+@log
 def model_bpa_rules(
     dependencies: Optional[pd.DataFrame] = None,
     **kwargs,

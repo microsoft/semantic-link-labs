@@ -1,8 +1,10 @@
 import requests
 from typing import List, Optional
 from sempy_labs._a_lib_info import lib_name, lib_version
+from sempy._utils._log import log
 
 
+@log
 def _format_dax(
     expressions: str | List[str],
     skip_space_after_function_name: bool = False,

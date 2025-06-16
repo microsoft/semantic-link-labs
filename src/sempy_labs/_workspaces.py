@@ -8,8 +8,10 @@ from sempy_labs._helper_functions import (
     _create_dataframe,
 )
 from uuid import UUID
+from sempy._utils._log import log
 
 
+@log
 def delete_user_from_workspace(
     email_address: str, workspace: Optional[str | UUID] = None
 ):
@@ -42,6 +44,7 @@ def delete_user_from_workspace(
     )
 
 
+@log
 def update_workspace_user(
     email_address: str,
     role_name: str,
@@ -102,6 +105,7 @@ def update_workspace_user(
     )
 
 
+@log
 def list_workspace_users(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     A list of all the users of a workspace and their roles.
@@ -155,6 +159,7 @@ def list_workspace_users(workspace: Optional[str | UUID] = None) -> pd.DataFrame
     return df
 
 
+@log
 def add_user_to_workspace(
     email_address: str,
     role_name: str,
@@ -213,6 +218,7 @@ def add_user_to_workspace(
     )
 
 
+@log
 def assign_workspace_to_capacity(
     capacity: str | UUID,
     workspace: Optional[str | UUID] = None,
@@ -255,6 +261,7 @@ def assign_workspace_to_capacity(
     )
 
 
+@log
 def unassign_workspace_from_capacity(workspace: Optional[str | UUID] = None):
     """
     Unassigns a workspace from its assigned capacity.
@@ -284,6 +291,7 @@ def unassign_workspace_from_capacity(workspace: Optional[str | UUID] = None):
     )
 
 
+@log
 def list_workspace_role_assignments(
     workspace: Optional[str | UUID] = None,
 ) -> pd.DataFrame:
@@ -337,6 +345,7 @@ def list_workspace_role_assignments(
     return df
 
 
+@log
 def delete_workspace(workspace: Optional[str | UUID] = None):
     """
     Deletes a workspace.

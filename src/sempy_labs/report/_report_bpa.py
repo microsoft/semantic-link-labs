@@ -51,7 +51,9 @@ def run_report_bpa(
         A pandas dataframe in HTML format showing report objects which violated the best practice analyzer rules.
     """
 
-    with connect_report(report=report, workspace=workspace, readonly=True, show_diffs=False) as rpt:
+    with connect_report(
+        report=report, workspace=workspace, readonly=True, show_diffs=False
+    ) as rpt:
 
         dfCV = rpt.list_custom_visuals()
         dfP = rpt.list_pages()
@@ -113,7 +115,9 @@ def run_report_bpa(
 
                 # subset the right output columns (e.g. Table Name & Column Name)
                 if isinstance(violation_cols_or_func, list):
-                    violation_func = lambda violations: violations[violation_cols_or_func]
+                    violation_func = lambda violations: violations[
+                        violation_cols_or_func
+                    ]
                 else:
                     violation_func = violation_cols_or_func
 

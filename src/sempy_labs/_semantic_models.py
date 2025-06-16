@@ -13,8 +13,10 @@ from sempy_labs._helper_functions import (
 )
 import sempy_labs._icons as icons
 import re
+from sempy._utils._log import log
 
 
+@log
 def get_semantic_model_refresh_schedule(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
@@ -72,6 +74,7 @@ def get_semantic_model_refresh_schedule(
     return df
 
 
+@log
 def enable_semantic_model_scheduled_refresh(
     dataset: str | UUID,
     workspace: Optional[str | UUID] = None,
@@ -121,6 +124,7 @@ def enable_semantic_model_scheduled_refresh(
         )
 
 
+@log
 def delete_semantic_model(dataset: str | UUID, workspace: Optional[str | UUID] = None):
     """
     Deletes a semantic model.
@@ -140,6 +144,7 @@ def delete_semantic_model(dataset: str | UUID, workspace: Optional[str | UUID] =
     delete_item(item=dataset, type="SemanticModel", workspace=workspace)
 
 
+@log
 def update_semantic_model_refresh_schedule(
     dataset: str | UUID,
     days: Optional[str | List[str]] = None,
@@ -231,6 +236,7 @@ def update_semantic_model_refresh_schedule(
     )
 
 
+@log
 def list_semantic_model_datasources(
     dataset: str | UUID,
     workspace: Optional[str | UUID] = None,

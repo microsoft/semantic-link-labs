@@ -7,8 +7,10 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     create_item,
 )
+from sempy._utils._log import log
 
 
+@log
 def list_graphql_apis(workspace: Optional[str | UUID]) -> pd.DataFrame:
     """
     Shows the Graph QL APIs within a workspace.
@@ -57,6 +59,7 @@ def list_graphql_apis(workspace: Optional[str | UUID]) -> pd.DataFrame:
     return df
 
 
+@log
 def create_graphql_api(
     name: str, description: Optional[str] = None, workspace: Optional[str | UUID] = None
 ):

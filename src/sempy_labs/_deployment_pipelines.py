@@ -7,8 +7,10 @@ from sempy_labs._helper_functions import (
 )
 import sempy_labs._icons as icons
 from uuid import UUID
+from sempy._utils._log import log
 
 
+@log
 def list_deployment_pipelines() -> pd.DataFrame:
     """
     Shows a list of deployment pipelines the user can access.
@@ -46,6 +48,7 @@ def list_deployment_pipelines() -> pd.DataFrame:
     return df
 
 
+@log
 def list_deployment_pipeline_stages(deployment_pipeline: str | UUID) -> pd.DataFrame:
     """
     Shows the specified deployment pipeline stages.
@@ -104,6 +107,7 @@ def list_deployment_pipeline_stages(deployment_pipeline: str | UUID) -> pd.DataF
     return df
 
 
+@log
 def list_deployment_pipeline_stage_items(
     deployment_pipeline: str | UUID,
     stage: str | UUID,

@@ -65,6 +65,7 @@ def list_teams() -> pd.DataFrame:
     return df
 
 
+@log
 def list_chats(user: str | UUID) -> pd.DataFrame:
     """
     In progress...
@@ -95,6 +96,7 @@ def list_chats(user: str | UUID) -> pd.DataFrame:
     return df
 
 
+@log
 def send_teams_message(chat_id: str, message: str):
     """
     In progress...

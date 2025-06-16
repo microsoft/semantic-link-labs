@@ -9,8 +9,10 @@ from sempy_labs._helper_functions import (
     create_item,
 )
 from uuid import UUID
+from sempy._utils._log import log
 
 
+@log
 def list_kql_querysets(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the KQL querysets within a workspace.
@@ -55,6 +57,7 @@ def list_kql_querysets(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     return df
 
 
+@log
 def create_kql_queryset(
     name: str, description: Optional[str] = None, workspace: Optional[str | UUID] = None
 ):
@@ -80,6 +83,7 @@ def create_kql_queryset(
     )
 
 
+@log
 def delete_kql_queryset(
     kql_queryset: str | UUID, workspace: Optional[str | UUID] = None, **kwargs
 ):

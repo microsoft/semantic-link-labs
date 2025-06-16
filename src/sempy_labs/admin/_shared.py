@@ -3,8 +3,10 @@ from sempy_labs._helper_functions import (
     _base_api,
     _create_dataframe,
 )
+from sempy._utils._log import log
 
 
+@log
 def list_widely_shared_artifacts(
     api_name: str = "LinksSharedToWholeOrganization",
 ) -> pd.DataFrame:

@@ -13,6 +13,7 @@ from sempy_labs._helper_functions import (
 )
 
 
+@log
 def check_fallback_reason(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
@@ -195,6 +196,7 @@ def generate_direct_lake_semantic_model(
         refresh_semantic_model(dataset=dataset, workspace=workspace_id)
 
 
+@log
 def get_direct_lake_source(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> Tuple[str, str, UUID, UUID]:

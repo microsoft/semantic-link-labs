@@ -9,8 +9,10 @@ from sempy_labs._helper_functions import (
     _update_dataframe_datatypes,
 )
 import sempy_labs._icons as icons
+from sempy._utils._log import log
 
 
+@log
 def list_sql_endpoints(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the SQL endpoints within a workspace.
@@ -54,6 +56,7 @@ def list_sql_endpoints(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     return df
 
 
+@log
 def refresh_sql_endpoint_metadata(
     item: str | UUID,
     type: Literal["Lakehouse", "MirroredDatabase"],

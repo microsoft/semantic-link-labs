@@ -6,8 +6,10 @@ from sempy_labs._helper_functions import (
     _create_dataframe,
 )
 import pandas as pd
+from sempy._utils._log import log
 
 
+@log
 def discover_catalogs(
     databricks_workspace_connection_id: UUID,
     workspace: Optional[str | UUID] = None,
@@ -70,6 +72,7 @@ def discover_catalogs(
     return df
 
 
+@log
 def discover_schemas(
     catalog: str,
     databricks_workspace_connection_id: UUID,
@@ -135,6 +138,7 @@ def discover_schemas(
     return df
 
 
+@log
 def discover_tables(
     catalog: str,
     schema: str,

@@ -321,6 +321,7 @@ def cancel_dataset_refresh(
     )
 
 
+@log
 def get_semantic_model_refresh_history(
     dataset: str | UUID,
     request_id: Optional[str] = None,

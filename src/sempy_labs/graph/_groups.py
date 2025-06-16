@@ -11,6 +11,7 @@ import sempy_labs._icons as icons
 from typing import List, Literal
 
 
+@log
 def resolve_group_id(group: str | UUID) -> UUID:
     """
     Resolves the group ID from the group name or ID.
@@ -98,6 +99,7 @@ def list_groups() -> pd.DataFrame:
     return df
 
 
+@log
 def _get_group(group_id: UUID) -> pd.DataFrame:
     """
     Shows a list of groups and their properties.
@@ -280,6 +282,7 @@ def list_group_owners(group: str | UUID) -> pd.DataFrame:
     return df
 
 
+@log
 def _base_add_to_group(
     group: str | UUID,
     object: str | UUID,
@@ -359,6 +362,7 @@ def add_group_members(
     _base_add_to_group(group=group, object=user, object_type="members")
 
 
+@log
 def add_group_owners(
     group: str | UUID,
     user: str | UUID | List[str | UUID],

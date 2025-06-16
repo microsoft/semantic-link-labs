@@ -8,8 +8,10 @@ from sempy_labs._helper_functions import (
 import pandas as pd
 from typing import Optional
 from uuid import UUID
+from sempy._utils._log import log
 
 
+@log
 def list_livy_sessions(
     lakehouse: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:

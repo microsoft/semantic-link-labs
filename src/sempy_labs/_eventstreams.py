@@ -9,8 +9,10 @@ from sempy_labs._helper_functions import (
 )
 from uuid import UUID
 import sempy_labs._icons as icons
+from sempy._utils._log import log
 
 
+@log
 def list_eventstreams(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the eventstreams within a workspace.
@@ -54,6 +56,7 @@ def list_eventstreams(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     return df
 
 
+@log
 def create_eventstream(
     name: str, description: Optional[str] = None, workspace: Optional[str | UUID] = None
 ):
@@ -79,6 +82,7 @@ def create_eventstream(
     )
 
 
+@log
 def delete_eventstream(
     eventstream: str | UUID, workspace: Optional[str | UUID] = None, **kwargs
 ):
