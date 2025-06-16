@@ -55,7 +55,10 @@ def delta_analyzer_history(
 
     table_path = create_abfss_path(lakehouse_id, workspace_id, table_name, schema)
     local_path = _mount(lakehouse=lakehouse, workspace=workspace)
-    table_path_local = f"{local_path}/Tables/{table_name}"
+    if schema: #use schema if specified
+        table_path_local = f"{local_path}/Tables/{schema}/{table_name}"
+    else:
+        table_path_local = f"{local_path}/Tables/{table_name}"
     delta_table_path = f"{table_path}/_delta_log"
 
     files = notebookutils.fs.ls(delta_table_path)
