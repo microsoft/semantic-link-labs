@@ -6,10 +6,16 @@ from sempy_labs._helper_functions import (
     _base_api,
     _create_dataframe,
     resolve_workspace_name,
+    resolve_workspace_id,
+    _decode_b64,
+    _conv_b64,
+    get_jsonpath_value,
 )
 from typing import Optional, Tuple
 import sempy_labs._icons as icons
 from uuid import UUID
+from jsonpath_ng.ext import parse
+import json
 
 
 def list_dataflows(workspace: Optional[str | UUID] = None):
@@ -29,34 +35,50 @@ def list_dataflows(workspace: Optional[str | UUID] = None):
         A pandas dataframe showing the dataflows which exist within a workspace.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
 
     columns = {
         "Dataflow Id": "string",
         "Dataflow Name": "string",
+        "Description": "string",
         "Configured By": "string",
         "Users": "string",
-        "Generation": "int",
+        "Generation": "string",
     }
     df = _create_dataframe(columns=columns)
 
     response = _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/dataflows")
 
-    data = []  # Collect rows here
-
+    records = []
     for v in response.json().get("value", []):
-        new_data = {
-            "Dataflow Id": v.get("objectId"),
-            "Dataflow Name": v.get("name"),
-            "Configured By": v.get("configuredBy"),
-            "Users": v.get("users", []),
-            "Generation": v.get("generation"),
-        }
-        data.append(new_data)
+        gen = v.get("generation")
+        records.append(
+            {
+                "Dataflow Id": v.get("objectId"),
+                "Dataflow Name": v.get("name"),
+                "Description": "",
+                "Configured By": v.get("configuredBy"),
+                "Users": ", ".join(v.get("users", [])),
+                "Generation": "Gen2" if gen == 2 else "Gen1",
+            }
+        )
 
-    if data:
-        df = pd.DataFrame(data)
+    response = _base_api(request=f"/v1/workspaces/{workspace_id}/dataflows")
+    for v in response.json().get("value", []):
+        gen = v.get("generation")
+        records.append(
+            {
+                "Dataflow Id": v.get("id"),
+                "Dataflow Name": v.get("displayName"),
+                "Description": v.get("description"),
+                "Configured By": "",
+                "Users": "",
+                "Generation": "Gen2 CI/CD",
+            }
+        )
 
+    if records:
+        df = pd.DataFrame(records)
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
@@ -162,8 +184,10 @@ def list_upstream_dataflows(
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataflow_name, dataflow_id) = _resolve_dataflow_name_and_id(
-        dataflow=dataflow, workspace=workspace_id
+    (dataflow_name, dataflow_id, dataflow_generation) = (
+        _resolve_dataflow_name_and_id_and_generation(
+            dataflow=dataflow, workspace=workspace_id
+        )
     )
 
     columns = {
@@ -188,7 +212,7 @@ def list_upstream_dataflows(
             tgt_dataflow_id = v.get("targetDataflowId")
             tgt_workspace_id = v.get("groupId")
             tgt_workspace_name = resolve_workspace_name(workspace_id=tgt_workspace_id)
-            (tgt_dataflow_name, _) = _resolve_dataflow_name_and_id(
+            (tgt_dataflow_name, _, _) = _resolve_dataflow_name_and_id_and_generation(
                 dataflow=tgt_dataflow_id, workspace=tgt_workspace_id
             )
 
@@ -215,9 +239,9 @@ def list_upstream_dataflows(
     return df
 
 
-def _resolve_dataflow_name_and_id(
+def _resolve_dataflow_name_and_id_and_generation(
     dataflow: str | UUID, workspace: Optional[str | UUID] = None
-) -> Tuple[str, UUID]:
+) -> Tuple[str, UUID, str]:
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
@@ -228,12 +252,250 @@ def _resolve_dataflow_name_and_id(
     else:
         dfD_filt = dfD[dfD["Dataflow Name"] == dataflow]
 
-    if len(dfD_filt) == 0:
+    if dfD_filt.empty:
         raise ValueError(
             f"{icons.red_dot} The '{dataflow}' dataflow does not exist within the '{workspace_name}' workspace."
         )
 
     dataflow_id = dfD_filt["Dataflow Id"].iloc[0]
     dataflow_name = dfD_filt["Dataflow Name"].iloc[0]
+    dataflow_generation = dfD_filt["Generation"].iloc[0]
 
-    return dataflow_name, dataflow_id
+    return (dataflow_name, dataflow_id, dataflow_generation)
+
+
+def get_dataflow_definition(
+    dataflow: str | UUID,
+    workspace: Optional[str | UUID] = None,
+    decode: bool = True,
+) -> dict:
+    """
+    Obtains the definition of a dataflow. This supports Gen1, Gen2 and Gen 2 CI/CD dataflows.
+
+    This is a wrapper function for the following API: `Dataflows - Get Dataflow <https://learn.microsoft.com/rest/api/power-bi/dataflows/get-dataflow>`_.
+
+    Parameters
+    ----------
+    dataflow : str | uuid.UUID
+        The name or ID of the dataflow.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name.
+        Defaults to None, which resolves to the workspace of the attached lakehouse
+        or if no lakehouse is attached, resolves to the workspace of the notebook.
+    decode : bool, optional
+        If True, decodes the dataflow definition file.
+
+    Returns
+    -------
+    dict
+        The dataflow definition.
+    """
+
+    workspace_id = resolve_workspace_id(workspace)
+
+    (dataflow_name, dataflow_id, dataflow_generation) = (
+        _resolve_dataflow_name_and_id_and_generation(
+            dataflow=dataflow, workspace=workspace_id
+        )
+    )
+
+    if dataflow_generation == "Gen2 CI/CD":
+        result = _base_api(
+            request=f"/v1/workspaces/{workspace_id}/items/{dataflow_id}/getDefinition",
+            client="fabric_sp",
+            method="post",
+            lro_return_json=True,
+            status_codes=[200, 202],
+        )
+
+        if decode:
+            # Decode the payload from base64
+            definition = {"definition": {"parts": []}}
+
+            for part in result.get("definition", {}).get("parts", []):
+                path = part.get("path")
+                payload = part.get("payload")
+                decoded_payload = _decode_b64(payload)
+                definition["definition"]["parts"].append(
+                    {"path": path, "payload": decoded_payload}
+                )
+            return definition
+        else:
+            return result
+    else:
+        result = _base_api(
+            request=f"/v1.0/myorg/groups/{workspace_id}/dataflows/{dataflow_id}",
+            client="fabric_sp",
+            method="get",
+        ).json()
+
+        return result
+
+
+def upgrade_dataflow(
+    dataflow: str | UUID,
+    workspace: Optional[str | UUID] = None,
+    new_dataflow_name: Optional[str] = None,
+    new_dataflow_workspace: Optional[str | UUID] = None,
+):
+    """
+    Creates a native Fabric Dataflow Gen2 item based on the mashup definition from an existing dataflow.
+
+    Parameters
+    ----------
+    dataflow : str | uuid.UUID
+        The name or ID of the dataflow.
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    new_dataflow_name: str, default=None
+        Name of the new dataflow.
+    new_dataflow_workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID of the dataflow to be created.
+        Defaults to None which resolves to the existing workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    # Resolve the workspace name and ID
+    (workspace, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    # Resolve the dataflow name and ID
+    (dataflow_name, dataflow_id, dataflow_generation) = (
+        _resolve_dataflow_name_and_id_and_generation(dataflow, workspace_id)
+    )
+
+    if dataflow_generation == "Gen2 CI/CD":
+        # Print an error message that the dataflow is already a native Fabric item
+        print(
+            f"{icons.info} The dataflow '{dataflow_name}' is already a Fabric native Dataflow Gen2 item. No changes made."
+        )
+        return
+
+    (new_dataflow_workspace, new_dataflow_workspace_id) = resolve_workspace_name_and_id(
+        new_dataflow_workspace
+    )
+
+    # If no new dataflow name is provided, use the existing dataflow name
+    if not new_dataflow_name:
+        new_dataflow_name = dataflow_name
+
+    # Get dataflow definition
+    definition = get_dataflow_definition(dataflow, workspace_id)
+
+    # Check for linked table references
+    matches = (
+        parse("$['pbi:mashup'].connectionOverrides[*].kind").find(definition) or []
+    )
+    if any(match.value in {"PowerPlatformDataflows", "PowerBI"} for match in matches):
+        print(
+            f"""{icons.red_dot} The dataflow '{dataflow_name}' contains a linked table reference to an existing dataflow as a connection source and will not be upgraded. No changes were made.
+    - To track the upstream lineage of linked tables across dataflows use the list_upstream_dataflows function.
+    - To automatically remove the tables and upgrade the existing dataflow use the upgrade_powerbippdf_dataflow function."""
+        )
+        return
+
+    description = get_jsonpath_value(data=definition, path="$.description")
+
+    payload = {
+        "displayName": new_dataflow_name,
+    }
+    if description:
+        payload["description"] = description
+
+    # Query Groups
+    matches = parse("$.annotations[?(@.name=='pbi:QueryGroups')].value").find(
+        definition
+    )
+    query_groups_value = json.loads(matches[0].value) if matches else []
+
+    # Prepare the dataflow definition
+    query_metadata = {
+        "formatVersion": "202502",
+        "computeEngineSettings": {},  # How to set this?
+        "name": new_dataflow_name,
+        "queryGroups": query_groups_value,
+        "documentLocale": get_jsonpath_value(data=definition, path="$.culture"),
+        "queriesMetadata": get_jsonpath_value(
+            data=definition, path="$['pbi:mashup'].queriesMetadata"
+        ),
+        "fastCombine": get_jsonpath_value(
+            data=definition, path="$['pbi:mashup'].fastCombine", default=False
+        ),
+        "allowNativeQueries": get_jsonpath_value(
+            data=definition, path="$['pbi:mashup'].allowNativeQueries", default=False
+        ),
+        # "connections": [],
+    }
+
+    mashup_doc = get_jsonpath_value(data=definition, path="$['pbi:mashup'].document")
+
+    # Add the dataflow definition to the payload
+    new_definition = {
+        "parts": [
+            {
+                "path": "queryMetadata.json",
+                "payload": _conv_b64(query_metadata),
+                "payloadType": "InlineBase64",
+            },
+            {
+                "path": "mashup.pq",
+                "payload": _conv_b64(mashup_doc, json_dumps=False),
+                "payloadType": "InlineBase64",
+            },
+        ]
+    }
+
+    create_dataflow(
+        name=new_dataflow_name,
+        workspace=new_dataflow_workspace,
+        definition=new_definition,
+    )
+
+
+def create_dataflow(
+    name: str,
+    workspace: Optional[str | UUID] = None,
+    description: Optional[str] = None,
+    definition: Optional[dict] = None,
+):
+    """
+    Creates a native Fabric Dataflow Gen2 CI/CD item.
+
+    Parameters
+    ----------
+    name : str
+        The name the dataflow.
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    description : str, default=None
+        The description of the dataflow.
+    definition : dict, default=None
+        The definition of the dataflow in the form of a dictionary.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    payload = {
+        "displayName": name,
+    }
+    if description:
+        payload["description"] = description
+
+    if definition:
+        payload["definition"] = definition
+
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/dataflows",
+        method="post",
+        payload=payload,
+        client="fabric_sp",
+        lro_return_json=True,
+        status_codes=[201, 202],
+    )
+
+    print(
+        f"{icons.green_dot} The dataflow '{name}' has been created within the '{workspace_name}' workspace."
+    )

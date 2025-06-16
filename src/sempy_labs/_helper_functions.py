@@ -982,12 +982,11 @@ def _extract_json(dataframe: pd.DataFrame) -> dict:
 
 
 @log
-def _conv_b64(file):
+def _conv_b64(file, json_dumps: bool = True):
 
-    loadJson = json.dumps(file)
-    f = base64.b64encode(loadJson.encode("utf-8")).decode("utf-8")
-
-    return f
+    if json_dumps:
+        file = json.dumps(file)
+    return base64.b64encode(file.encode("utf-8")).decode("utf-8")
 
 
 @log
