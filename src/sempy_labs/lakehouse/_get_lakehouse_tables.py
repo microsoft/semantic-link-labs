@@ -108,7 +108,7 @@ def get_lakehouse_tables(
                 new_data = {
                     "Workspace Name": workspace_name,
                     "Lakehouse Name": lakehouse_name,
-                    "Schema Name": "dbo",
+                    "Schema Name": "",
                     "Table Name": i.get("name"),
                     "Format": i.get("format"),
                     "Type": i.get("type"),
@@ -155,27 +155,18 @@ def get_lakehouse_tables(
             schema_name = r["Schema Name"]
             table_name = r["Table Name"]
             if r["Type"] == "Managed" and r["Format"] == "delta":
-                delta_table_path_with_schema = create_abfss_path(
-                    lakehouse_id, workspace_id, table_name, schema_name
+                delta_table_path = (
+                    create_abfss_path(
+                        lakehouse_id, workspace_id, table_name, schema_name
+                    )
+                    .replace("//", "/")             # When schema_name = ""
+                    .replace("abfss:/", "abfss://") # Put back the // after abfss:
                 )
-
-                delta_table_path_without_schema = create_abfss_path(
-                    lakehouse_id, workspace_id, table_name
-                )
-
-                delta_table_path = None
+                    
                 if _pure_python_notebook():
                     from deltalake import DeltaTable
-
-                    try:
-                        delta_table_path = delta_table_path_with_schema
-                        delta_table = DeltaTable(delta_table_path)
                     
-                    except Exception as e:
-                        use_schema = False
-                        delta_table_path = delta_table_path_without_schema
-                        delta_table = DeltaTable(delta_table_path)
-
+                    delta_table = DeltaTable(delta_table_path)
                     latest_files = [
                         file["path"]
                         for file in delta_table.get_add_actions().to_pylist()
@@ -185,41 +176,36 @@ def get_lakehouse_tables(
                         local_file_path = os.path.join(
                             local_path, "Tables", schema_name, table_name, f
                         )
-                        
-                        if not use_schema:
-                            local_file_path = os.path.join(
-                                local_path, "Tables", table_name, f
-                            )
     
                         if os.path.exists(local_file_path):
                             size_in_bytes += os.path.getsize(local_file_path)
                     num_latest_files = len(latest_files)
                 else:
-                    try:
-                        delta_table_path = delta_table_path_with_schema
-                        delta_table = _get_delta_table(delta_table_path)
-                    except Exception as e:
-                        use_schema = False
-                        delta_table_path = delta_table_path_without_schema
-                        delta_table = _get_delta_table(delta_table_path)
+                    delta_table = _get_delta_table(delta_table_path)
 
                     latest_files = _read_delta_table(delta_table_path).inputFiles()
                     table_df = delta_table.toDF()
                     table_details = delta_table.detail().collect()[0].asDict()
-                    num_latest_files = table_details.get("numFiles", 0)
                     size_in_bytes = table_details.get("sizeInBytes", 0)
-
+                    num_latest_files = table_details.get("numFiles", 0)
 
                 table_path = os.path.join(local_path, "Tables", schema_name, table_name)
-                if not use_schema:
-                    table_path = os.path.join(local_path, "Tables", table_name)
 
-                file_paths = [f for f in latest_files]
+                file_paths = []
+                for file in latest_files:
+                    if _pure_python_notebook():
+                        file_paths.append(file)
+                    else:
+                        # Append the <Partition folder>/<filename> or <filename>
+                        find_table = file.find(table_name)
+                        len_file = len(file)
+                        len_table = len(table_name)
+                        last_chars = len_file - (find_table + len_table + 1)
+                        file_paths.append(file[-last_chars:])
 
                 num_rowgroups = 0
                 for filename in file_paths:
                     parquet_file_path = f"{table_path}/{filename}"
-                    # If the table is partitioned and non-partitioned since the last VACUUM, then some files cannot be opened
                     if os.path.exists(parquet_file_path):
                         parquet_file = pq.ParquetFile(parquet_file_path)
                         num_rowgroups += parquet_file.num_row_groups
@@ -227,6 +213,7 @@ def get_lakehouse_tables(
                 df.at[i, "Files"] = num_latest_files
                 df.at[i, "Row Groups"] = num_rowgroups
                 df.at[i, "Table Size"] = size_in_bytes
+            
             if count_rows:
                 if _pure_python_notebook():
                     row_count = delta_table.to_pyarrow_table().num_rows
@@ -234,6 +221,9 @@ def get_lakehouse_tables(
                     row_count = table_df.count()
                 df.at[i, "Row Count"] = row_count
 
+            # Set "Schema Name" = "dbo" when it is ""
+            df.loc[df['Schema Name'] == "", 'Schema Name'] = "dbo"
+ 
     if extended:
         intColumns = ["Files", "Row Groups", "Table Size"]
         df[intColumns] = df[intColumns].astype(int)
