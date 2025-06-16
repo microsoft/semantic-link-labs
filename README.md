@@ -101,11 +101,11 @@ for file_name, file_url in notebook_files.items():
 ## Once installed, run this code to import the library into your notebook
 ```python
 import sempy_labs as labs
-from sempy_labs import migration, directlake, admin, graph
-from sempy_labs import lakehouse as lake
-from sempy_labs import report as rep
+import sempy_labs.lakehouse as lake
+import sempy_labs.report as rep
+from sempy_labs import migration, directlake, admin, graph, mirrored_azure_databricks_catalog
 from sempy_labs.tom import connect_semantic_model
-from sempy_labs.report import ReportWrapper
+from sempy_labs.report import connect_report
 ```
 
 ## Load Semantic Link Labs into a custom [Fabric environment](https://learn.microsoft.com/fabric/data-engineering/create-and-use-environment)
