@@ -9,9 +9,13 @@ from sempy_labs._helper_functions import (
     delete_item,
     get_item_definition,
     _conv_b64,
+    resolve_workspace_id,
 )
+from sempy._utils._log import log
+import sempy_labs._icons as icons
 
 
+@log
 def list_copy_jobs(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows a list of CopyJobs from the specified workspace.
@@ -29,7 +33,7 @@ def list_copy_jobs(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing a list of CopyJobs from the specified workspace.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
 
     columns = {
         "Copy Job Name": "string",
@@ -45,6 +49,7 @@ def list_copy_jobs(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         uses_pagination=True,
     )
 
+    dfs = []
     for r in responses:
         for v in r.get("value", []):
             new_data = {
@@ -53,25 +58,27 @@ def list_copy_jobs(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
                 "Description": v.get("description"),
             }
 
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            dfs.append(pd.DataFrame(new_data, index=[0]))
 
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
 
+@log
 def delete_copy_job(copy_job: str | UUID, workspace: Optional[str | UUID] = None):
 
     delete_item(item=copy_job, type="CopyJob", workspace=workspace)
 
 
+@log
 def get_copy_job_definition(
     copy_job: str | UUID,
     workspace: Optional[str | UUID] = None,
     return_dataframe: bool = False,
 ) -> pd.DataFrame | dict:
-
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     if return_dataframe:
         return get_item_definition(
@@ -85,18 +92,35 @@ def get_copy_job_definition(
 
 def create_copy_job(
     name: str,
+    workspace: Optional[str | UUID] = None,
     definition: Optional[dict] = None,
     description: Optional[str] = None,
-    workspace: Optional[str | UUID] = None,
 ) -> dict:
+    """
+    Creates a new CopyJob in the specified workspace.
+
+    This is a wrapper function for the following API: `CopyJobs - Create Copy Job <https://learn.microsoft.com/rest/api/fabric/copyjobs/create-copy-job>`_.
+
+    Parameters
+    ----------
+    name : str
+        Name of the CopyJob.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    definition : dict, default=None
+        The "copyjob-content.json" definition of the CopyJob. If None, no definition is provided.
+    description : str, default=None
+        Description of the CopyJob. If None, no description is provided.
+    """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    _conv_b64(file=definition)
 
     payload = {
         "displayName": name,
     }
+
     if description:
         payload["description"] = description
     if definition:
@@ -116,4 +140,8 @@ def create_copy_job(
         method="post",
         payload=payload,
         status_codes=[201, 202],
+    )
+
+    print(
+        f"{icons.green_dot} The '{name}' copy job has been successfully created within the workspace '{workspace_name}'."
     )
