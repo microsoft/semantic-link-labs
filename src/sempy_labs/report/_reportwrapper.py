@@ -17,6 +17,7 @@ from sempy_labs._helper_functions import (
     get_jsonpath_value,
     set_json_value,
     remove_json_value,
+    get_tenant_id,
 )
 from sempy_labs._dictionary_diffs import (
     diff_parts,
@@ -425,7 +426,9 @@ class ReportWrapper:
             ]
         )
 
-    def _get_url(self, page_name: Optional[str] = None) -> str:
+    def _get_url(
+        self, page_name: Optional[str] = None, visual_name: Optional[str] = None
+    ) -> str:
         """
         Gets the URL of the report. If specified, gets the URL of the specified page.
 
@@ -444,7 +447,15 @@ class ReportWrapper:
         url = f"https://app.powerbi.com/groups/{self._workspace_id}/reports/{self._report_id}"
 
         if page_name:
+            if page_name in [page["payload"]["name"] for page in self.__all_pages()]:
+                pass
+            else:
+                page_name = self.resolve_page_name(page_name)
             url += f"/{page_name}"
+
+            if visual_name:
+                tenant_id = get_tenant_id()
+                url += f"?ctid={tenant_id}&pbi_source=shareVisual&visual={visual_name}"
 
         return url
 
@@ -1120,6 +1131,7 @@ class ReportWrapper:
             "Has Sparkline": "bool",
             "Visual Filter Count": "int",
             "Data Limit": "int",
+            "URL": "str",
         }
         df = _create_dataframe(columns=columns)
 
@@ -1247,12 +1259,13 @@ class ReportWrapper:
 
             # Sparkline
             has_sparkline = contains_key(payload, ["SparklineData"])
+            visual_name = payload.get("name")
 
             new_data = {
                 "File Path": path,
                 "Page Name": page_id,
                 "Page Display Name": page_display,
-                "Visual Name": payload.get("name"),
+                "Visual Name": visual_name,
                 "X": pos.get("x"),
                 "Y": pos.get("y"),
                 "Z": pos.get("z"),
@@ -1275,6 +1288,7 @@ class ReportWrapper:
                 "Has Sparkline": has_sparkline,
                 "Visual Filter Count": visual_filter_count,
                 "Data Limit": data_limit,
+                "URL": self._get_url(page_name=page_id, visual_name=visual_name),
             }
             dfs.append(pd.DataFrame(new_data, index=[0]))
 

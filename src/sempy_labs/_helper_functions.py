@@ -1858,7 +1858,7 @@ def _get_fabric_context_setting(name: str):
 
 def get_tenant_id():
 
-    _get_fabric_context_setting(name="trident.tenant.id")
+    return _get_fabric_context_setting(name="trident.tenant.id")
 
 
 def _base_api(
