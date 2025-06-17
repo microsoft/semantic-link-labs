@@ -157,45 +157,52 @@ def refresh_sql_endpoint_metadata(
         "Error Message": "string",
     }
 
-    df = pd.json_normalize(result)
+    if result:
+        df = pd.json_normalize(result)
 
-    # Extract error code and message, set to None if no error
-    df["Error Code"] = df.get("error.errorCode", None)
-    df["Error Message"] = df.get("error.message", None)
+        # Extract error code and message, set to None if no error
+        df["Error Code"] = df.get("error.errorCode", None)
+        df["Error Message"] = df.get("error.message", None)
 
-    # Friendly column renaming
-    df.rename(
-        columns={
-            "tableName": "Table Name",
-            "startDateTime": "Start Time",
-            "endDateTime": "End Time",
-            "status": "Status",
-            "lastSuccessfulSyncDateTime": "Last Successful Sync Time",
-        },
-        inplace=True,
-    )
+        # Friendly column renaming
+        df.rename(
+            columns={
+                "tableName": "Table Name",
+                "startDateTime": "Start Time",
+                "endDateTime": "End Time",
+                "status": "Status",
+                "lastSuccessfulSyncDateTime": "Last Successful Sync Time",
+            },
+            inplace=True,
+        )
 
-    # Drop the original 'error' column if present
-    df.drop(columns=[col for col in ["error"] if col in df.columns], inplace=True)
+        # Drop the original 'error' column if present
+        df.drop(columns=[col for col in ["error"] if col in df.columns], inplace=True)
 
-    # Optional: Reorder columns
-    column_order = [
-        "Table Name",
-        "Status",
-        "Start Time",
-        "End Time",
-        "Last Successful Sync Time",
-        "Error Code",
-        "Error Message",
-    ]
-    df = df[column_order]
+        # Optional: Reorder columns
+        column_order = [
+            "Table Name",
+            "Status",
+            "Start Time",
+            "End Time",
+            "Last Successful Sync Time",
+            "Error Code",
+            "Error Message",
+        ]
+        df = df[column_order]
+
+        printout = f"{icons.green_dot} The metadata of the SQL endpoint for the '{item_name}' {type.lower()} within the '{workspace_name}' workspace has been refreshed"
+        if tables:
+            print(f"{printout} for the following tables: {tables}.")
+        else:
+            print(f"{printout} for all tables.")
+    else:
+        # If the target item has no tables to refresh the metadata for
+        df = pd.DataFrame(columns=columns.keys())
+        print(
+            f"{icons.yellow_dot} The SQL endpoint '{item_name}' {type.lower()} within the '{workspace_name}' workspace has no tables to refresh..."
+        )
 
     _update_dataframe_datatypes(df, columns)
-
-    printout = f"{icons.green_dot} The metadata of the SQL endpoint for the '{item_name}' {type.lower()} within the '{workspace_name}' workspace has been refreshed"
-    if tables:
-        print(f"{printout} for the following tables: {tables}.")
-    else:
-        print(f"{printout} for all tables.")
 
     return df
