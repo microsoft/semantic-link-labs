@@ -1929,12 +1929,12 @@ def _base_api(
     elif client == "fabric_sp":
         token = auth.token_provider.get() or get_token
         c = fabric.FabricRestClient(token_provider=token)
-    elif client in ["azure", "graph"]:
+    elif client in ["azure", "graph", "keyvault"]:
         pass
     else:
         raise ValueError(f"{icons.red_dot} The '{client}' client is not supported.")
 
-    if client not in ["azure", "graph"]:
+    if client not in ["azure", "graph", "keyvault"]:
         if method == "get":
             response = c.get(request)
         elif method == "delete":
@@ -1947,7 +1947,7 @@ def _base_api(
             response = c.put(request, json=payload)
         else:
             raise NotImplementedError
-    else:
+    elif client in ["azure", "graph"]:
         headers = _get_headers(auth.token_provider.get(), audience=client)
         if client == "graph":
             url = f"https://graph.microsoft.com/v1.0/{request}"
@@ -1961,6 +1961,14 @@ def _base_api(
             headers=headers,
             json=payload,
         )
+    elif client == "keyvault":
+        token = notebookutils.credentials.getToken("keyvault")
+        headers = {"Authorization": f"Bearer {token}"}
+        response = requests.request(
+            method.upper(), f"{url}?api-version=7.4", headers=headers, json=payload
+        )
+    else:
+        raise NotImplementedError
 
     if lro_return_json:
         return lro(c, response, status_codes).json()
