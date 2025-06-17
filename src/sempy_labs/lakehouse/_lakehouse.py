@@ -11,6 +11,8 @@ from sempy_labs._helper_functions import (
 )
 import sempy_labs._icons as icons
 import re
+import time
+import pandas as pd
 
 
 @log
@@ -227,13 +229,29 @@ def run_table_maintenance(
     if vacuum and retention_period is not None:
         payload["executionData"]["vacuumSettings"]["retentionPeriod"] = retention_period
 
-    _base_api(
+    response = _base_api(
         request=f"/v1/workspaces/{workspace_id}/lakehouses/{lakehouse_id}/jobs/instances?jobType=TableMaintenance",
         method="post",
         payload=payload,
         status_codes=202,
     )
 
-    print(
-        f"{icons.green_dot} The table maintenance job for the '{table_name}' table in the '{lakehouse_name}' lakehouse within the '{workspace_name}' workspace has been initiated."
-    )
+    f"{icons.in_progress} The table maintenance job for the '{table_name}' table in the '{lakehouse_name}' lakehouse within the '{workspace_name}' workspace has been initiated."
+
+    status_url = response.headers.get("Location").split("fabric.microsoft.com")[1]
+    status = None
+    while status is None or status == "InProgress":
+        response = _base_api(request=status_url)
+        status = response.json().get("status")
+        time.sleep(10)
+
+    if status == "Completed":
+        print(
+            f"{icons.green_dot} The table maintenance job for the '{table_name}' table in the '{lakehouse_name}' lakehouse within the '{workspace_name}' workspace has succeeded."
+        )
+    else:
+        print(
+            f"{icons.red_dot} The table maintenance job for the '{table_name}' table in the '{lakehouse_name}' lakehouse within the '{workspace_name}' workspace has failed."
+        )
+        df = pd.json_normalize(response.json())
+        return df
