@@ -925,11 +925,15 @@ class TOMWrapper:
         from_column: str,
         to_table: str,
         to_column: str,
-        from_cardinality: str,
-        to_cardinality: str,
-        cross_filtering_behavior: Optional[str] = None,
+        from_cardinality: Literal["Many", "One", "None"],
+        to_cardinality: Literal["Many", "One", "None"],
+        cross_filtering_behavior: Literal[
+            "Automatic", "OneDirection", "BothDirections"
+        ] = "Automatic",
         is_active: bool = True,
-        security_filtering_behavior: Optional[str] = None,
+        security_filtering_behavior: Optional[
+            Literal["None", "OneDirection", "BothDirections"]
+        ] = None,
         rely_on_referential_integrity: bool = False,
     ):
         """
@@ -945,28 +949,21 @@ class TOMWrapper:
             Name of the table on the 'to' side of the relationship.
         to_column : str
             Name of the column on the 'to' side of the relationship.
-        from_cardinality : str
-            The cardinality of the 'from' side of the relationship. Options: ['Many', 'One', 'None'].
-        to_cardinality : str
-                The cardinality of the 'to' side of the relationship. Options: ['Many', 'One', 'None'].
-        cross_filtering_behavior : str, default=None
+        from_cardinality : Literal["Many", "One", "None"]
+            The cardinality of the 'from' side of the relationship.
+        to_cardinality : Literal["Many", "One", "None"]
+                The cardinality of the 'to' side of the relationship.
+        cross_filtering_behavior : Literal["Automatic", "OneDirection", "BothDirections"], default="Automatic"
             Setting for the cross filtering behavior of the relationship. Options: ('Automatic', 'OneDirection', 'BothDirections').
-            Defaults to None which resolves to 'Automatic'.
         is_active : bool, default=True
             Setting for whether the relationship is active or not.
-        security_filtering_behavior : str, default=None
-            Setting for the security filtering behavior of the relationship. Options: ('None', 'OneDirection', 'BothDirections').
-            Defaults to None which resolves to 'OneDirection'.
+        security_filtering_behavior : Literal["None, "OneDirection", "BothDirections"], default="OneDirection"
+            Setting for the security filtering behavior of the relationship.
         rely_on_referential_integrity : bool, default=False
             Setting for the rely on referential integrity of the relationship.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
         import System
-
-        if not cross_filtering_behavior:
-            cross_filtering_behavior = "Automatic"
-        if not security_filtering_behavior:
-            security_filtering_behavior = "OneDirection"
 
         for var_name in [
             "from_cardinality",
