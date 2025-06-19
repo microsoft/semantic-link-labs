@@ -94,6 +94,47 @@ def list_item_job_instances(
 
 
 @log
+def _get_item_job_instance(url: str) -> pd.DataFrame:
+
+    columns = {
+        "Job Instance Id": "string",
+        "Item Id": "string",
+        "Job Type": "string",
+        "Invoke Type": "string",
+        "Status": "string",
+        "Root Activity Id": "string",
+        "Start Time UTC": "datetime",
+        "End Time UTC": "string",
+        "Error Message": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    response = _base_api(request=url)
+
+    dfs = []
+    for v in response.json().get("value", []):
+        fail = v.get("failureReason", {})
+        new_data = {
+            "Job Instance Id": v.get("id"),
+            "Item Id": v.get("itemId"),
+            "Job Type": v.get("jobType"),
+            "Invoke Type": v.get("invokeType"),
+            "Status": v.get("status"),
+            "Root Activity Id": v.get("rootActivityId"),
+            "Start Time UTC": v.get("startTimeUtc"),
+            "End Time UTC": v.get("endTimeUtc"),
+            "Error Message": fail.get("message") if fail is not None else "",
+        }
+        dfs.append(pd.DataFrame(new_data, index=[0]))
+
+    if dfs:
+        df = pd.concat(dfs, ignore_index=True)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
+
+    return df
+
+
+@log
 def list_item_schedules(
     item: str | UUID,
     type: Optional[str] = None,
