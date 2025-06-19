@@ -19,7 +19,7 @@ from sempy_labs._list_functions import list_relationships
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
 from sempy_labs.directlake._dl_helper import check_fallback_reason
 from contextlib import contextmanager
-from typing import List, Iterator, Optional, Union, TYPE_CHECKING
+from typing import List, Iterator, Optional, Union, TYPE_CHECKING, Literal
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 import ast
@@ -784,7 +784,11 @@ class TOMWrapper:
             self.model.Roles[role_name].TablePermissions.Add(tp)
 
     def set_ols(
-        self, role_name: str, table_name: str, column_name: str, permission: str
+        self,
+        role_name: str,
+        table_name: str,
+        column_name: Optional[str] = None,
+        permission: Literal["Default", "None", "Read"] = "Default",
     ):
         """
         Sets the object level security permissions for a column within a role.
@@ -795,9 +799,9 @@ class TOMWrapper:
             Name of the role.
         table_name : str
             Name of the table.
-        column_name : str
-            Name of the column.
-        permission : str
+        column_name : str, default=None
+            Name of the column. Defaults to None which sets object level security for the entire table.
+        permission : Literal["Default", "None", "Read"], default="Default"
             The object level security permission for the column.
             `Permission valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.metadatapermission?view=analysisservices-dotnet>`_
         """
@@ -817,19 +821,29 @@ class TOMWrapper:
             tp.Table = self.model.Tables[table_name]
             r.TablePermissions.Add(tp)
         columns = [c.Name for c in r.TablePermissions[table_name].ColumnPermissions]
-        # Add column permission if it does not exist
-        if column_name not in columns:
-            cp = TOM.ColumnPermission()
-            cp.Column = self.model.Tables[table_name].Columns[column_name]
-            cp.MetadataPermission = System.Enum.Parse(
+
+        # Set column level security if column is specified
+        if column_name:
+            # Add column permission if it does not exist
+            if column_name not in columns:
+                cp = TOM.ColumnPermission()
+                cp.Column = self.model.Tables[table_name].Columns[column_name]
+                cp.MetadataPermission = System.Enum.Parse(
+                    TOM.MetadataPermission, permission
+                )
+                r.TablePermissions[table_name].ColumnPermissions.Add(cp)
+            # Set column permission if it already exists
+            else:
+                r.TablePermissions[table_name].ColumnPermissions[
+                    column_name
+                ].MetadataPermission = System.Enum.Parse(
+                    TOM.MetadataPermission, permission
+                )
+        # Set table level security if column is not specified
+        else:
+            r.TablePermissions[table_name].MetadataPermission = System.Enum.Parse(
                 TOM.MetadataPermission, permission
             )
-            r.TablePermissions[table_name].ColumnPermissions.Add(cp)
-        # Set column permission if it already exists
-        else:
-            r.TablePermissions[table_name].ColumnPermissions[
-                column_name
-            ].MetadataPermission = System.Enum.Parse(TOM.MetadataPermission, permission)
 
     def add_hierarchy(
         self,
