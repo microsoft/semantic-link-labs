@@ -211,7 +211,34 @@ def recover_deleted_secret(key_vault_uri: str, secret_name: str):
         method="post",
     )
     print(
-        f"{icons.green_dot} The '{secret_name}' secret has been successfully recovered within the '{key_vault_uri}' Key Vault."
+        f"{icons.green_dot} The '{secret_name}' secret within the '{key_vault_uri}' Key Vault has been successfully recovered."
+    )
+
+
+@log
+def purge_deleted_secret(key_vault_uri: str, secret_name: str):
+    """
+    Permanently deletes the specified secret.
+    The purge deleted secret operation removes the secret permanently, without the possibility of recovery. This operation can only be enabled on a soft-delete enabled vault. This operation requires the secrets/purge permission.
+
+    This is a wrapper function for the following API: `Purge Deleted Secret - Purge Deleted Secret <https://learn.microsoft.com/rest/api/keyvault/secrets/purge-deleted-secret/purge-deleted-secret>`_.
+
+    Parameters
+    ----------
+    key_vault_uri : str
+        Azure Key Vault URI.
+    secret_name : str
+        Name of the deleted secret to be recovered in the Key Vault.
+    """
+
+    _base_api(
+        request=f"{key_vault_uri}/deletedsecrets/{secret_name}",
+        client="keyvault",
+        method="delete",
+        status_codes=204,
+    )
+    print(
+        f"{icons.green_dot} The '{secret_name}' secret within the '{key_vault_uri}' Key Vault has been successfully purged."
     )
 
 

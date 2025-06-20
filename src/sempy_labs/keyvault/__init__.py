@@ -4,6 +4,7 @@ from ._secrets import (
     delete_secret,
     list_secrets,
     recover_deleted_secret,
+    purge_deleted_secret,
 )
 
 
@@ -13,4 +14,5 @@ __all__ = [
     "delete_secret",
     "list_secrets",
     "recover_deleted_secret",
+    "purge_deleted_secret",
 ]
