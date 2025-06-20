@@ -1811,46 +1811,61 @@ class ReportWrapper:
         return self.get(file_path=theme_file_path)
 
     # Action functions
-    def set_theme(self, theme_file_path: str):
+    def set_theme(
+        self, theme_file_path: Optional[str] = None, theme_json: Optional[dict] = None
+    ):
         """
         Sets a custom theme for a report based on a theme .json file.
 
         Parameters
         ----------
-        theme_file_path : str
+        theme_file_path : str, default=None
             The file path of the theme.json file. This can either be from a Fabric lakehouse or from the web.
             Example for lakehouse: file_path = '/lakehouse/default/Files/CY23SU09.json'
             Example for web url: file_path = 'https://raw.githubusercontent.com/PowerBiDevCamp/FabricUserApiDemo/main/FabricUserApiDemo/DefinitionTemplates/Shared/Reports/StaticResources/SharedResources/BaseThemes/CY23SU08.json'
+        theme_json : dict, default=None
+            The theme file in .json format. Must specify either the theme_file_path or the theme_json.
         """
+
+        if theme_file_path and theme_json:
+            raise ValueError(
+                f"{icons.red_dot} Please specify either the 'theme_file_path' or the 'theme_json' parameter, not both."
+            )
+        if not theme_file_path and not theme_json:
+            raise ValueError(
+                f"{icons.red_dot} Please specify either the 'theme_file_path' or the 'theme_json' parameter."
+            )
 
         self._ensure_pbir()
         theme_version = "5.6.4"
 
-        # Open file
-        if not theme_file_path.endswith(".json"):
-            raise ValueError(
-                f"{icons.red_dot} The '{theme_file_path}' theme file path must be a .json file."
-            )
-        elif theme_file_path.startswith("https://"):
-            response = requests.get(theme_file_path)
-            theme_file = response.json()
-        elif theme_file_path.startswith("/lakehouse") or theme_file_path.startswith(
-            "/synfs/"
-        ):
-            with open(theme_file_path, "r", encoding="utf-8-sig") as file:
-                theme_file = json.load(file)
-        else:
-            ValueError(
-                f"{icons.red_dot} Incorrect theme file path value '{theme_file_path}'."
-            )
+        # Extract theme_json from theme_file_path
+        if theme_file_path:
+            # Open file
+            if not theme_file_path.endswith(".json"):
+                raise ValueError(
+                    f"{icons.red_dot} The '{theme_file_path}' theme file path must be a .json file."
+                )
+            elif theme_file_path.startswith("https://"):
+                response = requests.get(theme_file_path)
+                theme_json = response.json()
+            elif theme_file_path.startswith("/lakehouse") or theme_file_path.startswith(
+                "/synfs/"
+            ):
+                with open(theme_file_path, "r", encoding="utf-8-sig") as file:
+                    theme_json = json.load(file)
+            else:
+                ValueError(
+                    f"{icons.red_dot} Incorrect theme file path value '{theme_file_path}'."
+                )
 
-        theme_name = theme_file.get("name")
+        theme_name = theme_json.get("name")
         theme_name_full = f"{theme_name}.json"
 
         # Add theme.json file
         self.add(
             file_path=f"StaticResources/RegisteredResources/{theme_name_full}",
-            payload=theme_file,
+            payload=theme_json,
         )
 
         custom_theme = {
