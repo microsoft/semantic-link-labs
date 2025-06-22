@@ -1375,6 +1375,7 @@ class ReportWrapper:
                     if isinstance(expression, dict)
                     else {}
                 )
+
                 if (
                     isinstance(source_ref, dict)
                     and "Entity" in source_ref
@@ -1388,9 +1389,15 @@ class ReportWrapper:
                         if keys_path
                         else "Unknown"
                     )
-                    is_agg = keys_path[-3] == "Aggregation"
-                    is_viz_calc = keys_path[-3] == "NativeVisualCalculation"
-                    is_sparkline = keys_path[-3] == "SparklineData"
+                    is_agg = len(keys_path) > 2 and keys_path[-3] == "Aggregation"
+                    is_viz_calc = (
+                        len(keys_path) > 2
+                        and keys_path[-3] == "NativeVisualCalculation"
+                    )
+                    is_sparkline = (
+                        len(keys_path) > 2 and keys_path[-3] == "SparklineData"
+                    )
+
                     result[property_value] = (
                         entity,
                         object_type,
@@ -1398,13 +1405,10 @@ class ReportWrapper:
                         is_viz_calc,
                         is_sparkline,
                     )
-                    if keys_path:
-                        keys_path.pop()
 
                 # Recursively search the rest of the dictionary
                 for key, value in data.items():
-                    keys_path.append(key)
-                    find_entity_property_pairs(value, result, keys_path)
+                    find_entity_property_pairs(value, result, keys_path + [key])
 
             elif isinstance(data, list):
                 for item in data:
