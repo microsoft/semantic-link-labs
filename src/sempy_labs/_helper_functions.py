@@ -2123,7 +2123,7 @@ def _run_spark_sql_query(query):
 
 
 def _mount(
-    lakehouse: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None
+    lakehouse: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None, verbose: bool = False,
 ) -> str:
     """
     Mounts a lakehouse to a notebook if it is not already mounted. Returns the local path to the lakehouse.
@@ -2152,9 +2152,10 @@ def _mount(
     if not any(i.get("source") == lake_path for i in mounts):
         # Mount lakehouse if not mounted
         notebookutils.fs.mount(lake_path, mount_point)
-        print(
-            f"{icons.green_dot} Mounted the '{lakehouse_name}' lakehouse within the '{workspace_name}' to the notebook."
-        )
+        if verbose:
+            print(
+                f"{icons.green_dot} Mounted the '{lakehouse_name}' lakehouse within the '{workspace_name}' to the notebook."
+            )
 
     mounts = notebookutils.fs.mounts()
 
