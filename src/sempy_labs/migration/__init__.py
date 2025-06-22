@@ -1,24 +1,24 @@
-from sempy_labs.migration._create_pqt_file import create_pqt_file
-from sempy_labs.migration._migrate_calctables_to_lakehouse import (
+from ._create_pqt_file import create_pqt_file
+from ._migrate_calctables_to_lakehouse import (
     migrate_calc_tables_to_lakehouse,
     migrate_field_parameters,
 )
-from sempy_labs.migration._migrate_calctables_to_semantic_model import (
+from ._migrate_calctables_to_semantic_model import (
     migrate_calc_tables_to_semantic_model,
 )
-from sempy_labs.migration._migrate_model_objects_to_semantic_model import (
+from ._migrate_model_objects_to_semantic_model import (
     migrate_model_objects_to_semantic_model,
 )
-from sempy_labs.migration._migrate_tables_columns_to_semantic_model import (
+from ._migrate_tables_columns_to_semantic_model import (
     migrate_tables_columns_to_semantic_model,
 )
-from sempy_labs.migration._migration_validation import (
+from ._migration_validation import (
     migration_validation,
 )
-from sempy_labs.migration._refresh_calc_tables import (
+from ._refresh_calc_tables import (
     refresh_calc_tables,
 )
-from sempy_labs.migration._direct_lake_to_import import (
+from ._direct_lake_to_import import (
     migrate_direct_lake_to_import,
 )
 

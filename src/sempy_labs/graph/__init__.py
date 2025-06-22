@@ -1,4 +1,4 @@
-from sempy_labs.graph._groups import (
+from ._groups import (
     list_groups,
     list_group_owners,
     list_group_members,
@@ -7,13 +7,13 @@ from sempy_labs.graph._groups import (
     resolve_group_id,
     renew_group,
 )
-from sempy_labs.graph._users import (
+from ._users import (
     resolve_user_id,
     get_user,
     list_users,
     send_mail,
 )
-from sempy_labs.graph._teams import (
+from ._teams import (
     list_teams,
 )
 
