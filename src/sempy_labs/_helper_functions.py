@@ -1684,6 +1684,14 @@ def _get_column_aggregate(
     return result
 
 
+def _validate_weight(weight: float):
+
+    if weight is not None and (weight <= 0 or weight >= 1):
+        raise ValueError(
+            f"{icons.red_dot} Invalid weight parameter. Weight must be a value between 0 and 1."
+        )
+
+
 def _create_spark_dataframe(df: pd.DataFrame):
 
     spark = _create_spark_session()
