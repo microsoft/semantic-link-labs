@@ -19,7 +19,7 @@ from sempy_labs._list_functions import list_relationships
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
 from sempy_labs.directlake._dl_helper import check_fallback_reason
 from contextlib import contextmanager
-from typing import List, Iterator, Optional, Union, TYPE_CHECKING
+from typing import List, Iterator, Optional, Union, TYPE_CHECKING, Literal
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 import ast
@@ -784,7 +784,11 @@ class TOMWrapper:
             self.model.Roles[role_name].TablePermissions.Add(tp)
 
     def set_ols(
-        self, role_name: str, table_name: str, column_name: str, permission: str
+        self,
+        role_name: str,
+        table_name: str,
+        column_name: Optional[str] = None,
+        permission: Literal["Default", "None", "Read"] = "Default",
     ):
         """
         Sets the object level security permissions for a column within a role.
@@ -795,9 +799,9 @@ class TOMWrapper:
             Name of the role.
         table_name : str
             Name of the table.
-        column_name : str
-            Name of the column.
-        permission : str
+        column_name : str, default=None
+            Name of the column. Defaults to None which sets object level security for the entire table.
+        permission : Literal["Default", "None", "Read"], default="Default"
             The object level security permission for the column.
             `Permission valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.metadatapermission?view=analysisservices-dotnet>`_
         """
@@ -817,19 +821,29 @@ class TOMWrapper:
             tp.Table = self.model.Tables[table_name]
             r.TablePermissions.Add(tp)
         columns = [c.Name for c in r.TablePermissions[table_name].ColumnPermissions]
-        # Add column permission if it does not exist
-        if column_name not in columns:
-            cp = TOM.ColumnPermission()
-            cp.Column = self.model.Tables[table_name].Columns[column_name]
-            cp.MetadataPermission = System.Enum.Parse(
+
+        # Set column level security if column is specified
+        if column_name:
+            # Add column permission if it does not exist
+            if column_name not in columns:
+                cp = TOM.ColumnPermission()
+                cp.Column = self.model.Tables[table_name].Columns[column_name]
+                cp.MetadataPermission = System.Enum.Parse(
+                    TOM.MetadataPermission, permission
+                )
+                r.TablePermissions[table_name].ColumnPermissions.Add(cp)
+            # Set column permission if it already exists
+            else:
+                r.TablePermissions[table_name].ColumnPermissions[
+                    column_name
+                ].MetadataPermission = System.Enum.Parse(
+                    TOM.MetadataPermission, permission
+                )
+        # Set table level security if column is not specified
+        else:
+            r.TablePermissions[table_name].MetadataPermission = System.Enum.Parse(
                 TOM.MetadataPermission, permission
             )
-            r.TablePermissions[table_name].ColumnPermissions.Add(cp)
-        # Set column permission if it already exists
-        else:
-            r.TablePermissions[table_name].ColumnPermissions[
-                column_name
-            ].MetadataPermission = System.Enum.Parse(TOM.MetadataPermission, permission)
 
     def add_hierarchy(
         self,
@@ -911,11 +925,15 @@ class TOMWrapper:
         from_column: str,
         to_table: str,
         to_column: str,
-        from_cardinality: str,
-        to_cardinality: str,
-        cross_filtering_behavior: Optional[str] = None,
+        from_cardinality: Literal["Many", "One", "None"],
+        to_cardinality: Literal["Many", "One", "None"],
+        cross_filtering_behavior: Literal[
+            "Automatic", "OneDirection", "BothDirections"
+        ] = "Automatic",
         is_active: bool = True,
-        security_filtering_behavior: Optional[str] = None,
+        security_filtering_behavior: Optional[
+            Literal["None", "OneDirection", "BothDirections"]
+        ] = None,
         rely_on_referential_integrity: bool = False,
     ):
         """
@@ -931,28 +949,21 @@ class TOMWrapper:
             Name of the table on the 'to' side of the relationship.
         to_column : str
             Name of the column on the 'to' side of the relationship.
-        from_cardinality : str
-            The cardinality of the 'from' side of the relationship. Options: ['Many', 'One', 'None'].
-        to_cardinality : str
-                The cardinality of the 'to' side of the relationship. Options: ['Many', 'One', 'None'].
-        cross_filtering_behavior : str, default=None
+        from_cardinality : Literal["Many", "One", "None"]
+            The cardinality of the 'from' side of the relationship.
+        to_cardinality : Literal["Many", "One", "None"]
+                The cardinality of the 'to' side of the relationship.
+        cross_filtering_behavior : Literal["Automatic", "OneDirection", "BothDirections"], default="Automatic"
             Setting for the cross filtering behavior of the relationship. Options: ('Automatic', 'OneDirection', 'BothDirections').
-            Defaults to None which resolves to 'Automatic'.
         is_active : bool, default=True
             Setting for whether the relationship is active or not.
-        security_filtering_behavior : str, default=None
-            Setting for the security filtering behavior of the relationship. Options: ('None', 'OneDirection', 'BothDirections').
-            Defaults to None which resolves to 'OneDirection'.
+        security_filtering_behavior : Literal["None, "OneDirection", "BothDirections"], default="OneDirection"
+            Setting for the security filtering behavior of the relationship.
         rely_on_referential_integrity : bool, default=False
             Setting for the rely on referential integrity of the relationship.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
         import System
-
-        if not cross_filtering_behavior:
-            cross_filtering_behavior = "Automatic"
-        if not security_filtering_behavior:
-            security_filtering_behavior = "OneDirection"
 
         for var_name in [
             "from_cardinality",

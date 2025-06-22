@@ -344,7 +344,7 @@ def upgrade_dataflow(
     new_dataflow_workspace: Optional[str | UUID] = None,
 ):
     """
-    Creates a Dataflow Gen2 CI/CD item based on the mashup definition from an existing Gen1/Gen2 dataflow.
+    Creates a Dataflow Gen2 CI/CD item based on the mashup definition from an existing Gen1/Gen2 dataflow. After running this function, update the connections in the dataflow to ensure the data can be properly refreshed.
 
     Parameters
     ----------
