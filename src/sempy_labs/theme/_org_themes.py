@@ -71,7 +71,7 @@ def resolve_theme_id(theme: str | UUID):
             return df_filt["Theme Id"].iloc[0]
 
 
-def get_org_theme(theme: str | UUID) -> dict:
+def get_org_theme_json(theme: str | UUID) -> dict:
 
     init_pbi_url_prefix()
 
