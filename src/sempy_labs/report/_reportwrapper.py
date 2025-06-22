@@ -2135,7 +2135,9 @@ class ReportWrapper:
                 # mDataType = r["Data Type"]
                 format_string = r["Format String"]
                 # Add measures to the model
-                if (measures is None or measure_name in measures) and measure_name not in existing_measures:
+                if (
+                    measures is None or measure_name in measures
+                ) and measure_name not in existing_measures:
                     tom.add_measure(
                         table_name=table_name,
                         measure_name=measure_name,

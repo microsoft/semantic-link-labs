@@ -2123,7 +2123,9 @@ def _run_spark_sql_query(query):
 
 
 def _mount(
-    lakehouse: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None, verbose: bool = False,
+    lakehouse: Optional[str | UUID] = None,
+    workspace: Optional[str | UUID] = None,
+    verbose: bool = False,
 ) -> str:
     """
     Mounts a lakehouse to a notebook if it is not already mounted. Returns the local path to the lakehouse.

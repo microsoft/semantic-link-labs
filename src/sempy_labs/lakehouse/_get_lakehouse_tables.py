@@ -124,7 +124,9 @@ def get_lakehouse_tables(
             schema_table_path = os.path.join(local_path, "Tables", schema_name)
             list_tables = os.listdir(schema_table_path)
             for table_name in list_tables:
-                location_path = create_abfss_path(lakehouse_id, workspace_id, table_name, schema_name)
+                location_path = create_abfss_path(
+                    lakehouse_id, workspace_id, table_name, schema_name
+                )
                 new_data = {
                     "Workspace Name": workspace_name,
                     "Lakehouse Name": lakehouse_name,
@@ -132,7 +134,7 @@ def get_lakehouse_tables(
                     "Table Name": table_name,
                     "Format": "delta",
                     "Type": "Managed",
-                    "Location": location_path
+                    "Location": location_path,
                 }
                 dfs.append(pd.DataFrame(new_data, index=[0]))
 
@@ -159,13 +161,13 @@ def get_lakehouse_tables(
                     create_abfss_path(
                         lakehouse_id, workspace_id, table_name, schema_name
                     )
-                    .replace("//", "/")             # When schema_name = ""
-                    .replace("abfss:/", "abfss://") # Put back the // after abfss:
+                    .replace("//", "/")  # When schema_name = ""
+                    .replace("abfss:/", "abfss://")  # Put back the // after abfss:
                 )
-                    
+
                 if _pure_python_notebook():
                     from deltalake import DeltaTable
-                    
+
                     delta_table = DeltaTable(delta_table_path)
                     latest_files = [
                         file["path"]
@@ -176,7 +178,7 @@ def get_lakehouse_tables(
                         local_file_path = os.path.join(
                             local_path, "Tables", schema_name, table_name, f
                         )
-    
+
                         if os.path.exists(local_file_path):
                             size_in_bytes += os.path.getsize(local_file_path)
                     num_latest_files = len(latest_files)
@@ -213,7 +215,7 @@ def get_lakehouse_tables(
                 df.at[i, "Files"] = num_latest_files
                 df.at[i, "Row Groups"] = num_rowgroups
                 df.at[i, "Table Size"] = size_in_bytes
-            
+
             if count_rows:
                 if _pure_python_notebook():
                     row_count = delta_table.to_pyarrow_table().num_rows
@@ -222,8 +224,8 @@ def get_lakehouse_tables(
                 df.at[i, "Row Count"] = row_count
 
             # Set "Schema Name" = "dbo" when it is ""
-            df.loc[df['Schema Name'] == "", 'Schema Name'] = "dbo"
- 
+            df.loc[df["Schema Name"] == "", "Schema Name"] = "dbo"
+
     if extended:
         intColumns = ["Files", "Row Groups", "Table Size"]
         df[intColumns] = df[intColumns].astype(int)
