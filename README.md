@@ -105,7 +105,7 @@ import sempy_labs.lakehouse as lake
 import sempy_labs.report as rep
 from sempy_labs import migration, directlake, admin, graph, theme, mirrored_azure_databricks_catalog
 from sempy_labs.tom import connect_semantic_model
-from sempy_labs.report import ReportWrapper
+from sempy_labs.report import connect_report
 ```
 
 ## Load Semantic Link Labs into a custom [Fabric environment](https://learn.microsoft.com/fabric/data-engineering/create-and-use-environment)
