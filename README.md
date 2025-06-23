@@ -130,6 +130,7 @@ An even better way to ensure the semantic-link-labs library is available in your
 
 ## Version History
 * [0.11.1](https://github.com/microsoft/semantic-link-labs/releases/tag/0.11.1) (June 23, 2025)
+* [0.11.0](https://github.com/microsoft/semantic-link-labs/releases/tag/0.11.0) (June 23, 2025)
 * [0.10.1](https://github.com/microsoft/semantic-link-labs/releases/tag/0.10.1) (June 10, 2025)
 * [0.10.0](https://github.com/microsoft/semantic-link-labs/releases/tag/0.10.0) (May 30, 2025)
 * [0.9.11](https://github.com/microsoft/semantic-link-labs/releases/tag/0.9.11) (May 22, 2025)
