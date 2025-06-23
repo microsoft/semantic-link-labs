@@ -432,10 +432,11 @@ def get_refreshables(
 
     url = _build_url(url, params)
 
-    response = _base_api(request=url, client="fabric_sp")
+    responses = _base_api(request=url, client="fabric_sp")
 
-    dfs = []
-    for i in response.json().get("value", []):
+    refreshables = []
+
+    for i in responses.json().get("value", []):
         last_refresh = i.get("lastRefresh", {})
         refresh_schedule = i.get("refreshSchedule", {})
         new_data = {
@@ -473,10 +474,11 @@ def get_refreshables(
             "Refresh Schedule Notify Option": refresh_schedule.get("notifyOption"),
             "Configured By": i.get("configuredBy"),
         }
-        dfs.append(pd.DataFrame(new_data, index=[0]))
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+        refreshables.append(new_data)
+
+    if len(refreshables) > 0:
+        df = pd.DataFrame(refreshables)
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
