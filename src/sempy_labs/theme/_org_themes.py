@@ -24,8 +24,8 @@ def list_org_themes() -> pd.DataFrame:
     """
     Lists all `organizational themes <https://www.linkedin.com/pulse/organizational-themes-preview-pbicorevisuals-j7jxe/>`_ in Power BI. Note that this uses an internal API and may break at any time.
 
-    Returns:
-    --------
+    Returns
+    -------
     pandas.DataFrame
         A dataframe containing the details of the organizational themes.
     """
@@ -67,6 +67,19 @@ def list_org_themes() -> pd.DataFrame:
 
 
 def resolve_theme_id(theme: str | UUID):
+    """
+    Resolves the ID of an organization theme by its name or ID.
+
+    Parameters
+    ----------
+    theme : str | uuid.UUID
+        The name or ID of the organization theme.
+
+    Returns
+    -------
+    uuid.UUID
+        The ID of the organization theme.
+    """
 
     if _is_valid_uuid(theme):
         return theme
@@ -83,13 +96,13 @@ def get_org_theme_json(theme: str | UUID) -> dict:
     """
     Retrieves the JSON representation of an organization theme by its name or ID.
 
-    Parameters:
+    Parameters
     ----------
     theme : str | uuid.UUID
         The name or ID of the organization theme.
 
-    Returns:
-    --------
+    Returns
+    -------
     dict
         The JSON representation of the organization theme.
     """
