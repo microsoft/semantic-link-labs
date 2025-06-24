@@ -201,7 +201,7 @@ def list_report_subscriptions(report: str | UUID) -> pd.DataFrame:
         "Link To Content": "bool",
         "Preview Image": "bool",
         "Attachment Format": "string",
-        "Users": "string",
+        "Users": "list",
     }
 
     df = _create_dataframe(columns=columns)
@@ -211,28 +211,29 @@ def list_report_subscriptions(report: str | UUID) -> pd.DataFrame:
         client="fabric_sp",
     )
 
-    dfs = []
+    rows = []
     for v in response.json().get("value", []):
-        new_data = {
-            "Subscription Id": v.get("id"),
-            "Title": v.get("title"),
-            "Artifact Id": v.get("artifactId"),
-            "Artifact Name": v.get("artifactDisplayName"),
-            "Sub Artifact Name": v.get("subArtifactDisplayName"),
-            "Artifact Type": v.get("artifactType"),
-            "Is Enabled": v.get("isEnabled"),
-            "Frequency": v.get("frequency"),
-            "Start Date": v.get("startDate"),
-            "End Date": v.get("endDate"),
-            "Link To Content": v.get("linkToContent"),
-            "Preview Image": v.get("previewImage"),
-            "Attachment Format": v.get("attachmentFormat"),
-            "Users": str(v.get("users")),
-        }
-        dfs.append(pd.DataFrame(new_data, index=[0]))
+        rows.append(
+            {
+                "Subscription Id": v.get("id"),
+                "Title": v.get("title"),
+                "Artifact Id": v.get("artifactId"),
+                "Artifact Name": v.get("artifactDisplayName"),
+                "Sub Artifact Name": v.get("subArtifactDisplayName"),
+                "Artifact Type": v.get("artifactType"),
+                "Is Enabled": v.get("isEnabled"),
+                "Frequency": v.get("frequency"),
+                "Start Date": v.get("startDate"),
+                "End Date": v.get("endDate"),
+                "Link To Content": v.get("linkToContent"),
+                "Preview Image": v.get("previewImage"),
+                "Attachment Format": v.get("attachmentFormat"),
+                "Users": v.get("users", []),
+            }
+        )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df

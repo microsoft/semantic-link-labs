@@ -54,8 +54,8 @@ def list_datasets(
         "Content Provider Type": "string",
         "Create Report Embed URL": "string",
         "QnA Embed URL": "string",
-        "Upstream Datasets": "string",
-        "Users": "string",
+        "Upstream Datasets": "list",
+        "Users": "list",
         "Is In Place Sharing Enabled": "bool",
         "Workspace Id": "string",
         "Auto Sync Read Only Replicas": "bool",
@@ -79,39 +79,40 @@ def list_datasets(
     url = _build_url(url, params)
     response = _base_api(request=url, client="fabric_sp")
 
-    dfs = []
+    rows = []
     for v in response.json().get("value", []):
-        new_data = {
-            "Dataset Id": v.get("id"),
-            "Dataset Name": v.get("name"),
-            "Web URL": v.get("webUrl"),
-            "Add Rows API Enabled": v.get("addRowsAPIEnabled"),
-            "Configured By": v.get("configuredBy"),
-            "Is Refreshable": v.get("isRefreshable"),
-            "Is Effective Identity Required": v.get("isEffectiveIdentityRequired"),
-            "Is Effective Identity Roles Required": v.get(
-                "isEffectiveIdentityRolesRequired"
-            ),
-            "Target Storage Mode": v.get("targetStorageMode"),
-            "Created Date": pd.to_datetime(v.get("createdDate")),
-            "Content Provider Type": v.get("contentProviderType"),
-            "Create Report Embed URL": v.get("createReportEmbedURL"),
-            "QnA Embed URL": v.get("qnaEmbedURL"),
-            "Upstream Datasets": v.get("upstreamDatasets", []),
-            "Users": v.get("users", []),
-            "Is In Place Sharing Enabled": v.get("isInPlaceSharingEnabled"),
-            "Workspace Id": v.get("workspaceId"),
-            "Auto Sync Read Only Replicas": v.get("queryScaleOutSettings", {}).get(
-                "autoSyncReadOnlyReplicas"
-            ),
-            "Max Read Only Replicas": v.get("queryScaleOutSettings", {}).get(
-                "maxReadOnlyReplicas"
-            ),
-        }
-        dfs.append(pd.DataFrame(new_data, index=[0]))
+        rows.append(
+            {
+                "Dataset Id": v.get("id"),
+                "Dataset Name": v.get("name"),
+                "Web URL": v.get("webUrl"),
+                "Add Rows API Enabled": v.get("addRowsAPIEnabled"),
+                "Configured By": v.get("configuredBy"),
+                "Is Refreshable": v.get("isRefreshable"),
+                "Is Effective Identity Required": v.get("isEffectiveIdentityRequired"),
+                "Is Effective Identity Roles Required": v.get(
+                    "isEffectiveIdentityRolesRequired"
+                ),
+                "Target Storage Mode": v.get("targetStorageMode"),
+                "Created Date": pd.to_datetime(v.get("createdDate")),
+                "Content Provider Type": v.get("contentProviderType"),
+                "Create Report Embed URL": v.get("createReportEmbedURL"),
+                "QnA Embed URL": v.get("qnaEmbedURL"),
+                "Upstream Datasets": v.get("upstreamDatasets", []),
+                "Users": v.get("users", []),
+                "Is In Place Sharing Enabled": v.get("isInPlaceSharingEnabled"),
+                "Workspace Id": v.get("workspaceId"),
+                "Auto Sync Read Only Replicas": v.get("queryScaleOutSettings", {}).get(
+                    "autoSyncReadOnlyReplicas"
+                ),
+                "Max Read Only Replicas": v.get("queryScaleOutSettings", {}).get(
+                    "maxReadOnlyReplicas"
+                ),
+            }
+        )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
