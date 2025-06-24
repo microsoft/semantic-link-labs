@@ -308,9 +308,10 @@ class ReportWrapper:
 
             if not json_path:
                 self._report_definition["parts"].remove(part)
-                print(
-                    f"{icons.green_dot} The file '{path}' has been removed from the report definition."
-                )
+                if verbose:
+                    print(
+                        f"{icons.green_dot} The file '{path}' has been removed from the report definition."
+                    )
             else:
                 remove_json_value(
                     path=path, payload=payload, json_path=json_path, verbose=verbose
@@ -2125,13 +2126,14 @@ class ReportWrapper:
         if isinstance(measures, str):
             measures = [measures]
 
-        file = self.get(file_path=self._report_extensions_path)
-
-        mCount = 0
+        entities = self.get(
+            file_path=self._report_extensions_path, json_path="$.entities"
+        )
         with connect_semantic_model(
-            dataset=dataset_id, readonly=False, workspace=dataset_workspace_id
+            dataset=dataset_id, readonly=self._readonly, workspace=dataset_workspace_id
         ) as tom:
             existing_measures = [m.Name for m in tom.all_measures()]
+            # Add measure to semantic model
             for _, r in rlm.iterrows():
                 table_name = r["Table Name"]
                 measure_name = r["Measure Name"]
@@ -2153,20 +2155,25 @@ class ReportWrapper:
                         name="semanticlinklabs",
                         value="reportlevelmeasure",
                     )
-                mCount += 1
-            # Remove measures from the json
-            if measures is not None and len(measures) < mCount:
-                for e in file["entities"]:
-                    e["measures"] = [
-                        measure
-                        for measure in e["measures"]
-                        if measure["name"] not in measures
-                    ]
-                file["entities"] = [
-                    entity for entity in file["entities"] if entity["measures"]
-                ]
-                self.update(file_path=self._report_extensions_path, payload=file)
-            # what about if measures is None?
+
+                    for entity in entities:
+                        if entity.get("name") == table_name:
+                            entity["measures"] = [
+                                m
+                                for m in entity.get("measures", [])
+                                if m.get("name") != measure_name
+                            ]
+                    entities = [e for e in entities if e.get("measures")]
+                    self.set_json(
+                        file_path=self._report_extensions_path,
+                        json_path="$.entities",
+                        json_value=entities,
+                    )
+            if not entities:
+                self.remove(
+                    file_path=self._report_extensions_path,
+                    verbose=False,
+                )
 
         if not self._readonly:
             print(
