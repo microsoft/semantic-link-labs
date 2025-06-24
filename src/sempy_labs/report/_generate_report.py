@@ -2,7 +2,7 @@ import sempy.fabric as fabric
 import pandas as pd
 import json
 import os
-from typing import Optional
+from typing import Optional, Literal
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _conv_b64,
@@ -185,6 +185,7 @@ def get_report_definition(
     report: str | UUID,
     workspace: Optional[str | UUID] = None,
     return_dataframe: bool = True,
+    format: Literal["PBIR-Legacy", "PBIR"] = 'PBIR-Legacy',
 ) -> pd.DataFrame | dict:
     """
     Gets the collection of definition files of a report.
@@ -201,6 +202,8 @@ def get_report_definition(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     return_dataframe : bool, default=True
         If True, returns a dataframe. If False, returns a json dictionary.
+    format : Literal['PBIR-Legacy', 'PBIR'], default='PBIR-Legacy'
+        The format of the report definition to return.
 
     Returns
     -------
@@ -213,6 +216,7 @@ def get_report_definition(
         type="Report",
         workspace=workspace,
         return_dataframe=return_dataframe,
+        format=format,
     )
 
 

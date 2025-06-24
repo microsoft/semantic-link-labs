@@ -14,7 +14,7 @@ from sempy_labs._helper_functions import (
 )
 from uuid import UUID
 from sempy._utils._log import log
-from typing import Optional
+from typing import Optional, Literal
 
 
 @log
@@ -25,6 +25,7 @@ def save_report_as_pbip(
     live_connect: bool = True,
     lakehouse: Optional[str | UUID] = None,
     lakehouse_workspace: Optional[str | UUID] = None,
+    format: Literal["PBIR-Legacy", "PBIR"] = "PBIR-Legacy",
 ):
     """
     Saves a report as a .pbip file to the default lakehouse attached to the notebook.
@@ -50,6 +51,8 @@ def save_report_as_pbip(
         The Fabric workspace name or ID used by the lakehouse.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    format : Literal["PBIR-Legacy", "PBIR"], default="PBIR-Legacy"
+        The format of the report to be saved. Options are "PBIR-Legacy"
     """
 
     (report_workspace_name, report_workspace_id) = resolve_workspace_name_and_id(
@@ -89,7 +92,7 @@ def save_report_as_pbip(
         path_prefix_full = f"{path_prefix}.{type}"
 
         if type == "Report":
-            dataframe = get_report_definition(report=name, workspace=workspace)
+            dataframe = get_report_definition(report=name, workspace=workspace, format=format)
         elif type == "SemanticModel":
             dataframe = get_semantic_model_definition(
                 dataset=name, workspace=object_workspace
