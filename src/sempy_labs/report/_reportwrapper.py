@@ -2085,7 +2085,7 @@ class ReportWrapper:
             item for item in custom_visuals if item not in cv_remove
         ]
         self.set_json(
-            file_path=self._report_path,
+            file_path=self._report_file_path,
             json_path=json_path,
             json_value=updated_custom_visuals,
         )
