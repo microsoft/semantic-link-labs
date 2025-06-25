@@ -1,7 +1,7 @@
 import pandas as pd
 from uuid import UUID
 import sempy_labs._icons as icons
-from typing import List
+from typing import List, Literal, Optional
 from sempy_labs._helper_functions import (
     _is_valid_uuid,
     _base_api,
@@ -128,12 +128,12 @@ def send_mail(
     subject: str,
     to_recipients: str | List[str],
     content: str,
-    content_type: str = "Text",
-    cc_recipients: str | List[str] = None,
-    bcc_recipients: str | List[str] = None,
-    priority: str = "Normal",
+    content_type: Literal["Text", "HTML"] = "Text",
+    cc_recipients: Optional[str | List[str]] = None,
+    bcc_recipients: Optional[str | List[str]] = None,
+    priority: Literal["Normal", "High", "Low"] = "Normal",
     follow_up_flag: bool = False,
-    attachments: str | List[str] = None,
+    attachments: Optional[str | List[str]] = None,
 ):
     """
     Sends an email to the specified recipients.
@@ -152,14 +152,14 @@ def send_mail(
         The email address of the recipients.
     content : str
         The email content.
-    content_type : str, default="Text"
+    content_type : Literal["Text", "HTML"], default="Text"
         The email content type. Options: "Text" or "HTML".
     cc_recipients : str | List[str], default=None
         The email address of the CC recipients.
     bcc_recipients : str | List[str], default=None
         The email address of the BCC recipients.
-    priority : str, default="Normal"
-        The email priority. Options: "Normal", "High", or "Low".
+    priority : Literal["Normal", "High", "Low"], default="Normal"
+        The email priority.
     follow_up_flag : bool, default=False
         Whether to set a follow-up flag for the email.
     attachments : str | List[str], default=None
@@ -171,7 +171,7 @@ def send_mail(
     priority = priority.capitalize()
     if priority not in ["Normal", "High", "Low"]:
         raise ValueError(
-            f"Invalid priority: {priority}. Options are: Normal, High, Low."
+            f"{icons.red_dot} Invalid priority: {priority}. Options are: Normal, High, Low."
         )
 
     user_id = resolve_user_id(user=user)
@@ -259,7 +259,7 @@ def send_mail(
     if isinstance(attachments, str):
         attachments = [attachments]
     if attachments:
-        lst_attachments = []
+        attachments_list = []
         for attach_path in attachments:
             content_bytes = file_path_to_content_bytes(attach_path)
             file_extension = os.path.splitext(attach_path)[1]
@@ -268,7 +268,7 @@ def send_mail(
                 raise ValueError(
                     f"{icons.red_dot} Unsupported file type: {file_extension}. Supported types are: {', '.join(content_types.keys())}."
                 )
-            lst_attachments.append(
+            attachments_list.append(
                 {
                     "@odata.type": "#microsoft.graph.fileAttachment",
                     "name": attach_path.split("/")[-1],
@@ -278,7 +278,7 @@ def send_mail(
             )
 
         # Add to payload
-        payload["message"]["attachments"] = lst_attachments
+        payload["message"]["attachments"] = attachments_list
 
     _base_api(
         request=f"users/{user_id}/sendMail",
