@@ -91,6 +91,7 @@ from sempy_labs._external_data_shares import (
     list_external_data_shares_in_item,
     create_external_data_share,
     revoke_external_data_share,
+    delete_external_data_share,
 )
 from sempy_labs._ml_models import (
     list_ml_models,
@@ -498,6 +499,7 @@ __all__ = [
     "list_external_data_shares_in_item",
     "create_external_data_share",
     "revoke_external_data_share",
+    "delete_external_data_share",
     "migrate_fabric_trial_capacity",
     "create_resource_group",
     "list_workloads",
