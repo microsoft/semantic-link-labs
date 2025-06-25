@@ -10,8 +10,10 @@ from sempy_labs._helper_functions import (
 )
 import os
 import base64
+from sempy._utils._log import log
 
 
+@log
 def resolve_user_id(user: str | UUID) -> UUID:
     """
     Resolves the user ID from the user principal name or ID.
@@ -36,6 +38,7 @@ def resolve_user_id(user: str | UUID) -> UUID:
         return result.get("id")
 
 
+@log
 def get_user(user: str | UUID) -> pd.DataFrame:
     """
     Shows properties of a given user.
@@ -73,6 +76,7 @@ def get_user(user: str | UUID) -> pd.DataFrame:
     return pd.DataFrame([new_data])
 
 
+@log
 def list_users() -> pd.DataFrame:
     """
     Shows a list of users and their properties.
@@ -123,6 +127,7 @@ def list_users() -> pd.DataFrame:
     return df
 
 
+@log
 def send_mail(
     user: UUID | str,
     subject: str,
