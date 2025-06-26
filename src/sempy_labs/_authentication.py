@@ -171,7 +171,7 @@ token_provider = contextvars.ContextVar("token_provider", default=None)
 def set_sp(token_provider):
     prev_func = getattr(SynapseTokenProvider, "__call__")
 
-    def new_call(self, audience=None):
+    def new_call(self, audience='pbi'):
         return token_provider(audience=audience)
 
     setattr(SynapseTokenProvider, "__call__", new_call)
