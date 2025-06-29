@@ -437,7 +437,7 @@ def upgrade_dataflow(
     max_concurrency = get_jsonpath_value(data=definition, path="$['ppdf:maxConcurrency']", default=1)
     if fast_copy:
         query_metadata["computeEngineSettings"] = {
-            "allowFastCopy": fast_copy,
+            "allowFastCopy": True,
             "maxConcurrency": max_concurrency,
         }
 
