@@ -433,6 +433,14 @@ def upgrade_dataflow(
         # "connections": [],
     }
 
+    fast_copy = get_jsonpath_value(data=definition, path="$['ppdf:fastCopy']", default=False)
+    max_concurrency = get_jsonpath_value(data=definition, path="$['ppdf:maxConcurrency']", default=1)
+    if fast_copy:
+        query_metadata["computeEngineSettings"] = {
+            "allowFastCopy": fast_copy,
+            "maxConcurrency": max_concurrency,
+        }
+
     mashup_doc = get_jsonpath_value(data=definition, path="$['pbi:mashup'].document")
 
     # Add the dataflow definition to the payload
