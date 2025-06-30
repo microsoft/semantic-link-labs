@@ -16,6 +16,7 @@ import sempy_labs._icons as icons
 from uuid import UUID
 from jsonpath_ng.ext import parse
 import json
+import re
 
 
 def list_dataflows(workspace: Optional[str | UUID] = None):
@@ -433,15 +434,26 @@ def upgrade_dataflow(
         # "connections": [],
     }
 
-    fast_copy = get_jsonpath_value(data=definition, path="$['ppdf:fastCopy']", default=False)
-    max_concurrency = get_jsonpath_value(data=definition, path="$['ppdf:maxConcurrency']", default=1)
+    fast_copy = get_jsonpath_value(
+        data=definition, path="$['ppdf:fastCopy']", default=False
+    )
+    max_concurrency = get_jsonpath_value(
+        data=definition, path="$['ppdf:maxConcurrency']"
+    )
     if fast_copy:
-        query_metadata["computeEngineSettings"] = {
-            "allowFastCopy": True,
-            "maxConcurrency": max_concurrency,
-        }
+        query_metadata["computeEngineSettings"] = {}
+
+        if max_concurrency:
+            query_metadata["computeEngineSettings"]["maxConcurrency"] = max_concurrency
 
     mashup_doc = get_jsonpath_value(data=definition, path="$['pbi:mashup'].document")
+    if fast_copy:
+        mashup_doc = '[StagingDefinition = [Kind = "FastCopy"]]\r\n' + mashup_doc
+
+    # Remove the FastCopyStaging section if it exists
+    mashup_doc = re.sub(
+        r"\r\nshared FastCopyStaging.*?(?=\r\nshared)", "", mashup_doc, flags=re.DOTALL
+    )
 
     # Add the dataflow definition to the payload
     new_definition = {
