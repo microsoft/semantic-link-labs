@@ -418,6 +418,9 @@ def upgrade_dataflow(
     queries_metadata = get_jsonpath_value(
             data=definition, path="$['pbi:mashup'].queriesMetadata"
         )
+
+    default_staging = True if 'DefaultStaging' in queries_metadata else False
+
     # Collect keys to delete
     keys_to_delete = [
         key for key in queries_metadata
@@ -461,13 +464,25 @@ def upgrade_dataflow(
             query_metadata["computeEngineSettings"]["maxConcurrency"] = max_concurrency
 
     mashup_doc = get_jsonpath_value(data=definition, path="$['pbi:mashup'].document")
-    if fast_copy:
-        mashup_doc = '[StagingDefinition = [Kind = "FastCopy"]]\r\n' + mashup_doc
 
     # Remove the FastCopyStaging section if it exists
-    mashup_doc = re.sub(
-        r"\r\nshared FastCopyStaging.*?(?=\r\nshared)", "", mashup_doc, flags=re.DOTALL
-    )
+    new_mashup_doc = ''
+    if default_staging and fast_copy:
+        new_mashup_doc = '[DefaultOutputDestinationSettings = [DestinationDefinition = [Kind = "Reference", QueryName = "DefaultDestination", IsNewTarget = true], UpdateMethod = [Kind = "Replace"]], StagingDefinition = [Kind = "FastCopy"]]\r\nsection Section1'
+    elif default_staging and not fast_copy:
+        new_mashup_doc = '[DefaultOutputDestinationSettings = [DestinationDefinition = [Kind = "Reference", QueryName = "DefaultDestination", IsNewTarget = true], UpdateMethod = [Kind = "Replace"]]\r\nsection Section1'
+    elif not default_staging and fast_copy:
+        new_mashup_doc = '[StagingDefinition = [Kind = "FastCopy"]]\r\nsection Section1'
+    else:
+        new_mashup_doc = 'section Section1'
+    for i in mashup_doc.split(';\r\nshared '):
+        if not ('FastCopyStaging = let' in i or '_WriteToDataDestination" = let' in i or '_WriteToDataDestination = let' in i or '_DataDestination" = let' in i or '_DataDestination = let' in i or '_TransformForWriteToDataDestination" = let' in i or '_TransformForWriteToDataDestination = let' in i):
+            if i != 'section Section1':
+                if default_staging and ('IsParameterQuery=true' not in i and not i.startswith('DefaultStaging') and not i.startswith('DefaultDestination')):
+                    new_mashup_doc += (';\r\n[BindToDefaultDestination = true]\r\nshared ' + i)
+                else:
+                    new_mashup_doc += (';\r\nshared ' + i)
+    new_mashup_doc = f"{new_mashup_doc};"
 
     # Add the dataflow definition to the payload
     new_definition = {
@@ -479,7 +494,7 @@ def upgrade_dataflow(
             },
             {
                 "path": "mashup.pq",
-                "payload": _conv_b64(mashup_doc, json_dumps=False),
+                "payload": _conv_b64(new_mashup_doc, json_dumps=False),
                 "payloadType": "InlineBase64",
             },
         ]
