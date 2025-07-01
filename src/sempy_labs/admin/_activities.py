@@ -113,7 +113,7 @@ def list_activity_events(
         if return_dataframe:
             for i in r.get("activityEventEntities", []):
                 new_data = {
-                    "Id": i.get("id"),
+                    "Id": i.get("Id"),
                     "Record Type": i.get("RecordType"),
                     "Creation Time": i.get("CreationTime"),
                     "Operation": i.get("Operation"),
