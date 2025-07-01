@@ -415,6 +415,22 @@ def upgrade_dataflow(
     )
     query_groups_value = json.loads(matches[0].value) if matches else []
 
+    queries_metadata = get_jsonpath_value(
+            data=definition, path="$['pbi:mashup'].queriesMetadata"
+        )
+    # Collect keys to delete
+    keys_to_delete = [
+        key for key in queries_metadata
+        if key.endswith("_DataDestination")
+        or key.endswith("_WriteToDataDestination")
+        or key.endswith("_TransformForWriteToDataDestination")
+        or key == 'FastCopyStaging'
+    ]
+
+    # Delete them
+    for key in keys_to_delete:
+        del queries_metadata[key]
+
     # Prepare the dataflow definition
     query_metadata = {
         "formatVersion": "202502",
@@ -422,9 +438,7 @@ def upgrade_dataflow(
         "name": new_dataflow_name,
         "queryGroups": query_groups_value,
         "documentLocale": get_jsonpath_value(data=definition, path="$.culture"),
-        "queriesMetadata": get_jsonpath_value(
-            data=definition, path="$['pbi:mashup'].queriesMetadata"
-        ),
+        "queriesMetadata": queries_metadata,
         "fastCombine": get_jsonpath_value(
             data=definition, path="$['pbi:mashup'].fastCombine", default=False
         ),
