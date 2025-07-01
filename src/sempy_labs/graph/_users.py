@@ -249,13 +249,15 @@ def send_mail(
     def file_path_to_content_bytes(file_path):
 
         path_parts = file_path.split("abfss://")[1].split("@")
-        workspace_id = path_parts[0]
+        workspace = path_parts[0]
 
         rest = path_parts[1].split(".microsoft.com/")[1]
-        lakehouse_id, *file_parts = rest.split("/")
+        lakehouse, *file_parts = rest.split("/")
+        if lakehouse.endswith(".Lakehouse"):
+            lakehouse = lakehouse.removesuffix(".Lakehouse")
         relative_path = os.path.join(*file_parts)
 
-        local_path = _mount(lakehouse_id, workspace_id)
+        local_path = _mount(lakehouse, workspace)
         full_path = os.path.join(local_path, relative_path)
 
         with open(full_path, "rb") as file:
