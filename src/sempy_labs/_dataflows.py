@@ -434,6 +434,12 @@ def upgrade_dataflow(
     for key in keys_to_delete:
         del queries_metadata[key]
 
+    # Set load enabled and isHidden
+    for key, items in queries_metadata.items():
+        items['loadEnabled'] = False
+        if key in ['DefaultDestination', 'DefaultStaging']:
+            items['isHidden'] = True
+
     # Prepare the dataflow definition
     query_metadata = {
         "formatVersion": "202502",
@@ -476,6 +482,8 @@ def upgrade_dataflow(
     else:
         new_mashup_doc = 'section Section1'
     for i in mashup_doc.split(';\r\nshared '):
+        #if 'IsParameterQuery=true' in i:
+            # Add to queries_metadata
         if not ('FastCopyStaging = let' in i or '_WriteToDataDestination" = let' in i or '_WriteToDataDestination = let' in i or '_DataDestination" = let' in i or '_DataDestination = let' in i or '_TransformForWriteToDataDestination" = let' in i or '_TransformForWriteToDataDestination = let' in i):
             if i != 'section Section1':
                 if default_staging and ('IsParameterQuery=true' not in i and not i.startswith('DefaultStaging') and not i.startswith('DefaultDestination')):
