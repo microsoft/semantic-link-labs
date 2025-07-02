@@ -1,13 +1,12 @@
 import sempy.fabric as fabric
 import re
-import datetime
-from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
-from sempy_labs._helper_functions import (
+from ..lakehouse._get_lakehouse_tables import get_lakehouse_tables
+from .._helper_functions import (
     resolve_lakehouse_name,
     format_dax_object_name,
     retry,
 )
-from sempy_labs.tom import connect_semantic_model
+from ..tom import connect_semantic_model
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons

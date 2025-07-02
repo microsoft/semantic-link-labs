@@ -1,57 +1,57 @@
-from sempy_labs._sql_endpoints import (
+from ._sql_endpoints import (
     list_sql_endpoints,
     refresh_sql_endpoint_metadata,
 )
-from sempy_labs._variable_libraries import (
+from ._variable_libraries import (
     list_variable_libraries,
     delete_variable_library,
 )
-from sempy_labs._kusto import (
+from ._kusto import (
     query_kusto,
     query_workspace_monitoring,
 )
-from sempy_labs._vpax import (
+from ._vpax import (
     create_vpax,
 )
-from sempy_labs._delta_analyzer_history import (
+from ._delta_analyzer_history import (
     delta_analyzer_history,
 )
-from sempy_labs._dax_query_view import (
+from ._dax_query_view import (
     generate_dax_query_view_url,
 )
-from sempy_labs._mounted_data_factories import (
+from ._mounted_data_factories import (
     list_mounted_data_factories,
     get_mounted_data_factory_definition,
     delete_mounted_data_factory,
 )
-from sempy_labs._tags import (
+from ._tags import (
     list_tags,
     apply_tags,
     unapply_tags,
 )
-from sempy_labs._semantic_models import (
+from ._semantic_models import (
     get_semantic_model_refresh_schedule,
     enable_semantic_model_scheduled_refresh,
     delete_semantic_model,
     update_semantic_model_refresh_schedule,
     list_semantic_model_datasources,
 )
-from sempy_labs._graphQL import (
+from ._graphQL import (
     list_graphql_apis,
     create_graphql_api,
 )
-from sempy_labs._job_scheduler import (
+from ._job_scheduler import (
     list_item_job_instances,
     list_item_schedules,
     create_item_schedule_cron,
     create_item_schedule_daily,
     create_item_schedule_weekly,
 )
-from sempy_labs._delta_analyzer import (
+from ._delta_analyzer import (
     delta_analyzer,
     get_delta_table_history,
 )
-from sempy_labs._gateways import (
+from ._gateways import (
     list_gateway_members,
     list_gateway_role_assigments,
     list_gateways,
@@ -63,11 +63,11 @@ from sempy_labs._gateways import (
     update_on_premises_gateway,
     bind_semantic_model_to_gateway,
 )
-from sempy_labs._authentication import (
+from ._authentication import (
     ServicePrincipalTokenProvider,
     service_principal_authentication,
 )
-from sempy_labs._mirrored_databases import (
+from ._mirrored_databases import (
     get_mirrored_database_definition,
     get_mirroring_status,
     list_mirrored_databases,
@@ -78,72 +78,72 @@ from sempy_labs._mirrored_databases import (
     update_mirrored_database_definition,
     get_tables_mirroring_status,
 )
-from sempy_labs._managed_private_endpoints import (
+from ._managed_private_endpoints import (
     list_managed_private_endpoints,
     create_managed_private_endpoint,
     delete_managed_private_endpoint,
 )
-from sempy_labs._workloads import (
+from ._workloads import (
     list_workloads,
     patch_workload,
 )
-from sempy_labs._external_data_shares import (
+from ._external_data_shares import (
     list_external_data_shares_in_item,
     create_external_data_share,
     revoke_external_data_share,
 )
-from sempy_labs._ml_models import (
+from ._ml_models import (
     list_ml_models,
     create_ml_model,
     delete_ml_model,
 )
-from sempy_labs._ml_experiments import (
+from ._ml_experiments import (
     list_ml_experiments,
     create_ml_experiment,
     delete_ml_experiment,
 )
-from sempy_labs._warehouses import (
+from ._warehouses import (
     create_warehouse,
     list_warehouses,
     delete_warehouse,
     get_warehouse_columns,
     get_warehouse_tables,
 )
-from sempy_labs._data_pipelines import (
+from ._data_pipelines import (
     list_data_pipelines,
     create_data_pipeline,
     delete_data_pipeline,
     get_data_pipeline_definition,
 )
-from sempy_labs._eventhouses import (
+from ._eventhouses import (
     create_eventhouse,
     list_eventhouses,
     delete_eventhouse,
     get_eventhouse_definition,
 )
-from sempy_labs._eventstreams import (
+from ._eventstreams import (
     list_eventstreams,
     create_eventstream,
     delete_eventstream,
 )
-from sempy_labs._kql_querysets import (
+from ._kql_querysets import (
     list_kql_querysets,
     create_kql_queryset,
     delete_kql_queryset,
 )
-from sempy_labs._kql_databases import (
+from ._kql_databases import (
     list_kql_databases,
     # create_kql_database,
     delete_kql_database,
 )
-from sempy_labs._mirrored_warehouses import list_mirrored_warehouses
-from sempy_labs._environments import (
+from ._mirrored_warehouses import list_mirrored_warehouses
+from ._environments import (
     create_environment,
     delete_environment,
     publish_environment,
     list_environments,
 )
-from sempy_labs._clear_cache import (
+from ._clear_cache import (
     clear_cache,
     backup_semantic_model,
     restore_semantic_model,
@@ -151,12 +151,12 @@ from sempy_labs._clear_cache import (
     list_backups,
     list_storage_account_files,
 )
-from sempy_labs._capacity_migration import (
+from ._capacity_migration import (
     migrate_workspaces,
     migrate_capacities,
     migrate_fabric_trial_capacity,
 )
-from sempy_labs._capacities import (
+from ._capacities import (
     create_fabric_capacity,
     resume_fabric_capacity,
     suspend_fabric_capacity,
@@ -179,7 +179,7 @@ from sempy_labs._capacities import (
     get_resource_group,
     list_capacities,
 )
-from sempy_labs._spark import (
+from ._spark import (
     get_spark_settings,
     update_spark_settings,
     list_custom_pools,
@@ -187,7 +187,7 @@ from sempy_labs._spark import (
     delete_custom_pool,
     update_custom_pool,
 )
-from sempy_labs._workspaces import (
+from ._workspaces import (
     list_workspace_users,
     update_workspace_user,
     add_user_to_workspace,
@@ -197,34 +197,34 @@ from sempy_labs._workspaces import (
     list_workspace_role_assignments,
     delete_workspace,
 )
-from sempy_labs._notebooks import (
+from ._notebooks import (
     get_notebook_definition,
     import_notebook_from_web,
     update_notebook_definition,
     create_notebook,
 )
-from sempy_labs._sql import (
+from ._sql import (
     ConnectWarehouse,
     ConnectLakehouse,
     ConnectSQLDatabase,
 )
-from sempy_labs._sqldatabase import (
+from ._sqldatabase import (
     get_sql_database_columns,
     get_sql_database_tables,
     create_sql_database,
     delete_sql_database,
     list_sql_databases,
 )
-from sempy_labs._workspace_identity import (
+from ._workspace_identity import (
     provision_workspace_identity,
     deprovision_workspace_identity,
 )
-from sempy_labs._deployment_pipelines import (
+from ._deployment_pipelines import (
     list_deployment_pipeline_stage_items,
     list_deployment_pipeline_stages,
     list_deployment_pipelines,
 )
-from sempy_labs._git import (
+from ._git import (
     get_git_connection,
     get_git_status,
     commit_to_git,
@@ -236,7 +236,7 @@ from sempy_labs._git import (
     get_my_git_credentials,
     update_my_git_credentials,
 )
-from sempy_labs._dataflows import (
+from ._dataflows import (
     list_dataflow_storage_accounts,
     assign_workspace_to_dataflow_storage,
     list_dataflows,
@@ -244,7 +244,7 @@ from sempy_labs._dataflows import (
     upgrade_dataflow,
     get_dataflow_definition,
 )
-from sempy_labs._connections import (
+from ._connections import (
     list_connections,
     list_item_connections,
     list_connection_role_assignments,
@@ -254,14 +254,14 @@ from sempy_labs._connections import (
     create_on_prem_connection,
     create_cloud_connection,
 )
-from sempy_labs._dax import (
+from ._dax import (
     evaluate_dax_impersonation,
     get_dax_query_dependencies,
     get_dax_query_memory_size,
     # dax_perf_test,
     # dax_perf_test_bulk,
 )
-from sempy_labs._generate_semantic_model import (
+from ._generate_semantic_model import (
     create_blank_semantic_model,
     create_semantic_model_from_bim,
     deploy_semantic_model,
@@ -270,10 +270,10 @@ from sempy_labs._generate_semantic_model import (
     update_semantic_model_from_bim,
     get_semantic_model_definition,
 )
-from sempy_labs._dashboards import (
+from ._dashboards import (
     list_dashboards,
 )
-from sempy_labs._list_functions import (
+from ._list_functions import (
     list_reports_using_semantic_model,
     list_semantic_model_object_report_usage,
     list_report_semantic_model_objects,
@@ -287,7 +287,7 @@ from sempy_labs._list_functions import (
     list_semantic_model_errors,
     list_synonyms,
 )
-from sempy_labs._helper_functions import (
+from ._helper_functions import (
     convert_to_friendly_case,
     resolve_environment_id,
     resolve_capacity_id,
@@ -313,21 +313,21 @@ from sempy_labs._helper_functions import (
     resolve_capacity_name,
     get_tenant_id,
 )
-from sempy_labs._model_bpa_bulk import (
+from ._model_bpa_bulk import (
     run_model_bpa_bulk,
     create_model_bpa_semantic_model,
 )
-from sempy_labs._model_bpa import run_model_bpa
-from sempy_labs._model_bpa_rules import model_bpa_rules
-from sempy_labs._model_dependencies import (
+from ._model_bpa import run_model_bpa
+from ._model_bpa_rules import model_bpa_rules
+from ._model_dependencies import (
     measure_dependency_tree,
     get_measure_dependencies,
     get_model_calc_dependencies,
 )
-from sempy_labs._one_lake_integration import (
+from ._one_lake_integration import (
     export_model_to_onelake,
 )
-from sempy_labs._query_scale_out import (
+from ._query_scale_out import (
     qso_sync,
     qso_sync_status,
     set_qso,
@@ -336,17 +336,17 @@ from sempy_labs._query_scale_out import (
     set_semantic_model_storage_format,
     set_workspace_default_storage_format,
 )
-from sempy_labs._refresh_semantic_model import (
+from ._refresh_semantic_model import (
     refresh_semantic_model,
     cancel_dataset_refresh,
     get_semantic_model_refresh_history,
 )
-from sempy_labs._translations import translate_semantic_model
-from sempy_labs._vertipaq import (
+from ._translations import translate_semantic_model
+from ._vertipaq import (
     vertipaq_analyzer,
     import_vertipaq_analyzer,
 )
-from sempy_labs._user_delegation_key import (
+from ._user_delegation_key import (
     get_user_delegation_key,
 )
 

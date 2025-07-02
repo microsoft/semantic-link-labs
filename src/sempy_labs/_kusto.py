@@ -5,8 +5,8 @@ from sempy._utils._log import log
 import sempy_labs._icons as icons
 from typing import Optional
 from uuid import UUID
-from sempy_labs._kql_databases import _resolve_cluster_uri
-from sempy_labs._helper_functions import resolve_item_id
+from ._kql_databases import _resolve_cluster_uri
+from ._helper_functions import resolve_item_id
 
 
 @log

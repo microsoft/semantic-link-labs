@@ -2,7 +2,7 @@ from typing import Optional, Tuple, List, Literal
 from contextlib import contextmanager
 from sempy._utils._log import log
 from uuid import UUID
-from sempy_labs._helper_functions import (
+from .._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_item_name_and_id,
     _base_api,
@@ -19,7 +19,7 @@ from sempy_labs._helper_functions import (
     remove_json_value,
     get_tenant_id,
 )
-from sempy_labs._dictionary_diffs import (
+from .._dictionary_diffs import (
     diff_parts,
 )
 import json
@@ -28,7 +28,7 @@ import copy
 import pandas as pd
 from jsonpath_ng.ext import parse
 import sempy_labs.report._report_helper as helper
-from sempy_labs._model_dependencies import get_measure_dependencies
+from .._model_dependencies import get_measure_dependencies
 import requests
 import re
 import base64

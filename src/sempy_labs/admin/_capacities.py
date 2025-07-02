@@ -3,7 +3,7 @@ from uuid import UUID
 import sempy_labs._icons as icons
 from typing import Optional, Tuple
 from sempy._utils._log import log
-from sempy_labs._helper_functions import (
+from .._helper_functions import (
     _base_api,
     _build_url,
     _create_dataframe,

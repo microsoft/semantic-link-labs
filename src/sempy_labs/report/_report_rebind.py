@@ -1,4 +1,4 @@
-from sempy_labs._helper_functions import (
+from .._helper_functions import (
     resolve_dataset_id,
     resolve_workspace_name_and_id,
     resolve_report_id,

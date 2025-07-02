@@ -1,7 +1,7 @@
 import sempy.fabric as fabric
 import pandas as pd
 import datetime
-from sempy_labs._helper_functions import (
+from ._helper_functions import (
     save_as_delta_table,
     resolve_workspace_capacity,
     retry,
@@ -9,11 +9,11 @@ from sempy_labs._helper_functions import (
     resolve_workspace_id,
     resolve_lakehouse_name_and_id,
 )
-from sempy_labs.lakehouse import (
+from .lakehouse import (
     get_lakehouse_tables,
     lakehouse_attached,
 )
-from sempy_labs._model_bpa import run_model_bpa
+from ._model_bpa import run_model_bpa
 from typing import Optional, List
 from sempy._utils._log import log
 import sempy_labs._icons as icons

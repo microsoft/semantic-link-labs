@@ -1,6 +1,6 @@
 import sempy_labs._icons as icons
 from typing import Optional
-from sempy_labs._helper_functions import (
+from .._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_lakehouse_name_and_id,
     _base_api,
@@ -8,7 +8,7 @@ from sempy_labs._helper_functions import (
     _mount,
     resolve_workspace_name,
 )
-from sempy_labs.lakehouse._lakehouse import lakehouse_attached
+from ..lakehouse._lakehouse import lakehouse_attached
 from uuid import UUID
 from sempy._utils._log import log
 

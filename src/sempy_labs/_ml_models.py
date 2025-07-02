@@ -1,6 +1,6 @@
 import pandas as pd
 from typing import Optional
-from sempy_labs._helper_functions import (
+from ._helper_functions import (
     resolve_workspace_id,
     _base_api,
     delete_item,

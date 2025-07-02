@@ -1,8 +1,8 @@
 import sempy
-from sempy_labs.tom import connect_semantic_model
-from sempy_labs._refresh_semantic_model import refresh_semantic_model
-from sempy_labs.directlake._dl_helper import get_direct_lake_source
-from sempy_labs._helper_functions import (
+from ..tom import connect_semantic_model
+from .._refresh_semantic_model import refresh_semantic_model
+from ._dl_helper import get_direct_lake_source
+from .._helper_functions import (
     _convert_data_type,
     resolve_dataset_name_and_id,
     resolve_workspace_name_and_id,

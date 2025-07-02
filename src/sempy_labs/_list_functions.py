@@ -1,5 +1,5 @@
 import sempy.fabric as fabric
-from sempy_labs._helper_functions import (
+from ._helper_functions import (
     resolve_workspace_name_and_id,
     create_relationship_name,
     format_dax_object_name,

@@ -5,7 +5,7 @@ from typing import Optional, List, Union, Tuple
 from uuid import UUID
 import sempy_labs._icons as icons
 from sempy._utils._log import log
-from sempy_labs._helper_functions import (
+from .._helper_functions import (
     retry,
     _convert_data_type,
     resolve_dataset_name_and_id,

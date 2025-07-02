@@ -2,12 +2,12 @@ import sempy
 import json
 import os
 import shutil
-from sempy_labs.lakehouse._lakehouse import lakehouse_attached
+from ..lakehouse._lakehouse import lakehouse_attached
 from sempy._utils._log import log
 from typing import Optional
 import sempy_labs._icons as icons
 from uuid import UUID
-from sempy_labs._helper_functions import (
+from .._helper_functions import (
     resolve_dataset_name_and_id,
     resolve_workspace_name_and_id,
 )

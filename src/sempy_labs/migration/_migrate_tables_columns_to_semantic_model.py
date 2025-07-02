@@ -1,9 +1,9 @@
 import sempy.fabric as fabric
 import pandas as pd
-from sempy_labs.directlake._generate_shared_expression import generate_shared_expression
-from sempy_labs._helper_functions import resolve_lakehouse_name, retry
-from sempy_labs.lakehouse._lakehouse import lakehouse_attached
-from sempy_labs.tom import connect_semantic_model
+from ..directlake._generate_shared_expression import generate_shared_expression
+from .._helper_functions import resolve_lakehouse_name, retry
+from ..lakehouse._lakehouse import lakehouse_attached
+from ..tom import connect_semantic_model
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons

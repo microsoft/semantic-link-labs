@@ -1,14 +1,14 @@
 import sempy.fabric as fabric
 import pandas as pd
-from sempy_labs._helper_functions import (
+from .._helper_functions import (
     format_dax_object_name,
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
     resolve_workspace_name,
 )
 from IPython.display import display
-from sempy_labs.lakehouse import get_lakehouse_columns
-from sempy_labs.directlake._dl_helper import get_direct_lake_source
+from ..lakehouse import get_lakehouse_columns
+from ..directlake._dl_helper import get_direct_lake_source
 from typing import Optional
 import sempy_labs._icons as icons
 from sempy._utils._log import log

@@ -1,6 +1,6 @@
 from typing import Optional
 from uuid import UUID
-from sempy_labs._helper_functions import (
+from ._helper_functions import (
     resolve_dataset_id,
     _get_fabric_context_setting,
     resolve_workspace_id,

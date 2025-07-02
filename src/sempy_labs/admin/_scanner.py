@@ -3,9 +3,9 @@ from uuid import UUID
 from sempy.fabric.exceptions import FabricHTTPException
 import time
 import sempy_labs._icons as icons
-from sempy_labs.admin._basic_functions import list_workspaces
+from ._basic_functions import list_workspaces
 from sempy._utils._log import log
-from sempy_labs._helper_functions import (
+from .._helper_functions import (
     _base_api,
     _is_valid_uuid,
     _build_url,

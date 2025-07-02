@@ -1,12 +1,12 @@
 import sempy
 import sempy.fabric as fabric
 import re
-from sempy_labs._helper_functions import (
+from .._helper_functions import (
     create_relationship_name,
     retry,
     format_dax_object_name,
 )
-from sempy_labs.tom import connect_semantic_model
+from ..tom import connect_semantic_model
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons

@@ -2,7 +2,7 @@ from tqdm.auto import tqdm
 from typing import List, Optional, Union
 from sempy._utils._log import log
 from uuid import UUID
-from sempy_labs._helper_functions import (
+from .._helper_functions import (
     _base_api,
     resolve_lakehouse_name_and_id,
     resolve_workspace_name_and_id,
@@ -13,7 +13,7 @@ import sempy_labs._icons as icons
 import re
 import time
 import pandas as pd
-from sempy_labs._job_scheduler import (
+from .._job_scheduler import (
     _get_item_job_instance,
 )
 

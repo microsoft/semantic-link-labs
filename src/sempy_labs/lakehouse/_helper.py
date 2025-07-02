@@ -1,7 +1,7 @@
 from uuid import UUID
 from typing import Optional, Literal
 import pyarrow.dataset as ds
-from sempy_labs._helper_functions import (
+from .._helper_functions import (
     _mount,
     delete_item,
     _base_api,

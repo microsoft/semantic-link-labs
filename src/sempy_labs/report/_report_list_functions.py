@@ -1,13 +1,13 @@
 import sempy.fabric as fabric
 from typing import Optional
 import pandas as pd
-from sempy_labs._helper_functions import (
+from .._helper_functions import (
     format_dax_object_name,
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
 )
-from sempy_labs.report._reportwrapper import ReportWrapper
-from sempy_labs._list_functions import list_reports_using_semantic_model
+from ._reportwrapper import ReportWrapper
+from .._list_functions import list_reports_using_semantic_model
 from uuid import UUID
 
 

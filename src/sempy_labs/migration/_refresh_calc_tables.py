@@ -1,12 +1,12 @@
 import sempy.fabric as fabric
 import pandas as pd
 import re
-from sempy_labs.tom import connect_semantic_model
+from ..tom import connect_semantic_model
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from uuid import UUID
-from sempy_labs._helper_functions import (
+from .._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
     save_as_delta_table,
