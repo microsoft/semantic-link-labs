@@ -415,18 +415,19 @@ def upgrade_dataflow(
     query_groups_value = json.loads(matches[0].value) if matches else []
 
     queries_metadata = get_jsonpath_value(
-            data=definition, path="$['pbi:mashup'].queriesMetadata"
-        )
+        data=definition, path="$['pbi:mashup'].queriesMetadata"
+    )
 
-    default_staging = True if 'DefaultStaging' in queries_metadata else False
+    default_staging = True if "DefaultStaging" in queries_metadata else False
 
     # Collect keys to delete
     keys_to_delete = [
-        key for key in queries_metadata
+        key
+        for key in queries_metadata
         if key.endswith("_DataDestination")
         or key.endswith("_WriteToDataDestination")
         or key.endswith("_TransformForWriteToDataDestination")
-        or key == 'FastCopyStaging'
+        or key == "FastCopyStaging"
     ]
 
     # Delete them
@@ -435,9 +436,9 @@ def upgrade_dataflow(
 
     # Set load enabled and isHidden
     for key, items in queries_metadata.items():
-        items['loadEnabled'] = False
-        if key in ['DefaultDestination', 'DefaultStaging']:
-            items['isHidden'] = True
+        items["loadEnabled"] = False
+        if key in ["DefaultDestination", "DefaultStaging"]:
+            items["isHidden"] = True
 
     # Prepare the dataflow definition
     query_metadata = {
@@ -471,7 +472,7 @@ def upgrade_dataflow(
     mashup_doc = get_jsonpath_value(data=definition, path="$['pbi:mashup'].document")
 
     # Remove the FastCopyStaging section if it exists
-    new_mashup_doc = ''
+    new_mashup_doc = ""
     if default_staging and fast_copy:
         new_mashup_doc = '[DefaultOutputDestinationSettings = [DestinationDefinition = [Kind = "Reference", QueryName = "DefaultDestination", IsNewTarget = true], UpdateMethod = [Kind = "Replace"]], StagingDefinition = [Kind = "FastCopy"]]\r\nsection Section1'
     elif default_staging and not fast_copy:
@@ -479,16 +480,30 @@ def upgrade_dataflow(
     elif not default_staging and fast_copy:
         new_mashup_doc = '[StagingDefinition = [Kind = "FastCopy"]]\r\nsection Section1'
     else:
-        new_mashup_doc = 'section Section1'
-    for i in mashup_doc.split(';\r\nshared '):
-        #if 'IsParameterQuery=true' in i:
-            # Add to queries_metadata
-        if not ('FastCopyStaging = let' in i or '_WriteToDataDestination" = let' in i or '_WriteToDataDestination = let' in i or '_DataDestination" = let' in i or '_DataDestination = let' in i or '_TransformForWriteToDataDestination" = let' in i or '_TransformForWriteToDataDestination = let' in i):
-            if i != 'section Section1':
-                if default_staging and ('IsParameterQuery=true' not in i and not i.startswith('DefaultStaging') and not i.startswith('DefaultDestination')):
-                    new_mashup_doc += (';\r\n[BindToDefaultDestination = true]\r\nshared ' + i)
+        new_mashup_doc = "section Section1"
+    for i in mashup_doc.split(";\r\nshared "):
+        # if 'IsParameterQuery=true' in i:
+        # Add to queries_metadata
+        if not (
+            "FastCopyStaging = let" in i
+            or '_WriteToDataDestination" = let' in i
+            or "_WriteToDataDestination = let" in i
+            or '_DataDestination" = let' in i
+            or "_DataDestination = let" in i
+            or '_TransformForWriteToDataDestination" = let' in i
+            or "_TransformForWriteToDataDestination = let" in i
+        ):
+            if i != "section Section1":
+                if default_staging and (
+                    "IsParameterQuery=true" not in i
+                    and not i.startswith("DefaultStaging")
+                    and not i.startswith("DefaultDestination")
+                ):
+                    new_mashup_doc += (
+                        ";\r\n[BindToDefaultDestination = true]\r\nshared " + i
+                    )
                 else:
-                    new_mashup_doc += (';\r\nshared ' + i)
+                    new_mashup_doc += ";\r\nshared " + i
     new_mashup_doc = f"{new_mashup_doc};"
 
     return new_mashup_doc, query_metadata
