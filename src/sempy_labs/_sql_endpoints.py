@@ -142,6 +142,7 @@ def refresh_sql_endpoint_metadata(
     result = _base_api(
         request=f"v1/workspaces/{workspace_id}/sqlEndpoints/{sql_endpoint_id}/refreshMetadata?preview=true",
         method="post",
+        client="fabric_sp",
         status_codes=[200, 202],
         lro_return_json=True,
         payload=payload,
