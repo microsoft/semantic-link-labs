@@ -1,8 +1,7 @@
-import sempy.fabric as fabric
 from typing import Optional, List, Union, Tuple
 from uuid import UUID
 import sempy_labs._icons as icons
-from sempy_labs._helper_functions import (
+from .._helper_functions import (
     _is_valid_uuid,
     _build_url,
     _update_dataframe_datatypes,

@@ -1,9 +1,9 @@
-from sempy_labs._helper_functions import (
+from .._helper_functions import (
     _base_api,
     _create_dataframe,
 )
 import pandas as pd
-from sempy_labs.admin._basic_functions import list_workspaces
+from ._basic_functions import list_workspaces
 from sempy._utils._log import log
 
 

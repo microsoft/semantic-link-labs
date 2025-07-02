@@ -1,6 +1,6 @@
 import sempy.fabric as fabric
 import pandas as pd
-from sempy_labs._helper_functions import (
+from .._helper_functions import (
     resolve_lakehouse_name_and_id,
     resolve_workspace_name_and_id,
     _base_api,

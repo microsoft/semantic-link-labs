@@ -1,7 +1,7 @@
 from typing import Optional, Literal
 from uuid import UUID
 import pandas as pd
-from sempy_labs._helper_functions import (
+from ._helper_functions import (
     _base_api,
     _create_dataframe,
     resolve_workspace_name_and_id,

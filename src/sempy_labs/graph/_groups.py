@@ -1,6 +1,6 @@
 import pandas as pd
 from uuid import UUID
-from sempy_labs._helper_functions import (
+from .._helper_functions import (
     _is_valid_uuid,
     _base_api,
     _create_dataframe,

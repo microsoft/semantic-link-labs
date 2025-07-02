@@ -6,7 +6,7 @@ import os
 import json
 from datetime import datetime
 from decimal import Decimal
-from sempy_labs._helper_functions import (
+from .._helper_functions import (
     format_dax_object_name,
     generate_guid,
     _make_list_unique,
@@ -18,9 +18,9 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_id,
     _validate_weight,
 )
-from sempy_labs._list_functions import list_relationships
-from sempy_labs._refresh_semantic_model import refresh_semantic_model
-from sempy_labs.directlake._dl_helper import check_fallback_reason
+from .._list_functions import list_relationships
+from .._refresh_semantic_model import refresh_semantic_model
+from ..directlake._dl_helper import check_fallback_reason
 from contextlib import contextmanager
 from typing import List, Iterator, Optional, Union, TYPE_CHECKING, Literal
 from sempy._utils._log import log
@@ -28,7 +28,7 @@ import sempy_labs._icons as icons
 import ast
 from uuid import UUID
 import sempy_labs._authentication as auth
-from sempy_labs.lakehouse._lakehouse import lakehouse_attached
+from ..lakehouse._lakehouse import lakehouse_attached
 
 
 if TYPE_CHECKING:

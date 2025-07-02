@@ -1,5 +1,5 @@
-from sempy_labs.lakehouse._blobs import _request_blob_api
-from sempy_labs._helper_functions import (
+from .lakehouse._blobs import _request_blob_api
+from ._helper_functions import (
     _xml_to_dict,
 )
 from datetime import datetime, timedelta, timezone

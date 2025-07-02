@@ -5,7 +5,7 @@ import os
 from uuid import UUID
 from typing import Dict, Optional
 import pyarrow.parquet as pq
-from sempy_labs._helper_functions import (
+from ._helper_functions import (
     create_abfss_path,
     save_as_delta_table,
     _get_column_aggregate,
@@ -21,11 +21,11 @@ from sempy_labs._helper_functions import (
     _get_delta_table,
 )
 from sempy._utils._log import log
-from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
-from sempy_labs.lakehouse._lakehouse import (
+from .lakehouse._get_lakehouse_tables import get_lakehouse_tables
+from .lakehouse._lakehouse import (
     lakehouse_attached,
 )
-from sempy_labs.lakehouse._helper import (
+from .lakehouse._helper import (
     is_v_ordered,
 )
 import sempy_labs._icons as icons

@@ -1,8 +1,8 @@
 import sempy.fabric as fabric
 import pandas as pd
-from sempy_labs.tom import connect_semantic_model
-from sempy_labs._generate_semantic_model import create_blank_semantic_model
-from sempy_labs.directlake._generate_shared_expression import generate_shared_expression
+from .tom import connect_semantic_model
+from ._generate_semantic_model import create_blank_semantic_model
+from .directlake._generate_shared_expression import generate_shared_expression
 from typing import Optional
 from sempy._utils._log import log
 

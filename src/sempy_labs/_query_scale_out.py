@@ -1,6 +1,6 @@
 import sempy.fabric as fabric
 import pandas as pd
-from sempy_labs._helper_functions import (
+from ._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
     _update_dataframe_datatypes,

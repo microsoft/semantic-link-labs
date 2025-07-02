@@ -2,15 +2,15 @@ import sempy
 import sempy.fabric as fabric
 import pandas as pd
 import re
-from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
-from sempy_labs._helper_functions import (
+from ..lakehouse._get_lakehouse_tables import get_lakehouse_tables
+from .._helper_functions import (
     resolve_lakehouse_name,
     resolve_lakehouse_id,
     retry,
     generate_guid,
     save_as_delta_table,
 )
-from sempy_labs.tom import connect_semantic_model
+from ..tom import connect_semantic_model
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons

@@ -1,5 +1,5 @@
 import sempy.fabric as fabric
-from sempy_labs._helper_functions import (
+from .._helper_functions import (
     resolve_lakehouse_id,
 )
 from typing import Optional, Tuple

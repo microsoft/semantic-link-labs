@@ -2,8 +2,8 @@ from typing import Optional, List
 import sempy_labs._icons as icons
 import pandas as pd
 from uuid import UUID
-from sempy_labs.admin._basic_functions import list_workspaces
-from sempy_labs._helper_functions import (
+from ._basic_functions import list_workspaces
+from .._helper_functions import (
     _base_api,
     _create_dataframe,
     _is_valid_uuid,

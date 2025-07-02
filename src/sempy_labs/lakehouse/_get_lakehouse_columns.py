@@ -1,6 +1,6 @@
 import pandas as pd
 import re
-from sempy_labs._helper_functions import (
+from .._helper_functions import (
     format_dax_object_name,
     resolve_workspace_name_and_id,
     resolve_lakehouse_name_and_id,
@@ -38,7 +38,7 @@ def get_lakehouse_columns(
     pandas.DataFrame
         Shows the tables/columns within a lakehouse and their properties.
     """
-    from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
+    from ._get_lakehouse_tables import get_lakehouse_tables
 
     columns = {
         "Workspace Name": "string",

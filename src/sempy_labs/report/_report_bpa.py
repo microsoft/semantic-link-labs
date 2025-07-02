@@ -2,8 +2,9 @@ from typing import Optional
 import pandas as pd
 import datetime
 from sempy._utils._log import log
-from sempy_labs.report import connect_report, report_bpa_rules
-from sempy_labs._helper_functions import (
+from ._reportwrapper import connect_report
+from ._report_bpa_rules import report_bpa_rules
+from .._helper_functions import (
     format_dax_object_name,
     save_as_delta_table,
     resolve_item_name_and_id,
@@ -11,7 +12,7 @@ from sempy_labs._helper_functions import (
     _get_column_aggregate,
     resolve_workspace_name_and_id,
 )
-from sempy_labs.lakehouse import get_lakehouse_tables, lakehouse_attached
+from ..lakehouse import get_lakehouse_tables, lakehouse_attached
 import sempy_labs._icons as icons
 from IPython.display import display, HTML
 from uuid import UUID

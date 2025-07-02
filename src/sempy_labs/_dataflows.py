@@ -1,5 +1,5 @@
 import pandas as pd
-from sempy_labs._helper_functions import (
+from ._helper_functions import (
     resolve_workspace_name_and_id,
     _is_valid_uuid,
     _update_dataframe_datatypes,

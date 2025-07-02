@@ -2,7 +2,7 @@ import sempy.fabric as fabric
 import json
 import os
 import time
-from sempy_labs._helper_functions import (
+from .._helper_functions import (
     generate_embedded_filter,
     resolve_workspace_name_and_id,
     _base_api,
@@ -12,7 +12,7 @@ from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from uuid import UUID
-from sempy_labs.report._report_functions import (
+from ._report_functions import (
     list_report_visuals,
     list_report_pages,
 )

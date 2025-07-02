@@ -3,7 +3,7 @@ import pandas as pd
 import json
 import os
 from typing import Optional
-from sempy_labs._helper_functions import (
+from .._helper_functions import (
     resolve_workspace_name_and_id,
     _conv_b64,
     resolve_dataset_name_and_id,

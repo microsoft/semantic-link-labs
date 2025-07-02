@@ -3,8 +3,8 @@ import pandas as pd
 import warnings
 import datetime
 from IPython.display import display, HTML
-from sempy_labs._model_dependencies import get_model_calc_dependencies
-from sempy_labs._helper_functions import (
+from ._model_dependencies import get_model_calc_dependencies
+from ._helper_functions import (
     format_dax_object_name,
     create_relationship_name,
     save_as_delta_table,
@@ -15,9 +15,9 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _create_spark_session,
 )
-from sempy_labs.lakehouse import get_lakehouse_tables, lakehouse_attached
-from sempy_labs.tom import connect_semantic_model
-from sempy_labs._model_bpa_rules import model_bpa_rules
+from .lakehouse import get_lakehouse_tables, lakehouse_attached
+from .tom import connect_semantic_model
+from ._model_bpa_rules import model_bpa_rules
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons

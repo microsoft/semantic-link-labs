@@ -1,12 +1,12 @@
-from sempy_labs.directlake._generate_shared_expression import generate_shared_expression
-from sempy_labs._helper_functions import (
+from ._generate_shared_expression import generate_shared_expression
+from .._helper_functions import (
     resolve_dataset_name_and_id,
     resolve_workspace_name_and_id,
     resolve_item_name_and_id,
     resolve_lakehouse_name_and_id,
 )
 from sempy._utils._log import log
-from sempy_labs.tom import connect_semantic_model
+from ..tom import connect_semantic_model
 from typing import Optional, List
 import sempy_labs._icons as icons
 from uuid import UUID

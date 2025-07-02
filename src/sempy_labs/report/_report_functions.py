@@ -6,9 +6,9 @@ import copy
 from anytree import Node, RenderTree
 from powerbiclient import Report
 from pyspark.sql.functions import col, flatten
-from sempy_labs.report._generate_report import update_report_from_reportjson
-from sempy_labs.lakehouse._lakehouse import lakehouse_attached
-from sempy_labs._helper_functions import (
+from ._generate_report import update_report_from_reportjson
+from ..lakehouse._lakehouse import lakehouse_attached
+from .._helper_functions import (
     resolve_report_id,
     language_validate,
     resolve_workspace_name_and_id,

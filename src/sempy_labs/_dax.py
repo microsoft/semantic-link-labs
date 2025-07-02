@@ -1,17 +1,17 @@
 import sempy.fabric as fabric
 import pandas as pd
-from sempy_labs._helper_functions import (
+from ._helper_functions import (
     resolve_workspace_name_and_id,
     format_dax_object_name,
     resolve_dataset_name_and_id,
     _base_api,
     generate_guid,
 )
-from sempy_labs._model_dependencies import get_model_calc_dependencies
+from ._model_dependencies import get_model_calc_dependencies
 from typing import Optional, List, Tuple
 from sempy._utils._log import log
 from uuid import UUID
-from sempy_labs.directlake._warm_cache import _put_columns_into_memory
+from .directlake._warm_cache import _put_columns_into_memory
 import sempy_labs._icons as icons
 import time
 

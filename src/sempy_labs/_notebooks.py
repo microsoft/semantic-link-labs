@@ -5,7 +5,7 @@ from typing import Optional
 import base64
 import requests
 from sempy._utils._log import log
-from sempy_labs._helper_functions import (
+from ._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_workspace_id,
     _decode_b64,

@@ -1,12 +1,12 @@
 import sempy.fabric as fabric
 import pandas as pd
-from sempy_labs._list_functions import list_tables
-from sempy_labs.tom import connect_semantic_model
+from .._list_functions import list_tables
+from ..tom import connect_semantic_model
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from uuid import UUID
-from sempy_labs._helper_functions import (
+from .._helper_functions import (
     resolve_dataset_name_and_id,
     resolve_workspace_name_and_id,
 )

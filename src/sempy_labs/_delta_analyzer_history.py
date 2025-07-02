@@ -1,7 +1,7 @@
 import pandas as pd
 from typing import Optional
 import pyarrow.parquet as pq
-from sempy_labs._helper_functions import (
+from ._helper_functions import (
     create_abfss_path,
     resolve_workspace_id,
     resolve_lakehouse_id,

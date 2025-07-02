@@ -1,9 +1,9 @@
 import sempy
 import pandas as pd
-from sempy_labs.lakehouse import get_lakehouse_columns
-from sempy_labs.directlake._dl_helper import get_direct_lake_source
-from sempy_labs.tom import connect_semantic_model
-from sempy_labs._helper_functions import (
+from ..lakehouse import get_lakehouse_columns
+from ._dl_helper import get_direct_lake_source
+from ..tom import connect_semantic_model
+from .._helper_functions import (
     _convert_data_type,
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
