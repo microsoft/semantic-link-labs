@@ -414,6 +414,31 @@ def upgrade_dataflow(
     )
     query_groups_value = json.loads(matches[0].value) if matches else []
 
+    queries_metadata = get_jsonpath_value(
+            data=definition, path="$['pbi:mashup'].queriesMetadata"
+        )
+
+    default_staging = True if 'DefaultStaging' in queries_metadata else False
+
+    # Collect keys to delete
+    keys_to_delete = [
+        key for key in queries_metadata
+        if key.endswith("_DataDestination")
+        or key.endswith("_WriteToDataDestination")
+        or key.endswith("_TransformForWriteToDataDestination")
+        or key == 'FastCopyStaging'
+    ]
+
+    # Delete them
+    for key in keys_to_delete:
+        del queries_metadata[key]
+
+    # Set load enabled and isHidden
+    for key, items in queries_metadata.items():
+        items['loadEnabled'] = False
+        if key in ['DefaultDestination', 'DefaultStaging']:
+            items['isHidden'] = True
+
     # Prepare the dataflow definition
     query_metadata = {
         "formatVersion": "202502",
@@ -421,9 +446,7 @@ def upgrade_dataflow(
         "name": new_dataflow_name,
         "queryGroups": query_groups_value,
         "documentLocale": get_jsonpath_value(data=definition, path="$.culture"),
-        "queriesMetadata": get_jsonpath_value(
-            data=definition, path="$['pbi:mashup'].queriesMetadata"
-        ),
+        "queriesMetadata": queries_metadata,
         "fastCombine": get_jsonpath_value(
             data=definition, path="$['pbi:mashup'].fastCombine", default=False
         ),
@@ -433,7 +456,42 @@ def upgrade_dataflow(
         # "connections": [],
     }
 
+    fast_copy = get_jsonpath_value(
+        data=definition, path="$['ppdf:fastCopy']", default=False
+    )
+    max_concurrency = get_jsonpath_value(
+        data=definition, path="$['ppdf:maxConcurrency']"
+    )
+    if fast_copy:
+        query_metadata["computeEngineSettings"] = {}
+
+        if max_concurrency:
+            query_metadata["computeEngineSettings"]["maxConcurrency"] = max_concurrency
+
     mashup_doc = get_jsonpath_value(data=definition, path="$['pbi:mashup'].document")
+
+    # Remove the FastCopyStaging section if it exists
+    new_mashup_doc = ''
+    if default_staging and fast_copy:
+        new_mashup_doc = '[DefaultOutputDestinationSettings = [DestinationDefinition = [Kind = "Reference", QueryName = "DefaultDestination", IsNewTarget = true], UpdateMethod = [Kind = "Replace"]], StagingDefinition = [Kind = "FastCopy"]]\r\nsection Section1'
+    elif default_staging and not fast_copy:
+        new_mashup_doc = '[DefaultOutputDestinationSettings = [DestinationDefinition = [Kind = "Reference", QueryName = "DefaultDestination", IsNewTarget = true], UpdateMethod = [Kind = "Replace"]]\r\nsection Section1'
+    elif not default_staging and fast_copy:
+        new_mashup_doc = '[StagingDefinition = [Kind = "FastCopy"]]\r\nsection Section1'
+    else:
+        new_mashup_doc = 'section Section1'
+    for i in mashup_doc.split(';\r\nshared '):
+        #if 'IsParameterQuery=true' in i:
+            # Add to queries_metadata
+        if not ('FastCopyStaging = let' in i or '_WriteToDataDestination" = let' in i or '_WriteToDataDestination = let' in i or '_DataDestination" = let' in i or '_DataDestination = let' in i or '_TransformForWriteToDataDestination" = let' in i or '_TransformForWriteToDataDestination = let' in i):
+            if i != 'section Section1':
+                if default_staging and ('IsParameterQuery=true' not in i and not i.startswith('DefaultStaging') and not i.startswith('DefaultDestination')):
+                    new_mashup_doc += (';\r\n[BindToDefaultDestination = true]\r\nshared ' + i)
+                else:
+                    new_mashup_doc += (';\r\nshared ' + i)
+    new_mashup_doc = f"{new_mashup_doc};"
+
+    return new_mashup_doc, query_metadata
 
     # Add the dataflow definition to the payload
     new_definition = {
@@ -445,7 +503,7 @@ def upgrade_dataflow(
             },
             {
                 "path": "mashup.pq",
-                "payload": _conv_b64(mashup_doc, json_dumps=False),
+                "payload": _conv_b64(new_mashup_doc, json_dumps=False),
                 "payloadType": "InlineBase64",
             },
         ]
