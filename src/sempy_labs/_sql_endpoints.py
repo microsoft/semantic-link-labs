@@ -1,16 +1,15 @@
-from typing import Optional, Literal
+from typing import Literal, Optional
 from uuid import UUID
+
 import pandas as pd
-from sempy_labs._helper_functions import (
-    _base_api,
-    _create_dataframe,
-    resolve_workspace_name_and_id,
-    resolve_item_name_and_id,
-    _update_dataframe_datatypes,
-    resolve_workspace_id,
-)
-import sempy_labs._icons as icons
 from sempy._utils._log import log
+
+import sempy_labs._icons as icons
+from sempy_labs._helper_functions import (_base_api, _create_dataframe,
+                                          _update_dataframe_datatypes,
+                                          resolve_item_name_and_id,
+                                          resolve_workspace_id,
+                                          resolve_workspace_name_and_id)
 
 
 @log
@@ -142,6 +141,7 @@ def refresh_sql_endpoint_metadata(
     result = _base_api(
         request=f"v1/workspaces/{workspace_id}/sqlEndpoints/{sql_endpoint_id}/refreshMetadata?preview=true",
         method="post",
+        client="fabric_sp",
         status_codes=[200, 202],
         lro_return_json=True,
         payload=payload,
@@ -204,5 +204,7 @@ def refresh_sql_endpoint_metadata(
         )
 
     _update_dataframe_datatypes(df, columns)
+
+    return df
 
     return df
