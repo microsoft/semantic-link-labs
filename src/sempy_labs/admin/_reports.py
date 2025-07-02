@@ -201,7 +201,7 @@ def list_report_subscriptions(report: str | UUID) -> pd.DataFrame:
         "Link To Content": "bool",
         "Preview Image": "bool",
         "Attachment Format": "string",
-        "Users": "string",
+        "Users": "list",
     }
 
     df = _create_dataframe(columns=columns)
@@ -215,21 +215,20 @@ def list_report_subscriptions(report: str | UUID) -> pd.DataFrame:
     for v in response.json().get("value", []):
         rows.append(
             {
-                "Report Id": v.get("id"),
-                "Report Name": v.get("name"),
-                "Type": v.get("reportType"),
-                "Web URL": v.get("webUrl"),
-                "Embed URL": v.get("embedUrl"),
-                "Dataset Id": v.get("datasetId"),
-                "Created Date": v.get("createdDateTime"),
-                "Modified Date": v.get("modifiedDateTime"),
-                "Created By": v.get("createdBy"),
-                "Modified By": v.get("modifiedBy"),
-                "Sensitivity Label Id": v.get("sensitivityLabel", {}).get("labelId"),
-                "Users": v.get("users"),
-                "Subscriptions": v.get("subscriptions"),
-                "Workspace Id": v.get("workspaceId"),
-                "Report Flags": v.get("reportFlags"),
+                "Subscription Id": v.get("id"),
+                "Title": v.get("title"),
+                "Artifact Id": v.get("artifactId"),
+                "Artifact Name": v.get("artifactDisplayName"),
+                "Sub Artifact Name": v.get("subArtifactDisplayName"),
+                "Artifact Type": v.get("artifactType"),
+                "Is Enabled": v.get("isEnabled"),
+                "Frequency": v.get("frequency"),
+                "Start Date": v.get("startDate"),
+                "End Date": v.get("endDate"),
+                "Link To Content": v.get("linkToContent"),
+                "Preview Image": v.get("previewImage"),
+                "Attachment Format": v.get("attachmentFormat"),
+                "Users": v.get("users", []),
             }
         )
 
