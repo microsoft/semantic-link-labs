@@ -1,15 +1,16 @@
-from typing import Literal, Optional
+from typing import Optional, Literal
 from uuid import UUID
-
 import pandas as pd
-from sempy._utils._log import log
-
+from sempy_labs._helper_functions import (
+    _base_api,
+    _create_dataframe,
+    resolve_workspace_name_and_id,
+    resolve_item_name_and_id,
+    _update_dataframe_datatypes,
+    resolve_workspace_id,
+)
 import sempy_labs._icons as icons
-from sempy_labs._helper_functions import (_base_api, _create_dataframe,
-                                          _update_dataframe_datatypes,
-                                          resolve_item_name_and_id,
-                                          resolve_workspace_id,
-                                          resolve_workspace_name_and_id)
+from sempy._utils._log import log
 
 
 @log
@@ -204,7 +205,5 @@ def refresh_sql_endpoint_metadata(
         )
 
     _update_dataframe_datatypes(df, columns)
-
-    return df
 
     return df
