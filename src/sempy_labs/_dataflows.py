@@ -16,7 +16,6 @@ import sempy_labs._icons as icons
 from uuid import UUID
 from jsonpath_ng.ext import parse
 import json
-import re
 
 
 def list_dataflows(workspace: Optional[str | UUID] = None):
@@ -491,6 +490,8 @@ def upgrade_dataflow(
                 else:
                     new_mashup_doc += (';\r\nshared ' + i)
     new_mashup_doc = f"{new_mashup_doc};"
+
+    return new_mashup_doc, query_metadata
 
     # Add the dataflow definition to the payload
     new_definition = {
