@@ -58,25 +58,26 @@ def list_mirrored_databases(workspace: Optional[str | UUID] = None) -> pd.DataFr
         client="fabric_sp",
     )
 
-    dfs = []
+    rows = []
     for r in responses:
         for v in r.get("value", []):
             prop = v.get("properties", {})
             sql = prop.get("sqlEndpointProperties", {})
-            new_data = {
-                "Mirrored Database Name": v.get("displayName"),
-                "Mirrored Database Id": v.get("id"),
-                "Description": v.get("description"),
-                "OneLake Tables Path": prop.get("oneLakeTablesPath"),
-                "SQL Endpoint Connection String": sql.get("connectionString"),
-                "SQL Endpoint Id": sql.get("id"),
-                "Provisioning Status": sql.get("provisioningStatus"),
-                "Default Schema": prop.get("defaultSchema"),
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
+            rows.append(
+                {
+                    "Mirrored Database Name": v.get("displayName"),
+                    "Mirrored Database Id": v.get("id"),
+                    "Description": v.get("description"),
+                    "OneLake Tables Path": prop.get("oneLakeTablesPath"),
+                    "SQL Endpoint Connection String": sql.get("connectionString"),
+                    "SQL Endpoint Id": sql.get("id"),
+                    "Provisioning Status": sql.get("provisioningStatus"),
+                    "Default Schema": prop.get("defaultSchema"),
+                }
+            )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 

@@ -57,26 +57,26 @@ def list_widely_shared_artifacts(
         uses_pagination=True,
     )
 
-    dfs = []
+    rows = []
     for r in responses:
         for v in r.get("ArtifactAccessEntities", []):
             sharer = v.get("sharer", {})
-            new_data = {
-                "Artifact Id": v.get("artifactId"),
-                "Artifact Name": v.get("displayName"),
-                "Artifact Type": v.get("artifactType"),
-                "Access Right": v.get("accessRight"),
-                "Share Type": v.get("shareType"),
-                "Sharer Name": sharer.get("displayName"),
-                "Sharer Email Address": sharer.get("emailAddress"),
-                "Sharer Identifier": sharer.get("identifier"),
-                "Sharer Graph Id": sharer.get("graphId"),
-                "Sharer Principal Type": sharer.get("principalType"),
-            }
+            rows.append(
+                {
+                    "Artifact Id": v.get("artifactId"),
+                    "Artifact Name": v.get("displayName"),
+                    "Artifact Type": v.get("artifactType"),
+                    "Access Right": v.get("accessRight"),
+                    "Share Type": v.get("shareType"),
+                    "Sharer Name": sharer.get("displayName"),
+                    "Sharer Email Address": sharer.get("emailAddress"),
+                    "Sharer Identifier": sharer.get("identifier"),
+                    "Sharer Graph Id": sharer.get("graphId"),
+                    "Sharer Principal Type": sharer.get("principalType"),
+                }
+            )
 
-            dfs.append(pd.DataFrame(new_data, index=[0]))
-
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df

@@ -150,31 +150,32 @@ def list_items(
 
     responses = _base_api(request=url, client="fabric_sp", uses_pagination=True)
 
-    dfs = []
+    rows = []
     for r in responses:
         for v in r.get("itemEntities", []):
-            new_data = {
-                "Item Id": v.get("id"),
-                "Type": v.get("type"),
-                "Item Name": v.get("name"),
-                "Description": v.get("description"),
-                "State": v.get("state"),
-                "Last Updated Date": v.get("lastUpdatedDate"),
-                "Creator Principal Id": v.get("creatorPrincipal", {}).get("id"),
-                "Creator Principal Display Name": v.get("creatorPrincipal", {}).get(
-                    "displayName"
-                ),
-                "Creator Principal Type": v.get("creatorPrincipal", {}).get("type"),
-                "Creator User Principal Name": v.get("creatorPrincipal", {})
-                .get("userDetails", {})
-                .get("userPrincipalName"),
-                "Workspace Id": v.get("workspaceId"),
-                "Capacity Id": v.get("capacityId"),
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
+            rows.append(
+                {
+                    "Item Id": v.get("id"),
+                    "Type": v.get("type"),
+                    "Item Name": v.get("name"),
+                    "Description": v.get("description"),
+                    "State": v.get("state"),
+                    "Last Updated Date": v.get("lastUpdatedDate"),
+                    "Creator Principal Id": v.get("creatorPrincipal", {}).get("id"),
+                    "Creator Principal Display Name": v.get("creatorPrincipal", {}).get(
+                        "displayName"
+                    ),
+                    "Creator Principal Type": v.get("creatorPrincipal", {}).get("type"),
+                    "Creator User Principal Name": v.get("creatorPrincipal", {})
+                    .get("userDetails", {})
+                    .get("userPrincipalName"),
+                    "Workspace Id": v.get("workspaceId"),
+                    "Capacity Id": v.get("capacityId"),
+                }
+            )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     if item is not None:
         if _is_valid_uuid(item):
@@ -250,26 +251,27 @@ def list_item_access_details(
         client="fabric_sp",
     )
 
-    dfs = []
+    rows = []
     for v in response.json().get("accessDetails", []):
-        new_data = {
-            "User Id": v.get("principal", {}).get("id"),
-            "User Name": v.get("principal", {}).get("displayName"),
-            "User Type": v.get("principal", {}).get("type"),
-            "User Principal Name": v.get("principal", {})
-            .get("userDetails", {})
-            .get("userPrincipalName"),
-            "Item Type": v.get("itemAccessDetails", {}).get("type"),
-            "Permissions": v.get("itemAccessDetails", {}).get("permissions"),
-            "Additional Permissions": v.get("itemAccessDetails", {}).get(
-                "additionalPermissions"
-            ),
-            "Item Name": item_name,
-            "Item Id": item_id,
-        }
-        dfs.append(pd.DataFrame(new_data, index=[0]))
+        rows.append(
+            {
+                "User Id": v.get("principal", {}).get("id"),
+                "User Name": v.get("principal", {}).get("displayName"),
+                "User Type": v.get("principal", {}).get("type"),
+                "User Principal Name": v.get("principal", {})
+                .get("userDetails", {})
+                .get("userPrincipalName"),
+                "Item Type": v.get("itemAccessDetails", {}).get("type"),
+                "Permissions": v.get("itemAccessDetails", {}).get("permissions"),
+                "Additional Permissions": v.get("itemAccessDetails", {}).get(
+                    "additionalPermissions"
+                ),
+                "Item Name": item_name,
+                "Item Id": item_id,
+            }
+        )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df

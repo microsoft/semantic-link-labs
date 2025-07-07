@@ -166,20 +166,21 @@ def list_dataset_users(dataset: str | UUID) -> pd.DataFrame:
     url = f"/v1.0/myorg/admin/datasets/{dataset_id}/users"
     response = _base_api(request=url, client="fabric_sp")
 
-    dfs = []
+    rows = []
     for v in response.json().get("value", []):
-        new_data = {
-            "User Name": v.get("displayName"),
-            "Email Address": v.get("emailAddress"),
-            "Dataset User Access Right": v.get("datasetUserAccessRight"),
-            "Identifier": v.get("identifier"),
-            "Graph Id": v.get("graphId"),
-            "Principal Type": v.get("principalType"),
-        }
-        dfs.append(pd.DataFrame(new_data, index=[0]))
+        rows.append(
+            {
+                "User Name": v.get("displayName"),
+                "Email Address": v.get("emailAddress"),
+                "Dataset User Access Right": v.get("datasetUserAccessRight"),
+                "Identifier": v.get("identifier"),
+                "Graph Id": v.get("graphId"),
+                "Principal Type": v.get("principalType"),
+            }
+        )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df

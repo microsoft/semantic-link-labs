@@ -45,22 +45,23 @@ def list_access_entities(
         uses_pagination=True,
     )
 
-    dfs = []
+    rows = []
     for r in responses:
         for v in r.get("accessEntities", []):
-            new_data = {
-                "Item Id": v.get("id"),
-                "Item Name": v.get("displayName"),
-                "Item Type": v.get("itemAccessDetails", {}).get("type"),
-                "Permissions": v.get("itemAccessDetails", {}).get("permissions"),
-                "Additional Permissions": v.get("itemAccessDetails", {}).get(
-                    "additionalPermissions"
-                ),
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
+            rows.append(
+                {
+                    "Item Id": v.get("id"),
+                    "Item Name": v.get("displayName"),
+                    "Item Type": v.get("itemAccessDetails", {}).get("type"),
+                    "Permissions": v.get("itemAccessDetails", {}).get("permissions"),
+                    "Additional Permissions": v.get("itemAccessDetails", {}).get(
+                        "additionalPermissions"
+                    ),
+                }
+            )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 

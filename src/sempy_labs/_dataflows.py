@@ -51,18 +51,19 @@ def list_dataflows(workspace: Optional[str | UUID] = None):
         request=f"/v1.0/myorg/groups/{workspace_id}/dataflows", client="fabric_sp"
     )
 
-    dfs = []
+    rows = []
     for v in response.json().get("value", []):
         gen = v.get("generation")
-        new_data = {
-            "Dataflow Id": v.get("objectId"),
-            "Dataflow Name": v.get("name"),
-            "Description": "",
-            "Configured By": v.get("configuredBy"),
-            "Users": ", ".join(v.get("users", [])),
-            "Generation": "Gen2" if gen == 2 else "Gen1",
-        }
-        dfs.append(pd.DataFrame(new_data, index=[0]))
+        rows.append(
+            {
+                "Dataflow Id": v.get("objectId"),
+                "Dataflow Name": v.get("name"),
+                "Description": "",
+                "Configured By": v.get("configuredBy"),
+                "Users": ", ".join(v.get("users", [])),
+                "Generation": "Gen2" if gen == 2 else "Gen1",
+            }
+        )
 
     responses = _base_api(
         request=f"/v1/workspaces/{workspace_id}/dataflows",
@@ -72,18 +73,19 @@ def list_dataflows(workspace: Optional[str | UUID] = None):
     for r in responses:
         for v in r.get("value", []):
             gen = v.get("generation")
-            new_data = {
-                "Dataflow Id": v.get("id"),
-                "Dataflow Name": v.get("displayName"),
-                "Description": v.get("description"),
-                "Configured By": "",
-                "Users": "",
-                "Generation": "Gen2 CI/CD",
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
+            rows.append(
+                {
+                    "Dataflow Id": v.get("id"),
+                    "Dataflow Name": v.get("displayName"),
+                    "Description": v.get("description"),
+                    "Configured By": "",
+                    "Users": "",
+                    "Generation": "Gen2 CI/CD",
+                }
+            )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df

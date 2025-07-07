@@ -40,17 +40,18 @@ def list_tags() -> pd.DataFrame:
         client="fabric_sp",
     )
 
-    dfs = []
+    rows = []
     for r in responses:
         for v in r.get("value", []):
-            new_data = {
-                "Tag Name": v.get("displayName"),
-                "Tag Id": v.get("id"),
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
+            rows.append(
+                {
+                    "Tag Name": v.get("displayName"),
+                    "Tag Id": v.get("id"),
+                }
+            )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df

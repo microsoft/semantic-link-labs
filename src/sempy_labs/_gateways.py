@@ -47,26 +47,28 @@ def list_gateways() -> pd.DataFrame:
         request="/v1/gateways", client="fabric_sp", uses_pagination=True
     )
 
-    dfs = []
+    rows = []
     for r in responses:
         for v in r.get("value", []):
-            new_data = {
-                "Gateway Name": v.get("displayName"),
-                "Gateway Id": v.get("id"),
-                "Type": v.get("type"),
-                "Public Key Exponent": v.get("publicKey", {}).get("exponent"),
-                "Public Key Modulus": v.get("publicKey", {}).get("modulus"),
-                "Version": v.get("version"),
-                "Number Of Member Gateways": v.get("numberOfMemberGateways", 0),
-                "Load Balancing Setting": v.get("loadBalancingSetting"),
-                "Allow Cloud Connection Refresh": v.get("allowCloudConnectionRefresh"),
-                "Allow Custom Connectors": v.get("allowCustomConnectors"),
-            }
+            rows.append(
+                {
+                    "Gateway Name": v.get("displayName"),
+                    "Gateway Id": v.get("id"),
+                    "Type": v.get("type"),
+                    "Public Key Exponent": v.get("publicKey", {}).get("exponent"),
+                    "Public Key Modulus": v.get("publicKey", {}).get("modulus"),
+                    "Version": v.get("version"),
+                    "Number Of Member Gateways": v.get("numberOfMemberGateways", 0),
+                    "Load Balancing Setting": v.get("loadBalancingSetting"),
+                    "Allow Cloud Connection Refresh": v.get(
+                        "allowCloudConnectionRefresh"
+                    ),
+                    "Allow Custom Connectors": v.get("allowCustomConnectors"),
+                }
+            )
 
-            dfs.append(pd.DataFrame(new_data, index=[0]))
-
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
@@ -141,20 +143,20 @@ def list_gateway_role_assigments(gateway: str | UUID) -> pd.DataFrame:
         uses_pagination=True,
     )
 
-    dfs = []
+    rows = []
     for r in responses:
         for v in r.get("value", []):
-            new_data = {
-                "Gateway Role Assignment Id": v.get("id"),
-                "Principal Id": v.get("principal", {}).get("id"),
-                "Principal Type": v.get("principal", {}).get("type"),
-                "Role": v.get("role"),
-            }
+            rows.append(
+                {
+                    "Gateway Role Assignment Id": v.get("id"),
+                    "Principal Id": v.get("principal", {}).get("id"),
+                    "Principal Type": v.get("principal", {}).get("type"),
+                    "Role": v.get("role"),
+                }
+            )
 
-            dfs.append(pd.DataFrame(new_data, index=[0]))
-
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 
@@ -274,21 +276,21 @@ def list_gateway_members(gateway: str | UUID) -> pd.DataFrame:
         request=f"/v1/gateways/{gateway_id}/members", client="fabric_sp"
     )
 
-    dfs = []
+    rows = []
     for v in response.json().get("value", []):
-        new_data = {
-            "Member Id": v.get("id"),
-            "Member Name": v.get("displayName"),
-            "Public Key Exponent": v.get("publicKey", {}).get("exponent"),
-            "Public Key Modulus": v.get("publicKey", {}).get("modulus"),
-            "Version": v.get("version"),
-            "Enabled": v.get("enabled"),
-        }
+        rows.append(
+            {
+                "Member Id": v.get("id"),
+                "Member Name": v.get("displayName"),
+                "Public Key Exponent": v.get("publicKey", {}).get("exponent"),
+                "Public Key Modulus": v.get("publicKey", {}).get("modulus"),
+                "Version": v.get("version"),
+                "Enabled": v.get("enabled"),
+            }
+        )
 
-        dfs.append(pd.DataFrame(new_data, index=[0]))
-
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df

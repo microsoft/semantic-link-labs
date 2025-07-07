@@ -103,18 +103,19 @@ def list_eventhouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         client="fabric_sp",
     )
 
-    dfs = []
+    rows = []
     for r in responses:
         for v in r.get("value", []):
-            new_data = {
-                "Eventhouse Name": v.get("displayName"),
-                "Eventhouse Id": v.get("id"),
-                "Description": v.get("description"),
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
+            rows.append(
+                {
+                    "Eventhouse Name": v.get("displayName"),
+                    "Eventhouse Id": v.get("id"),
+                    "Description": v.get("description"),
+                }
+            )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 

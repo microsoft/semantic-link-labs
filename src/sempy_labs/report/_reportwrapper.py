@@ -737,7 +737,7 @@ class ReportWrapper:
         }
         df = _create_dataframe(columns=columns)
 
-        dfs = []
+        rows = []
 
         if "filterConfig" in report_file:
             for flt in report_file.get("filterConfig", {}).get("filters", {}):
@@ -751,24 +751,23 @@ class ReportWrapper:
                 entity_property_pairs = helper.find_entity_property_pairs(flt)
 
                 for object_name, properties in entity_property_pairs.items():
-                    new_data = {
-                        "Filter Name": filter_name,
-                        "Type": filter_type,
-                        "Table Name": properties[0],
-                        "Object Name": object_name,
-                        "Object Type": properties[1],
-                        "Hidden": hidden,
-                        "Locked": locked,
-                        "How Created": how_created,
-                        "Used": filter_used,
-                    }
+                    rows.append(
+                        {
+                            "Filter Name": filter_name,
+                            "Type": filter_type,
+                            "Table Name": properties[0],
+                            "Object Name": object_name,
+                            "Object Type": properties[1],
+                            "Hidden": hidden,
+                            "Locked": locked,
+                            "How Created": how_created,
+                            "Used": filter_used,
+                        }
+                    )
 
-                    dfs.append(pd.DataFrame(new_data, index=[0]))
-
-        if dfs:
-            df = pd.concat(dfs, ignore_index=True)
-
-        _update_dataframe_datatypes(dataframe=df, column_map=columns)
+        if rows:
+            df = pd.DataFrame(rows, columns=list(columns.keys()))
+            _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
         if extended:
             df = self._add_extended(dataframe=df)
@@ -807,7 +806,7 @@ class ReportWrapper:
         }
         df = _create_dataframe(columns=columns)
 
-        dfs = []
+        rows = []
         for p in self.__all_pages():
             payload = p.get("payload")
             page_id = payload.get("name")
@@ -825,27 +824,26 @@ class ReportWrapper:
                     entity_property_pairs = helper.find_entity_property_pairs(flt)
 
                     for object_name, properties in entity_property_pairs.items():
-                        new_data = {
-                            "Page Name": page_id,
-                            "Page Display Name": page_display,
-                            "Filter Name": filter_name,
-                            "Type": filter_type,
-                            "Table Name": properties[0],
-                            "Object Name": object_name,
-                            "Object Type": properties[1],
-                            "Hidden": hidden,
-                            "Locked": locked,
-                            "How Created": how_created,
-                            "Used": filter_used,
-                            "Page URL": self._get_url(page_name=page_id),
-                        }
+                        rows.append(
+                            {
+                                "Page Name": page_id,
+                                "Page Display Name": page_display,
+                                "Filter Name": filter_name,
+                                "Type": filter_type,
+                                "Table Name": properties[0],
+                                "Object Name": object_name,
+                                "Object Type": properties[1],
+                                "Hidden": hidden,
+                                "Locked": locked,
+                                "How Created": how_created,
+                                "Used": filter_used,
+                                "Page URL": self._get_url(page_name=page_id),
+                            }
+                        )
 
-                        dfs.append(pd.DataFrame(new_data, index=[0]))
-
-        if dfs:
-            df = pd.concat(dfs, ignore_index=True)
-
-        _update_dataframe_datatypes(dataframe=df, column_map=columns)
+        if rows:
+            df = pd.DataFrame(rows, columns=list(columns.keys()))
+            _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
         if extended:
             df = self._add_extended(dataframe=df)
@@ -887,7 +885,7 @@ class ReportWrapper:
 
         visual_mapping = self._visual_page_mapping()
 
-        dfs = []
+        rows = []
         for v in self.__all_visuals():
             path = v.get("path")
             payload = v.get("payload")
@@ -907,27 +905,26 @@ class ReportWrapper:
                     entity_property_pairs = helper.find_entity_property_pairs(flt)
 
                     for object_name, properties in entity_property_pairs.items():
-                        new_data = {
-                            "Page Name": page_id,
-                            "Page Display Name": page_display,
-                            "Visual Name": visual_name,
-                            "Filter Name": filter_name,
-                            "Type": filter_type,
-                            "Table Name": properties[0],
-                            "Object Name": object_name,
-                            "Object Type": properties[1],
-                            "Hidden": hidden,
-                            "Locked": locked,
-                            "How Created": how_created,
-                            "Used": filter_used,
-                        }
+                        rows.append(
+                            {
+                                "Page Name": page_id,
+                                "Page Display Name": page_display,
+                                "Visual Name": visual_name,
+                                "Filter Name": filter_name,
+                                "Type": filter_type,
+                                "Table Name": properties[0],
+                                "Object Name": object_name,
+                                "Object Type": properties[1],
+                                "Hidden": hidden,
+                                "Locked": locked,
+                                "How Created": how_created,
+                                "Used": filter_used,
+                            }
+                        )
 
-                        dfs.append(pd.DataFrame(new_data, index=[0]))
-
-        if dfs:
-            df = pd.concat(dfs, ignore_index=True)
-
-        _update_dataframe_datatypes(dataframe=df, column_map=columns)
+        if rows:
+            df = pd.DataFrame(rows, columns=list(columns.keys()))
+            _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
         if extended:
             df = self._add_extended(dataframe=df)
@@ -957,7 +954,7 @@ class ReportWrapper:
         }
         df = _create_dataframe(columns=columns)
 
-        dfs = []
+        rows = []
         for p in self.__all_pages():
             payload = p.get("payload")
             page_name = payload.get("name")
@@ -968,17 +965,18 @@ class ReportWrapper:
                 targetVisual = vizInt.get("target")
                 vizIntType = vizInt.get("type")
 
-                new_data = {
-                    "Page Name": page_name,
-                    "Page Display Name": page_display,
-                    "Source Visual Name": sourceVisual,
-                    "Target Visual Name": targetVisual,
-                    "Type": vizIntType,
-                }
-                dfs.append(pd.DataFrame(new_data, index=[0]))
+                rows.append(
+                    {
+                        "Page Name": page_name,
+                        "Page Display Name": page_display,
+                        "Source Visual Name": sourceVisual,
+                        "Target Visual Name": targetVisual,
+                        "Type": vizIntType,
+                    }
+                )
 
-        if dfs:
-            df = pd.concat(dfs, ignore_index=True)
+        if rows:
+            df = pd.DataFrame(rows, columns=list(columns.keys()))
 
         return df
 
@@ -1018,7 +1016,7 @@ class ReportWrapper:
 
         dfV = self.list_visuals()
 
-        dfs = []
+        rows = []
         for p in self.__all_pages():
             file_path = p.get("path")
             page_prefix = file_path[0:-9]
@@ -1067,30 +1065,30 @@ class ReportWrapper:
             matches = parse("$.visibility").find(payload)
             is_hidden = any(match.value == "HiddenInViewMode" for match in matches)
 
-            new_data = {
-                "File Path": file_path,
-                "Page Name": page_name,
-                "Page Display Name": payload.get("displayName"),
-                "Display Option": payload.get("displayOption"),
-                "Height": height,
-                "Width": width,
-                "Hidden": is_hidden,
-                "Active": True if page_name == active_page else False,
-                "Type": helper.page_type_mapping.get((width, height), "Custom"),
-                "Alignment": alignment_value,
-                "Drillthrough Target Page": drill_through,
-                "Visual Count": visual_count,
-                "Data Visual Count": data_visual_count,
-                "Visible Visual Count": visible_visual_count,
-                "Page Filter Count": page_filter_count,
-                "Page URL": self._get_url(page_name=page_name),
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
+            rows.append(
+                {
+                    "File Path": file_path,
+                    "Page Name": page_name,
+                    "Page Display Name": payload.get("displayName"),
+                    "Display Option": payload.get("displayOption"),
+                    "Height": height,
+                    "Width": width,
+                    "Hidden": is_hidden,
+                    "Active": True if page_name == active_page else False,
+                    "Type": helper.page_type_mapping.get((width, height), "Custom"),
+                    "Alignment": alignment_value,
+                    "Drillthrough Target Page": drill_through,
+                    "Visual Count": visual_count,
+                    "Data Visual Count": data_visual_count,
+                    "Visible Visual Count": visible_visual_count,
+                    "Page Filter Count": page_filter_count,
+                    "Page URL": self._get_url(page_name=page_name),
+                }
+            )
 
-        if dfs:
-            df = pd.concat(dfs, ignore_index=True)
-
-        _update_dataframe_datatypes(dataframe=df, column_map=columns)
+        if rows:
+            df = pd.DataFrame(rows, columns=list(columns.keys()))
+            _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
         return df
 
@@ -1155,8 +1153,7 @@ class ReportWrapper:
 
             return any(key in all_keys for key in keys_to_check)
 
-        dfs = []
-
+        rows = []
         for v in self.__all_visuals():
             path = v.get("path")
             payload = v.get("payload")
@@ -1262,39 +1259,40 @@ class ReportWrapper:
             has_sparkline = contains_key(payload, ["SparklineData"])
             visual_name = payload.get("name")
 
-            new_data = {
-                "File Path": path,
-                "Page Name": page_id,
-                "Page Display Name": page_display,
-                "Visual Name": visual_name,
-                "X": pos.get("x"),
-                "Y": pos.get("y"),
-                "Z": pos.get("z"),
-                "Width": pos.get("width"),
-                "Height": pos.get("height"),
-                "Tab Order": pos.get("tabOrder"),
-                "Hidden": payload.get("isHidden", False),
-                "Type": visual_type,
-                "Display Type": visual_type_display,
-                "Title": title,
-                "SubTitle": sub_title,
-                "Custom Visual": visual_type in custom_visuals,
-                "Alt Text": alt_text,
-                "Show Items With No Data": show_all_data,
-                "Divider": divider,
-                "Row SubTotals": rst_value,
-                "Column SubTotals": cst_value,
-                "Slicer Type": slicer_type,
-                "Data Visual": is_data_visual,
-                "Has Sparkline": has_sparkline,
-                "Visual Filter Count": visual_filter_count,
-                "Data Limit": data_limit,
-                "URL": self._get_url(page_name=page_id, visual_name=visual_name),
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
+            rows.append(
+                {
+                    "File Path": path,
+                    "Page Name": page_id,
+                    "Page Display Name": page_display,
+                    "Visual Name": visual_name,
+                    "X": pos.get("x"),
+                    "Y": pos.get("y"),
+                    "Z": pos.get("z"),
+                    "Width": pos.get("width"),
+                    "Height": pos.get("height"),
+                    "Tab Order": pos.get("tabOrder"),
+                    "Hidden": payload.get("isHidden", False),
+                    "Type": visual_type,
+                    "Display Type": visual_type_display,
+                    "Title": title,
+                    "SubTitle": sub_title,
+                    "Custom Visual": visual_type in custom_visuals,
+                    "Alt Text": alt_text,
+                    "Show Items With No Data": show_all_data,
+                    "Divider": divider,
+                    "Row SubTotals": rst_value,
+                    "Column SubTotals": cst_value,
+                    "Slicer Type": slicer_type,
+                    "Data Visual": is_data_visual,
+                    "Has Sparkline": has_sparkline,
+                    "Visual Filter Count": visual_filter_count,
+                    "Data Limit": data_limit,
+                    "URL": self._get_url(page_name=page_id, visual_name=visual_name),
+                }
+            )
 
-        if dfs:
-            df = pd.concat(dfs, ignore_index=True)
+        if rows:
+            df = pd.DataFrame(rows, columns=list(columns.keys()))
 
         grouped_df = (
             self.list_visual_objects()
@@ -1417,7 +1415,7 @@ class ReportWrapper:
 
             return result
 
-        dfs = []
+        rows = []
         for v in self.__all_visuals():
             path = v.get("path")
             payload = v.get("payload")
@@ -1451,29 +1449,28 @@ class ReportWrapper:
                     for k, v in format_mapping.items():
                         if obj_full in k:
                             format_value = v
-                new_data = {
-                    "Page Name": page_id,
-                    "Page Display Name": page_display,
-                    "Visual Name": payload.get("name"),
-                    "Table Name": table_name,
-                    "Object Name": object_name,
-                    "Object Type": properties[1],
-                    "Implicit Measure": is_agg,
-                    "Sparkline": properties[4],
-                    "Visual Calc": properties[3],
-                    "Format": format_value,
-                    "Object Display Name": obj_display,
-                }
+                rows.append(
+                    {
+                        "Page Name": page_id,
+                        "Page Display Name": page_display,
+                        "Visual Name": payload.get("name"),
+                        "Table Name": table_name,
+                        "Object Name": object_name,
+                        "Object Type": properties[1],
+                        "Implicit Measure": is_agg,
+                        "Sparkline": properties[4],
+                        "Visual Calc": properties[3],
+                        "Format": format_value,
+                        "Object Display Name": obj_display,
+                    }
+                )
 
-                dfs.append(pd.DataFrame(new_data, index=[0]))
-
-        if dfs:
-            df = pd.concat(dfs, ignore_index=True)
+        if rows:
+            df = pd.DataFrame(rows, columns=list(columns.keys()))
+            _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
         if extended:
             df = self._add_extended(dataframe=df)
-
-        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
         return df
 
@@ -1657,8 +1654,7 @@ class ReportWrapper:
             if o.get("path").endswith("/bookmark.json")
         ]
 
-        dfs = []
-
+        rows = []
         for b in bookmarks:
             path = b.get("path")
             payload = b.get("payload")
@@ -1692,21 +1688,21 @@ class ReportWrapper:
                     else:
                         visual_hidden = False
 
-                    new_data = {
-                        "File Path": path,
-                        "Bookmark Name": bookmark_name,
-                        "Bookmark Display Name": bookmark_display,
-                        "Page Name": page_id,
-                        "Page Display Name": page_display,
-                        "Visual Name": visual_name,
-                        "Visual Hidden": visual_hidden,
-                    }
-                    dfs.append(pd.DataFrame(new_data, index=[0]))
+                    rows.append(
+                        {
+                            "File Path": path,
+                            "Bookmark Name": bookmark_name,
+                            "Bookmark Display Name": bookmark_display,
+                            "Page Name": page_id,
+                            "Page Display Name": page_display,
+                            "Visual Name": visual_name,
+                            "Visual Hidden": visual_hidden,
+                        }
+                    )
 
-        if dfs:
-            df = pd.concat(dfs, ignore_index=True)
-
-        _update_dataframe_datatypes(dataframe=df, column_map=columns)
+        if rows:
+            df = pd.DataFrame(rows, columns=list(columns.keys()))
+            _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
         return df
 
@@ -1742,7 +1738,7 @@ class ReportWrapper:
 
         report_file = self.get(file_path=self._report_extensions_path)
 
-        dfs = []
+        rows = []
         for e in report_file.get("entities", []):
             table_name = e.get("name")
             for m in e.get("measures", []):
@@ -1752,18 +1748,19 @@ class ReportWrapper:
                 format_string = m.get("formatString")
                 data_category = m.get("dataCategory")
 
-                new_data = {
-                    "Measure Name": measure_name,
-                    "Table Name": table_name,
-                    "Expression": expr,
-                    "Data Type": data_type,
-                    "Format String": format_string,
-                    "Data Category": data_category,
-                }
-                dfs.append(pd.DataFrame(new_data, index=[0]))
+                rows.append(
+                    {
+                        "Measure Name": measure_name,
+                        "Table Name": table_name,
+                        "Expression": expr,
+                        "Data Type": data_type,
+                        "Format String": format_string,
+                        "Data Category": data_category,
+                    }
+                )
 
-        if dfs:
-            df = pd.concat(dfs, ignore_index=True)
+        if rows:
+            df = pd.DataFrame(rows, columns=list(columns.keys()))
 
         return df
 
@@ -2202,16 +2199,17 @@ class ReportWrapper:
         visual_mapping = self._visual_page_mapping()
         report_file = self.get(file_path="definition/report.json")
 
-        dfs = []
+        rows = []
         if "annotations" in report_file:
             for ann in report_file["annotations"]:
-                new_data = {
-                    "Type": "Report",
-                    "Object Name": self._report_name,
-                    "Annotation Name": ann.get("name"),
-                    "Annotation Value": ann.get("value"),
-                }
-                dfs.append(pd.DataFrame(new_data, index=[0]))
+                rows.append(
+                    {
+                        "Type": "Report",
+                        "Object Name": self._report_name,
+                        "Annotation Name": ann.get("name"),
+                        "Annotation Value": ann.get("value"),
+                    }
+                )
 
         for p in self.__all_pages():
             path = p.get("path")
@@ -2219,13 +2217,14 @@ class ReportWrapper:
             page_name = payload.get("displayName")
             if "annotations" in payload:
                 for ann in payload["annotations"]:
-                    new_data = {
-                        "Type": "Page",
-                        "Object Name": page_name,
-                        "Annotation Name": ann.get("name"),
-                        "Annotation Value": ann.get("value"),
-                    }
-                    dfs.append(pd.DataFrame(new_data, index=[0]))
+                    rows.append(
+                        {
+                            "Type": "Page",
+                            "Object Name": page_name,
+                            "Annotation Name": ann.get("name"),
+                            "Annotation Value": ann.get("value"),
+                        }
+                    )
 
         for v in self.__all_visuals():
             path = v.get("path")
@@ -2234,16 +2233,17 @@ class ReportWrapper:
             visual_name = payload.get("name")
             if "annotations" in payload:
                 for ann in payload["annotations"]:
-                    new_data = {
-                        "Type": "Visual",
-                        "Object Name": f"'{page_display}'[{visual_name}]",
-                        "Annotation Name": ann.get("name"),
-                        "Annotation Value": ann.get("value"),
-                    }
-                    dfs.append(pd.DataFrame(new_data, index=[0]))
+                    rows.append(
+                        {
+                            "Type": "Visual",
+                            "Object Name": f"'{page_display}'[{visual_name}]",
+                            "Annotation Name": ann.get("name"),
+                            "Annotation Value": ann.get("value"),
+                        }
+                    )
 
-        if dfs:
-            df = pd.concat(dfs, ignore_index=True)
+        if rows:
+            df = pd.DataFrame(rows, columns=list(columns.keys()))
 
         return df
 

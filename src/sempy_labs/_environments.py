@@ -88,29 +88,30 @@ def list_environments(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         client="fabric_sp",
     )
 
-    dfs = []
+    rows = []
     for r in responses:
         for v in r.get("value", []):
             pub = v.get("properties", {}).get("publishDetails", {})
-            new_data = {
-                "Environment Name": v.get("displayName"),
-                "Environment Id": v.get("id"),
-                "Description": v.get("description"),
-                "Publish State": pub.get("state"),
-                "Publish Target Version": pub.get("targetVersion"),
-                "Publish Start Time": pub.get("startTime"),
-                "Publish End Time": pub.get("endTime"),
-                "Spark Libraries State": pub.get("componentPublishInfo", {})
-                .get("sparkLibraries", {})
-                .get("state"),
-                "Spark Settings State": pub.get("componentPublishInfo", {})
-                .get("sparkSettings", {})
-                .get("state"),
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
+            rows.append(
+                {
+                    "Environment Name": v.get("displayName"),
+                    "Environment Id": v.get("id"),
+                    "Description": v.get("description"),
+                    "Publish State": pub.get("state"),
+                    "Publish Target Version": pub.get("targetVersion"),
+                    "Publish Start Time": pub.get("startTime"),
+                    "Publish End Time": pub.get("endTime"),
+                    "Spark Libraries State": pub.get("componentPublishInfo", {})
+                    .get("sparkLibraries", {})
+                    .get("state"),
+                    "Spark Settings State": pub.get("componentPublishInfo", {})
+                    .get("sparkSettings", {})
+                    .get("state"),
+                }
+            )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 

@@ -371,7 +371,7 @@ def list_shortcuts(
         "S3Compatible": "s3Compatible",
     }
 
-    dfs = []
+    rows = []
     for r in responses:
         for i in r.get("value", []):
             tgt = i.get("target", {})
@@ -402,25 +402,26 @@ def list_shortcuts(
                 source_item_type = dfI_filt["Type"].iloc[0]
                 source_item_name = dfI_filt["Display Name"].iloc[0]
 
-            new_data = {
-                "Shortcut Name": i.get("name"),
-                "Shortcut Path": i.get("path"),
-                "Source Type": tgt_type,
-                "Source Workspace Id": source_workspace_id,
-                "Source Workspace Name": source_workspace_name,
-                "Source Item Id": source_item_id,
-                "Source Item Name": source_item_name,
-                "Source Item Type": source_item_type,
-                "OneLake Path": tgt.get(sources.get("oneLake"), {}).get("path"),
-                "Connection Id": connection_id,
-                "Location": location,
-                "Bucket": bucket,
-                "SubPath": sub_path,
-                "Source Properties Raw": str(tgt),
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
+            rows.append(
+                {
+                    "Shortcut Name": i.get("name"),
+                    "Shortcut Path": i.get("path"),
+                    "Source Type": tgt_type,
+                    "Source Workspace Id": source_workspace_id,
+                    "Source Workspace Name": source_workspace_name,
+                    "Source Item Id": source_item_id,
+                    "Source Item Name": source_item_name,
+                    "Source Item Type": source_item_type,
+                    "OneLake Path": tgt.get(sources.get("oneLake"), {}).get("path"),
+                    "Connection Id": connection_id,
+                    "Location": location,
+                    "Bucket": bucket,
+                    "SubPath": sub_path,
+                    "Source Properties Raw": str(tgt),
+                }
+            )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df

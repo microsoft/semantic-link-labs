@@ -44,18 +44,19 @@ def list_eventstreams(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         request=f"/v1/workspaces/{workspace_id}/eventstreams", uses_pagination=True
     )
 
-    dfs = []
+    rows = []
     for r in responses:
         for v in r.get("value", []):
-            new_data = {
-                "Eventstream Name": v.get("displayName"),
-                "Eventstream Id": v.get("id"),
-                "Description": v.get("description"),
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
+            rows.append(
+                {
+                    "Eventstream Name": v.get("displayName"),
+                    "Eventstream Id": v.get("id"),
+                    "Description": v.get("description"),
+                }
+            )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 

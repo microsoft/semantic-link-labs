@@ -144,21 +144,22 @@ def list_workspace_users(workspace: Optional[str | UUID] = None) -> pd.DataFrame
         client="fabric_sp",
     )
 
-    dfs = []
+    rows = []
     for r in responses:
         for v in r.get("value", []):
             p = v.get("principal", {})
-            new_data = {
-                "User Name": p.get("displayName"),
-                "User ID": p.get("id"),
-                "Type": p.get("type"),
-                "Role": v.get("role"),
-                "Email Address": p.get("userDetails", {}).get("userPrincipalName"),
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
+            rows.append(
+                {
+                    "User Name": p.get("displayName"),
+                    "User ID": p.get("id"),
+                    "Type": p.get("type"),
+                    "Role": v.get("role"),
+                    "Email Address": p.get("userDetails", {}).get("userPrincipalName"),
+                }
+            )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 

@@ -147,29 +147,30 @@ def list_external_data_shares_in_item(
         uses_pagination=True,
     )
 
-    dfs = []
+    rows = []
     for r in responses:
         for i in r.get("value", []):
             item_id = i.get("itemId")
-            new_data = {
-                "External Data Share Id": i.get("id"),
-                "Paths": [i.get("paths")],
-                "Creator Principal Id": i.get("creatorPrincipal", {}).get("id"),
-                "Creator Principal Type": i.get("creatorPrincipal", {}).get("type"),
-                "Recipient User Principal Name": i.get("recipient", {}).get(
-                    "userPrincipalName"
-                ),
-                "Status": i.get("status"),
-                "Expiration Time UTC": i.get("expriationTimeUtc"),
-                "Workspace Id": i.get("workspaceId"),
-                "Item Id": item_id,
-                "Item Name": item_name,
-                "Item Type": item_type,
-                "Invitation URL": i.get("invitationUrl"),
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
+            rows.append(
+                {
+                    "External Data Share Id": i.get("id"),
+                    "Paths": [i.get("paths")],
+                    "Creator Principal Id": i.get("creatorPrincipal", {}).get("id"),
+                    "Creator Principal Type": i.get("creatorPrincipal", {}).get("type"),
+                    "Recipient User Principal Name": i.get("recipient", {}).get(
+                        "userPrincipalName"
+                    ),
+                    "Status": i.get("status"),
+                    "Expiration Time UTC": i.get("expriationTimeUtc"),
+                    "Workspace Id": i.get("workspaceId"),
+                    "Item Id": item_id,
+                    "Item Name": item_name,
+                    "Item Type": item_type,
+                    "Invitation URL": i.get("invitationUrl"),
+                }
+            )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df

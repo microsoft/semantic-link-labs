@@ -49,19 +49,19 @@ def list_mounted_data_factories(
         uses_pagination=True,
     )
 
-    dfs = []
+    rows = []
     for r in responses:
         for v in r.get("value", []):
-            new_data = {
-                "Mounted Data Factory Name": v.get("displayName"),
-                "Mounted Data Factory Id": v.get("id"),
-                "Description": v.get("description"),
-            }
+            rows.append(
+                {
+                    "Mounted Data Factory Name": v.get("displayName"),
+                    "Mounted Data Factory Id": v.get("id"),
+                    "Description": v.get("description"),
+                }
+            )
 
-            dfs.append(pd.DataFrame(new_data, index=[0]))
-
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df

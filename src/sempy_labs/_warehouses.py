@@ -111,23 +111,24 @@ def list_warehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         client="fabric_sp",
     )
 
-    dfs = []
+    rows = []
     for r in responses:
         for v in r.get("value", []):
             prop = v.get("properties", {})
 
-            new_data = {
-                "Warehouse Name": v.get("displayName"),
-                "Warehouse Id": v.get("id"),
-                "Description": v.get("description"),
-                "Connection Info": prop.get("connectionInfo"),
-                "Created Date": prop.get("createdDate"),
-                "Last Updated Time": prop.get("lastUpdatedTime"),
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
+            rows.append(
+                {
+                    "Warehouse Name": v.get("displayName"),
+                    "Warehouse Id": v.get("id"),
+                    "Description": v.get("description"),
+                    "Connection Info": prop.get("connectionInfo"),
+                    "Created Date": prop.get("createdDate"),
+                    "Last Updated Time": prop.get("lastUpdatedTime"),
+                }
+            )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df

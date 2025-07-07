@@ -49,21 +49,22 @@ def list_variable_libraries(workspace: Optional[str | UUID] = None) -> pd.DataFr
         client="fabric_sp",
     )
 
-    dfs = []
+    rows = []
     for r in responses:
         for v in r.get("value", []):
             prop = v.get("properties", {})
 
-            new_data = {
-                "Variable Library Name": v.get("displayName"),
-                "Variable Library Id": v.get("id"),
-                "Description": v.get("description"),
-                "Active Value Set Name": prop.get("activeValueSetName"),
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
+            rows.append(
+                {
+                    "Variable Library Name": v.get("displayName"),
+                    "Variable Library Id": v.get("id"),
+                    "Description": v.get("description"),
+                    "Active Value Set Name": prop.get("activeValueSetName"),
+                }
+            )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df

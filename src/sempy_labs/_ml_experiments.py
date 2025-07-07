@@ -46,22 +46,23 @@ def list_ml_experiments(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         uses_pagination=True,
     )
 
-    dfs = []
+    rows = []
     for r in responses:
         for v in r.get("value", []):
             model_id = v.get("id")
             modelName = v.get("displayName")
             desc = v.get("description")
 
-            new_data = {
-                "ML Experiment Name": modelName,
-                "ML Experiment Id": model_id,
-                "Description": desc,
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
+            rows.append(
+                {
+                    "ML Experiment Name": modelName,
+                    "ML Experiment Id": model_id,
+                    "Description": desc,
+                }
+            )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 

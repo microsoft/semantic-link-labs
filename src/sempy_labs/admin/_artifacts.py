@@ -46,22 +46,22 @@ def list_unused_artifacts(workspace: Optional[str | UUID] = None) -> pd.DataFram
         uses_pagination=True,
     )
 
-    dfs = []
+    rows = []
     for r in responses:
         for i in r.get("unusedArtifactEntities", []):
-            new_data = {
-                "Artifact Name": i.get("displayName"),
-                "Artifact Id": i.get("artifactId"),
-                "Artifact Type": i.get("artifactType"),
-                "Artifact Size in MB": i.get("artifactSizeInMB"),
-                "Created Date Time": i.get("createdDateTime"),
-                "Last Accessed Date Time": i.get("lastAccessedDateTime"),
-            }
+            rows.append(
+                {
+                    "Artifact Name": i.get("displayName"),
+                    "Artifact Id": i.get("artifactId"),
+                    "Artifact Type": i.get("artifactType"),
+                    "Artifact Size in MB": i.get("artifactSizeInMB"),
+                    "Created Date Time": i.get("createdDateTime"),
+                    "Last Accessed Date Time": i.get("lastAccessedDateTime"),
+                }
+            )
 
-            dfs.append(pd.DataFrame(new_data, index=[0]))
-
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df

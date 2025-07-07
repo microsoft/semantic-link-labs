@@ -298,39 +298,41 @@ def list_semantic_model_datasources(
         client="fabric_sp",
     )
 
-    dfs = []
+    rows = []
     for item in response.json().get("value", []):
         ds_type = item.get("datasourceType")
         conn_details = item.get("connectionDetails", {})
         ds_id = item.get("datasourceId")
         gateway_id = item.get("gatewayId")
         if expand_details:
-            new_data = {
-                "Datasource Type": ds_type,
-                "Connection Server": conn_details.get("server"),
-                "Connection Database": conn_details.get("database"),
-                "Connection Path": conn_details.get("path"),
-                "Connection Account": conn_details.get("account"),
-                "Connection Domain": conn_details.get("domain"),
-                "Connection Kind": conn_details.get("kind"),
-                "Connection Email Address": conn_details.get("emailAddress"),
-                "Connection URL": conn_details.get("url"),
-                "Connection Class Info": conn_details.get("classInfo"),
-                "Connection Login Server": conn_details.get("loginServer"),
-                "Datasource Id": ds_id,
-                "Gateway Id": gateway_id,
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
+            rows.append(
+                {
+                    "Datasource Type": ds_type,
+                    "Connection Server": conn_details.get("server"),
+                    "Connection Database": conn_details.get("database"),
+                    "Connection Path": conn_details.get("path"),
+                    "Connection Account": conn_details.get("account"),
+                    "Connection Domain": conn_details.get("domain"),
+                    "Connection Kind": conn_details.get("kind"),
+                    "Connection Email Address": conn_details.get("emailAddress"),
+                    "Connection URL": conn_details.get("url"),
+                    "Connection Class Info": conn_details.get("classInfo"),
+                    "Connection Login Server": conn_details.get("loginServer"),
+                    "Datasource Id": ds_id,
+                    "Gateway Id": gateway_id,
+                }
+            )
         else:
-            new_data = {
-                "Datasource Type": ds_type,
-                "Connection Details": conn_details,
-                "Datasource Id": ds_id,
-                "Gateway Id": gateway_id,
-            }
-            dfs.append(pd.DataFrame([new_data]))
+            rows.append(
+                {
+                    "Datasource Type": ds_type,
+                    "Connection Details": conn_details,
+                    "Datasource Id": ds_id,
+                    "Gateway Id": gateway_id,
+                }
+            )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df

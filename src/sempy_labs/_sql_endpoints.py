@@ -44,19 +44,19 @@ def list_sql_endpoints(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         request=f"/v1/workspaces/{workspace_id}/sqlEndpoints", uses_pagination=True
     )
 
-    dfs = []
+    rows = []
     for r in responses:
         for v in r.get("value", []):
+            rows.append(
+                {
+                    "SQL Endpoint Id": v.get("id"),
+                    "SQL Endpoint Name": v.get("displayName"),
+                    "Description": v.get("description"),
+                }
+            )
 
-            new_data = {
-                "SQL Endpoint Id": v.get("id"),
-                "SQL Endpoint Name": v.get("displayName"),
-                "Description": v.get("description"),
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
-
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 

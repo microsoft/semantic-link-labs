@@ -75,27 +75,28 @@ def list_groups() -> pd.DataFrame:
 
     df = _create_dataframe(columns=columns)
 
-    dfs = []
+    rows = []
     for v in result.get("value"):
-        new_data = {
-            "Group Id": v.get("id"),
-            "Group Name": v.get("displayName"),
-            "Mail": v.get("mail"),
-            "Description": v.get("description"),
-            "Classification": v.get("classification"),
-            "Mail Enabled": v.get("mailEnabled"),
-            "Security Enabled": v.get("securityEnabled"),
-            "Created Date Time": v.get("createdDateTime"),
-            "Expiration Date Time": v.get("expirationDateTime"),
-            "Renewed Date Time": v.get("renewedDateTime"),
-            "Deleted Date Time": v.get("deletedDateTime"),
-            "Visibility": v.get("visibility"),
-            "Security Identifier": v.get("securityIdentifier"),
-        }
-        dfs.append(pd.DataFrame(new_data, index=[0]))
+        rows.append(
+            {
+                "Group Id": v.get("id"),
+                "Group Name": v.get("displayName"),
+                "Mail": v.get("mail"),
+                "Description": v.get("description"),
+                "Classification": v.get("classification"),
+                "Mail Enabled": v.get("mailEnabled"),
+                "Security Enabled": v.get("securityEnabled"),
+                "Created Date Time": v.get("createdDateTime"),
+                "Expiration Date Time": v.get("expirationDateTime"),
+                "Renewed Date Time": v.get("renewedDateTime"),
+                "Deleted Date Time": v.get("deletedDateTime"),
+                "Visibility": v.get("visibility"),
+                "Security Identifier": v.get("securityIdentifier"),
+            }
+        )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
@@ -140,28 +141,28 @@ def _get_group(group_id: UUID) -> pd.DataFrame:
     }
     df = _create_dataframe(columns=columns)
 
-    dfs = []
+    rows = []
     for v in result.get("value"):
-        new_data = {
-            "Group Id": v.get("id"),
-            "Group Name": v.get("displayName"),
-            "Mail": v.get("mail"),
-            "Description": v.get("description"),
-            "Classification": v.get("classification"),
-            "Mail Enabled": v.get("mailEnabled"),
-            "Security Enabled": v.get("securityEnabled"),
-            "Created Date Time": v.get("createdDateTime"),
-            "Expiration Date Time": v.get("expirationDateTime"),
-            "Deleted Date Time": v.get("deletedDateTime"),
-            "Renewed Date Time": v.get("renewedDateTime"),
-            "Visibility": v.get("visibility"),
-            "Security Identifier": v.get("securityIdentifier"),
-        }
+        rows.append(
+            {
+                "Group Id": v.get("id"),
+                "Group Name": v.get("displayName"),
+                "Mail": v.get("mail"),
+                "Description": v.get("description"),
+                "Classification": v.get("classification"),
+                "Mail Enabled": v.get("mailEnabled"),
+                "Security Enabled": v.get("securityEnabled"),
+                "Created Date Time": v.get("createdDateTime"),
+                "Expiration Date Time": v.get("expirationDateTime"),
+                "Deleted Date Time": v.get("deletedDateTime"),
+                "Renewed Date Time": v.get("renewedDateTime"),
+                "Visibility": v.get("visibility"),
+                "Security Identifier": v.get("securityIdentifier"),
+            }
+        )
 
-        dfs.append(pd.DataFrame(new_data, index=[0]))
-
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
@@ -207,25 +208,26 @@ def list_group_members(group: str | UUID) -> pd.DataFrame:
 
     df = _create_dataframe(columns=columns)
 
-    dfs = []
+    rows = []
     for v in result.get("value"):
-        new_data = {
-            "Member Id": v.get("id"),
-            "Member Name": v.get("displayName"),
-            "User Principal Name": v.get("userPrincipalName"),
-            "Mail": v.get("mail"),
-            "Job Title": v.get("jobTitle"),
-            "Office Location": v.get("officeLocation"),
-            "Mobile Phone": v.get("mobilePhone"),
-            "Business Phones": str(v.get("businessPhones")),
-            "Preferred Language": v.get("preferredLanguage"),
-            "Given Name": v.get("givenName"),
-            "Surname": v.get("surname"),
-        }
-        dfs.append(pd.DataFrame(new_data, index=[0]))
+        rows.append(
+            {
+                "Member Id": v.get("id"),
+                "Member Name": v.get("displayName"),
+                "User Principal Name": v.get("userPrincipalName"),
+                "Mail": v.get("mail"),
+                "Job Title": v.get("jobTitle"),
+                "Office Location": v.get("officeLocation"),
+                "Mobile Phone": v.get("mobilePhone"),
+                "Business Phones": str(v.get("businessPhones")),
+                "Preferred Language": v.get("preferredLanguage"),
+                "Given Name": v.get("givenName"),
+                "Surname": v.get("surname"),
+            }
+        )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 
@@ -270,25 +272,26 @@ def list_group_owners(group: str | UUID) -> pd.DataFrame:
 
     df = _create_dataframe(columns=columns)
 
-    dfs = []
+    rows = []
     for v in result.get("value"):
-        new_data = {
-            "Owner Id": v.get("id"),
-            "Owner Name": v.get("displayName"),
-            "User Principal Name": v.get("userPrincipalName"),
-            "Mail": v.get("mail"),
-            "Job Title": v.get("jobTitle"),
-            "Office Location": v.get("officeLocation"),
-            "Mobile Phone": v.get("mobilePhone"),
-            "Business Phones": str(v.get("businessPhones")),
-            "Preferred Language": v.get("preferredLanguage"),
-            "Given Name": v.get("givenName"),
-            "Surname": v.get("surname"),
-        }
-        dfs.append(pd.DataFrame(new_data, index=[0]))
+        rows.append(
+            {
+                "Owner Id": v.get("id"),
+                "Owner Name": v.get("displayName"),
+                "User Principal Name": v.get("userPrincipalName"),
+                "Mail": v.get("mail"),
+                "Job Title": v.get("jobTitle"),
+                "Office Location": v.get("officeLocation"),
+                "Mobile Phone": v.get("mobilePhone"),
+                "Business Phones": str(v.get("businessPhones")),
+                "Preferred Language": v.get("preferredLanguage"),
+                "Given Name": v.get("givenName"),
+                "Surname": v.get("surname"),
+            }
+        )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 

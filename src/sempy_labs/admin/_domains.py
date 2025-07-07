@@ -119,19 +119,20 @@ def list_domains(non_empty_only: bool = False) -> pd.DataFrame:
 
     response = _base_api(request=url, client="fabric_sp")
 
-    dfs = []
+    rows = []
     for v in response.json().get("domains", []):
-        new_data = {
-            "Domain ID": v.get("id"),
-            "Domain Name": v.get("displayName"),
-            "Description": v.get("description"),
-            "Parent Domain ID": v.get("parentDomainId"),
-            "Contributors Scope": v.get("contributorsScope"),
-        }
-        dfs.append(pd.DataFrame(new_data, index=[0]))
+        rows.append(
+            {
+                "Domain ID": v.get("id"),
+                "Domain Name": v.get("displayName"),
+                "Description": v.get("description"),
+                "Parent Domain ID": v.get("parentDomainId"),
+                "Contributors Scope": v.get("contributorsScope"),
+            }
+        )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 
@@ -177,12 +178,17 @@ def list_domain_workspaces(domain: Optional[str] = None, **kwargs) -> pd.DataFra
         request=f"/v1/admin/domains/{domain_id}/workspaces", client="fabric_sp"
     )
 
+    rows = []
     for v in response.json().get("value", []):
-        new_data = {
-            "Workspace ID": v.get("id"),
-            "Workspace Name": v.get("displayName"),
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+        rows.append(
+            {
+                "Workspace ID": v.get("id"),
+                "Workspace Name": v.get("displayName"),
+            }
+        )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 

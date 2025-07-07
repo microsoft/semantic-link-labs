@@ -54,24 +54,24 @@ def list_kql_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         client="fabric_sp",
     )
 
-    dfs = []
+    rows = []
     for r in responses:
         for v in r.get("value", []):
             prop = v.get("properties", {})
+            rows.append(
+                {
+                    "KQL Database Name": v.get("displayName"),
+                    "KQL Database Id": v.get("id"),
+                    "Description": v.get("description"),
+                    "Parent Eventhouse Item Id": prop.get("parentEventhouseItemId"),
+                    "Query Service URI": prop.get("queryServiceUri"),
+                    "Ingestion Service URI": prop.get("ingestionServiceUri"),
+                    "Database Type": prop.get("databaseType"),
+                }
+            )
 
-            new_data = {
-                "KQL Database Name": v.get("displayName"),
-                "KQL Database Id": v.get("id"),
-                "Description": v.get("description"),
-                "Parent Eventhouse Item Id": prop.get("parentEventhouseItemId"),
-                "Query Service URI": prop.get("queryServiceUri"),
-                "Ingestion Service URI": prop.get("ingestionServiceUri"),
-                "Database Type": prop.get("databaseType"),
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
-
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 

@@ -42,27 +42,27 @@ def list_teams() -> pd.DataFrame:
 
     df = _create_dataframe(columns=columns)
 
-    dfs = []
+    rows = []
     for v in result.get("value"):
-        new_data = {
-            "Team Id": v.get("id"),
-            "Team Name": v.get("displayName"),
-            "Description": v.get("description"),
-            "Creation Date Time": v.get("createdDateTime"),
-            "Classification": v.get("classification"),
-            "Specialization": v.get("specialization"),
-            "Visibility": v.get("visibility"),
-            "Web Url": v.get("webUrl"),
-            "Archived": v.get("isArchived"),
-            "Favorite By Me": v.get("isFavoriteByMe"),
-            "Discoverable By Me": v.get("isDiscoverableByMe"),
-            "Member Count": v.get("memberCount"),
-        }
+        rows.append(
+            {
+                "Team Id": v.get("id"),
+                "Team Name": v.get("displayName"),
+                "Description": v.get("description"),
+                "Creation Date Time": v.get("createdDateTime"),
+                "Classification": v.get("classification"),
+                "Specialization": v.get("specialization"),
+                "Visibility": v.get("visibility"),
+                "Web Url": v.get("webUrl"),
+                "Archived": v.get("isArchived"),
+                "Favorite By Me": v.get("isFavoriteByMe"),
+                "Discoverable By Me": v.get("isDiscoverableByMe"),
+                "Member Count": v.get("memberCount"),
+            }
+        )
 
-        dfs.append(pd.DataFrame(new_data, index=[0]))
-
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df

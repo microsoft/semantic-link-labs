@@ -40,25 +40,25 @@ def list_git_connections() -> pd.DataFrame:
         uses_pagination=True,
     )
 
-    dfs = []
+    rows = []
     for r in responses:
         for v in r.get("value", []):
             git = v.get("gitProviderDetails", {})
-            new_data = {
-                "Workspace Id": v.get("workspaceId"),
-                "Organization Name": git.get("organizationName"),
-                "Owner Name": git.get("ownerName"),
-                "Project Name": git.get("projectName"),
-                "Git Provider Type": git.get("gitProviderType"),
-                "Repository Name": git.get("repositoryName"),
-                "Branch Name": git.get("branchName"),
-                "Directory Name": git.get("directoryName"),
-            }
+            rows.append(
+                {
+                    "Workspace Id": v.get("workspaceId"),
+                    "Organization Name": git.get("organizationName"),
+                    "Owner Name": git.get("ownerName"),
+                    "Project Name": git.get("projectName"),
+                    "Git Provider Type": git.get("gitProviderType"),
+                    "Repository Name": git.get("repositoryName"),
+                    "Branch Name": git.get("branchName"),
+                    "Directory Name": git.get("directoryName"),
+                }
+            )
 
-            dfs.append(pd.DataFrame(new_data, index=[0]))
-
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
         dfW = list_workspaces()
         df = pd.merge(
             df, dfW[["Id", "Name"]], left_on="Workspace Id", right_on="Id", how="left"

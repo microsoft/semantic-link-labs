@@ -44,22 +44,22 @@ def list_dashboards(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
     response = _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/dashboards")
 
-    dfs = []
+    rows = []
     for v in response.json().get("value", []):
-        new_data = {
-            "Dashboard ID": v.get("id"),
-            "Dashboard Name": v.get("displayName"),
-            "Read Only": v.get("isReadOnly"),
-            "Web URL": v.get("webUrl"),
-            "Embed URL": v.get("embedUrl"),
-            "Data Classification": v.get("dataClassification"),
-            "Users": v.get("users"),
-            "Subscriptions": v.get("subscriptions"),
-        }
-        dfs.append(pd.DataFrame(new_data, index=[0]))
-
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+        rows.append(
+            {
+                "Dashboard ID": v.get("id"),
+                "Dashboard Name": v.get("displayName"),
+                "Read Only": v.get("isReadOnly"),
+                "Web URL": v.get("webUrl"),
+                "Embed URL": v.get("embedUrl"),
+                "Data Classification": v.get("dataClassification"),
+                "Users": v.get("users"),
+                "Subscriptions": v.get("subscriptions"),
+            }
+        )
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df

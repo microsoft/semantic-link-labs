@@ -106,21 +106,22 @@ def _list_capacities_meta() -> pd.DataFrame:
         request="/v1.0/myorg/admin/capacities", client="fabric_sp", uses_pagination=True
     )
 
-    dfs = []
+    rows = []
     for r in responses:
         for i in r.get("value", []):
-            new_data = {
-                "Capacity Id": i.get("id").lower(),
-                "Capacity Name": i.get("displayName"),
-                "Sku": i.get("sku"),
-                "Region": i.get("region"),
-                "State": i.get("state"),
-                "Admins": [i.get("admins", [])],
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
+            rows.append(
+                {
+                    "Capacity Id": i.get("id").lower(),
+                    "Capacity Name": i.get("displayName"),
+                    "Sku": i.get("sku"),
+                    "Region": i.get("region"),
+                    "State": i.get("state"),
+                    "Admins": [i.get("admins", [])],
+                }
+            )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 
@@ -258,21 +259,22 @@ def list_capacities(
         request="/v1.0/myorg/admin/capacities", client="fabric_sp", uses_pagination=True
     )
 
-    dfs = []
+    rows = []
     for r in responses:
         for i in r.get("value", []):
-            new_data = {
-                "Capacity Id": i.get("id").lower(),
-                "Capacity Name": i.get("displayName"),
-                "Sku": i.get("sku"),
-                "Region": i.get("region"),
-                "State": i.get("state"),
-                "Admins": [i.get("admins", [])],
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
+            rows.append(
+                {
+                    "Capacity Id": i.get("id").lower(),
+                    "Capacity Name": i.get("displayName"),
+                    "Sku": i.get("sku"),
+                    "Region": i.get("region"),
+                    "State": i.get("state"),
+                    "Admins": [i.get("admins", [])],
+                }
+            )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     if capacity is not None:
         if _is_valid_uuid(capacity):
@@ -322,22 +324,23 @@ def list_capacity_users(capacity: str | UUID) -> pd.DataFrame:
         request=f"/v1.0/myorg/admin/capacities/{capacity_id}/users", client="fabric_sp"
     )
 
-    dfs = []
+    rows = []
     for v in response.json().get("value", []):
-        new_data = {
-            "User Name": v.get("displayName"),
-            "Email Address": v.get("emailAddress"),
-            "Capacity User Access Right": v.get("capacityUserAccessRight"),
-            "Identifier": v.get("identifier"),
-            "Graph Id": v.get("graphId"),
-            "Principal Type": v.get("principalType"),
-            "User Type": v.get("userType"),
-            "Profile": v.get("profile"),
-        }
-        dfs.append(pd.DataFrame(new_data, index=[0]))
+        rows.append(
+            {
+                "User Name": v.get("displayName"),
+                "Email Address": v.get("emailAddress"),
+                "Capacity User Access Right": v.get("capacityUserAccessRight"),
+                "Identifier": v.get("identifier"),
+                "Graph Id": v.get("graphId"),
+                "Principal Type": v.get("principalType"),
+                "User Type": v.get("userType"),
+                "Profile": v.get("profile"),
+            }
+        )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
@@ -434,51 +437,50 @@ def get_refreshables(
 
     responses = _base_api(request=url, client="fabric_sp")
 
-    refreshables = []
-
+    rows = []
     for i in responses.json().get("value", []):
         last_refresh = i.get("lastRefresh", {})
         refresh_schedule = i.get("refreshSchedule", {})
-        new_data = {
-            "Workspace Id": i.get("group", {}).get("id"),
-            "Workspace Name": i.get("group", {}).get("name"),
-            "Item Id": i.get("id"),
-            "Item Name": i.get("name"),
-            "Item Kind": i.get("kind"),
-            "Capacity Id": (
-                i.get("capacity", {}).get("id").lower()
-                if i.get("capacity", {}).get("id")
-                else None
-            ),
-            "Capacity Name": i.get("capacity", {}).get("displayName"),
-            "Capacity SKU": i.get("capacity", {}).get("sku"),
-            "Refresh Count": i.get("refreshCount", 0),
-            "Refresh Failures": i.get("refreshFailures", 0),
-            "Average Duration": i.get("averageDuration", 0),
-            "Median Duration": i.get("medianDuration", 0),
-            "Refreshes Per Day": i.get("refreshesPerDay", 0),
-            "Refresh Type": last_refresh.get("refreshType"),
-            "Start Time": last_refresh.get("startTime"),
-            "End Time": last_refresh.get("endTime"),
-            "Status": last_refresh.get("status"),
-            "Request Id": last_refresh.get("requestId"),
-            "Service Exception Json": last_refresh.get("serviceExceptionJson"),
-            "Extended Status": last_refresh.get("extendedStatus"),
-            "Refresh Attempts": last_refresh.get("refreshAttempts"),
-            "Refresh Schedule Days": refresh_schedule.get("days"),
-            "Refresh Schedule Times": refresh_schedule.get("times"),
-            "Refresh Schedule Enabled": refresh_schedule.get("enabled"),
-            "Refresh Schedule Local Timezone Id": refresh_schedule.get(
-                "localTimeZoneId"
-            ),
-            "Refresh Schedule Notify Option": refresh_schedule.get("notifyOption"),
-            "Configured By": i.get("configuredBy"),
-        }
+        rows.append(
+            {
+                "Workspace Id": i.get("group", {}).get("id"),
+                "Workspace Name": i.get("group", {}).get("name"),
+                "Item Id": i.get("id"),
+                "Item Name": i.get("name"),
+                "Item Kind": i.get("kind"),
+                "Capacity Id": (
+                    i.get("capacity", {}).get("id").lower()
+                    if i.get("capacity", {}).get("id")
+                    else None
+                ),
+                "Capacity Name": i.get("capacity", {}).get("displayName"),
+                "Capacity SKU": i.get("capacity", {}).get("sku"),
+                "Refresh Count": i.get("refreshCount", 0),
+                "Refresh Failures": i.get("refreshFailures", 0),
+                "Average Duration": i.get("averageDuration", 0),
+                "Median Duration": i.get("medianDuration", 0),
+                "Refreshes Per Day": i.get("refreshesPerDay", 0),
+                "Refresh Type": last_refresh.get("refreshType"),
+                "Start Time": last_refresh.get("startTime"),
+                "End Time": last_refresh.get("endTime"),
+                "Status": last_refresh.get("status"),
+                "Request Id": last_refresh.get("requestId"),
+                "Service Exception Json": last_refresh.get("serviceExceptionJson"),
+                "Extended Status": last_refresh.get("extendedStatus"),
+                "Refresh Attempts": last_refresh.get("refreshAttempts"),
+                "Refresh Schedule Days": refresh_schedule.get("days"),
+                "Refresh Schedule Times": refresh_schedule.get("times"),
+                "Refresh Schedule Enabled": refresh_schedule.get("enabled"),
+                "Refresh Schedule Local Timezone Id": refresh_schedule.get(
+                    "localTimeZoneId"
+                ),
+                "Refresh Schedule Notify Option": refresh_schedule.get("notifyOption"),
+                "Configured By": i.get("configuredBy"),
+            }
+        )
 
-        refreshables.append(new_data)
-
-    if len(refreshables) > 0:
-        df = pd.DataFrame(refreshables)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df

@@ -38,20 +38,21 @@ def list_tenant_settings() -> pd.DataFrame:
 
     response = _base_api(request="/v1/admin/tenantsettings", client="fabric_sp")
 
-    dfs = []
+    rows = []
     for i in response.json().get("value", []):
-        new_data = {
-            "Setting Name": i.get("settingName"),
-            "Title": i.get("title"),
-            "Enabled": i.get("enabled"),
-            "Can Specify Security Groups": i.get("canSpecifySecurityGroups"),
-            "Tenant Setting Group": i.get("tenantSettingGroup"),
-            "Enabled Security Groups": [i.get("enabledSecurityGroups", [])],
-        }
-        dfs.append(pd.DataFrame(new_data, index=[0]))
+        rows.append(
+            {
+                "Setting Name": i.get("settingName"),
+                "Title": i.get("title"),
+                "Enabled": i.get("enabled"),
+                "Can Specify Security Groups": i.get("canSpecifySecurityGroups"),
+                "Tenant Setting Group": i.get("tenantSettingGroup"),
+                "Enabled Security Groups": [i.get("enabledSecurityGroups", [])],
+            }
+        )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
@@ -410,28 +411,31 @@ def list_workspaces_tenant_settings_overrides() -> pd.DataFrame:
         uses_pagination=True,
     )
 
+    rows = []
     for r in responses:
         for v in r.get("value", []):
             workspace_id = v.get("id")
             for setting in v.get("tenantSettings", []):
-                new_data = {
-                    "Workspace Id": workspace_id,
-                    "Setting Name": setting.get("settingName"),
-                    "Title": setting.get("title"),
-                    "Enabled": setting.get("enabled"),
-                    "Can Specify Security Groups": setting.get(
-                        "canSpecifySecurityGroups"
-                    ),
-                    "Enabled Security Groups": [
-                        setting.get("enabledSecurityGroups", [])
-                    ],
-                    "Tenant Setting Group": setting.get("tenantSettingGroup"),
-                    "Delegated From": setting.get("delegatedFrom"),
-                }
+                rows.append(
+                    {
+                        "Workspace Id": workspace_id,
+                        "Setting Name": setting.get("settingName"),
+                        "Title": setting.get("title"),
+                        "Enabled": setting.get("enabled"),
+                        "Can Specify Security Groups": setting.get(
+                            "canSpecifySecurityGroups"
+                        ),
+                        "Enabled Security Groups": [
+                            setting.get("enabledSecurityGroups", [])
+                        ],
+                        "Tenant Setting Group": setting.get("tenantSettingGroup"),
+                        "Delegated From": setting.get("delegatedFrom"),
+                    }
+                )
 
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -470,28 +474,30 @@ def list_domain_tenant_settings_overrides() -> pd.DataFrame:
         uses_pagination=True,
     )
 
+    rows = []
     for r in responses:
         for v in r.get("value", []):
             domain_id = v.get("id")
             for setting in v.get("tenantSettings", []):
-                new_data = {
-                    "Domain Id": domain_id,
-                    "Setting Name": setting.get("settingName"),
-                    "Title": setting.get("title"),
-                    "Enabled": setting.get("enabled"),
-                    "Can Specify Security Groups": setting.get(
-                        "canSpecifySecurityGroups"
-                    ),
-                    "Enabled Security Groups": [
-                        setting.get("enabledSecurityGroups", [])
-                    ],
-                    "Tenant Setting Group": setting.get("tenantSettingGroup"),
-                    "Delegated To Workspace": setting.get("delegateToWorkspace"),
-                    "Delegated From": setting.get("delegatedFrom"),
-                }
-
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+                rows.append(
+                    {
+                        "Domain Id": domain_id,
+                        "Setting Name": setting.get("settingName"),
+                        "Title": setting.get("title"),
+                        "Enabled": setting.get("enabled"),
+                        "Can Specify Security Groups": setting.get(
+                            "canSpecifySecurityGroups"
+                        ),
+                        "Enabled Security Groups": [
+                            setting.get("enabledSecurityGroups", [])
+                        ],
+                        "Tenant Setting Group": setting.get("tenantSettingGroup"),
+                        "Delegated To Workspace": setting.get("delegateToWorkspace"),
+                        "Delegated From": setting.get("delegatedFrom"),
+                    }
+                )
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df

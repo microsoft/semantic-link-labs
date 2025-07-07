@@ -67,27 +67,28 @@ def list_item_job_instances(
     if not responses[0].get("value"):
         return df
 
-    dfs = []
+    rows = []
     for r in responses:
         for v in r.get("value", []):
             fail = v.get("failureReason", {})
-            new_data = {
-                "Job Instance Id": v.get("id"),
-                "Item Name": item_name,
-                "Item Id": v.get("itemId"),
-                "Item Type": type,
-                "Job Type": v.get("jobType"),
-                "Invoke Type": v.get("invokeType"),
-                "Status": v.get("status"),
-                "Root Activity Id": v.get("rootActivityId"),
-                "Start Time UTC": v.get("startTimeUtc"),
-                "End Time UTC": v.get("endTimeUtc"),
-                "Error Message": fail.get("message") if fail is not None else "",
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
+            rows.append(
+                {
+                    "Job Instance Id": v.get("id"),
+                    "Item Name": item_name,
+                    "Item Id": v.get("itemId"),
+                    "Item Type": type,
+                    "Job Type": v.get("jobType"),
+                    "Invoke Type": v.get("invokeType"),
+                    "Status": v.get("status"),
+                    "Root Activity Id": v.get("rootActivityId"),
+                    "Start Time UTC": v.get("startTimeUtc"),
+                    "End Time UTC": v.get("endTimeUtc"),
+                    "Error Message": fail.get("message") if fail is not None else "",
+                }
+            )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
@@ -111,24 +112,25 @@ def _get_item_job_instance(url: str) -> pd.DataFrame:
 
     response = _base_api(request=url)
 
-    dfs = []
+    rows = []
     for v in response.json().get("value", []):
         fail = v.get("failureReason", {})
-        new_data = {
-            "Job Instance Id": v.get("id"),
-            "Item Id": v.get("itemId"),
-            "Job Type": v.get("jobType"),
-            "Invoke Type": v.get("invokeType"),
-            "Status": v.get("status"),
-            "Root Activity Id": v.get("rootActivityId"),
-            "Start Time UTC": v.get("startTimeUtc"),
-            "End Time UTC": v.get("endTimeUtc"),
-            "Error Message": fail.get("message") if fail is not None else "",
-        }
-        dfs.append(pd.DataFrame(new_data, index=[0]))
+        rows.append(
+            {
+                "Job Instance Id": v.get("id"),
+                "Item Id": v.get("itemId"),
+                "Job Type": v.get("jobType"),
+                "Invoke Type": v.get("invokeType"),
+                "Status": v.get("status"),
+                "Root Activity Id": v.get("rootActivityId"),
+                "Start Time UTC": v.get("startTimeUtc"),
+                "End Time UTC": v.get("endTimeUtc"),
+                "Error Message": fail.get("message") if fail is not None else "",
+            }
+        )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
@@ -190,29 +192,29 @@ def list_item_schedules(
         request=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/{job_type}/schedules"
     )
 
-    dfs = []
+    rows = []
     for v in response.json().get("value", []):
         config = v.get("configuration", {})
         own = v.get("owner", {})
-        new_data = {
-            "Job Schedule Id": v.get("id"),
-            "Enabled": v.get("enabled"),
-            "Created Date Time": v.get("createdDateTime"),
-            "Start Date Time": config.get("startDateTime"),
-            "End Date Time": config.get("endDateTime"),
-            "Local Time Zone Id": config.get("localTimeZoneId"),
-            "Type": config.get("type"),
-            "Interval": config.get("interval"),
-            "Weekdays": config.get("weekdays"),
-            "Times": config.get("times"),
-            "Owner Id": own.get("id"),
-            "Owner Type": own.get("type"),
-        }
+        rows.append(
+            {
+                "Job Schedule Id": v.get("id"),
+                "Enabled": v.get("enabled"),
+                "Created Date Time": v.get("createdDateTime"),
+                "Start Date Time": config.get("startDateTime"),
+                "End Date Time": config.get("endDateTime"),
+                "Local Time Zone Id": config.get("localTimeZoneId"),
+                "Type": config.get("type"),
+                "Interval": config.get("interval"),
+                "Weekdays": config.get("weekdays"),
+                "Times": config.get("times"),
+                "Owner Id": own.get("id"),
+                "Owner Type": own.get("type"),
+            }
+        )
 
-        dfs.append(pd.DataFrame(new_data, index=[0]))
-
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df

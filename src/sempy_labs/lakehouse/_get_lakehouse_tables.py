@@ -97,7 +97,7 @@ def get_lakehouse_tables(
     except Exception as e:
         API_called = False
 
-    dfs = []
+    rows = []
     local_path = None
     if API_called:
         if not responses[0].get("data"):
@@ -105,16 +105,17 @@ def get_lakehouse_tables(
 
         for r in responses:
             for i in r.get("data", []):
-                new_data = {
-                    "Workspace Name": workspace_name,
-                    "Lakehouse Name": lakehouse_name,
-                    "Schema Name": "",
-                    "Table Name": i.get("name"),
-                    "Format": i.get("format"),
-                    "Type": i.get("type"),
-                    "Location": i.get("location"),
-                }
-                dfs.append(pd.DataFrame(new_data, index=[0]))
+                rows.append(
+                    {
+                        "Workspace Name": workspace_name,
+                        "Lakehouse Name": lakehouse_name,
+                        "Schema Name": "",
+                        "Table Name": i.get("name"),
+                        "Format": i.get("format"),
+                        "Type": i.get("type"),
+                        "Location": i.get("location"),
+                    }
+                )
     else:
         local_path = _mount(lakehouse=lakehouse_id, workspace=workspace_id)
         tables_path = os.path.join(local_path, "Tables")
@@ -127,19 +128,20 @@ def get_lakehouse_tables(
                 location_path = create_abfss_path(
                     lakehouse_id, workspace_id, table_name, schema_name
                 )
-                new_data = {
-                    "Workspace Name": workspace_name,
-                    "Lakehouse Name": lakehouse_name,
-                    "Schema Name": schema_name,
-                    "Table Name": table_name,
-                    "Format": "delta",
-                    "Type": "Managed",
-                    "Location": location_path,
-                }
-                dfs.append(pd.DataFrame(new_data, index=[0]))
+                rows.append(
+                    {
+                        "Workspace Name": workspace_name,
+                        "Lakehouse Name": lakehouse_name,
+                        "Schema Name": schema_name,
+                        "Table Name": table_name,
+                        "Format": "delta",
+                        "Type": "Managed",
+                        "Location": location_path,
+                    }
+                )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     if extended:
         sku_value = get_sku_size(workspace_id)

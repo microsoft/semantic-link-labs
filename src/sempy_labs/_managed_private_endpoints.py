@@ -118,23 +118,26 @@ def list_managed_private_endpoints(
         client="fabric_sp",
     )
 
-    dfs = []
+    rows = []
     for r in responses:
         for v in r.get("value", []):
             conn = v.get("connectionState", {})
-            new_data = {
-                "Managed Private Endpoint Name": v.get("name"),
-                "Managed Private Endpoint Id": v.get("id"),
-                "Target Private Link Resource Id": v.get("targetPrivateLinkResourceId"),
-                "Provisioning State": v.get("provisioningState"),
-                "Connection Status": conn.get("status"),
-                "Connection Description": conn.get("description"),
-                "Target Subresource Type": v.get("targetSubresourceType"),
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
+            rows.append(
+                {
+                    "Managed Private Endpoint Name": v.get("name"),
+                    "Managed Private Endpoint Id": v.get("id"),
+                    "Target Private Link Resource Id": v.get(
+                        "targetPrivateLinkResourceId"
+                    ),
+                    "Provisioning State": v.get("provisioningState"),
+                    "Connection Status": conn.get("status"),
+                    "Connection Description": conn.get("description"),
+                    "Target Subresource Type": v.get("targetSubresourceType"),
+                }
+            )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 
