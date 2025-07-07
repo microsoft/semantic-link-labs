@@ -2689,8 +2689,12 @@ class ReportWrapper:
 
         selector_mapping = {
             key: {
-                ".".join(k): v  # join tuple with '.' to form the string
-                for k, v in value.items()
+                variant: f"{table}.{new_col}"
+                for (table, col), new_col in value.items()
+                for variant in (
+                    f"({table}.{col})",
+                    f"[{table}.{col}]",
+                )
             }
             for key, value in mapping.items()
         }
@@ -2728,28 +2732,15 @@ class ReportWrapper:
 
                 # Check both measures and columns
                 for category in ["measures", "columns"]:
-                    if obj in selector_mapping.get(category, {}):
-                        value = selector_mapping[category][obj]
-
-                        # Find original tuple key from mapping for this category
-                        for tup_key in mapping.get(category, {}).keys():
-                            if ".".join(tup_key) == obj:
-                                key = tup_key[
-                                    0
-                                ]  # first element of tuple, like table name
-                                new_value = f"{key}.{value}"
-
-                                # Update the dictionary node holding "metadata"
-                                if isinstance(match.context.value, dict):
-                                    match.context.value["metadata"] = new_value
-                                else:
-                                    print(
-                                        f"Warning: Cannot assign metadata, context is {type(match.context.value)}"
-                                    )
-                                break
-
-                        # Once found in one category, no need to check the other
-                        break
+                    for i, value in selector_mapping.get(category).items():
+                        if i in obj:
+                            prefix = i[0]
+                            if prefix == "[":
+                                new_value = obj.replace(i, f"[{value}]")
+                            else:
+                                new_value = obj.replace(i, f"({value})")
+                            match.context.value["metadata"] = new_value
+                            break
 
             # Rename Column Properties
             for match in col_expr_path.find(payload):
