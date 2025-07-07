@@ -1,11 +1,14 @@
 import pandas as pd
+import os
+import base64
 from uuid import UUID
 import sempy_labs._icons as icons
-from typing import List
+from typing import List, Literal, Optional
 from .._helper_functions import (
     _is_valid_uuid,
     _base_api,
     _create_dataframe,
+    _mount,
 )
 from sempy._utils._log import log
 
@@ -130,8 +133,12 @@ def send_mail(
     subject: str,
     to_recipients: str | List[str],
     content: str,
-    content_type: str = "Text",
-    cc_recipients: str | List[str] = None,
+    content_type: Literal["Text", "HTML"] = "Text",
+    cc_recipients: Optional[str | List[str]] = None,
+    bcc_recipients: Optional[str | List[str]] = None,
+    priority: Literal["Normal", "High", "Low"] = "Normal",
+    follow_up_flag: bool = False,
+    attachments: Optional[str | List[str]] = None,
 ):
     """
     Sends an email to the specified recipients.
@@ -150,16 +157,27 @@ def send_mail(
         The email address of the recipients.
     content : str
         The email content.
-    content_type : str, default="Text"
+    content_type : Literal["Text", "HTML"], default="Text"
         The email content type. Options: "Text" or "HTML".
     cc_recipients : str | List[str], default=None
         The email address of the CC recipients.
+    bcc_recipients : str | List[str], default=None
+        The email address of the BCC recipients.
+    priority : Literal["Normal", "High", "Low"], default="Normal"
+        The email priority.
+    follow_up_flag : bool, default=False
+        Whether to set a follow-up flag for the email.
+    attachments : str | List[str], default=None
+        The abfss path or a list of the abfss paths of the attachments to include in the email.
     """
 
-    if content_type.lower() == "html":
-        content_type = "HTML"
-    else:
-        content_type = "Text"
+    content_type = "HTML" if content_type.lower() == "html" else "Text"
+
+    priority = priority.capitalize()
+    if priority not in ["Normal", "High", "Low"]:
+        raise ValueError(
+            f"{icons.red_dot} Invalid priority: {priority}. Options are: Normal, High, Low."
+        )
 
     user_id = resolve_user_id(user=user)
 
@@ -178,6 +196,11 @@ def send_mail(
         if cc_recipients
         else None
     )
+    bcc_email_addresses = (
+        [{"emailAddress": {"address": email}} for email in bcc_recipients]
+        if bcc_recipients
+        else None
+    )
 
     payload = {
         "message": {
@@ -187,11 +210,82 @@ def send_mail(
                 "content": content,
             },
             "toRecipients": to_email_addresses,
+            "importance": priority,
         },
     }
 
     if cc_email_addresses:
         payload["message"]["ccRecipients"] = cc_email_addresses
+
+    if bcc_email_addresses:
+        payload["message"]["bccRecipients"] = bcc_email_addresses
+
+    if follow_up_flag:
+        payload["message"]["flag"] = {"flagStatus": "flagged"}
+
+    content_types = {
+        ".txt": "text/plain",
+        ".pdf": "application/pdf",
+        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ".csv": "text/csv",
+        ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".gif": "image/gif",
+        ".bmp": "image/bmp",
+        ".zip": "application/zip",
+        ".json": "application/json",
+        ".xml": "application/xml",
+        ".html": "text/html",
+        ".bim": "application/json",
+        ".pbix": "application/vnd.ms-powerbi.report",
+        ".pbip": "application/vnd.ms-powerbi.report",
+        ".pbit": "application/vnd.ms-powerbi.report",
+        ".vpax": "application/zip",
+    }
+
+    def file_path_to_content_bytes(file_path):
+
+        path_parts = file_path.split("abfss://")[1].split("@")
+        workspace = path_parts[0]
+
+        rest = path_parts[1].split(".microsoft.com/")[1]
+        lakehouse, *file_parts = rest.split("/")
+        if lakehouse.endswith(".Lakehouse"):
+            lakehouse = lakehouse.removesuffix(".Lakehouse")
+        relative_path = os.path.join(*file_parts)
+
+        local_path = _mount(lakehouse, workspace)
+        full_path = os.path.join(local_path, relative_path)
+
+        with open(full_path, "rb") as file:
+            return base64.b64encode(file.read()).decode("utf-8")
+
+    if isinstance(attachments, str):
+        attachments = [attachments]
+    if attachments:
+        attachments_list = []
+        for attach_path in attachments:
+            content_bytes = file_path_to_content_bytes(attach_path)
+            file_extension = os.path.splitext(attach_path)[1]
+            content_type = content_types.get(file_extension)
+            if not content_type:
+                raise ValueError(
+                    f"{icons.red_dot} Unsupported file type: {file_extension}. Supported types are: {', '.join(content_types.keys())}."
+                )
+            attachments_list.append(
+                {
+                    "@odata.type": "#microsoft.graph.fileAttachment",
+                    "name": attach_path.split("/")[-1],
+                    "contentType": content_type,
+                    "contentBytes": content_bytes,
+                }
+            )
+
+        # Add to payload
+        payload["message"]["attachments"] = attachments_list
 
     _base_api(
         request=f"users/{user_id}/sendMail",
@@ -201,4 +295,11 @@ def send_mail(
         method="post",
     )
 
-    print(f"{icons.green_dot} The email has been sent to {to_recipients}.")
+    printout = f"{icons.green_dot} The email has been sent to {to_recipients}"
+    if cc_recipients:
+        printout += f" and CCed to {cc_recipients}"
+    if bcc_recipients:
+        printout += f" and BCCed to {bcc_recipients}"
+    if attachments:
+        printout += f" with {len(attachments)} attachment(s)"
+    print(f"{printout}.")
