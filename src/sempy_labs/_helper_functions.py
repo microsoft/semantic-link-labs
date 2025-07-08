@@ -1291,7 +1291,7 @@ def retry(sleep_time: int, timeout_error_message: str):
 
 
 def lro(
-    client,
+    headers,
     response,
     status_codes: Optional[List[str]] = [200, 202],
     sleep_time: Optional[int] = 1,
@@ -1307,24 +1307,24 @@ def lro(
             result = response
     if response.status_code == status_codes[1]:
         operationId = response.headers["x-ms-operation-id"]
-        response = client.get(f"/v1/operations/{operationId}")
+        response = requests.get(f"https://api.fabric.microsoft.com/v1/operations/{operationId}", headers=headers)
         response_body = json.loads(response.content)
         while response_body["status"] not in ["Succeeded", "Failed"]:
             time.sleep(sleep_time)
-            response = client.get(f"/v1/operations/{operationId}")
+            response = requests.get(f"https://api.fabric.microsoft.com/v1/operations/{operationId}", headers=headers)
             response_body = json.loads(response.content)
         if response_body["status"] != "Succeeded":
             raise FabricHTTPException(response)
         if return_status_code:
             result = response.status_code
         else:
-            response = client.get(f"/v1/operations/{operationId}/result")
+            response = requests.get(f"https://api.fabric.microsoft.com/v1/operations/{operationId}/result", headers=headers)
             result = response
 
     return result
 
 
-def pagination(client, response):
+def pagination(headers, response):
 
     responses = []
     response_json = response.json()
@@ -1336,7 +1336,7 @@ def pagination(client, response):
 
     # Loop to handle pagination
     while continuation_token is not None:
-        response = client.get(continuation_uri)
+        response = requests.get(continuation_uri, headers=headers)
         response_json = response.json()
         responses.append(response_json)
 
@@ -1933,52 +1933,40 @@ def _base_api(
         status_codes = [status_codes]
 
     if client == "fabric":
-        c = fabric.FabricRestClient(token_provider=get_token)
+        token = get_token()
+        headers = {"Authorization": f"Bearer {token}"}
     elif client == "fabric_sp":
         token = auth.token_provider.get() or get_token
-        c = fabric.FabricRestClient(token_provider=token)
+        headers = _get_headers(token, audience='pbi')
     elif client in ["azure", "graph"]:
-        pass
+        headers = _get_headers(auth.token_provider.get(), audience=client)
     else:
         raise ValueError(f"{icons.red_dot} The '{client}' client is not supported.")
 
-    if client not in ["azure", "graph"]:
-        if method == "get":
-            response = c.get(request)
-        elif method == "delete":
-            response = c.delete(request)
-        elif method == "post":
-            response = c.post(request, json=payload)
-        elif method == "patch":
-            response = c.patch(request, json=payload)
-        elif method == "put":
-            response = c.put(request, json=payload)
-        else:
-            raise NotImplementedError
-    else:
-        headers = _get_headers(auth.token_provider.get(), audience=client)
-        if client == "graph":
-            url = f"https://graph.microsoft.com/v1.0/{request}"
-        elif client == "azure":
-            url = request
-        else:
-            raise NotImplementedError
-        response = requests.request(
-            method.upper(),
-            url,
-            headers=headers,
-            json=payload,
-        )
+    if client == "graph":
+        request = f"https://graph.microsoft.com/v1.0/{request}"
+    if client in ["fabric", "fabric_sp"]:
+        if request.startswith("/v1.0/myorg/"):
+            request = f"https://api.powerbi.com{request}"
+        elif request.startswith('/v1/'):
+            request = f"https://api.fabric.microsoft.com{request}"
+
+    response = requests.request(
+        method.upper(),
+        request,
+        headers=headers,
+        json=payload,
+    )
 
     if lro_return_json:
-        return lro(c, response, status_codes).json()
+        return lro(headers, response, status_codes).json()
     elif lro_return_status_code:
-        return lro(c, response, status_codes, return_status_code=True)
+        return lro(headers, response, status_codes, return_status_code=True)
     else:
         if response.status_code not in status_codes:
             raise FabricHTTPException(response)
         if uses_pagination:
-            responses = pagination(c, response)
+            responses = pagination(headers, response)
             return responses
         else:
             return response
