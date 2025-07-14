@@ -137,7 +137,6 @@ def send_mail(
     cc_recipients: Optional[str | List[str]] = None,
     bcc_recipients: Optional[str | List[str]] = None,
     priority: Literal["Normal", "High", "Low"] = "Normal",
-    follow_up_flag: bool = False,
     attachments: Optional[str | List[str]] = None,
 ):
     """
@@ -165,8 +164,6 @@ def send_mail(
         The email address of the BCC recipients.
     priority : Literal["Normal", "High", "Low"], default="Normal"
         The email priority.
-    follow_up_flag : bool, default=False
-        Whether to set a follow-up flag for the email.
     attachments : str | List[str], default=None
         The abfss path or a list of the abfss paths of the attachments to include in the email.
     """
@@ -220,8 +217,8 @@ def send_mail(
     if bcc_email_addresses:
         payload["message"]["bccRecipients"] = bcc_email_addresses
 
-    if follow_up_flag:
-        payload["message"]["flag"] = {"flagStatus": "flagged"}
+    # if follow_up_flag:
+    #    payload["message"]["flag"] = {"flagStatus": "flagged"}
 
     content_types = {
         ".txt": "text/plain",
@@ -244,6 +241,7 @@ def send_mail(
         ".pbip": "application/vnd.ms-powerbi.report",
         ".pbit": "application/vnd.ms-powerbi.report",
         ".vpax": "application/zip",
+        ".geojson": "application/geo+json",
     }
 
     def file_path_to_content_bytes(file_path):
