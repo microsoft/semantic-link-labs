@@ -23,7 +23,8 @@ def list_item_labels(workspace: Optional[Union[str, UUID]] = None) -> pd.DataFra
     """
 
     import notebookutils
-    token = notebookutils.credentials.getToken('pbi')
+
+    token = notebookutils.credentials.getToken("pbi")
     headers = {"Authorization": f"Bearer {token}"}
 
     # Item types handled in special payload fields
@@ -32,7 +33,7 @@ def list_item_labels(workspace: Optional[Union[str, UUID]] = None) -> pd.DataFra
         "reports": "Report",
         "models": "SemanticModel",
         "dataflows": "Dataflow",
-        "datamarts": "Datamart"
+        "datamarts": "Datamart",
     }
 
     # All other item types go into 'artifacts'
@@ -83,16 +84,16 @@ def list_item_labels(workspace: Optional[Union[str, UUID]] = None) -> pd.DataFra
         payload["artifacts"] = [{"artifactId": i} for i in artifact_ids]
 
     client = fabric.PowerBIRestClient()
-    response = client.get('/v1.0/myorg/capacities')
+    response = client.get("/v1.0/myorg/capacities")
     if response.status_code != 200:
         raise FabricHTTPException("Failed to retrieve URL prefix.")
-    context = response.json().get('@odata.context')
-    prefix = context.split('/v1.0')[0]
+    context = response.json().get("@odata.context")
+    prefix = context.split("/v1.0")[0]
 
     response = requests.post(
         f"{prefix}/metadata/informationProtection/artifacts",
         json=payload,
-        headers=headers
+        headers=headers,
     )
     if response.status_code != 200:
         raise FabricHTTPException(f"Failed to retrieve labels: {response.text}")
@@ -102,7 +103,7 @@ def list_item_labels(workspace: Optional[Union[str, UUID]] = None) -> pd.DataFra
         "artifactInformationProtections",
         "datasetInformationProtections",
         "reportInformationProtections",
-        "dashboardInformationProtections"
+        "dashboardInformationProtections",
     ]
 
     rows = [
@@ -111,7 +112,7 @@ def list_item_labels(workspace: Optional[Union[str, UUID]] = None) -> pd.DataFra
             "Label Id": item.get("labelId"),
             "Label Name": item.get("name"),
             "Parent Label Name": item.get("parent", {}).get("name"),
-            "Label Description": item.get("tooltip")
+            "Label Description": item.get("tooltip"),
         }
         for key in label_keys
         for item in result.get(key, [])
