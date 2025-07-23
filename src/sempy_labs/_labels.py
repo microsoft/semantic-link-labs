@@ -4,8 +4,10 @@ import pandas as pd
 from typing import Optional, Union
 from uuid import UUID
 from sempy.fabric.exceptions import FabricHTTPException
+from sempy._utils._log import log
 
 
+@log
 def list_item_labels(workspace: Optional[Union[str, UUID]] = None) -> pd.DataFrame:
     """
     List all items within a workspace and shows their sensitivity labels.
