@@ -997,15 +997,15 @@ def _decode_b64(file, format: Optional[str] = "utf-8"):
 
 @log
 def is_default_semantic_model(
-    dataset: str, workspace: Optional[str | UUID] = None
+    dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> bool:
     """
     Identifies whether a semantic model is a default semantic model.
 
     Parameters
     ----------
-    dataset : str
-        The name of the semantic model.
+    dataset : str | uuid.UUID
+        The name or ID of the semantic model.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -1017,7 +1017,8 @@ def is_default_semantic_model(
         A True/False value indicating whether the semantic model is a default semantic model.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
+    (dataset_name, dataset_id) = resolve_item_name_and_id(item=dataset, type="SemanticModel", workspace=workspace_id)
 
     dfI = fabric.list_items(workspace=workspace_id)
     filtered_df = dfI.groupby("Display Name").filter(
@@ -1026,7 +1027,7 @@ def is_default_semantic_model(
     )
     default_semantic_models = filtered_df["Display Name"].unique().tolist()
 
-    return dataset in default_semantic_models
+    return dataset_name in default_semantic_models
 
 
 @log
