@@ -1,3 +1,6 @@
+from ._labels import (
+    list_item_labels,
+)
 from ._sql_endpoints import (
     list_sql_endpoints,
     refresh_sql_endpoint_metadata,
@@ -599,4 +602,5 @@ __all__ = [
     "list_semantic_model_datasources",
     "upgrade_dataflow",
     "get_dataflow_definition",
+    "list_item_labels",
 ]
