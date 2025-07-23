@@ -1,4 +1,4 @@
-from ._helper_functions import (
+from sempy_labs._helper_functions import (
     resolve_item_id,
     resolve_workspace_id,
     _base_api,
@@ -8,11 +8,74 @@ from ._helper_functions import (
     _decode_b64,
 )
 import pandas as pd
-from typing import Any, Optional
+from typing import Any, Optional, List, Union
 from uuid import UUID
 from sempy._utils._log import log
 import json
 import sempy_labs._icons as icons
+
+
+@log
+def get_variable_library(
+    variable_library: str | UUID, workspace: Optional[str | UUID] = None
+) -> pd.DataFrame:
+    """
+    Gets a variable library.
+
+    This is a wrapper function for the following API: `Items - Get Variable Library <https://learn.microsoft.com/rest/api/fabric/warehouse/items/get-variable-library>`_.
+
+    Parameters
+    ----------
+    variable_library : str | uuid.UUID
+        Name or ID of the variable library.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the variable library.
+    """
+
+    columns = {
+        "Variable Library Name": "string",
+        "Variable Library Id": "string",
+        "Description": "string",
+        "Active Value Set Name": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    workspace_id = resolve_workspace_id(workspace)
+    variable_library_id = resolve_item_id(
+        item=variable_library, type="VariableLibrary", workspace=workspace
+    )
+
+    response = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/variableLibraries/{variable_library_id}",
+        client="fabric_sp",
+    )
+
+    result = response.json()
+    prop = result.get("properties", {})
+
+    if prop:
+        df = pd.DataFrame(
+            [
+                {
+                    "Variable Library Name": result.get("displayName"),
+                    "Variable Library Id": result.get("id"),
+                    "Description": result.get("description"),
+                    "Active Value Set Name": prop.get("activeValueSetName"),
+                }
+            ],
+            columns=list(columns.keys()),
+        )
+
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
+
+    return df
 
 
 @log
@@ -179,13 +242,95 @@ def list_variables(
     if rows:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
 
+    for part in result.get("definition", {}).get("parts", []):
+        path = part.get("path")
+        if path.startswith("valueSets") and path.endswith(".json"):
+            payload = json.loads(part.get("payload"))
+            value_set_name = payload.get("name")
+
+            # Initialize the new column with None (or pd.NA)
+            df[value_set_name] = None
+
+            for override in payload.get("variableOverrides", []):
+                variable_name = override.get("name")
+                variable_value = override.get("value")
+
+                # Set the value in the appropriate row and column
+                df.loc[df["Variable Name"] == variable_name, value_set_name] = (
+                    variable_value
+                )
+
     return df
 
 
+@log
+def get_variable_values(
+    variable_names: List[str],
+    variable_library: Union[str, UUID],
+    workspace: Optional[Union[str, UUID]] = None,
+    value_set: Optional[str] = None,
+) -> dict:
+    """
+    Gets the values of multiple variables from a variable library with a single call to list_variables.
+
+    Parameters
+    ----------
+    variable_names : List[str]
+        A list of variable names to retrieve.
+    variable_library : str | uuid.UUID
+        Name or ID of the variable library.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    value_set : str, default=None
+        The name of the value set to use for variable overrides.
+        If None, the active value set of the variable library will be used.
+
+    Returns
+    -------
+    dict
+        Dictionary mapping variable names to their corresponding values.
+    """
+
+    if isinstance(variable_names, str):
+        variable_names = [variable_names]
+
+    if value_set is None:
+        vl_df = get_variable_library(
+            variable_library=variable_library, workspace=workspace
+        )
+        if vl_df.empty:
+            raise ValueError(
+                f"{icons.red_dot} The variable library '{variable_library}' does not exist within the '{workspace}' workspace."
+            )
+        value_set = vl_df["Active Value Set Name"].iloc[0]
+
+    df = list_variables(variable_library=variable_library, workspace=workspace)
+    found_variables = df[df["Variable Name"].isin(variable_names)]
+
+    missing = set(variable_names) - set(found_variables["Variable Name"])
+    if missing:
+        raise ValueError(
+            f"{icons.red_dot} The following variables do not exist in the '{variable_library}' variable library: {', '.join(missing)}"
+        )
+
+    if value_set == "Default value set":
+        value_set = "Value"
+    if value_set not in df.columns:
+        raise ValueError(
+            f"{icons.red_dot} The value set '{value_set}' does not exist in the variable library '{variable_library}' within the '{workspace}' workspace."
+        )
+
+    return dict(zip(found_variables["Variable Name"], found_variables[value_set]))
+
+
+@log
 def get_variable_value(
     variable_name: str,
     variable_library: str | UUID,
     workspace: Optional[str | UUID] = None,
+    value_set: Optional[str] = None,
 ) -> Any:
     """
     Gets the value of a variable in a variable library.
@@ -200,6 +345,9 @@ def get_variable_value(
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    value_set : str, default=None
+        The name of the value set to use for variable overrides.
+        If None, the active value set of the variable library will be used.
 
     Returns
     -------
@@ -207,12 +355,9 @@ def get_variable_value(
         The value of the variable.
     """
 
-    df = list_variables(variable_library=variable_library, workspace=workspace)
-    variable_row = df[df["Variable Name"] == variable_name]
-    if variable_row.empty:
-        raise ValueError(
-            f"{icons.red_dot} the '{variable_name}' variable does not exist in the '{variable_library}'  variable library within the '{workspace}' workspace."
-        )
-    value = variable_row["Value"].iloc[0]
-    # type = variable_row['Type'].iloc[0]
-    return value
+    return get_variable_values(
+        variable_names=[variable_name],
+        variable_library=variable_library,
+        workspace=workspace,
+        value_set=value_set,
+    )[variable_name]

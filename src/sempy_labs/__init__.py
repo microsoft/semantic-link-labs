@@ -8,6 +8,11 @@ from ._sql_endpoints import (
 from ._variable_libraries import (
     list_variable_libraries,
     delete_variable_library,
+    get_variable_library,
+    get_variable_library_definition,
+    list_variables,
+    get_variable_value,
+    get_variable_values,
 )
 from ._kusto import (
     query_kusto,
@@ -595,6 +600,11 @@ __all__ = [
     "list_tags",
     "list_variable_libraries",
     "delete_variable_library",
+    "get_variable_library",
+    "get_variable_library_definition",
+    "list_variables",
+    "get_variable_value",
+    "get_variable_values",
     "create_vpax",
     "update_semantic_model_refresh_schedule",
     "apply_tags",
