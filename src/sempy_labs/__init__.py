@@ -96,6 +96,7 @@ from ._ml_models import (
     list_ml_models,
     create_ml_model,
     delete_ml_model,
+    activate_ml_model,
 )
 from ._ml_experiments import (
     list_ml_experiments,
@@ -599,4 +600,5 @@ __all__ = [
     "list_semantic_model_datasources",
     "upgrade_dataflow",
     "get_dataflow_definition",
+    "activate_ml_model",
 ]
