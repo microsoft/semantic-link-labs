@@ -12,6 +12,8 @@ def list_item_labels(workspace: Optional[Union[str, UUID]] = None) -> pd.DataFra
     """
     List all items within a workspace and shows their sensitivity labels.
 
+    NOTE: This function uses an internal API and is subject to change/break without notice.
+
     Parameters
     ----------
     workspace : str | uuid.UUID, default=None
