@@ -3,6 +3,7 @@ import requests
 import pandas as pd
 from typing import Optional, Union
 from uuid import UUID
+from sempy.fabric.exceptions import FabricHTTPException
 
 
 def list_item_labels(workspace: Optional[Union[str, UUID]] = None) -> pd.DataFrame:
@@ -81,11 +82,20 @@ def list_item_labels(workspace: Optional[Union[str, UUID]] = None) -> pd.DataFra
     if artifact_ids:
         payload["artifacts"] = [{"artifactId": i} for i in artifact_ids]
 
+    client = fabric.PowerBIRestClient()
+    response = client.get('/v1.0/myorg/capacities')
+    if response.status_code != 200:
+        raise FabricHTTPException("Failed to retrieve URL prefix.")
+    context = response.json().get('@odata.context')
+    prefix = context.split('/v1.0')[0]
+
     response = requests.post(
-        "https://df-msit-scus-redirect.analysis.windows.net/metadata/informationProtection/artifacts",
+        f"{prefix}/metadata/informationProtection/artifacts",
         json=payload,
         headers=headers
     )
+    if response.status_code != 200:
+        raise FabricHTTPException(f"Failed to retrieve labels: {response.text}")
     result = response.json()
 
     label_keys = [
@@ -100,7 +110,7 @@ def list_item_labels(workspace: Optional[Union[str, UUID]] = None) -> pd.DataFra
             "Id": item.get("artifactObjectId"),
             "Label Id": item.get("labelId"),
             "Label Name": item.get("name"),
-            "Parent Label": item.get("parent", {}).get("name"),
+            "Parent Label Name": item.get("parent", {}).get("name"),
             "Label Description": item.get("tooltip")
         }
         for key in label_keys
