@@ -1,6 +1,8 @@
 import pandas as pd
 from typing import Optional
 from ._helper_functions import (
+    _update_dataframe_datatypes,
+    resolve_item_id,
     resolve_item_name_and_id,
     resolve_workspace_id,
     _base_api,
@@ -115,7 +117,7 @@ def delete_ml_model(name: str | UUID, workspace: Optional[str | UUID] = None):
 
 
 @log
-def activate_ml_model(
+def activate_ml_model_endpoint_version(
     ml_model: str | UUID, name: str, workspace: Optional[str | UUID] = None
 ):
     """
@@ -151,3 +153,154 @@ def activate_ml_model(
     print(
         f"{icons.green_dot} The {model_name} model version {name} has been activated in the {workspace_name} workspace."
     )
+
+
+@log
+def deactivate_ml_model_endpoint_version(
+    ml_model: str | UUID, name: str, workspace: Optional[str | UUID] = None
+):
+    """
+    Deactivates the specified model version endpoint.
+
+    This is a wrapper function for the following API: `Endpoint - Deactivate ML Model Endpoint Version <https://learn.microsoft.com/rest/api/fabric/mlmodel/endpoint/deactivate-ml-model-endpoint-version>`_.
+
+    Parameters
+    ----------
+    ml_model: str | uuid.UUID
+        Name or ID of the ML model.
+    name: str
+        The ML model version name.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (model_name, model_id) = resolve_item_name_and_id(
+        item=ml_model, type="MLModel", workspace=workspace
+    )
+
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/mlmodels/{model_id}/endpoint/versions/{name}/deactivate",
+        method="post",
+        client="fabric_sp",
+        lro_return_status_code=True,
+        status_codes=[200, 202],
+    )
+
+    print(
+        f"{icons.green_dot} The {model_name} model version {name} has been deactivated in the {workspace_name} workspace."
+    )
+
+
+@log
+def deactivate_all_ml_model_endpoint_versions(
+    ml_model: str | UUID, workspace: Optional[str | UUID] = None
+):
+    """
+    Deactivates the specified machine learning model and its version's endpoints.
+
+    This is a wrapper function for the following API: `Endpoint - Deactivate All ML Model Endpoint Versions <https://learn.microsoft.com/rest/api/fabric/mlmodel/endpoint/deactivate-all-ml-model-endpoint-versions>`_.
+
+    Parameters
+    ----------
+    ml_model: str | uuid.UUID
+        Name or ID of the ML model.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (model_name, model_id) = resolve_item_name_and_id(
+        item=ml_model, type="MLModel", workspace=workspace
+    )
+
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/mlmodels/{model_id}/endpoint/versions/deactivateAll",
+        method="post",
+        client="fabric_sp",
+        lro_return_status_code=True,
+        status_codes=[200, 202],
+    )
+
+    print(
+        f"{icons.green_dot} All endpoint versions of the {model_name} model within the {workspace_name} workspace have been deactivated."
+    )
+
+
+@log
+def list_ml_model_endpoint_versions(
+    ml_model: str | UUID, workspace: Optional[str | UUID] = None
+) -> pd.DataFrame:
+    """
+    Lists all machine learning model endpoint versions.
+
+    This is a wrapper function for the following API: `Endpoint - List ML Model Endpoint Versions <https://learn.microsoft.com/rest/api/fabric/mlmodel/endpoint/list-ml-model-endpoint-versions>`_.
+
+    Parameters
+    ----------
+    ml_model: str | uuid.UUID
+        Name or ID of the ML model.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the ML model endpoint versions within a workspace.
+    """
+
+    workspace_id = resolve_workspace_id(workspace)
+    model_id = resolve_item_id(item=ml_model, type="MLModel", workspace=workspace)
+
+    columns = {
+        "Version Name": "string",
+        "Status": "string",
+        "Type": "string",
+        "Name": "string",
+        "Required": "bool",
+        "Scale Rule": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    responses = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/mlmodels/{model_id}/endpoint/versions",
+        client="fabric_sp",
+        uses_pagination=True,
+    )
+
+    rows = []
+    for r in responses:
+        for version in r.get("value", []):
+            base = {
+                "Version Name": version.get("versionName"),
+                "Status": version.get("status"),
+                "Scale Rule": version.get("scaleRule"),
+            }
+            for sig_type in ["inputSignature", "outputSignature"]:
+                for entry in version.get(sig_type, []):
+                    rows.append(
+                        {
+                            **base,
+                            "Signature Type": (
+                                "Input" if sig_type == "inputSignature" else "Output"
+                            ),
+                            "Name": entry.get("name"),
+                            "Type": entry.get("type"),
+                            "Required": entry.get("required"),
+                        }
+                    )
+            # Handle versions with no signatures
+            if "inputSignature" not in version and "outputSignature" not in version:
+                rows.append(base)
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
+
+    return df
