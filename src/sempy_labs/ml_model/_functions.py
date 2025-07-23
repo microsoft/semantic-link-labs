@@ -1,6 +1,6 @@
 import pandas as pd
-from typing import Optional
-from ._helper_functions import (
+from typing import Any, Optional, List
+from .._helper_functions import (
     _update_dataframe_datatypes,
     resolve_item_id,
     resolve_item_name_and_id,
@@ -125,6 +125,8 @@ def activate_ml_model_endpoint_version(
 
     This is a wrapper function for the following API: `Endpoint - Activate ML Model Endpoint Version <https://learn.microsoft.com/rest/api/fabric/mlmodel/endpoint/activate-ml-model-endpoint-version>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     ml_model: str | uuid.UUID
@@ -163,6 +165,8 @@ def deactivate_ml_model_endpoint_version(
     Deactivates the specified model version endpoint.
 
     This is a wrapper function for the following API: `Endpoint - Deactivate ML Model Endpoint Version <https://learn.microsoft.com/rest/api/fabric/mlmodel/endpoint/deactivate-ml-model-endpoint-version>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -203,6 +207,8 @@ def deactivate_all_ml_model_endpoint_versions(
 
     This is a wrapper function for the following API: `Endpoint - Deactivate All ML Model Endpoint Versions <https://learn.microsoft.com/rest/api/fabric/mlmodel/endpoint/deactivate-all-ml-model-endpoint-versions>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     ml_model: str | uuid.UUID
@@ -239,6 +245,8 @@ def list_ml_model_endpoint_versions(
     Lists all machine learning model endpoint versions.
 
     This is a wrapper function for the following API: `Endpoint - List ML Model Endpoint Versions <https://learn.microsoft.com/rest/api/fabric/mlmodel/endpoint/list-ml-model-endpoint-versions>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -304,3 +312,113 @@ def list_ml_model_endpoint_versions(
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
+
+
+@log
+def score_ml_model_endpoint(
+    ml_model: str | UUID, inputs: List[List[Any]], orientation: str = 'values', workspace: Optional[str | UUID] = None
+) -> dict:
+    """
+    Scores input data using the default version of the endpoint and returns results.
+
+    This is a wrapper function for the following API: `Endpoint - Score ML Model Endpoint <https://learn.microsoft.com/rest/api/fabric/mlmodel/endpoint/score-ml-model-endpoint>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    ml_model: str | uuid.UUID
+        Name or ID of the ML model.
+    inputs: List[List[Any]]
+        Machine learning inputs to score in the form of Pandas dataset arrays that can include strings, numbers, integers and booleans.
+    orientation: str, default='values'
+        `Orientation <https://learn.microsoft.com/en-us/rest/api/fabric/mlmodel/endpoint/score-ml-model-endpoint?tabs=HTTP#orientation>`_ of the input data.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    workspace_id = resolve_workspace_id(workspace)
+    model_id = resolve_item_id(
+        item=ml_model, type="MLModel", workspace=workspace
+    )
+
+    orientation = _validate_orientation(orientation)
+    payload = {
+        "formatType": "dataframe",
+        "orientation": orientation,
+        "inputs": inputs,
+    }
+
+    result = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/mlmodels/{model_id}/endpoint/score",
+        method="post",
+        client="fabric_sp",
+        payload=payload,
+        lro_return_json=True,
+        status_codes=[200, 202],
+    )
+
+    return result
+
+
+@log
+def score_ml_model_endpoint_version(
+    ml_model: str | UUID, name: str, inputs: List[List[Any]], orientation: str = 'values', workspace: Optional[str | UUID] = None
+) -> dict:
+    """
+    Scores input data using the default version of the endpoint and returns results.
+
+    This is a wrapper function for the following API: `Endpoint - Score ML Model Endpoint Version <https://learn.microsoft.com/rest/api/fabric/mlmodel/endpoint/score-ml-model-endpoint-version>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    ml_model: str | uuid.UUID
+        Name or ID of the ML model.
+    name: str
+        The ML model version name.
+    inputs: List[List[Any]]
+        Machine learning inputs to score in the form of Pandas dataset arrays that can include strings, numbers, integers and booleans.
+    orientation: str, default='values'
+        `Orientation <https://learn.microsoft.com/en-us/rest/api/fabric/mlmodel/endpoint/score-ml-model-endpoint?tabs=HTTP#orientation>`_ of the input data.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    workspace_id = resolve_workspace_id(workspace)
+    model_id = resolve_item_id(
+        item=ml_model, type="MLModel", workspace=workspace
+    )
+
+    orientation = _validate_orientation(orientation)
+    payload = {
+        "formatType": "dataframe",
+        "orientation": orientation,
+        "inputs": inputs,
+    }
+
+    result = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/mlmodels/{model_id}/endpoint/versions/{name}/score",
+        method="post",
+        client="fabric_sp",
+        payload=payload,
+        lro_return_json=True,
+        status_codes=[200, 202],
+    )
+
+    return result
+
+
+def _validate_orientation(orientation: str):
+
+    orientation = orientation.lower()
+    if orientation not in ["split", "values", "record", "index", "table"]:
+        raise ValueError(
+            f"Invalid orientation '{orientation}'. Must be one of 'split', 'values', 'record', 'index', or 'table'."
+        )
+    return orientation

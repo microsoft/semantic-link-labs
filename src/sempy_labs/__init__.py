@@ -92,15 +92,6 @@ from ._external_data_shares import (
     create_external_data_share,
     revoke_external_data_share,
 )
-from ._ml_models import (
-    list_ml_models,
-    create_ml_model,
-    delete_ml_model,
-    activate_ml_model_endpoint_version,
-    deactivate_all_ml_model_endpoint_versions,
-    deactivate_ml_model_endpoint_version,
-    list_ml_model_endpoint_versions,
-)
 from ._ml_experiments import (
     list_ml_experiments,
     create_ml_experiment,
@@ -490,9 +481,6 @@ __all__ = [
     "list_kql_querysets",
     "create_kql_queryset",
     "delete_kql_queryset",
-    "list_ml_models",
-    "create_ml_model",
-    "delete_ml_model",
     "list_ml_experiments",
     "create_ml_experiment",
     "delete_ml_experiment",
@@ -603,8 +591,4 @@ __all__ = [
     "list_semantic_model_datasources",
     "upgrade_dataflow",
     "get_dataflow_definition",
-    "activate_ml_model_endpoint_version",
-    "deactivate_all_ml_model_endpoint_versions",
-    "deactivate_ml_model_endpoint_version",
-    "list_ml_model_endpoint_versions",
 ]
