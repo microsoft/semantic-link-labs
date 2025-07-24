@@ -20,6 +20,7 @@ import sempy_labs._authentication as auth
 from jsonpath_ng.ext import parse
 from jsonpath_ng.jsonpath import Fields, Index
 from sempy._utils._log import log
+from os import PathLike
 
 
 def _build_url(url: str, params: dict) -> str:
@@ -239,12 +240,25 @@ def delete_item(
 
 
 @log
+def create_folder_if_not_exists(
+    folder: str | PathLike, workspace: Optional[str | UUID] = None
+) -> UUID:
+    try:
+        x = fabric.resolve_folder_id(folder=folder, workspace=workspace)
+    except:
+        x = fabric.create_folder(folder=folder, workspace=workspace)
+
+    return x
+
+
+@log
 def create_item(
     name: str,
     type: str,
     description: Optional[str] = None,
     definition: Optional[dict] = None,
     workspace: Optional[str | UUID] = None,
+    folder: Optional[str | PathLike] = None,
 ):
     """
     Creates an item in a Fabric workspace.
@@ -263,6 +277,9 @@ def create_item(
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    folder : str | os.PathLike, default=None
+        The folder within the workspace where the item will be created.
+        Defaults to None which places the item in the root of the workspace.
     """
     from sempy_labs._utils import item_types
 
@@ -277,6 +294,10 @@ def create_item(
         payload["description"] = description
     if definition:
         payload["definition"] = definition
+    if folder:
+        payload["folderId"] = create_folder_if_not_exists(
+            folder=folder, workspace=workspace_id
+        )
 
     _base_api(
         request=f"/v1/workspaces/{workspace_id}/{item_type_url}",

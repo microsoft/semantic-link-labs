@@ -14,7 +14,7 @@ from ._helper_functions import (
     create_item,
 )
 from sempy.fabric.exceptions import FabricHTTPException
-import os
+from os import PathLike
 from uuid import UUID
 
 _notebook_prefix = "notebook-content."
@@ -114,6 +114,7 @@ def import_notebook_from_web(
     description: Optional[str] = None,
     workspace: Optional[str | UUID] = None,
     overwrite: bool = False,
+    folder: Optional[str | PathLike] = None,
 ):
     """
     Creates a new notebook within a workspace based on a Jupyter notebook hosted in the web.
@@ -136,6 +137,9 @@ def import_notebook_from_web(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     overwrite : bool, default=False
         If set to True, overwrites the existing notebook in the workspace if it exists.
+    folder : str | os.PathLike, default=None
+        The folder within the workspace where the notebook will be created.
+        Defaults to None which places the notebook in the root of the workspace.
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -161,6 +165,7 @@ def import_notebook_from_web(
             workspace=workspace_id,
             description=description,
             format="ipynb",
+            folder=folder,
         )
     elif len(dfI_filt) > 0 and overwrite:
         print(f"{icons.info} Overwrite of notebooks is currently not supported.")
@@ -181,6 +186,7 @@ def create_notebook(
     description: Optional[str] = None,
     workspace: Optional[str | UUID] = None,
     format: Optional[str] = None,
+    folder: Optional[str | PathLike] = None,
 ):
     """
     Creates a new notebook with a definition within a workspace.
@@ -203,6 +209,9 @@ def create_notebook(
     format : str, default=None
         If 'ipynb' is provided than notebook_content should be standard ipynb format
         otherwise notebook_content should be GIT friendly format
+    folder : str | os.PathLike, default=None
+        The folder within the workspace where the notebook will be created.
+        Defaults to None which places the notebook in the root of the workspace.
     """
 
     notebook_payload = base64.b64encode(notebook_content).decode("utf-8")
@@ -226,6 +235,7 @@ def create_notebook(
         workspace=workspace,
         description=description,
         definition=definition_payload,
+        folder=folder,
     )
 
 
