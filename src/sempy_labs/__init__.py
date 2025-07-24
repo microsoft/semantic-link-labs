@@ -125,11 +125,6 @@ from ._eventhouses import (
     delete_eventhouse,
     get_eventhouse_definition,
 )
-from ._eventstreams import (
-    list_eventstreams,
-    create_eventstream,
-    delete_eventstream,
-)
 from ._kql_querysets import (
     list_kql_querysets,
     create_kql_queryset,
@@ -484,9 +479,6 @@ __all__ = [
     "list_data_pipelines",
     "create_data_pipeline",
     "delete_data_pipeline",
-    "list_eventstreams",
-    "create_eventstream",
-    "delete_eventstream",
     "list_kql_querysets",
     "create_kql_queryset",
     "delete_kql_queryset",
