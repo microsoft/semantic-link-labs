@@ -206,6 +206,8 @@ from ._notebooks import (
     import_notebook_from_web,
     update_notebook_definition,
     create_notebook,
+    search_notebooks,
+    list_notebooks,
 )
 from ._sql import (
     ConnectWarehouse,
@@ -607,4 +609,6 @@ __all__ = [
     "get_dataflow_definition",
     "list_item_labels",
     "copy_item",
+    "search_notebooks",
+    "list_notebooks",
 ]

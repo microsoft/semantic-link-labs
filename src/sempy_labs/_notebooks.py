@@ -1,17 +1,18 @@
 import sempy.fabric as fabric
 import pandas as pd
 import sempy_labs._icons as icons
-from typing import Optional
+from typing import Optional, List
 import base64
 import requests
 from sempy._utils._log import log
-from ._helper_functions import (
+from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_workspace_id,
     _decode_b64,
     _base_api,
     resolve_item_id,
     create_item,
+    _create_dataframe,
 )
 from sempy.fabric.exceptions import FabricHTTPException
 from os import PathLike
@@ -297,3 +298,141 @@ def update_notebook_definition(
     print(
         f"{icons.green_dot} The '{name}' notebook was updated within the '{workspace_name}' workspace."
     )
+
+
+@log
+def list_notebooks(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
+    """
+    Shows the notebooks within a workspace.
+
+    Parameters
+    ----------
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the SQL endpoints within a workspace.
+    """
+
+    columns = {
+        "Notebook Id": "string",
+        "Notebook Name": "string",
+        "Description": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    workspace_id = resolve_workspace_id(workspace)
+
+    responses = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/notebooks", uses_pagination=True
+    )
+
+    rows = []
+    for r in responses:
+        for v in r.get("value", []):
+            rows.append(
+                {
+                    "Notebook Id": v.get("id"),
+                    "Notebook Name": v.get("displayName"),
+                    "Description": v.get("description"),
+                }
+            )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+
+    return df
+
+
+@log
+def search_notebooks(
+    search_string: str,
+    notebook: Optional[str | UUID] = None,
+    workspace: Optional[str | UUID | List[str | UUID]] = None,
+) -> pd.DataFrame:
+    """
+    Searches notebooks within a workspace or across multiple workspaces for a given search string.
+
+    Parameters
+    ----------
+    search_string : str
+        The string to search for within the notebook definitions.
+    notebook : str | uuid.UUID, default=None
+        The name or ID of a specific notebook to search within.
+        Defaults to None which searches across all notebooks in the specified workspace(s).
+    workspace : str | uuid.UUID | list, default=None
+        The name or ID of the workspace or a list of workspaces to search within.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+        If a list is provided, it should contain workspace names or IDs.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the notebooks that contain the search string in their definitions.
+        The dataframe includes the workspace name, workspace ID, notebook name, and notebook ID.
+    """
+
+    if not workspace:
+        workspace_id = resolve_workspace_id(workspace)
+        workspace_ids = [workspace_id]
+    elif isinstance(workspace, str):
+        workspace_id = resolve_workspace_id(workspace)
+        workspace_ids = [workspace_id]
+    elif isinstance(workspace, list):
+        workspace_ids = [resolve_workspace_id(ws) for ws in workspace]
+    else:
+        raise ValueError(
+            "Workspace must be a string, UUID, or a list of strings/UUIDs."
+        )
+
+    dfW = fabric.list_workspaces()
+    dfW_filt = dfW[dfW["Id"].isin(workspace_ids)]
+
+    columns = {
+        "Workspace Name": "string",
+        "Workspace Id": "string",
+        "Notebook Name": "string",
+        "Notebook Id": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    rows = []
+    for _, r in dfW_filt.iterrows():
+        w_id = r["Id"]
+        w_name = r["Name"]
+        dfN = list_notebooks(workspace=w_id)
+        if notebook is not None:
+            item_id = resolve_item_id(item=notebook, type="Notebook", workspace=w_id)
+            dfN = dfN[dfN["Notebook Id"] == item_id]
+        for _, n in dfN.iterrows():
+            notebook_id = n["Notebook Id"]
+            notebook_name = n["Notebook Name"]
+            definition = _base_api(
+                request=f"v1/workspaces/{w_id}/notebooks/{notebook_id}/getDefinition",
+                method="post",
+                client="fabric_sp",
+                status_codes=None,
+                lro_return_json=True,
+            )
+            for part in definition.get("definition").get("parts"):
+                payload = _decode_b64(part["payload"])
+                if part["path"] == "notebook-content.py":
+                    if search_string in payload:
+                        rows.append(
+                            {
+                                "Workspace Name": w_name,
+                                "Workspace Id": w_id,
+                                "Notebook Name": notebook_name,
+                                "Notebook Id": notebook_id,
+                            }
+                        )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+
+    return df
