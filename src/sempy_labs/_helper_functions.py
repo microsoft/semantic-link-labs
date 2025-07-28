@@ -349,7 +349,7 @@ def copy_item(
         "GraphQLApi": "GraphQLApis",
         "Report": "reports",
         "SemanticModel": "semanticModels",
-        "Environment": "environments",
+        #"Environment": "environments",
         "KQLDatabase": "kqlDatabases",
         "KQLDashboard": "kqlDashboards",
         "KQLQueryset": "kqlQuerysets",
