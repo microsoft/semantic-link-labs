@@ -292,6 +292,7 @@ from ._list_functions import (
     list_synonyms,
 )
 from ._helper_functions import (
+    copy_item,
     convert_to_friendly_case,
     resolve_environment_id,
     resolve_capacity_id,
@@ -605,4 +606,5 @@ __all__ = [
     "upgrade_dataflow",
     "get_dataflow_definition",
     "list_item_labels",
+    "copy_item",
 ]
