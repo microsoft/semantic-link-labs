@@ -325,21 +325,22 @@ def copy_item(
 
     Parameters
     ----------
-    name : str
-        The name of the item to be created.
+    item : str | uuid.UUID
+        The name or ID of the item to be copied.
     type : str
-        The type of the item to be created.
-    description : str, default=None
-        A description of the item to be created.
-    definition : dict, default=None
-        The definition of the item to be created.
-    workspace : str | uuid.UUID, default=None
-        The Fabric workspace name or ID.
+        The type of the item.
+    target_name: str, default=None
+        The name of the item in the target workspace. Defaults to the same name as the source item.
+    source_workspace : str | uuid.UUID, default=None
+        The workspace name or ID in which the item exists.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    folder : str | os.PathLike, default=None
-        The folder within the workspace where the item will be created.
-        Defaults to None which places the item in the root of the workspace.
+    target_workspace : str | uuid.UUID, default=None
+        The workspace name or ID to which the item will be copied.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    overwrite: bool, default=False
+        If True, overwrites the item in the target workspace if it already exists.
     """
 
     items = {
