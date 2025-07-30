@@ -9,11 +9,21 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_item_name_and_id,
 )
-from typing import Optional, List
+from typing import Optional, List, Union
 from uuid import UUID
 from sempy._utils._log import log
 import sempy.fabric as fabric
 import sempy_labs._icons as icons
+
+
+def _filter_user_name(user_name: Union[str, List[str]]):
+    if isinstance(user_name, str):
+        user_name = [user_name]
+
+    def filter_fn(trace_event_args):
+        return trace_event_args.NTCanonicalUserName in user_name
+
+    return filter_fn
 
 
 @log
@@ -68,9 +78,6 @@ def trace_report(
     if table_name is None:
         table_name = f"{workspace_name}_{report_name}_queries"
     table_name = table_name.replace(" ", "_")
-
-    if isinstance(user_name, str):
-        user_name = [user_name]
 
     # --- UI Elements ---
     start_output = widgets.Output()
@@ -136,6 +143,8 @@ def trace_report(
             dataset=dataset_id, workspace=dataset_workspace_id
         ) as trace_connection:
             with trace_connection.create_trace(event_schema=event_schema) as trace:
+                if user_name:
+                    trace.set_filter(_filter_user_name(user_name))
                 trace.start()
                 with start_output:
                     print("✅ Trace started. Now click 'Render Report' and interact.")
@@ -145,9 +154,6 @@ def trace_report(
 
                 df = trace.stop()
                 time.sleep(3)
-
-                if user_name:
-                    df = df[df["NTCanonicalUserName"].isin(user_name)]
 
                 with action_output:
                     print(f"✅ Trace stopped. Events collected: {len(df)}")
@@ -221,9 +227,6 @@ def trace_semantic_model(
         table_name = f"{workspace_name}_{dataset_name}_queries"
     table_name = table_name.replace(" ", "_")
 
-    if isinstance(user_name, str):
-        user_name = [user_name]
-
     # --- UI Elements ---
     start_output = widgets.Output()
     start_button = widgets.Button(
@@ -284,7 +287,8 @@ def trace_semantic_model(
             dataset=dataset, workspace=workspace
         ) as trace_connection:
             with trace_connection.create_trace(event_schema=event_schema) as trace:
-
+                if user_name:
+                    trace.set_filter(_filter_user_name(user_name))
                 with start_output:
                     trace.start()
 
@@ -293,9 +297,6 @@ def trace_semantic_model(
 
                 df = trace.stop()
                 time.sleep(3)
-
-                if user_name:
-                    df = df[df["NTCanonicalUserName"].isin(user_name)]
 
                 with action_output:
                     print(f"✅ Trace stopped. Events collected: {len(df)}")
