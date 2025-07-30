@@ -353,6 +353,10 @@ from ._vertipaq import (
 from ._user_delegation_key import (
     get_user_delegation_key,
 )
+from ._perf import (
+    trace_report,
+    trace_semantic_model,
+)
 
 __all__ = [
     "resolve_warehouse_id",
@@ -605,4 +609,6 @@ __all__ = [
     "upgrade_dataflow",
     "get_dataflow_definition",
     "list_item_labels",
+    "trace_report",
+    "trace_semantic_model",
 ]
