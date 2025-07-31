@@ -2,7 +2,7 @@ from tqdm.auto import tqdm
 from typing import List, Optional, Union
 from sempy._utils._log import log
 from uuid import UUID
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     _base_api,
     resolve_lakehouse_name_and_id,
     resolve_workspace_name_and_id,
@@ -13,7 +13,7 @@ import sempy_labs._icons as icons
 import re
 import time
 import pandas as pd
-from .._job_scheduler import (
+from sempy_labs._job_scheduler import (
     _get_item_job_instance,
 )
 
@@ -100,11 +100,15 @@ def optimize_lakehouse_tables(
         tables = [tables]
 
     df_tables = df_delta[df_delta["Table Name"].isin(tables)] if tables else df_delta
+    df_tables.reset_index(drop=True, inplace=True)
 
-    for _, r in (bar := tqdm(df_tables.iterrows())):
+    total = len(df_tables)
+    for idx, r in (bar := tqdm(df_tables.iterrows(), total=total, bar_format="{desc}")):
         table_name = r["Table Name"]
         path = r["Location"]
-        bar.set_description(f"Optimizing the '{table_name}' table...")
+        bar.set_description(
+            f"Optimizing the '{table_name}' table ({idx + 1}/{total})..."
+        )
         _optimize_table(path=path)
 
 
@@ -145,11 +149,13 @@ def vacuum_lakehouse_tables(
         tables = [tables]
 
     df_tables = df_delta[df_delta["Table Name"].isin(tables)] if tables else df_delta
+    df_tables.reset_index(drop=True, inplace=True)
 
-    for _, r in (bar := tqdm(df_tables.iterrows())):
+    total = len(df_tables)
+    for idx, r in (bar := tqdm(df_tables.iterrows(), total=total, bar_format="{desc}")):
         table_name = r["Table Name"]
         path = r["Location"]
-        bar.set_description(f"Vacuuming the '{table_name}' table...")
+        bar.set_description(f"Vacuuming the '{table_name}' table ({idx}/{total})...")
         _vacuum_table(path=path, retain_n_hours=retain_n_hours)
 
 
