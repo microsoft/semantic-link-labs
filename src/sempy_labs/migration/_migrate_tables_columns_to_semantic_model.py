@@ -72,11 +72,10 @@ def migrate_tables_columns_to_semantic_model(
             "\nLearn more here: https://learn.microsoft.com/fabric/data-engineering/lakehouse-notebook-explore#add-or-remove-a-lakehouse"
         )
     shEx = generate_shared_expression(
-        item_name=lakehouse, item_type="Lakehouse", workspace=lakehouse_workspace
+        item_name=lakehouse, item_type="Lakehouse", workspace=lakehouse_workspace, use_sql_endpoint=False,
     )
 
     fabric.refresh_tom_cache(workspace=workspace)
-
     dfC = fabric.list_columns(dataset=dataset, workspace=workspace)
     dfT = fabric.list_tables(dataset=dataset, workspace=workspace)
     dfT.rename(columns={"Type": "Table Type"}, inplace=True)
