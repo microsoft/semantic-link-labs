@@ -245,7 +245,9 @@ def run_table_maintenance(
         client="fabric_sp",
     )
 
-    print(f"{icons.in_progress} The table maintenance job for the '{table_name}' table in the '{lakehouse_name}' lakehouse within the '{workspace_name}' workspace has been initiated.")
+    print(
+        f"{icons.in_progress} The table maintenance job for the '{table_name}' table in the '{lakehouse_name}' lakehouse within the '{workspace_name}' workspace has been initiated."
+    )
 
     status_url = response.headers.get("Location").split("fabric.microsoft.com")[1]
     status = None
