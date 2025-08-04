@@ -5,10 +5,6 @@ from ._sql_endpoints import (
     list_sql_endpoints,
     refresh_sql_endpoint_metadata,
 )
-from ._variable_libraries import (
-    list_variable_libraries,
-    delete_variable_library,
-)
 from ._kusto import (
     query_kusto,
     query_workspace_monitoring,
@@ -596,8 +592,6 @@ __all__ = [
     "query_workspace_monitoring",
     "list_environments",
     "list_tags",
-    "list_variable_libraries",
-    "delete_variable_library",
     "create_vpax",
     "update_semantic_model_refresh_schedule",
     "apply_tags",
