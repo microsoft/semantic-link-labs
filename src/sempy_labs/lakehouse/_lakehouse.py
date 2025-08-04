@@ -100,11 +100,15 @@ def optimize_lakehouse_tables(
         tables = [tables]
 
     df_tables = df_delta[df_delta["Table Name"].isin(tables)] if tables else df_delta
+    df_tables.reset_index(drop=True, inplace=True)
 
-    for _, r in (bar := tqdm(df_tables.iterrows())):
+    total = len(df_tables)
+    for idx, r in (bar := tqdm(df_tables.iterrows(), total=total, bar_format="{desc}")):
         table_name = r["Table Name"]
         path = r["Location"]
-        bar.set_description(f"Optimizing the '{table_name}' table...")
+        bar.set_description(
+            f"Optimizing the '{table_name}' table ({idx + 1}/{total})..."
+        )
         _optimize_table(path=path)
 
 
@@ -145,11 +149,13 @@ def vacuum_lakehouse_tables(
         tables = [tables]
 
     df_tables = df_delta[df_delta["Table Name"].isin(tables)] if tables else df_delta
+    df_tables.reset_index(drop=True, inplace=True)
 
-    for _, r in (bar := tqdm(df_tables.iterrows())):
+    total = len(df_tables)
+    for idx, r in (bar := tqdm(df_tables.iterrows(), total=total, bar_format="{desc}")):
         table_name = r["Table Name"]
         path = r["Location"]
-        bar.set_description(f"Vacuuming the '{table_name}' table...")
+        bar.set_description(f"Vacuuming the '{table_name}' table ({idx}/{total})...")
         _vacuum_table(path=path, retain_n_hours=retain_n_hours)
 
 
