@@ -225,7 +225,7 @@ def get_direct_lake_source(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     sql_endpoint_id = get_direct_lake_sql_endpoint(dataset=dataset, workspace=workspace)
     dfI = fabric.list_items(workspace=workspace)
-    dfI_filt = dfI[(dfI["Id"] == sql_endpoint_id) & (dfI["Type"] == "SQLEndpoint")]
+    dfI_filt = dfI[(dfI["Id"] == sql_endpoint_id) & (dfI["Type"].isin(["SQLEndpoint","Warehouse"]))]
 
     artifact_type, artifact_name, artifact_id = None, None, None
 
