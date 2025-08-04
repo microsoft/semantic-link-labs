@@ -20,9 +20,11 @@ def get_variable_library(
     variable_library: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
-    Gets a variable library.
+    Returns properties of the specified variable library.
 
-    This is a wrapper function for the following API: `Items - Get Variable Library <https://learn.microsoft.com/rest/api/fabric/warehouse/items/get-variable-library>`_.
+    This is a wrapper function for the following API: `Items - Get Variable Library <https://learn.microsoft.com/rest/api/fabric/variablelibrary/items/get-variable-library>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -36,7 +38,7 @@ def get_variable_library(
     Returns
     -------
     pandas.DataFrame
-        A pandas dataframe showing the variable library.
+        A pandas dataframe showing the properties of the variable library.
     """
 
     columns = {
@@ -144,7 +146,7 @@ def delete_variable_library(
     """
     Deletes a variable library.
 
-    This is a wrapper function for the following API: `Items - Delete Variable Library <https://learn.microsoft.com/rest/api/fabric/warehouse/items/delete-variable-library>`_.
+    This is a wrapper function for the following API: `Items - Delete Variable Library https://learn.microsoft.com/rest/api/fabric/variablelibrary/items/delete-variable-library>`_.
 
     Parameters
     ----------
@@ -165,7 +167,26 @@ def get_variable_library_definition(
     workspace: Optional[str | UUID] = None,
     decode: bool = True,
     return_dataframe: bool = False,
-) -> dict:
+) -> dict | pd.DataFrame:
+    """
+    Gets the definition of a variable library.
+
+    This is a wrapper function for the following API: `Items - Get Variable Library Definition <https://learn.microsoft.com/rest/api/fabric/variablelibrary/items/delete-variable-library>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    dict | pandas.DataFrame
+        A dictionary showing the definition or a pandas dataframe showing the definition.
+    """
 
     workspace_id = resolve_workspace_id(workspace)
     variable_library_id = resolve_item_id(
@@ -205,6 +226,21 @@ def list_variables(
     """
     Lists the variables in a variable library.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    variable_library : str | uuid.UUID
+        Name or ID of the variable library.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the variables within a variable library.
     """
 
     result = get_variable_library_definition(
@@ -273,6 +309,8 @@ def get_variable_values(
     """
     Gets the values of multiple variables from a variable library with a single call to list_variables.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     variable_names : List[str]
@@ -333,7 +371,9 @@ def get_variable_value(
     value_set: Optional[str] = None,
 ) -> Any:
     """
-    Gets the value of a variable in a variable library.
+    Gets the value of a single variable in a variable library.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
