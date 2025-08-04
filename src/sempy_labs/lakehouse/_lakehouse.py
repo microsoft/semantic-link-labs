@@ -2,7 +2,7 @@ from tqdm.auto import tqdm
 from typing import List, Optional, Union
 from sempy._utils._log import log
 from uuid import UUID
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     _base_api,
     resolve_lakehouse_name_and_id,
     resolve_workspace_name_and_id,
@@ -13,7 +13,7 @@ import sempy_labs._icons as icons
 import re
 import time
 import pandas as pd
-from .._job_scheduler import (
+from sempy_labs._job_scheduler import (
     _get_item_job_instance,
 )
 
@@ -231,7 +231,7 @@ def run_table_maintenance(
     if optimize:
         payload["executionData"]["optimizeSettings"] = {}
     if v_order:
-        payload["executionData"]["optimizeSettings"] = {"vorder": True}
+        payload["executionData"]["optimizeSettings"] = {"vOrder": True}
     if vacuum:
         payload["executionData"]["vacuumSettings"] = {}
     if vacuum and retention_period is not None:
@@ -242,16 +242,17 @@ def run_table_maintenance(
         method="post",
         payload=payload,
         status_codes=202,
+        client="fabric_sp",
     )
 
-    f"{icons.in_progress} The table maintenance job for the '{table_name}' table in the '{lakehouse_name}' lakehouse within the '{workspace_name}' workspace has been initiated."
+    print(f"{icons.in_progress} The table maintenance job for the '{table_name}' table in the '{lakehouse_name}' lakehouse within the '{workspace_name}' workspace has been initiated.")
 
     status_url = response.headers.get("Location").split("fabric.microsoft.com")[1]
     status = None
     while status not in ["Completed", "Failed"]:
         response = _base_api(request=status_url)
         status = response.json().get("status")
-        time.sleep(10)
+        time.sleep(3)
 
     df = _get_item_job_instance(url=status_url)
 
