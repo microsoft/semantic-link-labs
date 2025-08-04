@@ -20,6 +20,7 @@ import sempy_labs._authentication as auth
 from jsonpath_ng.ext import parse
 from jsonpath_ng.jsonpath import Fields, Index
 from sempy._utils._log import log
+from os import PathLike
 
 
 def _build_url(url: str, params: dict) -> str:
@@ -239,12 +240,25 @@ def delete_item(
 
 
 @log
+def create_folder_if_not_exists(
+    folder: str | PathLike, workspace: Optional[str | UUID] = None
+) -> UUID:
+    try:
+        x = fabric.resolve_folder_id(folder=folder, workspace=workspace)
+    except:
+        x = fabric.create_folder(folder=folder, workspace=workspace)
+
+    return x
+
+
+@log
 def create_item(
     name: str,
     type: str,
     description: Optional[str] = None,
     definition: Optional[dict] = None,
     workspace: Optional[str | UUID] = None,
+    folder: Optional[str | PathLike] = None,
 ):
     """
     Creates an item in a Fabric workspace.
@@ -263,6 +277,9 @@ def create_item(
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    folder : str | os.PathLike, default=None
+        The folder within the workspace where the item will be created.
+        Defaults to None which places the item in the root of the workspace.
     """
     from sempy_labs._utils import item_types
 
@@ -277,6 +294,10 @@ def create_item(
         payload["description"] = description
     if definition:
         payload["definition"] = definition
+    if folder:
+        payload["folderId"] = create_folder_if_not_exists(
+            folder=folder, workspace=workspace_id
+        )
 
     _base_api(
         request=f"/v1/workspaces/{workspace_id}/{item_type_url}",
@@ -288,6 +309,146 @@ def create_item(
     print(
         f"{icons.green_dot} The '{name}' {item_type} has been successfully created within the '{workspace_name}' workspace."
     )
+
+
+@log
+def copy_item(
+    item: str | UUID,
+    type: str,
+    target_name: Optional[str] = None,
+    source_workspace: Optional[str | UUID] = None,
+    target_workspace: Optional[str | UUID] = None,
+    overwrite: bool = False,
+):
+    """
+    Copies an item (with its definition) from one location to another location.
+
+    Parameters
+    ----------
+    item : str | uuid.UUID
+        The name or ID of the item to be copied.
+    type : str
+        The type of the item.
+    target_name: str, default=None
+        The name of the item in the target workspace. Defaults to the same name as the source item.
+    source_workspace : str | uuid.UUID, default=None
+        The workspace name or ID in which the item exists.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    target_workspace : str | uuid.UUID, default=None
+        The workspace name or ID to which the item will be copied.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    overwrite: bool, default=False
+        If True, overwrites the item in the target workspace if it already exists.
+    """
+
+    items = {
+        "CopyJob": "copyJobs",
+        "Dataflow": "dataflows",
+        "Eventhouse": "eventhouses",
+        "GraphQLApi": "GraphQLApis",
+        "Report": "reports",
+        "SemanticModel": "semanticModels",
+        # "Environment": "environments",
+        "KQLDatabase": "kqlDatabases",
+        "KQLDashboard": "kqlDashboards",
+        "KQLQueryset": "kqlQuerysets",
+        "DataPipeline": "dataPipelines",
+        "Notebook": "notebooks",
+        "SparkJobDefinition": "sparkJobDefinitions",
+        "Eventstream": "eventstreams",
+        "MirroredWarehouse": "mirroredWarehouses",
+        "MirroredDatabase": "mirroredDatabases",
+        "MountedDataFactory": "mountedDataFactories",
+        "VariableLibrary": "variableLibraries",
+        "ApacheAirFlowJob": "ApacheAirflowJobs",
+        "WarehouseSnapshot": "warehousesnapshots",
+        "DigitalTwinBuilder": "digitaltwinbuilders",
+        "DigitalTwinBuilderFlow": "DigitalTwinBuilderFlows",
+        "MirroredAzureDatabricksCatalog": "mirroredAzureDatabricksCatalogs",
+    }
+    if type not in items:
+        raise ValueError(
+            f"{icons.red_dot} The '{type}' item type does not have a definition and cannot be copied."
+        )
+    type_url = items.get(type)
+
+    (item_name, item_id) = resolve_item_name_and_id(
+        item=item, type=type, workspace=source_workspace
+    )
+    (source_workspace_name, source_workspace_id) = resolve_workspace_name_and_id(
+        source_workspace
+    )
+    (target_workspace_name, target_workspace_id) = resolve_workspace_name_and_id(
+        target_workspace
+    )
+
+    if target_name is None:
+        target_name = item_name
+
+    if source_workspace_id == target_workspace_id and target_name == item_name:
+        raise ValueError(
+            f"{icons.red_dot} The source and target workspaces are the same and the target name is the same as the source name. No action taken."
+        )
+
+    result = _base_api(
+        request=f"v1/workspaces/{source_workspace_id}/{type_url}/{item_id}",
+        client="fabric_sp",
+    )
+    description = result.json().get("description")
+
+    payload = _base_api(
+        request=f"v1/workspaces/{source_workspace_id}/{type_url}/{item_id}/getDefinition",
+        method="post",
+        client="fabric_sp",
+        status_codes=None,
+        lro_return_json=True,
+    )
+    payload["displayName"] = target_name
+    if description:
+        payload["description"] = description
+
+    # Check if item exists in target workspace
+    exists = False
+    try:
+        target_item_id = resolve_item_id(
+            item=target_name, type=type, workspace=target_workspace_id
+        )
+        exists = True
+    except Exception:
+        exists = False
+
+    if exists and not overwrite:
+        raise ValueError(
+            f"{icons.warning} The item '{target_name}' of type '{type}' already exists in the target workspace '{target_workspace_name}' and overwrite is set to False."
+        )
+    elif exists and overwrite:
+        # Update item definition
+        print(
+            f"{icons.in_progress} Updating existing item '{target_name}' of type '{type}' in the target workspace '{target_workspace_name}'..."
+        )
+        _base_api(
+            request=f"/v1/workspaces/{target_workspace_id}/{type_url}/{target_item_id}/updateDefinition",
+            method="post",
+            client="fabric_sp",
+            payload=payload,
+            lro_return_status_code=True,
+            status_codes=None,
+        )
+        print(
+            f"{icons.green_dot} The item '{target_name}' of type '{type}' has been successfully updated in the target workspace '{target_workspace_name}'."
+        )
+    else:
+        print(
+            f"{icons.in_progress} Creating new item '{target_name}' of type '{type}' in the target workspace '{target_workspace_name}'..."
+        )
+        create_item(
+            name=target_name,
+            type=type,
+            definition=payload["definition"],
+            workspace=target_workspace_id,
+        )
 
 
 @log
