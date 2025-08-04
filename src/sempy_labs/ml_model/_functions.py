@@ -97,7 +97,7 @@ def create_ml_model(
 
 
 @log
-def delete_ml_model(name: str | UUID, workspace: Optional[str | UUID] = None):
+def delete_ml_model(ml_model: str | UUID, workspace: Optional[str | UUID] = None):
     """
     Deletes a Fabric ML model.
 
@@ -105,7 +105,7 @@ def delete_ml_model(name: str | UUID, workspace: Optional[str | UUID] = None):
 
     Parameters
     ----------
-    name: str | uuid.UUID
+    ml_model: str | uuid.UUID
         Name or ID of the ML model.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
@@ -113,7 +113,7 @@ def delete_ml_model(name: str | UUID, workspace: Optional[str | UUID] = None):
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    delete_item(item=name, type="MLModel", workspace=workspace)
+    delete_item(item=ml_model, type="MLModel", workspace=workspace)
 
 
 @log
@@ -316,7 +316,10 @@ def list_ml_model_endpoint_versions(
 
 @log
 def score_ml_model_endpoint(
-    ml_model: str | UUID, inputs: List[List[Any]], orientation: str = 'values', workspace: Optional[str | UUID] = None
+    ml_model: str | UUID,
+    inputs: List[List[Any]],
+    orientation: str = "values",
+    workspace: Optional[str | UUID] = None,
 ) -> dict:
     """
     Scores input data using the default version of the endpoint and returns results.
@@ -340,9 +343,7 @@ def score_ml_model_endpoint(
     """
 
     workspace_id = resolve_workspace_id(workspace)
-    model_id = resolve_item_id(
-        item=ml_model, type="MLModel", workspace=workspace
-    )
+    model_id = resolve_item_id(item=ml_model, type="MLModel", workspace=workspace)
 
     orientation = _validate_orientation(orientation)
     payload = {
@@ -365,7 +366,11 @@ def score_ml_model_endpoint(
 
 @log
 def score_ml_model_endpoint_version(
-    ml_model: str | UUID, name: str, inputs: List[List[Any]], orientation: str = 'values', workspace: Optional[str | UUID] = None
+    ml_model: str | UUID,
+    name: str,
+    inputs: List[List[Any]],
+    orientation: str = "values",
+    workspace: Optional[str | UUID] = None,
 ) -> dict:
     """
     Scores input data using the default version of the endpoint and returns results.
@@ -391,9 +396,7 @@ def score_ml_model_endpoint_version(
     """
 
     workspace_id = resolve_workspace_id(workspace)
-    model_id = resolve_item_id(
-        item=ml_model, type="MLModel", workspace=workspace
-    )
+    model_id = resolve_item_id(item=ml_model, type="MLModel", workspace=workspace)
 
     orientation = _validate_orientation(orientation)
     payload = {

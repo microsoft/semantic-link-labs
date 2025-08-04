@@ -8,7 +8,6 @@ from ._functions import (
     list_ml_model_endpoint_versions,
     score_ml_model_endpoint,
     score_ml_model_endpoint_version,
-
 )
 
 __all__ = [
