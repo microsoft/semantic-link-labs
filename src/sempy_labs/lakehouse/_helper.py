@@ -1,7 +1,7 @@
 from uuid import UUID
 from typing import Optional, Literal
 import pyarrow.dataset as ds
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     _mount,
     delete_item,
     _base_api,
@@ -68,14 +68,16 @@ def is_v_ordered(
         latest_file = os.path.join(delta_log_path, json_files[0])
 
         with open(latest_file, "r") as f:
-            for line in f:
-                try:
-                    data = json.loads(line)
-                    if "commitInfo" in data:
-                        tags = data["commitInfo"].get("tags", {})
-                        return tags.get("VORDER", "false").lower() == "true"
-                except json.JSONDecodeError:
-                    continue  # Skip malformed lines
+            all_data = [json.loads(line) for line in f if line.strip()]  # one dict per line
+            for data in all_data:
+                if 'metaData' in data:
+                    return data.get('metaData', {}).get('configuration', {}).get('delta.parquet.vorder.enabled', 'false') == 'true'
+
+            # If no metaData, fall back to commitInfo
+            for data in all_data:
+                if "commitInfo" in data:
+                    tags = data["commitInfo"].get("tags", {})
+                    return tags.get("VORDER", "false").lower() == "true"
 
         return False  # Default if not found
 
