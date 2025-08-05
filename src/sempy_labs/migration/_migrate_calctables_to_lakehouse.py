@@ -267,7 +267,9 @@ def migrate_field_parameters(
 
     icons.sll_tags.append("DirectLakeMigration")
     fabric.refresh_tom_cache(workspace=workspace)
-    (new_dataset_workspace_name, new_dataset_workspace_id) = resolve_workspace_name_and_id(new_dataset_workspace)
+    (new_dataset_workspace_name, new_dataset_workspace_id) = (
+        resolve_workspace_name_and_id(new_dataset_workspace)
+    )
 
     dfC = fabric.list_columns(dataset=dataset, workspace=workspace)
     dfC["Column Object"] = format_dax_object_name(dfC["Table Name"], dfC["Column Name"])
