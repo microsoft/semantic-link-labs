@@ -1,7 +1,7 @@
 # Semantic Link Labs
 
 [![PyPI version](https://badge.fury.io/py/semantic-link-labs.svg)](https://badge.fury.io/py/semantic-link-labs)
-[![Read The Docs](https://readthedocs.org/projects/semantic-link-labs/badge/?version=0.11.2&style=flat)](https://readthedocs.org/projects/semantic-link-labs/)
+[![Read The Docs](https://readthedocs.org/projects/semantic-link-labs/badge/?version=0.11.3&style=flat)](https://readthedocs.org/projects/semantic-link-labs/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Downloads](https://static.pepy.tech/badge/semantic-link-labs)](https://pepy.tech/project/semantic-link-labs)
 
@@ -103,7 +103,7 @@ for file_name, file_url in notebook_files.items():
 import sempy_labs as labs
 import sempy_labs.lakehouse as lake
 import sempy_labs.report as rep
-from sempy_labs import migration, directlake, admin, graph, theme, mirrored_azure_databricks_catalog
+from sempy_labs import migration, directlake, admin, graph, theme, mirrored_azure_databricks_catalog, ml_model, variable_library
 from sempy_labs.tom import connect_semantic_model
 from sempy_labs.report import connect_report
 ```
@@ -129,6 +129,7 @@ An even better way to ensure the semantic-link-labs library is available in your
 2. Select your newly created environment within the 'Environment' drop down in the navigation bar at the top of the notebook
 
 ## Version History
+* [0.11.3](https://github.com/microsoft/semantic-link-labs/releases/tag/0.11.3) (August 6, 2025)
 * [0.11.2](https://github.com/microsoft/semantic-link-labs/releases/tag/0.11.2) (July 8, 2025)
 * [0.11.1](https://github.com/microsoft/semantic-link-labs/releases/tag/0.11.1) (June 24, 2025)
 * [0.11.0](https://github.com/microsoft/semantic-link-labs/releases/tag/0.11.0) (June 23, 2025)
