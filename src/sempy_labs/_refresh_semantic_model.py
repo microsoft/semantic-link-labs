@@ -32,7 +32,7 @@ def refresh_semantic_model(
     commit_mode: str = "transactional",
 ) -> pd.DataFrame | None:
     """
-    Refreshes a semantic model. 
+    Refreshes a semantic model.
 
     Parameters
     ----------
