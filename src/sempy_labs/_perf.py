@@ -133,7 +133,7 @@ def trace_report(
                 "CpuTime",
                 "Success",
                 "ApplicationName",
-                # "ApplicationContext",
+                "ApplicationContext",
             ]
         }
 
@@ -193,7 +193,7 @@ def trace_semantic_model(
     Parameters
     ----------
     dataset : str | uuid.UUID
-        The report name or ID.
+        The semantic model name or ID.
     workspace : str | uuid.UUID, default=None
         The workspace name or ID where the report is located. If None, uses the default workspace.
     table_name : str, default=None
@@ -277,7 +277,7 @@ def trace_semantic_model(
                 "CpuTime",
                 "Success",
                 "ApplicationName",
-                # "ApplicationContext",
+                "ApplicationContext",
             ]
         }
 
