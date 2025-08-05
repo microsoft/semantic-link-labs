@@ -11,3 +11,4 @@ anytree
 IPython
 polib
 jsonpath_ng
+ipywidgets
