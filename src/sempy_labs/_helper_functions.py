@@ -1179,7 +1179,9 @@ def is_default_semantic_model(
     """
 
     workspace_id = resolve_workspace_id(workspace)
-    (dataset_name, dataset_id) = resolve_item_name_and_id(item=dataset, type="SemanticModel", workspace=workspace_id)
+    (dataset_name, dataset_id) = resolve_item_name_and_id(
+        item=dataset, type="SemanticModel", workspace=workspace_id
+    )
 
     dfI = fabric.list_items(workspace=workspace_id)
     filtered_df = dfI.groupby("Display Name").filter(
