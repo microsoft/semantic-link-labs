@@ -15,9 +15,6 @@ from ._vpax import (
 from ._delta_analyzer_history import (
     delta_analyzer_history,
 )
-from ._dax_query_view import (
-    generate_dax_query_view_url,
-)
 from ._mounted_data_factories import (
     list_mounted_data_factories,
     get_mounted_data_factory_definition,
@@ -573,7 +570,6 @@ __all__ = [
     "list_mounted_data_factories",
     "get_mounted_data_factory_definition",
     "delete_mounted_data_factory",
-    "generate_dax_query_view_url",
     "delete_semantic_model",
     "delete_workspace",
     "create_sql_database",
