@@ -488,7 +488,7 @@ def bind_semantic_model_to_gateway(
     gateway : str | uuid.UUID
         The name or ID of the gateway.
     workspace : str | uuid.UUID, default=None
-        The Fabric workspace name.
+        The workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
