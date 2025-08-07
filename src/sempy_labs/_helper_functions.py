@@ -319,6 +319,7 @@ def copy_item(
     source_workspace: Optional[str | UUID] = None,
     target_workspace: Optional[str | UUID] = None,
     overwrite: bool = False,
+    keep_existing_bindings: bool = False,
 ):
     """
     Copies an item (with its definition) from one location to another location.
@@ -339,9 +340,14 @@ def copy_item(
         The workspace name or ID to which the item will be copied.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    overwrite: bool, default=False
+    overwrite : bool, default=False
         If True, overwrites the item in the target workspace if it already exists.
+    keep_existing_bindings : bool, default=False
+        If True, ensures that reports are re-bound to the original semantic model.
+        If False, reports are binded to the semantic model to which the item is bound.
     """
+
+    from sempy_labs.report import report_rebind
 
     items = {
         "CopyJob": "copyJobs",
@@ -428,6 +434,13 @@ def copy_item(
         print(
             f"{icons.in_progress} Updating existing item '{target_name}' of type '{type}' in the target workspace '{target_workspace_name}'..."
         )
+        # Get the existing source model
+        if type == "Report" and keep_existing_bindings:
+            result = _base_api(
+                request=f"v1.0/myorg/groups/{target_workspace_id}/reports/{target_item_id}"
+            ).json()
+            dataset_id = result.get("datasetId")
+            dataset_workspace_id = result.get("datasetWorkspaceId")
         _base_api(
             request=f"/v1/workspaces/{target_workspace_id}/{type_url}/{target_item_id}/updateDefinition",
             method="post",
@@ -439,6 +452,15 @@ def copy_item(
         print(
             f"{icons.green_dot} The item '{target_name}' of type '{type}' has been successfully updated in the target workspace '{target_workspace_name}'."
         )
+
+        if keep_existing_bindings:
+            report_rebind(
+                report=target_item_id,
+                dataset=dataset_id,
+                report_workspace=target_workspace,
+                dataset_workspace=dataset_workspace_id,
+            )
+
     else:
         print(
             f"{icons.in_progress} Creating new item '{target_name}' of type '{type}' in the target workspace '{target_workspace_name}'..."

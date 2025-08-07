@@ -1,7 +1,6 @@
-from .._helper_functions import (
-    resolve_dataset_id,
+from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
-    resolve_report_id,
+    resolve_item_name_and_id,
     _base_api,
     resolve_dataset_name_and_id,
 )
@@ -25,10 +24,10 @@ def report_rebind(
 
     Parameters
     ----------
-    report : str | List[str]
-        Name(s) of the Power BI report(s).
-    dataset : str
-        Name of the semantic model.
+    report : str | uuid.UUID | List[str | uuid.UUID]
+        Name(s) or ID(s) of the Power BI report(s).
+    dataset : str | uuid.UUID
+        Name or ID of the semantic model.
     report_workspace : str | uuid.UUID, default=None
         The name or ID of the Fabric workspace in which the report resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -46,12 +45,19 @@ def report_rebind(
     if dataset_workspace is None:
         dataset_workspace = report_workspace_name
 
+    (dataset_workspace_name, dataset_workspace_id) = resolve_workspace_name_and_id(
+        dataset_workspace
+    )
     if isinstance(report, str):
         report = [report]
 
     for rpt in report:
-        report_id = resolve_report_id(report=rpt, workspace=report_workspace_id)
-        dataset_id = resolve_dataset_id(dataset=dataset, workspace=dataset_workspace)
+        (report_name, report_id) = resolve_item_name_and_id(
+            item=rpt, type="Report", workspace=report_workspace_id
+        )
+        (dataset_name, dataset_id) = resolve_item_name_and_id(
+            item=dataset, type="SemanticModel", workspace=dataset_workspace
+        )
 
         payload = {"datasetId": dataset_id}
 
@@ -62,7 +68,7 @@ def report_rebind(
         )
 
         print(
-            f"{icons.green_dot} The '{rpt}' report has been successfully rebinded to the '{dataset}' semantic model."
+            f"{icons.green_dot} The '{report_name}' report within the '{report_workspace_name}' workspace has been successfully rebinded to the '{dataset_name}' semantic model within the '{dataset_workspace_name}' workspace."
         )
 
 
