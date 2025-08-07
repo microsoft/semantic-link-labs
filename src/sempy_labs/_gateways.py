@@ -77,16 +77,16 @@ def list_gateways() -> pd.DataFrame:
 @log
 def _resolve_gateway_id(gateway: str | UUID) -> UUID:
 
-    dfG = list_gateways()
     if _is_valid_uuid(gateway):
-        dfG_filt = dfG[dfG["Gateway Id"] == gateway]
+        return gateway
     else:
+        dfG = list_gateways()
         dfG_filt = dfG[dfG["Gateway Name"] == gateway]
 
-    if len(dfG_filt) == 0:
-        raise ValueError(f"{icons.red_dot} The '{gateway}' does not exist.")
+        if dfG_filt.empty:
+            raise ValueError(f"{icons.red_dot} The '{gateway}' gateway does not exist.")
 
-    return dfG_filt["Gateway Id"].iloc[0]
+        return dfG_filt["Gateway Id"].iloc[0]
 
 
 @log
