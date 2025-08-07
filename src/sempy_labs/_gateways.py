@@ -77,16 +77,16 @@ def list_gateways() -> pd.DataFrame:
 @log
 def _resolve_gateway_id(gateway: str | UUID) -> UUID:
 
-    dfG = list_gateways()
     if _is_valid_uuid(gateway):
-        dfG_filt = dfG[dfG["Gateway Id"] == gateway]
+        return gateway
     else:
+        dfG = list_gateways()
         dfG_filt = dfG[dfG["Gateway Name"] == gateway]
 
-    if len(dfG_filt) == 0:
-        raise ValueError(f"{icons.red_dot} The '{gateway}' does not exist.")
+        if dfG_filt.empty:
+            raise ValueError(f"{icons.red_dot} The '{gateway}' gateway does not exist.")
 
-    return dfG_filt["Gateway Id"].iloc[0]
+        return dfG_filt["Gateway Id"].iloc[0]
 
 
 @log
@@ -472,7 +472,7 @@ def update_vnet_gateway(
 
 @log
 def bind_semantic_model_to_gateway(
-    dataset: str | UUID, gateway: str | UUID, workspace: Optional[str | UUID] = None
+    dataset: str | UUID, gateway: str | UUID, workspace: Optional[str | UUID] = None, data_source_object_ids: Optional[list[UUID]] = None
 ):
     """
     Binds the specified dataset from the specified workspace to the specified gateway.
@@ -488,9 +488,11 @@ def bind_semantic_model_to_gateway(
     gateway : str | uuid.UUID
         The name or ID of the gateway.
     workspace : str | uuid.UUID, default=None
-        The Fabric workspace name.
+        The workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    data_source_object_ids : list[uuid.UUID], default=None
+        A list of data source object IDs to bind to the gateway.
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -502,6 +504,8 @@ def bind_semantic_model_to_gateway(
     payload = {
         "gatewayObjectId": gateway_id,
     }
+    if data_source_object_ids is not None:
+        payload["datasourceObjectIds"] = data_source_object_ids
 
     _base_api(
         request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/Default.BindToGateway",
