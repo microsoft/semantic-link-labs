@@ -188,7 +188,7 @@ Check out my [blog post](https://www.elegantbi.com/post/direct-lake-migration) o
 ### Instructions
 
 1. Download this [notebook](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Migration%20to%20Direct%20Lake.ipynb).
-2. Make sure you are in the ['Data Engineering' persona](https://learn.microsoft.com/fabric/get-started/microsoft-fabric-overview#components-of-microsoft-fabric). Click the icon at the bottom left corner of your Workspace screen and select 'Data Engineering'
+2. Make sure you are in the 'Fabric Developer' experience. Click the icon at the bottom left corner of your Workspace screen and select 'Fabric'.
 3. In your workspace, select 'New -> Import notebook' and import the notebook from step 1.
 4. [Add your lakehouse](https://learn.microsoft.com/fabric/data-engineering/lakehouse-notebook-explore#add-or-remove-a-lakehouse) to your Fabric notebook
 5. Follow the instructions within the notebook.
