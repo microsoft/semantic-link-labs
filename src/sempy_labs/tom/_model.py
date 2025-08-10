@@ -5127,13 +5127,6 @@ class TOMWrapper:
             Generates the M expression for the import partition.
             """
 
-            if artifact_type == "Lakehouse":
-                type_id = "lakehouseId"
-            elif artifact_type == "Warehouse":
-                type_id = "warehouseId"
-            else:
-                raise NotImplementedError
-
             full_table_name = (
                 f"{schema_name}/{table_name}" if schema_name else table_name
             )
