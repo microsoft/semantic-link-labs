@@ -5135,17 +5135,13 @@ class TOMWrapper:
                 raise NotImplementedError
 
             full_table_name = (
-                f"{schema_name}.{table_name}" if schema_name else table_name
+                f"{schema_name}/{table_name}" if schema_name else table_name
             )
 
-            return f"""let
-                Source = {artifact_type}.Contents(null),
-                #"Workspace" = Source{{[workspaceId="{workspace_id}"]}}[Data],
-                #"Artifact" = #"Workspace"{{[{type_id}="{artifact_id}"]}}[Data],
-                result = #"Artifact"{{[Id="{full_table_name}",ItemKind="Table"]}}[Data]
-            in
-                result
-            """
+            return f"""let\n\tSource = AzureStorage.DataLake("https://onelake.dfs.fabric.microsoft.com/{workspace_id}/{artifact_id}", [HierarchicalNavigation=true]),
+        Tables = Source{{[Name = "Tables"]}}[Content],
+        ExpressionTable = Tables{{[Name = "{full_table_name}"]}}[Content],
+        ToDelta = DeltaLake.Table(ExpressionTable)\nin\n\tToDelta"""
 
         m_expression = _generate_m_expression(
             source_workspace_id,
