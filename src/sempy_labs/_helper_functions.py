@@ -986,7 +986,7 @@ def resolve_workspace_id(
 
 
 @log
-def resolve_workspace_name(workspace_id: Optional[UUID] = None) -> str:
+def resolve_workspace_name(workspace_id: Optional[UUID] = None, throw_error: bool = True) -> str:
 
     if workspace_id is None:
         workspace_id = _get_fabric_context_setting(name="trident.workspace.id")
@@ -996,9 +996,12 @@ def resolve_workspace_name(workspace_id: Optional[UUID] = None) -> str:
             request=f"/v1/workspaces/{workspace_id}", client="fabric_sp"
         ).json()
     except FabricHTTPException:
-        raise ValueError(
-            f"{icons.red_dot} The '{workspace_id}' workspace was not found."
-        )
+        if throw_error:
+            raise ValueError(
+                f"{icons.red_dot} The '{workspace_id}' workspace was not found."
+            )
+        else:
+            return workspace_id
 
     return response.get("displayName")
 

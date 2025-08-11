@@ -2,6 +2,7 @@ import sempy.fabric as fabric
 import pandas as pd
 from .._helper_functions import (
     resolve_lakehouse_name_and_id,
+    resolve_workspace_id,
     resolve_workspace_name_and_id,
     _base_api,
     _create_dataframe,
@@ -318,7 +319,7 @@ def list_shortcuts(
         A pandas dataframe showing all the shortcuts which exist in the specified lakehouse.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
     (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=workspace_id
     )
@@ -383,7 +384,9 @@ def list_shortcuts(
             source_item_id = tgt.get(sources.get(tgt_type), {}).get("itemId")
             bucket = tgt.get(sources.get(tgt_type), {}).get("bucket")
             source_workspace_name = (
-                resolve_workspace_name(workspace_id=source_workspace_id)
+                resolve_workspace_name(
+                    workspace_id=source_workspace_id, throw_error=False
+                )
                 if source_workspace_id is not None
                 else None
             )
