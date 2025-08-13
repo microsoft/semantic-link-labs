@@ -91,6 +91,8 @@ def create_mirrored_database(
 
     This is a wrapper function for the following API: `Items - Create Mirrored Database <https://learn.microsoft.com/rest/api/fabric/mirroreddatabase/items/create-mirrored-database>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     name: str
@@ -117,6 +119,8 @@ def delete_mirrored_database(
 
     This is a wrapper function for the following API: `Items - Delete Mirrored Database <https://learn.microsoft.com/rest/api/fabric/mirroreddatabase/items/delete-mirrored-database>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     mirrored_database: str
@@ -139,6 +143,8 @@ def get_mirroring_status(
 
     This is a wrapper function for the following API: `Mirroring - Get Mirroring Status <https://learn.microsoft.com/rest/api/fabric/mirroreddatabase/mirroring/get-mirroring-status>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     mirrored_database: str | uuid.UUID
@@ -154,13 +160,14 @@ def get_mirroring_status(
         The status of a mirrored database.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
     item_id = resolve_item_id(
         item=mirrored_database, type="MirroredDatabase", workspace=workspace
     )
     response = _base_api(
         request=f"/v1/workspaces/{workspace_id}/mirroredDatabases/{item_id}/getMirroringStatus",
         status_codes=200,
+        client="fabric_sp",
     )
 
     return response.json().get("status", {})
@@ -174,6 +181,8 @@ def get_tables_mirroring_status(
     Gets the mirroring status of the tables.
 
     This is a wrapper function for the following API: `Mirroring - Get Tables Mirroring Status <https://learn.microsoft.com/rest/api/fabric/mirroreddatabase/mirroring/get-tables-mirroring-status>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -190,7 +199,7 @@ def get_tables_mirroring_status(
         A pandas dataframe showing the mirroring status of the tables.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
     item_id = resolve_item_id(
         item=mirrored_database, type="MirroredDatabase", workspace=workspace
     )
@@ -199,6 +208,7 @@ def get_tables_mirroring_status(
         method="post",
         status_codes=200,
         uses_pagination=True,
+        client="fabric_sp",
     )
 
     columns = {
@@ -211,21 +221,24 @@ def get_tables_mirroring_status(
     }
     df = _create_dataframe(columns=columns)
 
+    rows = []
     for r in responses:
         for v in r.get("data", []):
             m = v.get("metrics", {})
-            new_data = {
-                "Source Schema Name": v.get("sourceSchemaName"),
-                "Source Table Name": v.get("sourceTableName"),
-                "Status": v.get("status"),
-                "Processed Bytes": m.get("processedBytes"),
-                "Processed Rows": m.get("processedRows"),
-                "Last Sync Date": m.get("lastSyncDateTime"),
-            }
+            rows.append(
+                {
+                    "Source Schema Name": v.get("sourceSchemaName"),
+                    "Source Table Name": v.get("sourceTableName"),
+                    "Status": v.get("status"),
+                    "Processed Bytes": m.get("processedBytes"),
+                    "Processed Rows": m.get("processedRows"),
+                    "Last Sync Date": m.get("lastSyncDateTime"),
+                }
+            )
 
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -238,6 +251,8 @@ def start_mirroring(
     Starts the mirroring for a database.
 
     This is a wrapper function for the following API: `Mirroring - Start Mirroring <https://learn.microsoft.com/rest/api/fabric/mirroreddatabase/mirroring/start-mirroring>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -257,6 +272,7 @@ def start_mirroring(
         request=f"/v1/workspaces/{workspace_id}/mirroredDatabases/{item_id}/startMirroring",
         method="post",
         status_codes=200,
+        client="fabric_sp",
     )
 
     print(
@@ -272,6 +288,8 @@ def stop_mirroring(
     Stops the mirroring for a database.
 
     This is a wrapper function for the following API: `Mirroring - Stop Mirroring <https://learn.microsoft.com/rest/api/fabric/mirroreddatabase/mirroring/stop-mirroring>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -291,6 +309,7 @@ def stop_mirroring(
         request=f"/v1/workspaces/{workspace_id}/mirroredDatabases/{item_id}/stopMirroring",
         method="post",
         status_codes=200,
+        client="fabric_sp",
     )
 
     print(
@@ -308,6 +327,8 @@ def get_mirrored_database_definition(
     Obtains the mirrored database definition.
 
     This is a wrapper function for the following API: `Items - Get Mirrored Database Definition <https://learn.microsoft.com/rest/api/fabric/mirroreddatabase/items/get-mirrored-database-definition>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -344,6 +365,8 @@ def update_mirrored_database_definition(
 ):
     """
     Updates an existing notebook with a new definition.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -383,6 +406,7 @@ def update_mirrored_database_definition(
         json=request_body,
         status_codes=None,
         lro_return_status_code=True,
+        client="fabric_sp",
     )
 
     print(
