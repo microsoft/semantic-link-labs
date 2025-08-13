@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 from uuid import UUID
-from ._helper_functions import (
+from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
     resolve_lakehouse_name_and_id,

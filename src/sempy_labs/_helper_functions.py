@@ -1008,7 +1008,9 @@ def resolve_workspace_id(
 
 
 @log
-def resolve_workspace_name(workspace_id: Optional[UUID] = None, throw_error: bool = True) -> str:
+def resolve_workspace_name(
+    workspace_id: Optional[UUID] = None, throw_error: bool = True
+) -> str:
 
     if workspace_id is None:
         workspace_id = _get_fabric_context_setting(name="trident.workspace.id")

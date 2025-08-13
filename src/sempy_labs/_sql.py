@@ -3,7 +3,7 @@ from typing import Optional, Union, List
 from sempy._utils._log import log
 import struct
 from itertools import chain, repeat
-from ._helper_functions import (
+from sempy_labs._helper_functions import (
     resolve_lakehouse_name_and_id,
     resolve_item_name_and_id,
     resolve_workspace_name_and_id,

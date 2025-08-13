@@ -1,6 +1,6 @@
 import sempy.fabric as fabric
 import pandas as pd
-from ._helper_functions import (
+from sempy_labs._helper_functions import (
     format_dax_object_name,
     resolve_dataset_name_and_id,
     resolve_workspace_name_and_id,

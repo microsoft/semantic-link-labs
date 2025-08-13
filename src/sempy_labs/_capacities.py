@@ -4,12 +4,12 @@ import sempy_labs._icons as icons
 from sempy.fabric.exceptions import FabricHTTPException
 import requests
 import pandas as pd
-from ._authentication import (
+from sempy_labs._authentication import (
     _get_headers,
     ServicePrincipalTokenProvider,
 )
 from uuid import UUID
-from ._helper_functions import (
+from sempy_labs._helper_functions import (
     _is_valid_uuid,
     _update_dataframe_datatypes,
     _base_api,

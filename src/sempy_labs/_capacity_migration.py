@@ -2,20 +2,20 @@ import sempy.fabric as fabric
 from typing import Optional, List
 from sempy._utils._log import log
 import sempy_labs._icons as icons
-from ._workspaces import assign_workspace_to_capacity
-from .admin import (
+from sempy_labs._workspaces import assign_workspace_to_capacity
+from sempy_labs.admin import (
     assign_workspaces_to_capacity,
 )
 from .admin._capacities import (
     _list_capacities_meta,
     list_capacities,
 )
-from ._helper_functions import (
+from sempy_labs._helper_functions import (
     resolve_capacity_id,
     convert_to_alphanumeric_lowercase,
     _base_api,
 )
-from ._capacities import create_fabric_capacity
+from sempy_labs._capacities import create_fabric_capacity
 from uuid import UUID
 
 

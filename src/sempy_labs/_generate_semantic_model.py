@@ -4,7 +4,7 @@ import json
 import os
 from typing import Optional, List
 from sempy._utils._log import log
-from ._helper_functions import (
+from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
     _conv_b64,
@@ -13,9 +13,9 @@ from ._helper_functions import (
     _mount,
     resolve_workspace_id,
 )
-from .lakehouse._lakehouse import lakehouse_attached
+from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 import sempy_labs._icons as icons
-from ._refresh_semantic_model import refresh_semantic_model
+from sempy_labs._refresh_semantic_model import refresh_semantic_model
 from uuid import UUID
 
 

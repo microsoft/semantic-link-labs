@@ -3,7 +3,7 @@ import pandas as pd
 from typing import List, Optional, Union
 from sempy._utils._log import log
 import sempy_labs._icons as icons
-from ._helper_functions import (
+from sempy_labs._helper_functions import (
     get_language_codes,
     _create_spark_session,
 )

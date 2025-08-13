@@ -472,7 +472,10 @@ def update_vnet_gateway(
 
 @log
 def bind_semantic_model_to_gateway(
-    dataset: str | UUID, gateway: str | UUID, workspace: Optional[str | UUID] = None, data_source_object_ids: Optional[list[UUID]] = None
+    dataset: str | UUID,
+    gateway: str | UUID,
+    workspace: Optional[str | UUID] = None,
+    data_source_object_ids: Optional[list[UUID]] = None,
 ):
     """
     Binds the specified dataset from the specified workspace to the specified gateway.

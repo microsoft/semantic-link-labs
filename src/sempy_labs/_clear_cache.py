@@ -1,5 +1,5 @@
 import sempy.fabric as fabric
-from ._helper_functions import (
+from sempy_labs._helper_functions import (
     is_default_semantic_model,
     _get_adls_client,
     resolve_workspace_name_and_id,

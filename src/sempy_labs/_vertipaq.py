@@ -6,7 +6,7 @@ import os
 import shutil
 import datetime
 import warnings
-from ._helper_functions import (
+from sempy_labs._helper_functions import (
     format_dax_object_name,
     save_as_delta_table,
     resolve_workspace_capacity,
@@ -17,8 +17,8 @@ from ._helper_functions import (
     resolve_workspace_id,
     resolve_workspace_name,
 )
-from ._list_functions import list_relationships, list_tables
-from .lakehouse import lakehouse_attached, get_lakehouse_tables
+from sempy_labs._list_functions import list_relationships, list_tables
+from sempy_labs.lakehouse import lakehouse_attached, get_lakehouse_tables
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons

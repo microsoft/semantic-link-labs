@@ -1,5 +1,5 @@
 import pandas as pd
-from ._helper_functions import (
+from sempy_labs._helper_functions import (
     _is_valid_uuid,
     _base_api,
     _update_dataframe_datatypes,

@@ -1,6 +1,6 @@
 import pandas as pd
 from typing import Optional
-from ._helper_functions import (
+from sempy_labs._helper_functions import (
     _base_api,
     delete_item,
     _create_dataframe,

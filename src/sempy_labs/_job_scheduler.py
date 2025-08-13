@@ -1,7 +1,7 @@
 from sempy._utils._log import log
 import pandas as pd
 from typing import Optional, List
-from ._helper_functions import (
+from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_item_name_and_id,
     _update_dataframe_datatypes,
