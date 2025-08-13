@@ -40,3 +40,30 @@ item_types = {
     ],
     "Warehouse": ["Warehouse", "warehouses"],
 }
+
+
+items = {
+    "CopyJob": "copyJobs",
+    "Dataflow": "dataflows",
+    "Eventhouse": "eventhouses",
+    "GraphQLApi": "GraphQLApis",
+    "Report": "reports",
+    "SemanticModel": "semanticModels",
+    # "Environment": "environments",
+    "KQLDatabase": "kqlDatabases",
+    "KQLDashboard": "kqlDashboards",
+    "KQLQueryset": "kqlQuerysets",
+    "DataPipeline": "dataPipelines",
+    "Notebook": "notebooks",
+    "SparkJobDefinition": "sparkJobDefinitions",
+    "Eventstream": "eventstreams",
+    "MirroredWarehouse": "mirroredWarehouses",
+    "MirroredDatabase": "mirroredDatabases",
+    "MountedDataFactory": "mountedDataFactories",
+    "VariableLibrary": "variableLibraries",
+    "ApacheAirFlowJob": "ApacheAirflowJobs",
+    "WarehouseSnapshot": "warehousesnapshots",
+    "DigitalTwinBuilder": "digitaltwinbuilders",
+    "DigitalTwinBuilderFlow": "DigitalTwinBuilderFlows",
+    "MirroredAzureDatabricksCatalog": "mirroredAzureDatabricksCatalogs",
+}

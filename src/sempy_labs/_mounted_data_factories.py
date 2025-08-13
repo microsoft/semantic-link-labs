@@ -5,7 +5,7 @@ from sempy_labs._helper_functions import (
     _base_api,
     _create_dataframe,
     _update_dataframe_datatypes,
-    get_item_definition,
+    _get_item_definition,
     delete_item,
 )
 
@@ -91,7 +91,7 @@ def get_mounted_data_factory_definition(
         The 'mountedDataFactory-content.json' file from the mounted data factory definition.
     """
 
-    return get_item_definition(
+    return _get_item_definition(
         item=mounted_data_factory,
         type="MountedDataFactory",
         workspace=workspace,

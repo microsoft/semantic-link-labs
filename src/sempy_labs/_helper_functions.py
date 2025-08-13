@@ -21,6 +21,7 @@ from jsonpath_ng.ext import parse
 from jsonpath_ng.jsonpath import Fields, Index
 from sempy._utils._log import log
 from os import PathLike
+import sempy_labs._utils as utils
 
 
 def _build_url(url: str, params: dict) -> str:
@@ -226,8 +227,6 @@ def delete_item(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    from sempy_labs._utils import item_types
-
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (item_name, item_id) = resolve_item_name_and_id(item, type, workspace_id)
     item_type = item_types.get(type)[0].lower()
@@ -281,11 +280,10 @@ def create_item(
         The folder within the workspace where the item will be created.
         Defaults to None which places the item in the root of the workspace.
     """
-    from sempy_labs._utils import item_types
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    item_type = item_types.get(type)[0].lower()
-    item_type_url = item_types.get(type)[1]
+    item_type = utils.item_types.get(type)[0].lower()
+    item_type_url = utils.item_types.get(type)[1]
 
     payload = {
         "displayName": name,
@@ -324,6 +322,8 @@ def copy_item(
     """
     Copies an item (with its definition) from one location to another location.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     item : str | uuid.UUID
@@ -349,37 +349,6 @@ def copy_item(
 
     from sempy_labs.report import report_rebind
 
-    items = {
-        "CopyJob": "copyJobs",
-        "Dataflow": "dataflows",
-        "Eventhouse": "eventhouses",
-        "GraphQLApi": "GraphQLApis",
-        "Report": "reports",
-        "SemanticModel": "semanticModels",
-        # "Environment": "environments",
-        "KQLDatabase": "kqlDatabases",
-        "KQLDashboard": "kqlDashboards",
-        "KQLQueryset": "kqlQuerysets",
-        "DataPipeline": "dataPipelines",
-        "Notebook": "notebooks",
-        "SparkJobDefinition": "sparkJobDefinitions",
-        "Eventstream": "eventstreams",
-        "MirroredWarehouse": "mirroredWarehouses",
-        "MirroredDatabase": "mirroredDatabases",
-        "MountedDataFactory": "mountedDataFactories",
-        "VariableLibrary": "variableLibraries",
-        "ApacheAirFlowJob": "ApacheAirflowJobs",
-        "WarehouseSnapshot": "warehousesnapshots",
-        "DigitalTwinBuilder": "digitaltwinbuilders",
-        "DigitalTwinBuilderFlow": "DigitalTwinBuilderFlows",
-        "MirroredAzureDatabricksCatalog": "mirroredAzureDatabricksCatalogs",
-    }
-    if type not in items:
-        raise ValueError(
-            f"{icons.red_dot} The '{type}' item type does not have a definition and cannot be copied."
-        )
-    type_url = items.get(type)
-
     (item_name, item_id) = resolve_item_name_and_id(
         item=item, type=type, workspace=source_workspace
     )
@@ -398,18 +367,19 @@ def copy_item(
             f"{icons.red_dot} The source and target workspaces are the same and the target name is the same as the source name. No action taken."
         )
 
+    type_url = utils.items.get(type)
     result = _base_api(
         request=f"v1/workspaces/{source_workspace_id}/{type_url}/{item_id}",
         client="fabric_sp",
     )
     description = result.json().get("description")
 
-    payload = _base_api(
-        request=f"v1/workspaces/{source_workspace_id}/{type_url}/{item_id}/getDefinition",
-        method="post",
-        client="fabric_sp",
-        status_codes=None,
-        lro_return_json=True,
+    payload = get_item_definition(
+        item=item_id,
+        type=type,
+        workspace=source_workspace_id,
+        return_dataframe=False,
+        decode=False,
     )
     payload["displayName"] = target_name
     if description:
@@ -474,7 +444,114 @@ def copy_item(
 
 
 @log
+def is_base64(s):
+    try:
+        # Add padding if needed
+        s_padded = s + "=" * (-len(s) % 4)
+        decoded = base64.b64decode(s_padded, validate=True)
+        # Optional: check if re-encoding gives the original (excluding padding)
+        return base64.b64encode(decoded).decode().rstrip("=") == s.rstrip("=")
+    except Exception:
+        return False
+
+
+@log
+def decode_payload(payload):
+
+    if is_base64(payload):
+        try:
+            decoded_payload = json.loads(base64.b64decode(payload).decode("utf-8"))
+        except Exception:
+            decoded_payload = base64.b64decode(payload)
+    elif isinstance(payload, dict):
+        decoded_payload = payload
+    else:
+        raise ValueError("Payload must be a dictionary or a base64 encoded value.")
+
+    return decoded_payload
+
+
+@log
 def get_item_definition(
+    item: str | UUID,
+    type: str,
+    workspace: Optional[str | UUID] = None,
+    return_dataframe: bool = False,
+    decode: bool = True,
+    format: Optional[str] = None,
+) -> dict | pd.DataFrame:
+    """
+    Gets a Fabric item's defintion.
+
+    This is a wrapper function for the following API: `<https://learn.microsoft.com/rest/api/fabric/core/items/get-item-definition>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    item : str | uuid.UUID
+        The name or ID of the item to be copied.
+    type : str
+        The `type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_ of the item.
+    target_name: str, default=None
+        The name of the item in the target workspace. Defaults to the same name as the source item.
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    return_dataframe : bool, default=False
+        If True, returns a pandas dataframe.
+        If False, returns a dictionary.
+    decode : bool, default=True
+        If True, decodes the base64 payload.
+    format : str, default=None
+        The `format <https://learn.microsoft.com/rest/api/fabric/core/items/get-item-definition?tabs=HTTP#itemdefinition>`_ of the item definition.
+    """
+
+    workspace_id = resolve_workspace_id(workspace)
+    item_id = resolve_item_id(item=item, type=type, workspace=workspace_id)
+
+    item_type_url = utils.items.get(type)
+    if not item_type_url:
+        raise ValueError(f"{icons.red_dot} Invalid item type '{type}'.")
+
+    url = f"/v1/workspaces/{workspace_id}/{item_type_url}/{item_id}/getDefinition"
+    if format:
+        url += f"?format={format}"
+
+    result = _base_api(
+        request=url,
+        method="post",
+        status_codes=None,
+        lro_return_json=True,
+    )
+
+    if return_dataframe:
+        return pd.json_normalize(result["definition"]["parts"]).rename(
+            columns={
+                "path": "Path",
+                "payload": "Payload",
+                "payloadType": "Payload Type",
+            }
+        )
+
+    definition = {"definition": {"parts": []}}
+    if decode:
+        for part in result.get("definition", {}).get("parts", []):
+            path = part.get("path")
+            payload = part.get("payload")
+            decoded_payload = decode_payload(payload)
+
+            # Keep structure similar to original but replace payload with decoded version
+            definition["definition"]["parts"].append(
+                {"path": path, "payload": decoded_payload}
+            )
+    else:
+        return result
+
+
+@log
+def _get_item_definition(
     item: str | UUID,
     type: str,
     workspace: Optional[str | UUID] = None,
@@ -482,12 +559,11 @@ def get_item_definition(
     return_dataframe: bool = True,
     decode: bool = True,
 ):
-    from sempy_labs._utils import item_types
 
     workspace_id = resolve_workspace_id(workspace)
     item_id = resolve_item_id(item, type, workspace_id)
-    item_type_url = item_types.get(type)[1]
-    path = item_types.get(type)[2]
+    item_type_url = utils.item_types.get(type)[1]
+    path = utils.item_types.get(type)[2]
 
     url = f"/v1/workspaces/{workspace_id}/{item_type_url}/{item_id}/getDefinition"
     if format:
