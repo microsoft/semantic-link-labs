@@ -140,7 +140,7 @@ def refresh_sql_endpoint_metadata(
         }
 
     result = _base_api(
-        request=f"v1/workspaces/{workspace_id}/sqlEndpoints/{sql_endpoint_id}/refreshMetadata?preview=true",
+        request=f"v1/workspaces/{workspace_id}/sqlEndpoints/{sql_endpoint_id}/refreshMetadata",
         method="post",
         client="fabric_sp",
         status_codes=[200, 202],
@@ -159,7 +159,7 @@ def refresh_sql_endpoint_metadata(
     }
 
     if result:
-        df = pd.json_normalize(result)
+        df = pd.json_normalize(result.get("value"))
 
         # Extract error code and message, set to None if no error
         df["Error Code"] = df.get("error.errorCode", None)
