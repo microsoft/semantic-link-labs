@@ -2,7 +2,7 @@ import sempy.fabric as fabric
 import json
 import os
 import time
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     generate_embedded_filter,
     resolve_workspace_name_and_id,
     _base_api,
@@ -12,7 +12,7 @@ from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from uuid import UUID
-from ._report_functions import (
+from sempy_labs.report._report_functions import (
     list_report_visuals,
     list_report_pages,
 )
@@ -35,6 +35,8 @@ def export_report(
     Exports a Power BI report to a file in your lakehouse.
 
     This is a wrapper function for the following APIs: `Reports - Export To File In Group <https://learn.microsoft.com/rest/api/power-bi/reports/export-to-file-in-group>`_, `Reports - Get Export To File Status In Group <https://learn.microsoft.com/rest/api/power-bi/reports/get-export-to-file-status-in-group>`_, `Reports - Get File Of Export To File In Group <https://learn.microsoft.com/rest/api/power-bi/reports/get-file-of-export-to-file-in-group>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -241,22 +243,27 @@ def export_report(
         method="post",
         payload=request_body,
         status_codes=202,
+        client="fabric_sp",
     )
     export_id = json.loads(response.content).get("id")
 
     get_status_url = f"{base_url}/exports/{export_id}"
-    response = _base_api(request=get_status_url, status_codes=[200, 202])
+    response = _base_api(
+        request=get_status_url, status_codes=[200, 202], client="fabric_sp"
+    )
     response_body = json.loads(response.content)
     while response_body["status"] not in ["Succeeded", "Failed"]:
         time.sleep(3)
-        response = _base_api(request=get_status_url, status_codes=[200, 202])
+        response = _base_api(
+            request=get_status_url, status_codes=[200, 202], client="fabric_sp"
+        )
         response_body = json.loads(response.content)
     if response_body["status"] == "Failed":
         raise ValueError(
             f"{icons.red_dot} The export for the '{report}' report within the '{workspace_name}' workspace in the '{export_format}' format has failed."
         )
     else:
-        response = _base_api(request=f"{get_status_url}/file")
+        response = _base_api(request=f"{get_status_url}/file", client="fabric_sp")
         print(
             f"{icons.in_progress} Saving the '{export_format}' export for the '{report}' report within the '{workspace_name}' workspace to the lakehouse..."
         )

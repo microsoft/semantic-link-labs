@@ -22,6 +22,8 @@ def report_rebind(
 
     This is a wrapper function for the following API: `Reports - Rebind Report In Group <https://learn.microsoft.com/rest/api/power-bi/reports/rebind-report-in-group>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     report : str | uuid.UUID | List[str | uuid.UUID]
@@ -65,6 +67,7 @@ def report_rebind(
             request=f"v1.0/myorg/groups/{report_workspace_id}/reports/{report_id}/Rebind",
             method="post",
             payload=payload,
+            client="fabric_sp",
         )
 
         print(
@@ -82,6 +85,8 @@ def report_rebind_all(
 ):
     """
     Rebinds all reports across all workspaces which are bound to a specific semantic model to a new semantic model.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------

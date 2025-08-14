@@ -23,6 +23,8 @@ def get_semantic_model_refresh_schedule(
     """
     Gets the refresh schedule for the specified dataset from the specified workspace.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     dataset : str | uuid.UUID
@@ -38,7 +40,7 @@ def get_semantic_model_refresh_schedule(
         Shows the refresh schedule for the specified dataset from the specified workspace.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace)
 
     columns = {
@@ -60,7 +62,8 @@ def get_semantic_model_refresh_schedule(
     df = _create_dataframe(columns)
 
     result = _base_api(
-        request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/refreshSchedule"
+        request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/refreshSchedule",
+        client="fabric_sp",
     ).json()
 
     df = (
@@ -82,6 +85,8 @@ def enable_semantic_model_scheduled_refresh(
 ):
     """
     Enables the scheduled refresh for the specified dataset from the specified workspace.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -117,6 +122,7 @@ def enable_semantic_model_scheduled_refresh(
             request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/refreshSchedule",
             method="patch",
             payload=payload,
+            client="fabric_sp",
         )
 
         print(
@@ -130,6 +136,8 @@ def delete_semantic_model(dataset: str | UUID, workspace: Optional[str | UUID] =
     Deletes a semantic model.
 
     This is a wrapper function for the following API: `Items - Delete Semantic Model <https://learn.microsoft.com/rest/api/fabric/semanticmodel/items/delete-semantic-model>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -156,6 +164,8 @@ def update_semantic_model_refresh_schedule(
     Updates the refresh schedule for the specified dataset from the specified workspace.
 
     This is a wrapper function for the following API: `Datasets - Update Refresh Schedule In Group <https://learn.microsoft.com/rest/api/power-bi/datasets/update-refresh-schedule-in-group>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -246,6 +256,8 @@ def list_semantic_model_datasources(
     Lists the data sources for the specified semantic model.
 
     This is a wrapper function for the following API: `Datasets - Get Datasources In Group <https://learn.microsoft.com/rest/api/power-bi/datasets/get-datasources-in-group>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------

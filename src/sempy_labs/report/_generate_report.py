@@ -3,7 +3,7 @@ import pandas as pd
 import json
 import os
 from typing import Optional
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _conv_b64,
     resolve_dataset_name_and_id,
@@ -30,6 +30,8 @@ def create_report_from_reportjson(
     Creates a report based on a report.json file (and an optional themes.json file).
 
     This is a wrapper function for the following API: `Items - Create Report <https://learn.microsoft.com/rest/api/fabric/report/items/create-report>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -113,6 +115,7 @@ def create_report_from_reportjson(
         payload=request_body,
         lro_return_status_code=True,
         status_codes=[201, 202],
+        client="fabric_sp",
     )
 
     print(
@@ -128,6 +131,8 @@ def update_report_from_reportjson(
     Updates a report based on a report.json file.
 
     This is a wrapper function for the following API: `Items - Update Report Definition <https://learn.microsoft.com/rest/api/fabric/report/items/update-report-definition>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -173,6 +178,7 @@ def update_report_from_reportjson(
         payload=payload,
         lro_return_status_code=True,
         status_codes=None,
+        client="fabric_sp",
     )
 
     print(
@@ -190,6 +196,8 @@ def get_report_definition(
     Gets the collection of definition files of a report.
 
     This is a wrapper function for the following API: `Items - Get Report Definition <https://learn.microsoft.com/rest/api/fabric/report/items/get-report-definition>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------

@@ -19,6 +19,8 @@ def list_kql_querysets(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
     This is a wrapper function for the following API: `Items - List KQL Querysets <https://learn.microsoft.com/rest/api/fabric/kqlqueryset/items/list-kql-querysets>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     workspace : str | uuid.UUID, default=None
@@ -42,7 +44,9 @@ def list_kql_querysets(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     workspace_id = resolve_workspace_id(workspace)
 
     responses = _base_api(
-        request=f"v1/workspaces/{workspace_id}/kqlQuerysets", uses_pagination=True
+        request=f"v1/workspaces/{workspace_id}/kqlQuerysets",
+        uses_pagination=True,
+        client="fabric_sp",
     )
 
     rows = []
@@ -71,6 +75,8 @@ def create_kql_queryset(
 
     This is a wrapper function for the following API: `Items - Create KQL Queryset <https://learn.microsoft.com/rest/api/fabric/kqlqueryset/items/create-kql-queryset>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     name: str
@@ -96,6 +102,8 @@ def delete_kql_queryset(
     Deletes a KQL queryset.
 
     This is a wrapper function for the following API: `Items - Delete KQL Queryset <https://learn.microsoft.com/rest/api/fabric/kqlqueryset/items/delete-kql-queryset>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------

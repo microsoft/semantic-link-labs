@@ -25,6 +25,8 @@ def download_report(
 
     This is a wrapper function for the following API: `Reports - Export Report In Group <https://learn.microsoft.com/rest/api/power-bi/reports/export-report-in-group>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     report: str | uuid.UUID
@@ -59,7 +61,8 @@ def download_report(
     report_id = resolve_item_id(item=report, type="Report", workspace=workspace)
 
     response = _base_api(
-        request=f"v1.0/myorg/groups/{workspace_id}/reports/{report_id}/Export?downloadType={download_type}"
+        request=f"v1.0/myorg/groups/{workspace_id}/reports/{report_id}/Export?downloadType={download_type}",
+        client="fabric_sp",
     )
 
     # Save file to the attached lakehouse

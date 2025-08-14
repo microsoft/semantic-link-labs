@@ -21,6 +21,8 @@ def create_sql_database(
 
     This is a wrapper function for the following API: `Items - Create SQL Database <https://learn.microsoft.com/rest/api/fabric/sqldatabase/items/create-sql-database>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     name: str
@@ -46,6 +48,8 @@ def delete_sql_database(
     Deletes a SQL Database.
 
     This is a wrapper function for the following API: `Items - Delete SQL Database <https://learn.microsoft.com/rest/api/fabric/sqldatabase/items/delete-sql-database>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------

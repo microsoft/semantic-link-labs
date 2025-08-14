@@ -22,6 +22,8 @@ def list_item_job_instances(
 
     This is a wrapper function for the following API: `Job Scheduler - List Item Job Instances <https://learn.microsoft.com/rest/api/fabric/core/job-scheduler/list-item-job-instances>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     item : str | uuid.UUID
@@ -62,6 +64,7 @@ def list_item_job_instances(
     responses = _base_api(
         request=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/instances",
         uses_pagination=True,
+        client="fabric_sp",
     )
 
     if not responses[0].get("value"):

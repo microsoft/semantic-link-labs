@@ -62,6 +62,8 @@ def resolve_tags(tags: str | List[str]) -> List[str]:
     """
     Resolves the tags to a list of strings.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     tags : str | List[str]
