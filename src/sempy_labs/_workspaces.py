@@ -2,6 +2,7 @@ import pandas as pd
 import sempy_labs._icons as icons
 from typing import Optional
 from sempy_labs._helper_functions import (
+    resolve_workspace_id,
     resolve_workspace_name_and_id,
     resolve_capacity_id,
     _base_api,
@@ -127,7 +128,7 @@ def list_workspace_users(workspace: Optional[str | UUID] = None) -> pd.DataFrame
         A pandas dataframe the users of a workspace and their properties.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
 
     columns = {
         "User Name": "string",
@@ -176,6 +177,8 @@ def add_user_to_workspace(
 
     This is a wrapper function for the following API: `Groups - Add Group User <https://learn.microsoft.com/rest/api/power-bi/groups/add-group-user>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     email_address : str
@@ -217,6 +220,7 @@ def add_user_to_workspace(
         request=f"/v1.0/myorg/groups/{workspace_id}/users",
         method="post",
         payload=payload,
+        client="fabric_sp",
     )
     print(
         f"{icons.green_dot} The '{email_address}' user has been added as a{plural} '{role_name}' within the '{workspace_name}' workspace."
@@ -233,6 +237,8 @@ def assign_workspace_to_capacity(
     Assigns a workspace to a capacity.
 
     This is a wrapper function for the following API: `Workspaces - Assign To Capacity <https://learn.microsoft.com/rest/api/fabric/core/workspaces/assign-to-capacity>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -260,6 +266,7 @@ def assign_workspace_to_capacity(
         method="post",
         payload=payload,
         status_codes=[200, 202],
+        client="fabric_sp",
     )
     print(
         f"{icons.green_dot} The '{workspace_name}' workspace has been assigned to the '{capacity}' capacity."
@@ -320,7 +327,7 @@ def list_workspace_role_assignments(
         A pandas dataframe showing the members of a given workspace and their roles.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
 
     columns = {
         "User Name": "string",
@@ -336,16 +343,23 @@ def list_workspace_role_assignments(
         client="fabric_sp",
     )
 
+    rows = []
     for r in responses:
         for i in r.get("value", []):
             principal = i.get("principal", {})
-            new_data = {
-                "User Name": principal.get("displayName"),
-                "Role Name": i.get("role"),
-                "Type": principal.get("type"),
-                "User Email": principal.get("userDetails", {}).get("userPrincipalName"),
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            rows.append(
+                {
+                    "User Name": principal.get("displayName"),
+                    "Role Name": i.get("role"),
+                    "Type": principal.get("type"),
+                    "User Email": principal.get("userDetails", {}).get(
+                        "userPrincipalName"
+                    ),
+                }
+            )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 
@@ -356,6 +370,8 @@ def delete_workspace(workspace: Optional[str | UUID] = None):
     Deletes a workspace.
 
     This is a wrapper function for the following API: `Workspaces - Delete Workspace <https://learn.microsoft.com/rest/api/fabric/core/workspaces/delete-workspace>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
