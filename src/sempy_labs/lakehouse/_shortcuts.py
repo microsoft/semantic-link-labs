@@ -269,6 +269,8 @@ def reset_shortcut_cache(workspace: Optional[str | UUID] = None):
 
     This is a wrapper function for the following API: `OneLake Shortcuts - Reset Shortcut Cache <https://learn.microsoft.com/rest/api/fabric/core/onelake-shortcuts/reset-shortcut-cache>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     workspace : str | uuid.UUID, default=None
@@ -282,6 +284,7 @@ def reset_shortcut_cache(workspace: Optional[str | UUID] = None):
     _base_api(
         request=f"/v1/workspaces/{workspace_id}/onelake/resetShortcutCache",
         method="post",
+        client="fabric_sp",
         lro_return_status_code=True,
         status_codes=None,
     )

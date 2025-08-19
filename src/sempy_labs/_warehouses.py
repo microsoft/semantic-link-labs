@@ -25,6 +25,8 @@ def create_warehouse(
 
     This is a wrapper function for the following API: `Items - Create Warehouse <https://learn.microsoft.com/rest/api/fabric/warehouse/items/create-warehouse>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     warehouse: str
@@ -62,6 +64,7 @@ def create_warehouse(
         method="post",
         lro_return_json=True,
         status_codes=[201, 202],
+        client="fabric_sp",
     )
 
     print(
@@ -140,6 +143,8 @@ def delete_warehouse(name: str | UUID, workspace: Optional[str | UUID] = None):
     Deletes a Fabric warehouse.
 
     This is a wrapper function for the following API: `Items - Delete Warehouse <https://learn.microsoft.com/rest/api/fabric/warehouse/items/delete-warehouse>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
