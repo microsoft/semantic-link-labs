@@ -11,7 +11,7 @@ from sempy_labs._helper_functions import (
     _update_dataframe_datatypes,
     _base_api,
     resolve_item_id,
-    get_item_definition,
+    _get_item_definition,
 )
 import sempy_labs._icons as icons
 from sempy._utils._log import log
@@ -216,7 +216,7 @@ def get_report_definition(
         The collection of report definition files within a pandas dataframe.
     """
 
-    return get_item_definition(
+    return _get_item_definition(
         item=report,
         type="Report",
         workspace=workspace,

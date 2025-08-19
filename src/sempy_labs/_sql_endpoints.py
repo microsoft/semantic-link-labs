@@ -73,6 +73,8 @@ def refresh_sql_endpoint_metadata(
 
     This is a wrapper function for the following API: `Items - Refresh Sql Endpoint Metadata <https://learn.microsoft.com/rest/api/fabric/sqlendpoint/items/refresh-sql-endpoint-metadata>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     item : str | uuid.UUID

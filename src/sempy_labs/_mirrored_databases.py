@@ -8,7 +8,7 @@ from sempy_labs._helper_functions import (
     _create_dataframe,
     delete_item,
     create_item,
-    get_item_definition,
+    _get_item_definition,
     resolve_workspace_id,
 )
 import sempy_labs._icons as icons
@@ -348,7 +348,7 @@ def get_mirrored_database_definition(
         The mirrored database definition.
     """
 
-    return get_item_definition(
+    return _get_item_definition(
         item=mirrored_database,
         type="MirroredDatabase",
         workspace=workspace,

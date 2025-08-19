@@ -6,7 +6,7 @@ from sempy_labs._helper_functions import (
     _conv_b64,
     delete_item,
     create_item,
-    get_item_definition,
+    _get_item_definition,
     resolve_workspace_id,
 )
 from uuid import UUID
@@ -174,7 +174,7 @@ def get_eventhouse_definition(
         The eventhouse definition in .json format or as a pandas dataframe.
     """
 
-    return get_item_definition(
+    return _get_item_definition(
         item=eventhouse,
         type="Eventhouse",
         workspace=workspace,
