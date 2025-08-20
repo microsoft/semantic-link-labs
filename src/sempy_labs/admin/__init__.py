@@ -90,7 +90,10 @@ from ._tags import (
     create_tags,
     delete_tag,
 )
-from ._tenant_keys import list_tenant_keys
+from ._tenant_keys import (
+    list_tenant_keys,
+    rotate_tenant_key,
+)
 
 __all__ = [
     "list_items",
@@ -151,4 +154,5 @@ __all__ = [
     "create_tags",
     "delete_tag",
     "list_tenant_keys",
+    "rotate_tenant_key",
 ]

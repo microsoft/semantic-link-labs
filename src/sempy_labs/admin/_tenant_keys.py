@@ -5,6 +5,8 @@ from sempy_labs._helper_functions import (
     _base_api,
 )
 from sempy._utils._log import log
+from uuid import UUID
+import sempy_labs._icons as icons
 
 
 @log
@@ -55,3 +57,33 @@ def list_tenant_keys() -> pd.DataFrame:
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
+
+
+@log
+def rotate_tenant_key(tenant_key_id: UUID, key_vault_key_identifier: str):
+    """
+    Rotate the encryption key for Power BI workspaces assigned to a capacity.
+
+    This is a wrapper function for the following API: `Admin - Rotate Power BI Encryption Key <https://learn.microsoft.com/rest/api/power-bi/admin/rotate-power-bi-encryption-key>`_.
+
+    Parameters
+    ----------
+    tenant_key_id : uuid.UUID
+        The tenant key ID
+    key_vault_key_identifier : str
+        The URI that uniquely specifies the encryption key in Azure Key Vault
+    """
+
+    payload = {
+        "keyVaultKeyIdentifier": key_vault_key_identifier,
+    }
+
+    _base_api(
+        request=f"/v1.0/myorg/admin/tenantKeys/{tenant_key_id}/Default.Rotate",
+        method="post",
+        payload=payload,
+    )
+
+    print(
+        f"{icons.green_dot} The encryption key for tenant {tenant_key_id} has been rotated successfully using the '{key_vault_key_identifier}' Key Vault key identifier."
+    )
