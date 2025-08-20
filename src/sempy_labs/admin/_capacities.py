@@ -226,7 +226,7 @@ def get_capacity_state(capacity: Optional[str | UUID] = None):
 @log
 def list_capacities(
     capacity: Optional[str | UUID] = None,
-    include_tenant: bool = False,
+    include_tenant_key: bool = False,
 ) -> pd.DataFrame:
     """
     Shows the a list of capacities and their properties.
@@ -239,7 +239,7 @@ def list_capacities(
     ----------
     capacity : str | uuid.UUID, default=None
         The capacity name or ID to filter. If None, all capacities are returned.
-    include_tenant : bool, default=False
+    include_tenant_key : bool, default=False
         If True, obtains the `tenant key <https://learn.microsoft.com/rest/api/power-bi/admin/get-capacities-as-admin#example-with-expand-on-tenant-key>`_ properties.
 
     Returns
@@ -257,7 +257,7 @@ def list_capacities(
         "Admins": "list",
         "Users": "list",
     }
-    if include_tenant:
+    if include_tenant_key:
         columns.update(
             {
                 "Tenant Key Id": "string",
@@ -267,7 +267,7 @@ def list_capacities(
     df = _create_dataframe(columns=columns)
 
     url = "/v1.0/myorg/admin/capacities"
-    if include_tenant:
+    if include_tenant_key:
         url += "?$expand=tenantKey"
 
     responses = _base_api(request=url, client="fabric_sp", uses_pagination=True)
@@ -285,7 +285,7 @@ def list_capacities(
                 "Users": i.get("users", []),
             }
 
-        if include_tenant:
+        if include_tenant_key:
             tenant_key = i.get("tenantKey") or {}
             row.update(
                 {
