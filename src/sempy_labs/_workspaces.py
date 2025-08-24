@@ -390,7 +390,7 @@ def delete_workspace(workspace: Optional[str | UUID] = None):
     print(f"{icons.green_dot} The '{workspace_name}' workspace has been deleted.")
 
 
-def get_workspace_network_communication_policy(workspace: Optional[str | UUID] = None):
+def get_workspace_network_communication_policy(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Returns networking communication policy for the specified workspace. This feature is currently in preview.
 
@@ -404,6 +404,11 @@ def get_workspace_network_communication_policy(workspace: Optional[str | UUID] =
         The workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the networking communication policy for the specified workspace.
     """
 
     workspace_id = resolve_workspace_id(workspace)
