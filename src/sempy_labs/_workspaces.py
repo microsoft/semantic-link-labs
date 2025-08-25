@@ -391,7 +391,9 @@ def delete_workspace(workspace: Optional[str | UUID] = None):
 
 
 @log
-def get_workspace_network_communication_policy(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
+def get_workspace_network_communication_policy(
+    workspace: Optional[str | UUID] = None,
+) -> pd.DataFrame:
     """
     Returns networking communication policy for the specified workspace. This feature is currently in preview.
 
