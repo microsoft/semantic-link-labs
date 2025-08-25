@@ -165,7 +165,7 @@ def trace_report(
                         write_mode="overwrite",
                         lakehouse=lakehouse,
                         workspace=lakehouse_workspace,
-                        schema=schema_name,
+                        #schema=schema_name,
                     )
                 else:
                     print(
@@ -308,7 +308,7 @@ def trace_semantic_model(
                         write_mode="overwrite",
                         lakehouse=lakehouse,
                         workspace=lakehouse_workspace,
-                        schema=schema_name,
+                        #schema=schema_name,
                     )
                 else:
                     print(f"{icons.warning} No events captured.")
