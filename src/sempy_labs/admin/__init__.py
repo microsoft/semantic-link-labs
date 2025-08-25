@@ -90,6 +90,10 @@ from ._tags import (
     create_tags,
     delete_tag,
 )
+from ._sharing_links import (
+    remove_all_sharing_links,
+    remove_sharing_links,
+)
 
 __all__ = [
     "list_items",
@@ -149,4 +153,6 @@ __all__ = [
     "list_tags",
     "create_tags",
     "delete_tag",
+    "remove_all_sharing_links",
+    "remove_sharing_links",
 ]
