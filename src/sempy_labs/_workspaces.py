@@ -1,6 +1,6 @@
 import pandas as pd
 import sempy_labs._icons as icons
-from typing import Optional
+from typing import Optional, Literal
 from sempy_labs._helper_functions import (
     resolve_workspace_id,
     resolve_workspace_name_and_id,
@@ -388,3 +388,119 @@ def delete_workspace(workspace: Optional[str | UUID] = None):
     )
 
     print(f"{icons.green_dot} The '{workspace_name}' workspace has been deleted.")
+
+
+@log
+def get_workspace_network_communication_policy(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
+    """
+    Returns networking communication policy for the specified workspace. This feature is currently in preview.
+
+    This is a wrapper function for the following API: `Workspaces - Get Network Communication Policy <https://learn.microsoft.com/rest/api/fabric/core/workspaces/get-network-communication-policy>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the networking communication policy for the specified workspace.
+    """
+
+    workspace_id = resolve_workspace_id(workspace)
+
+    columns = {
+        "Inbound Public Access Rules": "string",
+        "Outbound Public Access Rules": "string",
+    }
+
+    df = _create_dataframe(columns=columns)
+
+    data = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/networking/communicationPolicy",
+        client="fabric_sp",
+    ).json()
+
+    if data:
+        df = pd.DataFrame(
+            [
+                {
+                    "Inbound Public Access Rules": data.get("inbound", {})
+                    .get("publicAccessRules", {})
+                    .get("defaultAction"),
+                    "Outbound Public Access Rules": data.get("outbound", {})
+                    .get("publicAccessRules", {})
+                    .get("defaultAction"),
+                }
+            ]
+        )
+
+    return df
+
+
+@log
+def set_workspace_network_communication_policy(
+    inbound_policy: Literal["Allow", "Deny"],
+    outbound_policy: Literal["Allow", "Deny"],
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Sets networking communication policy for the specified workspace. This API uses the PUT method and will overwrite all settings. Remaining policy will be set to default value if only partial policy is provided in the request body. Always run Get Network Communication Policy first and provide full policy in the request body. This feature is currently in preview.
+
+    This is a wrapper function for the following API: `Workspaces - Set Network Communication Policy <https://learn.microsoft.com/rest/api/fabric/core/workspaces/set-network-communication-policy>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    inbound_policy : Literal['Allow', 'Deny']
+        The policy for all inbound communications to a workspace.
+    outbound_policy : Literal['Allow', 'Deny']
+        The policy for all outbound communications to a workspace.
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    inbound_policy = inbound_policy.capitalize()
+    outbound_policy = outbound_policy.capitalize()
+
+    if inbound_policy not in ["Allow", "Deny"]:
+        raise ValueError(
+            f"{icons.red_dot} The 'inbound_policy' must be either 'Allow' or 'Deny'."
+        )
+    if outbound_policy not in ["Allow", "Deny"]:
+        raise ValueError(
+            f"{icons.red_dot} The 'outbound_policy' must be either 'Allow' or 'Deny'."
+        )
+
+    payload = {
+        "inbound": {
+            "publicAccessRules": {
+                "defaultAction": inbound_policy,
+            }
+        },
+        "outbound": {
+            "publicAccessRules": {
+                "defaultAction": outbound_policy,
+            }
+        },
+    }
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/networking/communicationPolicy",
+        client="fabric_sp",
+        payload=payload,
+        method="put",
+    )
+
+    print(
+        f"{icons.green_dot} The networking communication policy has been updated for the '{workspace_name}' workspace."
+    )
