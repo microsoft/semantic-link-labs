@@ -56,7 +56,9 @@ def get_report_json(
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (report_name, report_id) = resolve_item_name_and_id(item=report, type='Report', workspace=workspace_id)
+    (report_name, report_id) = resolve_item_name_and_id(
+        item=report, type="Report", workspace=workspace_id
+    )
 
     result = _base_api(
         request=f"/v1/workspaces/{workspace_id}/reports/{report_id}/getDefinition",
@@ -65,9 +67,9 @@ def get_report_json(
         status_codes=None,
     )
     report_json = None
-    for part in result.get('definition', {}).get('parts', {}):
-        if part.get('path') == 'report.json':
-            payload = part.get('payload')
+    for part in result.get("definition", {}).get("parts", {}):
+        if part.get("path") == "report.json":
+            payload = part.get("payload")
             report_file = _decode_b64(payload)
             report_json = json.loads(report_file)
 
