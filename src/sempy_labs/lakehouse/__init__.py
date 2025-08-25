@@ -30,6 +30,9 @@ from ._helper import (
     update_lakehouse,
     load_table,
 )
+from ._materialized_lake_views import (
+    refresh_materialized_lake_views,
+)
 
 __all__ = [
     "get_lakehouse_columns",
@@ -50,4 +53,5 @@ __all__ = [
     "delete_lakehouse",
     "update_lakehouse",
     "load_table",
+    "refresh_materialized_lake_views",
 ]
