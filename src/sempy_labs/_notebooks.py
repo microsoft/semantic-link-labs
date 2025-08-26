@@ -315,7 +315,7 @@ def list_notebooks(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     Returns
     -------
     pandas.DataFrame
-        A pandas dataframe showing the SQL endpoints within a workspace.
+        A pandas dataframe showing the notebooks within a workspace.
     """
 
     columns = {
