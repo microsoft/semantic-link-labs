@@ -406,7 +406,7 @@ def set_workspace_default_storage_format(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
 
     # Check current storage format
-    dfW = fabric.list_workspaces(filter=f"name eq '{workspace_name}'")
+    dfW = fabric.list_workspaces(filter=f"id eq '{workspace_id}'")
     if len(dfW) == 0:
         raise ValueError()
     current_storage_format = dfW["Default Dataset Storage Format"].iloc[0]
