@@ -4,6 +4,7 @@ from azure.identity import ClientSecretCredential
 from sempy._utils._log import log
 from contextlib import contextmanager
 import contextvars
+from sempy.fabric._token_provider import SynapseTokenProvider
 
 
 class ServicePrincipalTokenProvider(TokenProvider):
@@ -166,6 +167,20 @@ def _get_headers(
 token_provider = contextvars.ContextVar("token_provider", default=None)
 
 
+@contextmanager
+def set_sp(token_provider):
+    prev_func = getattr(SynapseTokenProvider, "__call__")
+
+    def new_call(self, audience='pbi'):
+        return token_provider(audience=audience)
+
+    setattr(SynapseTokenProvider, "__call__", new_call)
+    try:
+        yield
+    finally:
+        setattr(SynapseTokenProvider, "__call__", prev_func)
+
+
 @log
 @contextmanager
 def service_principal_authentication(
@@ -201,11 +216,13 @@ def service_principal_authentication(
             key_vault_client_secret=key_vault_client_secret,
         )
     )
-    try:
-        yield
-    finally:
-        # Restore the prior state
-        if prior_token is None:
-            token_provider.set(None)
-        else:
-            token_provider.set(prior_token)
+
+    with set_sp(token_provider.get()):
+        try:
+            yield
+        finally:
+            # Restore the prior state
+            if prior_token is None:
+                token_provider.set(None)
+            else:
+                token_provider.set(prior_token)
