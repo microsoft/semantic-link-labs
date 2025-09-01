@@ -284,13 +284,9 @@ def deploy_semantic_model(
         source_workspace
     )
 
-    if target_workspace is None:
-        target_workspace_name = source_workspace_name
-        target_workspace_id = resolve_workspace_id(workspace=target_workspace_name)
-    else:
-        (target_workspace_name, target_workspace_id) = resolve_workspace_name_and_id(
-            target_workspace
-        )
+    (target_workspace_name, target_workspace_id) = resolve_workspace_name_and_id(
+        target_workspace
+    )
 
     if target_dataset is None:
         target_dataset = source_dataset
@@ -306,13 +302,12 @@ def deploy_semantic_model(
 
     dfD = fabric.list_datasets(workspace=target_workspace_id, mode="rest")
     dfD_filt = dfD[dfD["Dataset Name"] == target_dataset]
-    if len(dfD_filt) > 0 and not overwrite:
+    if not dfD_filt.empty and not overwrite:
         raise ValueError(
             f"{icons.warning} The '{target_dataset}' semantic model already exists within the '{target_workspace_name}' workspace. The 'overwrite' parameter is set to False so the source semantic model was not deployed to the target destination."
         )
 
     if perspective is not None:
-
         from sempy_labs.tom import connect_semantic_model
 
         with connect_semantic_model(
