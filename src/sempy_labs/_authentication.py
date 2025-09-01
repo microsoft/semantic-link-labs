@@ -4,6 +4,7 @@ from sempy._utils._log import log
 from contextlib import contextmanager
 import contextvars
 
+
 class ServicePrincipalTokenProvider:
     """
     A class to acquire authentication token with Service Principal.
@@ -201,10 +202,11 @@ def service_principal_authentication(
     )
     try:
         from sempy.fabric import set_service_principal
+
         with set_service_principal(
             (key_vault_uri, key_vault_tenant_id),
             (key_vault_uri, key_vault_client_id),
-            client_secret=(key_vault_uri, key_vault_client_secret)
+            client_secret=(key_vault_uri, key_vault_client_secret),
         ):
             yield
     finally:

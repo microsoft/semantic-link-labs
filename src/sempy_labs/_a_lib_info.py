@@ -1,2 +1,2 @@
 lib_name = "semanticlinklabs"
-lib_version = "0.11.3"
+lib_version = "0.12.0"

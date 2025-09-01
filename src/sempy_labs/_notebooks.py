@@ -17,6 +17,7 @@ from sempy_labs._helper_functions import (
 from sempy.fabric.exceptions import FabricHTTPException
 from os import PathLike
 from uuid import UUID
+import os
 
 _notebook_prefix = "notebook-content."
 
