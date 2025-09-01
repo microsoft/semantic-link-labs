@@ -228,8 +228,8 @@ def list_item_access_details(
             f"{icons.red_dot} The parameter 'item' and 'type' are mandatory."
         )
 
-    workspace_name, workspace_id = _resolve_workspace_name_and_id(workspace)
-    item_name, item_id = _resolve_item_name_and_id(
+    (workspace_name, workspace_id) = _resolve_workspace_name_and_id(workspace)
+    (item_name, item_id) = _resolve_item_name_and_id(
         item=item, type=type, workspace=workspace_name
     )
 
