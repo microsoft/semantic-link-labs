@@ -39,7 +39,7 @@ class ConnectBase:
         timeout: Optional[int] = None,
         endpoint_type: str = "warehouse",
     ):
-        from sempy.fabric._token_provider import SynapseTokenProvider
+        from sempy.fabric._credentials import get_access_token
         import pyodbc
 
         (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -82,7 +82,7 @@ class ConnectBase:
             )
 
         # Set up the connection string
-        access_token = SynapseTokenProvider()("sql")
+        access_token = get_access_token("sql").token
         tokenstruct = _bytes2mswin_bstr(access_token.encode())
         if endpoint_type == "sqldatabase":
             conn_str = f"DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={tds_endpoint};DATABASE={resource_name}-{resource_id};Encrypt=Yes;"

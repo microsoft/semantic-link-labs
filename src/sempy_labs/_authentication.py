@@ -1,14 +1,12 @@
 from typing import Literal, Optional
-from sempy.fabric._token_provider import TokenProvider
 from azure.identity import ClientSecretCredential
 from sempy._utils._log import log
 from contextlib import contextmanager
 import contextvars
 
-
-class ServicePrincipalTokenProvider(TokenProvider):
+class ServicePrincipalTokenProvider:
     """
-    Implementation of the sempy.fabric.TokenProvider to be used with Service Principal.
+    A class to acquire authentication token with Service Principal.
 
     For more information on Service Principal see: `Application and service principal objects in Microsoft Entra ID <https://learn.microsoft.com/en-us/entra/identity-platform/app-objects-and-service-principals?tabs=browser#service-principal-object>`_
     """
@@ -20,7 +18,7 @@ class ServicePrincipalTokenProvider(TokenProvider):
     @classmethod
     def from_aad_application_key_authentication(
         cls, tenant_id: str, client_id: str, client_secret: str
-    ):
+    ) -> "ServicePrincipalTokenProvider":
         """
         Generates the ServicePrincipalTokenProvider, providing the Service Principal information.
 
@@ -37,7 +35,7 @@ class ServicePrincipalTokenProvider(TokenProvider):
 
         Returns
         -------
-        sempy.fabric.TokenProvider
+        ServicePrincipalTokenProvider
             Token provider to be used with FabricRestClient or PowerBIRestClient.
         """
         credential = ClientSecretCredential(
@@ -57,7 +55,7 @@ class ServicePrincipalTokenProvider(TokenProvider):
         key_vault_tenant_id: str,
         key_vault_client_id: str,
         key_vault_client_secret: str,
-    ):
+    ) -> "ServicePrincipalTokenProvider":
         """
         Generates the ServicePrincipalTokenProvider, providing the Azure Key Vault details.
 
@@ -76,7 +74,7 @@ class ServicePrincipalTokenProvider(TokenProvider):
 
         Returns
         -------
-        sempy.fabric.TokenProvider
+        ServicePrincipalTokenProvider
             Token provider to be used with FabricRestClient or PowerBIRestClient.
         """
 
@@ -202,7 +200,13 @@ def service_principal_authentication(
         )
     )
     try:
-        yield
+        from sempy.fabric import set_service_principal
+        with set_service_principal(
+            (key_vault_uri, key_vault_tenant_id),
+            (key_vault_uri, key_vault_client_id),
+            client_secret=(key_vault_uri, key_vault_client_secret)
+        ):
+            yield
     finally:
         # Restore the prior state
         if prior_token is None:
