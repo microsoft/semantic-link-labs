@@ -2193,17 +2193,21 @@ def _base_api(
     if (lro_return_json or lro_return_status_code) and status_codes is None:
         status_codes = [200, 202]
 
-    def get_token(audience="pbi"):
-        return notebookutils.credentials.getToken(audience)
+    class FabricDefaultCredential(TokenCredential):
+
+        def get_token(self, *scopes, **kwargs) -> AccessToken:
+            from sempy.fabric._credentials import build_access_token
+
+            return build_access_token(notebookutils.credentials.getToken("pbi"))
 
     if isinstance(status_codes, int):
         status_codes = [status_codes]
 
     if client == "fabric":
-        c = fabric.FabricRestClient(token_provider=get_token)
+        c = fabric.FabricRestClient(credential=FabricDefaultCredential())
     elif client == "fabric_sp":
-        token = auth.token_provider.get() or get_token
-        c = fabric.FabricRestClient(token_provider=token)
+        token = auth.token_provider.get() or FabricDefaultCredential()
+        c = fabric.FabricRestClient(credential=token)
     elif client in ["azure", "graph"]:
         pass
     else:
