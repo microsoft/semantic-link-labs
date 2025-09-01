@@ -391,7 +391,7 @@ def run_model_bpa(
         lakeT = get_lakehouse_tables()
         lakeT_filt = lakeT[lakeT["Table Name"] == delta_table_name]
 
-        dfExport["Severity"].replace(icons.severity_mapping, inplace=True)
+        dfExport["Severity"] = dfExport["Severity"].replace(icons.severity_mapping)
 
         if len(lakeT_filt) == 0:
             runId = 1
