@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Dict, Literal, Optional
 from azure.core.credentials import AccessToken, TokenCredential
 from azure.identity import ClientSecretCredential
 from sempy._utils._log import log
