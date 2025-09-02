@@ -19,7 +19,7 @@ class ServicePrincipalTokenProvider(TokenCredential):
         "azure": "https://management.azure.com/.default",
         "graph": "https://graph.microsoft.com/.default",
         "asazure": "https://{region}.asazure.windows.net/.default",
-        "keyvault": "https://vault.azure.net/.default"
+        "keyvault": "https://vault.azure.net/.default",
     }
 
     def __init__(self, credential: ClientSecretCredential):
@@ -152,10 +152,14 @@ class ServicePrincipalTokenProvider(TokenCredential):
             scopes = ("pbi",)
 
         region = kwargs.pop("region", None)
-        scopes = [self._get_fully_qualified_scope(scope, region=region) for scope in scopes]
+        scopes = [
+            self._get_fully_qualified_scope(scope, region=region) for scope in scopes
+        ]
         return self.credential.get_token(*scopes, **kwargs)
 
-    def _get_fully_qualified_scope(self, scope: str, region: Optional[str] = None) -> str:
+    def _get_fully_qualified_scope(
+        self, scope: str, region: Optional[str] = None
+    ) -> str:
         """
         Resolve to fully qualified scope if Fabric short-handed scope is given.
         Otherwise, return the original scope.
