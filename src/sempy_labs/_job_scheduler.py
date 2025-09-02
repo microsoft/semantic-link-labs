@@ -188,6 +188,9 @@ def list_item_schedules(
         "Times": "string",
         "Owner Id": "string",
         "Owner Type": "string",
+        "Recurrence": "int",
+        "Occurrence Type": "string",
+        "Occurrence Day of Month": "int",
     }
     df = _create_dataframe(columns=columns)
 
@@ -213,6 +216,11 @@ def list_item_schedules(
                 "Times": config.get("times"),
                 "Owner Id": own.get("id"),
                 "Owner Type": own.get("type"),
+                "Recurrence": config.get("recurrence"),
+                "Occurrence Type": config.get("occurence", {}).get("occurrenceType"),
+                "Occurrence Day of Month": config.get("occurrence", {}).get(
+                    "dayOfMonth"
+                ),
             }
         )
 
