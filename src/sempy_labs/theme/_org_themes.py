@@ -1,6 +1,6 @@
 import pandas as pd
 from uuid import UUID
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     _is_valid_uuid,
     _base_api,
     _update_dataframe_datatypes,
@@ -9,6 +9,7 @@ from .._helper_functions import (
 
 
 _pbi_url_prefix = None
+_theme_url_prefix = "metadata/v202409/organization/themes"
 
 
 def init_pbi_url_prefix():
@@ -44,7 +45,7 @@ def list_org_themes() -> pd.DataFrame:
 
     df = _create_dataframe(columns=columns)
 
-    response = _base_api(request=f"{_pbi_url_prefix}/metadata/organization/themes")
+    response = _base_api(request=f"{_pbi_url_prefix}/{_theme_url_prefix}")
 
     result = response.json().get("orgThemes")
     if result:
@@ -110,9 +111,7 @@ def get_org_theme_json(theme: str | UUID) -> dict:
     init_pbi_url_prefix()
 
     theme_id = resolve_theme_id(theme)
-    response = _base_api(
-        request=f"{_pbi_url_prefix}/metadata/organization/themes/{theme_id}"
-    )
+    response = _base_api(request=f"{_pbi_url_prefix}/{_theme_url_prefix}/{theme_id}")
     return response.json().get("themeJson", {})
 
 
@@ -124,7 +123,7 @@ def delete_org_theme(theme: str | UUID) -> None:
 
     theme_id = resolve_theme_id(theme)
     _base_api(
-        request=f"{_pbi_url_prefix}/metadata/organization/themes/{theme_id}",
+        request=f"{_pbi_url_prefix}/{_theme_url_prefix}/{theme_id}",
         method="delete",
         status_codes=204,
     )
