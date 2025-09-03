@@ -103,7 +103,7 @@ def report_rebind_all(
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     report_workspace : str | uuid.UUID | List[str | uuid.UUID], default=None
-        The name(s) of the Fabric workspace(s) in which the report(s) reside(s).
+        The name(s) or IDs of the Fabric workspace(s) in which the report(s) reside(s).
         Defaults to None which finds all reports in all workspaces which use the semantic model and rebinds them to
         the new semantic model.
     """
