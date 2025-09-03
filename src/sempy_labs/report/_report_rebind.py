@@ -80,7 +80,7 @@ def report_rebind_all(
     dataset: str,
     new_dataset: str,
     dataset_workspace: Optional[str] = None,
-    new_dataset_workpace: Optional[str] = None,
+    new_dataset_workspace: Optional[str] = None,
     report_workspace: Optional[str | List[str]] = None,
 ):
     """
@@ -148,5 +148,5 @@ def report_rebind_all(
             report=rpt_name,
             dataset=new_dataset,
             report_workspace=rpt_wksp,
-            dataset_workspace=new_dataset_workpace,
+            dataset_workspace=new_dataset_workspace,
         )
