@@ -285,16 +285,16 @@ def list_capacities(
                 "Users": i.get("users", []),
             }
 
-        if include_tenant_key:
-            tenant_key = i.get("tenantKey") or {}
-            row.update(
-                {
-                    "Tenant Key Id": tenant_key.get("id"),
-                    "Tenant Key Name": tenant_key.get("name"),
-                }
-            )
+            if include_tenant_key:
+                tenant_key = i.get("tenantKey") or {}
+                row.update(
+                    {
+                        "Tenant Key Id": tenant_key.get("id"),
+                        "Tenant Key Name": tenant_key.get("name"),
+                    }
+                )
 
-        rows.append(row)
+            rows.append(row)
 
     if rows:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
