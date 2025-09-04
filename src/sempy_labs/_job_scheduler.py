@@ -8,6 +8,7 @@ from sempy_labs._helper_functions import (
     _base_api,
     _create_dataframe,
     resolve_workspace_id,
+    resolve_item_id,
 )
 from uuid import UUID
 import sempy_labs._icons as icons
@@ -171,11 +172,9 @@ def list_item_schedules(
     """
 
     workspace_id = resolve_workspace_id(workspace)
-    (item_name, item_id) = resolve_item_name_and_id(
-        item=item, type=type, workspace=workspace_id
-    )
+    item_id = resolve_item_id(item=item, type=type, workspace=workspace_id)
 
-    columns = {
+    base_columns = {
         "Job Schedule Id": "string",
         "Enabled": "bool",
         "Created Date Time": "datetime",
@@ -188,41 +187,69 @@ def list_item_schedules(
         "Times": "string",
         "Owner Id": "string",
         "Owner Type": "string",
-        "Recurrence": "int",
+        "Recurrence": "int_fillna",
         "Occurrence Type": "string",
-        "Occurrence Day of Month": "int",
     }
-    df = _create_dataframe(columns=columns)
+
+    # optional columns
+    day_of_month_columns = {
+        "Occurrence Day of Month": "int_fillna",
+    }
+    ordinal_weekday_columns = {
+        "Occurrence Week Index": "string",
+        "Occurrence Weekday": "string",
+    }
+
+    rows = []
+    extra_cols_needed = set()
 
     response = _base_api(
         request=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/{job_type}/schedules"
     )
 
-    rows = []
     for v in response.json().get("value", []):
         config = v.get("configuration", {})
         own = v.get("owner", {})
-        rows.append(
-            {
-                "Job Schedule Id": v.get("id"),
-                "Enabled": v.get("enabled"),
-                "Created Date Time": v.get("createdDateTime"),
-                "Start Date Time": config.get("startDateTime"),
-                "End Date Time": config.get("endDateTime"),
-                "Local Time Zone Id": config.get("localTimeZoneId"),
-                "Type": config.get("type"),
-                "Interval": config.get("interval"),
-                "Weekdays": config.get("weekdays"),
-                "Times": config.get("times"),
-                "Owner Id": own.get("id"),
-                "Owner Type": own.get("type"),
-                "Recurrence": config.get("recurrence"),
-                "Occurrence Type": config.get("occurence", {}).get("occurrenceType"),
-                "Occurrence Day of Month": config.get("occurrence", {}).get(
-                    "dayOfMonth"
-                ),
-            }
-        )
+        occurrence = config.get("occurrence", {})
+        occurrence_type = occurrence.get("occurrenceType")
+
+        row = {
+            "Job Schedule Id": v.get("id"),
+            "Enabled": v.get("enabled"),
+            "Created Date Time": v.get("createdDateTime"),
+            "Start Date Time": config.get("startDateTime"),
+            "End Date Time": config.get("endDateTime"),
+            "Local Time Zone Id": config.get("localTimeZoneId"),
+            "Type": config.get("type"),
+            "Interval": config.get("interval"),
+            "Weekdays": config.get("weekdays"),
+            "Times": config.get("times"),
+            "Owner Id": own.get("id"),
+            "Owner Type": own.get("type"),
+            "Recurrence": config.get("recurrence"),
+            "Occurrence Type": occurrence_type,
+        }
+
+        if occurrence_type == "DayOfMonth":
+            row["Occurrence Day of Month"] = occurrence.get("dayOfMonth")
+            extra_cols_needed.update(day_of_month_columns.keys())
+
+        elif occurrence_type == "OrdinalWeekday":
+            row["Occurrence Week Index"] = occurrence.get("weekIndex")
+            row["Occurrence Weekday"] = occurrence.get("weekday")
+            extra_cols_needed.update(ordinal_weekday_columns.keys())
+
+        rows.append(row)
+
+    # Build final column map based on what was actually present
+    columns = base_columns.copy()
+    if "Occurrence Day of Month" in extra_cols_needed:
+        columns.update(day_of_month_columns)
+    if (
+        "Occurrence Week Index" in extra_cols_needed
+        or "Occurrence Weekday" in extra_cols_needed
+    ):
+        columns.update(ordinal_weekday_columns)
 
     if rows:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
