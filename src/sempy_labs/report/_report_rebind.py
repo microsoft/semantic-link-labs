@@ -113,7 +113,9 @@ def report_rebind_all(
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(
         dataset=dataset, workspace=dataset_workspace
     )
-    (new_dataset_name, new_dataset_id) = resolve_dataset_name_and_id(dataset=new_dataset, workspace=new_dataset_workspace)
+    (new_dataset_name, new_dataset_id) = resolve_dataset_name_and_id(
+        dataset=new_dataset, workspace=new_dataset_workspace
+    )
 
     if dataset_id == new_dataset_id:
         raise ValueError(
@@ -139,10 +141,15 @@ def report_rebind_all(
     if report_workspace is None:
         dfR_filt = dfR.copy()
     else:
-        dfR_filt = dfR[(dfR["Report Workspace Name"].isin(report_workspace)) | (dfR["Report Workspace ID"].isin(report_workspace))]
+        dfR_filt = dfR[
+            (dfR["Report Workspace Name"].isin(report_workspace))
+            | (dfR["Report Workspace ID"].isin(report_workspace))
+        ]
 
     if dfR_filt.empty:
-        print(f"{icons.info} No reports found for the '{dataset_name}' semantic model within the '{dataset_workspace_name}' workspace.")
+        print(
+            f"{icons.info} No reports found for the '{dataset_name}' semantic model within the '{dataset_workspace_name}' workspace."
+        )
         return
 
     for _, r in dfR_filt.iterrows():
