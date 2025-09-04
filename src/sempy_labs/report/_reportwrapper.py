@@ -2069,8 +2069,8 @@ class ReportWrapper:
         df = dfCV[dfCV["Used in Report"] == False]
 
         if not df.empty:
-            cv_remove = df["Custom Visual Name"].values()
-            cv_remove_display = df["Custom Visual Display Name"].values()
+            cv_remove = df["Custom Visual Name"].values
+            cv_remove_display = df["Custom Visual Display Name"].values
         else:
             print(
                 f"{icons.red_dot} There are no unnecessary custom visuals in the '{self._report_name}' report within the '{self._workspace_name}' workspace."
