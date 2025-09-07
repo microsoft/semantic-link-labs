@@ -7,6 +7,8 @@ from ._groups import (
     resolve_group_id,
     renew_group,
     create_group,
+    delete_group,
+    update_group,
 )
 from ._users import (
     resolve_user_id,
@@ -14,6 +16,8 @@ from ._users import (
     list_users,
     send_mail,
     create_user,
+    delete_user,
+    update_user,
 )
 from ._teams import (
     list_teams,
@@ -34,4 +38,8 @@ __all__ = [
     "list_teams",
     "create_user",
     "create_group",
+    "delete_user",
+    "delete_group",
+    "update_user",
+    "update_group",
 ]

@@ -496,3 +496,86 @@ def create_group(
     )
 
     print(f"{icons.green_dot} The '{display_name}' group has been created.")
+
+
+@log
+def delete_group(group: str | UUID):
+    """
+    Deletes a group.
+
+    This is a wrapper function for the following API: `Delete group <https://learn.microsoft.com/graph/api/group-delete>`_.
+
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    group : str | uuid.UUID
+        The group name or ID.
+    """
+
+    group_id = resolve_group_id(group)
+
+    _base_api(
+        request=f"groups/{group_id}",
+        client="graph",
+        status_codes=204,
+        method="delete",
+    )
+
+    print(f"{icons.green_dot} The '{group}' group has been deleted successfully.")
+
+
+@log
+def update_group(
+    group: str | UUID,
+    display_name: Optional[str] = None,
+    mail_nickname: Optional[str] = None,
+    description: Optional[str] = None,
+    security_enabled: Optional[bool] = None,
+):
+    """
+    Updates a group's properties.
+
+    This is a wrapper function for the following API: `Update group <https://learn.microsoft.com/en-us/graph/api/group-update>`_.
+
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    group : str | uuid.UUID
+        The group name or ID.
+    display_name : str, default=None
+        The new display name for the group.
+    mail_nickname : str, default=None
+        The new mail nickname for the group.
+    description : str, default=None
+        The new description for the group.
+    security_enabled : bool, default=None
+        Whether the group is security-enabled.
+    """
+
+    group_id = resolve_group_id(group)
+
+    payload = {}
+    if display_name:
+        payload["displayName"] = display_name
+    if mail_nickname:
+        payload["mailNickname"] = mail_nickname
+    if description:
+        payload["description"] = description
+    if security_enabled is not None and isinstance(security_enabled, bool):
+        payload["securityEnabled"] = security_enabled
+
+    if not payload:
+        print(f"{icons.info} No properties to update.")
+        return
+
+    _base_api(
+        request=f"groups/{group_id}",
+        client="graph",
+        status_codes=204,
+        payload=payload,
+        method="patch",
+    )
+
+    print(f"{icons.green_dot} The '{group}' group has been updated successfully.")
