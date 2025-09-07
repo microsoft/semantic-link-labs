@@ -1,6 +1,6 @@
 import pandas as pd
 from uuid import UUID
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     _is_valid_uuid,
     _base_api,
     _create_dataframe,
@@ -8,7 +8,7 @@ from .._helper_functions import (
 )
 from sempy._utils._log import log
 import sempy_labs._icons as icons
-from typing import List, Literal
+from typing import List, Literal, Optional
 
 
 @log
@@ -424,3 +424,75 @@ def renew_group(group: str | UUID):
     )
 
     print(f"{icons.green_dot} The '{group}' group has been renewed.")
+
+
+@log
+def create_group(
+    display_name: str,
+    description: Optional[str] = None,
+    mail_enabled: bool = False,
+    security_enabled: bool = True,
+    mail_nickname: str = None,
+    owners: Optional[str | UUID | List[str | UUID]] = None,
+    members: Optional[str | UUID | List[str | UUID]] = None,
+):
+    """
+    Creates a new group.
+
+    This is a wrapper function for the following API: `Create group <https://learn.microsoft.com/graph/api/group-post-groups>`_.
+
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    display_name : str
+        The name of the group.
+    description : str, optional
+        The description of the group.
+    mail_enabled : bool, default=False
+        Whether the group is mail-enabled.
+    security_enabled : bool, default=True
+        Whether the group is security-enabled.
+    mail_nickname : str, default=None
+        The mail alias for the group.
+    owners : str | uuid.UUID | List[str | uuid.UUID], default=None
+        The owners of the group.
+    members : str | uuid.UUID | List[str | uuid.UUID], default=None
+        The members of the group.
+    """
+    from sempy_labs.graph._users import resolve_user_id
+
+    payload = {
+        "displayName": display_name,
+        "description": description,
+        "mailEnabled": mail_enabled,
+        "securityEnabled": security_enabled,
+        "mailNickname": mail_nickname,
+    }
+
+    if owners:
+        if isinstance(owners, str):
+            owners = [owners]
+        user_list = []
+        for o in owners:
+            user_id = resolve_user_id(o)
+            user_list.append(f"https://graph.microsoft.com/v1.0/users/{user_id}")
+        payload["owners@odata.bind"] = user_list
+    if members:
+        if isinstance(members, str):
+            members = [members]
+        user_list = []
+        for m in members:
+            user_id = resolve_user_id(m)
+            user_list.append(f"https://graph.microsoft.com/v1.0/users/{user_id}")
+        payload["members@odata.bind"] = user_list
+
+    _base_api(
+        request="groups",
+        client="graph",
+        payload=payload,
+        method="post",
+        status_codes=201,
+    )
+
+    print(f"{icons.green_dot} The '{display_name}' group has been created.")

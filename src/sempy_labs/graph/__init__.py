@@ -6,12 +6,14 @@ from ._groups import (
     add_group_owners,
     resolve_group_id,
     renew_group,
+    create_group,
 )
 from ._users import (
     resolve_user_id,
     get_user,
     list_users,
     send_mail,
+    create_user,
 )
 from ._teams import (
     list_teams,
@@ -30,4 +32,6 @@ __all__ = [
     "list_users",
     "send_mail",
     "list_teams",
+    "create_user",
+    "create_group",
 ]

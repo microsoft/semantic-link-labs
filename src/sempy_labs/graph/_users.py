@@ -301,3 +301,57 @@ def send_mail(
     if attachments:
         printout += f" with {len(attachments)} attachment(s)"
     print(f"{printout}.")
+
+
+@log
+def create_user(
+    display_name: str,
+    user_principal_name: str,
+    mail_nickname: str,
+    password: str,
+    account_enabled: bool = True,
+    force_change_password_next_sign_in: bool = True,
+):
+    """
+    Creates a new user.
+
+    This is a wrapper function for the following API: `Create User <https://learn.microsoft.com/graph/api/user-post-users>`_.
+
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    display_name : str
+        The name to display in the address book for the user.
+    user_principal_name : str
+        The user principal name (someuser@contoso.com).
+    mail_nickname : str
+        The mail alias for the user.
+    password : str
+        The initial password for the user.
+    account_enabled : bool, default=True
+        Whether the account is enabled. Default is True.
+    force_change_password_next_sign_in : bool, default=True
+        Whether the user must change their password on next sign-in. Default is True.
+    """
+
+    payload = {
+        "accountEnabled": account_enabled,
+        "displayName": display_name,
+        "mailNickname": mail_nickname,
+        "userPrincipalName": user_principal_name,
+        "passwordProfile": {
+            "forceChangePasswordNextSignIn": force_change_password_next_sign_in,
+            "password": password,
+        },
+    }
+
+    _base_api(
+        request="users",
+        client="graph",
+        status_codes=201,
+        payload=payload,
+        method="post",
+    )
+
+    print(f"{icons.green_dot} The '{display_name}' user has been created successfully.")
