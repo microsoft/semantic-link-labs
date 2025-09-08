@@ -396,17 +396,22 @@ def list_shortcuts(
             # Cache and use it to getitem type and name
             source_item_type = None
             source_item_name = None
-            dfI = source_items_df[
-                source_items_df["Workspace Id"] == source_workspace_id
-            ]
-            if dfI.empty:
-                dfI = fabric.list_items(workspace=source_workspace_id)
-                source_items_df = pd.concat([source_items_df, dfI], ignore_index=True)
+            try:
+                dfI = source_items_df[
+                    source_items_df["Workspace Id"] == source_workspace_id
+                ]
+                if dfI.empty:
+                    dfI = fabric.list_items(workspace=source_workspace_id)
+                    source_items_df = pd.concat(
+                        [source_items_df, dfI], ignore_index=True
+                    )
 
-            dfI_filt = dfI[dfI["Id"] == source_item_id]
-            if not dfI_filt.empty:
-                source_item_type = dfI_filt["Type"].iloc[0]
-                source_item_name = dfI_filt["Display Name"].iloc[0]
+                dfI_filt = dfI[dfI["Id"] == source_item_id]
+                if not dfI_filt.empty:
+                    source_item_type = dfI_filt["Type"].iloc[0]
+                    source_item_name = dfI_filt["Display Name"].iloc[0]
+            except Exception:
+                pass
 
             rows.append(
                 {
