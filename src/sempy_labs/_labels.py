@@ -5,6 +5,9 @@ from typing import Optional, Union
 from uuid import UUID
 from sempy.fabric.exceptions import FabricHTTPException
 from sempy._utils._log import log
+from sempy_labs._helper_functions import (
+    _get_url_prefix,
+)
 
 
 @log
@@ -87,12 +90,7 @@ def list_item_labels(workspace: Optional[Union[str, UUID]] = None) -> pd.DataFra
     if artifact_ids:
         payload["artifacts"] = [{"artifactId": i} for i in artifact_ids]
 
-    client = fabric.PowerBIRestClient()
-    response = client.get("/v1.0/myorg/capacities")
-    if response.status_code != 200:
-        raise FabricHTTPException("Failed to retrieve URL prefix.")
-    context = response.json().get("@odata.context")
-    prefix = context.split("/v1.0")[0]
+    prefix = _get_url_prefix()
 
     response = requests.post(
         f"{prefix}/metadata/informationProtection/artifacts",
