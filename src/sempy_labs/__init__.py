@@ -347,6 +347,9 @@ from ._vertipaq import (
 from ._user_delegation_key import (
     get_user_delegation_key,
 )
+from ._data_access_security import (
+    list_data_access_roles,
+)
 
 __all__ = [
     "resolve_warehouse_id",
@@ -599,4 +602,5 @@ __all__ = [
     "get_item_definition",
     "get_workspace_network_communication_policy",
     "set_workspace_network_communication_policy",
+    "list_data_access_roles",
 ]
