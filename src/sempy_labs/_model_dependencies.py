@@ -334,7 +334,10 @@ def measure_dependency_tree(
 
     # Visualize the tree structure using RenderTree
     for pre, _, node in RenderTree(node_dict[measure_name]):
-        if hasattr(node, "custom_property") and icons.table_icon in node.custom_property:
+        if (
+            hasattr(node, "custom_property")
+            and icons.table_icon in node.custom_property
+        ):
             print(f"{pre}{node.custom_property}'{node.name}'")
         else:
             print(f"{pre}'{node.name}'")
