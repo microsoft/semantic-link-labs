@@ -935,9 +935,6 @@ class ReportWrapper:
         """
         Shows a list of all modified `visual interactions <https://learn.microsoft.com/power-bi/create-reports/service-reports-visual-interactions?tabs=powerbi-desktop>`_ used in the report.
 
-        Parameters
-        ----------
-
         Returns
         -------
         pandas.DataFrame
@@ -974,6 +971,56 @@ class ReportWrapper:
                         "Type": vizIntType,
                     }
                 )
+
+        if rows:
+            df = pd.DataFrame(rows, columns=list(columns.keys()))
+
+        return df
+
+    def list_visual_calculations(self) -> pd.DataFrame:
+        """
+        Shows a list of all `visual calculations <https://learn.microsoft.com/power-bi/transform-model/desktop-visual-calculations-overview>`_.
+
+        Returns
+        -------
+        pandas.DataFrame
+            A pandas dataframe containing a list of all visual calculations within the report.
+        """
+
+        self._ensure_pbir()
+
+        columns = {
+            "Page Display Name": "str",
+            "Visual Name": "str",
+            "Name": "str",
+            "Language": "str",
+            "Expression": "str",
+        }
+
+        df = _create_dataframe(columns=columns)
+        visual_mapping = self._visual_page_mapping()
+
+        rows = []
+        for v in self.__all_visuals():
+            path = v.get("path")
+            payload = v.get("payload")
+            page_name = visual_mapping.get(path)[0]
+            page_display_name = visual_mapping.get(path)[1]
+            visual_name = payload.get("name")
+            matches = parse("$..field.NativeVisualCalculation").find(payload)
+            if matches:
+                for match in matches:
+                    m = match.value
+                    rows.append(
+                        {
+                            "Page Display Name": page_display_name,
+                            "Page Name": page_name,
+                            "Visual Name": visual_name,
+                            "Name": m.get("Name"),
+                            "Language": m.get("Language"),
+                            "Expression": m.get("Expression"),
+                        }
+                    )
 
         if rows:
             df = pd.DataFrame(rows, columns=list(columns.keys()))
