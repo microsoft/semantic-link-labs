@@ -6,7 +6,7 @@ import os
 import json
 from datetime import datetime
 from decimal import Decimal
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     format_dax_object_name,
     generate_guid,
     _make_list_unique,
@@ -17,10 +17,11 @@ from .._helper_functions import (
     resolve_item_id,
     resolve_lakehouse_id,
     _validate_weight,
+    _get_url_prefix,
 )
-from .._list_functions import list_relationships
-from .._refresh_semantic_model import refresh_semantic_model
-from ..directlake._dl_helper import check_fallback_reason
+from sempy_labs._list_functions import list_relationships
+from sempy_labs._refresh_semantic_model import refresh_semantic_model
+from sempy_labs.directlake._dl_helper import check_fallback_reason
 from contextlib import contextmanager
 from typing import List, Iterator, Optional, Union, TYPE_CHECKING, Literal
 from sempy._utils._log import log
@@ -28,7 +29,9 @@ import sempy_labs._icons as icons
 import ast
 from uuid import UUID
 import sempy_labs._authentication as auth
-from ..lakehouse._lakehouse import lakehouse_attached
+from sempy_labs.lakehouse._lakehouse import lakehouse_attached
+import requests
+from sempy.fabric.exceptions import FabricHTTPException
 
 
 if TYPE_CHECKING:
@@ -4601,7 +4604,11 @@ class TOMWrapper:
         pandas.DataFrame
             A pandas dataframe showing the updated measure(s) and their new description(s).
         """
+        import notebookutils
+
         icons.sll_tags.append("GenerateMeasureDescriptions")
+
+        prefix = _get_url_prefix()
 
         df = pd.DataFrame(
             columns=["Table Name", "Measure Name", "Expression", "Description"]
@@ -4655,11 +4662,17 @@ class TOMWrapper:
                     "modelItems"
                 ].append(new_item)
 
-            response = _base_api(
-                request="/explore/v202304/nl2nl/completions",
-                method="post",
-                payload=payload,
+            token = notebookutils.credentials.getToken("pbi")
+            headers = {"Authorization": f"Bearer {token}"}
+            response = requests.post(
+                f"{prefix}/explore/v202304/nl2nl/completions",
+                headers=headers,
+                json=payload,
             )
+            if response.status_code != 200:
+                raise FabricHTTPException(
+                    f"Failed to retrieve descriptions: {response.text}"
+                )
 
             for item in response.json().get("modelItems", []):
                 ms_name = item["urn"]

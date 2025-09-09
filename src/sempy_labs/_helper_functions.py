@@ -2758,3 +2758,14 @@ def remove_json_value(path: str, payload: dict, json_path: str, verbose: bool = 
                     print(f"{icons.green_dot} Removed index [{index}] from '{path}'.")
 
     return payload
+
+
+def _get_url_prefix() -> str:
+
+    client = fabric.PowerBIRestClient()
+    response = client.get("/v1.0/myorg/capacities")
+    if response.status_code != 200:
+        raise FabricHTTPException("Failed to retrieve URL prefix.")
+    context = response.json().get("@odata.context")
+
+    return context.split("/v1.0")[0]
