@@ -94,6 +94,10 @@ from ._tenant_keys import (
     list_tenant_keys,
     rotate_tenant_key,
 )
+from ._sharing_links import (
+    remove_all_sharing_links,
+    remove_sharing_links,
+)
 
 __all__ = [
     "list_items",
@@ -155,4 +159,6 @@ __all__ = [
     "delete_tag",
     "list_tenant_keys",
     "rotate_tenant_key",
+    "remove_all_sharing_links",
+    "remove_sharing_links",
 ]
