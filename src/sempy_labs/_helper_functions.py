@@ -303,6 +303,7 @@ def create_item(
         payload=payload,
         status_codes=[201, 202],
         lro_return_status_code=True,
+        client='fabric_sp',
     )
     print(
         f"{icons.green_dot} The '{name}' {item_type} has been successfully created within the '{workspace_name}' workspace."
@@ -407,7 +408,7 @@ def copy_item(
         # Get the existing source model
         if type == "Report" and keep_existing_bindings:
             result = _base_api(
-                request=f"v1.0/myorg/groups/{target_workspace_id}/reports/{target_item_id}"
+                request=f"v1.0/myorg/groups/{target_workspace_id}/reports/{target_item_id}", client='fabric_sp',
             ).json()
             dataset_id = result.get("datasetId")
             dataset_workspace_id = result.get("datasetWorkspaceId")
@@ -524,6 +525,7 @@ def get_item_definition(
         method="post",
         status_codes=None,
         lro_return_json=True,
+        client='fabric_sp'
     )
 
     if return_dataframe:
@@ -574,6 +576,7 @@ def _get_item_definition(
         method="post",
         status_codes=None,
         lro_return_json=True,
+        client='fabric_sp',
     )
 
     if return_dataframe:
