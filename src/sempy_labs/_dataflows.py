@@ -333,7 +333,6 @@ def get_dataflow_definition(
         result = _base_api(
             request=f"/v1.0/myorg/groups/{workspace_id}/dataflows/{dataflow_id}",
             client="fabric_sp",
-            method="get",
         ).json()
 
         return result

@@ -2,6 +2,7 @@ import pandas as pd
 from typing import Optional
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
+    resolve_workspace_id,
     _decode_b64,
     _base_api,
     resolve_item_id,
@@ -19,6 +20,8 @@ def list_data_pipelines(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     Shows the data pipelines within a workspace.
 
     This is a wrapper function for the following API: `Items - List Data Pipelines <https://learn.microsoft.com/rest/api/fabric/datapipeline/items/list-data-pipelines>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -40,20 +43,26 @@ def list_data_pipelines(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     }
     df = _create_dataframe(columns=columns)
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
 
     responses = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/dataPipelines", uses_pagination=True
+        request=f"/v1/workspaces/{workspace_id}/dataPipelines",
+        uses_pagination=True,
+        client="fabric_sp",
     )
 
+    rows = []
     for r in responses:
         for v in r.get("value", []):
-            new_data = {
-                "Data Pipeline Name": v.get("displayName"),
-                "Data Pipeline ID": v.get("id"),
-                "Description": v.get("description"),
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            rows.append(
+                {
+                    "Data Pipeline Name": v.get("displayName"),
+                    "Data Pipeline ID": v.get("id"),
+                    "Description": v.get("description"),
+                }
+            )
+    if rows:
+        df = pd.DataFrame(rows, columns=columns.keys())
 
     return df
 
@@ -66,6 +75,8 @@ def create_data_pipeline(
     Creates a Fabric data pipeline.
 
     This is a wrapper function for the following API: `Items - Create Data Pipeline <https://learn.microsoft.com/rest/api/fabric/datapipeline/items/create-data-pipeline>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -90,6 +101,8 @@ def delete_data_pipeline(name: str | UUID, workspace: Optional[str | UUID] = Non
     Deletes a Fabric data pipeline.
 
     This is a wrapper function for the following API: `Items - Delete Data Pipeline <https://learn.microsoft.com/rest/api/fabric/datapipeline/items/delete-data-pipeline>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -130,7 +143,7 @@ def get_data_pipeline_definition(
         A pandas dataframe showing the data pipelines within a workspace.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
 
     item_id = resolve_item_id(item=name, type="DataPipeline", workspace=workspace)
     result = _base_api(
@@ -138,6 +151,7 @@ def get_data_pipeline_definition(
         method="post",
         lro_return_json=True,
         status_codes=None,
+        client="fabric_sp",
     )
     df = pd.json_normalize(result["definition"]["parts"])
 

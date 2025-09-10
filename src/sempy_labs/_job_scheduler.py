@@ -114,7 +114,7 @@ def _get_item_job_instance(url: str) -> pd.DataFrame:
     }
     df = _create_dataframe(columns=columns)
 
-    response = _base_api(request=url)
+    response = _base_api(request=url, client="fabric_sp")
 
     rows = []
     for v in response.json().get("value", []):
@@ -198,7 +198,8 @@ def list_item_schedules(
     }
 
     response = _base_api(
-        request=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/{job_type}/schedules"
+        request=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/{job_type}/schedules",
+        client="fabric_sp",
     )
 
     rows = []
@@ -292,6 +293,7 @@ def run_on_demand_item_job(
         method="post",
         lro_return_status_code=True,
         status_codes=202,
+        client="fabric_sp",
     )
 
     print(f"{icons.green_dot} The '{item_name}' {type.lower()} has been executed.")
@@ -359,6 +361,7 @@ def create_item_schedule_cron(
         method="post",
         payload=payload,
         status_codes=201,
+        client="fabric_sp",
     )
 
     print(
@@ -428,6 +431,7 @@ def create_item_schedule_daily(
         method="post",
         payload=payload,
         status_codes=201,
+        client="fabric_sp",
     )
 
     print(
@@ -517,6 +521,7 @@ def create_item_schedule_weekly(
         method="post",
         payload=payload,
         status_codes=201,
+        client="fabric_sp",
     )
 
     print(

@@ -17,6 +17,8 @@ def list_deployment_pipelines() -> pd.DataFrame:
 
     This is a wrapper function for the following API: `Deployment Pipelines - List Deployment Pipelines <https://learn.microsoft.com/rest/api/fabric/core/deployment-pipelines/list-deployment-pipelines>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Returns
     -------
     pandas.DataFrame
@@ -34,16 +36,22 @@ def list_deployment_pipelines() -> pd.DataFrame:
         request="/v1/deploymentPipelines",
         status_codes=200,
         uses_pagination=True,
+        client="fabric_sp",
     )
 
+    rows = []
     for r in responses:
         for v in r.get("value", []):
-            new_data = {
-                "Deployment Pipeline Id": v.get("id"),
-                "Deployment Pipeline Name": v.get("displayName"),
-                "Description": v.get("description"),
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            rows.append(
+                {
+                    "Deployment Pipeline Id": v.get("id"),
+                    "Deployment Pipeline Name": v.get("displayName"),
+                    "Description": v.get("description"),
+                }
+            )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=columns.keys())
 
     return df
 
@@ -54,6 +62,8 @@ def list_deployment_pipeline_stages(deployment_pipeline: str | UUID) -> pd.DataF
     Shows the specified deployment pipeline stages.
 
     This is a wrapper function for the following API: `Deployment Pipelines - List Deployment Pipeline Stages <https://learn.microsoft.com/rest/api/fabric/core/deployment-pipelines/list-deployment-pipeline-stages>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -87,22 +97,26 @@ def list_deployment_pipeline_stages(deployment_pipeline: str | UUID) -> pd.DataF
         request=f"/v1/deploymentPipelines/{deployment_pipeline_id}/stages",
         status_codes=200,
         uses_pagination=True,
+        client="fabric_sp",
     )
 
+    rows = []
     for r in responses:
         for v in r.get("value", []):
-            new_data = {
-                "Deployment Pipeline Stage Id": v.get("id"),
-                "Deployment Pipeline Stage Name": v.get("displayName"),
-                "Description": v.get("description"),
-                "Order": v.get("order"),
-                "Workspace Id": v.get("workspaceId"),
-                "Workspace Name": v.get("workspaceName"),
-                "Public": v.get("isPublic"),
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+            rows.append(
+                {
+                    "Deployment Pipeline Stage Id": v.get("id"),
+                    "Deployment Pipeline Stage Name": v.get("displayName"),
+                    "Description": v.get("description"),
+                    "Order": v.get("order"),
+                    "Workspace Id": v.get("workspaceId"),
+                    "Workspace Name": v.get("workspaceName"),
+                    "Public": v.get("isPublic"),
+                }
+            )
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+        _update_dataframe_datatypes(df, columns)
 
     return df
 
@@ -116,6 +130,8 @@ def list_deployment_pipeline_stage_items(
     Shows the supported items from the workspace assigned to the specified stage of the specified deployment pipeline.
 
     This is a wrapper function for the following API: `Deployment Pipelines - List Deployment Pipeline Stage Items <https://learn.microsoft.com/rest/api/fabric/core/deployment-pipelines/list-deployment-pipeline-stage-items>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -170,18 +186,24 @@ def list_deployment_pipeline_stage_items(
         request=f"/v1/deploymentPipelines/{deployment_pipeline_id}/stages/{stage_id}/items",
         status_codes=200,
         uses_pagination=True,
+        client="fabric_sp",
     )
 
+    rows = []
     for r in responses:
         for v in r.get("value", []):
-            new_data = {
-                "Deployment Pipeline Stage Item Id": v.get("itemId"),
-                "Deployment Pipeline Stage Item Name": v.get("itemDisplayName"),
-                "Item Type": v.get("itemType"),
-                "Source Item Id": v.get("sourceItemId"),
-                "Target Item Id": v.get("targetItemId"),
-                "Last Deployment Time": v.get("lastDeploymentTime"),
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            rows.append(
+                {
+                    "Deployment Pipeline Stage Item Id": v.get("itemId"),
+                    "Deployment Pipeline Stage Item Name": v.get("itemDisplayName"),
+                    "Item Type": v.get("itemType"),
+                    "Source Item Id": v.get("sourceItemId"),
+                    "Target Item Id": v.get("targetItemId"),
+                    "Last Deployment Time": v.get("lastDeploymentTime"),
+                }
+            )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df

@@ -19,6 +19,8 @@ def list_eventstreams(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
     This is a wrapper function for the following API: `Items - List Eventstreams <https://learn.microsoft.com/rest/api/fabric/environment/items/list-eventstreams>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     workspace : str | uuid.UUID, default=None
@@ -41,7 +43,9 @@ def list_eventstreams(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
     workspace_id = resolve_workspace_id(workspace)
     responses = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/eventstreams", uses_pagination=True
+        request=f"/v1/workspaces/{workspace_id}/eventstreams",
+        uses_pagination=True,
+        client="fabric_sp",
     )
 
     rows = []
@@ -70,6 +74,8 @@ def create_eventstream(
 
     This is a wrapper function for the following API: `Items - Create Eventstream <https://learn.microsoft.com/rest/api/fabric/environment/items/create-eventstream>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     name: str
@@ -95,6 +101,8 @@ def delete_eventstream(
     Deletes a Fabric eventstream.
 
     This is a wrapper function for the following API: `Items - Delete Eventstream <https://learn.microsoft.com/rest/api/fabric/environment/items/delete-eventstream>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
