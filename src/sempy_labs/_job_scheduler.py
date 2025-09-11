@@ -229,7 +229,7 @@ def list_item_schedules(
             row["Times"] = config.get("times")
             row["Weekdays"] = config.get("weekdays")
         elif type == "Monthly":
-            occurrence_type = occurrence.get("type")
+            occurrence_type = occurrence.get("occurrenceType")
             row["Times"] = config.get("times")
             row["Recurrence"] = config.get("recurrence")
             row["Occurrence Type"] = occurrence_type
