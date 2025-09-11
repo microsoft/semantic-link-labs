@@ -1698,7 +1698,7 @@ class ReportWrapper:
         bookmarks = [
             o
             for o in self._report_definition.get("parts")
-            if o.get("path").endswith("/bookmark.json")
+            if o.get("path").endswith(".bookmark.json")
         ]
 
         rows = []
