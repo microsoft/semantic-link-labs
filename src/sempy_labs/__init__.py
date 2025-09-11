@@ -101,6 +101,9 @@ from ._warehouses import (
     get_warehouse_columns,
     get_warehouse_tables,
     get_warehouse_connection_string,
+    get_warehouse_sql_audit_settings,
+    update_warehouse_sql_audit_settings,
+    set_warehouse_audit_actions_and_group,
 )
 from ._data_pipelines import (
     list_data_pipelines,
@@ -605,4 +608,7 @@ __all__ = [
     "set_workspace_network_communication_policy",
     "get_warehouse_connection_string",
     "list_data_access_roles",
+    "get_warehouse_sql_audit_settings",
+    "update_warehouse_sql_audit_settings",
+    "set_warehouse_audit_actions_and_group",
 ]
