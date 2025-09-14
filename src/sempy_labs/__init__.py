@@ -351,6 +351,11 @@ from ._user_delegation_key import (
 from ._data_access_security import (
     list_data_access_roles,
 )
+from ._sql_audit_settings import (
+    get_sql_audit_settings,
+    update_sql_audit_settings,
+    set_audit_actions_and_group,
+)
 
 __all__ = [
     "resolve_warehouse_id",
@@ -605,4 +610,7 @@ __all__ = [
     "set_workspace_network_communication_policy",
     "get_warehouse_connection_string",
     "list_data_access_roles",
+    "get_sql_audit_settings",
+    "update_sql_audit_settings",
+    "set_audit_actions_and_group",
 ]
