@@ -12,7 +12,6 @@ from sempy_labs._helper_functions import (
     _make_list_unique,
     resolve_dataset_name_and_id,
     resolve_workspace_name_and_id,
-    _base_api,
     resolve_workspace_id,
     resolve_item_id,
     resolve_lakehouse_id,
@@ -4670,9 +4669,7 @@ class TOMWrapper:
                 json=payload,
             )
             if response.status_code != 200:
-                raise FabricHTTPException(
-                    f"Failed to retrieve descriptions: {response.text}"
-                )
+                raise FabricHTTPException(response)
 
             for item in response.json().get("modelItems", []):
                 ms_name = item["urn"]
