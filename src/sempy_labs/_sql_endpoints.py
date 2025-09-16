@@ -66,7 +66,8 @@ def refresh_sql_endpoint_metadata(
     item: str | UUID,
     type: Literal["Lakehouse", "MirroredDatabase"],
     workspace: Optional[str | UUID] = None,
-    tables: dict[str, list[str]] = None,
+    timeout_unit: Literal["Seconds", "Minutes", "Hours", "Days"] = "Minutes",
+    timeout_value: int = 15,
 ) -> pd.DataFrame:
     """
     Refreshes the metadata of a SQL endpoint.
@@ -85,15 +86,10 @@ def refresh_sql_endpoint_metadata(
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    tables : dict[str, list[str]], default=None
-        A dictionary where the keys are schema names and the values are lists of table names.
-        If empty, all table metadata will be refreshed.
-
-        Example:
-        {
-            "dbo": ["DimDate", "DimGeography"],
-            "sls": ["FactSales", "FactBudget"],
-        }
+    timeout_unit : Literal['Seconds', 'Minutes', 'Hours', 'Days'], default='Minutes'
+        The unit of time for the request duration before timing out. Additional duration types may be added over time.
+    timeout_value : int, default=15
+        The number of time units in the request duration.
 
     Returns
     -------
@@ -132,14 +128,10 @@ def refresh_sql_endpoint_metadata(
     else:
         raise ValueError("Invalid type. Must be 'Lakehouse' or 'MirroredDatabase'.")
 
-    payload = {}
-    if tables:
-        payload = {
-            "tableDefinitions": [
-                {"schema": schema, "tableNames": tables}
-                for schema, tables in tables.items()
-            ]
-        }
+    payload = None
+    timeout_unit = timeout_unit.capitalize()
+    if timeout_unit != "Minutes" and timeout_value != 15:
+        payload = {"timeout": {"timeUnit": timeout_unit, "value": timeout_value}}
 
     result = _base_api(
         request=f"v1/workspaces/{workspace_id}/sqlEndpoints/{sql_endpoint_id}/refreshMetadata",
@@ -195,17 +187,13 @@ def refresh_sql_endpoint_metadata(
         df = df[column_order]
 
         printout = f"{icons.green_dot} The metadata of the SQL endpoint for the '{item_name}' {type.lower()} within the '{workspace_name}' workspace has been refreshed"
-        if tables:
-            print(f"{printout} for the following tables: {tables}.")
-        else:
-            print(f"{printout} for all tables.")
+        print(f"{printout} for all tables.")
+        _update_dataframe_datatypes(df, columns)
     else:
         # If the target item has no tables to refresh the metadata for
         df = pd.DataFrame(columns=columns.keys())
         print(
             f"{icons.yellow_dot} The SQL endpoint '{item_name}' {type.lower()} within the '{workspace_name}' workspace has no tables to refresh..."
         )
-
-    _update_dataframe_datatypes(df, columns)
 
     return df
