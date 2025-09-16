@@ -22,6 +22,9 @@ from ._users import (
 from ._teams import (
     list_teams,
 )
+from ._sensitivity_labels import (
+    list_sensitivity_labels,
+)
 
 __all__ = [
     "list_groups",
@@ -42,4 +45,5 @@ __all__ = [
     "delete_group",
     "update_user",
     "update_group",
+    "list_sensitivity_labels",
 ]
