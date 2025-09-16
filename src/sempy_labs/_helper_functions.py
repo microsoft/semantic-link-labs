@@ -549,6 +549,7 @@ def get_item_definition(
             definition["definition"]["parts"].append(
                 {"path": path, "payload": decoded_payload}
             )
+        return definition
     else:
         return result
 

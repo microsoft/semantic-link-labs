@@ -22,7 +22,7 @@ from uuid import UUID
 @log
 def create_blank_semantic_model(
     dataset: str,
-    compatibility_level: int = 1605,
+    compatibility_level: int = 1702,
     workspace: Optional[str | UUID] = None,
     overwrite: bool = True,
 ):
@@ -33,7 +33,7 @@ def create_blank_semantic_model(
     ----------
     dataset : str
         Name of the semantic model.
-    compatibility_level : int, default=1605
+    compatibility_level : int, default=1702
         The compatibility level of the semantic model.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
