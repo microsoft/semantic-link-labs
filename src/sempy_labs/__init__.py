@@ -283,6 +283,7 @@ from ._list_functions import (
     list_server_properties,
     list_semantic_model_errors,
     list_synonyms,
+    list_user_defined_functions,
 )
 from ._helper_functions import (
     get_item_definition,
@@ -605,4 +606,5 @@ __all__ = [
     "set_workspace_network_communication_policy",
     "get_warehouse_connection_string",
     "list_data_access_roles",
+    "list_user_defined_functions",
 ]

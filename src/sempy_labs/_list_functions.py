@@ -757,6 +757,49 @@ def update_item(
 
 
 @log
+def list_user_defined_functions(dataset: str | UUID, workspace: Optional[str | UUID] = None) -> pd.DataFrame:
+    """
+    Shows a list of the user-defined functions within a semantic model.
+
+    Parameters
+    ----------
+    dataset: str | uuid.UUID
+        Name or UUID of the semantic model.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of the user-defined functions within a semantic model.
+    """
+
+    from sempy_labs.tom import connect_semantic_model
+
+    columns = {
+        "Function Name": "string",
+        "Expression": "string",
+        "Lineage Tag": "string",
+    }
+    df = _create_dataframe(columns=columns)
+    rows = []
+    with connect_semantic_model(dataset=dataset, workspace=workspace) as tom:
+        for f in tom.model.Functions:
+            rows.append({
+                "Function Name": f.Name,
+                "Expression": f.Expression,
+                "Lineage Tag": f.LineageTag
+            })
+
+    if rows:
+        df = pd.DataFrame(rows)
+
+    return df
+
+
+@log
 def list_relationships(
     dataset: str | UUID, workspace: Optional[str | UUID] = None, extended: bool = False
 ) -> pd.DataFrame:
