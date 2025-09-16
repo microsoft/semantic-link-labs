@@ -5138,7 +5138,7 @@ class TOMWrapper:
         for c in t.Columns:
             if c.Type == TOM.ColumnType.Data:
                 if c.Name != c.SourceColumn:
-                    column_pairs.append((c.Name, c.Source.Name))
+                    column_pairs.append((c.Name, c.SourceColumn))
 
         if column_pairs:
             m_filter = (
