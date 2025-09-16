@@ -5109,7 +5109,9 @@ class TOMWrapper:
         """
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        p = next(p for p in self.model.Tables[table_name].Partitions)
+        t = self.model.Tables[table_name]
+
+        p = next(p for p in t.Partitions)
         if p.Mode != TOM.ModeType.DirectLake:
             print(f"{icons.info} The '{table_name}' table is not in Direct Lake mode.")
             return
@@ -5119,9 +5121,7 @@ class TOMWrapper:
         partition_schema = schema or p.Source.SchemaName
 
         # Update name of the Direct Lake partition (will be removed later)
-        self.model.Tables[table_name].Partitions[
-            partition_name
-        ].Name = f"{partition_name}_remove"
+        t.Partitions[partition_name].Name = f"{partition_name}_remove"
 
         source_workspace_id = resolve_workspace_id(workspace=source_workspace)
         if source_type == "Lakehouse":
@@ -5133,21 +5133,41 @@ class TOMWrapper:
                 item=source, type=source_type, workspace=source_workspace_id
             )
 
+        column_pairs = []
+        m_filter = None
+        for c in t.Columns:
+            if c.Type == TOM.ColumnType.Data:
+                if c.Name != c.SourceColumn:
+                    column_pairs.append((c.Name, c.Source.Name))
+
+        if column_pairs:
+            m_filter = (
+                f'#"Renamed Columns" = Table.RenameColumns(ToDelta, {{'
+                + ", ".join([f'{{"{old}", "{new}"}}' for old, new in column_pairs])
+                + "})"
+            )
+
         def _generate_m_expression(
-            workspace_id, artifact_id, artifact_type, table_name, schema_name
+            workspace_id, artifact_id, artifact_type, table_name, schema_name, m_filter
         ):
             """
-            Generates the M expression for the import partition.
+            Generates the M expression for the import partition. Adds a rename step if any columns have been renamed in the model.
             """
 
             full_table_name = (
                 f"{schema_name}/{table_name}" if schema_name else table_name
             )
 
-            return f"""let\n\tSource = AzureStorage.DataLake("https://onelake.dfs.fabric.microsoft.com/{workspace_id}/{artifact_id}", [HierarchicalNavigation=true]),
+            code = f"""let\n\tSource = AzureStorage.DataLake("https://onelake.dfs.fabric.microsoft.com/{workspace_id}/{artifact_id}", [HierarchicalNavigation=true]),
         Tables = Source{{[Name = "Tables"]}}[Content],
         ExpressionTable = Tables{{[Name = "{full_table_name}"]}}[Content],
-        ToDelta = DeltaLake.Table(ExpressionTable)\nin\n\tToDelta"""
+        ToDelta = DeltaLake.Table(ExpressionTable)"""
+            if m_filter is None:
+                code += "\n in\n\tToDelta"
+            else:
+                code += f'\n\t {m_filter} \n in\n\t#"Renamed Columns"'
+
+            return code
 
         m_expression = _generate_m_expression(
             source_workspace_id,
@@ -5155,6 +5175,7 @@ class TOMWrapper:
             source_type,
             partition_entity_name,
             partition_schema,
+            m_filter,
         )
 
         # Add the import partition
