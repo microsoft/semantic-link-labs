@@ -348,3 +348,121 @@ def list_semantic_model_datasources(
         df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
+
+
+@log
+def bind_semantic_model_connection(
+    dataset: str | UUID,
+    connection_id: UUID,
+    connectivity_type: str,
+    connection_type: str,
+    connection_path: str,
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Binds a semantic model data source reference to a data connection.
+    This API can also be used to unbind data source references.
+
+    This is a wrapper function for the following API: `Items - Bind Semantic Model Connection <https://learn.microsoft.com/rest/api/fabric/semanticmodel/items/bind-semantic-model-connection>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    dataset : str | uuid.UUID
+        Name or ID of the semantic model.
+    connection_id : uuid.UUID
+        The object ID of the connection.
+    connectivity_type : str
+        The connectivity type of the connection. Additional connectivity types may be added over time.
+    connection_type : str
+        The `type <https://learn.microsoft.com/rest/api/fabric/semanticmodel/items/bind-semantic-model-connection?tabs=HTTP#connectivitytype>`_ of the connection.
+    connection_path : str
+        The path of the connection.
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(
+        dataset=dataset, workspace=workspace_id
+    )
+
+    payload = {
+        "connectionBinding": {
+            "id": str(connection_id),
+            "connectivityType": connectivity_type,
+            "connectionDetails": {
+                "type": connection_type,
+                "path": connection_path,
+            },
+        }
+    }
+
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/semanticModels/{dataset_id}/bindConnection",
+        method="post",
+        client="fabric_sp",
+        payload=payload,
+    )
+
+    print(
+        f"{icons.green_dot} Connection '{connection_id}' has been bound to the '{dataset_name}' semantic model within the '{workspace_name}' workspace."
+    )
+
+
+@log
+def unbind_semantic_model_connection(
+    dataset: str | UUID,
+    connection_type: str,
+    connection_path: str,
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Unbinds a semantic model data source reference to a data connection.
+
+    This is a wrapper function for the following API: `Items - Bind Semantic Model Connection <https://learn.microsoft.com/rest/api/fabric/semanticmodel/items/bind-semantic-model-connection>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    dataset : str | uuid.UUID
+        Name or ID of the semantic model.
+    connection_type : str
+        The `type <https://learn.microsoft.com/rest/api/fabric/semanticmodel/items/bind-semantic-model-connection?tabs=HTTP#connectivitytype>`_ of the connection.
+    connection_path : str
+        The path of the connection.
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(
+        dataset=dataset, workspace=workspace_id
+    )
+
+    payload = {
+        "connectionBinding": {
+            "connectivityType": "None",
+            "connectionDetails": {
+                "type": connection_type,
+                "path": connection_path,
+            },
+        }
+    }
+
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/semanticModels/{dataset_id}/bindConnection",
+        method="post",
+        client="fabric_sp",
+        payload=payload,
+    )
+
+    print(
+        f"{icons.green_dot} The '{dataset_name}' semantic model within the '{workspace_name}' workspace has been unbound from its connection."
+    )

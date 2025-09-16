@@ -31,6 +31,8 @@ from ._semantic_models import (
     delete_semantic_model,
     update_semantic_model_refresh_schedule,
     list_semantic_model_datasources,
+    bind_semantic_model_connection,
+    unbind_semantic_model_connection,
 )
 from ._graphQL import (
     list_graphql_apis,
@@ -607,4 +609,6 @@ __all__ = [
     "set_workspace_network_communication_policy",
     "get_connection_string",
     "list_data_access_roles",
+    "bind_semantic_model_connection",
+    "unbind_semantic_model_connection",
 ]
