@@ -5165,7 +5165,7 @@ class TOMWrapper:
             if m_filter is None:
                 code += "\n in\n\tToDelta"
             else:
-                code += f'\n\t {m_filter} \n in\n\t#"Renamed Columns"'
+                code += f',\n\t {m_filter} \n in\n\t#"Renamed Columns"'
 
             return code
 
