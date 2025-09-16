@@ -760,6 +760,29 @@ class TOMWrapper:
             obj.Description = description
         self.model.Roles.Add(obj)
 
+    def set_user_defined_function(self, name: str, expression: str):
+        """
+        Sets the definition of a `user-defined <https://learn.microsoft.com/en-us/dax/best-practices/dax-user-defined-functions#using-model-explorer>_` function within the semantic model.
+
+        Parameters
+        ----------
+        name : str
+            Name of the user-defined function.
+        expression : str
+            The DAX expression for the user-defined function.
+        """
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        existing = [m.Name for m in self.model.Functions if m.Name == name]
+        if existing:
+            obj = TOM.Function()
+            obj.Name = name
+            obj.Expression = expression
+            obj.LineageTag = generate_guid()
+            self.model.Functions.Add(obj)
+        else:
+            self.model.Functions[name].Expression = expression
+
     def set_rls(self, role_name: str, table_name: str, filter_expression: str):
         """
         Sets the row level security permissions for a table within a role.
