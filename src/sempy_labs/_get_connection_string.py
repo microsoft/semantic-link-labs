@@ -41,9 +41,7 @@ def get_connection_string(
         Returns the SQL connection string of the specified item.
     """
     workspace_id = resolve_workspace_id(workspace)
-    item_id = resolve_item_id(
-        item=item, type=type, workspace=workspace
-    )
+    item_id = resolve_item_id(item=item, type=type, workspace=workspace)
 
     type_dict = {
         "Warehouse": "warehouses",
@@ -51,13 +49,21 @@ def get_connection_string(
     }
     type_for_url = type_dict.get(type)
 
-    if type == 'Lakehouse':
-        response = _base_api(f'/v1/workspaces/{workspace_id}/lakehouses/{item_id}', client='fabric_sp').json()
-        return response.get('properties', {}).get('sqlEndpointProperties', {}).get('connectionString', {})
-    if type in ['SQLEndpoint', 'Warehouse']:
+    if type == "Lakehouse":
+        response = _base_api(
+            f"/v1/workspaces/{workspace_id}/lakehouses/{item_id}", client="fabric_sp"
+        ).json()
+        return (
+            response.get("properties", {})
+            .get("sqlEndpointProperties", {})
+            .get("connectionString", {})
+        )
+    if type in ["SQLEndpoint", "Warehouse"]:
         url = f"/v1/workspaces/{workspace_id}/{type_for_url}/{item_id}/connectionString"
     else:
-        raise ValueError(f"{icons.red_dot} The type must be 'Lakehouse', 'Warehouse' or 'SQLEndpoint'.")
+        raise ValueError(
+            f"{icons.red_dot} The type must be 'Lakehouse', 'Warehouse' or 'SQLEndpoint'."
+        )
 
     if private_link_type is not None and private_link_type not in ["Workspace", "None"]:
         raise ValueError(
