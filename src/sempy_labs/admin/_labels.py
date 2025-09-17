@@ -23,7 +23,7 @@ def bulk_set_labels(
     """
     Sets sensitivity labels on Fabric items.
 
-    Note: Please use the sempy_labs.graph.list_sensitivity_labels function to retrieve label IDs.
+    Note: Please use the sempy_labs.graph.resolve_sensitivity_label_id function to retrieve label IDs.
 
     This is a wrapper function for the following API: `Labels - Bulk Set Labels <https://learn.microsoft.com/rest/api/fabric/admin/labels/bulk-set-labels>`_.
 
