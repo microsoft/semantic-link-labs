@@ -128,10 +128,7 @@ def refresh_sql_endpoint_metadata(
     else:
         raise ValueError("Invalid type. Must be 'Lakehouse' or 'MirroredDatabase'.")
 
-    payload = None
-    timeout_unit = timeout_unit.capitalize()
-    if timeout_unit != "Minutes" and timeout_value != 15:
-        payload = {"timeout": {"timeUnit": timeout_unit, "value": timeout_value}}
+    payload = {"timeout": {"timeUnit": timeout_unit, "value": timeout_value}}
 
     result = _base_api(
         request=f"v1/workspaces/{workspace_id}/sqlEndpoints/{sql_endpoint_id}/refreshMetadata",
