@@ -53,6 +53,43 @@ def clear_cache(dataset: str | UUID, workspace: Optional[str | UUID] = None):
 
 
 @log
+def cancel_query(dataset: str | UUID, spid: int, workspace: Optional[str | UUID] = None):
+    """
+    Cancels a running query on a semantic model.
+    See `here <https://learn.microsoft.com/analysis-services/xmla/xml-elements-commands/cancel-element-xmla?view=asallproducts-allversions>`_ for documentation.
+
+    Parameters
+    ----------
+    dataset : str | uuid.UUID
+        Name or ID of the semantic model.
+    spid : int
+        The SPID of the query to cancel. Can be found using the 'list_running_queries' function.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+
+    xmla = f"""
+            <Cancel xmlns="http://schemas.microsoft.com/analysisservices/2003/engine">
+                <SPID>{spid}</SPID>
+            </Cancel>
+            """
+    fabric.execute_xmla(xmla_command=xmla, dataset=dataset, workspace=workspace)
+    print(
+        f"{icons.green_dot} The query with SPID '{spid}' has been cancelled in '{dataset_name}' semantic model within the the '{workspace_name}' workspace."
+    )
+
+    #sessions = fabric.evaluate_dax(dataset=dataset, workspace=workspace, dax_string="""select * from $system.discover_sessions """)
+    #commands = fabric.evaluate_dax(dataset=dataset, workspace=workspace, dax_string="""select * from $system.discover_commands """)
+
+    #spids = sessions[sessions['SESSION_USER_NAME'] == user_name]['SESSION_SPID'].values.tolist()
+    #df_commands = commands[commands['COMMAND_TEXT'].str.strip() == query.strip()]
+    #df_commands[df_commands['SESSION_SPID'].isin(spids)]
+
+@log
 def backup_semantic_model(
     dataset: str | UUID,
     file_path: str,
