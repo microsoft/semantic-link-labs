@@ -163,7 +163,7 @@ def import_notebook_from_web(
     if len(dfI_filt) == 0:
         create_notebook(
             name=notebook_name,
-            notebook_content=response.content,
+            notebook_content=response.content.decode('utf-8'),
             workspace=workspace_id,
             description=description,
             format="ipynb",
@@ -216,7 +216,7 @@ def create_notebook(
         Defaults to None which places the notebook in the root of the workspace.
     """
 
-    notebook_payload = base64.b64encode(notebook_content).decode("utf-8")
+    notebook_payload = base64.b64encode(notebook_content.encode('utf-8')).decode("utf-8")
 
     definition_payload = {
         "parts": [
