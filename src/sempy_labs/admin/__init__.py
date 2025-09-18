@@ -98,6 +98,10 @@ from ._sharing_links import (
     remove_all_sharing_links,
     remove_sharing_links,
 )
+from ._labels import (
+    bulk_set_labels,
+    bulk_remove_labels,
+)
 
 __all__ = [
     "list_items",
@@ -161,4 +165,6 @@ __all__ = [
     "rotate_tenant_key",
     "remove_all_sharing_links",
     "remove_sharing_links",
+    "bulk_set_labels",
+    "bulk_remove_labels",
 ]

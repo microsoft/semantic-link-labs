@@ -24,6 +24,7 @@ from ._teams import (
 )
 from ._sensitivity_labels import (
     list_sensitivity_labels,
+    resolve_sensitivity_label_id,
 )
 
 __all__ = [
@@ -46,4 +47,5 @@ __all__ = [
     "update_user",
     "update_group",
     "list_sensitivity_labels",
+    "resolve_sensitivity_label_id",
 ]

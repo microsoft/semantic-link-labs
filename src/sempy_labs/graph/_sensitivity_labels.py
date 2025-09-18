@@ -5,6 +5,7 @@ from sempy_labs._helper_functions import (
     _base_api,
     _create_dataframe,
     _update_dataframe_datatypes,
+    _is_valid_uuid,
 )
 from sempy._utils._log import log
 
@@ -79,3 +80,41 @@ def list_sensitivity_labels(user: Optional[str | UUID] = None) -> pd.DataFrame:
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
+
+
+@log
+def resolve_sensitivity_label_id(
+    label: str | UUID, user: Optional[str | UUID] = None
+) -> UUID | None:
+    """
+    Resolve a sensitivity label name or ID to its corresponding sensitivity label ID.
+
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    label : str | uuid.UUID
+        The name or ID of the sensitivity label.
+    user : str | uuid.UUID, default=None
+        The user ID or user principal name.
+
+    Returns
+    -------
+    uuid.UUID | None
+        The ID of the sensitivity label if found, otherwise None.
+    """
+
+    if _is_valid_uuid(label):
+        return str(label)
+
+    df = list_sensitivity_labels(user=user)
+
+    if df.empty:
+        return None
+
+    # Try to find the label by name
+    label_row = df[df["Sensitivity Label Name"] == label]
+    if not label_row.empty:
+        return label_row["Sensitivity Label Id"].iloc[0]
+
+    return None
