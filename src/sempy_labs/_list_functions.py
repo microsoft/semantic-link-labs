@@ -757,7 +757,9 @@ def update_item(
 
 
 @log
-def list_user_defined_functions(dataset: str | UUID, workspace: Optional[str | UUID] = None) -> pd.DataFrame:
+def list_user_defined_functions(
+    dataset: str | UUID, workspace: Optional[str | UUID] = None
+) -> pd.DataFrame:
     """
     Shows a list of the user-defined functions within a semantic model.
 
@@ -787,11 +789,13 @@ def list_user_defined_functions(dataset: str | UUID, workspace: Optional[str | U
     rows = []
     with connect_semantic_model(dataset=dataset, workspace=workspace) as tom:
         for f in tom.model.Functions:
-            rows.append({
-                "Function Name": f.Name,
-                "Expression": f.Expression,
-                "Lineage Tag": f.LineageTag
-            })
+            rows.append(
+                {
+                    "Function Name": f.Name,
+                    "Expression": f.Expression,
+                    "Lineage Tag": f.LineageTag,
+                }
+            )
 
     if rows:
         df = pd.DataFrame(rows)

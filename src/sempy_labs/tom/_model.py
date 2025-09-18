@@ -762,7 +762,7 @@ class TOMWrapper:
 
     def set_user_defined_function(self, name: str, expression: str):
         """
-        Sets the definition of a `user-defined <https://learn.microsoft.com/en-us/dax/best-practices/dax-user-defined-functions#using-model-explorer>_` function within the semantic model.
+        Sets the definition of a `user-defined <https://learn.microsoft.com/en-us/dax/best-practices/dax-user-defined-functions#using-model-explorer>_` function within the semantic model. This function requires that the compatibility level is at least 1702.
 
         Parameters
         ----------
@@ -772,6 +772,9 @@ class TOMWrapper:
             The DAX expression for the user-defined function.
         """
         import Microsoft.AnalysisServices.Tabular as TOM
+
+        if self._compat_level < 1702:
+            self.model.Model.Database.CompatibilityLevel = 1702
 
         existing = [m.Name for m in self.model.Functions if m.Name == name]
         if existing:
