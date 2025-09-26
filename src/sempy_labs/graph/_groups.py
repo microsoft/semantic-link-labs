@@ -191,7 +191,9 @@ def list_group_members(group: str | UUID) -> pd.DataFrame:
 
     group_id = resolve_group_id(group)
 
-    result = _base_api(request=f"groups/{group_id}/members", client="graph", uses_pagination=True)
+    result = _base_api(
+        request=f"groups/{group_id}/members", client="graph", uses_pagination=True
+    )
 
     columns = {
         "Member Id": "string",
@@ -256,7 +258,9 @@ def list_group_owners(group: str | UUID) -> pd.DataFrame:
 
     group_id = resolve_group_id(group)
 
-    result = _base_api(request=f"groups/{group_id}/owners", client="graph", uses_pagination=True)
+    result = _base_api(
+        request=f"groups/{group_id}/owners", client="graph", uses_pagination=True
+    )
 
     columns = {
         "Owner Id": "string",
