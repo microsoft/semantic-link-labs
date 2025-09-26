@@ -8,6 +8,7 @@ from .._helper_functions import (
     _is_valid_uuid,
     _base_api,
     _create_dataframe,
+    _update_dataframe_datatypes,
     _mount,
 )
 from sempy._utils._log import log
@@ -91,7 +92,7 @@ def list_users() -> pd.DataFrame:
         A pandas dataframe showing a list of users and their properties.
     """
 
-    result = _base_api(request="users", client="graph").json()
+    result = _base_api(request="users", client="graph", uses_pagination=True)
 
     columns = {
         "User Id": "string",
@@ -108,21 +109,27 @@ def list_users() -> pd.DataFrame:
 
     df = _create_dataframe(columns=columns)
 
-    for v in result.get("value"):
-        new_data = {
-            "User Id": v.get("id"),
-            "User Principal Name": v.get("userPrincipalName"),
-            "User Name": v.get("displayName"),
-            "Mail": v.get("mail"),
-            "Job Title": v.get("jobTitle"),
-            "Office Location": v.get("officeLocation"),
-            "Mobile Phone": v.get("mobilePhone"),
-            "Business Phones": str(v.get("businessPhones")),
-            "Preferred Language": v.get("preferredLanguage"),
-            "Surname": v.get("surname"),
-        }
+    rows = []
+    for r in result:
+        for v in r.get("value", []):
+            rows.append(
+                {
+                    "User Id": v.get("id"),
+                    "User Principal Name": v.get("userPrincipalName"),
+                    "User Name": v.get("displayName"),
+                    "Mail": v.get("mail"),
+                    "Job Title": v.get("jobTitle"),
+                    "Office Location": v.get("officeLocation"),
+                    "Mobile Phone": v.get("mobilePhone"),
+                    "Business Phones": str(v.get("businessPhones")),
+                    "Preferred Language": v.get("preferredLanguage"),
+                    "Surname": v.get("surname"),
+                }
+            )
 
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
