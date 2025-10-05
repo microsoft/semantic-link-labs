@@ -2,13 +2,13 @@ import pandas as pd
 from typing import Optional, Tuple
 from uuid import UUID
 import sempy_labs._icons as icons
-from ._basic_functions import (
+from sempy_labs.admin._basic_functions import (
     _resolve_workspace_name_and_id,
 )
-from ._capacities import (
+from sempy_labs.admin._capacities import (
     _resolve_capacity_name_and_id,
 )
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     _is_valid_uuid,
     _build_url,
     _base_api,
