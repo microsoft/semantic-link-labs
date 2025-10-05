@@ -92,14 +92,40 @@ def optimize_lakehouse_tables(
     """
 
     from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
+    from sempy_labs.lakehouse import list_shortcuts
 
     df = get_lakehouse_tables(lakehouse=lakehouse, workspace=workspace)
     df_delta = df[df["Format"] == "delta"]
 
+    # Exclude shortcuts
+    shortcuts = (
+        list_shortcuts(lakehouse=lakehouse, workspace=workspace)
+        .query("`Shortcut Path`.str.startswith('/Tables')", engine="python")
+        .assign(
+            FullPath=lambda df: df["Shortcut Path"].str.rstrip("/")
+            + "/"
+            + df["Shortcut Name"]
+        )["FullPath"]
+        .tolist()
+    )
+
+    df_delta["FullPath"] = df_delta.apply(
+        lambda x: (
+            f"/Tables/{x['Table Name']}"
+            if pd.isna(x["Schema Name"]) or x["Schema Name"] == ""
+            else f"/Tables/{x['Schema Name']}/{x['Table Name']}"
+        ),
+        axis=1,
+    )
+
+    df_filtered = df[~df["FullPath"].isin(shortcuts)].reset_index(drop=True)
+
     if isinstance(tables, str):
         tables = [tables]
 
-    df_tables = df_delta[df_delta["Table Name"].isin(tables)] if tables else df_delta
+    df_tables = (
+        df_filtered[df_filtered["Table Name"].isin(tables)] if tables else df_filtered
+    )
     df_tables.reset_index(drop=True, inplace=True)
 
     total = len(df_tables)
