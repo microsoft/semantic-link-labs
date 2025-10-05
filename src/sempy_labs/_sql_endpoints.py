@@ -128,10 +128,25 @@ def refresh_sql_endpoint_metadata(
     else:
         raise ValueError("Invalid type. Must be 'Lakehouse' or 'MirroredDatabase'.")
 
-    payload = None
     timeout_unit = timeout_unit.capitalize()
-    if timeout_unit != "Minutes" and timeout_value != 15:
-        payload = {"timeout": {"timeUnit": timeout_unit, "value": timeout_value}}
+    if timeout_unit not in ["Seconds", "Minutes", "Hours", "Days"]:
+        raise ValueError(
+            "Invalid timeout_unit. Must be 'Seconds', 'Minutes', 'Hours', or 'Days'."
+        )
+    if timeout_unit == "Hours" and timeout_value > 24:
+        raise ValueError("timeout_value cannot exceed 24 when timeout_unit is 'Hours'.")
+    if timeout_unit == "Days" and timeout_value > 1:
+        raise ValueError("timeout_value cannot exceed 1 when timeout_unit is 'Days'.")
+    if timeout_unit == "Minutes" and timeout_value > 1440:
+        raise ValueError(
+            "timeout_value cannot exceed 1440 when timeout_unit is 'Minutes'."
+        )
+    if timeout_unit == "Seconds" and timeout_value > 86400:
+        raise ValueError(
+            "timeout_value cannot exceed 86400 when timeout_unit is 'Seconds'."
+        )
+
+    payload = {"timeout": {"timeUnit": timeout_unit, "value": timeout_value}}
 
     result = _base_api(
         request=f"v1/workspaces/{workspace_id}/sqlEndpoints/{sql_endpoint_id}/refreshMetadata",
