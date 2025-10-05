@@ -1619,6 +1619,27 @@ def pagination(client, response):
     return responses
 
 
+def graph_pagination(response, headers):
+
+    responses = []
+    response_json = response.json()
+    responses.append(response_json)
+
+    # Check for pagination
+    odata_next_link = response_json.get("@odata.nextLink")
+
+    # Loop to handle pagination
+    while odata_next_link is not None:
+        response = requests.get(odata_next_link, headers=headers)
+        response_json = response.json()
+        responses.append(response_json)
+
+        # Update the odata next link for the next iteration
+        odata_next_link = response_json.get("@odata.nextLink")
+
+    return responses
+
+
 def resolve_deployment_pipeline_id(deployment_pipeline: str | UUID) -> UUID:
     """
     Obtains the Id for a given deployment pipeline.
@@ -2254,7 +2275,10 @@ def _base_api(
         if response.status_code not in status_codes:
             raise FabricHTTPException(response)
         if uses_pagination:
-            responses = pagination(c, response)
+            if client == "graph":
+                responses = graph_pagination(response, headers)
+            else:
+                responses = pagination(c, response)
             return responses
         else:
             return response
