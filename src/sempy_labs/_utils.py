@@ -66,4 +66,6 @@ items = {
     "DigitalTwinBuilder": "digitaltwinbuilders",
     "DigitalTwinBuilderFlow": "DigitalTwinBuilderFlows",
     "MirroredAzureDatabricksCatalog": "mirroredAzureDatabricksCatalogs",
+    "Map": "Maps",
+    "AnomalyDetector": "anomalydetectors",
 }

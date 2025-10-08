@@ -282,8 +282,7 @@ def create_item(
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    item_type = utils.item_types.get(type)[0].lower()
-    item_type_url = utils.item_types.get(type)[1]
+    item_type_url = utils.items.get(type)
 
     payload = {
         "displayName": name,
@@ -306,7 +305,7 @@ def create_item(
         client="fabric_sp",
     )
     print(
-        f"{icons.green_dot} The '{name}' {item_type} has been successfully created within the '{workspace_name}' workspace."
+        f"{icons.green_dot} The '{name}' {type} has been successfully created within the '{workspace_name}' workspace."
     )
 
 
