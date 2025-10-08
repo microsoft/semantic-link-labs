@@ -86,7 +86,17 @@ def update_direct_lake_partition_entity(
 
             # Update source lineage tag
             if schema:
-                tom.model.Tables[tName].Partitions[part_name].Source.SchemaName = schema
+                # Only set schema for DL over SQL (not DL over OneLake)
+                expression_source_name = (
+                    tom.model.Tables[tName]
+                    .Partitions[part_name]
+                    .Source.ExpressionSource.Name
+                )
+                expr = tom.model.Expressions[expression_source_name].Expression
+                if "Sql.Database" in expr:
+                    tom.model.Tables[tName].Partitions[
+                        part_name
+                    ].Source.SchemaName = schema
                 tom.model.Tables[tName].SourceLineageTag = f"[{schema}].[{eName}]"
             else:
                 tom.model.Tables[tName].SourceLineageTag = f"[dbo].[{eName}]"
