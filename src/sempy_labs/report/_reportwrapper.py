@@ -1886,7 +1886,6 @@ class ReportWrapper:
             )
 
         self._ensure_pbir()
-        theme_version = "5.6.4"
 
         # Extract theme_json from theme_file_path
         if theme_file_path:
@@ -1912,14 +1911,22 @@ class ReportWrapper:
         theme_name_full = f"{theme_name}.json"
 
         # Add theme.json file
-        self.add(
-            file_path=f"StaticResources/RegisteredResources/{theme_name_full}",
-            payload=theme_json,
-        )
+        try:
+            self.add(
+                file_path=f"StaticResources/RegisteredResources/{theme_name_full}",
+                payload=theme_json,
+            )
+        except Exception:
+            self.update(
+                file_path=f"StaticResources/RegisteredResources/{theme_name_full}",
+                payload=theme_json,
+            )
+
+        rpt_version_at_import = self.get(file_path=self._report_file_path, json_path="$.themeCollection.baseTheme.reportVersionAtImport")
 
         custom_theme = {
             "name": theme_name_full,
-            "reportVersionAtImport": theme_version,
+            "reportVersionAtImport": rpt_version_at_import,
             "type": "RegisteredResources",
         }
 
