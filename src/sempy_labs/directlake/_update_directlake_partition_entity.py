@@ -85,14 +85,11 @@ def update_direct_lake_partition_entity(
             tom.model.Tables[tName].Partitions[part_name].Source.EntityName = eName
 
             # Update source lineage tag
-            existing_schema = (
-                tom.model.Tables[tName].Partitions[part_name].Source.SchemaName or "dbo"
-            )
-            if schema is None:
-                schema = existing_schema
-
-            tom.model.Tables[tName].Partitions[part_name].Source.SchemaName = schema
-            tom.model.Tables[tName].SourceLineageTag = f"[{schema}].[{eName}]"
+            if schema:
+                tom.model.Tables[tName].Partitions[part_name].Source.SchemaName = schema
+                tom.model.Tables[tName].SourceLineageTag = f"[{schema}].[{eName}]"
+            else:
+                tom.model.Tables[tName].SourceLineageTag = f"[dbo].[{eName}]"
             print(
                 f"{icons.green_dot} The '{tName}' table in the '{dataset_name}' semantic model within the '{workspace_name}' workspace has been updated to point to the '{eName}' table."
             )
