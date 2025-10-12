@@ -12,6 +12,22 @@ from sempy_labs.graph._users import resolve_user_id
 def add_user_license(
     user: str | UUID, sku_id: UUID, disabled_plans: Optional[UUID | List[UUID]] = None
 ):
+    """
+    Assigns a license to a user.
+
+    This is a wrapper function for the following API: `user: assignLicense <https://learn.microsoft.com/graph/api/user-assignlicense>`_.
+
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    user : str | uuid.UUID
+        The user ID or user principal name.
+    sku_id : uuid.UUID
+        The SKU ID of the license to assign.
+    disabled_plans : Optional[uuid.UUID | List[uuid.UUID]], default=None
+        A single service plan ID or a list of service plan IDs to disable within the assigned license.
+    """
 
     user_id = resolve_user_id(user)
 
@@ -43,6 +59,20 @@ def add_user_license(
 
 @log
 def remove_user_license(user: str | UUID, sku_ids: UUID | List[UUID]):
+    """
+    Removes a license from a user.
+
+    This is a wrapper function for the following API: `user: assignLicense <https://learn.microsoft.com/graph/api/user-assignlicense>`_.
+
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    user : str | uuid.UUID
+        The user ID or user principal name.
+    sku_id : uuid.UUID
+        The SKU ID of the license to remove.
+    """
 
     user_id = resolve_user_id(user)
 
