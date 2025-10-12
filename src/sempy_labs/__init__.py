@@ -356,6 +356,11 @@ from ._data_access_security import (
 from ._get_connection_string import (
     get_connection_string,
 )
+from ._sql_audit_settings import (
+    get_sql_audit_settings,
+    update_sql_audit_settings,
+    set_audit_actions_and_group,
+)
 
 __all__ = [
     "resolve_warehouse_id",
@@ -613,4 +618,7 @@ __all__ = [
     "bind_semantic_model_connection",
     "unbind_semantic_model_connection",
     "list_user_defined_functions",
+    "get_sql_audit_settings",
+    "update_sql_audit_settings",
+    "set_audit_actions_and_group",
 ]
