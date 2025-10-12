@@ -144,6 +144,10 @@ from ._clear_cache import (
     copy_semantic_model_backup_file,
     list_backups,
     list_storage_account_files,
+    list_semantic_model_sessions,
+    list_semantic_model_commands,
+    cancel_long_running_queries,
+    cancel_spid,
 )
 from ._capacity_migration import (
     migrate_workspaces,
@@ -611,4 +615,8 @@ __all__ = [
     "list_data_access_roles",
     "bind_semantic_model_connection",
     "unbind_semantic_model_connection",
+    "list_semantic_model_sessions",
+    "list_semantic_model_commands",
+    "cancel_long_running_queries",
+    "cancel_spid",
 ]
