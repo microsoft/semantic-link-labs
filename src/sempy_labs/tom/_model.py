@@ -151,7 +151,12 @@ class TOMWrapper:
 
         self._table_map = {}
         self._column_map = {}
-        self._compat_level = self.model.Model.Database.CompatibilityLevel
+        self._compat_level = self.model.Database.CompatibilityLevel
+
+        # Max compat level
+        s = self.model.Server.SupportedCompatibilityLevels
+        nums = [int(x) for x in s.split(",") if x.strip() != "1000000"]
+        self._max_compat_level = max(nums)
 
         # Minimum campat level for lineage tags is 1540 (https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.table.lineagetag?view=analysisservices-dotnet#microsoft-analysisservices-tabular-table-lineagetag)
         if self._compat_level >= 1540:
@@ -758,6 +763,60 @@ class TOMWrapper:
         if description is not None:
             obj.Description = description
         self.model.Roles.Add(obj)
+
+    def set_compatibility_level(self, compatibility_level: int):
+        """
+        Sets compatibility level of the semantic model
+
+        Parameters
+        ----------
+        compatibility_level : int
+            The compatibility level to set the for the semantic model.
+        """
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        if compatibility_level < 1500 or compatibility_level > self._max_compat_level:
+            raise ValueError(
+                f"{icons.red_dot} Compatibility level must be between 1500 and {self._max_compat_level}."
+            )
+        if self._compat_level > compatibility_level:
+            print(
+                f"{icons.warning} Compatibility level can only be increased, not decreased."
+            )
+            return
+
+        self.model.Database.CompatibilityLevel = compatibility_level
+        bim = TOM.JsonScripter.ScriptCreateOrReplace(self.model.Database)
+        fabric.execute_tmsl(script=bim, workspace=self._workspace_id)
+
+    def set_user_defined_function(self, name: str, expression: str):
+        """
+        Sets the definition of a `user-defined <https://learn.microsoft.com/en-us/dax/best-practices/dax-user-defined-functions#using-model-explorer>_` function within the semantic model. This function requires that the compatibility level is at least 1702.
+
+        Parameters
+        ----------
+        name : str
+            Name of the user-defined function.
+        expression : str
+            The DAX expression for the user-defined function.
+        """
+        import Microsoft.AnalysisServices.Tabular as TOM
+
+        if self._compat_level < 1702:
+            raise ValueError(
+                f"{icons.warning} User-defined functions require a compatibility level of at least 1702. The current compatibility level is {self._compat_level}. Use the 'tom.set_compatibility_level' function to change the compatibility level."
+            )
+
+        existing = [f.Name for f in self.model.Functions]
+
+        if name in existing:
+            self.model.Functions[name].Expression = expression
+        else:
+            obj = TOM.Function()
+            obj.Name = name
+            obj.Expression = expression
+            obj.LineageTag = generate_guid()
+            self.model.Functions.Add(obj)
 
     def set_rls(self, role_name: str, table_name: str, filter_expression: str):
         """
@@ -1908,6 +1967,8 @@ class TOMWrapper:
             object.Parent.CalculationItems.Remove(object.Name)
         elif objType == TOM.ObjectType.TablePermission:
             object.Parent.TablePermissions.Remove(object.Name)
+        elif objType == TOM.ObjectType.Function:
+            object.Parent.Functions.Remove(object.Name)
 
     def used_in_relationships(self, object: Union["TOM.Table", "TOM.Column"]):
         """
@@ -4749,8 +4810,8 @@ class TOMWrapper:
         value_filter_behavior = value_filter_behavior.capitalize()
         min_compat = 1606
 
-        if self.model.Model.Database.CompatibilityLevel < min_compat:
-            self.model.Model.Database.CompatibilityLevel = min_compat
+        if self.model.Database.CompatibilityLevel < min_compat:
+            self.model.Database.CompatibilityLevel = min_compat
 
         self.model.ValueFilterBehavior = System.Enum.Parse(
             TOM.ValueFilterBehaviorType, value_filter_behavior
@@ -5840,7 +5901,7 @@ class TOMWrapper:
             import Microsoft.AnalysisServices.Tabular as TOM
 
             # ChangedProperty logic (min compat level is 1567) https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.changedproperty?view=analysisservices-dotnet
-            if self.model.Model.Database.CompatibilityLevel >= 1567:
+            if self.model.Database.CompatibilityLevel >= 1567:
                 for t in self.model.Tables:
                     if any(
                         p.SourceType == TOM.PartitionSourceType.Entity

@@ -284,6 +284,7 @@ from ._list_functions import (
     list_server_properties,
     list_semantic_model_errors,
     list_synonyms,
+    list_user_defined_functions,
 )
 from ._helper_functions import (
     get_item_definition,
@@ -611,4 +612,5 @@ __all__ = [
     "list_data_access_roles",
     "bind_semantic_model_connection",
     "unbind_semantic_model_connection",
+    "list_user_defined_functions",
 ]
