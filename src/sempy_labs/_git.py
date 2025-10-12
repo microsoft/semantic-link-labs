@@ -157,7 +157,7 @@ def get_git_status(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Obtains the Git status of items in the workspace, that can be committed to Git.
 
-    This is a wrapper function for the following API: `Git - Get Status <https://learn.microsoft.com/rest/api/fabric/core/git/get-status>.
+    This is a wrapper function for the following API: `Git - Get Status <https://learn.microsoft.com/rest/api/fabric/core/git/get-status>`_.
 
     Parameters
     ----------

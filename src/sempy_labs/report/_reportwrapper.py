@@ -1922,7 +1922,10 @@ class ReportWrapper:
                 payload=theme_json,
             )
 
-        rpt_version_at_import = self.get(file_path=self._report_file_path, json_path="$.themeCollection.baseTheme.reportVersionAtImport")
+        rpt_version_at_import = self.get(
+            file_path=self._report_file_path,
+            json_path="$.themeCollection.baseTheme.reportVersionAtImport",
+        )
 
         custom_theme = {
             "name": theme_name_full,
