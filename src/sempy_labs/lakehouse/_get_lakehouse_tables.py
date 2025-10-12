@@ -83,6 +83,9 @@ def get_lakehouse_tables(
         lakehouse=lakehouse, workspace=workspace_id
     )
 
+    # Test if valid lakehouse:
+    x = _base_api(f"v1/workspaces/{workspace_id}/lakehouses/{lakehouse_id}")
+
     if count_rows:  # Setting countrows defaults to extended=True
         extended = True
 
@@ -94,7 +97,7 @@ def get_lakehouse_tables(
             client="fabric_sp",
         )
 
-    except Exception as e:
+    except Exception:
         API_called = False
 
     rows = []
