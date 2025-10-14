@@ -130,7 +130,7 @@ class ServicePrincipalTokenProvider(TokenCredential):
         if audience not in self._shorthand_scopes:
             raise NotImplementedError
 
-        return self.get_token(audience).token
+        return self.get_token(audience, region=region).token
 
     def get_token(self, *scopes, **kwargs) -> AccessToken:
         """
