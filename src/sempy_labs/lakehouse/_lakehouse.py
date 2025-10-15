@@ -93,7 +93,9 @@ def optimize_lakehouse_tables(
 
     from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 
-    df = get_lakehouse_tables(lakehouse=lakehouse, workspace=workspace)
+    df = get_lakehouse_tables(
+        lakehouse=lakehouse, workspace=workspace, exclude_shortcuts=True
+    )
     df_delta = df[df["Format"] == "delta"]
 
     if isinstance(tables, str):
@@ -142,7 +144,9 @@ def vacuum_lakehouse_tables(
 
     from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 
-    df = get_lakehouse_tables(lakehouse=lakehouse, workspace=workspace)
+    df = get_lakehouse_tables(
+        lakehouse=lakehouse, workspace=workspace, exclude_shortcuts=True
+    )
     df_delta = df[df["Format"] == "delta"]
 
     if isinstance(tables, str):

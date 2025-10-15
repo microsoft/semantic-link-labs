@@ -33,6 +33,7 @@ def get_lakehouse_tables(
     extended: bool = False,
     count_rows: bool = False,
     export: bool = False,
+    exclude_shortcuts: bool = False,
 ) -> pd.DataFrame:
     """
     Shows the tables of a lakehouse and their respective properties. Option to include additional properties relevant to Direct Lake guardrails.
@@ -60,6 +61,8 @@ def get_lakehouse_tables(
         Obtains a row count for each lakehouse table.
     export : bool, default=False
         Exports the resulting dataframe to a delta table in the lakehouse.
+    exclude_shortcuts : bool, default=False
+        If True, excludes shortcuts.
 
     Returns
     -------
@@ -248,6 +251,32 @@ def get_lakehouse_tables(
     if count_rows:
         df["Row Count"] = df["Row Count"].astype(int)
         df["Row Count Guardrail Hit"] = df["Row Count"] > df["Row Count Guardrail"]
+
+    if exclude_shortcuts:
+        from sempy_labs.lakehouse._shortcuts import list_shortcuts
+
+        # Exclude shortcuts
+        shortcuts = (
+            list_shortcuts(lakehouse=lakehouse, workspace=workspace)
+            .query("`Shortcut Path`.str.startswith('/Tables')", engine="python")
+            .assign(
+                FullPath=lambda df: df["Shortcut Path"].str.rstrip("/")
+                + "/"
+                + df["Shortcut Name"]
+            )["FullPath"]
+            .tolist()
+        )
+
+        df["FullPath"] = df.apply(
+            lambda x: (
+                f"/Tables/{x['Table Name']}"
+                if pd.isna(x["Schema Name"]) or x["Schema Name"] == ""
+                else f"/Tables/{x['Schema Name']}/{x['Table Name']}"
+            ),
+            axis=1,
+        )
+
+        df = df[~df["FullPath"].isin(shortcuts)].reset_index(drop=True)
 
     if export:
         if not lakehouse_attached():
