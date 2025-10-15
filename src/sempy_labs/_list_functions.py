@@ -1531,6 +1531,10 @@ def list_semantic_model_errors(
 
     from sempy_labs.tom import connect_semantic_model
 
+    df = pd.DataFrame(
+        columns=["Object Type", "Table Name", "Object Name", "Error Message"]
+    )
+
     error_rows = []
 
     with connect_semantic_model(
@@ -1588,6 +1592,7 @@ def list_semantic_model_errors(
                     else ""
                 ),
             ),
+            ("Function", tom.all_functions, lambda o: o.ErrorMessage),
         ]
 
         # Iterate over all error checks
@@ -1604,7 +1609,10 @@ def list_semantic_model_errors(
                         }
                     )
 
-    return pd.DataFrame(error_rows)
+    if error_rows:
+        df = pd.DataFrame(error_rows)
+
+    return df
 
 
 @log
