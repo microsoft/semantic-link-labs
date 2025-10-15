@@ -5,7 +5,6 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_name_and_id,
     _base_api,
     _create_dataframe,
-    _update_dataframe_datatypes,
 )
 from uuid import UUID
 from sempy._utils._log import log
