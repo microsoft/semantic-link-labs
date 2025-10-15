@@ -1531,15 +1531,14 @@ def list_semantic_model_errors(
 
     from sempy_labs.tom import connect_semantic_model
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(
-        dataset, workspace=workspace_id
+    df = pd.DataFrame(
+        columns=["Object Type", "Table Name", "Object Name", "Error Message"]
     )
 
     error_rows = []
 
     with connect_semantic_model(
-        dataset=dataset_id, workspace=workspace_id, readonly=True
+        dataset=dataset, workspace=workspace, readonly=True
     ) as tom:
         # Define mappings of TOM objects to object types and attributes
         error_checks = [
@@ -1593,6 +1592,7 @@ def list_semantic_model_errors(
                     else ""
                 ),
             ),
+            ("Function", tom.all_functions, lambda o: o.ErrorMessage),
         ]
 
         # Iterate over all error checks
@@ -1609,7 +1609,10 @@ def list_semantic_model_errors(
                         }
                     )
 
-    return pd.DataFrame(error_rows)
+    if error_rows:
+        df = pd.DataFrame(error_rows)
+
+    return df
 
 
 @log

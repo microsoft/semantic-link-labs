@@ -245,6 +245,22 @@ class TOMWrapper:
             if t.CalculationGroup is not None:
                 yield t
 
+    def all_functions(self):
+        """
+        Outputs a list of all user-defined functions in the semantic model.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        Iterator[Microsoft.AnalysisServices.Tabular.Function]
+            All user-defined functions within the semantic model.
+        """
+
+        for f in self.model.Functions:
+            yield f
+
     def all_measures(self):
         """
         Outputs a list of all measures in the semantic model.
