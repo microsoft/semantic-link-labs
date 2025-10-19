@@ -1,19 +1,21 @@
-from ._dp import (
-    list,
-    list_stages,
-    list_stage_items,
-    list_role_assignments,
-    delete,
-    list_operations,
+from ._items import (
+    list_deployment_pipeline_operations,
+    list_deployment_pipeline_role_assignments,
+    list_deployment_pipeline_stage_items,
+    list_deployment_pipeline_stages,
+    list_deployment_pipelines,
     unassign_workspace_from_stage,
+    assign_workspace_to_stage,
+    delete_deployment_pipeline,
 )
 
 __all__ = [
-    "list",
-    "list_stages",
-    "list_stage_items",
-    "list_role_assignments",
-    "delete",
-    "list_operations",
+    "list_deployment_pipeline_operations",
+    "list_deployment_pipeline_role_assignments",
+    "list_deployment_pipeline_stage_items",
+    "list_deployment_pipeline_stages",
+    "list_deployment_pipelines",
     "unassign_workspace_from_stage",
+    "assign_workspace_to_stage",
+    "delete_deployment_pipeline",
 ]
