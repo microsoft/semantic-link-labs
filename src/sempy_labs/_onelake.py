@@ -69,6 +69,30 @@ def modify_onelake_diagnostics(
     destination_lakehouse: Optional[str | UUID] = None,
     destination_workspace: Optional[str | UUID] = None,
 ):
+    """
+    Obtains the workspace OneLake settings.
+
+    This is a wrapper function for the following API: `OneLake Settings - Modify Diagnostics <https://learn.microsoft.com/rest/api/fabric/core/onelake-settings/modify-diagnostics>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    workspace : str | uuid.UUID, default=None
+        The name or ID of the workspace.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    enabled : bool, default=True
+        Whether to enable or disable OneLake diagnostics.
+    destination_lakehouse : str | uuid.UUID, default=None
+        The name or ID of the destination lakehouse.
+        Defaults to None which resolves to the lakehouse of the attached lakehouse
+        or if no lakehouse attached, resolves to the lakehouse of the notebook.
+    destination_workspace : str | uuid.UUID, default=None
+        The name or ID of the destination workspace.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
 
     workspace_id = resolve_workspace_id(workspace)
     (destination_workspace_name, destination_workspace_id) = (
