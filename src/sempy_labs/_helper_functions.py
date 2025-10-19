@@ -1003,6 +1003,7 @@ def save_as_delta_table(
 
         if merge_schema:
             write_args["schema_mode"] = "merge"
+            write_args["engine"] = "rust"
 
         write_deltalake(**write_args)
     else:
