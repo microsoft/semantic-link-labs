@@ -236,6 +236,7 @@ from ._dataflows import (
     list_upstream_dataflows,
     upgrade_dataflow,
     get_dataflow_definition,
+    discover_dataflow_parameters,
 )
 from ._connections import (
     list_connections,
@@ -613,4 +614,5 @@ __all__ = [
     "get_sql_audit_settings",
     "update_sql_audit_settings",
     "set_audit_actions_and_group",
+    "discover_dataflow_parameters",
 ]

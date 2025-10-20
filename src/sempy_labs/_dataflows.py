@@ -10,17 +10,24 @@ from sempy_labs._helper_functions import (
     _decode_b64,
     _conv_b64,
     get_jsonpath_value,
+    resolve_item_id,
 )
 from typing import Optional, Tuple
 import sempy_labs._icons as icons
 from uuid import UUID
 from jsonpath_ng.ext import parse
 import json
+from sempy._utils._log import log
 
 
+@log
 def list_dataflows(workspace: Optional[str | UUID] = None):
     """
     Shows a list of all dataflows which exist within a workspace.
+
+    This is a wrapper function for the following API: `Items - Create Dataflow <https://learn.microsoft.com/rest/api/fabric/dataflow/items/create-dataflow>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -91,6 +98,7 @@ def list_dataflows(workspace: Optional[str | UUID] = None):
     return df
 
 
+@log
 def assign_workspace_to_dataflow_storage(
     dataflow_storage_account: str, workspace: Optional[str | UUID] = None
 ):
@@ -133,6 +141,7 @@ def assign_workspace_to_dataflow_storage(
     )
 
 
+@log
 def list_dataflow_storage_accounts() -> pd.DataFrame:
     """
     Shows the accessible dataflow storage accounts.
@@ -154,19 +163,23 @@ def list_dataflow_storage_accounts() -> pd.DataFrame:
 
     response = _base_api(request="/v1.0/myorg/dataflowStorageAccounts")
 
+    rows = []
     for v in response.json().get("value", []):
-        new_data = {
+        rows.append({
             "Dataflow Storage Account ID": v.get("id"),
             "Dataflow Storage Account Name": v.get("name"),
             "Enabled": v.get("isEnabled"),
         }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+        )
 
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
 
+@log
 def list_upstream_dataflows(
     dataflow: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
@@ -174,6 +187,8 @@ def list_upstream_dataflows(
     Shows a list of upstream dataflows for the specified dataflow.
 
     This is a wrapper function for the following API: `Dataflows - Get Upstream Dataflows In Group <https://learn.microsoft.com/rest/api/power-bi/dataflows/get-upstream-dataflows-in-group>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -211,7 +226,7 @@ def list_upstream_dataflows(
 
     def collect_upstreams(dataflow_id, dataflow_name, workspace_id, workspace_name):
         response = _base_api(
-            request=f"/v1.0/myorg/groups/{workspace_id}/dataflows/{dataflow_id}/upstreamDataflows"
+            request=f"/v1.0/myorg/groups/{workspace_id}/dataflows/{dataflow_id}/upstreamDataflows", client="fabric_sp"
         )
 
         values = response.json().get("value", [])
@@ -246,6 +261,7 @@ def list_upstream_dataflows(
     return df
 
 
+@log
 def _resolve_dataflow_name_and_id_and_generation(
     dataflow: str | UUID, workspace: Optional[str | UUID] = None
 ) -> Tuple[str, UUID, str]:
@@ -271,6 +287,7 @@ def _resolve_dataflow_name_and_id_and_generation(
     return (dataflow_name, dataflow_id, dataflow_generation)
 
 
+@log
 def get_dataflow_definition(
     dataflow: str | UUID,
     workspace: Optional[str | UUID] = None,
@@ -338,6 +355,7 @@ def get_dataflow_definition(
         return result
 
 
+@log
 def upgrade_dataflow(
     dataflow: str | UUID,
     workspace: Optional[str | UUID] = None,
@@ -507,8 +525,6 @@ def upgrade_dataflow(
                     new_mashup_doc += ";\r\nshared " + i
     new_mashup_doc = f"{new_mashup_doc};"
 
-    return new_mashup_doc, query_metadata
-
     # Add the dataflow definition to the payload
     new_definition = {
         "parts": [
@@ -532,6 +548,7 @@ def upgrade_dataflow(
     )
 
 
+@log
 def create_dataflow(
     name: str,
     workspace: Optional[str | UUID] = None,
@@ -540,6 +557,10 @@ def create_dataflow(
 ):
     """
     Creates a native Fabric Dataflow Gen2 CI/CD item.
+
+    This is a wrapper function for the following API: `Items - Create Dataflow <https://learn.microsoft.com/rest/api/fabric/dataflow/items/create-dataflow>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -578,3 +599,66 @@ def create_dataflow(
     print(
         f"{icons.green_dot} The dataflow '{name}' has been created within the '{workspace_name}' workspace."
     )
+
+
+@log
+def discover_dataflow_parameters(
+    dataflow: str | UUID, workspace: str | UUID
+) -> pd.DataFrame:
+    """
+    Retrieves all parameters defined in the specified Dataflow.
+
+    This is a wrapper function for the following API: `Items - Discover Dataflow Parameters <https://learn.microsoft.com/rest/api/fabric/dataflow/items/discover-dataflow-parameters>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    dataflow : str | uuid.UUID
+        Name or ID of the dataflow.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing all parameters defined in the specified Dataflow.
+    """
+
+    workspace_id = resolve_workspace_id(workspace)
+    dataflow_id = resolve_item_id(
+        item=dataflow, type="Dataflow", workspace=workspace_id
+    )
+    responses = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/dataflows/{dataflow_id}/parameters", client="fabric_sp", uses_pagination=True
+    )
+
+    columns = {
+        "Parameter Name": "string",
+        "Is Required": "bool",
+        "Description": "string",
+        "Parameter Type": "string",
+        "Default Value": "string",
+    }
+
+    df = _create_dataframe(columns=columns)
+    rows = []
+    for r in responses:
+        for v in r.get("value", []):
+            rows.append(
+                {
+                    "Parameter Name": v.get("name"),
+                    "Is Required": v.get("isRequired"),
+                    "Description": v.get("description"),
+                    "Parameter Type": v.get("type"),
+                    "Default Value": v.get("defaultValue"),
+                }
+            )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
+
+    return df
