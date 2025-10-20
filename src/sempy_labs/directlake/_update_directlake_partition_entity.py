@@ -12,6 +12,7 @@ from sempy._utils._log import log
 from typing import List, Optional, Union
 import sempy_labs._icons as icons
 from uuid import UUID
+import json
 
 
 @log
@@ -76,6 +77,7 @@ def update_direct_lake_partition_entity(
                 for p in t.Partitions
                 if t.Name == tName
             )
+            current_slt = tom.model.Tables[tName].SourceLineageTag
 
             if part_name is None:
                 raise ValueError(
@@ -100,6 +102,41 @@ def update_direct_lake_partition_entity(
                 tom.model.Tables[tName].SourceLineageTag = f"[{schema}].[{eName}]"
             else:
                 tom.model.Tables[tName].SourceLineageTag = f"[dbo].[{eName}]"
+
+            new_slt = tom.model.Tables[tName].SourceLineageTag
+
+            # PBI_RemovedChildren logic
+            try:
+                e_name = (
+                    tom.model.Tables[tName]
+                    .Partitions[part_name]
+                    .Source.ExpressionSource.Name
+                )
+                ann = tom.get_annotation_value(
+                    object=tom.model.Expressions[e_name], name="PBI_RemovedChildren"
+                )
+                if ann:
+                    e = json.loads(ann)
+                    for i in e:
+                        sltag = (
+                            i.get("remoteItemId", {})
+                            .get("analysisServicesObject", {})
+                            .get("sourceLineageTag", {})
+                        )
+                        if sltag == current_slt:
+                            i["remoteItemId"]["analysisServicesObject"][
+                                "sourceLineageTag"
+                            ] = new_slt
+                    tom.set_annotation(
+                        object=tom.model.Expressions[e_name],
+                        name="PBI_RemovedChildren",
+                        value=json.dumps(e),
+                    )
+            except Exception as e:
+                print(
+                    f"{icons.yellow_dot} Warning: Could not update PBI_RemovedChildren annotation for table '{tName}'. {str(e)}"
+                )
+
             print(
                 f"{icons.green_dot} The '{tName}' table in the '{dataset_name}' semantic model within the '{workspace_name}' workspace has been updated to point to the '{eName}' table."
             )
