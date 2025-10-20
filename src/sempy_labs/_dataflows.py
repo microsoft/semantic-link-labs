@@ -165,11 +165,12 @@ def list_dataflow_storage_accounts() -> pd.DataFrame:
 
     rows = []
     for v in response.json().get("value", []):
-        rows.append({
-            "Dataflow Storage Account ID": v.get("id"),
-            "Dataflow Storage Account Name": v.get("name"),
-            "Enabled": v.get("isEnabled"),
-        }
+        rows.append(
+            {
+                "Dataflow Storage Account ID": v.get("id"),
+                "Dataflow Storage Account Name": v.get("name"),
+                "Enabled": v.get("isEnabled"),
+            }
         )
 
     if rows:
@@ -226,7 +227,8 @@ def list_upstream_dataflows(
 
     def collect_upstreams(dataflow_id, dataflow_name, workspace_id, workspace_name):
         response = _base_api(
-            request=f"/v1.0/myorg/groups/{workspace_id}/dataflows/{dataflow_id}/upstreamDataflows", client="fabric_sp"
+            request=f"/v1.0/myorg/groups/{workspace_id}/dataflows/{dataflow_id}/upstreamDataflows",
+            client="fabric_sp",
         )
 
         values = response.json().get("value", [])
@@ -632,7 +634,9 @@ def discover_dataflow_parameters(
         item=dataflow, type="Dataflow", workspace=workspace_id
     )
     responses = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/dataflows/{dataflow_id}/parameters", client="fabric_sp", uses_pagination=True
+        request=f"/v1/workspaces/{workspace_id}/dataflows/{dataflow_id}/parameters",
+        client="fabric_sp",
+        uses_pagination=True,
     )
 
     columns = {
