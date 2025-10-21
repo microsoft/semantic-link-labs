@@ -171,6 +171,7 @@ class ReportWrapper:
         self,
         file_path: str,
         json_path: Optional[str] = None,
+        verbose: bool = True,
     ) -> dict | List[Tuple[str, dict]]:
         """
         Get the json content of the specified report definition file.
@@ -181,6 +182,8 @@ class ReportWrapper:
             The path of the report definition file. For example: "definition/pages/pages.json". You may also use wildcards. For example: "definition/pages/*/page.json".
         json_path : str, default=None
             The json path to the specific part of the file to be retrieved. If None, the entire file content is returned.
+        verbose : bool, default=True
+            If True, prints messages about the retrieval process. If False, suppresses these messages.
 
         Returns
         -------
@@ -192,6 +195,7 @@ class ReportWrapper:
 
         # Find matching parts
         if "*" in file_path:
+            results = []
             matching_parts = [
                 (part.get("path"), part.get("payload"))
                 for part in parts
@@ -199,9 +203,11 @@ class ReportWrapper:
             ]
 
             if not matching_parts:
-                raise ValueError(
-                    f"{icons.red_dot} No files match the wildcard path '{file_path}'."
-                )
+                if verbose:
+                    print(
+                        f"{icons.red_dot} No files match the wildcard path '{file_path}'."
+                    )
+                return results
 
             results = []
             for path, payload in matching_parts:
@@ -220,8 +226,8 @@ class ReportWrapper:
                     #    raise ValueError(
                     #        f"{icons.red_dot} No match found for '{json_path}' in '{path}'."
                     #    )
-            if not results:
-                raise ValueError(
+            if not results and verbose:
+                print(
                     f"{icons.red_dot} No match found for '{json_path}' in any of the files matching the wildcard path '{file_path}'."
                 )
             return results
@@ -241,14 +247,11 @@ class ReportWrapper:
                     matches = jsonpath_expr.find(payload)
                     if matches:
                         return matches[0].value
-                    else:
-                        raise ValueError(
-                            f"{icons.red_dot} No match found for '{json_path}'."
-                        )
+                    elif verbose:
+                        print(f"{icons.red_dot} No match found for '{json_path}'.")
 
-        raise ValueError(
-            f"{icons.red_dot} File '{file_path}' not found in report definition."
-        )
+        if verbose:
+            print(f"{icons.red_dot} File '{file_path}' not found in report definition.")
 
     def add(self, file_path: str, payload: dict | bytes):
         """
@@ -674,33 +677,65 @@ class ReportWrapper:
         columns = {
             "Custom Visual Name": "str",
             "Custom Visual Display Name": "str",
+            "Is Public": "bool",
             "Used in Report": "bool",
         }
 
         df = _create_dataframe(columns=columns)
 
-        report_file = self.get(file_path=self._report_file_path)
-
-        df["Custom Visual Name"] = report_file.get("publicCustomVisuals")
-        df["Custom Visual Display Name"] = df["Custom Visual Name"].apply(
-            lambda x: helper.vis_type_mapping.get(x, x)
+        visuals = []
+        rp = self.get(
+            file_path=self._report_file_path,
+            json_path="$.resourcePackages",
+            verbose=False,
         )
 
-        visual_types = set()
-        for v in self.__all_visuals():
-            payload = v.get("payload", {})
-            visual = payload.get("visual", {})
-            visual_type = visual.get("visualType")
-            if visual_type:
-                visual_types.add(visual_type)
+        if rp:
+            visuals += [
+                {"Custom Visual Name": item.get("name"), "Is Public": False}
+                for item in rp
+                if item.get("type") == "CustomVisual"
+            ]
 
-        for _, r in df.iterrows():
-            if r["Custom Visual Name"] in visual_types:
-                df.at[_, "Used in Report"] = True
-            else:
-                df.at[_, "Used in Report"] = False
+        # Load public custom visuals
+        public_custom_visuals = (
+            self.get(
+                file_path=self._report_file_path,
+                json_path="$.publicCustomVisuals",
+                verbose=False,
+            )
+            or []
+        )
 
-        _update_dataframe_datatypes(dataframe=df, column_map=columns)
+        visuals += [
+            {
+                "Custom Visual Name": (
+                    item.get("name") if isinstance(item, dict) else item
+                ),
+                "Is Public": True,
+            }
+            for item in public_custom_visuals
+        ]
+
+        if visuals:
+            df = pd.DataFrame(visuals, columns=list(columns.keys()))
+
+            # df["Custom Visual Name"] = report_file.get("publicCustomVisuals")
+            df["Custom Visual Display Name"] = df["Custom Visual Name"].apply(
+                lambda x: helper.vis_type_mapping.get(x, x)
+            )
+
+            visual_types = set()
+            for v in self.__all_visuals():
+                payload = v.get("payload", {})
+                visual = payload.get("visual", {})
+                visual_type = visual.get("visualType")
+                if visual_type:
+                    visual_types.add(visual_type)
+
+            df["Used in Report"] = df["Custom Visual Name"].isin(visual_types)
+
+            _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
         return df
 
