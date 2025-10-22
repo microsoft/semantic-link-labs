@@ -76,7 +76,7 @@ def refresh_materialized_lake_views(
     return df
 
 
-def get_materialized_lake_views_schedule(
+def _get_materialized_lake_views_schedule(
     lakehouse: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
     """
@@ -128,7 +128,7 @@ def get_materialized_lake_views_schedule(
 
 
 @log
-def delete_materialized_lake_view_schedule(
+def _delete_materialized_lake_view_schedule(
     schedule_id: UUID,
     lakehouse: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
