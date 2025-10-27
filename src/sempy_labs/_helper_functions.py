@@ -2319,7 +2319,10 @@ def _update_dataframe_datatypes(dataframe: pd.DataFrame, column_map: dict):
             elif data_type == "int_fillna":
                 dataframe[column] = dataframe[column].fillna(0).astype(int)
             elif data_type in ["str", "string"]:
-                dataframe[column] = dataframe[column].astype(str)
+                try:
+                    dataframe[column] = dataframe[column].astype(str)
+                except Exception:
+                    pass
             # Avoid having empty lists or lists with a value of None.
             elif data_type in ["list"]:
                 dataframe[column] = dataframe[column].apply(
