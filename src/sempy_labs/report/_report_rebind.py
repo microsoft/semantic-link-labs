@@ -1,4 +1,6 @@
 from sempy_labs._helper_functions import (
+    resolve_item_id,
+    resolve_workspace_id,
     resolve_workspace_name_and_id,
     resolve_item_name_and_id,
     _base_api,
@@ -8,6 +10,7 @@ from typing import Optional, List
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from uuid import UUID
+import sempy.fabric as fabric
 
 
 @log
@@ -108,57 +111,40 @@ def report_rebind_all(
         the new semantic model.
     """
 
-    from sempy_labs._list_functions import list_reports_using_semantic_model
-
-    (dataset_name, dataset_id) = resolve_dataset_name_and_id(
-        dataset=dataset, workspace=dataset_workspace
+    (dataset_name, dataset_id) = resolve_item_name_and_id(
+        item=dataset, type="SemanticModel", workspace=dataset_workspace
     )
-    (new_dataset_name, new_dataset_id) = resolve_dataset_name_and_id(
-        dataset=new_dataset, workspace=new_dataset_workspace
+    new_dataset_id = resolve_item_id(
+        item=new_dataset, type="SemanticModel", workspace=new_dataset_workspace
     )
 
     if dataset_id == new_dataset_id:
         raise ValueError(
-            f"{icons.red_dot} The 'dataset' and 'new_dataset' parameters are both set to '{dataset}'. These parameters must be set to different values."
+            f"{icons.red_dot} The 'dataset' and 'new_dataset' parameters are both set to the same semantic model within the same workspace. These parameters must be set to different values."
         )
-    (dataset_workspace_name, dataset_workspace_id) = resolve_workspace_name_and_id(
-        workspace=dataset_workspace
-    )
+    dataset_workspace_id = resolve_workspace_id(workspace=dataset_workspace)
 
-    if isinstance(report_workspace, str):
+    if isinstance(report_workspace, str) or report_workspace is None:
         report_workspace = [report_workspace]
 
-    dfR = list_reports_using_semantic_model(
-        dataset=dataset, workspace=dataset_workspace
-    )
-
-    if dfR.empty:
-        print(
-            f"{icons.info} The '{dataset_name}' semantic model within the '{dataset_workspace_name}' workspace has no dependent reports."
-        )
-        return
-
-    if report_workspace is None:
-        dfR_filt = dfR.copy()
-    else:
+    for w in report_workspace:
+        dfR = fabric.list_reports(workspace=w)
         dfR_filt = dfR[
-            (dfR["Report Workspace Name"].isin(report_workspace))
-            | (dfR["Report Workspace ID"].isin(report_workspace))
+            (dfR["Dataset ID"] == dataset_id)
+            & (dfR["Dataset Workspace Id"] == dataset_workspace_id)
         ]
-
-    if dfR_filt.empty:
-        print(
-            f"{icons.info} No reports found for the '{dataset_name}' semantic model within the '{dataset_workspace_name}' workspace."
-        )
-        return
-
-    for _, r in dfR_filt.iterrows():
-        rpt_name = r["Report Name"]
-        rpt_wksp = r["Report Workspace Name"]
-
-        report_rebind(
-            report=rpt_name,
-            dataset=new_dataset,
-            report_workspace=rpt_wksp,
-            dataset_workspace=new_dataset_workspace,
-        )
+        if dfR_filt.empty:
+            (wksp_name, _) = resolve_workspace_name_and_id(workspace=w)
+            print(
+                f"{icons.info} No reports found for the '{dataset_name}' semantic model within the '{wksp_name}' workspace."
+            )
+        else:
+            # Rebind reports to new dataset
+            for _, r in dfR_filt.iterrows():
+                rpt_name = r["Name"]
+                report_rebind(
+                    report=rpt_name,
+                    dataset=new_dataset,
+                    report_workspace=w,
+                    dataset_workspace=new_dataset_workspace,
+                )
