@@ -25,7 +25,7 @@ def list_dataflows(workspace: Optional[str | UUID] = None):
     """
     Shows a list of all dataflows which exist within a workspace.
 
-    This is a wrapper function for the following API: `Items - Create Dataflow <https://learn.microsoft.com/rest/api/fabric/dataflow/items/create-dataflow>`_.
+    This is a wrapper function for the following API: `Items - List Dataflows <https://learn.microsoft.com/rest/api/fabric/dataflow/items/list-dataflows>`_.
 
     Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
