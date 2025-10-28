@@ -169,9 +169,34 @@ def list_semantic_model_commands(
     if spid:
         commands = commands[commands["SESSION_SPID"] == spid]
     return commands
-    # spids = sessions[sessions['SESSION_USER_NAME'] == user_name]['SESSION_SPID'].values.tolist()
-    # df_commands = commands[commands['COMMAND_TEXT'].str.strip() == query.strip()]
-    # df_commands[df_commands['SESSION_SPID'].isin(spids)]
+
+
+@log
+def _cancel_refresh(dataset: str | UUID, workspace: Optional[str | UUID] = None):
+
+    dataset_id = resolve_dataset_name_and_id(dataset, workspace)[1]
+
+    df = list_semantic_model_commands(dataset=dataset, workspace=workspace)
+    # Find refresh operations
+    df_filt = df[
+        (
+            df["COMMAND_TEXT"].str.contains(
+                '<Batch Transaction="false" xmlns="http://schemas.microsoft.com/analysisservices/2003/engine">'
+            )
+        )
+        & (
+            df["COMMAND_TEXT"].str.contains(
+                '<Refresh xmlns="http://schemas.microsoft.com/analysisservices/2014/engine">'
+            )
+        )
+        & (df["COMMAND_TEXT"].str.contains(f"<DatabaseID>{dataset_id}</DatabaseID>"))
+    ]
+    if df_filt:
+        spids = df_filt["SESSION_SPID"].values.tolist()
+        for spid in spids:
+            cancel_spid(dataset=dataset, spid=spid, workspace=workspace)
+    else:
+        print(f"{icons.info} No refresh operations found to cancel.")
 
 
 @log
@@ -180,6 +205,7 @@ def cancel_long_running_queries(
     workspace: Optional[str | UUID] = None,
     min_elapsed_time_seconds: int = 60,
     skip_users: str | List[str] = None,
+    include_refresh_operations: bool = False,
 ):
     """
     Cancels long-running queries against a semantic model.
@@ -196,9 +222,28 @@ def cancel_long_running_queries(
         The minimum elapsed time in seconds which defines a long-running query.
     skip_users : str | List[str], default=None
         The user name or list of user names to skip when cancelling long-running queries.
+    include_refresh_operations : bool, default=False
+        If True, includes refresh operations when cancelling long-running queries.
     """
 
     df = list_semantic_model_sessions(dataset=dataset, workspace=workspace)
+    # Filter out refresh operations unless specified to include
+    if not include_refresh_operations:
+        df = df[
+            ~(
+                (
+                    df["COMMAND_TEXT"].str.contains(
+                        '<Batch Transaction="false" xmlns="http://schemas.microsoft.com/analysisservices/2003/engine">'
+                    )
+                )
+                & (
+                    df["COMMAND_TEXT"].str.contains(
+                        '<Refresh xmlns="http://schemas.microsoft.com/analysisservices/2014/engine">'
+                    )
+                )
+            )
+        ]
+
     if skip_users and isinstance(skip_users, str):
         skip_users = [skip_users]
     if skip_users:
