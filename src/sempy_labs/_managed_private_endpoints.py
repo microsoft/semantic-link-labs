@@ -2,6 +2,7 @@ import pandas as pd
 import sempy_labs._icons as icons
 from typing import Optional
 from sempy_labs._helper_functions import (
+    resolve_item_id,
     resolve_workspace_name_and_id,
     _is_valid_uuid,
     _base_api,
@@ -190,3 +191,64 @@ def delete_managed_private_endpoint(
         workspace_name=workspace_name,
         action="deleted",
     )
+
+
+@log
+def list_managed_private_endpoint_fqdns(
+    managed_private_endpoint: str | UUID, workspace: Optional[str | UUID] = None
+) -> pd.DataFrame:
+    """
+    Shows a list of fully qualified domain names (FQDNs) associated with the specified managed private endpoint.
+
+    This is a wrapper function for the following API: `Managed Private Endpoints - List FQDNs <https://learn.microsoft.com/rest/api/fabric/core/managed-private-endpoints/list-fqd-ns>`.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    managed_private_endpoint : str | uuid.UUID
+        The managed private endpoint name or ID.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of fully qualified domain names (FQDNs) associated with the specified managed private endpoint.
+    """
+
+    workspace_id = resolve_workspace_id(workspace)
+    if _is_valid_uuid(managed_private_endpoint):
+        item_id = managed_private_endpoint
+    else:
+        df = list_managed_private_endpoints(workspace=workspace_id)
+        df_filt = df[df["Managed Private Endpoint Name"] == managed_private_endpoint]
+        if df_filt.empty:
+            raise ValueError(
+                f"{icons.red_dot} The '{managed_private_endpoint}' managed private endpoint does not exist within the workspace."
+            )
+        item_id = df_filt["Managed Private Endpoint Id"].iloc[0]
+
+    columns = {"FQDN": "str"}
+    df = _create_dataframe(columns=columns)
+    responses = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/managedPrivateEndpoints/{item_id}/targetFQDNs",
+        uses_pagination=True,
+        client="fabric_sp",
+    )
+
+    rows = []
+    for r in responses:
+        for v in r.get("value", []):
+            rows.append(
+                {
+                    "FQDN": v,
+                }
+            )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+
+    return df

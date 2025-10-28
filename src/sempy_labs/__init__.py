@@ -80,6 +80,7 @@ from ._managed_private_endpoints import (
     list_managed_private_endpoints,
     create_managed_private_endpoint,
     delete_managed_private_endpoint,
+    list_managed_private_endpoint_fqdns,
 )
 from ._workloads import (
     list_workloads,
@@ -505,6 +506,7 @@ __all__ = [
     "list_managed_private_endpoints",
     "create_managed_private_endpoint",
     "delete_managed_private_endpoint",
+    "list_managed_private_endpoint_fqdns",
     "get_dax_query_dependencies",
     "get_dax_query_memory_size",
     "get_mirrored_database_definition",
