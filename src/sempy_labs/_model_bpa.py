@@ -300,7 +300,7 @@ def run_model_bpa(
                 tom.all_partitions(),
                 lambda obj: format_dax_object_name(obj.Parent.Name, obj.Name),
             ),
-            "Functions": (
+            "Function": (
                 tom.all_functions(),
                 lambda obj: obj.Name,
             ),
