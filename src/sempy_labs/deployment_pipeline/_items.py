@@ -4,10 +4,12 @@ from sempy_labs._helper_functions import (
     _base_api,
     _update_dataframe_datatypes,
     _create_dataframe,
+    resolve_workspace_id,
 )
+from sempy._utils._log import log
 import sempy_labs._icons as icons
 from uuid import UUID
-from sempy._utils._log import log
+from typing import Optional
 
 
 @log
@@ -29,7 +31,7 @@ def resolve_deployment_pipeline_id(deployment_pipeline: str | UUID) -> UUID:
     if _is_valid_uuid(deployment_pipeline):
         return deployment_pipeline
     else:
-        dfP = list_deployment_pipelines()
+        dfP = list()
         dfP_filt = dfP[dfP["Deployment Pipeline Name"] == deployment_pipeline]
         if len(dfP_filt) == 0:
             raise ValueError(
@@ -38,6 +40,23 @@ def resolve_deployment_pipeline_id(deployment_pipeline: str | UUID) -> UUID:
         return dfP_filt["Deployment Pipeline Id"].iloc[0]
 
 
+@log
+def resolve_stage_id(deployment_pipeline_id: UUID, stage: str | UUID):
+
+    dfPS = list_deployment_pipeline_stages(deployment_pipeline=deployment_pipeline_id)
+
+    if _is_valid_uuid(stage):
+        dfPS_filt = dfPS[dfPS["Deployment Pipeline Stage Id"] == stage]
+    else:
+        dfPS_filt = dfPS[dfPS["Deployment Pipeline Stage Name"] == stage]
+    if dfPS.empty:
+        raise ValueError(
+            f"{icons.red_dot} The '{stage}' stage does not exist within the '{deployment_pipeline_id}' deployment pipeline."
+        )
+    return dfPS_filt["Deployment Pipeline Stage Id"].iloc[0]
+
+
+@log
 def list_deployment_pipelines() -> pd.DataFrame:
     """
     Shows a list of deployment pipelines the user can access.
@@ -78,7 +97,7 @@ def list_deployment_pipelines() -> pd.DataFrame:
             )
 
     if rows:
-        df = pd.DataFrame(rows, columns=columns.keys())
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 
@@ -139,9 +158,10 @@ def list_deployment_pipeline_stages(deployment_pipeline: str | UUID) -> pd.DataF
                     "Public": v.get("isPublic"),
                 }
             )
+
     if rows:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
-        _update_dataframe_datatypes(df, columns)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -185,25 +205,7 @@ def list_deployment_pipeline_stage_items(
         deployment_pipeline=deployment_pipeline
     )
 
-    def resolve_deployment_pipeline_stage_id(
-        deployment_pipeline_id: UUID, stage: str | UUID
-    ):
-
-        dfPS = list_deployment_pipeline_stages(
-            deployment_pipeline=deployment_pipeline_id
-        )
-
-        if _is_valid_uuid(stage):
-            dfPS_filt = dfPS[dfPS["Deployment Pipeline Stage Id"] == stage]
-        else:
-            dfPS_filt = dfPS[dfPS["Deployment Pipeline Stage Name"] == stage]
-        if dfPS.empty:
-            raise ValueError(
-                f"{icons.red_dot} The '{stage}' stage does not exist within the '{deployment_pipeline}' deployment pipeline."
-            )
-        return dfPS_filt["Deployment Pipeline Stage Id"].iloc[0]
-
-    stage_id = resolve_deployment_pipeline_stage_id(deployment_pipeline_id, stage)
+    stage_id = resolve_stage_id(deployment_pipeline_id, stage)
 
     responses = _base_api(
         request=f"/v1/deploymentPipelines/{deployment_pipeline_id}/stages/{stage_id}/items",
@@ -232,6 +234,7 @@ def list_deployment_pipeline_stage_items(
     return df
 
 
+@log
 def list_deployment_pipeline_role_assignments(
     deployment_pipeline: str | UUID,
 ) -> pd.DataFrame:
@@ -239,6 +242,8 @@ def list_deployment_pipeline_role_assignments(
     Shows the role assignments for the specified deployment pipeline.
 
     This is a wrapper function for the following API: `Deployment Pipelines - List Deployment Pipeline Role Assignments <https://learn.microsoft.com/rest/api/fabric/core/deployment-pipelines/list-deployment-pipeline-role-assignments>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -268,24 +273,25 @@ def list_deployment_pipeline_role_assignments(
         client="fabric_sp",
     )
 
-    dfs = []
-
+    rows = []
     for r in responses:
         for v in r.get("value", []):
             principal = v.get("principal", {})
-            new_data = {
-                "Role": v.get("role"),
-                "Principal Id": principal.get("id"),
-                "Principal Type Name": principal.get("type"),
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
+            rows.append(
+                {
+                    "Role": v.get("role"),
+                    "Principal Id": principal.get("id"),
+                    "Principal Type Name": principal.get("type"),
+                }
+            )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 
 
+@log
 def delete_deployment_pipeline(
     deployment_pipeline: str | UUID,
 ):
@@ -293,6 +299,8 @@ def delete_deployment_pipeline(
     Deletes the specified deployment pipeline.
 
     This is a wrapper function for the following API: `Deployment Pipelines - Delete Deployment Pipeline <https://learn.microsoft.com/rest/api/fabric/core/deployment-pipelines/delete-deployment-pipeline>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -315,6 +323,7 @@ def delete_deployment_pipeline(
     )
 
 
+@log
 def list_deployment_pipeline_operations(
     deployment_pipeline: str | UUID,
 ) -> pd.DataFrame:
@@ -322,6 +331,8 @@ def list_deployment_pipeline_operations(
     Shows the operations for the specified deployment pipeline.
 
     This is a wrapper function for the following API: `Deployment Pipelines - List Deployment Pipeline Operations <https://learn.microsoft.com/rest/api/fabric/core/deployment-pipelines/list-deployment-pipeline-operations>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -362,35 +373,37 @@ def list_deployment_pipeline_operations(
         client="fabric_sp",
     )
 
-    dfs = []
+    rows = []
     for r in responses:
         for v in r.get("value", []):
             p = v.get("preDeploymentDiffInformation", {})
-            new_data = {
-                "Operation Id": v.get("id"),
-                "Type": v.get("type"),
-                "Status": v.get("status"),
-                "Last Updated Time": v.get("lastUpdatedTime"),
-                "Execution Start Time": v.get("executionStartTime"),
-                "Execution End Time": v.get("executionEndTime"),
-                "Source Stage Id": v.get("sourceStageId"),
-                "Target Stage Id": v.get("targetStageId"),
-                "Note": v.get("note", {}).get("content"),
-                "New Items Count": p.get("newItemsCount"),
-                "Different Items Count": p.get("differentItemsCount"),
-                "No Difference Items Count": p.get("noDifferenceItemsCount"),
-                "Performed By Id": v.get("performedBy", {}).get("id"),
-                "Performed By Type": v.get("performedBy", {}).get("type"),
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
+            rows.append(
+                {
+                    "Operation Id": v.get("id"),
+                    "Type": v.get("type"),
+                    "Status": v.get("status"),
+                    "Last Updated Time": v.get("lastUpdatedTime"),
+                    "Execution Start Time": v.get("executionStartTime"),
+                    "Execution End Time": v.get("executionEndTime"),
+                    "Source Stage Id": v.get("sourceStageId"),
+                    "Target Stage Id": v.get("targetStageId"),
+                    "Note": v.get("note", {}).get("content"),
+                    "New Items Count": p.get("newItemsCount"),
+                    "Different Items Count": p.get("differentItemsCount"),
+                    "No Difference Items Count": p.get("noDifferenceItemsCount"),
+                    "Performed By Id": v.get("performedBy", {}).get("id"),
+                    "Performed By Type": v.get("performedBy", {}).get("type"),
+                }
+            )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
 
+@log
 def unassign_workspace_from_stage(
     deployment_pipeline: str | UUID,
     stage: str | UUID,
@@ -399,6 +412,8 @@ def unassign_workspace_from_stage(
     Unassigns the workspace from the specified stage of the specified deployment pipeline.
 
     This is a wrapper function for the following API: `Deployment Pipelines - Unassign Workspace From Stage <https://learn.microsoft.com/rest/api/fabric/core/deployment-pipelines/unassign-workspace-from-stage>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -412,25 +427,7 @@ def unassign_workspace_from_stage(
         deployment_pipeline=deployment_pipeline
     )
 
-    def resolve_deployment_pipeline_stage_id(
-        deployment_pipeline_id: UUID, stage: str | UUID
-    ):
-
-        dfPS = list_deployment_pipeline_stages(
-            deployment_pipeline=deployment_pipeline_id
-        )
-
-        if _is_valid_uuid(stage):
-            dfPS_filt = dfPS[dfPS["Deployment Pipeline Stage Id"] == stage]
-        else:
-            dfPS_filt = dfPS[dfPS["Deployment Pipeline Stage Name"] == stage]
-        if dfPS.empty:
-            raise ValueError(
-                f"{icons.red_dot} The '{stage}' stage does not exist within the '{deployment_pipeline}' deployment pipeline."
-            )
-        return dfPS_filt["Deployment Pipeline Stage Id"].iloc[0]
-
-    stage_id = resolve_deployment_pipeline_stage_id(deployment_pipeline_id, stage)
+    stage_id = resolve_stage_id(deployment_pipeline_id, stage)
 
     _base_api(
         request=f"/v1/deploymentPipelines/{deployment_pipeline_id}/stages/{stage_id}/unassignWorkspace",
@@ -440,4 +437,50 @@ def unassign_workspace_from_stage(
 
     print(
         f"{icons.green_dot} The workspace has been unassigned from the '{stage}' stage of the '{deployment_pipeline}' deployment pipeline successfully."
+    )
+
+
+@log
+def assign_workspace_to_stage(
+    deployment_pipeline: str | UUID,
+    stage: str | UUID,
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Unassigns the workspace from the specified stage of the specified deployment pipeline.
+
+    This is a wrapper function for the following API: `Deployment Pipelines - Assign Workspace To Stage <https://learn.microsoft.com/rest/api/fabric/core/deployment-pipelines/assign-workspace-to-stage>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    deployment_pipeline : str | uuid.UUID
+        The deployment pipeline name or ID.
+    stage : str | uuid.UUID
+        The deployment pipeline stage name or ID.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    deployment_pipeline_id = resolve_deployment_pipeline_id(
+        deployment_pipeline=deployment_pipeline
+    )
+
+    stage_id = resolve_stage_id(deployment_pipeline_id, stage)
+    workspace_id = resolve_workspace_id(workspace=workspace)
+
+    payload = {"workspaceId": workspace_id}
+
+    _base_api(
+        request=f"/v1/deploymentPipelines/{deployment_pipeline_id}/stages/{stage_id}/assignWorkspace",
+        method="post",
+        client="fabric_sp",
+        payload=payload,
+    )
+
+    print(
+        f"{icons.green_dot} The workspace has been assigned to the '{stage}' stage of the '{deployment_pipeline}' deployment pipeline successfully."
     )

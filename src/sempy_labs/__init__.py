@@ -212,11 +212,6 @@ from ._workspace_identity import (
     provision_workspace_identity,
     deprovision_workspace_identity,
 )
-from ._deployment_pipelines import (
-    list_deployment_pipeline_stage_items,
-    list_deployment_pipeline_stages,
-    list_deployment_pipelines,
-)
 from ._git import (
     get_git_connection,
     get_git_status,
@@ -449,9 +444,6 @@ __all__ = [
     "resolve_capacity_name",
     "run_model_bpa_bulk",
     "create_model_bpa_semantic_model",
-    "list_deployment_pipeline_stage_items",
-    "list_deployment_pipeline_stages",
-    "list_deployment_pipelines",
     "get_git_connection",
     "get_git_status",
     "commit_to_git",
