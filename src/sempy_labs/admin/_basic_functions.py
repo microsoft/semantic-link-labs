@@ -338,15 +338,19 @@ def list_workspace_access_details(
 
     rows = []
     for v in response.json().get("accessDetails", []):
-        rows.append({
-            "User Id": v.get("principal", {}).get("id"),
-            "User Name": v.get("principal", {}).get("displayName"),
-            "User Type": v.get("principal", {}).get("type"),
-            "Workspace Name": workspace_name,
-            "Workspace Id": workspace_id,
-            "Workspace Role": v.get("workspaceAccessDetails", {}).get("workspaceRole"),
-        })
-    
+        rows.append(
+            {
+                "User Id": v.get("principal", {}).get("id"),
+                "User Name": v.get("principal", {}).get("displayName"),
+                "User Type": v.get("principal", {}).get("type"),
+                "Workspace Name": workspace_name,
+                "Workspace Id": workspace_id,
+                "Workspace Role": v.get("workspaceAccessDetails", {}).get(
+                    "workspaceRole"
+                ),
+            }
+        )
+
     if rows:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
 

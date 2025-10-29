@@ -259,7 +259,9 @@ def list_group_transitive_members(group: str | UUID) -> pd.DataFrame:
     group_id = resolve_group_id(group)
 
     result = _base_api(
-        request=f"groups/{group_id}/transitiveMembers", client="graph", uses_pagination=True
+        request=f"groups/{group_id}/transitiveMembers",
+        client="graph",
+        uses_pagination=True,
     )
 
     columns = {
