@@ -40,7 +40,7 @@ def resolve_user_id(user: str | UUID) -> UUID:
 
 
 @log
-def get_user(user: str | UUID) -> pd.DataFrame:
+def get_user(user: str | UUID, show_manager: bool = False) -> pd.DataFrame:
     """
     Shows properties of a given user.
 
@@ -52,6 +52,8 @@ def get_user(user: str | UUID) -> pd.DataFrame:
     ----------
     user : str | uuid.UUID
         The user ID or user principal name.
+    show_manager : bool, default=False
+        Whether to include the user's manager information.
 
     Returns
     -------
@@ -59,7 +61,11 @@ def get_user(user: str | UUID) -> pd.DataFrame:
         A pandas dataframe showing properties of a given user.
     """
 
-    result = _base_api(request=f"users/{user}", client="graph").json()
+    url = f"users/{user}?$select=id,userPrincipalName,displayName,mail,jobTitle,officeLocation,mobilePhone,businessPhones,preferredLanguage,surname,department"
+    if show_manager:
+        url += "&$expand=manager($select=displayName,id,mail,jobTitle)"
+
+    result = _base_api(request=url, client="graph").json()
 
     new_data = {
         "User Id": result.get("id"),
@@ -72,13 +78,22 @@ def get_user(user: str | UUID) -> pd.DataFrame:
         "Business Phones": str(result.get("businessPhones")),
         "Preferred Language": result.get("preferredLanguage"),
         "Surname": result.get("surname"),
+        "Department": result.get("department"),
     }
+    if show_manager:
+        manager = result.get("manager", {})
+        new_data |= {
+            "Manager Id": manager.get("id"),
+            "Manager Name": manager.get("displayName"),
+            "Manager Mail": manager.get("mail"),
+            "Manager Job Title": manager.get("jobTitle"),
+        }
 
     return pd.DataFrame([new_data])
 
 
 @log
-def list_users() -> pd.DataFrame:
+def list_users(show_manager: bool = False) -> pd.DataFrame:
     """
     Shows a list of users and their properties.
 
@@ -86,13 +101,21 @@ def list_users() -> pd.DataFrame:
 
     Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
+    Parameters
+    ----------
+    show_manager : bool, default=False
+        Whether to include the user's manager information.
+
     Returns
     -------
     pandas.DataFrame
         A pandas dataframe showing a list of users and their properties.
     """
 
-    result = _base_api(request="users", client="graph", uses_pagination=True)
+    url = "users?$select=id,userPrincipalName,displayName,mail,jobTitle,officeLocation,mobilePhone,businessPhones,preferredLanguage,surname,department"
+    if show_manager:
+        url += "&$expand=manager($select=displayName,id,mail,jobTitle)"
+    result = _base_api(request=url, client="graph", uses_pagination=True)
 
     columns = {
         "User Id": "string",
@@ -105,27 +128,48 @@ def list_users() -> pd.DataFrame:
         "Business Phones": "string",
         "Preferred Language": "string",
         "Surname": "string",
+        "Department": "string",
     }
+
+    if show_manager:
+        columns.update(
+            {
+                "Manager Id": "string",
+                "Manager Name": "string",
+                "Manager Mail": "string",
+                "Manager Job Title": "string",
+            }
+        )
 
     df = _create_dataframe(columns=columns)
 
     rows = []
     for r in result:
         for v in r.get("value", []):
-            rows.append(
-                {
-                    "User Id": v.get("id"),
-                    "User Principal Name": v.get("userPrincipalName"),
-                    "User Name": v.get("displayName"),
-                    "Mail": v.get("mail"),
-                    "Job Title": v.get("jobTitle"),
-                    "Office Location": v.get("officeLocation"),
-                    "Mobile Phone": v.get("mobilePhone"),
-                    "Business Phones": str(v.get("businessPhones")),
-                    "Preferred Language": v.get("preferredLanguage"),
-                    "Surname": v.get("surname"),
+            user_data = {
+                "User Id": v.get("id"),
+                "User Principal Name": v.get("userPrincipalName"),
+                "User Name": v.get("displayName"),
+                "Mail": v.get("mail"),
+                "Job Title": v.get("jobTitle"),
+                "Office Location": v.get("officeLocation"),
+                "Mobile Phone": v.get("mobilePhone"),
+                "Business Phones": str(v.get("businessPhones")),
+                "Preferred Language": v.get("preferredLanguage"),
+                "Surname": v.get("surname"),
+                "Department": v.get("department"),
+            }
+
+            if show_manager:
+                manager = v.get("manager", {})
+                user_data |= {
+                    "Manager Id": manager.get("id"),
+                    "Manager Name": manager.get("displayName"),
+                    "Manager Mail": manager.get("mail"),
+                    "Manager Job Title": manager.get("jobTitle"),
                 }
-            )
+
+            rows.append(user_data)
 
     if rows:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
