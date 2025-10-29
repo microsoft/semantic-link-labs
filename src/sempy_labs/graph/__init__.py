@@ -9,6 +9,7 @@ from ._groups import (
     create_group,
     delete_group,
     update_group,
+    list_group_transitive_members,
 )
 from ._users import (
     resolve_user_id,
@@ -54,4 +55,5 @@ __all__ = [
     "resolve_sensitivity_label_id",
     "add_user_license",
     "remove_user_license",
+    "list_group_transitive_members",
 ]

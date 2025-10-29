@@ -1,10 +1,9 @@
 from typing import Optional, List, Union, Tuple
 from uuid import UUID
 import sempy_labs._icons as icons
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     _is_valid_uuid,
     _build_url,
-    _update_dataframe_datatypes,
     _base_api,
     _create_dataframe,
 )
@@ -456,7 +455,5 @@ def list_workspace_users(workspace: Optional[str | UUID] = None) -> pd.DataFrame
 
     if rows:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
-
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
