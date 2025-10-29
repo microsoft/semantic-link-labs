@@ -337,16 +337,19 @@ def list_workspace_access_details(
         request=f"/v1/admin/workspaces/{workspace_id}/users", client="fabric_sp"
     )
 
+    rows = []
     for v in response.json().get("accessDetails", []):
-        new_data = {
+        rows.append({
             "User Id": v.get("principal", {}).get("id"),
             "User Name": v.get("principal", {}).get("displayName"),
             "User Type": v.get("principal", {}).get("type"),
             "Workspace Name": workspace_name,
             "Workspace Id": workspace_id,
             "Workspace Role": v.get("workspaceAccessDetails", {}).get("workspaceRole"),
-        }
-        df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
+        })
+    
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 
