@@ -353,6 +353,10 @@ from ._sql_audit_settings import (
     update_sql_audit_settings,
     set_audit_actions_and_group,
 )
+from ._onelake import (
+    get_onelake_settings,
+    modify_onelake_diagnostics,
+)
 
 __all__ = [
     "resolve_warehouse_id",
@@ -609,4 +613,6 @@ __all__ = [
     "update_sql_audit_settings",
     "set_audit_actions_and_group",
     "discover_dataflow_parameters",
+    "get_onelake_settings",
+    "modify_onelake_diagnostics",
 ]
