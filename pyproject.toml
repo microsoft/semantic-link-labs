@@ -7,7 +7,7 @@ name="semantic-link-labs"
 authors = [
     { name = "Microsoft Corporation" },
 ]
-version="0.12.5"
+version="0.12.6"
 description="Semantic Link Labs for Microsoft Fabric"
 readme="README.md"
 requires-python=">=3.10,<3.12"
