@@ -3,7 +3,7 @@ from .._helper_functions import (
     _is_valid_uuid,
 )
 from uuid import UUID
-from .._tags import list_tags
+from sempy_labs._tags import list_tags
 import sempy_labs._icons as icons
 from typing import List
 from sempy._utils._log import log

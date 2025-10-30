@@ -1,8 +1,8 @@
 from typing import Optional
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     _base_api,
 )
-from ._items import (
+from sempy_labs.admin._items import (
     _resolve_item_id,
 )
 from uuid import UUID
