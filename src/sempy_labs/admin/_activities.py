@@ -2,7 +2,7 @@ import pandas as pd
 from typing import Optional
 from dateutil.parser import parse as dtparser
 from sempy._utils._log import log
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     _base_api,
     _create_dataframe,
     _update_dataframe_datatypes,
