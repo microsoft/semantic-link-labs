@@ -202,13 +202,6 @@ from ._sql import (
     ConnectLakehouse,
     ConnectSQLDatabase,
 )
-from ._sqldatabase import (
-    get_sql_database_columns,
-    get_sql_database_tables,
-    create_sql_database,
-    delete_sql_database,
-    list_sql_databases,
-)
 from ._workspace_identity import (
     provision_workspace_identity,
     deprovision_workspace_identity,
@@ -568,8 +561,6 @@ __all__ = [
     "get_eventhouse_definition",
     "enable_semantic_model_scheduled_refresh",
     "get_delta_table_history",
-    "get_sql_database_columns",
-    "get_sql_database_tables",
     "create_item_schedule_cron",
     "create_item_schedule_daily",
     "create_item_schedule_weekly",
@@ -580,9 +571,6 @@ __all__ = [
     "delete_mounted_data_factory",
     "delete_semantic_model",
     "delete_workspace",
-    "create_sql_database",
-    "delete_sql_database",
-    "list_sql_databases",
     "delta_analyzer_history",
     "query_kusto",
     "query_workspace_monitoring",
