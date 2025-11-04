@@ -173,3 +173,40 @@ def publish_environment(
     print(
         f"{icons.green_dot} The '{environment}' environment within the '{workspace_name}' workspace has been published."
     )
+
+
+@log
+def cancel_publish_environment(
+    environment: str | UUID, workspace: Optional[str | UUID] = None
+):
+    """
+    Trigger an environment publish cancellation.
+
+    This is a wrapper function for the following API: `Items - Cancel Publish Environment <https://learn.microsoft.com/rest/api/fabric/environment/items/cancel-publish-environment>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    environment: str | uuid.UUID
+        Name or ID of the environment.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    item_id = resolve_item_id(
+        item=environment, type="Environment", workspace=workspace_id
+    )
+
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/environments/{item_id}/staging/cancelPublish",
+        method="post",
+        client="fabric_sp",
+    )
+
+    print(
+        f"{icons.green_dot} The publish of the '{environment}' environment within the '{workspace_name}' workspace has been cancelled."
+    )
