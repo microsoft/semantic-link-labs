@@ -1727,6 +1727,7 @@ class ReportWrapper:
             "Page Display Name": "str",
             "Visual Name": "str",
             "Visual Hidden": "bool",
+            "Suppress Data": "bool",
         }
         df = _create_dataframe(columns=columns)
 
@@ -1744,6 +1745,7 @@ class ReportWrapper:
             bookmark_name = payload.get("name")
             bookmark_display = payload.get("displayName")
             rpt_page_id = payload.get("explorationState", {}).get("activeSection")
+            suppress_data = payload.get('options', {}).get('suppressData', False)
             (page_id, page_display) = self._resolve_page_name_and_display_name(
                 rpt_page_id
             )
@@ -1779,6 +1781,7 @@ class ReportWrapper:
                             "Page Display Name": page_display,
                             "Visual Name": visual_name,
                             "Visual Hidden": visual_hidden,
+                            "Suppress Data": suppress_data,
                         }
                     )
 
