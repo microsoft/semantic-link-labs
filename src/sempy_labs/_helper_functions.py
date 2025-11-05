@@ -1965,7 +1965,10 @@ def _base_api(
         token = notebookutils.credentials.getToken("keyvault")
         headers = {"Authorization": f"Bearer {token}"}
         response = requests.request(
-            method.upper(), f"{request}?api-version=7.4", headers=headers, json=payload
+            method.upper(),
+            f"{request}?api-version=2025-07-01",
+            headers=headers,
+            json=payload,
         )
     else:
         raise NotImplementedError
