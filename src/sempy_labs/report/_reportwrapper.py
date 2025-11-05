@@ -1727,6 +1727,10 @@ class ReportWrapper:
             "Page Display Name": "str",
             "Visual Name": "str",
             "Visual Hidden": "bool",
+            "Suppress Data": "bool",
+            "Current Page Selected": "bool",
+            "Apply Visual Display State": "bool",
+            "Apply To All Visuals": "bool",
         }
         df = _create_dataframe(columns=columns)
 
@@ -1744,6 +1748,14 @@ class ReportWrapper:
             bookmark_name = payload.get("name")
             bookmark_display = payload.get("displayName")
             rpt_page_id = payload.get("explorationState", {}).get("activeSection")
+            suppress_data = payload.get("options", {}).get("suppressData", False)
+            suppress_active_section = payload.get("options", {}).get(
+                "suppressActiveSection", False
+            )
+            suppress_display = payload.get("options", {}).get("suppressDisplay", False)
+            apply_only_to_target_visuals = payload.get("options", {}).get(
+                "applyOnlyToTargetVisuals", False
+            )
             (page_id, page_display) = self._resolve_page_name_and_display_name(
                 rpt_page_id
             )
@@ -1779,6 +1791,10 @@ class ReportWrapper:
                             "Page Display Name": page_display,
                             "Visual Name": visual_name,
                             "Visual Hidden": visual_hidden,
+                            "Suppress Data": suppress_data,
+                            "Current Page Selected": not suppress_active_section,
+                            "Apply Visual Display State": not suppress_display,
+                            "Apply To All Visuals": not apply_only_to_target_visuals,
                         }
                     )
 
