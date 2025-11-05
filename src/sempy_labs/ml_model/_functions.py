@@ -1,6 +1,6 @@
 import pandas as pd
 from typing import Any, Optional, List
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     _update_dataframe_datatypes,
     resolve_item_id,
     resolve_item_name_and_id,

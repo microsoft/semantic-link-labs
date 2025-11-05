@@ -4,7 +4,6 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_item_name_and_id,
     _base_api,
-    resolve_dataset_name_and_id,
 )
 from typing import Optional, List
 from sempy._utils._log import log

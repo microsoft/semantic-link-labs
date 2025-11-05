@@ -11,7 +11,6 @@ from sempy_labs._helper_functions import (
     _decode_b64,
     _base_api,
     _mount,
-    resolve_workspace_id,
 )
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 import sempy_labs._icons as icons

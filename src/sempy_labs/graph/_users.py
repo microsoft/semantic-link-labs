@@ -4,7 +4,7 @@ import base64
 from uuid import UUID
 import sempy_labs._icons as icons
 from typing import List, Literal, Optional
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     _is_valid_uuid,
     _base_api,
     _create_dataframe,

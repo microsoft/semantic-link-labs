@@ -2,7 +2,7 @@ from typing import Optional, Tuple, List, Literal
 from contextlib import contextmanager
 from sempy._utils._log import log
 from uuid import UUID
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_item_name_and_id,
     _base_api,
@@ -19,7 +19,7 @@ from .._helper_functions import (
     remove_json_value,
     get_tenant_id,
 )
-from .._dictionary_diffs import (
+from sempy_labs._dictionary_diffs import (
     diff_parts,
 )
 import json

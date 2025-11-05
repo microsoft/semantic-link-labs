@@ -5,7 +5,6 @@ from sempy_labs._helper_functions import (
     _create_dataframe,
     _update_dataframe_datatypes,
     resolve_workspace_id,
-    resolve_item_name_and_id,
 )
 import pandas as pd
 from typing import Optional, List, Literal

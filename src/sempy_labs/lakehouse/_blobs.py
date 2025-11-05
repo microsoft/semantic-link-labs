@@ -1,4 +1,4 @@
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     resolve_workspace_id,
     resolve_lakehouse_id,
     _xml_to_dict,

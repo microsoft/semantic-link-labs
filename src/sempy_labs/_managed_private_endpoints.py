@@ -2,7 +2,6 @@ import pandas as pd
 import sempy_labs._icons as icons
 from typing import Optional
 from sempy_labs._helper_functions import (
-    resolve_item_id,
     resolve_workspace_name_and_id,
     _is_valid_uuid,
     _base_api,

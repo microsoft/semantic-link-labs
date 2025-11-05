@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import pyarrow.parquet as pq
 from datetime import datetime
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     _get_column_aggregate,
     resolve_workspace_name_and_id,
     resolve_lakehouse_name_and_id,
@@ -15,11 +15,11 @@ from .._helper_functions import (
     create_abfss_path,
     _pure_python_notebook,
 )
-from ..directlake._guardrails import (
+from sempy_labs.directlake._guardrails import (
     get_sku_size,
     get_directlake_guardrails_for_sku,
 )
-from ._lakehouse import lakehouse_attached
+from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from typing import Optional
 import sempy_labs._icons as icons
 from sempy._utils._log import log

@@ -6,7 +6,7 @@ from sempy_labs._workspaces import assign_workspace_to_capacity
 from sempy_labs.admin import (
     assign_workspaces_to_capacity,
 )
-from .admin._capacities import (
+from sempy_labs.admin._capacities import (
     _list_capacities_meta,
     list_capacities,
 )

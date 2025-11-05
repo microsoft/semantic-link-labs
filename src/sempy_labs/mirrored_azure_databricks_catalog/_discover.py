@@ -1,6 +1,6 @@
 from uuid import UUID
 from typing import Optional
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     resolve_workspace_id,
     _base_api,
     _create_dataframe,
