@@ -68,4 +68,7 @@ items = {
     "MirroredAzureDatabricksCatalog": "mirroredAzureDatabricksCatalogs",
     "Map": "Maps",
     "AnomalyDetector": "anomalydetectors",
+    "UserDataFunction": "UserDataFunctions",
+    "SQLDatabase": "sqlDatabases",
+    "Reflex": "reflexes",
 }
