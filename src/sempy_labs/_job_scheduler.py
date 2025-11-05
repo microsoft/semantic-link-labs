@@ -527,3 +527,48 @@ def create_item_schedule_weekly(
     print(
         f"{icons.green_dot} The schedule for the '{item_name}' {type.lower()} has been created."
     )
+
+
+@log
+def cancel_item_job_instance(
+    item: str | UUID,
+    job_instance_id: UUID,
+    type: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Cancel an item's job instance.
+
+    This is a wrapper function for the following API: `Job Scheduler - Cancel Item Job Instance <https://learn.microsoft.com/en-us/rest/api/fabric/core/job-scheduler/cancel-item-job-instance>`_.
+
+    Parameters
+    ----------
+    item : str | uuid.UUID
+        The item name or ID.
+    job_instance_id : uuid.UUID
+        The job instance ID.
+    type : str, default=None
+        The item `type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_. If specifying the item name as the item, the item type is required.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (item_name, item_id) = resolve_item_name_and_id(
+        item=item, type=type, workspace=workspace
+    )
+
+    _base_api(
+        request=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/instances/{job_instance_id}/cancel",
+        method="post",
+        lro_return_json=False,
+        lro_return_status_code=False,
+        status_codes=[200, 202],
+        client="fabric_sp",
+    )
+
+    print(
+        f"{icons.green_dot} The cancellation of Job Instance '{job_instance_id}' of '{item_name}' {type.lower()} has been started successfully."
+    )

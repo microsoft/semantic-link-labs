@@ -44,6 +44,7 @@ from ._job_scheduler import (
     create_item_schedule_cron,
     create_item_schedule_daily,
     create_item_schedule_weekly,
+    cancel_item_job_instance,
 )
 from ._delta_analyzer import (
     delta_analyzer,
@@ -529,6 +530,7 @@ __all__ = [
     "bind_semantic_model_to_gateway",
     "list_semantic_model_errors",
     "list_item_job_instances",
+    "cancel_item_job_instance",
     "list_item_schedules",
     "list_skus",
     "list_skus_for_capacity",
