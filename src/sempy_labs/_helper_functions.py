@@ -1964,12 +1964,26 @@ def _base_api(
     elif client == "keyvault":
         token = notebookutils.credentials.getToken("keyvault")
         headers = {"Authorization": f"Bearer {token}"}
-        response = requests.request(
-            method.upper(),
-            f"{request}?api-version=2025-07-01",
-            headers=headers,
-            json=payload,
-        )
+
+        api_suffix = "?api-version=2025-07-01"
+
+        if uses_pagination:
+            all_items = []
+            while request:
+                if not request.endswith(api_suffix):
+                    request += api_suffix
+                response = requests.request(
+                    method.upper(), request, headers=headers, json=payload
+                )
+                result = response.json()
+                items = result.get("value", [])
+                all_items.extend(items)
+                request = result.get("nextLink")  # Update to next page if it exists
+            return all_items
+        else:
+            return requests.request(
+                method.upper(), f"{request}{api_suffix}", headers=headers, json=payload
+            )
     else:
         raise NotImplementedError
 
