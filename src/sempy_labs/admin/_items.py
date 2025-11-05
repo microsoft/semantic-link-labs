@@ -188,10 +188,9 @@ def list_items(
 
 @log
 def list_item_access_details(
-    item: str | UUID = None,
-    type: str = None,
+    item: str | UUID,
+    type: str,
     workspace: Optional[str | UUID] = None,
-    **kwargs,
 ) -> pd.DataFrame:
     """
     Returns a list of users (including groups and service principals) and lists their workspace roles.
@@ -204,7 +203,7 @@ def list_item_access_details(
     ----------
     item : str
         Name or id of the Fabric item.
-    type : str, default=None
+    type : str
         Type of Fabric item.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or id.
@@ -216,17 +215,6 @@ def list_item_access_details(
     pandas.DataFrame
         A pandas dataframe showing a list of users (including groups and service principals) and lists their workspace roles.
     """
-    if "item_name" in kwargs:
-        print(
-            "The 'item_name' parameter has been deprecated. Please replace this parameter with 'item' from the function going forward."
-        )
-        item = kwargs["item_name"]
-        del kwargs["item_name"]
-
-    if item is None or type is None:
-        raise ValueError(
-            f"{icons.red_dot} The parameter 'item' and 'type' are mandatory."
-        )
 
     (workspace_name, workspace_id) = _resolve_workspace_name_and_id(workspace)
     (item_name, item_id) = _resolve_item_name_and_id(
@@ -247,7 +235,7 @@ def list_item_access_details(
     df = _create_dataframe(columns=columns)
 
     response = _base_api(
-        request=f"/v1/admin/workspaces/{workspace_id}/items/{item_id}/users",
+        request=f"/v1/admin/workspaces/{workspace_id}/items/{item_id}/users?type={type}",
         client="fabric_sp",
     )
 
