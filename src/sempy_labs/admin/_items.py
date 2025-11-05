@@ -234,12 +234,8 @@ def list_item_access_details(
     }
     df = _create_dataframe(columns=columns)
 
-    url = f"/v1/admin/workspaces/{workspace_id}/items/{item_id}/users"
-    if type in ['Report', 'Dashboard', 'SemanticModel', 'App', 'Dataflow']:
-        url = f"/v1/admin/workspaces/{workspace_id}/items/{item_id}/users?type={type}"
-
     response = _base_api(
-        request=url,
+        request=f"/v1/admin/workspaces/{workspace_id}/items/{item_id}/users?type={type}",
         client="fabric_sp",
     )
 
