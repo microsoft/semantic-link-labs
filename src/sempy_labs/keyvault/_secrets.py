@@ -120,6 +120,8 @@ def list_secrets(key_vault_uri: str) -> pd.DataFrame:
     )
     df["Created Date"] = pd.to_datetime(df["Created Date"], unit="s")
     df["Updated Date"] = pd.to_datetime(df["Updated Date"], unit="s")
+    df["Recoverable Days"] = df["Recoverable Days"].astype(int)
+
     return df
 
 
