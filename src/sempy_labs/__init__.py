@@ -127,12 +127,6 @@ from ._kql_databases import (
     delete_kql_database,
 )
 from ._mirrored_warehouses import list_mirrored_warehouses
-from ._environments import (
-    create_environment,
-    delete_environment,
-    publish_environment,
-    list_environments,
-)
 from ._clear_cache import (
     clear_cache,
     backup_semantic_model,
@@ -457,9 +451,6 @@ __all__ = [
     "connect_workspace_to_azure_dev_ops",
     "connect_workspace_to_github",
     "disconnect_workspace_from_git",
-    "create_environment",
-    "delete_environment",
-    "publish_environment",
     "resolve_capacity_id",
     "resolve_environment_id",
     "list_item_connections",
@@ -586,7 +577,6 @@ __all__ = [
     "delta_analyzer_history",
     "query_kusto",
     "query_workspace_monitoring",
-    "list_environments",
     "list_tags",
     "create_vpax",
     "update_semantic_model_refresh_schedule",
