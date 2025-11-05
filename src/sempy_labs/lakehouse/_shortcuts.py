@@ -1,6 +1,6 @@
 import sempy.fabric as fabric
 import pandas as pd
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     resolve_lakehouse_name_and_id,
     resolve_workspace_id,
     resolve_workspace_name_and_id,
@@ -210,6 +210,7 @@ def create_shortcut(
         method="post",
         payload=payload,
         status_codes=201,
+        client="fabric_sp",
     )
     print(
         f"{icons.green_dot} The shortcut '{shortcutActualName}' was created in the '{lakehouse_name}' lakehouse within"
@@ -363,6 +364,7 @@ def list_shortcuts(
     responses = _base_api(
         request=url,
         uses_pagination=True,
+        client="fabric_sp",
     )
 
     sources = {
