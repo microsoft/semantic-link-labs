@@ -12,6 +12,8 @@ from sempy_labs._helper_functions import (
 )
 from uuid import UUID
 import sempy_labs._icons as icons
+import time
+from sempy.fabric.exceptions import FabricHTTPException
 
 
 @log
@@ -539,7 +541,9 @@ def cancel_item_job_instance(
     """
     Cancel an item's job instance.
 
-    This is a wrapper function for the following API: `Job Scheduler - Cancel Item Job Instance <https://learn.microsoft.com/en-us/rest/api/fabric/core/job-scheduler/cancel-item-job-instance>`_.
+    This is a wrapper function for the following API: `Job Scheduler - Cancel Item Job Instance <https://learn.microsoft.com/rest/api/fabric/core/job-scheduler/cancel-item-job-instance>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -560,15 +564,56 @@ def cancel_item_job_instance(
         item=item, type=type, workspace=workspace
     )
 
-    _base_api(
-        request=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/instances/{job_instance_id}/cancel",
-        method="post",
-        lro_return_json=False,
-        lro_return_status_code=False,
-        status_codes=[200, 202],
-        client="fabric_sp",
-    )
+    try:
+        response = _base_api(
+            request=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/instances/{job_instance_id}/cancel",
+            method="post",
+            status_codes=[200, 202],
+            client="fabric_sp",
+        )
+    except FabricHTTPException as e:
+        if (
+            e.status_code == 400
+            and e.response.json().get("errorCode") == "JobAlreadyCompleted"
+        ):
+            # If Job Instance is already completed, skip the rest of the process and output the Job Instance details.
+            print(
+                f"{icons.green_dot} The Job Instance '{job_instance_id}' of '{item_name}' {type.lower()} within the '{workspace_name}' workspace has been already cancelled."
+            )
+
+            return _get_item_job_instance(
+                url=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/instances/{job_instance_id}"
+            )
+        else:
+            print(
+                f"{icons.red_dot} An error occurred while cancelling '{job_instance_id}' of '{item_name}' {type.lower()} within the '{workspace_name}' workspace: {e}"
+            )
+            raise
 
     print(
-        f"{icons.green_dot} The cancellation of Job Instance '{job_instance_id}' of '{item_name}' {type.lower()} has been started successfully."
+        f"{icons.in_progress} The cancellation of Job Instance '{job_instance_id}' of '{item_name}' {type.lower()} within the '{workspace_name}' workspace has been initiated."
     )
+
+    status_url = response.headers.get("Location").split("fabric.microsoft.com")[1]
+    status = None
+    while status not in ["Completed", "Failed", "Cancelled"]:
+        response = _base_api(request=status_url)
+        status = response.json().get("status")
+        time.sleep(3)
+
+    df = _get_item_job_instance(url=status_url)
+
+    # Check what is the final status of the Job Instance.
+    if status in ["Completed", "Failed", "Cancelled"]:
+        print(
+            f"{icons.green_dot} The Job Instance '{job_instance_id}' of '{item_name}' {type.lower()} within the '{workspace_name}' workspace has been cancelled successfully."
+        )
+    else:
+        print(
+            f"Latest status of Job Instance '{job_instance_id}' of '{item_name}' {type.lower()} within the '{workspace_name}' workspace: {status}"
+        )
+        print(
+            f"{icons.red_dot} The cancellation of Job Instance '{job_instance_id}' of '{item_name}' {type.lower()} within the '{workspace_name}' workspace has failed."
+        )
+
+    return df
