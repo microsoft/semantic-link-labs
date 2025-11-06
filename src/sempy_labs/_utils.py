@@ -72,4 +72,5 @@ items = {
     "SQLDatabase": "sqlDatabases",
     "Reflex": "reflexes",
     "GraphModel": "GraphModels",
+    "GraphQuerySet": "GraphQuerySets",
 }
