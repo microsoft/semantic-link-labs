@@ -344,6 +344,9 @@ from ._onelake import (
     get_onelake_settings,
     modify_onelake_diagnostics,
 )
+from ._domains import (
+    list_domains,
+)
 
 __all__ = [
     "resolve_warehouse_id",
@@ -593,4 +596,5 @@ __all__ = [
     "discover_dataflow_parameters",
     "get_onelake_settings",
     "modify_onelake_diagnostics",
+    "list_domains",
 ]
