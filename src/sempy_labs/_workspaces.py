@@ -506,3 +506,90 @@ def set_workspace_network_communication_policy(
     print(
         f"{icons.green_dot} The networking communication policy has been updated for the '{workspace_name}' workspace."
     )
+
+
+@log
+def get_workspace_git_outbound_policy(workspace: Optional[str | UUID] = None) -> str:
+    """
+    Returns Git Outbound policy for the specified workspace.
+    In cases the workspace restricts outbound policy, a workspace admin needs to allow the use of Git integration on the specified workspace.
+
+    This is a wrapper function for the following API: `Workspaces - Get Git Outbound Policy <https://learn.microsoft.com/rest/api/fabric/core/workspaces/get-git-outbound-policy>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    str
+        The Git outbound policy for the specified workspace.
+    """
+
+    workspace_id = resolve_workspace_id(workspace)
+    response = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/networking/communicationPolicy/outbound/git",
+        client="fabric_sp",
+    )
+
+    return response.json().get("defaultAction", {})
+
+
+@log
+def set_workspace_git_outbound_policy(
+    policy: Literal["Allow", "Deny"],
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Sets Git Outbound policy for the specified workspace, when Outbound policy is set to 'Deny'.
+
+    This is a wrapper function for the following API: `Workspaces - Set Git Outbound Policy <https://learn.microsoft.com/rest/api/fabric/core/workspaces/set-git-outbound-policy>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    policy : Literal['Allow', 'Deny']
+        The policy for all Git outbound communications from a workspace.
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    policy = policy.capitalize()
+
+    if policy not in ["Allow", "Deny"]:
+        raise ValueError(
+            f"{icons.red_dot} The 'policy' must be either 'Allow' or 'Deny'."
+        )
+
+    payload = {
+        "defaultAction": policy,
+    }
+
+    # Check current policy
+    p = get_workspace_git_outbound_policy(workspace=workspace_id)
+    if p == policy:
+        print(
+            f"{icons.info} The Git outbound policy for the '{workspace_name}' workspace is already set to '{policy}'. No changes made."
+        )
+        return
+
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/networking/communicationPolicy/outbound/git",
+        client="fabric_sp",
+        payload=payload,
+        method="put",
+    )
+
+    print(
+        f"{icons.green_dot} The Git outbound policy has been updated for the '{workspace_name}' workspace."
+    )

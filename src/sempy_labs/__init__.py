@@ -182,6 +182,8 @@ from ._workspaces import (
     delete_workspace,
     get_workspace_network_communication_policy,
     set_workspace_network_communication_policy,
+    get_workspace_git_outbound_policy,
+    set_workspace_git_outbound_policy,
 )
 from ._notebooks import (
     get_notebook_definition,
@@ -593,4 +595,6 @@ __all__ = [
     "discover_dataflow_parameters",
     "get_onelake_settings",
     "modify_onelake_diagnostics",
+    "get_workspace_git_outbound_policy",
+    "set_workspace_git_outbound_policy",
 ]
