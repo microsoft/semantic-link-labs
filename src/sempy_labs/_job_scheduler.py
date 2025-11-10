@@ -117,21 +117,21 @@ def _get_item_job_instance(url: str) -> pd.DataFrame:
     response = _base_api(request=url, client="fabric_sp")
 
     rows = []
-    for v in response.json().get("value", []):
-        fail = v.get("failureReason", {})
-        rows.append(
-            {
-                "Job Instance Id": v.get("id"),
-                "Item Id": v.get("itemId"),
-                "Job Type": v.get("jobType"),
-                "Invoke Type": v.get("invokeType"),
-                "Status": v.get("status"),
-                "Root Activity Id": v.get("rootActivityId"),
-                "Start Time UTC": v.get("startTimeUtc"),
-                "End Time UTC": v.get("endTimeUtc"),
-                "Error Message": fail.get("message") if fail is not None else "",
-            }
-        )
+    v = response.json()
+    fail = v.get("failureReason", {})
+    rows.append(
+        {
+            "Job Instance Id": v.get("id"),
+            "Item Id": v.get("itemId"),
+            "Job Type": v.get("jobType"),
+            "Invoke Type": v.get("invokeType"),
+            "Status": v.get("status"),
+            "Root Activity Id": v.get("rootActivityId"),
+            "Start Time UTC": v.get("startTimeUtc"),
+            "End Time UTC": v.get("endTimeUtc"),
+            "Error Message": fail.get("message") if fail is not None else "",
+        }
+    )
 
     if rows:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
