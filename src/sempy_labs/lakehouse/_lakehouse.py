@@ -8,6 +8,9 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _create_spark_session,
     _pure_python_notebook,
+    _create_dataframe,
+    _update_dataframe_datatypes,
+    resolve_workspace_id,
 )
 import sempy_labs._icons as icons
 import re
@@ -16,6 +19,83 @@ import pandas as pd
 from sempy_labs._job_scheduler import (
     _get_item_job_instance,
 )
+
+
+@log
+def list_lakehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
+    """
+    Shows the lakehouses within a workspace.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the lakehouses within a workspace.
+    """
+
+    columns = {
+        "Lakehouse Name": "string",
+        "Lakehouse ID": "string",
+        "Description": "string",
+        "OneLake Tables Path": "string",
+        "OneLake Files Path": "string",
+        "SQL Endpoint Connection String": "string",
+        "SQL Endpoint ID": "string",
+        "SQL Endpoint Provisioning Status": "string",
+        "Schema Enabled": "bool",
+        "Default Schema": "string",
+        "Sensitivity Label Id": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    workspace_id = resolve_workspace_id(workspace)
+
+    responses = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/lakehouses",
+        uses_pagination=True,
+        client="fabric_sp",
+    )
+
+    rows = []
+    for r in responses:
+        for v in r.get("value", []):
+            prop = v.get("properties", {})
+            sqlEPProp = prop.get("sqlEndpointProperties", {})
+            default_schema = prop.get("defaultSchema", None)
+
+            rows.append(
+                {
+                    "Lakehouse Name": v.get("displayName"),
+                    "Lakehouse ID": v.get("id"),
+                    "Description": v.get("description"),
+                    "OneLake Tables Path": prop.get("oneLakeTablesPath"),
+                    "OneLake Files Path": prop.get("oneLakeFilesPath"),
+                    "SQL Endpoint Connection String": sqlEPProp.get("connectionString"),
+                    "SQL Endpoint ID": sqlEPProp.get("id"),
+                    "SQL Endpoint Provisioning Status": sqlEPProp.get(
+                        "provisioningStatus"
+                    ),
+                    "Schema Enabled": True if default_schema else False,
+                    "Default Schema": default_schema,
+                    "Sensitivity Label Id": v.get("sensitivityLabel", {}).get(
+                        "sensitivityLabelId"
+                    ),
+                }
+            )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
+
+    return df
 
 
 @log

@@ -1,5 +1,6 @@
 import sempy.fabric as fabric
 from sempy_labs._helper_functions import (
+    resolve_workspace_id,
     resolve_workspace_name_and_id,
     create_relationship_name,
     format_dax_object_name,
@@ -616,10 +617,13 @@ def list_lakehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         "SQL Endpoint Connection String": "string",
         "SQL Endpoint ID": "string",
         "SQL Endpoint Provisioning Status": "string",
+        "Schema Enabled": "bool",
+        "Default Schema": "string",
+        "Sensitivity Label Id": "string",
     }
     df = _create_dataframe(columns=columns)
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
 
     responses = _base_api(
         request=f"/v1/workspaces/{workspace_id}/lakehouses",
@@ -627,22 +631,36 @@ def list_lakehouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         client="fabric_sp",
     )
 
+    rows = []
     for r in responses:
         for v in r.get("value", []):
             prop = v.get("properties", {})
             sqlEPProp = prop.get("sqlEndpointProperties", {})
+            default_schema = prop.get("defaultSchema", None)
 
-            new_data = {
-                "Lakehouse Name": v.get("displayName"),
-                "Lakehouse ID": v.get("id"),
-                "Description": v.get("description"),
-                "OneLake Tables Path": prop.get("oneLakeTablesPath"),
-                "OneLake Files Path": prop.get("oneLakeFilesPath"),
-                "SQL Endpoint Connection String": sqlEPProp.get("connectionString"),
-                "SQL Endpoint ID": sqlEPProp.get("id"),
-                "SQL Endpoint Provisioning Status": sqlEPProp.get("provisioningStatus"),
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            rows.append(
+                {
+                    "Lakehouse Name": v.get("displayName"),
+                    "Lakehouse ID": v.get("id"),
+                    "Description": v.get("description"),
+                    "OneLake Tables Path": prop.get("oneLakeTablesPath"),
+                    "OneLake Files Path": prop.get("oneLakeFilesPath"),
+                    "SQL Endpoint Connection String": sqlEPProp.get("connectionString"),
+                    "SQL Endpoint ID": sqlEPProp.get("id"),
+                    "SQL Endpoint Provisioning Status": sqlEPProp.get(
+                        "provisioningStatus"
+                    ),
+                    "Schema Enabled": True if default_schema else False,
+                    "Default Schema": default_schema,
+                    "Sensitivity Label Id": v.get("sensitivityLabel", {}).get(
+                        "sensitivityLabelId"
+                    ),
+                }
+            )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -672,20 +690,25 @@ def list_datamarts(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     }
     df = _create_dataframe(columns=columns)
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
 
     responses = _base_api(
         request=f"/v1/workspaces/{workspace_id}/datamarts", uses_pagination=True
     )
 
+    rows = []
     for r in responses:
         for v in r.get("value", []):
-            new_data = {
-                "Datamart Name": v.get("displayName"),
-                "Datamart ID": v.get("id"),
-                "Description": v.get("description"),
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            rows.append(
+                {
+                    "Datamart Name": v.get("displayName"),
+                    "Datamart ID": v.get("id"),
+                    "Description": v.get("description"),
+                }
+            )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 

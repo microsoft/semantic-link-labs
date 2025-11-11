@@ -9,6 +9,7 @@ from ._lakehouse import (
     optimize_lakehouse_tables,
     vacuum_lakehouse_tables,
     run_table_maintenance,
+    list_lakehouses,
 )
 from ._shortcuts import (
     # create_shortcut,
@@ -54,4 +55,5 @@ __all__ = [
     "update_lakehouse",
     "load_table",
     "refresh_materialized_lake_views",
+    "list_lakehouses",
 ]
