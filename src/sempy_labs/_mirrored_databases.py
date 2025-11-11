@@ -384,7 +384,9 @@ def update_mirrored_database_definition(
     item_id = resolve_item_id(
         item=mirrored_database, type="MirroredDatabase", workspace=workspace
     )
-    payload = base64.b64encode(mirrored_database_content)
+    payload = (
+        base64.b64encode(mirrored_database_content).encode("utf-8").decode("utf-8")
+    )
 
     request_body = {
         "displayName": mirrored_database,
