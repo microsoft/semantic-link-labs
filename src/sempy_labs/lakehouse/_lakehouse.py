@@ -14,11 +14,7 @@ from sempy_labs._helper_functions import (
 )
 import sempy_labs._icons as icons
 import re
-import time
 import pandas as pd
-from sempy_labs._job_scheduler import (
-    _get_item_job_instance,
-)
 
 
 @log
@@ -327,26 +323,20 @@ def run_table_maintenance(
     if vacuum and retention_period is not None:
         payload["executionData"]["vacuumSettings"]["retentionPeriod"] = retention_period
 
-    response = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/lakehouses/{lakehouse_id}/jobs/instances?jobType=TableMaintenance",
-        method="post",
-        payload=payload,
-        status_codes=202,
-        client="fabric_sp",
-    )
-
     print(
         f"{icons.in_progress} The table maintenance job for the '{table_name}' table in the '{lakehouse_name}' lakehouse within the '{workspace_name}' workspace has been initiated."
     )
 
-    status_url = response.headers.get("Location").split("fabric.microsoft.com")[1]
-    status = None
-    while status not in ["Completed", "Failed"]:
-        response = _base_api(request=status_url)
-        status = response.json().get("status")
-        time.sleep(3)
+    df = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/lakehouses/{lakehouse_id}/jobs/instances?jobType=TableMaintenance",
+        method="post",
+        payload=payload,
+        status_codes=[200, 202],
+        client="fabric_sp",
+        lro_return_df=True,
+    )
 
-    df = _get_item_job_instance(url=status_url)
+    status = df["Status"].iloc[0]
 
     if status == "Completed":
         print(

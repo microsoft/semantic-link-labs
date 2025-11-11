@@ -71,4 +71,6 @@ items = {
     "UserDataFunction": "UserDataFunctions",
     "SQLDatabase": "sqlDatabases",
     "Reflex": "reflexes",
+    "GraphModel": "GraphModels",
+    "GraphQuerySet": "GraphQuerySets",
 }

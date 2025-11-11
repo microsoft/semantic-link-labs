@@ -1568,7 +1568,9 @@ def lro(
     status_codes: Optional[List[str]] = [200, 202],
     sleep_time: Optional[int] = 1,
     return_status_code: bool = False,
+    job_scheduler: bool = False,
 ):
+    from sempy_labs._job_scheduler import _get_item_job_instance
 
     if response.status_code not in status_codes:
         raise FabricHTTPException(response)
@@ -1578,20 +1580,32 @@ def lro(
         else:
             result = response
     if response.status_code == status_codes[1]:
-        operationId = response.headers["x-ms-operation-id"]
-        response = client.get(f"/v1/operations/{operationId}")
-        response_body = json.loads(response.content)
-        while response_body["status"] not in ["Succeeded", "Failed"]:
-            time.sleep(sleep_time)
-            response = client.get(f"/v1/operations/{operationId}")
-            response_body = json.loads(response.content)
-        if response_body["status"] != "Succeeded":
-            raise FabricHTTPException(response)
-        if return_status_code:
-            result = response.status_code
+        if job_scheduler:
+            status_url = response.headers.get("Location").split("fabric.microsoft.com")[
+                1
+            ]
+            status = None
+            while status not in ["Completed", "Failed"]:
+                response = _base_api(request=status_url)
+                status = response.json().get("status")
+                time.sleep(3)
+
+            return _get_item_job_instance(url=status_url)
         else:
-            response = client.get(f"/v1/operations/{operationId}/result")
-            result = response
+            operation_id = response.headers["x-ms-operation-id"]
+            response = client.get(f"/v1/operations/{operation_id}")
+            response_body = json.loads(response.content)
+            while response_body["status"] not in ["Succeeded", "Failed"]:
+                time.sleep(sleep_time)
+                response = client.get(f"/v1/operations/{operation_id}")
+                response_body = json.loads(response.content)
+            if response_body["status"] != "Succeeded":
+                raise FabricHTTPException(response)
+            if return_status_code:
+                result = response.status_code
+            else:
+                response = client.get(f"/v1/operations/{operation_id}/result")
+                result = response
 
     return result
 
@@ -2212,6 +2226,7 @@ def _base_api(
     uses_pagination: bool = False,
     lro_return_json: bool = False,
     lro_return_status_code: bool = False,
+    lro_return_df: bool = False,
 ):
     import notebookutils
     from sempy_labs._authentication import _get_headers
@@ -2267,7 +2282,9 @@ def _base_api(
             json=payload,
         )
 
-    if lro_return_json:
+    if lro_return_df:
+        return lro(c, response, status_codes, job_scheduler=True)
+    elif lro_return_json:
         return lro(c, response, status_codes).json()
     elif lro_return_status_code:
         return lro(c, response, status_codes, return_status_code=True)
