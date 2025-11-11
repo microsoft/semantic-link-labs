@@ -8,8 +8,6 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
 )
 import sempy_labs._icons as icons
-import time
-from sempy_labs._job_scheduler import _get_item_job_instance
 
 
 @log
@@ -41,23 +39,16 @@ def refresh_graph(
         item=graph_model, type="GraphModel", workspace=workspace_id
     )
 
-    response = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/GraphModels/{item_id}/jobs/instances?jobType=RefreshGraph",
-        method="post",
-    )
-
     print(
         f"{icons.in_progress} The refresh graph job for the '{item_name}' graph model within the '{workspace_name}' workspace has been initiated."
     )
 
-    status_url = response.headers.get("Location").split("fabric.microsoft.com")[1]
-    status = None
-    while status not in ["Completed", "Failed"]:
-        response = _base_api(request=status_url)
-        status = response.json().get("status")
-        time.sleep(3)
-
-    df = _get_item_job_instance(url=status_url)
+    df = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/GraphModels/{item_id}/jobs/instances?jobType=RefreshGraph",
+        method="post",
+        lro_return_df=True,
+    )
+    status = df["Status"].iloc[0]
 
     if status == "Completed":
         print(
