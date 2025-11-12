@@ -6,6 +6,7 @@ from sempy_labs._helper_functions import (
     _update_dataframe_datatypes,
     _base_api,
     _create_dataframe,
+    resolve_workspace_id,
 )
 from sempy._utils._log import log
 from typing import Optional, Tuple
@@ -89,7 +90,7 @@ def qso_sync_status(
 
     dfRep = _create_dataframe(columns=columns_rep)
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
     response = _base_api(
@@ -112,8 +113,7 @@ def qso_sync_status(
             "Min Active Read Version": o.get("minActiveReadVersion"),
             "Min Active Read Timestamp": o.get("minActiveReadTimestamp"),
         }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
+        df = pd.DataFrame([new_data])
         for r in o.get("scaleOutReplicas", []):
             new_data = {
                 "Replica ID": r.get("replicaId"),
@@ -121,9 +121,7 @@ def qso_sync_status(
                 "Replica Version": str(r.get("replicaVersion")),
                 "Replica Timestamp": r.get("replicaTimestamp"),
             }
-            dfRep = pd.concat(
-                [dfRep, pd.DataFrame(new_data, index=[0])], ignore_index=True
-            )
+            dfRep = pd.DataFrame([new_data])
 
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
         _update_dataframe_datatypes(dataframe=dfRep, column_map=columns_rep)
@@ -333,7 +331,7 @@ def list_qso_settings(
         A pandas dataframe showing the query scale out settings.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
 
     if dataset is not None:
         (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
@@ -349,26 +347,30 @@ def list_qso_settings(
 
     response = _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/datasets")
 
+    rows = []
     for v in response.json().get("value", []):
         tsm = v.get("targetStorageMode")
         if tsm == "Abf":
             sm = "Small"
         else:
             sm = "Large"
-        new_data = {
-            "Dataset Id": v.get("id"),
-            "Dataset Name": v.get("name"),
-            "Storage Mode": sm,
-            "QSO Auto Sync Enabled": v.get("queryScaleOutSettings", {}).get(
-                "autoSyncReadOnlyReplicas"
-            ),
-            "QSO Max Read Only Replicas": v.get("queryScaleOutSettings", {}).get(
-                "maxReadOnlyReplicas"
-            ),
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+        rows.append(
+            {
+                "Dataset Id": v.get("id"),
+                "Dataset Name": v.get("name"),
+                "Storage Mode": sm,
+                "QSO Auto Sync Enabled": v.get("queryScaleOutSettings", {}).get(
+                    "autoSyncReadOnlyReplicas"
+                ),
+                "QSO Max Read Only Replicas": v.get("queryScaleOutSettings", {}).get(
+                    "maxReadOnlyReplicas"
+                ),
+            }
+        )
 
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     if dataset is not None:
         df = df[df["Dataset Id"] == dataset_id]

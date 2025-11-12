@@ -88,14 +88,18 @@ def list_chats(user: str | UUID) -> pd.DataFrame:
 
     df = _create_dataframe(columns=columns)
 
+    rows = []
     for v in result.get("value"):
-        new_data = {
-            "Chat Id": v.get("id"),
-            "Type": v.get("chatType"),
-            "Members": v.get("members"),
-        }
+        rows.append(
+            {
+                "Chat Id": v.get("id"),
+                "Type": v.get("chatType"),
+                "Members": v.get("members"),
+            }
+        )
 
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 
