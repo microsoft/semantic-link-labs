@@ -1390,7 +1390,7 @@ def list_semantic_model_object_report_usage(
     from sempy_labs._model_dependencies import get_model_calc_dependencies
     from sempy_labs._helper_functions import format_dax_object_name
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
     fabric.refresh_tom_cache(workspace=workspace)
