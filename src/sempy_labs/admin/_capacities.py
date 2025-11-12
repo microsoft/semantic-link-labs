@@ -181,8 +181,7 @@ def get_capacity_assignment_status(
         "Capacity Name": capacity_name,
     }
 
-    df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
-
+    df = pd.DataFrame([new_data], columns=list(columns.keys()))
     _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
