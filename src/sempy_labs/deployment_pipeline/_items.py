@@ -499,7 +499,7 @@ def deploy_stage_content(
     workspace_name: Optional[str] = None,
 ):
     """
-    Deploys items from the specified stage of the specified deployment pipeline.
+    Deploys items from the specified stage of the specified deployment pipeline. 
 
     This is a wrapper function for the following API: `Deployment Pipelines - Deploy Stage Content <https://learn.microsoft.com/rest/api/fabric/core/deployment-pipelines/deploy-stage-content>`_.
 
