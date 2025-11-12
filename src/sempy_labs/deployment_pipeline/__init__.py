@@ -7,6 +7,7 @@ from ._items import (
     unassign_workspace_from_stage,
     assign_workspace_to_stage,
     delete_deployment_pipeline,
+    deploy_stage_content,
 )
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "unassign_workspace_from_stage",
     "assign_workspace_to_stage",
     "delete_deployment_pipeline",
+    "deploy_stage_content",
 ]
