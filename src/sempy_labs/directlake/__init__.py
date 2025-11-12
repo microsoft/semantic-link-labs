@@ -31,6 +31,7 @@ from ._warm_cache import (
     warm_direct_lake_cache_isresident,
     warm_direct_lake_cache_perspective,
 )
+from ._autosync import set_autosync
 
 __all__ = [
     "generate_shared_expression",
@@ -52,4 +53,5 @@ __all__ = [
     "generate_direct_lake_semantic_model",
     "get_direct_lake_source",
     "update_direct_lake_model_connection",
+    "set_autosync",
 ]
