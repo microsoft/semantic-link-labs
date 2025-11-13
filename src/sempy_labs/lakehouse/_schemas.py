@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
 import requests
 from sempy._utils._log import log
@@ -12,6 +12,10 @@ from sempy_labs._helper_functions import (
     _base_api,
     resolve_workspace_name_and_id,
 )
+import sempy_labs._icons as icons
+
+
+_url_prefix = "https://onelake.table.fabric.microsoft.com/delta"
 
 
 def _get_headers():
@@ -30,14 +34,12 @@ def list_schemas(
 
     columns = {
         "Schema Name": "str",
-        #    "Created At": "datetime",
-        #    "Updated At": "datetime"
     }
     df = _create_dataframe(columns=columns)
     workspace_id = resolve_workspace_id(workspace)
     item_id = resolve_lakehouse_id(lakehouse, workspace)
     response = requests.get(
-        f"https://onelake.table.fabric.microsoft.com/delta/{workspace_id}/{item_id}/api/2.1/unity-catalog/schemas?catalog_name={item_id}",
+        f"{_url_prefix}/{workspace_id}/{item_id}/api/2.1/unity-catalog/schemas?catalog_name={item_id}",
         headers=_get_headers(),
     )
 
@@ -45,15 +47,12 @@ def list_schemas(
     for s in response.json().get("schemas", []):
         rows.append(
             {
-                "Schema Name": s.get("name", {}),
-                #       "Created At": s.get('created_at', {}),
-                #       "Updated At": s.get('updated_at', {}),
+                "Schema Name": s.get("name", None),
             }
         )
 
     if rows:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
-        _update_dataframe_datatypes(df, columns)
 
     return df
 
@@ -61,7 +60,7 @@ def list_schemas(
 def list_tables(
     lakehouse: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
-    schema: Optional[str] = None,
+    schema: Optional[str | List[str]] = None,
 ) -> pd.DataFrame:
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -85,11 +84,16 @@ def list_tables(
     rows = []
     if schema_enabled:
         schemas = list_schemas(lakehouse=lakehouse, workspace=workspace)
+        if schema:
+            if isinstance(schema, str):
+                schema = [schema]
+            schemas = schemas[schemas["Schema Name"].isin(schema)]
+
         # Loop through schemas
         for _, r in schemas.iterrows():
             schema_name = r["Schema Name"]
             response = requests.get(
-                f"https://onelake.table.fabric.microsoft.com/delta/{workspace_id}/{item_id}/api/2.1/unity-catalog/tables?catalog_name={item_id}&schema_name={schema_name}",
+                f"{_url_prefix}/{workspace_id}/{item_id}/api/2.1/unity-catalog/tables?catalog_name={item_id}&schema_name={schema_name}",
                 headers=_get_headers(),
             )
             # Loop through tables
@@ -106,6 +110,10 @@ def list_tables(
                     }
                 )
     else:
+        if schema:
+            print(
+                f"{icons.info} The schema parameter has been ignored as the '{item_name}' lakehouse within the '{workspace_name}' workspace has schemas disabled."
+            )
         responses = _base_api(
             request=f"v1/workspaces/{workspace_id}/lakehouses/{item_id}/tables",
             uses_pagination=True,
