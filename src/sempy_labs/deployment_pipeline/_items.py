@@ -5,11 +5,12 @@ from sempy_labs._helper_functions import (
     _update_dataframe_datatypes,
     _create_dataframe,
     resolve_workspace_id,
+    resolve_capacity_id,
 )
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from uuid import UUID
-from typing import Optional
+from typing import List, Optional
 
 
 @log
@@ -484,3 +485,96 @@ def assign_workspace_to_stage(
     print(
         f"{icons.green_dot} The workspace has been assigned to the '{stage}' stage of the '{deployment_pipeline}' deployment pipeline successfully."
     )
+
+
+@log
+def deploy_stage_content(
+    deployment_pipeline: str | UUID,
+    source_stage_id: UUID,
+    target_stage_id: UUID,
+    items: Optional[dict | List[dict]] = None,
+    note: Optional[str] = None,
+    allow_cross_region_deployment: Optional[bool] = False,
+    capacity: Optional[str | UUID] = None,
+    workspace_name: Optional[str] = None,
+):
+    """
+    Deploys items from the specified stage of the specified deployment pipeline. 
+
+    This is a wrapper function for the following API: `Deployment Pipelines - Deploy Stage Content <https://learn.microsoft.com/rest/api/fabric/core/deployment-pipelines/deploy-stage-content>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    deployment_pipeline : str | uuid.UUID
+        The deployment pipeline name or ID.
+    source_stage_id : uuid.UUID
+        The source deployment pipeline stage ID.
+    target_stage_id : uuid.UUID
+        The target deployment pipeline stage ID.
+    items : dict | List[dict], default=None
+        A list of items to deploy. Each item should be a dictionary with the following structure:
+        {
+            "itemId": "1a201f2a-d1d8-45c0-8c61-1676338517de",
+            "itemType": "SemanticModel"
+        }
+        If None, all items will be deployed.
+    note : str, default=None
+        An optional note to include with the deployment.
+    allow_cross_region_deployment : bool, default=False
+        Indicates whether cross region deployment is enabled. True - enabled, False - disabled. Default value is False.
+    capacity : str | uuid.UUID, default=None
+        The capacity name or ID to use for the deployment operation if creating a new workspace. Required when deploying to a stage that has no assigned workspaces, otherwise it is ignored. The deployment will fail if the new workspace configuration details aren't provided when required.
+    workspace_name : str, default=None
+        The workspace name to use for the deployment operation if creating a new workspace. Required when deploying to a stage that has no assigned workspaces, otherwise it is ignored. The deployment will fail if the new workspace configuration details aren't provided when required.
+    """
+
+    deployment_pipeline_id = resolve_deployment_pipeline_id(
+        deployment_pipeline=deployment_pipeline
+    )
+
+    payload = {
+        "sourceStageId": source_stage_id,
+        "targetStageId": target_stage_id,
+    }
+    if note:
+        payload["note"] = note
+
+    if items:
+        if isinstance(items, dict):
+            items = [items]
+
+        if not isinstance(items, list):
+            raise ValueError(
+                f"{icons.red_dot} The 'items' parameter must be a list of dictionaries."
+            )
+
+        payload["items"] = items
+
+    if allow_cross_region_deployment:
+        payload["options"] = {"allowCrossRegionDeployment": True}
+
+    if capacity and workspace_name:
+        capacity_id = resolve_capacity_id(capacity)
+        payload["createdWorkspaceDetails"] = {
+            "capacityId": capacity_id,
+            "name": workspace_name,
+        }
+
+    _base_api(
+        request=f"/v1/deploymentPipelines/{deployment_pipeline_id}/deploy",
+        method="post",
+        payload=payload,
+        status_codes=[200, 202],
+        lro_return_status_code=True,
+    )
+
+    print(
+        f"{icons.green_dot} The deployment from stage '{source_stage_id}' to stage '{target_stage_id}' in the '{deployment_pipeline}' deployment pipeline has been initiated successfully."
+    )
+
+    if capacity and workspace_name:
+        print(
+            f"{icons.info} A new workspace '{workspace_name}' will be created in the specified capacity for the deployment."
+        )
