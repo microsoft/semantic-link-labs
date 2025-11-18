@@ -6,6 +6,7 @@ from sempy_labs._helper_functions import (
     resolve_dataset_name_and_id,
     _update_dataframe_datatypes,
     _base_api,
+    _create_dataframe,
 )
 from typing import Optional
 import sempy_labs._icons as icons
@@ -316,37 +317,35 @@ def list_storage_account_files(
         A pandas dataframe showing a list of files contained within an ADLS Gen2 storage account.
     """
 
-    df = pd.DataFrame(
-        columns=[
-            "File Path",
-            "File Size",
-            "Creation Time",
-            "Last Modified",
-            "Expiry Time",
-            "Encryption Scope",
-        ]
-    )
+    columns = {
+        "File Path": "str",
+        "File Size": "int",
+        "Creation Time": "datetime",
+        "Last Modified": "datetime",
+        "Expiry Time": "datetime",
+        "Encryption Scope": "str",
+    }
 
+    df = _create_dataframe(columns=columns)
     client = _get_adls_client(storage_account)
     fs = client.get_file_system_client(container)
 
+    rows = []
     for x in list(fs.get_paths()):
         if not x.is_directory:
-            new_data = {
-                "File Path": x.name,
-                "File Size": x.content_length,
-                "Creation Time": x.creation_time,
-                "Last Modified": x.last_modified,
-                "Expiry Time": x.expiry_time,
-                "Encryption Scope": x.encryption_scope,
-            }
+            rows.append(
+                {
+                    "File Path": x.name,
+                    "File Size": x.content_length,
+                    "Creation Time": x.creation_time,
+                    "Last Modified": x.last_modified,
+                    "Expiry Time": x.expiry_time,
+                    "Encryption Scope": x.encryption_scope,
+                }
+            )
 
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    column_map = {
-        "File Size": "int",
-    }
-
-    _update_dataframe_datatypes(dataframe=df, column_map=column_map)
+    if rows:
+        df = pd.DataFrame(rows)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df

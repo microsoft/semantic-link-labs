@@ -2,6 +2,8 @@ import pandas as pd
 import sempy_labs._icons as icons
 from typing import Optional, List
 from sempy_labs._helper_functions import (
+    _update_dataframe_datatypes,
+    resolve_workspace_id,
     resolve_workspace_name_and_id,
     _base_api,
     _create_dataframe,
@@ -172,21 +174,21 @@ def get_git_status(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing the Git status of items in the workspace.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
 
-    df = pd.DataFrame(
-        columns=[
-            "Workspace Head",
-            "Remote Commit Hash",
-            "Object ID",
-            "Logical ID",
-            "Item Type",
-            "Item Name",
-            "Workspace Change",
-            "Remote Change",
-            "Conflict Type",
-        ]
-    )
+    columns = {
+        "Workspace Head": "str",
+        "Remote Commit Hash": "str",
+        "Object ID": "str",
+        "Logical ID": "str",
+        "Item Type": "str",
+        "Item Name": "str",
+        "Workspace Change": "str",
+        "Remote Change": "str",
+        "Conflict Type": "str",
+    }
+
+    df = _create_dataframe(columns=columns)
 
     result = _base_api(
         request=f"/v1/workspaces/{workspace_id}/git/status",
@@ -194,22 +196,27 @@ def get_git_status(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         status_codes=None,
     )
 
+    rows = []
     for changes in result.get("changes", []):
         item_metadata = changes.get("itemMetadata", {})
         item_identifier = item_metadata.get("itemIdentifier", {})
 
-        new_data = {
-            "Workspace Head": result.get("workspaceHead"),
-            "Remote Commit Hash": result.get("remoteCommitHash"),
-            "Object ID": item_identifier.get("objectId"),
-            "Logical ID": item_identifier.get("logicalId"),
-            "Item Type": item_metadata.get("itemType"),
-            "Item Name": item_metadata.get("displayName"),
-            "Remote Change": changes.get("remoteChange"),
-            "Workspace Change": changes.get("workspaceChange"),
-            "Conflict Type": changes.get("conflictType"),
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+        rows.append(
+            {
+                "Workspace Head": result.get("workspaceHead"),
+                "Remote Commit Hash": result.get("remoteCommitHash"),
+                "Object ID": item_identifier.get("objectId"),
+                "Logical ID": item_identifier.get("logicalId"),
+                "Item Type": item_metadata.get("itemType"),
+                "Item Name": item_metadata.get("displayName"),
+                "Remote Change": changes.get("remoteChange"),
+                "Workspace Change": changes.get("workspaceChange"),
+                "Conflict Type": changes.get("conflictType"),
+            }
+        )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=columns.keys())
 
     return df
 
@@ -234,27 +241,28 @@ def get_git_connection(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing the Git status of items in the workspace.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
 
-    df = pd.DataFrame(
-        columns=[
-            "Organization Name",
-            "Project Name",
-            "Git Provider Type",
-            "Repository Name",
-            "Branch Name",
-            "Directory Name",
-            "Workspace Head",
-            "Last Sync Time",
-            "Git Connection State",
-        ]
-    )
+    columns = {
+        "Organization Name": "str",
+        "Project Name": "str",
+        "Git Provider Type": "str",
+        "Repository Name": "str",
+        "Branch Name": "str",
+        "Directory Name": "str",
+        "Workspace Head": "str",
+        "Last Sync Time": "datetime",
+        "Git Connection State": "str",
+    }
+
+    df = _create_dataframe(columns=columns)
 
     response = _base_api(request=f"/v1/workspaces/{workspace_id}/git/connection")
 
     r = response.json()
     provider_details = r.get("gitProviderDetails", {})
     sync_details = r.get("gitSyncDetails", {})
+
     new_data = {
         "Organization Name": provider_details.get("organizationName"),
         "Project Name": provider_details.get("projectName"),
@@ -266,7 +274,8 @@ def get_git_connection(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         "Last Sync Time": sync_details.get("lastSyncTime"),
         "Git Connection State": r.get("gitConnectionState"),
     }
-    df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    df = pd.DataFrame([new_data], columns=columns.keys())
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -466,7 +475,7 @@ def get_my_git_credentials(
         A pandas dataframe showing the user's Git credentials configuration details.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
 
     columns = {
         "Source": "string",
@@ -481,7 +490,7 @@ def get_my_git_credentials(
         "Source": r.get("source"),
         "Connection Id": r.get("connectionId"),
     }
-    df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    df = pd.DataFrame([new_data], columns=columns.keys())
 
     return df
 
