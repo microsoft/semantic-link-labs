@@ -17,6 +17,24 @@ import sempy_labs._icons as icons
 def list_schemas(
     lakehouse: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
+    """
+    Lists the schemas within a Fabric lakehouse.
+
+    Parameters
+    ----------
+    lakehouse : str | uuid.UUID, default=None
+        The Fabric lakehouse name or ID.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Shows the schemas within a lakehouse.
+    """
 
     columns = {
         "Schema Name": "str",
@@ -84,6 +102,8 @@ def list_tables(
             )
             # Loop through tables
             for t in response.json().get("tables", []):
+                location = t.get("storage_location", {})
+                location = f'abfss://{location.split(".microsoft.com/")[1]}'
                 rows.append(
                     {
                         "Workspace Name": workspace_name,
@@ -92,7 +112,7 @@ def list_tables(
                         "Schema Name": schema_name,
                         "Format": t.get("data_source_format", {}).capitalize(),
                         "Type": "Managed",
-                        "Location": t.get("storage_location", {}),
+                        "Location": location,
                     }
                 )
     else:
@@ -130,6 +150,26 @@ def schema_exists(
     lakehouse: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
 ) -> bool:
+    """
+    Indicates whether the specified schema exists within a Fabric lakehouse.
+
+    Parameters
+    ----------
+    schema : str
+        The name of the schema.
+    lakehouse : str | uuid.UUID, default=None
+        The Fabric lakehouse name or ID.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    bool
+        Indicates whether the specified schema exists within the lakehouse.
+    """
 
     df = list_schemas(lakehouse=lakehouse, workspace=workspace)
     return schema in df["Schema Name"].values
