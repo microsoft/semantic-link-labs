@@ -2249,12 +2249,12 @@ def _base_api(
     elif client == "fabric_sp":
         token = auth.token_provider.get() or FabricDefaultCredential()
         c = fabric.FabricRestClient(credential=token)
-    elif client in ["azure", "graph"]:
+    elif client in ["azure", "graph", "onelake"]:
         pass
     else:
         raise ValueError(f"{icons.red_dot} The '{client}' client is not supported.")
 
-    if client not in ["azure", "graph"]:
+    if client not in ["azure", "graph", "onelake"]:
         if method == "get":
             response = c.get(request)
         elif method == "delete":
@@ -2268,13 +2268,18 @@ def _base_api(
         else:
             raise NotImplementedError
     else:
-        headers = _get_headers(auth.token_provider.get(), audience=client)
-        if client == "graph":
-            url = f"https://graph.microsoft.com/v1.0/{request}"
-        elif client == "azure":
-            url = request
+        if client == "onelake":
+            import notebookutils
+
+            token = notebookutils.credentials.getToken("storage")
+            headers = {"Authorization": f"Bearer {token}"}
+            url = f"https://onelake.table.fabric.microsoft.com/delta/{request}"
         else:
-            raise NotImplementedError
+            headers = _get_headers(auth.token_provider.get(), audience=client)
+            if client == "graph":
+                url = f"https://graph.microsoft.com/v1.0/{request}"
+            elif client == "azure":
+                url = request
         response = requests.request(
             method.upper(),
             url,

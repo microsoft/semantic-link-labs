@@ -1,6 +1,5 @@
 from typing import Optional, List
 from uuid import UUID
-import requests
 from sempy._utils._log import log
 import pandas as pd
 from sempy_labs._helper_functions import (
@@ -8,23 +7,10 @@ from sempy_labs._helper_functions import (
     resolve_workspace_id,
     resolve_lakehouse_id,
     _create_dataframe,
-    _update_dataframe_datatypes,
     _base_api,
     resolve_workspace_name_and_id,
 )
 import sempy_labs._icons as icons
-
-
-_url_prefix = "https://onelake.table.fabric.microsoft.com/delta"
-
-
-def _get_headers():
-
-    import notebookutils
-
-    token = notebookutils.credentials.getToken("storage")
-    headers = {"Authorization": f"Bearer {token}"}
-    return headers
 
 
 @log
@@ -38,9 +24,9 @@ def list_schemas(
     df = _create_dataframe(columns=columns)
     workspace_id = resolve_workspace_id(workspace)
     item_id = resolve_lakehouse_id(lakehouse, workspace)
-    response = requests.get(
-        f"{_url_prefix}/{workspace_id}/{item_id}/api/2.1/unity-catalog/schemas?catalog_name={item_id}",
-        headers=_get_headers(),
+    response = _base_api(
+        request=f"{workspace_id}/{item_id}/api/2.1/unity-catalog/schemas?catalog_name={item_id}",
+        client="onelake",
     )
 
     rows = []
@@ -66,7 +52,7 @@ def list_tables(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (item_name, item_id) = resolve_lakehouse_name_and_id(lakehouse, workspace)
 
-    response = _base_api(f"/v1/workspaces/{workspace_id}/lakehouses/{item_id})")
+    response = _base_api(f"/v1/workspaces/{workspace_id}/lakehouses/{item_id}")
     default_schema = response.json().get("properties", {}).get("defaultSchema", None)
     schema_enabled = True if default_schema else False
 
@@ -92,9 +78,9 @@ def list_tables(
         # Loop through schemas
         for _, r in schemas.iterrows():
             schema_name = r["Schema Name"]
-            response = requests.get(
-                f"{_url_prefix}/{workspace_id}/{item_id}/api/2.1/unity-catalog/tables?catalog_name={item_id}&schema_name={schema_name}",
-                headers=_get_headers(),
+            response = _base_api(
+                request=f"{workspace_id}/{item_id}/api/2.1/unity-catalog/tables?catalog_name={item_id}&schema_name={schema_name}",
+                client="onelake",
             )
             # Loop through tables
             for t in response.json().get("tables", []):
@@ -104,8 +90,8 @@ def list_tables(
                         "Lakehouse Name": item_name,
                         "Table Name": t.get("name", {}),
                         "Schema Name": schema_name,
-                        "Format": t.get("data_source_format", {}),
-                        "Type": None,
+                        "Format": t.get("data_source_format", {}).capitalize(),
+                        "Type": "Managed",
                         "Location": t.get("storage_location", {}),
                     }
                 )
@@ -137,3 +123,23 @@ def list_tables(
         df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
+
+
+def schema_exists(
+    schema: str,
+    lakehouse: Optional[str | UUID] = None,
+    workspace: Optional[str | UUID] = None,
+) -> bool:
+
+    df = list_schemas(lakehouse=lakehouse, workspace=workspace)
+    return schema in df["Schema Name"].values
+
+    # (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    # (item_name, item_id) = resolve_lakehouse_name_and_id(lakehouse, workspace)
+    # response = _base_api(
+    #    request=f"{workspace_id}/{item_id}/api/2.1/unity-catalog/schemas/{schema}",
+    #    client="onelake",
+    #    method="head",
+    # )
+
+    # response.json()
