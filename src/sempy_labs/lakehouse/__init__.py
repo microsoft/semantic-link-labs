@@ -34,6 +34,10 @@ from ._helper import (
 from ._materialized_lake_views import (
     refresh_materialized_lake_views,
 )
+from ._schemas import (
+    list_schemas,
+    schema_exists,
+)
 
 __all__ = [
     "get_lakehouse_columns",
@@ -56,4 +60,6 @@ __all__ = [
     "load_table",
     "refresh_materialized_lake_views",
     "list_lakehouses",
+    "list_schemas",
+    "schema_exists",
 ]

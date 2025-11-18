@@ -4,11 +4,9 @@ import pyarrow.parquet as pq
 from datetime import datetime
 from sempy_labs._helper_functions import (
     _get_column_aggregate,
-    resolve_workspace_name_and_id,
     resolve_lakehouse_name_and_id,
     save_as_delta_table,
-    _base_api,
-    _create_dataframe,
+    resolve_workspace_id,
     _read_delta_table,
     _get_delta_table,
     _mount,
@@ -24,6 +22,7 @@ from typing import Optional
 import sempy_labs._icons as icons
 from sempy._utils._log import log
 from uuid import UUID
+from sempy_labs.lakehouse._schemas import list_tables
 
 
 @log
@@ -70,84 +69,14 @@ def get_lakehouse_tables(
         Shows the tables/columns within a lakehouse and their properties.
     """
 
-    columns = {
-        "Workspace Name": "string",
-        "Lakehouse Name": "string",
-        "Schema Name": "string",
-        "Table Name": "string",
-        "Format": "string",
-        "Type": "string",
-        "Location": "string",
-    }
-    df = _create_dataframe(columns=columns)
-
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
     (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=workspace_id
     )
 
-    # Test if valid lakehouse:
-    x = _base_api(f"v1/workspaces/{workspace_id}/lakehouses/{lakehouse_id}")
+    df = list_tables(lakehouse=lakehouse, workspace=workspace)
 
-    if count_rows:  # Setting countrows defaults to extended=True
-        extended = True
-
-    API_called = True
-    try:
-        responses = _base_api(
-            request=f"v1/workspaces/{workspace_id}/lakehouses/{lakehouse_id}/tables",
-            uses_pagination=True,
-            client="fabric_sp",
-        )
-
-    except Exception:
-        API_called = False
-
-    rows = []
-    local_path = None
-    if API_called:
-        if not responses[0].get("data"):
-            return df
-
-        for r in responses:
-            for i in r.get("data", []):
-                rows.append(
-                    {
-                        "Workspace Name": workspace_name,
-                        "Lakehouse Name": lakehouse_name,
-                        "Schema Name": "",
-                        "Table Name": i.get("name"),
-                        "Format": i.get("format"),
-                        "Type": i.get("type"),
-                        "Location": i.get("location"),
-                    }
-                )
-    else:
-        local_path = _mount(lakehouse=lakehouse_id, workspace=workspace_id)
-        tables_path = os.path.join(local_path, "Tables")
-        list_schema = os.listdir(tables_path)
-
-        for schema_name in list_schema:
-            schema_table_path = os.path.join(local_path, "Tables", schema_name)
-            list_tables = os.listdir(schema_table_path)
-            for table_name in list_tables:
-                location_path = create_abfss_path(
-                    lakehouse_id, workspace_id, table_name, schema_name
-                )
-                rows.append(
-                    {
-                        "Workspace Name": workspace_name,
-                        "Lakehouse Name": lakehouse_name,
-                        "Schema Name": schema_name,
-                        "Table Name": table_name,
-                        "Format": "delta",
-                        "Type": "Managed",
-                        "Location": location_path,
-                    }
-                )
-
-    if rows:
-        df = pd.DataFrame(rows, columns=list(columns.keys()))
+    local_path = _mount(lakehouse=lakehouse_id, workspace=workspace_id)
 
     if extended:
         sku_value = get_sku_size(workspace_id)
@@ -161,7 +90,6 @@ def get_lakehouse_tables(
             df["Row Count"] = None
 
         for i, r in df.iterrows():
-            use_schema = True
             schema_name = r["Schema Name"]
             table_name = r["Table Name"]
             if r["Type"] == "Managed" and r["Format"] == "delta":
