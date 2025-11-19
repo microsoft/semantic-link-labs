@@ -2160,6 +2160,11 @@ def _process_and_display_chart(df, title, widget):
 
 def _convert_data_type(input_data_type: str) -> str:
 
+    if not input_data_type:
+        return None
+
+    input_data_type = input_data_type.lower()
+
     data_type_mapping = {
         "string": "String",
         "int": "Int64",
@@ -2175,10 +2180,10 @@ def _convert_data_type(input_data_type: str) -> str:
         "long": "Int64",
     }
 
-    if "decimal" in input_data_type:
-        return "Decimal"
-    else:
-        return data_type_mapping.get(input_data_type)
+    if input_data_type.startswith("decimal"):
+        return "Double"
+
+    return data_type_mapping.get(input_data_type)
 
 
 def _is_valid_uuid(
