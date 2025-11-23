@@ -54,7 +54,7 @@ def list_reports(
         "Users": "string",
         "Subscriptions": "string",
         "Workspace Id": "string",
-        "Report Flags": "int",
+        "Report Flags": "int_fillna",
     }
 
     df = _create_dataframe(columns=columns)
