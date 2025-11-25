@@ -14,6 +14,38 @@ import sempy_labs._icons as icons
 
 
 @log
+def is_schema_enabled(
+    lakehouse: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None
+) -> bool:
+    """
+    Indicates whether a lakehouse has schemas enabled.
+
+    Parameters
+    ----------
+    lakehouse : str | uuid.UUID, default=None
+        The Fabric lakehouse name or ID.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    bool
+        Indicates whether the lakehouse has schemas enabled.
+    """
+    workspace_id = resolve_workspace_id(workspace)
+    (item_name, item_id) = resolve_lakehouse_name_and_id(lakehouse, workspace)
+    response = _base_api(f"/v1/workspaces/{workspace_id}/lakehouses/{item_id}")
+    default_schema = response.json().get("properties", {}).get("defaultSchema", None)
+    if default_schema:
+        return True
+    else:
+        return False
+
+
+@log
 def list_schemas(
     lakehouse: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
