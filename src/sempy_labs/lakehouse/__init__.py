@@ -37,6 +37,7 @@ from ._materialized_lake_views import (
 from ._schemas import (
     list_schemas,
     schema_exists,
+    is_schema_enabled,
 )
 
 __all__ = [
@@ -62,4 +63,5 @@ __all__ = [
     "list_lakehouses",
     "list_schemas",
     "schema_exists",
+    "is_schema_enabled",
 ]
