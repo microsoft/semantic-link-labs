@@ -464,7 +464,7 @@ class ReportWrapper:
         return url
 
     def __resolve_page_name_and_display_name_file_path(
-        self, page: str
+        self, page: str, return_error: bool = True
     ) -> Tuple[str, str, str]:
 
         self._ensure_pbir()
@@ -486,12 +486,16 @@ class ReportWrapper:
         elif page in name_lookup:
             path, page_id = name_lookup[page]
             return path, page_id, page
-        else:
+        elif return_error:
             raise ValueError(
                 f"{icons.red_dot} Invalid page display name. The '{page}' page does not exist in the '{self._report_name}' report within the '{self._workspace_name}' workspace."
             )
+        else:
+            return (None, page, page)
 
-    def _resolve_page_name_and_display_name(self, page: str) -> Tuple[str, str]:
+    def _resolve_page_name_and_display_name(
+        self, page: str, return_error: bool = True
+    ) -> Tuple[str, str]:
         """
         Obtains the page name, page display name for a given page in a report.
 
@@ -499,6 +503,8 @@ class ReportWrapper:
         ----------
         page : str
             The page name or display name.
+        return_error : bool, default=True
+            Whether to raise an error if the page does not exist.
 
         Returns
         -------
@@ -507,7 +513,8 @@ class ReportWrapper:
         """
 
         (_, page_id, page_name) = self.__resolve_page_name_and_display_name_file_path(
-            page
+            page,
+            return_error=return_error,
         )
 
         return (page_id, page_name)
@@ -1757,7 +1764,7 @@ class ReportWrapper:
                 "applyOnlyToTargetVisuals", False
             )
             (page_id, page_display) = self._resolve_page_name_and_display_name(
-                rpt_page_id
+                page=rpt_page_id, return_error=False
             )
 
             for rptPg in payload.get("explorationState", {}).get("sections", {}):
