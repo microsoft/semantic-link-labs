@@ -110,7 +110,7 @@ def list_tables(
                         "Lakehouse Name": item_name,
                         "Table Name": t.get("name", {}),
                         "Schema Name": schema_name,
-                        "Format": t.get("data_source_format", {}).capitalize(),
+                        "Format": t.get("data_source_format", {}).lower(),
                         "Type": "Managed",
                         "Location": location,
                     }
