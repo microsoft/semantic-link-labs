@@ -49,6 +49,7 @@ def refresh_materialized_lake_views(
     df = _base_api(
         request=f"/v1/workspaces/{workspace_id}/lakehouses/{lakehouse_id}/jobs/instances?jobType=RefreshMaterializedLakeViews",
         lro_return_df=True,
+        method="post",
     )
 
     status = df["Status"].iloc[0]
