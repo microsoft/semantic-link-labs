@@ -2344,7 +2344,11 @@ def _update_dataframe_datatypes(dataframe: pd.DataFrame, column_map: dict):
                 dataframe[column] = dataframe[column].fillna(0).astype(float)
             # This is to avoid NaN values in integer columns (for delta analyzer)
             elif data_type == "int_fillna":
-                dataframe[column] = dataframe[column].fillna(0).astype(int)
+                dataframe[column] = (
+                    pd.to_numeric(dataframe[column], errors="coerce")
+                    .fillna(0)
+                    .astype(int)
+                )
             elif data_type in ["str", "string"]:
                 try:
                     dataframe[column] = dataframe[column].astype(str)
