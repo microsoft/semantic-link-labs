@@ -1749,26 +1749,15 @@ def resolve_warehouse_id(
 
 @log
 def resolve_warehouse_name_and_id(
-    warehouse: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None
+    warehouse: str | UUID = None, workspace: Optional[str | UUID] = None
 ) -> Tuple[str, UUID]:
 
     workspace_id = resolve_workspace_id(workspace)
     type = "Warehouse"
 
-    if warehouse is None:
-        warehouse_id = _get_fabric_context_setting(name="trident.warehouse.id")
-        if warehouse_id == "":
-            raise ValueError(
-                f"{icons.red_dot} Cannot resolve a warehouse. Please enter a valid warehouse or make sure a warehouse is attached to the notebook."
-            )
-        (warehouse_name, warehouse_id) = resolve_item_name_and_id(
-            item=warehouse_id, type=type, workspace=workspace_id
-        )
-
-    else:
-        (warehouse_name, warehouse_id) = resolve_item_name_and_id(
-            item=warehouse, type=type, workspace=workspace_id
-        )
+    (warehouse_name, warehouse_id) = resolve_item_name_and_id(
+        item=warehouse, type=type, workspace=workspace_id
+    )
 
     return warehouse_name, warehouse_id
 
