@@ -73,4 +73,6 @@ items = {
     "Reflex": "reflexes",
     "GraphModel": "GraphModels",
     "GraphQuerySet": "GraphQuerySets",
+    "OperationsAgent": "OperationsAgents",
+    "SnowflakeDatabase": "snowflakeDatabases",
 }
