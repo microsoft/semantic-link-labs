@@ -44,6 +44,7 @@ from ._job_scheduler import (
     create_item_schedule_cron,
     create_item_schedule_daily,
     create_item_schedule_weekly,
+    cancel_item_job_instance,
 )
 from ._delta_analyzer import (
     delta_analyzer,
@@ -601,4 +602,5 @@ __all__ = [
     "list_domains",
     "get_workspace_git_outbound_policy",
     "set_workspace_git_outbound_policy",
+    "cancel_item_job_instance",
 ]
