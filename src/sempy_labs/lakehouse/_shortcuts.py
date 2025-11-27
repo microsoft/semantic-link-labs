@@ -2,6 +2,7 @@ import sempy.fabric as fabric
 import pandas as pd
 from sempy_labs._helper_functions import (
     resolve_lakehouse_name_and_id,
+    resolve_warehouse_name_and_id,
     resolve_workspace_id,
     resolve_workspace_name_and_id,
     _base_api,
@@ -39,9 +40,9 @@ def create_shortcut_onelake(
     table_name : str
         The table name for which a shortcut will be created.
     source_lakehouse : str | uuid.UUID
-        The Fabric lakehouse in which the table resides.
+        The Fabric lakehouse or warehouse in which the table resides.
     source_workspace : str | uuid.UUID
-        The name or ID of the Fabric workspace in which the source lakehouse exists.
+        The name or ID of the Fabric workspace in which the source lakehouse or warehouse exists.
     destination_lakehouse : str | uuid.UUID, default=None
         The Fabric lakehouse in which the shortcut will be created.
         Defaults to None which resolves to the lakehouse attached to the notebook.
@@ -74,9 +75,19 @@ def create_shortcut_onelake(
         source_workspace
     )
 
-    (source_lakehouse_name, source_lakehouse_id) = resolve_lakehouse_name_and_id(
-        lakehouse=source_lakehouse, workspace=source_workspace_id
-    )
+    error = None
+    source_type = 'lakehouse'
+    try:
+        (source_lakehouse_name, source_lakehouse_id) = resolve_lakehouse_name_and_id(
+            lakehouse=source_lakehouse, workspace=source_workspace_id
+        )
+    except Exception as e:
+        error = e
+    if error:
+        (source_lakehouse_name, source_lakehouse_id) = resolve_warehouse_name_and_id(
+            warehouse=source_lakehouse, workspace=source_workspace_id
+        )
+        source_type = 'warehouse'
 
     (destination_workspace_name, destination_workspace_id) = (
         resolve_workspace_name_and_id(destination_workspace)
@@ -144,7 +155,7 @@ def create_shortcut_onelake(
     )
 
     print(
-        f"{icons.green_dot} The shortcut '{shortcut_name}' was created in the '{destination_lakehouse_name}' lakehouse within the '{destination_workspace_name}' workspace. It is based on the '{table_name}' table in the '{source_lakehouse_name}' lakehouse within the '{source_workspace_name}' workspace."
+        f"{icons.green_dot} The shortcut '{shortcut_name}' was created in the '{destination_lakehouse_name}' lakehouse within the '{destination_workspace_name}' workspace. It is based on the '{table_name}' table in the '{source_lakehouse_name}' {source_type} within the '{source_workspace_name}' workspace."
     )
 
 
