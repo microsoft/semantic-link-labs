@@ -1749,7 +1749,7 @@ def resolve_warehouse_id(
 
 @log
 def resolve_warehouse_name_and_id(
-    warehouse: str | UUID = None, workspace: Optional[str | UUID] = None
+    warehouse: str | UUID, workspace: Optional[str | UUID] = None
 ) -> Tuple[str, UUID]:
 
     workspace_id = resolve_workspace_id(workspace)
