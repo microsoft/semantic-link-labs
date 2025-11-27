@@ -55,6 +55,7 @@ def run_model_bpa_bulk(
             "Workspace B": ["Dataset5", "Dataset 8"],
         }
     """
+    from sempy_labs.lakehouse._schemas import is_schema_enabled
 
     if not lakehouse_attached():
         raise ValueError(
@@ -67,7 +68,9 @@ def run_model_bpa_bulk(
     skip_models.extend(["ModelBPA", "Fabric Capacity Metrics"])
 
     now = datetime.datetime.now()
-    output_table = "modelbparesults"
+    schema_enabled = is_schema_enabled()
+    output_table = "dbo/modelbparesults" if schema_enabled else "modelbparesults"
+
     lakeT = get_lakehouse_tables()
     lakeT_filt = lakeT[lakeT["Table Name"] == output_table]
     if lakeT_filt.empty:
