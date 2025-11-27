@@ -103,7 +103,7 @@ for file_name, file_url in notebook_files.items():
 import sempy_labs as labs
 import sempy_labs.lakehouse as lake
 import sempy_labs.report as rep
-from sempy_labs import admin, deployment_pipeline, directlake, eventstream, graph, migration, mirrored_azure_databricks_catalog, ml_model, theme, variable_library
+from sempy_labs import admin, deployment_pipeline, directlake, environment, eventstream, graph, graph_model, migration, mirrored_azure_databricks_catalog, ml_model, snowflake_database, sql_database, theme, variable_library, warehouse
 from sempy_labs.tom import connect_semantic_model
 from sempy_labs.report import connect_report
 ```
