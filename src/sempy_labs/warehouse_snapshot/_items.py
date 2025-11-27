@@ -165,3 +165,66 @@ def create_warehouse_snapshot(
     print(
         f"{icons.green_dot} The warehouse snapshot '{name}' has been created in the workspace '{warehouse_snapshot_workspace_name}'."
     )
+
+
+@log
+def update_warehouse_snapshot(
+    warehouse_snapshot: str | UUID,
+    name: Optional[str] = None,
+    description: Optional[str] = None,
+    snapshot_datetime: Optional[datetime] = None,
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Updates the properties of a warehouse snapshot in the Fabric workspace.
+
+    This is a wrapper function for the following API: `Items - Update Warehouse Snapshot <https://learn.microsoft.com/rest/api/fabric/warehousesnapshot/items/update-warehouse-snapshot>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    warehouse_snapshot : str | uuid.UUID
+        The name or ID of the warehouse snapshot to update.
+    name : str, optional
+        The new name for the warehouse snapshot.
+    description : str, optional
+        The new description for the warehouse snapshot.
+    snapshot_datetime : datetime, optional
+        The new snapshot datetime for the warehouse snapshot.
+        Example: "2024-10-15T13:00:00Z"
+    workspace : str | uuid.UUID, optional
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+    workspace_id = resolve_workspace_id(workspace)
+    warehouse_snapshot_id = resolve_item_id(
+        item=warehouse_snapshot, type="WarehouseSnapshot", workspace=workspace_id
+    )
+
+    payload = {}
+
+    if name:
+        payload["displayName"] = name
+    if description:
+        payload["description"] = description
+    if snapshot_datetime:
+        payload["properties"] = {"snapshotDateTime": snapshot_datetime}
+
+    if not payload:
+        print(
+            f"{icons.yellow_dot} No updates provided for warehouse snapshot '{warehouse_snapshot}'."
+        )
+        return
+
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/warehousesnapshots/{warehouse_snapshot_id}",
+        client="fabric_sp",
+        method="patch",
+        payload=payload,
+    )
+
+    print(
+        f"{icons.green_dot} The warehouse snapshot '{warehouse_snapshot}' has been updated."
+    )
