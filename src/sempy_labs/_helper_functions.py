@@ -229,12 +229,11 @@ def delete_item(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (item_name, item_id) = resolve_item_name_and_id(item, type, workspace_id)
-    item_type = item_types.get(type)[0].lower()
 
     fabric.delete_item(item_id=item_id, workspace=workspace_id)
 
     print(
-        f"{icons.green_dot} The '{item_name}' {item_type} has been successfully deleted from the '{workspace_name}' workspace."
+        f"{icons.green_dot} The '{item_name}' {type} has been successfully deleted from the '{workspace_name}' workspace."
     )
 
 
