@@ -21,7 +21,7 @@ If you encounter any issues, please [raise a bug](https://github.com/microsoft/s
 
 If you have ideas for new features/functions, please [request a feature](https://github.com/microsoft/semantic-link-labs/issues/new?assignees=&labels=&projects=&template=feature_request.md&title=).
 
-If you would like to see any capabilities from Labs included in Semantic Link, please [submit a vote](https://github.com/microsoft/semantic-link-labs/discussions/991). 
+If you would like to see any capabilities from Labs included in Semantic Link, please [submit a vote](https://github.com/microsoft/semantic-link-labs/discussions/991).
 
 Check out the video below for an introduction to Semantic Link, Semantic Link Labs and demos of key features!
 
