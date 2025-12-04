@@ -424,7 +424,7 @@ def search_notebooks(
             )
             for part in definition.get("definition").get("parts"):
                 payload = _decode_b64(part["payload"])
-                if part["path"] == "notebook-content.py":
+                if part["path"] in ("notebook-content.py", "notebook-content.sql"):
                     if search_string in payload:
                         rows.append(
                             {
