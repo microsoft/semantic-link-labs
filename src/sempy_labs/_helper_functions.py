@@ -1747,6 +1747,19 @@ def resolve_warehouse_id(
 
     return resolve_item_id(item=warehouse, type="Warehouse", workspace=workspace)
 
+@log
+def resolve_warehouse_name_and_id(
+    warehouse: str | UUID, workspace: Optional[str | UUID] = None
+) -> Tuple[str, UUID]:
+
+    workspace_id = resolve_workspace_id(workspace)
+    type = "Warehouse"
+
+    (warehouse_name, warehouse_id) = resolve_item_name_and_id(
+        item=warehouse, type=type, workspace=workspace_id
+    )
+
+    return warehouse_name, warehouse_id
 
 def get_language_codes(languages: str | List[str]):
 
