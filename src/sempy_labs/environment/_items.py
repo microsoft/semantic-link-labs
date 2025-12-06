@@ -11,8 +11,10 @@ from sempy_labs._helper_functions import (
     create_item,
 )
 from uuid import UUID
+from sempy._utils._log import log
 
 
+@log
 def create_environment(
     environment: str,
     description: Optional[str] = None,
@@ -43,6 +45,7 @@ def create_environment(
     )
 
 
+@log
 def list_environments(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the environments within a workspace.
@@ -85,29 +88,35 @@ def list_environments(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         client="fabric_sp",
     )
 
+    rows = []
     for r in responses:
         for v in r.get("value", []):
             pub = v.get("properties", {}).get("publishDetails", {})
-            new_data = {
-                "Environment Name": v.get("displayName"),
-                "Environment Id": v.get("id"),
-                "Description": v.get("description"),
-                "Publish State": pub.get("state"),
-                "Publish Target Version": pub.get("targetVersion"),
-                "Publish Start Time": pub.get("startTime"),
-                "Publish End Time": pub.get("endTime"),
-                "Spark Libraries State": pub.get("componentPublishInfo", {})
-                .get("sparkLibraries", {})
-                .get("state"),
-                "Spark Settings State": pub.get("componentPublishInfo", {})
-                .get("sparkSettings", {})
-                .get("state"),
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            rows.append(
+                {
+                    "Environment Name": v.get("displayName"),
+                    "Environment Id": v.get("id"),
+                    "Description": v.get("description"),
+                    "Publish State": pub.get("state"),
+                    "Publish Target Version": pub.get("targetVersion"),
+                    "Publish Start Time": pub.get("startTime"),
+                    "Publish End Time": pub.get("endTime"),
+                    "Spark Libraries State": pub.get("componentPublishInfo", {})
+                    .get("sparkLibraries", {})
+                    .get("state"),
+                    "Spark Settings State": pub.get("componentPublishInfo", {})
+                    .get("sparkSettings", {})
+                    .get("state"),
+                }
+            )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 
 
+@log
 def delete_environment(environment: str | UUID, workspace: Optional[str | UUID] = None):
     """
     Deletes a Fabric environment.
@@ -127,6 +136,7 @@ def delete_environment(environment: str | UUID, workspace: Optional[str | UUID] 
     delete_item(item=environment, type="Environment", workspace=workspace)
 
 
+@log
 def publish_environment(
     environment: str | UUID, workspace: Optional[str | UUID] = None
 ):
@@ -162,4 +172,41 @@ def publish_environment(
 
     print(
         f"{icons.green_dot} The '{environment}' environment within the '{workspace_name}' workspace has been published."
+    )
+
+
+@log
+def cancel_publish_environment(
+    environment: str | UUID, workspace: Optional[str | UUID] = None
+):
+    """
+    Trigger an environment publish cancellation.
+
+    This is a wrapper function for the following API: `Items - Cancel Publish Environment <https://learn.microsoft.com/rest/api/fabric/environment/items/cancel-publish-environment>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    environment: str | uuid.UUID
+        Name or ID of the environment.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    item_id = resolve_item_id(
+        item=environment, type="Environment", workspace=workspace_id
+    )
+
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/environments/{item_id}/staging/cancelPublish",
+        method="post",
+        client="fabric_sp",
+    )
+
+    print(
+        f"{icons.green_dot} The publish of the '{environment}' environment within the '{workspace_name}' workspace has been cancelled."
     )

@@ -4,7 +4,7 @@ import pandas as pd
 from typing import List, Optional, Union
 from IPython.display import display
 import sempy_labs._icons as icons
-from sempy_labs._helper_functions import (
+from .._helper_functions import (
     _read_delta_table,
     _run_spark_sql_query,
 )

@@ -17,6 +17,7 @@ from sempy_labs._helper_functions import (
     get_jsonpath_value,
     set_json_value,
     remove_json_value,
+    get_tenant_id,
 )
 from sempy_labs._dictionary_diffs import (
     diff_parts,
@@ -27,7 +28,7 @@ import copy
 import pandas as pd
 from jsonpath_ng.ext import parse
 import sempy_labs.report._report_helper as helper
-from sempy_labs._model_dependencies import get_measure_dependencies
+from .._model_dependencies import get_measure_dependencies
 import requests
 import re
 import base64
@@ -170,6 +171,7 @@ class ReportWrapper:
         self,
         file_path: str,
         json_path: Optional[str] = None,
+        verbose: bool = True,
     ) -> dict | List[Tuple[str, dict]]:
         """
         Get the json content of the specified report definition file.
@@ -180,6 +182,8 @@ class ReportWrapper:
             The path of the report definition file. For example: "definition/pages/pages.json". You may also use wildcards. For example: "definition/pages/*/page.json".
         json_path : str, default=None
             The json path to the specific part of the file to be retrieved. If None, the entire file content is returned.
+        verbose : bool, default=True
+            If True, prints messages about the retrieval process. If False, suppresses these messages.
 
         Returns
         -------
@@ -191,6 +195,7 @@ class ReportWrapper:
 
         # Find matching parts
         if "*" in file_path:
+            results = []
             matching_parts = [
                 (part.get("path"), part.get("payload"))
                 for part in parts
@@ -198,9 +203,11 @@ class ReportWrapper:
             ]
 
             if not matching_parts:
-                raise ValueError(
-                    f"{icons.red_dot} No files match the wildcard path '{file_path}'."
-                )
+                if verbose:
+                    print(
+                        f"{icons.red_dot} No files match the wildcard path '{file_path}'."
+                    )
+                return results
 
             results = []
             for path, payload in matching_parts:
@@ -219,8 +226,8 @@ class ReportWrapper:
                     #    raise ValueError(
                     #        f"{icons.red_dot} No match found for '{json_path}' in '{path}'."
                     #    )
-            if not results:
-                raise ValueError(
+            if not results and verbose:
+                print(
                     f"{icons.red_dot} No match found for '{json_path}' in any of the files matching the wildcard path '{file_path}'."
                 )
             return results
@@ -240,14 +247,11 @@ class ReportWrapper:
                     matches = jsonpath_expr.find(payload)
                     if matches:
                         return matches[0].value
-                    else:
-                        raise ValueError(
-                            f"{icons.red_dot} No match found for '{json_path}'."
-                        )
+                    elif verbose:
+                        print(f"{icons.red_dot} No match found for '{json_path}'.")
 
-        raise ValueError(
-            f"{icons.red_dot} File '{file_path}' not found in report definition."
-        )
+        if verbose:
+            print(f"{icons.red_dot} File '{file_path}' not found in report definition.")
 
     def add(self, file_path: str, payload: dict | bytes):
         """
@@ -307,9 +311,10 @@ class ReportWrapper:
 
             if not json_path:
                 self._report_definition["parts"].remove(part)
-                print(
-                    f"{icons.green_dot} The file '{path}' has been removed from the report definition."
-                )
+                if verbose:
+                    print(
+                        f"{icons.green_dot} The file '{path}' has been removed from the report definition."
+                    )
             else:
                 remove_json_value(
                     path=path, payload=payload, json_path=json_path, verbose=verbose
@@ -425,7 +430,9 @@ class ReportWrapper:
             ]
         )
 
-    def _get_url(self, page_name: Optional[str] = None) -> str:
+    def _get_url(
+        self, page_name: Optional[str] = None, visual_name: Optional[str] = None
+    ) -> str:
         """
         Gets the URL of the report. If specified, gets the URL of the specified page.
 
@@ -444,12 +451,20 @@ class ReportWrapper:
         url = f"https://app.powerbi.com/groups/{self._workspace_id}/reports/{self._report_id}"
 
         if page_name:
+            if page_name in [page["payload"]["name"] for page in self.__all_pages()]:
+                pass
+            else:
+                page_name = self.resolve_page_name(page_name)
             url += f"/{page_name}"
+
+            if visual_name:
+                tenant_id = get_tenant_id()
+                url += f"?ctid={tenant_id}&pbi_source=shareVisual&visual={visual_name}"
 
         return url
 
     def __resolve_page_name_and_display_name_file_path(
-        self, page: str
+        self, page: str, return_error: bool = True
     ) -> Tuple[str, str, str]:
 
         self._ensure_pbir()
@@ -471,12 +486,16 @@ class ReportWrapper:
         elif page in name_lookup:
             path, page_id = name_lookup[page]
             return path, page_id, page
-        else:
+        elif return_error:
             raise ValueError(
                 f"{icons.red_dot} Invalid page display name. The '{page}' page does not exist in the '{self._report_name}' report within the '{self._workspace_name}' workspace."
             )
+        else:
+            return (None, page, page)
 
-    def _resolve_page_name_and_display_name(self, page: str) -> Tuple[str, str]:
+    def _resolve_page_name_and_display_name(
+        self, page: str, return_error: bool = True
+    ) -> Tuple[str, str]:
         """
         Obtains the page name, page display name for a given page in a report.
 
@@ -484,6 +503,8 @@ class ReportWrapper:
         ----------
         page : str
             The page name or display name.
+        return_error : bool, default=True
+            Whether to raise an error if the page does not exist.
 
         Returns
         -------
@@ -492,7 +513,8 @@ class ReportWrapper:
         """
 
         (_, page_id, page_name) = self.__resolve_page_name_and_display_name_file_path(
-            page
+            page,
+            return_error=return_error,
         )
 
         return (page_id, page_name)
@@ -662,33 +684,65 @@ class ReportWrapper:
         columns = {
             "Custom Visual Name": "str",
             "Custom Visual Display Name": "str",
+            "Is Public": "bool",
             "Used in Report": "bool",
         }
 
         df = _create_dataframe(columns=columns)
 
-        report_file = self.get(file_path=self._report_file_path)
-
-        df["Custom Visual Name"] = report_file.get("publicCustomVisuals")
-        df["Custom Visual Display Name"] = df["Custom Visual Name"].apply(
-            lambda x: helper.vis_type_mapping.get(x, x)
+        visuals = []
+        rp = self.get(
+            file_path=self._report_file_path,
+            json_path="$.resourcePackages",
+            verbose=False,
         )
 
-        visual_types = set()
-        for v in self.__all_visuals():
-            payload = v.get("payload", {})
-            visual = payload.get("visual", {})
-            visual_type = visual.get("visualType")
-            if visual_type:
-                visual_types.add(visual_type)
+        if rp:
+            visuals += [
+                {"Custom Visual Name": item.get("name"), "Is Public": False}
+                for item in rp
+                if item.get("type") == "CustomVisual"
+            ]
 
-        for _, r in df.iterrows():
-            if r["Custom Visual Name"] in visual_types:
-                df.at[_, "Used in Report"] = True
-            else:
-                df.at[_, "Used in Report"] = False
+        # Load public custom visuals
+        public_custom_visuals = (
+            self.get(
+                file_path=self._report_file_path,
+                json_path="$.publicCustomVisuals",
+                verbose=False,
+            )
+            or []
+        )
 
-        _update_dataframe_datatypes(dataframe=df, column_map=columns)
+        visuals += [
+            {
+                "Custom Visual Name": (
+                    item.get("name") if isinstance(item, dict) else item
+                ),
+                "Is Public": True,
+            }
+            for item in public_custom_visuals
+        ]
+
+        if visuals:
+            df = pd.DataFrame(visuals, columns=list(columns.keys()))
+
+            # df["Custom Visual Name"] = report_file.get("publicCustomVisuals")
+            df["Custom Visual Display Name"] = df["Custom Visual Name"].apply(
+                lambda x: helper.vis_type_mapping.get(x, x)
+            )
+
+            visual_types = set()
+            for v in self.__all_visuals():
+                payload = v.get("payload", {})
+                visual = payload.get("visual", {})
+                visual_type = visual.get("visualType")
+                if visual_type:
+                    visual_types.add(visual_type)
+
+            df["Used in Report"] = df["Custom Visual Name"].isin(visual_types)
+
+            _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
         return df
 
@@ -725,7 +779,7 @@ class ReportWrapper:
         }
         df = _create_dataframe(columns=columns)
 
-        dfs = []
+        rows = []
 
         if "filterConfig" in report_file:
             for flt in report_file.get("filterConfig", {}).get("filters", {}):
@@ -739,24 +793,23 @@ class ReportWrapper:
                 entity_property_pairs = helper.find_entity_property_pairs(flt)
 
                 for object_name, properties in entity_property_pairs.items():
-                    new_data = {
-                        "Filter Name": filter_name,
-                        "Type": filter_type,
-                        "Table Name": properties[0],
-                        "Object Name": object_name,
-                        "Object Type": properties[1],
-                        "Hidden": hidden,
-                        "Locked": locked,
-                        "How Created": how_created,
-                        "Used": filter_used,
-                    }
+                    rows.append(
+                        {
+                            "Filter Name": filter_name,
+                            "Type": filter_type,
+                            "Table Name": properties[0],
+                            "Object Name": object_name,
+                            "Object Type": properties[1],
+                            "Hidden": hidden,
+                            "Locked": locked,
+                            "How Created": how_created,
+                            "Used": filter_used,
+                        }
+                    )
 
-                    dfs.append(pd.DataFrame(new_data, index=[0]))
-
-        if dfs:
-            df = pd.concat(dfs, ignore_index=True)
-
-        _update_dataframe_datatypes(dataframe=df, column_map=columns)
+        if rows:
+            df = pd.DataFrame(rows, columns=list(columns.keys()))
+            _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
         if extended:
             df = self._add_extended(dataframe=df)
@@ -795,7 +848,7 @@ class ReportWrapper:
         }
         df = _create_dataframe(columns=columns)
 
-        dfs = []
+        rows = []
         for p in self.__all_pages():
             payload = p.get("payload")
             page_id = payload.get("name")
@@ -813,27 +866,26 @@ class ReportWrapper:
                     entity_property_pairs = helper.find_entity_property_pairs(flt)
 
                     for object_name, properties in entity_property_pairs.items():
-                        new_data = {
-                            "Page Name": page_id,
-                            "Page Display Name": page_display,
-                            "Filter Name": filter_name,
-                            "Type": filter_type,
-                            "Table Name": properties[0],
-                            "Object Name": object_name,
-                            "Object Type": properties[1],
-                            "Hidden": hidden,
-                            "Locked": locked,
-                            "How Created": how_created,
-                            "Used": filter_used,
-                            "Page URL": self._get_url(page_name=page_id),
-                        }
+                        rows.append(
+                            {
+                                "Page Name": page_id,
+                                "Page Display Name": page_display,
+                                "Filter Name": filter_name,
+                                "Type": filter_type,
+                                "Table Name": properties[0],
+                                "Object Name": object_name,
+                                "Object Type": properties[1],
+                                "Hidden": hidden,
+                                "Locked": locked,
+                                "How Created": how_created,
+                                "Used": filter_used,
+                                "Page URL": self._get_url(page_name=page_id),
+                            }
+                        )
 
-                        dfs.append(pd.DataFrame(new_data, index=[0]))
-
-        if dfs:
-            df = pd.concat(dfs, ignore_index=True)
-
-        _update_dataframe_datatypes(dataframe=df, column_map=columns)
+        if rows:
+            df = pd.DataFrame(rows, columns=list(columns.keys()))
+            _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
         if extended:
             df = self._add_extended(dataframe=df)
@@ -875,7 +927,7 @@ class ReportWrapper:
 
         visual_mapping = self._visual_page_mapping()
 
-        dfs = []
+        rows = []
         for v in self.__all_visuals():
             path = v.get("path")
             payload = v.get("payload")
@@ -895,27 +947,26 @@ class ReportWrapper:
                     entity_property_pairs = helper.find_entity_property_pairs(flt)
 
                     for object_name, properties in entity_property_pairs.items():
-                        new_data = {
-                            "Page Name": page_id,
-                            "Page Display Name": page_display,
-                            "Visual Name": visual_name,
-                            "Filter Name": filter_name,
-                            "Type": filter_type,
-                            "Table Name": properties[0],
-                            "Object Name": object_name,
-                            "Object Type": properties[1],
-                            "Hidden": hidden,
-                            "Locked": locked,
-                            "How Created": how_created,
-                            "Used": filter_used,
-                        }
+                        rows.append(
+                            {
+                                "Page Name": page_id,
+                                "Page Display Name": page_display,
+                                "Visual Name": visual_name,
+                                "Filter Name": filter_name,
+                                "Type": filter_type,
+                                "Table Name": properties[0],
+                                "Object Name": object_name,
+                                "Object Type": properties[1],
+                                "Hidden": hidden,
+                                "Locked": locked,
+                                "How Created": how_created,
+                                "Used": filter_used,
+                            }
+                        )
 
-                        dfs.append(pd.DataFrame(new_data, index=[0]))
-
-        if dfs:
-            df = pd.concat(dfs, ignore_index=True)
-
-        _update_dataframe_datatypes(dataframe=df, column_map=columns)
+        if rows:
+            df = pd.DataFrame(rows, columns=list(columns.keys()))
+            _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
         if extended:
             df = self._add_extended(dataframe=df)
@@ -925,9 +976,6 @@ class ReportWrapper:
     def list_visual_interactions(self) -> pd.DataFrame:
         """
         Shows a list of all modified `visual interactions <https://learn.microsoft.com/power-bi/create-reports/service-reports-visual-interactions?tabs=powerbi-desktop>`_ used in the report.
-
-        Parameters
-        ----------
 
         Returns
         -------
@@ -945,7 +993,7 @@ class ReportWrapper:
         }
         df = _create_dataframe(columns=columns)
 
-        dfs = []
+        rows = []
         for p in self.__all_pages():
             payload = p.get("payload")
             page_name = payload.get("name")
@@ -956,17 +1004,68 @@ class ReportWrapper:
                 targetVisual = vizInt.get("target")
                 vizIntType = vizInt.get("type")
 
-                new_data = {
-                    "Page Name": page_name,
-                    "Page Display Name": page_display,
-                    "Source Visual Name": sourceVisual,
-                    "Target Visual Name": targetVisual,
-                    "Type": vizIntType,
-                }
-                dfs.append(pd.DataFrame(new_data, index=[0]))
+                rows.append(
+                    {
+                        "Page Name": page_name,
+                        "Page Display Name": page_display,
+                        "Source Visual Name": sourceVisual,
+                        "Target Visual Name": targetVisual,
+                        "Type": vizIntType,
+                    }
+                )
 
-        if dfs:
-            df = pd.concat(dfs, ignore_index=True)
+        if rows:
+            df = pd.DataFrame(rows, columns=list(columns.keys()))
+
+        return df
+
+    def list_visual_calculations(self) -> pd.DataFrame:
+        """
+        Shows a list of all `visual calculations <https://learn.microsoft.com/power-bi/transform-model/desktop-visual-calculations-overview>`_.
+
+        Returns
+        -------
+        pandas.DataFrame
+            A pandas dataframe containing a list of all visual calculations within the report.
+        """
+
+        self._ensure_pbir()
+
+        columns = {
+            "Page Display Name": "str",
+            "Visual Name": "str",
+            "Name": "str",
+            "Language": "str",
+            "Expression": "str",
+        }
+
+        df = _create_dataframe(columns=columns)
+        visual_mapping = self._visual_page_mapping()
+
+        rows = []
+        for v in self.__all_visuals():
+            path = v.get("path")
+            payload = v.get("payload")
+            page_name = visual_mapping.get(path)[0]
+            page_display_name = visual_mapping.get(path)[1]
+            visual_name = payload.get("name")
+            matches = parse("$..field.NativeVisualCalculation").find(payload)
+            if matches:
+                for match in matches:
+                    m = match.value
+                    rows.append(
+                        {
+                            "Page Display Name": page_display_name,
+                            "Page Name": page_name,
+                            "Visual Name": visual_name,
+                            "Name": m.get("Name"),
+                            "Language": m.get("Language"),
+                            "Expression": m.get("Expression"),
+                        }
+                    )
+
+        if rows:
+            df = pd.DataFrame(rows, columns=list(columns.keys()))
 
         return df
 
@@ -1006,7 +1105,7 @@ class ReportWrapper:
 
         dfV = self.list_visuals()
 
-        dfs = []
+        rows = []
         for p in self.__all_pages():
             file_path = p.get("path")
             page_prefix = file_path[0:-9]
@@ -1055,30 +1154,30 @@ class ReportWrapper:
             matches = parse("$.visibility").find(payload)
             is_hidden = any(match.value == "HiddenInViewMode" for match in matches)
 
-            new_data = {
-                "File Path": file_path,
-                "Page Name": page_name,
-                "Page Display Name": payload.get("displayName"),
-                "Display Option": payload.get("displayOption"),
-                "Height": height,
-                "Width": width,
-                "Hidden": is_hidden,
-                "Active": True if page_name == active_page else False,
-                "Type": helper.page_type_mapping.get((width, height), "Custom"),
-                "Alignment": alignment_value,
-                "Drillthrough Target Page": drill_through,
-                "Visual Count": visual_count,
-                "Data Visual Count": data_visual_count,
-                "Visible Visual Count": visible_visual_count,
-                "Page Filter Count": page_filter_count,
-                "Page URL": self._get_url(page_name=page_name),
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
+            rows.append(
+                {
+                    "File Path": file_path,
+                    "Page Name": page_name,
+                    "Page Display Name": payload.get("displayName"),
+                    "Display Option": payload.get("displayOption"),
+                    "Height": height,
+                    "Width": width,
+                    "Hidden": is_hidden,
+                    "Active": True if page_name == active_page else False,
+                    "Type": helper.page_type_mapping.get((width, height), "Custom"),
+                    "Alignment": alignment_value,
+                    "Drillthrough Target Page": drill_through,
+                    "Visual Count": visual_count,
+                    "Data Visual Count": data_visual_count,
+                    "Visible Visual Count": visible_visual_count,
+                    "Page Filter Count": page_filter_count,
+                    "Page URL": self._get_url(page_name=page_name),
+                }
+            )
 
-        if dfs:
-            df = pd.concat(dfs, ignore_index=True)
-
-        _update_dataframe_datatypes(dataframe=df, column_map=columns)
+        if rows:
+            df = pd.DataFrame(rows, columns=list(columns.keys()))
+            _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
         return df
 
@@ -1120,6 +1219,7 @@ class ReportWrapper:
             "Has Sparkline": "bool",
             "Visual Filter Count": "int",
             "Data Limit": "int",
+            "URL": "str",
         }
         df = _create_dataframe(columns=columns)
 
@@ -1142,8 +1242,7 @@ class ReportWrapper:
 
             return any(key in all_keys for key in keys_to_check)
 
-        dfs = []
-
+        rows = []
         for v in self.__all_visuals():
             path = v.get("path")
             payload = v.get("payload")
@@ -1247,39 +1346,42 @@ class ReportWrapper:
 
             # Sparkline
             has_sparkline = contains_key(payload, ["SparklineData"])
+            visual_name = payload.get("name")
 
-            new_data = {
-                "File Path": path,
-                "Page Name": page_id,
-                "Page Display Name": page_display,
-                "Visual Name": payload.get("name"),
-                "X": pos.get("x"),
-                "Y": pos.get("y"),
-                "Z": pos.get("z"),
-                "Width": pos.get("width"),
-                "Height": pos.get("height"),
-                "Tab Order": pos.get("tabOrder"),
-                "Hidden": payload.get("isHidden", False),
-                "Type": visual_type,
-                "Display Type": visual_type_display,
-                "Title": title,
-                "SubTitle": sub_title,
-                "Custom Visual": visual_type in custom_visuals,
-                "Alt Text": alt_text,
-                "Show Items With No Data": show_all_data,
-                "Divider": divider,
-                "Row SubTotals": rst_value,
-                "Column SubTotals": cst_value,
-                "Slicer Type": slicer_type,
-                "Data Visual": is_data_visual,
-                "Has Sparkline": has_sparkline,
-                "Visual Filter Count": visual_filter_count,
-                "Data Limit": data_limit,
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
+            rows.append(
+                {
+                    "File Path": path,
+                    "Page Name": page_id,
+                    "Page Display Name": page_display,
+                    "Visual Name": visual_name,
+                    "X": pos.get("x"),
+                    "Y": pos.get("y"),
+                    "Z": pos.get("z"),
+                    "Width": pos.get("width"),
+                    "Height": pos.get("height"),
+                    "Tab Order": pos.get("tabOrder"),
+                    "Hidden": payload.get("isHidden", False),
+                    "Type": visual_type,
+                    "Display Type": visual_type_display,
+                    "Title": title,
+                    "SubTitle": sub_title,
+                    "Custom Visual": visual_type in custom_visuals,
+                    "Alt Text": alt_text,
+                    "Show Items With No Data": show_all_data,
+                    "Divider": divider,
+                    "Row SubTotals": rst_value,
+                    "Column SubTotals": cst_value,
+                    "Slicer Type": slicer_type,
+                    "Data Visual": is_data_visual,
+                    "Has Sparkline": has_sparkline,
+                    "Visual Filter Count": visual_filter_count,
+                    "Data Limit": data_limit,
+                    "URL": self._get_url(page_name=page_id, visual_name=visual_name),
+                }
+            )
 
-        if dfs:
-            df = pd.concat(dfs, ignore_index=True)
+        if rows:
+            df = pd.DataFrame(rows, columns=list(columns.keys()))
 
         grouped_df = (
             self.list_visual_objects()
@@ -1361,6 +1463,7 @@ class ReportWrapper:
                     if isinstance(expression, dict)
                     else {}
                 )
+
                 if (
                     isinstance(source_ref, dict)
                     and "Entity" in source_ref
@@ -1374,9 +1477,15 @@ class ReportWrapper:
                         if keys_path
                         else "Unknown"
                     )
-                    is_agg = keys_path[-3] == "Aggregation"
-                    is_viz_calc = keys_path[-3] == "NativeVisualCalculation"
-                    is_sparkline = keys_path[-3] == "SparklineData"
+                    is_agg = len(keys_path) > 2 and keys_path[-3] == "Aggregation"
+                    is_viz_calc = (
+                        len(keys_path) > 2
+                        and keys_path[-3] == "NativeVisualCalculation"
+                    )
+                    is_sparkline = (
+                        len(keys_path) > 2 and keys_path[-3] == "SparklineData"
+                    )
+
                     result[property_value] = (
                         entity,
                         object_type,
@@ -1384,13 +1493,10 @@ class ReportWrapper:
                         is_viz_calc,
                         is_sparkline,
                     )
-                    if keys_path:
-                        keys_path.pop()
 
                 # Recursively search the rest of the dictionary
                 for key, value in data.items():
-                    keys_path.append(key)
-                    find_entity_property_pairs(value, result, keys_path)
+                    find_entity_property_pairs(value, result, keys_path + [key])
 
             elif isinstance(data, list):
                 for item in data:
@@ -1398,7 +1504,7 @@ class ReportWrapper:
 
             return result
 
-        dfs = []
+        rows = []
         for v in self.__all_visuals():
             path = v.get("path")
             payload = v.get("payload")
@@ -1432,29 +1538,28 @@ class ReportWrapper:
                     for k, v in format_mapping.items():
                         if obj_full in k:
                             format_value = v
-                new_data = {
-                    "Page Name": page_id,
-                    "Page Display Name": page_display,
-                    "Visual Name": payload.get("name"),
-                    "Table Name": table_name,
-                    "Object Name": object_name,
-                    "Object Type": properties[1],
-                    "Implicit Measure": is_agg,
-                    "Sparkline": properties[4],
-                    "Visual Calc": properties[3],
-                    "Format": format_value,
-                    "Object Display Name": obj_display,
-                }
+                rows.append(
+                    {
+                        "Page Name": page_id,
+                        "Page Display Name": page_display,
+                        "Visual Name": payload.get("name"),
+                        "Table Name": table_name,
+                        "Object Name": object_name,
+                        "Object Type": properties[1],
+                        "Implicit Measure": is_agg,
+                        "Sparkline": properties[4],
+                        "Visual Calc": properties[3],
+                        "Format": format_value,
+                        "Object Display Name": obj_display,
+                    }
+                )
 
-                dfs.append(pd.DataFrame(new_data, index=[0]))
-
-        if dfs:
-            df = pd.concat(dfs, ignore_index=True)
+        if rows:
+            df = pd.DataFrame(rows, columns=list(columns.keys()))
+            _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
         if extended:
             df = self._add_extended(dataframe=df)
-
-        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
         return df
 
@@ -1629,17 +1734,20 @@ class ReportWrapper:
             "Page Display Name": "str",
             "Visual Name": "str",
             "Visual Hidden": "bool",
+            "Suppress Data": "bool",
+            "Current Page Selected": "bool",
+            "Apply Visual Display State": "bool",
+            "Apply To All Visuals": "bool",
         }
         df = _create_dataframe(columns=columns)
 
         bookmarks = [
             o
             for o in self._report_definition.get("parts")
-            if o.get("path").endswith("/bookmark.json")
+            if o.get("path").endswith(".bookmark.json")
         ]
 
-        dfs = []
-
+        rows = []
         for b in bookmarks:
             path = b.get("path")
             payload = b.get("payload")
@@ -1647,8 +1755,16 @@ class ReportWrapper:
             bookmark_name = payload.get("name")
             bookmark_display = payload.get("displayName")
             rpt_page_id = payload.get("explorationState", {}).get("activeSection")
+            suppress_data = payload.get("options", {}).get("suppressData", False)
+            suppress_active_section = payload.get("options", {}).get(
+                "suppressActiveSection", False
+            )
+            suppress_display = payload.get("options", {}).get("suppressDisplay", False)
+            apply_only_to_target_visuals = payload.get("options", {}).get(
+                "applyOnlyToTargetVisuals", False
+            )
             (page_id, page_display) = self._resolve_page_name_and_display_name(
-                rpt_page_id
+                page=rpt_page_id, return_error=False
             )
 
             for rptPg in payload.get("explorationState", {}).get("sections", {}):
@@ -1673,21 +1789,25 @@ class ReportWrapper:
                     else:
                         visual_hidden = False
 
-                    new_data = {
-                        "File Path": path,
-                        "Bookmark Name": bookmark_name,
-                        "Bookmark Display Name": bookmark_display,
-                        "Page Name": page_id,
-                        "Page Display Name": page_display,
-                        "Visual Name": visual_name,
-                        "Visual Hidden": visual_hidden,
-                    }
-                    dfs.append(pd.DataFrame(new_data, index=[0]))
+                    rows.append(
+                        {
+                            "File Path": path,
+                            "Bookmark Name": bookmark_name,
+                            "Bookmark Display Name": bookmark_display,
+                            "Page Name": page_id,
+                            "Page Display Name": page_display,
+                            "Visual Name": visual_name,
+                            "Visual Hidden": visual_hidden,
+                            "Suppress Data": suppress_data,
+                            "Current Page Selected": not suppress_active_section,
+                            "Apply Visual Display State": not suppress_display,
+                            "Apply To All Visuals": not apply_only_to_target_visuals,
+                        }
+                    )
 
-        if dfs:
-            df = pd.concat(dfs, ignore_index=True)
-
-        _update_dataframe_datatypes(dataframe=df, column_map=columns)
+        if rows:
+            df = pd.DataFrame(rows, columns=list(columns.keys()))
+            _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
         return df
 
@@ -1723,7 +1843,7 @@ class ReportWrapper:
 
         report_file = self.get(file_path=self._report_extensions_path)
 
-        dfs = []
+        rows = []
         for e in report_file.get("entities", []):
             table_name = e.get("name")
             for m in e.get("measures", []):
@@ -1733,18 +1853,19 @@ class ReportWrapper:
                 format_string = m.get("formatString")
                 data_category = m.get("dataCategory")
 
-                new_data = {
-                    "Measure Name": measure_name,
-                    "Table Name": table_name,
-                    "Expression": expr,
-                    "Data Type": data_type,
-                    "Format String": format_string,
-                    "Data Category": data_category,
-                }
-                dfs.append(pd.DataFrame(new_data, index=[0]))
+                rows.append(
+                    {
+                        "Measure Name": measure_name,
+                        "Table Name": table_name,
+                        "Expression": expr,
+                        "Data Type": data_type,
+                        "Format String": format_string,
+                        "Data Category": data_category,
+                    }
+                )
 
-        if dfs:
-            df = pd.concat(dfs, ignore_index=True)
+        if rows:
+            df = pd.DataFrame(rows, columns=list(columns.keys()))
 
         return df
 
@@ -1797,51 +1918,76 @@ class ReportWrapper:
         return self.get(file_path=theme_file_path)
 
     # Action functions
-    def set_theme(self, theme_file_path: str):
+    def set_theme(
+        self, theme_file_path: Optional[str] = None, theme_json: Optional[dict] = None
+    ):
         """
         Sets a custom theme for a report based on a theme .json file.
 
         Parameters
         ----------
-        theme_file_path : str
+        theme_file_path : str, default=None
             The file path of the theme.json file. This can either be from a Fabric lakehouse or from the web.
             Example for lakehouse: file_path = '/lakehouse/default/Files/CY23SU09.json'
             Example for web url: file_path = 'https://raw.githubusercontent.com/PowerBiDevCamp/FabricUserApiDemo/main/FabricUserApiDemo/DefinitionTemplates/Shared/Reports/StaticResources/SharedResources/BaseThemes/CY23SU08.json'
+        theme_json : dict, default=None
+            The theme file in .json format. Must specify either the theme_file_path or the theme_json.
         """
 
-        self._ensure_pbir()
-        theme_version = "5.6.4"
-
-        # Open file
-        if not theme_file_path.endswith(".json"):
+        if theme_file_path and theme_json:
             raise ValueError(
-                f"{icons.red_dot} The '{theme_file_path}' theme file path must be a .json file."
+                f"{icons.red_dot} Please specify either the 'theme_file_path' or the 'theme_json' parameter, not both."
             )
-        elif theme_file_path.startswith("https://"):
-            response = requests.get(theme_file_path)
-            theme_file = response.json()
-        elif theme_file_path.startswith("/lakehouse") or theme_file_path.startswith(
-            "/synfs/"
-        ):
-            with open(theme_file_path, "r", encoding="utf-8-sig") as file:
-                theme_file = json.load(file)
-        else:
-            ValueError(
-                f"{icons.red_dot} Incorrect theme file path value '{theme_file_path}'."
+        if not theme_file_path and not theme_json:
+            raise ValueError(
+                f"{icons.red_dot} Please specify either the 'theme_file_path' or the 'theme_json' parameter."
             )
 
-        theme_name = theme_file.get("name")
+        self._ensure_pbir()
+
+        # Extract theme_json from theme_file_path
+        if theme_file_path:
+            # Open file
+            if not theme_file_path.endswith(".json"):
+                raise ValueError(
+                    f"{icons.red_dot} The '{theme_file_path}' theme file path must be a .json file."
+                )
+            elif theme_file_path.startswith("https://"):
+                response = requests.get(theme_file_path)
+                theme_json = response.json()
+            elif theme_file_path.startswith("/lakehouse") or theme_file_path.startswith(
+                "/synfs/"
+            ):
+                with open(theme_file_path, "r", encoding="utf-8-sig") as file:
+                    theme_json = json.load(file)
+            else:
+                ValueError(
+                    f"{icons.red_dot} Incorrect theme file path value '{theme_file_path}'."
+                )
+
+        theme_name = theme_json.get("name")
         theme_name_full = f"{theme_name}.json"
 
         # Add theme.json file
-        self.add(
-            file_path=f"StaticResources/RegisteredResources/{theme_name_full}",
-            payload=theme_file,
+        try:
+            self.add(
+                file_path=f"StaticResources/RegisteredResources/{theme_name_full}",
+                payload=theme_json,
+            )
+        except Exception:
+            self.update(
+                file_path=f"StaticResources/RegisteredResources/{theme_name_full}",
+                payload=theme_json,
+            )
+
+        rpt_version_at_import = self.get(
+            file_path=self._report_file_path,
+            json_path="$.themeCollection.baseTheme.reportVersionAtImport",
         )
 
         custom_theme = {
             "name": theme_name_full,
-            "reportVersionAtImport": theme_version,
+            "reportVersionAtImport": rpt_version_at_import,
             "type": "RegisteredResources",
         }
 
@@ -2038,8 +2184,8 @@ class ReportWrapper:
         df = dfCV[dfCV["Used in Report"] == False]
 
         if not df.empty:
-            cv_remove = df["Custom Visual Name"].values()
-            cv_remove_display = df["Custom Visual Display Name"].values()
+            cv_remove = df["Custom Visual Name"].values
+            cv_remove_display = df["Custom Visual Display Name"].values
         else:
             print(
                 f"{icons.red_dot} There are no unnecessary custom visuals in the '{self._report_name}' report within the '{self._workspace_name}' workspace."
@@ -2052,7 +2198,7 @@ class ReportWrapper:
             item for item in custom_visuals if item not in cv_remove
         ]
         self.set_json(
-            file_path=self._report_path,
+            file_path=self._report_file_path,
             json_path=json_path,
             json_value=updated_custom_visuals,
         )
@@ -2092,13 +2238,14 @@ class ReportWrapper:
         if isinstance(measures, str):
             measures = [measures]
 
-        file = self.get(file_path=self._report_extensions_path)
-
-        mCount = 0
+        entities = self.get(
+            file_path=self._report_extensions_path, json_path="$.entities"
+        )
         with connect_semantic_model(
-            dataset=dataset_id, readonly=False, workspace=dataset_workspace_id
+            dataset=dataset_id, readonly=self._readonly, workspace=dataset_workspace_id
         ) as tom:
             existing_measures = [m.Name for m in tom.all_measures()]
+            # Add measure to semantic model
             for _, r in rlm.iterrows():
                 table_name = r["Table Name"]
                 measure_name = r["Measure Name"]
@@ -2107,7 +2254,7 @@ class ReportWrapper:
                 format_string = r["Format String"]
                 # Add measures to the model
                 if (
-                    measure_name in measures or measures is None
+                    measures is None or measure_name in measures
                 ) and measure_name not in existing_measures:
                     tom.add_measure(
                         table_name=table_name,
@@ -2120,20 +2267,25 @@ class ReportWrapper:
                         name="semanticlinklabs",
                         value="reportlevelmeasure",
                     )
-                mCount += 1
-            # Remove measures from the json
-            if measures is not None and len(measures) < mCount:
-                for e in file["entities"]:
-                    e["measures"] = [
-                        measure
-                        for measure in e["measures"]
-                        if measure["name"] not in measures
-                    ]
-                file["entities"] = [
-                    entity for entity in file["entities"] if entity["measures"]
-                ]
-                self.update(file_path=self._report_extensions_path, payload=file)
-            # what about if measures is None?
+
+                    for entity in entities:
+                        if entity.get("name") == table_name:
+                            entity["measures"] = [
+                                m
+                                for m in entity.get("measures", [])
+                                if m.get("name") != measure_name
+                            ]
+                    entities = [e for e in entities if e.get("measures")]
+                    self.set_json(
+                        file_path=self._report_extensions_path,
+                        json_path="$.entities",
+                        json_value=entities,
+                    )
+            if not entities:
+                self.remove(
+                    file_path=self._report_extensions_path,
+                    verbose=False,
+                )
 
         if not self._readonly:
             print(
@@ -2162,16 +2314,17 @@ class ReportWrapper:
         visual_mapping = self._visual_page_mapping()
         report_file = self.get(file_path="definition/report.json")
 
-        dfs = []
+        rows = []
         if "annotations" in report_file:
             for ann in report_file["annotations"]:
-                new_data = {
-                    "Type": "Report",
-                    "Object Name": self._report_name,
-                    "Annotation Name": ann.get("name"),
-                    "Annotation Value": ann.get("value"),
-                }
-                dfs.append(pd.DataFrame(new_data, index=[0]))
+                rows.append(
+                    {
+                        "Type": "Report",
+                        "Object Name": self._report_name,
+                        "Annotation Name": ann.get("name"),
+                        "Annotation Value": ann.get("value"),
+                    }
+                )
 
         for p in self.__all_pages():
             path = p.get("path")
@@ -2179,13 +2332,14 @@ class ReportWrapper:
             page_name = payload.get("displayName")
             if "annotations" in payload:
                 for ann in payload["annotations"]:
-                    new_data = {
-                        "Type": "Page",
-                        "Object Name": page_name,
-                        "Annotation Name": ann.get("name"),
-                        "Annotation Value": ann.get("value"),
-                    }
-                    dfs.append(pd.DataFrame(new_data, index=[0]))
+                    rows.append(
+                        {
+                            "Type": "Page",
+                            "Object Name": page_name,
+                            "Annotation Name": ann.get("name"),
+                            "Annotation Value": ann.get("value"),
+                        }
+                    )
 
         for v in self.__all_visuals():
             path = v.get("path")
@@ -2194,16 +2348,17 @@ class ReportWrapper:
             visual_name = payload.get("name")
             if "annotations" in payload:
                 for ann in payload["annotations"]:
-                    new_data = {
-                        "Type": "Visual",
-                        "Object Name": f"'{page_display}'[{visual_name}]",
-                        "Annotation Name": ann.get("name"),
-                        "Annotation Value": ann.get("value"),
-                    }
-                    dfs.append(pd.DataFrame(new_data, index=[0]))
+                    rows.append(
+                        {
+                            "Type": "Visual",
+                            "Object Name": f"'{page_display}'[{visual_name}]",
+                            "Annotation Name": ann.get("name"),
+                            "Annotation Value": ann.get("value"),
+                        }
+                    )
 
-        if dfs:
-            df = pd.concat(dfs, ignore_index=True)
+        if rows:
+            df = pd.DataFrame(rows, columns=list(columns.keys()))
 
         return df
 
@@ -2649,8 +2804,12 @@ class ReportWrapper:
 
         selector_mapping = {
             key: {
-                ".".join(k): v  # join tuple with '.' to form the string
-                for k, v in value.items()
+                variant: f"{table}.{new_col}"
+                for (table, col), new_col in value.items()
+                for variant in (
+                    f"({table}.{col})",
+                    f"[{table}.{col}]",
+                )
             }
             for key, value in mapping.items()
         }
@@ -2688,28 +2847,15 @@ class ReportWrapper:
 
                 # Check both measures and columns
                 for category in ["measures", "columns"]:
-                    if obj in selector_mapping.get(category, {}):
-                        value = selector_mapping[category][obj]
-
-                        # Find original tuple key from mapping for this category
-                        for tup_key in mapping.get(category, {}).keys():
-                            if ".".join(tup_key) == obj:
-                                key = tup_key[
-                                    0
-                                ]  # first element of tuple, like table name
-                                new_value = f"{key}.{value}"
-
-                                # Update the dictionary node holding "metadata"
-                                if isinstance(match.context.value, dict):
-                                    match.context.value["metadata"] = new_value
-                                else:
-                                    print(
-                                        f"Warning: Cannot assign metadata, context is {type(match.context.value)}"
-                                    )
-                                break
-
-                        # Once found in one category, no need to check the other
-                        break
+                    for i, value in selector_mapping.get(category).items():
+                        if i in obj:
+                            prefix = i[0]
+                            if prefix == "[":
+                                new_value = obj.replace(i, f"[{value}]")
+                            else:
+                                new_value = obj.replace(i, f"({value})")
+                            match.context.value["metadata"] = new_value
+                            break
 
             # Rename Column Properties
             for match in col_expr_path.find(payload):

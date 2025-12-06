@@ -1,15 +1,18 @@
 import pandas as pd
 import sempy_labs._icons as icons
-from typing import Optional
+from typing import Optional, Literal
 from sempy_labs._helper_functions import (
+    resolve_workspace_id,
     resolve_workspace_name_and_id,
     resolve_capacity_id,
     _base_api,
     _create_dataframe,
 )
 from uuid import UUID
+from sempy._utils._log import log
 
 
+@log
 def delete_user_from_workspace(
     email_address: str, workspace: Optional[str | UUID] = None
 ):
@@ -42,6 +45,7 @@ def delete_user_from_workspace(
     )
 
 
+@log
 def update_workspace_user(
     email_address: str,
     role_name: str,
@@ -102,6 +106,7 @@ def update_workspace_user(
     )
 
 
+@log
 def list_workspace_users(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     A list of all the users of a workspace and their roles.
@@ -123,7 +128,7 @@ def list_workspace_users(workspace: Optional[str | UUID] = None) -> pd.DataFrame
         A pandas dataframe the users of a workspace and their properties.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
 
     columns = {
         "User Name": "string",
@@ -140,21 +145,27 @@ def list_workspace_users(workspace: Optional[str | UUID] = None) -> pd.DataFrame
         client="fabric_sp",
     )
 
+    rows = []
     for r in responses:
         for v in r.get("value", []):
             p = v.get("principal", {})
-            new_data = {
-                "User Name": p.get("displayName"),
-                "User ID": p.get("id"),
-                "Type": p.get("type"),
-                "Role": v.get("role"),
-                "Email Address": p.get("userDetails", {}).get("userPrincipalName"),
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            rows.append(
+                {
+                    "User Name": p.get("displayName"),
+                    "User ID": p.get("id"),
+                    "Type": p.get("type"),
+                    "Role": v.get("role"),
+                    "Email Address": p.get("userDetails", {}).get("userPrincipalName"),
+                }
+            )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 
 
+@log
 def add_user_to_workspace(
     email_address: str,
     role_name: str,
@@ -165,6 +176,8 @@ def add_user_to_workspace(
     Adds a user to a workspace.
 
     This is a wrapper function for the following API: `Groups - Add Group User <https://learn.microsoft.com/rest/api/power-bi/groups/add-group-user>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -207,12 +220,14 @@ def add_user_to_workspace(
         request=f"/v1.0/myorg/groups/{workspace_id}/users",
         method="post",
         payload=payload,
+        client="fabric_sp",
     )
     print(
         f"{icons.green_dot} The '{email_address}' user has been added as a{plural} '{role_name}' within the '{workspace_name}' workspace."
     )
 
 
+@log
 def assign_workspace_to_capacity(
     capacity: str | UUID,
     workspace: Optional[str | UUID] = None,
@@ -222,6 +237,8 @@ def assign_workspace_to_capacity(
     Assigns a workspace to a capacity.
 
     This is a wrapper function for the following API: `Workspaces - Assign To Capacity <https://learn.microsoft.com/rest/api/fabric/core/workspaces/assign-to-capacity>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -249,12 +266,14 @@ def assign_workspace_to_capacity(
         method="post",
         payload=payload,
         status_codes=[200, 202],
+        client="fabric_sp",
     )
     print(
         f"{icons.green_dot} The '{workspace_name}' workspace has been assigned to the '{capacity}' capacity."
     )
 
 
+@log
 def unassign_workspace_from_capacity(workspace: Optional[str | UUID] = None):
     """
     Unassigns a workspace from its assigned capacity.
@@ -284,6 +303,7 @@ def unassign_workspace_from_capacity(workspace: Optional[str | UUID] = None):
     )
 
 
+@log
 def list_workspace_role_assignments(
     workspace: Optional[str | UUID] = None,
 ) -> pd.DataFrame:
@@ -307,7 +327,7 @@ def list_workspace_role_assignments(
         A pandas dataframe showing the members of a given workspace and their roles.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
 
     columns = {
         "User Name": "string",
@@ -323,25 +343,35 @@ def list_workspace_role_assignments(
         client="fabric_sp",
     )
 
+    rows = []
     for r in responses:
         for i in r.get("value", []):
             principal = i.get("principal", {})
-            new_data = {
-                "User Name": principal.get("displayName"),
-                "Role Name": i.get("role"),
-                "Type": principal.get("type"),
-                "User Email": principal.get("userDetails", {}).get("userPrincipalName"),
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            rows.append(
+                {
+                    "User Name": principal.get("displayName"),
+                    "Role Name": i.get("role"),
+                    "Type": principal.get("type"),
+                    "User Email": principal.get("userDetails", {}).get(
+                        "userPrincipalName"
+                    ),
+                }
+            )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 
 
+@log
 def delete_workspace(workspace: Optional[str | UUID] = None):
     """
     Deletes a workspace.
 
     This is a wrapper function for the following API: `Workspaces - Delete Workspace <https://learn.microsoft.com/rest/api/fabric/core/workspaces/delete-workspace>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -358,3 +388,208 @@ def delete_workspace(workspace: Optional[str | UUID] = None):
     )
 
     print(f"{icons.green_dot} The '{workspace_name}' workspace has been deleted.")
+
+
+@log
+def get_workspace_network_communication_policy(
+    workspace: Optional[str | UUID] = None,
+) -> pd.DataFrame:
+    """
+    Returns networking communication policy for the specified workspace. This feature is currently in preview.
+
+    This is a wrapper function for the following API: `Workspaces - Get Network Communication Policy <https://learn.microsoft.com/rest/api/fabric/core/workspaces/get-network-communication-policy>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the networking communication policy for the specified workspace.
+    """
+
+    workspace_id = resolve_workspace_id(workspace)
+
+    columns = {
+        "Inbound Public Access Rules": "string",
+        "Outbound Public Access Rules": "string",
+    }
+
+    df = _create_dataframe(columns=columns)
+
+    data = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/networking/communicationPolicy",
+        client="fabric_sp",
+    ).json()
+
+    if data:
+        df = pd.DataFrame(
+            [
+                {
+                    "Inbound Public Access Rules": data.get("inbound", {})
+                    .get("publicAccessRules", {})
+                    .get("defaultAction"),
+                    "Outbound Public Access Rules": data.get("outbound", {})
+                    .get("publicAccessRules", {})
+                    .get("defaultAction"),
+                }
+            ]
+        )
+
+    return df
+
+
+@log
+def set_workspace_network_communication_policy(
+    inbound_policy: Literal["Allow", "Deny"],
+    outbound_policy: Literal["Allow", "Deny"],
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Sets networking communication policy for the specified workspace. This API uses the PUT method and will overwrite all settings. Remaining policy will be set to default value if only partial policy is provided in the request body. Always run Get Network Communication Policy first and provide full policy in the request body. This feature is currently in preview.
+
+    This is a wrapper function for the following API: `Workspaces - Set Network Communication Policy <https://learn.microsoft.com/rest/api/fabric/core/workspaces/set-network-communication-policy>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    inbound_policy : Literal['Allow', 'Deny']
+        The policy for all inbound communications to a workspace.
+    outbound_policy : Literal['Allow', 'Deny']
+        The policy for all outbound communications to a workspace.
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    inbound_policy = inbound_policy.capitalize()
+    outbound_policy = outbound_policy.capitalize()
+
+    if inbound_policy not in ["Allow", "Deny"]:
+        raise ValueError(
+            f"{icons.red_dot} The 'inbound_policy' must be either 'Allow' or 'Deny'."
+        )
+    if outbound_policy not in ["Allow", "Deny"]:
+        raise ValueError(
+            f"{icons.red_dot} The 'outbound_policy' must be either 'Allow' or 'Deny'."
+        )
+
+    payload = {
+        "inbound": {
+            "publicAccessRules": {
+                "defaultAction": inbound_policy,
+            }
+        },
+        "outbound": {
+            "publicAccessRules": {
+                "defaultAction": outbound_policy,
+            }
+        },
+    }
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/networking/communicationPolicy",
+        client="fabric_sp",
+        payload=payload,
+        method="put",
+    )
+
+    print(
+        f"{icons.green_dot} The networking communication policy has been updated for the '{workspace_name}' workspace."
+    )
+
+
+@log
+def get_workspace_git_outbound_policy(workspace: Optional[str | UUID] = None) -> str:
+    """
+    Returns Git Outbound policy for the specified workspace.
+    In cases the workspace restricts outbound policy, a workspace admin needs to allow the use of Git integration on the specified workspace.
+
+    This is a wrapper function for the following API: `Workspaces - Get Git Outbound Policy <https://learn.microsoft.com/rest/api/fabric/core/workspaces/get-git-outbound-policy>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    str
+        The Git outbound policy for the specified workspace.
+    """
+
+    workspace_id = resolve_workspace_id(workspace)
+    response = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/networking/communicationPolicy/outbound/git",
+        client="fabric_sp",
+    )
+
+    return response.json().get("defaultAction", {})
+
+
+@log
+def set_workspace_git_outbound_policy(
+    policy: Literal["Allow", "Deny"],
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Sets Git Outbound policy for the specified workspace, when Outbound policy is set to 'Deny'.
+
+    This is a wrapper function for the following API: `Workspaces - Set Git Outbound Policy <https://learn.microsoft.com/rest/api/fabric/core/workspaces/set-git-outbound-policy>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    policy : Literal['Allow', 'Deny']
+        The policy for all Git outbound communications from a workspace.
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    policy = policy.capitalize()
+
+    if policy not in ["Allow", "Deny"]:
+        raise ValueError(
+            f"{icons.red_dot} The 'policy' must be either 'Allow' or 'Deny'."
+        )
+
+    payload = {
+        "defaultAction": policy,
+    }
+
+    # Check current policy
+    p = get_workspace_git_outbound_policy(workspace=workspace_id)
+    if p == policy:
+        print(
+            f"{icons.info} The Git outbound policy for the '{workspace_name}' workspace is already set to '{policy}'. No changes made."
+        )
+        return
+
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/networking/communicationPolicy/outbound/git",
+        client="fabric_sp",
+        payload=payload,
+        method="put",
+    )
+
+    print(
+        f"{icons.green_dot} The Git outbound policy has been updated for the '{workspace_name}' workspace."
+    )

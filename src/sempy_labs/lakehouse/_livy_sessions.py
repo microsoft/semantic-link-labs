@@ -8,8 +8,10 @@ from sempy_labs._helper_functions import (
 import pandas as pd
 from typing import Optional
 from uuid import UUID
+from sempy._utils._log import log
 
 
+@log
 def list_livy_sessions(
     lakehouse: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
@@ -84,54 +86,58 @@ def list_livy_sessions(
         client="fabric_sp",
     )
 
-    dfs = []
-
+    rows = []
     for r in responses:
         for v in r.get("value", []):
             queued_duration = v.get("queuedDuration", {})
             running_duration = v.get("runningDuration", {})
             total_duration = v.get("totalDuration", {})
-            new_data = {
-                "Spark Application Id": v.get("sparkApplicationId"),
-                "State:": v.get("state"),
-                "Livy Id": v.get("livyId"),
-                "Origin": v.get("origin"),
-                "Attempt Number": v.get("attemptNumber"),
-                "Max Number Of Attempts": v.get("maxNumberOfAttempts"),
-                "Livy Name": v.get("livyName"),
-                "Submitter Id": v["submitter"].get("id"),
-                "Submitter Type": v["submitter"].get("type"),
-                "Item Workspace Id": v["item"].get("workspaceId"),
-                "Item Id": v["item"].get("itemId"),
-                "Item Reference Type": v["item"].get("referenceType"),
-                "Item Name": v.get("itemName"),
-                "Item Type": v.get("itemType"),
-                "Job Type": v.get("jobType"),
-                "Submitted Date Time": v.get("submittedDateTime"),
-                "Start Date Time": v.get("startDateTime"),
-                "End Date Time": v.get("endDateTime"),
-                "Queued Duration Value": queued_duration.get("value"),
-                "Queued Duration Time Unit": queued_duration.get("timeUnit"),
-                "Running Duration Value": running_duration.get("value"),
-                "Running Duration Time Unit": running_duration.get("timeUnit"),
-                "Total Duration Value": total_duration.get("value"),
-                "Total Duration Time Unit": total_duration.get("timeUnit"),
-                "Job Instance Id": v.get("jobInstanceId"),
-                "Creator Item Workspace Id": v["creatorItem"].get("workspaceId"),
-                "Creator Item Id": v["creatorItem"].get("itemId"),
-                "Creator Item Reference Type": v["creatorItem"].get("referenceType"),
-                "Creator Item Name": v.get("creatorItemName"),
-                "Creator Item Type": v.get("creatorItemType"),
-                "Cancellation Reason": v.get("cancellationReason"),
-                "Capacity Id": v.get("capacityId"),
-                "Operation Name": v.get("operationName"),
-                "Runtime Version": v.get("runtimeVersion"),
-                "Livy Session Item Resource Uri": v.get("livySessionItemResourceUri"),
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
+            rows.append(
+                {
+                    "Spark Application Id": v.get("sparkApplicationId"),
+                    "State:": v.get("state"),
+                    "Livy Id": v.get("livyId"),
+                    "Origin": v.get("origin"),
+                    "Attempt Number": v.get("attemptNumber"),
+                    "Max Number Of Attempts": v.get("maxNumberOfAttempts"),
+                    "Livy Name": v.get("livyName"),
+                    "Submitter Id": v["submitter"].get("id"),
+                    "Submitter Type": v["submitter"].get("type"),
+                    "Item Workspace Id": v["item"].get("workspaceId"),
+                    "Item Id": v["item"].get("itemId"),
+                    "Item Reference Type": v["item"].get("referenceType"),
+                    "Item Name": v.get("itemName"),
+                    "Item Type": v.get("itemType"),
+                    "Job Type": v.get("jobType"),
+                    "Submitted Date Time": v.get("submittedDateTime"),
+                    "Start Date Time": v.get("startDateTime"),
+                    "End Date Time": v.get("endDateTime"),
+                    "Queued Duration Value": queued_duration.get("value"),
+                    "Queued Duration Time Unit": queued_duration.get("timeUnit"),
+                    "Running Duration Value": running_duration.get("value"),
+                    "Running Duration Time Unit": running_duration.get("timeUnit"),
+                    "Total Duration Value": total_duration.get("value"),
+                    "Total Duration Time Unit": total_duration.get("timeUnit"),
+                    "Job Instance Id": v.get("jobInstanceId"),
+                    "Creator Item Workspace Id": v["creatorItem"].get("workspaceId"),
+                    "Creator Item Id": v["creatorItem"].get("itemId"),
+                    "Creator Item Reference Type": v["creatorItem"].get(
+                        "referenceType"
+                    ),
+                    "Creator Item Name": v.get("creatorItemName"),
+                    "Creator Item Type": v.get("creatorItemType"),
+                    "Cancellation Reason": v.get("cancellationReason"),
+                    "Capacity Id": v.get("capacityId"),
+                    "Operation Name": v.get("operationName"),
+                    "Runtime Version": v.get("runtimeVersion"),
+                    "Livy Session Item Resource Uri": v.get(
+                        "livySessionItemResourceUri"
+                    ),
+                }
+            )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df

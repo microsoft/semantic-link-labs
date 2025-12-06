@@ -107,52 +107,51 @@ def list_activity_events(
 
     responses = _base_api(request=url, client="fabric_sp", uses_pagination=True)
 
+    rows = []
     for r in responses:
         if return_dataframe:
             for i in r.get("activityEventEntities", []):
-                new_data = {
-                    "Id": i.get("id"),
-                    "Record Type": i.get("RecordType"),
-                    "Creation Time": i.get("CreationTime"),
-                    "Operation": i.get("Operation"),
-                    "Organization Id": i.get("OrganizationId"),
-                    "User Type": i.get("UserType"),
-                    "User Key": i.get("UserKey"),
-                    "Workload": i.get("Workload"),
-                    "Result Status": i.get("ResultStatus"),
-                    "User Id": i.get("UserId"),
-                    "Client IP": i.get("ClientIP"),
-                    "User Agent": i.get("UserAgent"),
-                    "Activity": i.get("Activity"),
-                    "Workspace Name": i.get("WorkSpaceName"),
-                    "Workspace Id": i.get("WorkspaceId"),
-                    "Object Id": i.get("ObjectId"),
-                    "Request Id": i.get("RequestId"),
-                    "Object Type": i.get("ObjectType"),
-                    "Object Display Name": i.get("ObjectDisplayName"),
-                    "Experience": i.get("Experience"),
-                    "Refresh Enforcement Policy": i.get("RefreshEnforcementPolicy"),
-                    "Is Success": i.get("IsSuccess"),
-                    "Activity Id": i.get("ActivityId"),
-                    "Item Name": i.get("ItemName"),
-                    "Dataset Name": i.get("DatasetName"),
-                    "Report Name": i.get("ReportName"),
-                    "Capacity Id": i.get("CapacityId"),
-                    "Capacity Name": i.get("CapacityName"),
-                    "App Name": i.get("AppName"),
-                    "Dataset Id": i.get("DatasetId"),
-                    "Report Id": i.get("ReportId"),
-                    "Artifact Id": i.get("ArtifactId"),
-                    "Artifact Name": i.get("ArtifactName"),
-                    "Report Type": i.get("ReportType"),
-                    "App Report Id": i.get("AppReportId"),
-                    "Distribution Method": i.get("DistributionMethod"),
-                    "Consumption Method": i.get("ConsumptionMethod"),
-                    "Artifact Kind": i.get("ArtifactKind"),
-                }
-                df = pd.concat(
-                    [df, pd.DataFrame(new_data, index=[0])],
-                    ignore_index=True,
+                rows.append(
+                    {
+                        "Id": i.get("Id"),
+                        "Record Type": i.get("RecordType"),
+                        "Creation Time": i.get("CreationTime"),
+                        "Operation": i.get("Operation"),
+                        "Organization Id": i.get("OrganizationId"),
+                        "User Type": i.get("UserType"),
+                        "User Key": i.get("UserKey"),
+                        "Workload": i.get("Workload"),
+                        "Result Status": i.get("ResultStatus"),
+                        "User Id": i.get("UserId"),
+                        "Client IP": i.get("ClientIP"),
+                        "User Agent": i.get("UserAgent"),
+                        "Activity": i.get("Activity"),
+                        "Workspace Name": i.get("WorkSpaceName"),
+                        "Workspace Id": i.get("WorkspaceId"),
+                        "Object Id": i.get("ObjectId"),
+                        "Request Id": i.get("RequestId"),
+                        "Object Type": i.get("ObjectType"),
+                        "Object Display Name": i.get("ObjectDisplayName"),
+                        "Experience": i.get("Experience"),
+                        "Refresh Enforcement Policy": i.get("RefreshEnforcementPolicy"),
+                        "Is Success": i.get("IsSuccess"),
+                        "Activity Id": i.get("ActivityId"),
+                        "Item Name": i.get("ItemName"),
+                        "Dataset Name": i.get("DatasetName"),
+                        "Report Name": i.get("ReportName"),
+                        "Capacity Id": i.get("CapacityId"),
+                        "Capacity Name": i.get("CapacityName"),
+                        "App Name": i.get("AppName"),
+                        "Dataset Id": i.get("DatasetId"),
+                        "Report Id": i.get("ReportId"),
+                        "Artifact Id": i.get("ArtifactId"),
+                        "Artifact Name": i.get("ArtifactName"),
+                        "Report Type": i.get("ReportType"),
+                        "App Report Id": i.get("AppReportId"),
+                        "Distribution Method": i.get("DistributionMethod"),
+                        "Consumption Method": i.get("ConsumptionMethod"),
+                        "Artifact Kind": i.get("ArtifactKind"),
+                    }
                 )
         else:
             response_json["activityEventEntities"].extend(
@@ -160,7 +159,9 @@ def list_activity_events(
             )
 
     if return_dataframe:
-        _update_dataframe_datatypes(dataframe=df, column_map=columns)
+        if rows:
+            df = pd.DataFrame(rows, columns=list(columns.keys()))
+            _update_dataframe_datatypes(dataframe=df, column_map=columns)
         return df
     else:
         return response_json

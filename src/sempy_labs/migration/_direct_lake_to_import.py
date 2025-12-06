@@ -2,8 +2,10 @@ import sempy
 from uuid import UUID
 import sempy_labs._icons as icons
 from typing import Optional
+from sempy._utils._log import log
 
 
+@log
 def migrate_direct_lake_to_import(
     dataset: str | UUID,
     workspace: Optional[str | UUID] = None,

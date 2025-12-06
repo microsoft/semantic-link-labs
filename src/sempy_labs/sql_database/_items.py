@@ -1,5 +1,5 @@
 from sempy_labs._helper_functions import (
-    resolve_workspace_name_and_id,
+    resolve_workspace_id,
     _base_api,
     _create_dataframe,
     _update_dataframe_datatypes,
@@ -9,8 +9,10 @@ from sempy_labs._helper_functions import (
 import pandas as pd
 from typing import Optional
 from uuid import UUID
+from sempy._utils._log import log
 
 
+@log
 def create_sql_database(
     name: str, description: Optional[str] = None, workspace: Optional[str | UUID] = None
 ):
@@ -18,6 +20,8 @@ def create_sql_database(
     Creates a SQL database.
 
     This is a wrapper function for the following API: `Items - Create SQL Database <https://learn.microsoft.com/rest/api/fabric/sqldatabase/items/create-sql-database>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -36,6 +40,7 @@ def create_sql_database(
     )
 
 
+@log
 def delete_sql_database(
     sql_database: str | UUID, workspace: Optional[str | UUID] = None
 ):
@@ -43,6 +48,8 @@ def delete_sql_database(
     Deletes a SQL Database.
 
     This is a wrapper function for the following API: `Items - Delete SQL Database <https://learn.microsoft.com/rest/api/fabric/sqldatabase/items/delete-sql-database>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -57,6 +64,7 @@ def delete_sql_database(
     delete_item(item=sql_database, type="SQLDatabase", workspace=workspace)
 
 
+@log
 def list_sql_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Lists all SQL databases in the Fabric workspace.
@@ -78,7 +86,7 @@ def list_sql_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing a list of SQL databases in the Fabric workspace.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
 
     columns = {
         "SQL Database Name": "string",
@@ -96,25 +104,29 @@ def list_sql_databases(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         client="fabric_sp",
     )
 
+    rows = []
     for r in responses:
         for v in r.get("value", []):
             prop = v.get("properties", {})
-            new_data = {
-                "SQL Database Name": v.get("displayName"),
-                "SQL Database Id": v.get("id"),
-                "Description": v.get("description"),
-                "Connection Info": prop.get("connectionInfo"),
-                "Database Name": prop.get("databaseName"),
-                "Server FQDN": prop.get("serverFqdn"),
-            }
+            rows.append(
+                {
+                    "SQL Database Name": v.get("displayName"),
+                    "SQL Database Id": v.get("id"),
+                    "Description": v.get("description"),
+                    "Connection Info": prop.get("connectionInfo"),
+                    "Database Name": prop.get("databaseName"),
+                    "Server FQDN": prop.get("serverFqdn"),
+                }
+            )
 
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
 
+@log
 def get_sql_database_tables(
     sql_database: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
@@ -150,6 +162,7 @@ def get_sql_database_tables(
     return df
 
 
+@log
 def get_sql_database_columns(
     sql_database: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:

@@ -1,38 +1,39 @@
-from sempy_labs.admin._users import (
+from ._users import (
     list_access_entities,
     list_user_subscriptions,
 )
-from sempy_labs.admin._workspaces import (
+from ._workspaces import (
     add_user_to_workspace,
     delete_user_from_workspace,
     restore_deleted_workspace,
+    list_orphaned_workspaces,
 )
-from sempy_labs.admin._artifacts import (
+from ._artifacts import (
     list_unused_artifacts,
 )
-from sempy_labs.admin._shared import (
+from ._shared import (
     list_widely_shared_artifacts,
 )
-from sempy_labs.admin._datasets import (
+from ._datasets import (
     list_datasets,
     list_dataset_users,
 )
-from sempy_labs.admin._apps import (
+from ._apps import (
     list_apps,
     list_app_users,
 )
-from sempy_labs.admin._reports import (
+from ._reports import (
     list_reports,
     list_report_users,
     list_report_subscriptions,
 )
-from sempy_labs.admin._activities import (
+from ._activities import (
     list_activity_events,
 )
-from sempy_labs.admin._scanner import (
+from ._scanner import (
     scan_workspaces,
 )
-from sempy_labs.admin._capacities import (
+from ._capacities import (
     patch_capacity,
     list_capacities,
     get_capacity_assignment_status,
@@ -40,7 +41,7 @@ from sempy_labs.admin._capacities import (
     list_capacity_users,
     get_refreshables,
 )
-from sempy_labs.admin._tenant import (
+from ._tenant import (
     list_tenant_settings,
     delete_capacity_tenant_setting_override,
     update_tenant_setting,
@@ -50,7 +51,7 @@ from sempy_labs.admin._tenant import (
     list_capacities_delegated_tenant_settings,
     list_domain_tenant_settings_overrides,
 )
-from sempy_labs.admin._basic_functions import (
+from ._basic_functions import (
     assign_workspaces_to_capacity,
     unassign_workspaces_from_capacity,
     list_workspaces,
@@ -58,7 +59,7 @@ from sempy_labs.admin._basic_functions import (
     list_modified_workspaces,
     list_workspace_users,
 )
-from sempy_labs.admin._domains import (
+from ._domains import (
     list_domains,
     list_domain_workspaces,
     assign_domain_workspaces,
@@ -70,24 +71,36 @@ from sempy_labs.admin._domains import (
     unassign_domain_workspaces,
     unassign_all_domain_workspaces,
 )
-from sempy_labs.admin._items import (
+from ._items import (
     list_item_access_details,
     list_items,
 )
-from sempy_labs.admin._external_data_share import (
+from ._external_data_share import (
     list_external_data_shares,
     revoke_external_data_share,
 )
-from sempy_labs.admin._git import (
+from ._git import (
     list_git_connections,
 )
-from sempy_labs.admin._dataflows import (
+from ._dataflows import (
     export_dataflow,
 )
-from sempy_labs.admin._tags import (
+from ._tags import (
     list_tags,
     create_tags,
     delete_tag,
+)
+from ._tenant_keys import (
+    list_tenant_keys,
+    rotate_tenant_key,
+)
+from ._sharing_links import (
+    remove_all_sharing_links,
+    remove_sharing_links,
+)
+from ._labels import (
+    bulk_set_labels,
+    bulk_remove_labels,
 )
 
 __all__ = [
@@ -139,6 +152,7 @@ __all__ = [
     "add_user_to_workspace",
     "delete_user_from_workspace",
     "restore_deleted_workspace",
+    "list_orphaned_workspaces",
     "list_capacity_users",
     "list_user_subscriptions",
     "list_report_subscriptions",
@@ -147,4 +161,10 @@ __all__ = [
     "list_tags",
     "create_tags",
     "delete_tag",
+    "list_tenant_keys",
+    "rotate_tenant_key",
+    "remove_all_sharing_links",
+    "remove_sharing_links",
+    "bulk_set_labels",
+    "bulk_remove_labels",
 ]

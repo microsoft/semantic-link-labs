@@ -2,7 +2,7 @@ import pandas as pd
 from typing import Optional
 from sempy_labs._helper_functions import (
     _is_valid_uuid,
-    resolve_workspace_name_and_id,
+    resolve_workspace_id,
     _update_dataframe_datatypes,
     _base_api,
     _create_dataframe,
@@ -11,8 +11,11 @@ from sempy_labs._helper_functions import (
 from uuid import UUID
 import sempy_labs._icons as icons
 from sempy_labs._gateways import _resolve_gateway_id
+from sempy._utils._log import log
+import warnings
 
 
+@log
 def delete_connection(connection: str | UUID):
     """
     Delete a connection.
@@ -34,6 +37,7 @@ def delete_connection(connection: str | UUID):
     print(f"{icons.green_dot} The '{connection}' connection has been deleted.")
 
 
+@log
 def delete_connection_role_assignment(connection: str | UUID, role_assignment_id: UUID):
     """
     Delete the specified role assignment for the connection.
@@ -62,15 +66,16 @@ def delete_connection_role_assignment(connection: str | UUID, role_assignment_id
     )
 
 
+@log
 def _resolve_connection_id(connection: str | UUID) -> UUID:
 
-    dfC = list_connections()
     if _is_valid_uuid(connection):
-        dfC_filt = dfC[dfC["Connection Id"] == connection]
-    else:
-        dfC_filt = dfC[dfC["Connection Name"] == connection]
+        return connection
 
-    if len(dfC_filt) == 0:
+    dfC = list_connections()
+    dfC_filt = dfC[dfC["Connection Name"] == connection]
+
+    if dfC_filt.empty:
         raise ValueError(
             f"{icons.red_dot} The '{connection}' is not a valid connection."
         )
@@ -78,6 +83,7 @@ def _resolve_connection_id(connection: str | UUID) -> UUID:
     return dfC_filt["Connection Id"].iloc[0]
 
 
+@log
 def list_connection_role_assignments(connection: str | UUID) -> pd.DataFrame:
     """
     Returns a list of connection role assignments.
@@ -114,20 +120,25 @@ def list_connection_role_assignments(connection: str | UUID) -> pd.DataFrame:
         uses_pagination=True,
     )
 
+    rows = []
     for r in responses:
         for v in r.get("value", []):
-            new_data = {
-                "Connection Role Assignment Id": v.get("id"),
-                "Principal Id": v.get("principal", {}).get("id"),
-                "Principal Type": v.get("principal", {}).get("type"),
-                "Role": v.get("role"),
-            }
+            rows.append(
+                {
+                    "Connection Role Assignment Id": v.get("id"),
+                    "Principal Id": v.get("principal", {}).get("id"),
+                    "Principal Type": v.get("principal", {}).get("type"),
+                    "Role": v.get("role"),
+                }
+            )
 
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 
 
+@log
 def list_connections() -> pd.DataFrame:
     """
     Lists all available connections.
@@ -159,50 +170,57 @@ def list_connections() -> pd.DataFrame:
         request="/v1/connections", client="fabric_sp", uses_pagination=True
     )
 
+    rows = []
     for r in responses:
         for i in r.get("value", []):
             connection_details = i.get("connectionDetails", {})
             credential_details = i.get("credentialDetails", {})
 
-            new_data = {
-                "Connection Id": i.get("id"),
-                "Connection Name": i.get("displayName"),
-                "Gateway Id": i.get("gatewayId"),
-                "Connectivity Type": i.get("connectivityType"),
-                "Connection Path": connection_details.get("path"),
-                "Connection Type": connection_details.get("type"),
-                "Privacy Level": i.get("privacyLevel"),
-                "Credential Type": (
-                    credential_details.get("credentialType")
-                    if credential_details
-                    else None
-                ),
-                "Single Sign On Type": (
-                    credential_details.get("singleSignOnType")
-                    if credential_details
-                    else None
-                ),
-                "Connection Encryption": (
-                    credential_details.get("connectionEncryption")
-                    if credential_details
-                    else None
-                ),
-                "Skip Test Connection": (
-                    credential_details.get("skipTestConnection")
-                    if credential_details
-                    else None
-                ),
-            }
+            rows.append(
+                {
+                    "Connection Id": i.get("id"),
+                    "Connection Name": i.get("displayName"),
+                    "Gateway Id": i.get("gatewayId"),
+                    "Connectivity Type": i.get("connectivityType"),
+                    "Connection Path": connection_details.get("path"),
+                    "Connection Type": connection_details.get("type"),
+                    "Privacy Level": i.get("privacyLevel"),
+                    "Credential Type": (
+                        credential_details.get("credentialType")
+                        if credential_details
+                        else None
+                    ),
+                    "Single Sign On Type": (
+                        credential_details.get("singleSignOnType")
+                        if credential_details
+                        else None
+                    ),
+                    "Connection Encryption": (
+                        credential_details.get("connectionEncryption")
+                        if credential_details
+                        else None
+                    ),
+                    "Skip Test Connection": (
+                        credential_details.get("skipTestConnection")
+                        if credential_details
+                        else None
+                    ),
+                }
+            )
 
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
 
+@log
 def list_item_connections(
-    item_name: str, item_type: str, workspace: Optional[str | UUID] = None
+    item: Optional[str | UUID] = None,
+    type: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
+    **kwargs,
 ) -> pd.DataFrame:
     """
     Shows the list of connections that the specified item is connected to.
@@ -213,9 +231,9 @@ def list_item_connections(
 
     Parameters
     ----------
-    item_name : str
-        The item name.
-    item_type : str
+    item : str | uuid.UUID
+        The item name or ID.
+    type : str
         The `item type <https://learn.microsoft.com/rest/api/fabric/core/items/update-item?tabs=HTTP#itemtype>`_.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
@@ -228,9 +246,32 @@ def list_item_connections(
         A pandas dataframe showing the list of connections that the specified item is connected to.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    item_type = item_type[0].upper() + item_type[1:]
-    item_id = resolve_item_id(item=item_name, type=item_type, workspace=workspace_id)
+    if "item_name" in kwargs:
+        if item is not None:
+            raise TypeError("Cannot specify both 'item' and 'item_name'")
+        item = kwargs.pop("item_name")
+        warnings.warn(
+            "'item_name' parameter is deprecated, use 'item' instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+    if "item_type" in kwargs:
+        if type is not None:
+            raise TypeError("Cannot specify both 'type' and 'item_type'")
+        type = kwargs.pop("item_type")
+        warnings.warn(
+            "'item_type' parameter is deprecated, use 'type' instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+
+    if item is None or type is None:
+        raise TypeError(
+            "Missing required parameters: 'item' and 'type' must be provided either directly or via 'item_name' and 'item_type'."
+        )
+
+    workspace_id = resolve_workspace_id(workspace)
+    item_id = resolve_item_id(item=item, type=type, workspace=workspace_id)
 
     columns = {
         "Connection Name": "string",
@@ -248,22 +289,27 @@ def list_item_connections(
         uses_pagination=True,
     )
 
+    rows = []
     for r in responses:
         for v in r.get("value", []):
-            new_data = {
-                "Connection Name": v.get("displayName"),
-                "Connection Id": v.get("id"),
-                "Connectivity Type": v.get("connectivityType"),
-                "Connection Type": v.get("connectionDetails", {}).get("type"),
-                "Connection Path": v.get("connectionDetails", {}).get("path"),
-                "Gateway Id": v.get("gatewayId"),
-            }
+            rows.append(
+                {
+                    "Connection Name": v.get("displayName"),
+                    "Connection Id": v.get("id"),
+                    "Connectivity Type": v.get("connectivityType"),
+                    "Connection Type": v.get("connectionDetails", {}).get("type"),
+                    "Connection Path": v.get("connectionDetails", {}).get("path"),
+                    "Gateway Id": v.get("gatewayId"),
+                }
+            )
 
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 
 
+@log
 def _list_supported_connection_types(
     gateway: Optional[str | UUID] = None, show_all_creation_methods: bool = False
 ) -> pd.DataFrame:
@@ -285,10 +331,10 @@ def _list_supported_connection_types(
     url = url.rstrip("&")
     responses = _base_api(request=url, client="fabric_sp", uses_pagination=True)
 
-    records = []
+    rows = []
     for r in responses:
         for v in r.get("value", []):
-            records.append(
+            rows.append(
                 {
                     "Connection Type": v.get("type"),
                     "Creation Method": v["creationMethods"][0]["name"],
@@ -302,14 +348,14 @@ def _list_supported_connection_types(
                 }
             )
 
-    if records:
-        df = pd.DataFrame(records)
-
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
 
+@log
 def create_cloud_connection(
     name: str,
     server_name: str,
@@ -390,6 +436,7 @@ def create_cloud_connection(
     print(f"{icons.green_dot} The '{name}' cloud connection has been created.")
 
 
+@log
 def create_on_prem_connection(
     name: str,
     gateway: str | UUID,
@@ -474,6 +521,7 @@ def create_on_prem_connection(
     print(f"{icons.green_dot} The '{name}' on-prem connection has been created.")
 
 
+@log
 def create_vnet_connection(
     name: str,
     gateway: str | UUID,

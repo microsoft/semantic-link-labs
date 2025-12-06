@@ -1,20 +1,19 @@
 import pandas as pd
-import json
 from typing import Optional
 from sempy_labs._helper_functions import (
-    resolve_workspace_name_and_id,
+    resolve_workspace_id,
     _base_api,
     _create_dataframe,
     _update_dataframe_datatypes,
-    resolve_item_id,
-    _decode_b64,
+    _get_item_definition,
     delete_item,
-    get_item_definition,
 )
 
 from uuid import UUID
+from sempy._utils._log import log
 
 
+@log
 def list_mounted_data_factories(
     workspace: Optional[str | UUID] = None,
 ) -> pd.DataFrame:
@@ -36,7 +35,7 @@ def list_mounted_data_factories(
         A pandas dataframe showing a list of mounted data factories from the specified workspace.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
 
     columns = {
         "Mounted Data Factory Name": "str",
@@ -50,21 +49,25 @@ def list_mounted_data_factories(
         uses_pagination=True,
     )
 
+    rows = []
     for r in responses:
         for v in r.get("value", []):
-            new_data = {
-                "Mounted Data Factory Name": v.get("displayName"),
-                "Mounted Data Factory Id": v.get("id"),
-                "Description": v.get("description"),
-            }
+            rows.append(
+                {
+                    "Mounted Data Factory Name": v.get("displayName"),
+                    "Mounted Data Factory Id": v.get("id"),
+                    "Description": v.get("description"),
+                }
+            )
 
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
 
+@log
 def get_mounted_data_factory_definition(
     mounted_data_factory: str | UUID, workspace: Optional[str | UUID] = None
 ) -> dict:
@@ -88,7 +91,7 @@ def get_mounted_data_factory_definition(
         The 'mountedDataFactory-content.json' file from the mounted data factory definition.
     """
 
-    return get_item_definition(
+    return _get_item_definition(
         item=mounted_data_factory,
         type="MountedDataFactory",
         workspace=workspace,
@@ -96,6 +99,7 @@ def get_mounted_data_factory_definition(
     )
 
 
+@log
 def delete_mounted_data_factory(
     mounted_data_factory: str | UUID, workspace: Optional[str | UUID]
 ):

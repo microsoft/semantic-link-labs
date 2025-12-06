@@ -2,20 +2,24 @@ import pandas as pd
 import sempy_labs._icons as icons
 from typing import Optional
 from sempy_labs._helper_functions import (
-    resolve_workspace_name_and_id,
+    resolve_workspace_id,
     _base_api,
     _create_dataframe,
     delete_item,
     create_item,
 )
 from uuid import UUID
+from sempy._utils._log import log
 
 
+@log
 def list_kql_querysets(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the KQL querysets within a workspace.
 
     This is a wrapper function for the following API: `Items - List KQL Querysets <https://learn.microsoft.com/rest/api/fabric/kqlqueryset/items/list-kql-querysets>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -37,24 +41,32 @@ def list_kql_querysets(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     }
     df = _create_dataframe(columns=columns)
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
 
     responses = _base_api(
-        request=f"v1/workspaces/{workspace_id}/kqlQuerysets", uses_pagination=True
+        request=f"v1/workspaces/{workspace_id}/kqlQuerysets",
+        uses_pagination=True,
+        client="fabric_sp",
     )
 
+    rows = []
     for r in responses:
         for v in r.get("value", []):
-            new_data = {
-                "KQL Queryset Name": v.get("displayName"),
-                "KQL Queryset Id": v.get("id"),
-                "Description": v.get("description"),
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            rows.append(
+                {
+                    "KQL Queryset Name": v.get("displayName"),
+                    "KQL Queryset Id": v.get("id"),
+                    "Description": v.get("description"),
+                }
+            )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 
 
+@log
 def create_kql_queryset(
     name: str, description: Optional[str] = None, workspace: Optional[str | UUID] = None
 ):
@@ -62,6 +74,8 @@ def create_kql_queryset(
     Creates a KQL queryset.
 
     This is a wrapper function for the following API: `Items - Create KQL Queryset <https://learn.microsoft.com/rest/api/fabric/kqlqueryset/items/create-kql-queryset>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -80,6 +94,7 @@ def create_kql_queryset(
     )
 
 
+@log
 def delete_kql_queryset(
     kql_queryset: str | UUID, workspace: Optional[str | UUID] = None, **kwargs
 ):
@@ -87,6 +102,8 @@ def delete_kql_queryset(
     Deletes a KQL queryset.
 
     This is a wrapper function for the following API: `Items - Delete KQL Queryset <https://learn.microsoft.com/rest/api/fabric/kqlqueryset/items/delete-kql-queryset>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------

@@ -47,42 +47,49 @@ def list_gateways() -> pd.DataFrame:
         request="/v1/gateways", client="fabric_sp", uses_pagination=True
     )
 
+    rows = []
     for r in responses:
         for v in r.get("value", []):
-            new_data = {
-                "Gateway Name": v.get("displayName"),
-                "Gateway Id": v.get("id"),
-                "Type": v.get("type"),
-                "Public Key Exponent": v.get("publicKey", {}).get("exponent"),
-                "Public Key Modulus": v.get("publicKey", {}).get("modulus"),
-                "Version": v.get("version"),
-                "Number Of Member Gateways": v.get("numberOfMemberGateways", 0),
-                "Load Balancing Setting": v.get("loadBalancingSetting"),
-                "Allow Cloud Connection Refresh": v.get("allowCloudConnectionRefresh"),
-                "Allow Custom Connectors": v.get("allowCustomConnectors"),
-            }
+            rows.append(
+                {
+                    "Gateway Name": v.get("displayName"),
+                    "Gateway Id": v.get("id"),
+                    "Type": v.get("type"),
+                    "Public Key Exponent": v.get("publicKey", {}).get("exponent"),
+                    "Public Key Modulus": v.get("publicKey", {}).get("modulus"),
+                    "Version": v.get("version"),
+                    "Number Of Member Gateways": v.get("numberOfMemberGateways", 0),
+                    "Load Balancing Setting": v.get("loadBalancingSetting"),
+                    "Allow Cloud Connection Refresh": v.get(
+                        "allowCloudConnectionRefresh"
+                    ),
+                    "Allow Custom Connectors": v.get("allowCustomConnectors"),
+                }
+            )
 
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
 
+@log
 def _resolve_gateway_id(gateway: str | UUID) -> UUID:
 
-    dfG = list_gateways()
     if _is_valid_uuid(gateway):
-        dfG_filt = dfG[dfG["Gateway Id"] == gateway]
+        return gateway
     else:
+        dfG = list_gateways()
         dfG_filt = dfG[dfG["Gateway Name"] == gateway]
 
-    if len(dfG_filt) == 0:
-        raise ValueError(f"{icons.red_dot} The '{gateway}' does not exist.")
+        if dfG_filt.empty:
+            raise ValueError(f"{icons.red_dot} The '{gateway}' gateway does not exist.")
 
-    return dfG_filt["Gateway Id"].iloc[0]
+        return dfG_filt["Gateway Id"].iloc[0]
 
 
+@log
 def delete_gateway(gateway: str | UUID):
     """
     Deletes a gateway.
@@ -102,6 +109,7 @@ def delete_gateway(gateway: str | UUID):
     print(f"{icons.green_dot} The '{gateway}' gateway has been deleted.")
 
 
+@log
 def list_gateway_role_assigments(gateway: str | UUID) -> pd.DataFrame:
     """
     Returns a list of gateway role assignments.
@@ -135,20 +143,25 @@ def list_gateway_role_assigments(gateway: str | UUID) -> pd.DataFrame:
         uses_pagination=True,
     )
 
+    rows = []
     for r in responses:
         for v in r.get("value", []):
-            new_data = {
-                "Gateway Role Assignment Id": v.get("id"),
-                "Principal Id": v.get("principal", {}).get("id"),
-                "Principal Type": v.get("principal", {}).get("type"),
-                "Role": v.get("role"),
-            }
+            rows.append(
+                {
+                    "Gateway Role Assignment Id": v.get("id"),
+                    "Principal Id": v.get("principal", {}).get("id"),
+                    "Principal Type": v.get("principal", {}).get("type"),
+                    "Role": v.get("role"),
+                }
+            )
 
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 
 
+@log
 def delete_gateway_role_assignment(gateway: str | UUID, role_assignment_id: UUID):
     """
     Delete the specified role assignment for the gateway.
@@ -177,6 +190,7 @@ def delete_gateway_role_assignment(gateway: str | UUID, role_assignment_id: UUID
     )
 
 
+@log
 def _resolve_gateway_member_id(gateway: str | UUID, gateway_member: str | UUID) -> UUID:
 
     gateway_id = _resolve_gateway_id(gateway)
@@ -194,6 +208,7 @@ def _resolve_gateway_member_id(gateway: str | UUID, gateway_member: str | UUID) 
     return dfM_filt["Member Id"].iloc[0]
 
 
+@log
 def delete_gateway_member(gateway: str | UUID, gateway_member: str | UUID):
     """
     Delete gateway member of an on-premises gateway.
@@ -225,6 +240,7 @@ def delete_gateway_member(gateway: str | UUID, gateway_member: str | UUID):
     )
 
 
+@log
 def list_gateway_members(gateway: str | UUID) -> pd.DataFrame:
     """
     Lists gateway members of an on-premises gateway.
@@ -260,23 +276,27 @@ def list_gateway_members(gateway: str | UUID) -> pd.DataFrame:
         request=f"/v1/gateways/{gateway_id}/members", client="fabric_sp"
     )
 
+    rows = []
     for v in response.json().get("value", []):
-        new_data = {
-            "Member Id": v.get("id"),
-            "Member Name": v.get("displayName"),
-            "Public Key Exponent": v.get("publicKey", {}).get("exponent"),
-            "Public Key Modulus": v.get("publicKey", {}).get("modulus"),
-            "Version": v.get("version"),
-            "Enabled": v.get("enabled"),
-        }
+        rows.append(
+            {
+                "Member Id": v.get("id"),
+                "Member Name": v.get("displayName"),
+                "Public Key Exponent": v.get("publicKey", {}).get("exponent"),
+                "Public Key Modulus": v.get("publicKey", {}).get("modulus"),
+                "Version": v.get("version"),
+                "Enabled": v.get("enabled"),
+            }
+        )
 
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
 
+@log
 def create_vnet_gateway(
     name: str,
     capacity: str | UUID,
@@ -342,6 +362,7 @@ def create_vnet_gateway(
     )
 
 
+@log
 def update_on_premises_gateway(
     gateway: str | UUID,
     allow_cloud_connection_refresh: Optional[bool] = None,
@@ -395,6 +416,7 @@ def update_on_premises_gateway(
     print(f"{icons.green_dot} The '{gateway}' has been updated accordingly.")
 
 
+@log
 def update_vnet_gateway(
     gateway: str | UUID,
     capacity: str | UUID,
@@ -448,8 +470,12 @@ def update_vnet_gateway(
     print(f"{icons.green_dot} The '{gateway}' has been updated accordingly.")
 
 
+@log
 def bind_semantic_model_to_gateway(
-    dataset: str | UUID, gateway: str | UUID, workspace: Optional[str | UUID] = None
+    dataset: str | UUID,
+    gateway: str | UUID,
+    workspace: Optional[str | UUID] = None,
+    data_source_object_ids: Optional[list[UUID]] = None,
 ):
     """
     Binds the specified dataset from the specified workspace to the specified gateway.
@@ -465,9 +491,11 @@ def bind_semantic_model_to_gateway(
     gateway : str | uuid.UUID
         The name or ID of the gateway.
     workspace : str | uuid.UUID, default=None
-        The Fabric workspace name.
+        The workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    data_source_object_ids : list[uuid.UUID], default=None
+        A list of data source object IDs to bind to the gateway.
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -479,6 +507,8 @@ def bind_semantic_model_to_gateway(
     payload = {
         "gatewayObjectId": gateway_id,
     }
+    if data_source_object_ids is not None:
+        payload["datasourceObjectIds"] = data_source_object_ids
 
     _base_api(
         request=f"/v1.0/myorg/groups/{workspace_id}/datasets/{dataset_id}/Default.BindToGateway",

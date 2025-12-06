@@ -3,11 +3,13 @@ import pandas as pd
 from typing import Optional
 import sempy_labs._icons as icons
 from uuid import UUID
-from sempy_labs._helper_functions import (
+from .._helper_functions import (
     resolve_workspace_name_and_id,
 )
+from sempy._utils._log import log
 
 
+@log
 def get_direct_lake_guardrails() -> pd.DataFrame:
     """
     Shows the guardrails for when Direct Lake semantic models will fallback to Direct Query

@@ -4,8 +4,10 @@ from sempy_labs._helper_functions import (
 )
 import pandas as pd
 from sempy_labs.admin._basic_functions import list_workspaces
+from sempy._utils._log import log
 
 
+@log
 def list_git_connections() -> pd.DataFrame:
     """
     Shows a list of Git connections.
@@ -38,30 +40,33 @@ def list_git_connections() -> pd.DataFrame:
         uses_pagination=True,
     )
 
+    rows = []
     for r in responses:
         for v in r.get("value", []):
             git = v.get("gitProviderDetails", {})
-            new_data = {
-                "Workspace Id": v.get("workspaceId"),
-                "Organization Name": git.get("organizationName"),
-                "Owner Name": git.get("ownerName"),
-                "Project Name": git.get("projectName"),
-                "Git Provider Type": git.get("gitProviderType"),
-                "Repository Name": git.get("repositoryName"),
-                "Branch Name": git.get("branchName"),
-                "Directory Name": git.get("directoryName"),
-            }
+            rows.append(
+                {
+                    "Workspace Id": v.get("workspaceId"),
+                    "Organization Name": git.get("organizationName"),
+                    "Owner Name": git.get("ownerName"),
+                    "Project Name": git.get("projectName"),
+                    "Git Provider Type": git.get("gitProviderType"),
+                    "Repository Name": git.get("repositoryName"),
+                    "Branch Name": git.get("branchName"),
+                    "Directory Name": git.get("directoryName"),
+                }
+            )
 
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+        dfW = list_workspaces()
+        df = pd.merge(
+            df, dfW[["Id", "Name"]], left_on="Workspace Id", right_on="Id", how="left"
+        )
+        new_col_name = "Workspace Name"
+        df = df.rename(columns={"Name": new_col_name})
+        df.insert(1, new_col_name, df.pop(new_col_name))
 
-    dfW = list_workspaces()
-    df = pd.merge(
-        df, dfW[["Id", "Name"]], left_on="Workspace Id", right_on="Id", how="left"
-    )
-    new_col_name = "Workspace Name"
-    df = df.rename(columns={"Name": new_col_name})
-    df.insert(1, new_col_name, df.pop(new_col_name))
-
-    df = df.drop(columns=["Id"])
+        df = df.drop(columns=["Id"])
 
     return df

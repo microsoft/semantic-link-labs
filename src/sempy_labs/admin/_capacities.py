@@ -13,6 +13,7 @@ from sempy_labs._helper_functions import (
 )
 
 
+@log
 def patch_capacity(capacity: str | UUID, tenant_key_id: UUID):
     """
     Changes specific capacity information. Currently, this API call only supports changing the capacity's encryption key.
@@ -44,6 +45,7 @@ def patch_capacity(capacity: str | UUID, tenant_key_id: UUID):
     )
 
 
+@log
 def _resolve_capacity_name_and_id(
     capacity: str | UUID,
 ) -> Tuple[str, UUID]:
@@ -58,6 +60,7 @@ def _resolve_capacity_name_and_id(
     return capacity_name, capacity_id
 
 
+@log
 def _resolve_capacity_id(
     capacity: str | UUID,
 ) -> UUID:
@@ -76,6 +79,7 @@ def _resolve_capacity_id(
     return capacity_id
 
 
+@log
 def _list_capacities_meta() -> pd.DataFrame:
     """
     Shows the a list of capacities and their properties. This function is the admin version.
@@ -102,21 +106,27 @@ def _list_capacities_meta() -> pd.DataFrame:
         request="/v1.0/myorg/admin/capacities", client="fabric_sp", uses_pagination=True
     )
 
+    rows = []
     for r in responses:
         for i in r.get("value", []):
-            new_data = {
-                "Capacity Id": i.get("id").lower(),
-                "Capacity Name": i.get("displayName"),
-                "Sku": i.get("sku"),
-                "Region": i.get("region"),
-                "State": i.get("state"),
-                "Admins": [i.get("admins", [])],
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            rows.append(
+                {
+                    "Capacity Id": i.get("id").lower(),
+                    "Capacity Name": i.get("displayName"),
+                    "Sku": i.get("sku"),
+                    "Region": i.get("region"),
+                    "State": i.get("state"),
+                    "Admins": [i.get("admins", [])],
+                }
+            )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 
 
+@log
 def get_capacity_assignment_status(
     workspace: Optional[str | UUID] = None,
 ) -> pd.DataFrame:
@@ -171,13 +181,13 @@ def get_capacity_assignment_status(
         "Capacity Name": capacity_name,
     }
 
-    df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
-
+    df = pd.DataFrame([new_data], columns=list(columns.keys()))
     _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
 
+@log
 def get_capacity_state(capacity: Optional[str | UUID] = None):
     """
     Gets the state of a capacity.
@@ -215,6 +225,7 @@ def get_capacity_state(capacity: Optional[str | UUID] = None):
 @log
 def list_capacities(
     capacity: Optional[str | UUID] = None,
+    include_tenant_key: bool = False,
 ) -> pd.DataFrame:
     """
     Shows the a list of capacities and their properties.
@@ -227,6 +238,8 @@ def list_capacities(
     ----------
     capacity : str | uuid.UUID, default=None
         The capacity name or ID to filter. If None, all capacities are returned.
+    include_tenant_key : bool, default=False
+        If True, obtains the `tenant key <https://learn.microsoft.com/rest/api/power-bi/admin/get-capacities-as-admin#example-with-expand-on-tenant-key>`_ properties.
 
     Returns
     -------
@@ -241,24 +254,49 @@ def list_capacities(
         "Region": "string",
         "State": "string",
         "Admins": "list",
+        "Users": "list",
     }
+    if include_tenant_key:
+        columns.update(
+            {
+                "Tenant Key Id": "string",
+                "Tenant Key Name": "string",
+            }
+        )
     df = _create_dataframe(columns=columns)
 
-    responses = _base_api(
-        request="/v1.0/myorg/admin/capacities", client="fabric_sp", uses_pagination=True
-    )
+    url = "/v1.0/myorg/admin/capacities"
+    if include_tenant_key:
+        url += "?$expand=tenantKey"
 
+    responses = _base_api(request=url, client="fabric_sp", uses_pagination=True)
+
+    rows = []
     for r in responses:
         for i in r.get("value", []):
-            new_data = {
-                "Capacity Id": i.get("id").lower(),
+            row = {
+                "Capacity Id": i.get("id", "").lower(),
                 "Capacity Name": i.get("displayName"),
                 "Sku": i.get("sku"),
                 "Region": i.get("region"),
                 "State": i.get("state"),
-                "Admins": [i.get("admins", [])],
+                "Admins": i.get("admins", []),
+                "Users": i.get("users", []),
             }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+
+            if include_tenant_key:
+                tenant_key = i.get("tenantKey") or {}
+                row.update(
+                    {
+                        "Tenant Key Id": tenant_key.get("id"),
+                        "Tenant Key Name": tenant_key.get("name"),
+                    }
+                )
+
+            rows.append(row)
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     if capacity is not None:
         if _is_valid_uuid(capacity):
@@ -269,6 +307,7 @@ def list_capacities(
     return df
 
 
+@log
 def list_capacity_users(capacity: str | UUID) -> pd.DataFrame:
     """
     Shows a list of users that have access to the specified workspace.
@@ -288,7 +327,7 @@ def list_capacity_users(capacity: str | UUID) -> pd.DataFrame:
         A pandas dataframe showing a list of users that have access to the specified workspace.
     """
 
-    (capacity_name, capacity_id) = _resolve_capacity_name_and_id(capacity)
+    (_, capacity_id) = _resolve_capacity_name_and_id(capacity)
 
     columns = {
         "User Name": "string",
@@ -324,8 +363,7 @@ def list_capacity_users(capacity: str | UUID) -> pd.DataFrame:
 
     if rows:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
-
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -421,51 +459,50 @@ def get_refreshables(
 
     responses = _base_api(request=url, client="fabric_sp")
 
-    refreshables = []
-
+    rows = []
     for i in responses.json().get("value", []):
         last_refresh = i.get("lastRefresh", {})
         refresh_schedule = i.get("refreshSchedule", {})
-        new_data = {
-            "Workspace Id": i.get("group", {}).get("id"),
-            "Workspace Name": i.get("group", {}).get("name"),
-            "Item Id": i.get("id"),
-            "Item Name": i.get("name"),
-            "Item Kind": i.get("kind"),
-            "Capacity Id": (
-                i.get("capacity", {}).get("id").lower()
-                if i.get("capacity", {}).get("id")
-                else None
-            ),
-            "Capacity Name": i.get("capacity", {}).get("displayName"),
-            "Capacity SKU": i.get("capacity", {}).get("sku"),
-            "Refresh Count": i.get("refreshCount", 0),
-            "Refresh Failures": i.get("refreshFailures", 0),
-            "Average Duration": i.get("averageDuration", 0),
-            "Median Duration": i.get("medianDuration", 0),
-            "Refreshes Per Day": i.get("refreshesPerDay", 0),
-            "Refresh Type": last_refresh.get("refreshType"),
-            "Start Time": last_refresh.get("startTime"),
-            "End Time": last_refresh.get("endTime"),
-            "Status": last_refresh.get("status"),
-            "Request Id": last_refresh.get("requestId"),
-            "Service Exception Json": last_refresh.get("serviceExceptionJson"),
-            "Extended Status": last_refresh.get("extendedStatus"),
-            "Refresh Attempts": last_refresh.get("refreshAttempts"),
-            "Refresh Schedule Days": refresh_schedule.get("days"),
-            "Refresh Schedule Times": refresh_schedule.get("times"),
-            "Refresh Schedule Enabled": refresh_schedule.get("enabled"),
-            "Refresh Schedule Local Timezone Id": refresh_schedule.get(
-                "localTimeZoneId"
-            ),
-            "Refresh Schedule Notify Option": refresh_schedule.get("notifyOption"),
-            "Configured By": i.get("configuredBy"),
-        }
+        rows.append(
+            {
+                "Workspace Id": i.get("group", {}).get("id"),
+                "Workspace Name": i.get("group", {}).get("name"),
+                "Item Id": i.get("id"),
+                "Item Name": i.get("name"),
+                "Item Kind": i.get("kind"),
+                "Capacity Id": (
+                    i.get("capacity", {}).get("id").lower()
+                    if i.get("capacity", {}).get("id")
+                    else None
+                ),
+                "Capacity Name": i.get("capacity", {}).get("displayName"),
+                "Capacity SKU": i.get("capacity", {}).get("sku"),
+                "Refresh Count": i.get("refreshCount", 0),
+                "Refresh Failures": i.get("refreshFailures", 0),
+                "Average Duration": i.get("averageDuration", 0),
+                "Median Duration": i.get("medianDuration", 0),
+                "Refreshes Per Day": i.get("refreshesPerDay", 0),
+                "Refresh Type": last_refresh.get("refreshType"),
+                "Start Time": last_refresh.get("startTime"),
+                "End Time": last_refresh.get("endTime"),
+                "Status": last_refresh.get("status"),
+                "Request Id": last_refresh.get("requestId"),
+                "Service Exception Json": last_refresh.get("serviceExceptionJson"),
+                "Extended Status": last_refresh.get("extendedStatus"),
+                "Refresh Attempts": last_refresh.get("refreshAttempts"),
+                "Refresh Schedule Days": refresh_schedule.get("days"),
+                "Refresh Schedule Times": refresh_schedule.get("times"),
+                "Refresh Schedule Enabled": refresh_schedule.get("enabled"),
+                "Refresh Schedule Local Timezone Id": refresh_schedule.get(
+                    "localTimeZoneId"
+                ),
+                "Refresh Schedule Notify Option": refresh_schedule.get("notifyOption"),
+                "Configured By": i.get("configuredBy"),
+            }
+        )
 
-        refreshables.append(new_data)
-
-    if len(refreshables) > 0:
-        df = pd.DataFrame(refreshables)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df

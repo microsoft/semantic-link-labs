@@ -1,11 +1,9 @@
-import sempy.fabric as fabric
 from typing import Optional, List, Union, Tuple
 from uuid import UUID
 import sempy_labs._icons as icons
 from sempy_labs._helper_functions import (
     _is_valid_uuid,
     _build_url,
-    _update_dataframe_datatypes,
     _base_api,
     _create_dataframe,
 )
@@ -249,6 +247,7 @@ def unassign_workspaces_from_capacity(
     )
 
 
+@log
 def list_modified_workspaces(
     modified_since: Optional[str] = None,
     exclude_inactive_workspaces: Optional[bool] = False,
@@ -298,6 +297,7 @@ def list_modified_workspaces(
     return df
 
 
+@log
 def list_workspace_access_details(
     workspace: Optional[Union[str, UUID]] = None,
 ) -> pd.DataFrame:
@@ -336,20 +336,28 @@ def list_workspace_access_details(
         request=f"/v1/admin/workspaces/{workspace_id}/users", client="fabric_sp"
     )
 
+    rows = []
     for v in response.json().get("accessDetails", []):
-        new_data = {
-            "User Id": v.get("principal", {}).get("id"),
-            "User Name": v.get("principal", {}).get("displayName"),
-            "User Type": v.get("principal", {}).get("type"),
-            "Workspace Name": workspace_name,
-            "Workspace Id": workspace_id,
-            "Workspace Role": v.get("workspaceAccessDetails", {}).get("workspaceRole"),
-        }
-        df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
+        rows.append(
+            {
+                "User Id": v.get("principal", {}).get("id"),
+                "User Name": v.get("principal", {}).get("displayName"),
+                "User Type": v.get("principal", {}).get("type"),
+                "Workspace Name": workspace_name,
+                "Workspace Id": workspace_id,
+                "Workspace Role": v.get("workspaceAccessDetails", {}).get(
+                    "workspaceRole"
+                ),
+            }
+        )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 
 
+@log
 def _resolve_workspace_name(workspace_id: Optional[UUID] = None) -> str:
     from sempy_labs._helper_functions import _get_fabric_context_setting
     from sempy.fabric.exceptions import FabricHTTPException
@@ -372,6 +380,7 @@ def _resolve_workspace_name(workspace_id: Optional[UUID] = None) -> str:
     return workspace_name
 
 
+@log
 def _resolve_workspace_name_and_id(
     workspace: str | UUID,
 ) -> Tuple[str, UUID]:
@@ -397,6 +406,7 @@ def _resolve_workspace_name_and_id(
     return workspace_name, workspace_id
 
 
+@log
 def list_workspace_users(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows a list of users that have access to the specified workspace.
@@ -449,7 +459,5 @@ def list_workspace_users(workspace: Optional[str | UUID] = None) -> pd.DataFrame
 
     if rows:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
-
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df

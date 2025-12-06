@@ -1,9 +1,9 @@
 import sempy
 import pandas as pd
-from sempy_labs.lakehouse import get_lakehouse_columns
-from sempy_labs.directlake._dl_helper import get_direct_lake_source
-from sempy_labs.tom import connect_semantic_model
-from sempy_labs._helper_functions import (
+from ..lakehouse import get_lakehouse_columns
+from ._dl_helper import get_direct_lake_source
+from ..tom import connect_semantic_model
+from .._helper_functions import (
     _convert_data_type,
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
@@ -83,6 +83,8 @@ def direct_lake_schema_sync(
     ) as tom:
         # Check if the columns in the semantic model exist in the lakehouse
         for c in tom.all_columns():
+            column_name = c.Name
+            table_name = c.Parent.Name
             partition_name = next(p.Name for p in c.Table.Partitions)
             p = c.Table.Partitions[partition_name]
             if p.SourceType == TOM.PartitionSourceType.Entity:
@@ -95,8 +97,8 @@ def direct_lake_schema_sync(
                 # Remove column from model if it doesn't exist in the lakehouse
                 if lc_filt.empty:
                     new_data = {
-                        "TableName": c.Parent.Name,
-                        "ColumnName": c.Name,
+                        "TableName": table_name,
+                        "ColumnName": column_name,
                         "SourceTableName": entity_name,
                         "SourceColumnName": source_column,
                         "Status": "Not in lakehouse",
@@ -107,7 +109,7 @@ def direct_lake_schema_sync(
                     if remove_from_model:
                         tom.remove_object(object=c)
                         print(
-                            f"{icons.green_dot} The '{c.Parent.Name}'[{c.Name}] column has been removed from the '{dataset_name}' semantic model within the '{workspace_name}' workspace."
+                            f"{icons.green_dot} The '{table_name}'[{column_name}] column has been removed from the '{dataset_name}' semantic model within the '{workspace_name}' workspace."
                         )
 
         # Check if the lakehouse columns exist in the semantic model

@@ -5,7 +5,7 @@ from typing import Optional, List, Union, Tuple
 from uuid import UUID
 import sempy_labs._icons as icons
 from sempy._utils._log import log
-from sempy_labs._helper_functions import (
+from .._helper_functions import (
     retry,
     _convert_data_type,
     resolve_dataset_name_and_id,
@@ -13,6 +13,7 @@ from sempy_labs._helper_functions import (
 )
 
 
+@log
 def check_fallback_reason(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> pd.DataFrame:
@@ -144,7 +145,7 @@ def generate_direct_lake_semantic_model(
     expr = generate_shared_expression(
         item_name=lakehouse, item_type="Lakehouse", workspace=lakehouse_workspace
     )
-    dfD = fabric.list_datasets(workspace=workspace_id)
+    dfD = fabric.list_datasets(workspace=workspace_id, mode="rest")
     dfD_filt = dfD[dfD["Dataset Name"] == dataset]
 
     if len(dfD_filt) > 0 and not overwrite:
@@ -195,6 +196,7 @@ def generate_direct_lake_semantic_model(
         refresh_semantic_model(dataset=dataset, workspace=workspace_id)
 
 
+@log
 def get_direct_lake_source(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> Tuple[str, str, UUID, UUID]:
@@ -223,7 +225,10 @@ def get_direct_lake_source(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     sql_endpoint_id = get_direct_lake_sql_endpoint(dataset=dataset, workspace=workspace)
     dfI = fabric.list_items(workspace=workspace)
-    dfI_filt = dfI[(dfI["Id"] == sql_endpoint_id) & (dfI["Type"] == "SQLEndpoint")]
+    dfI_filt = dfI[
+        (dfI["Id"] == sql_endpoint_id)
+        & (dfI["Type"].isin(["SQLEndpoint", "Warehouse"]))
+    ]
 
     artifact_type, artifact_name, artifact_id = None, None, None
 

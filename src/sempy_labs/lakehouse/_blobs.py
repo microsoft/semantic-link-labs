@@ -14,6 +14,7 @@ import pandas as pd
 from sempy.fabric.exceptions import FabricHTTPException
 
 
+@log
 def _request_blob_api(
     request: str,
     method: str = "get",
@@ -145,7 +146,7 @@ def list_blobs(
         uses_pagination=True,
     )
 
-    dfs = []
+    rows = []
     for root in responses:
         response_json = _xml_to_dict(root)
 
@@ -158,34 +159,34 @@ def list_blobs(
 
         for blob in blobs:
             p = blob.get("Properties", {})
-            new_data = {
-                "Blob Name": blob.get("Name"),
-                "Is Deleted": blob.get("Deleted", False),
-                "Deletion Id": blob.get("DeletionId"),
-                "Creation Time": p.get("Creation-Time"),
-                "Expiry Time": p.get("Expiry-Time"),
-                "Etag": p.get("Etag"),
-                "Resource Type": p.get("ResourceType"),
-                "Content Length": p.get("Content-Length"),
-                "Content Type": p.get("Content-Type"),
-                "Content Encoding": p.get("Content-Encoding"),
-                "Content Language": p.get("Content-Language"),
-                "Content CRC64": p.get("Content-CRC64"),
-                "Content MD5": p.get("Content-MD5"),
-                "Cache Control": p.get("Cache-Control"),
-                "Content Disposition": p.get("Content-Disposition"),
-                "Blob Type": p.get("BlobType"),
-                "Access Tier": p.get("AccessTier"),
-                "Access Tier Inferred": p.get("AccessTierInferred"),
-                "Server Encrypted": p.get("ServerEncrypted"),
-                "Deleted Time": p.get("DeletedTime"),
-                "Remaining Retention Days": p.get("RemainingRetentionDays"),
-            }
+            rows.append(
+                {
+                    "Blob Name": blob.get("Name"),
+                    "Is Deleted": blob.get("Deleted", False),
+                    "Deletion Id": blob.get("DeletionId"),
+                    "Creation Time": p.get("Creation-Time"),
+                    "Expiry Time": p.get("Expiry-Time"),
+                    "Etag": p.get("Etag"),
+                    "Resource Type": p.get("ResourceType"),
+                    "Content Length": p.get("Content-Length"),
+                    "Content Type": p.get("Content-Type"),
+                    "Content Encoding": p.get("Content-Encoding"),
+                    "Content Language": p.get("Content-Language"),
+                    "Content CRC64": p.get("Content-CRC64"),
+                    "Content MD5": p.get("Content-MD5"),
+                    "Cache Control": p.get("Cache-Control"),
+                    "Content Disposition": p.get("Content-Disposition"),
+                    "Blob Type": p.get("BlobType"),
+                    "Access Tier": p.get("AccessTier"),
+                    "Access Tier Inferred": p.get("AccessTierInferred"),
+                    "Server Encrypted": p.get("ServerEncrypted"),
+                    "Deleted Time": p.get("DeletedTime"),
+                    "Remaining Retention Days": p.get("RemainingRetentionDays"),
+                }
+            )
 
-            dfs.append(pd.DataFrame(new_data, index=[0]))
-
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df

@@ -1,18 +1,19 @@
-from sempy_labs.directlake._generate_shared_expression import generate_shared_expression
-from sempy_labs._helper_functions import (
+from ._generate_shared_expression import generate_shared_expression
+from .._helper_functions import (
     resolve_dataset_name_and_id,
     resolve_workspace_name_and_id,
     resolve_item_name_and_id,
     resolve_lakehouse_name_and_id,
 )
 from sempy._utils._log import log
-from sempy_labs.tom import connect_semantic_model
+from ..tom import connect_semantic_model
 from typing import Optional, List
 import sempy_labs._icons as icons
 from uuid import UUID
 import re
 
 
+@log
 def _extract_expression_list(expression):
     """
     Finds the pattern for DL/SQL & DL/OL expressions in the semantic model.
@@ -37,6 +38,7 @@ def _extract_expression_list(expression):
     return result
 
 
+@log
 def _get_direct_lake_expressions(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> dict:
@@ -111,9 +113,9 @@ def update_direct_lake_model_connection(
 
     Parameters
     ----------
-    dataset : str | UUID
+    dataset : str | uuid.UUID
         Name or ID of the semantic model.
-    workspace : str | UUID, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID in which the semantic model exists.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -122,7 +124,7 @@ def update_direct_lake_model_connection(
         Defaults to None which resolves to the lakehouse attached to the notebook.
     source_type : str, default="Lakehouse"
         The type of source for the Direct Lake semantic model. Valid options: "Lakehouse", "Warehouse".
-    source_workspace : str | UUID, default=None
+    source_workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID used by the lakehouse/warehouse.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

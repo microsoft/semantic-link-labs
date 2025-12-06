@@ -1,16 +1,14 @@
 import sempy.fabric as fabric
-from sempy_labs._helper_functions import (
+from .._helper_functions import (
     resolve_lakehouse_id,
-    resolve_lakehouse_name,
-    get_direct_lake_sql_endpoint,
-    resolve_workspace_name_and_id,
-    resolve_dataset_name_and_id,
 )
 from typing import Optional, Tuple
 from uuid import UUID
 import sempy_labs._icons as icons
+from sempy._utils._log import log
 
 
+@log
 def get_direct_lake_lakehouse(
     dataset: str | UUID,
     workspace: Optional[str | UUID] = None,

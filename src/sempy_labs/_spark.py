@@ -2,14 +2,17 @@ import pandas as pd
 import sempy_labs._icons as icons
 from typing import Optional
 from sempy_labs._helper_functions import (
+    resolve_workspace_id,
     resolve_workspace_name_and_id,
     _update_dataframe_datatypes,
     _base_api,
     _create_dataframe,
 )
 from uuid import UUID
+from sempy._utils._log import log
 
 
+@log
 def list_custom_pools(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Lists all `custom pools <https://learn.microsoft.com/fabric/data-engineering/create-custom-spark-pools>`_ within a workspace.
@@ -29,7 +32,7 @@ def list_custom_pools(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing all the custom pools within the Fabric workspace.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
 
     columns = {
         "Custom Pool ID": "string",
@@ -48,31 +51,36 @@ def list_custom_pools(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
     response = _base_api(request=f"/v1/workspaces/{workspace_id}/spark/pools")
 
+    rows = []
     for i in response.json()["value"]:
 
         aScale = i.get("autoScale", {})
         d = i.get("dynamicExecutorAllocation", {})
 
-        new_data = {
-            "Custom Pool ID": i.get("id"),
-            "Custom Pool Name": i.get("name"),
-            "Type": i.get("type"),
-            "Node Family": i.get("nodeFamily"),
-            "Node Size": i.get("nodeSize"),
-            "Auto Scale Enabled": aScale.get("enabled"),
-            "Auto Scale Min Node Count": aScale.get("minNodeCount"),
-            "Auto Scale Max Node Count": aScale.get("maxNodeCount"),
-            "Dynamic Executor Allocation Enabled": d.get("enabled"),
-            "Dynamic Executor Allocation Min Executors": d.get("minExecutors"),
-            "Dynamic Executor Allocation Max Executors": d.get("maxExecutors"),
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+        rows.append(
+            {
+                "Custom Pool ID": i.get("id"),
+                "Custom Pool Name": i.get("name"),
+                "Type": i.get("type"),
+                "Node Family": i.get("nodeFamily"),
+                "Node Size": i.get("nodeSize"),
+                "Auto Scale Enabled": aScale.get("enabled"),
+                "Auto Scale Min Node Count": aScale.get("minNodeCount"),
+                "Auto Scale Max Node Count": aScale.get("maxNodeCount"),
+                "Dynamic Executor Allocation Enabled": d.get("enabled"),
+                "Dynamic Executor Allocation Min Executors": d.get("minExecutors"),
+                "Dynamic Executor Allocation Max Executors": d.get("maxExecutors"),
+            }
+        )
 
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
 
+@log
 def create_custom_pool(
     pool_name: str,
     node_size: str,
@@ -145,6 +153,7 @@ def create_custom_pool(
     )
 
 
+@log
 def update_custom_pool(
     pool_name: str,
     node_size: Optional[str] = None,
@@ -251,6 +260,7 @@ def update_custom_pool(
     )
 
 
+@log
 def delete_custom_pool(pool_name: str, workspace: Optional[str | UUID] = None):
     """
     Deletes a `custom pool <https://learn.microsoft.com/fabric/data-engineering/create-custom-spark-pools>`_ within a workspace.
@@ -286,6 +296,7 @@ def delete_custom_pool(pool_name: str, workspace: Optional[str | UUID] = None):
     )
 
 
+@log
 def get_spark_settings(
     workspace: Optional[str | UUID] = None, return_dataframe: bool = True
 ) -> pd.DataFrame | dict:
@@ -346,7 +357,7 @@ def get_spark_settings(
         "Environment Name": e.get("name"),
         "Runtime Version": e.get("runtimeVersion"),
     }
-    df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    df = pd.DataFrame([new_data])
 
     column_map = {
         "Automatic Log Enabled": "bool",
@@ -362,6 +373,7 @@ def get_spark_settings(
         return response.json()
 
 
+@log
 def update_spark_settings(
     automatic_log_enabled: Optional[bool] = None,
     high_concurrency_enabled: Optional[bool] = None,

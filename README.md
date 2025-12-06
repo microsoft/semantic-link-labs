@@ -1,7 +1,7 @@
 # Semantic Link Labs
 
 [![PyPI version](https://badge.fury.io/py/semantic-link-labs.svg)](https://badge.fury.io/py/semantic-link-labs)
-[![Read The Docs](https://readthedocs.org/projects/semantic-link-labs/badge/?version=0.10.0&style=flat)](https://readthedocs.org/projects/semantic-link-labs/)
+[![Read The Docs](https://readthedocs.org/projects/semantic-link-labs/badge/?version=0.12.7&style=flat)](https://readthedocs.org/projects/semantic-link-labs/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Downloads](https://static.pepy.tech/badge/semantic-link-labs)](https://pepy.tech/project/semantic-link-labs)
 
@@ -20,6 +20,8 @@ Semantic Link Labs is a Python library designed for use in [Microsoft Fabric not
 If you encounter any issues, please [raise a bug](https://github.com/microsoft/semantic-link-labs/issues/new?assignees=&labels=&projects=&template=bug_report.md&title=).
 
 If you have ideas for new features/functions, please [request a feature](https://github.com/microsoft/semantic-link-labs/issues/new?assignees=&labels=&projects=&template=feature_request.md&title=).
+
+If you would like to see any capabilities from Labs included in Semantic Link, please [submit a vote](https://github.com/microsoft/semantic-link-labs/discussions/991).
 
 Check out the video below for an introduction to Semantic Link, Semantic Link Labs and demos of key features!
 
@@ -101,11 +103,11 @@ for file_name, file_url in notebook_files.items():
 ## Once installed, run this code to import the library into your notebook
 ```python
 import sempy_labs as labs
-from sempy_labs import migration, directlake, admin, graph
-from sempy_labs import lakehouse as lake
-from sempy_labs import report as rep
+import sempy_labs.lakehouse as lake
+import sempy_labs.report as rep
+from sempy_labs import admin, deployment_pipeline, directlake, environment, eventstream, graph, graph_model, migration, mirrored_azure_databricks_catalog, ml_model, snowflake_database, sql_database, theme, variable_library, warehouse
 from sempy_labs.tom import connect_semantic_model
-from sempy_labs.report import ReportWrapper
+from sempy_labs.report import connect_report
 ```
 
 ## Load Semantic Link Labs into a custom [Fabric environment](https://learn.microsoft.com/fabric/data-engineering/create-and-use-environment)
@@ -129,6 +131,19 @@ An even better way to ensure the semantic-link-labs library is available in your
 2. Select your newly created environment within the 'Environment' drop down in the navigation bar at the top of the notebook
 
 ## Version History
+* [0.12.7](https://github.com/microsoft/semantic-link-labs/releases/tag/0.12.7) (November 19, 2025)
+* [0.12.6](https://github.com/microsoft/semantic-link-labs/releases/tag/0.12.6) (October 30, 2025)
+* [0.12.5](https://github.com/microsoft/semantic-link-labs/releases/tag/0.12.5) (October 30, 2025)
+* [0.12.4](https://github.com/microsoft/semantic-link-labs/releases/tag/0.12.4) (October 16, 2025)
+* [0.12.3](https://github.com/microsoft/semantic-link-labs/releases/tag/0.12.3) (September 17, 2025)
+* [0.12.2](https://github.com/microsoft/semantic-link-labs/releases/tag/0.12.2) (September 12, 2025)
+* [0.12.1](https://github.com/microsoft/semantic-link-labs/releases/tag/0.12.1) (September 4, 2025)
+* [0.12.0](https://github.com/microsoft/semantic-link-labs/releases/tag/0.12.0) (September 2, 2025)
+* [0.11.3](https://github.com/microsoft/semantic-link-labs/releases/tag/0.11.3) (August 6, 2025)
+* [0.11.2](https://github.com/microsoft/semantic-link-labs/releases/tag/0.11.2) (July 8, 2025)
+* [0.11.1](https://github.com/microsoft/semantic-link-labs/releases/tag/0.11.1) (June 24, 2025)
+* [0.11.0](https://github.com/microsoft/semantic-link-labs/releases/tag/0.11.0) (June 23, 2025)
+* [0.10.1](https://github.com/microsoft/semantic-link-labs/releases/tag/0.10.1) (June 10, 2025)
 * [0.10.0](https://github.com/microsoft/semantic-link-labs/releases/tag/0.10.0) (May 30, 2025)
 * [0.9.11](https://github.com/microsoft/semantic-link-labs/releases/tag/0.9.11) (May 22, 2025)
 * [0.9.10](https://github.com/microsoft/semantic-link-labs/releases/tag/0.9.10) (April 24, 2025)
@@ -183,7 +198,7 @@ Check out my [blog post](https://www.elegantbi.com/post/direct-lake-migration) o
 ### Instructions
 
 1. Download this [notebook](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Migration%20to%20Direct%20Lake.ipynb).
-2. Make sure you are in the ['Data Engineering' persona](https://learn.microsoft.com/fabric/get-started/microsoft-fabric-overview#components-of-microsoft-fabric). Click the icon at the bottom left corner of your Workspace screen and select 'Data Engineering'
+2. Make sure you are in the 'Fabric Developer' experience. Click the icon at the bottom left corner of your Workspace screen and select 'Fabric'.
 3. In your workspace, select 'New -> Import notebook' and import the notebook from step 1.
 4. [Add your lakehouse](https://learn.microsoft.com/fabric/data-engineering/lakehouse-notebook-explore#add-or-remove-a-lakehouse) to your Fabric notebook
 5. Follow the instructions within the notebook.

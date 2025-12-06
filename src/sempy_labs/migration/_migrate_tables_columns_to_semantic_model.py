@@ -1,22 +1,23 @@
 import sempy.fabric as fabric
 import pandas as pd
 from sempy_labs.directlake._generate_shared_expression import generate_shared_expression
-from sempy_labs._helper_functions import resolve_lakehouse_name, retry
+from sempy_labs._helper_functions import retry
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from sempy_labs.tom import connect_semantic_model
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
+from uuid import UUID
 
 
 @log
 def migrate_tables_columns_to_semantic_model(
     dataset: str,
     new_dataset: str,
-    workspace: Optional[str] = None,
-    new_dataset_workspace: Optional[str] = None,
-    lakehouse: Optional[str] = None,
-    lakehouse_workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
+    new_dataset_workspace: Optional[str | UUID] = None,
+    lakehouse: Optional[str | UUID] = None,
+    lakehouse_workspace: Optional[str | UUID] = None,
 ):
     """
     Adds tables/columns to the new Direct Lake semantic model based on an import/DirectQuery semantic model.
@@ -49,18 +50,6 @@ def migrate_tables_columns_to_semantic_model(
             f"{icons.red_dot} The 'dataset' and 'new_dataset' parameters are both set to '{dataset}'. These parameters must be set to different values."
         )
 
-    workspace = fabric.resolve_workspace_name(workspace)
-
-    if new_dataset_workspace is None:
-        new_dataset_workspace = workspace
-
-    if lakehouse_workspace is None:
-        lakehouse_workspace = new_dataset_workspace
-
-    if lakehouse is None:
-        lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse = resolve_lakehouse_name(lakehouse_id, lakehouse_workspace)
-
     icons.sll_tags.append("DirectLakeMigration")
 
     # Check that lakehouse is attached to the notebook
@@ -72,11 +61,13 @@ def migrate_tables_columns_to_semantic_model(
             "\nLearn more here: https://learn.microsoft.com/fabric/data-engineering/lakehouse-notebook-explore#add-or-remove-a-lakehouse"
         )
     shEx = generate_shared_expression(
-        item_name=lakehouse, item_type="Lakehouse", workspace=lakehouse_workspace
+        item_name=lakehouse,
+        item_type="Lakehouse",
+        workspace=lakehouse_workspace,
+        use_sql_endpoint=False,
     )
 
     fabric.refresh_tom_cache(workspace=workspace)
-
     dfC = fabric.list_columns(dataset=dataset, workspace=workspace)
     dfT = fabric.list_tables(dataset=dataset, workspace=workspace)
     dfT.rename(columns={"Type": "Table Type"}, inplace=True)
@@ -136,7 +127,7 @@ def migrate_tables_columns_to_semantic_model(
             tDC = r["Data Category"]
             tHid = bool(r["Hidden"])
             tDesc = r["Description"]
-            ent_name = tName.replace(" ", "_")
+            ent_name = tName  # .replace(" ", "_")
             for char in icons.special_characters:
                 ent_name = ent_name.replace(char, "")
 

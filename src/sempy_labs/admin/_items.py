@@ -14,8 +14,10 @@ from sempy_labs._helper_functions import (
     _base_api,
     _create_dataframe,
 )
+from sempy._utils._log import log
 
 
+@log
 def _resolve_item_id(
     item: str,
     type: Optional[str] = None,
@@ -39,6 +41,7 @@ def _resolve_item_id(
     return item_id
 
 
+@log
 def _resolve_item_name_and_id(
     item: str,
     type: Optional[str] = None,
@@ -70,6 +73,7 @@ def _resolve_item_name_and_id(
     return item_name, item_id
 
 
+@log
 def list_items(
     capacity: Optional[str | UUID] = None,
     workspace: Optional[str | UUID] = None,
@@ -146,27 +150,32 @@ def list_items(
 
     responses = _base_api(request=url, client="fabric_sp", uses_pagination=True)
 
+    rows = []
     for r in responses:
         for v in r.get("itemEntities", []):
-            new_data = {
-                "Item Id": v.get("id"),
-                "Type": v.get("type"),
-                "Item Name": v.get("name"),
-                "Description": v.get("description"),
-                "State": v.get("state"),
-                "Last Updated Date": v.get("lastUpdatedDate"),
-                "Creator Principal Id": v.get("creatorPrincipal", {}).get("id"),
-                "Creator Principal Display Name": v.get("creatorPrincipal", {}).get(
-                    "displayName"
-                ),
-                "Creator Principal Type": v.get("creatorPrincipal", {}).get("type"),
-                "Creator User Principal Name": v.get("creatorPrincipal", {})
-                .get("userDetails", {})
-                .get("userPrincipalName"),
-                "Workspace Id": v.get("workspaceId"),
-                "Capacity Id": v.get("capacityId"),
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            rows.append(
+                {
+                    "Item Id": v.get("id"),
+                    "Type": v.get("type"),
+                    "Item Name": v.get("name"),
+                    "Description": v.get("description"),
+                    "State": v.get("state"),
+                    "Last Updated Date": v.get("lastUpdatedDate"),
+                    "Creator Principal Id": v.get("creatorPrincipal", {}).get("id"),
+                    "Creator Principal Display Name": v.get("creatorPrincipal", {}).get(
+                        "displayName"
+                    ),
+                    "Creator Principal Type": v.get("creatorPrincipal", {}).get("type"),
+                    "Creator User Principal Name": v.get("creatorPrincipal", {})
+                    .get("userDetails", {})
+                    .get("userPrincipalName"),
+                    "Workspace Id": v.get("workspaceId"),
+                    "Capacity Id": v.get("capacityId"),
+                }
+            )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     if item is not None:
         if _is_valid_uuid(item):
@@ -177,11 +186,11 @@ def list_items(
     return df
 
 
+@log
 def list_item_access_details(
-    item: str | UUID = None,
-    type: str = None,
+    item: str | UUID,
+    type: str,
     workspace: Optional[str | UUID] = None,
-    **kwargs,
 ) -> pd.DataFrame:
     """
     Returns a list of users (including groups and service principals) and lists their workspace roles.
@@ -194,7 +203,7 @@ def list_item_access_details(
     ----------
     item : str
         Name or id of the Fabric item.
-    type : str, default=None
+    type : str
         Type of Fabric item.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or id.
@@ -206,20 +215,9 @@ def list_item_access_details(
     pandas.DataFrame
         A pandas dataframe showing a list of users (including groups and service principals) and lists their workspace roles.
     """
-    if "item_name" in kwargs:
-        print(
-            "The 'item_name' parameter has been deprecated. Please replace this parameter with 'item' from the function going forward."
-        )
-        item = kwargs["item_name"]
-        del kwargs["item_name"]
 
-    if item is None or type is None:
-        raise ValueError(
-            f"{icons.red_dot} The parameter 'item' and 'type' are mandatory."
-        )
-
-    workspace_name, workspace_id = _resolve_workspace_name_and_id(workspace)
-    item_name, item_id = _resolve_item_name_and_id(
+    (workspace_name, workspace_id) = _resolve_workspace_name_and_id(workspace)
+    (item_name, item_id) = _resolve_item_name_and_id(
         item=item, type=type, workspace=workspace_name
     )
 
@@ -237,26 +235,31 @@ def list_item_access_details(
     df = _create_dataframe(columns=columns)
 
     response = _base_api(
-        request=f"/v1/admin/workspaces/{workspace_id}/items/{item_id}/users",
+        request=f"/v1/admin/workspaces/{workspace_id}/items/{item_id}/users?type={type}",
         client="fabric_sp",
     )
 
+    rows = []
     for v in response.json().get("accessDetails", []):
-        new_data = {
-            "User Id": v.get("principal", {}).get("id"),
-            "User Name": v.get("principal", {}).get("displayName"),
-            "User Type": v.get("principal", {}).get("type"),
-            "User Principal Name": v.get("principal", {})
-            .get("userDetails", {})
-            .get("userPrincipalName"),
-            "Item Type": v.get("itemAccessDetails", {}).get("type"),
-            "Permissions": v.get("itemAccessDetails", {}).get("permissions"),
-            "Additional Permissions": v.get("itemAccessDetails", {}).get(
-                "additionalPermissions"
-            ),
-            "Item Name": item_name,
-            "Item Id": item_id,
-        }
-        df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
+        rows.append(
+            {
+                "User Id": v.get("principal", {}).get("id"),
+                "User Name": v.get("principal", {}).get("displayName"),
+                "User Type": v.get("principal", {}).get("type"),
+                "User Principal Name": v.get("principal", {})
+                .get("userDetails", {})
+                .get("userPrincipalName"),
+                "Item Type": v.get("itemAccessDetails", {}).get("type"),
+                "Permissions": v.get("itemAccessDetails", {}).get("permissions"),
+                "Additional Permissions": v.get("itemAccessDetails", {}).get(
+                    "additionalPermissions"
+                ),
+                "Item Name": item_name,
+                "Item Id": item_id,
+            }
+        )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df

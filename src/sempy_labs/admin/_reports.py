@@ -8,8 +8,10 @@ from sempy_labs._helper_functions import (
 )
 from uuid import UUID
 import sempy_labs._icons as icons
+from sempy._utils._log import log
 
 
+@log
 def list_reports(
     top: Optional[int] = None,
     skip: Optional[int] = None,
@@ -52,7 +54,7 @@ def list_reports(
         "Users": "string",
         "Subscriptions": "string",
         "Workspace Id": "string",
-        "Report Flags": "int",
+        "Report Flags": "int_fillna",
     }
 
     df = _create_dataframe(columns=columns)
@@ -67,8 +69,8 @@ def list_reports(
 
     url.rstrip("$").rstrip("?")
     response = _base_api(request=url, client="fabric_sp")
-    rows = []
 
+    rows = []
     for v in response.json().get("value", []):
         rows.append(
             {
@@ -92,12 +94,12 @@ def list_reports(
 
     if rows:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
-
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
 
+@log
 def _resolve_report_id(report: str | UUID) -> str:
     if _is_valid_uuid(report):
         return report
@@ -109,6 +111,7 @@ def _resolve_report_id(report: str | UUID) -> str:
         return df_filt["Report Id"].iloc[0]
 
 
+@log
 def list_report_users(report: str | UUID) -> pd.DataFrame:
     """
     Shows a list of users that have access to the specified report.
@@ -159,12 +162,12 @@ def list_report_users(report: str | UUID) -> pd.DataFrame:
 
     if rows:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
-
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
 
+@log
 def list_report_subscriptions(report: str | UUID) -> pd.DataFrame:
     """
     Shows a list of report subscriptions along with subscriber details. This is a preview API call.
@@ -200,7 +203,7 @@ def list_report_subscriptions(report: str | UUID) -> pd.DataFrame:
         "Link To Content": "bool",
         "Preview Image": "bool",
         "Attachment Format": "string",
-        "Users": "string",
+        "Users": "list",
     }
 
     df = _create_dataframe(columns=columns)
@@ -227,13 +230,12 @@ def list_report_subscriptions(report: str | UUID) -> pd.DataFrame:
                 "Link To Content": v.get("linkToContent"),
                 "Preview Image": v.get("previewImage"),
                 "Attachment Format": v.get("attachmentFormat"),
-                "Users": str(v.get("users")),
+                "Users": v.get("users", []),
             }
         )
 
     if rows:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
-
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df

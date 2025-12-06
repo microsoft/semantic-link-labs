@@ -10,8 +10,10 @@ import pandas as pd
 from typing import Optional, List
 from uuid import UUID
 import sempy_labs._icons as icons
+from sempy._utils._log import log
 
 
+@log
 def list_tags() -> pd.DataFrame:
     """
     Shows a list of all the tenant's tags.
@@ -38,26 +40,29 @@ def list_tags() -> pd.DataFrame:
         client="fabric_sp",
     )
 
-    dfs = []
-
+    rows = []
     for r in responses:
         for v in r.get("value", []):
-            new_data = {
-                "Tag Name": v.get("displayName"),
-                "Tag Id": v.get("id"),
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
+            rows.append(
+                {
+                    "Tag Name": v.get("displayName"),
+                    "Tag Id": v.get("id"),
+                }
+            )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
         _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
 
+@log
 def resolve_tags(tags: str | List[str]) -> List[str]:
     """
     Resolves the tags to a list of strings.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -92,6 +97,7 @@ def resolve_tags(tags: str | List[str]) -> List[str]:
     return tag_list
 
 
+@log
 def apply_tags(
     item: str | UUID,
     type: str,
@@ -143,6 +149,7 @@ def apply_tags(
     )
 
 
+@log
 def unapply_tags(
     item: str | UUID,
     type: str,

@@ -3,13 +3,13 @@ import pandas as pd
 from tqdm.auto import tqdm
 import numpy as np
 import time
-from sempy_labs._helper_functions import (
+from .._helper_functions import (
     format_dax_object_name,
     resolve_dataset_name_and_id,
     resolve_workspace_name_and_id,
 )
-from sempy_labs._refresh_semantic_model import refresh_semantic_model
-from sempy_labs._model_dependencies import get_measure_dependencies
+from .._refresh_semantic_model import refresh_semantic_model
+from .._model_dependencies import get_measure_dependencies
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
@@ -182,6 +182,7 @@ def warm_direct_lake_cache_isresident(
     )
 
 
+@log
 def _put_columns_into_memory(dataset, workspace, col_df, return_dataframe: bool = True):
 
     row_limit = 1000000
@@ -200,7 +201,9 @@ def _put_columns_into_memory(dataset, workspace, col_df, return_dataframe: bool 
         if not dfT_filt.empty:
             row_count = dfT_filt["Row Count"].iloc[0]
             bar.set_description(f"Warming the '{table_name}' table...")
-            if row_count < row_limit:
+            if pd.isna(row_count):
+                pass
+            elif row_count < row_limit:
                 columns = col_df_filt["DAX Object"].tolist()
                 css = ", ".join(columns)
                 dax = f"EVALUATE TOPN(1, SELECTCOLUMNS('{table_name}', {css}))"

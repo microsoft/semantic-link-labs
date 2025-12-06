@@ -38,7 +38,7 @@ def get_lakehouse_columns(
     pandas.DataFrame
         Shows the tables/columns within a lakehouse and their properties.
     """
-    from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
+    from ._get_lakehouse_tables import get_lakehouse_tables
 
     columns = {
         "Workspace Name": "string",

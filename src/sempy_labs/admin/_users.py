@@ -5,8 +5,10 @@ from sempy_labs._helper_functions import (
 )
 from uuid import UUID
 import pandas as pd
+from sempy._utils._log import log
 
 
+@log
 def list_access_entities(
     user_email_address: str,
 ) -> pd.DataFrame:
@@ -43,22 +45,28 @@ def list_access_entities(
         uses_pagination=True,
     )
 
+    rows = []
     for r in responses:
         for v in r.get("accessEntities", []):
-            new_data = {
-                "Item Id": v.get("id"),
-                "Item Name": v.get("displayName"),
-                "Item Type": v.get("itemAccessDetails", {}).get("type"),
-                "Permissions": v.get("itemAccessDetails", {}).get("permissions"),
-                "Additional Permissions": v.get("itemAccessDetails", {}).get(
-                    "additionalPermissions"
-                ),
-            }
-            df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
+            rows.append(
+                {
+                    "Item Id": v.get("id"),
+                    "Item Name": v.get("displayName"),
+                    "Item Type": v.get("itemAccessDetails", {}).get("type"),
+                    "Permissions": v.get("itemAccessDetails", {}).get("permissions"),
+                    "Additional Permissions": v.get("itemAccessDetails", {}).get(
+                        "additionalPermissions"
+                    ),
+                }
+            )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 
 
+@log
 def list_user_subscriptions(user: str | UUID) -> pd.DataFrame:
     """
     Shows a list of subscriptions for the specified user. This is a preview API call.
@@ -127,7 +135,6 @@ def list_user_subscriptions(user: str | UUID) -> pd.DataFrame:
 
     if rows:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
-
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df

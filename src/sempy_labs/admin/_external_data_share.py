@@ -7,8 +7,10 @@ from sempy_labs._helper_functions import (
     _create_dataframe,
     _update_dataframe_datatypes,
 )
+from sempy._utils._log import log
 
 
+@log
 def list_external_data_shares() -> pd.DataFrame:
     """
     Lists external data shares in the tenant. This function is for admins.
@@ -39,30 +41,36 @@ def list_external_data_shares() -> pd.DataFrame:
 
     response = _base_api(request="/v1/admin/items/externalDataShares")
 
+    rows = []
     for i in response.json().get("value", []):
         cp = i.get("creatorPrincipal", {})
-        new_data = {
-            "External Data Share Id": i.get("id"),
-            "Paths": [i.get("paths", [])],
-            "Creater Principal Id": cp.get("id"),
-            "Creater Principal Name": cp.get("displayName"),
-            "Creater Principal Type": cp.get("type"),
-            "Creater Principal UPN": cp.get("userDetails", {}).get("userPrincipalName"),
-            "Recipient UPN": i.get("recipient", {}).get("userPrincipalName"),
-            "Status": i.get("status"),
-            "Expiration Time UTC": i.get("expirationTimeUtc"),
-            "Workspace Id": i.get("workspaceId"),
-            "Item Id": i.get("itemId"),
-            "Invitation URL": i.get("invitationUrl"),
-        }
+        rows.append(
+            {
+                "External Data Share Id": i.get("id"),
+                "Paths": [i.get("paths", [])],
+                "Creater Principal Id": cp.get("id"),
+                "Creater Principal Name": cp.get("displayName"),
+                "Creater Principal Type": cp.get("type"),
+                "Creater Principal UPN": cp.get("userDetails", {}).get(
+                    "userPrincipalName"
+                ),
+                "Recipient UPN": i.get("recipient", {}).get("userPrincipalName"),
+                "Status": i.get("status"),
+                "Expiration Time UTC": i.get("expirationTimeUtc"),
+                "Workspace Id": i.get("workspaceId"),
+                "Item Id": i.get("itemId"),
+                "Invitation URL": i.get("invitationUrl"),
+            }
+        )
 
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
 
+@log
 def revoke_external_data_share(
     external_data_share_id: UUID, item_id: UUID, workspace: str | UUID
 ):

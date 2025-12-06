@@ -19,6 +19,7 @@ from sempy_labs._helper_functions import (
     _create_spark_session,
     _mount,
     resolve_workspace_id,
+    resolve_item_name_and_id,
 )
 from typing import List, Optional, Union
 from sempy._utils._log import log
@@ -26,20 +27,21 @@ import sempy_labs._icons as icons
 from uuid import UUID
 
 
+@log
 def get_report_json(
     report: str,
     workspace: Optional[str | UUID] = None,
     save_to_file_name: Optional[str] = None,
 ) -> dict:
     """
-    Gets the report.json file content of a Power BI report.
+    Gets the report.json file content of a Power BI report. This function only supports reports in the PBIR-Legacy format.
 
     This is a wrapper function for the following API: `Items - Get Report Definition <https://learn.microsoft.com/rest/api/fabric/report/items/get-report-definition>`_.
 
     Parameters
     ----------
-    report : str
-        Name of the Power BI report.
+    report : str | uuid.UUID
+        Name or ID of the Power BI report.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID in which the report exists.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -54,20 +56,27 @@ def get_report_json(
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    report_id = resolve_report_id(report=report, workspace=workspace_id)
-    fmt = "PBIR-Legacy"
+    (report_name, report_id) = resolve_item_name_and_id(
+        item=report, type="Report", workspace=workspace_id
+    )
 
     result = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/reports/{report_id}/getDefinition?format={fmt}",
+        request=f"/v1/workspaces/{workspace_id}/reports/{report_id}/getDefinition",
         method="post",
         lro_return_json=True,
         status_codes=None,
     )
-    df_items = pd.json_normalize(result["definition"]["parts"])
-    df_items_filt = df_items[df_items["path"] == "report.json"]
-    payload = df_items_filt["payload"].iloc[0]
-    report_file = _decode_b64(payload)
-    report_json = json.loads(report_file)
+    report_json = None
+    for part in result.get("definition", {}).get("parts", {}):
+        if part.get("path") == "report.json":
+            payload = part.get("payload")
+            report_file = _decode_b64(payload)
+            report_json = json.loads(report_file)
+
+    if not report_json:
+        raise ValueError(
+            f"{icons.red_dot} Unable to retrieve report.json for the '{report_name}' report within the '{workspace_name}' workspace. This function only supports reports in the PBIR-Legacy format."
+        )
 
     if save_to_file_name is not None:
         if not lakehouse_attached():
@@ -90,6 +99,7 @@ def get_report_json(
     return report_json
 
 
+@log
 def report_dependency_tree(workspace: Optional[str | UUID] = None):
     """
     Prints a dependency between reports and semantic models.
@@ -142,6 +152,7 @@ def report_dependency_tree(workspace: Optional[str | UUID] = None):
         print(f"{pre}{node.custom_property}'{node.name}'")
 
 
+@log
 def clone_report(
     report: str,
     cloned_report: str,
@@ -221,6 +232,7 @@ def clone_report(
     )
 
 
+@log
 def launch_report(report: str, workspace: Optional[str | UUID] = None):
     """
     Shows a Power BI report within a Fabric notebook.
@@ -249,6 +261,7 @@ def launch_report(report: str, workspace: Optional[str | UUID] = None):
     return report
 
 
+@log
 def list_report_pages(report: str, workspace: Optional[str | UUID] = None):
     """
     Shows the properties of all pages within a Power BI report.
@@ -316,6 +329,7 @@ def list_report_pages(report: str, workspace: Optional[str | UUID] = None):
     return df
 
 
+@log
 def list_report_visuals(report: str, workspace: Optional[str | UUID] = None):
     """
     Shows the properties of all visuals within a Power BI report.
@@ -369,6 +383,7 @@ def list_report_visuals(report: str, workspace: Optional[str | UUID] = None):
     return df
 
 
+@log
 def list_report_bookmarks(report: str, workspace: Optional[str | UUID] = None):
     """
     Shows the properties of all bookmarks within a Power BI report.

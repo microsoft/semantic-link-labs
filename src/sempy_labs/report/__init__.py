@@ -1,34 +1,34 @@
-from sempy_labs.report._save_report import (
+from ._save_report import (
     save_report_as_pbip,
 )
-from sempy_labs.report._reportwrapper import (
+from ._reportwrapper import (
     ReportWrapper,
     connect_report,
 )
-from sempy_labs.report._paginated import (
+from ._paginated import (
     get_report_datasources,
 )
-from sempy_labs.report._generate_report import (
+from ._generate_report import (
     create_report_from_reportjson,
     get_report_definition,
     update_report_from_reportjson,
     create_model_bpa_report,
 )
-from sempy_labs.report._download_report import download_report
-from sempy_labs.report._report_functions import (
+from ._download_report import download_report
+from ._report_functions import (
     get_report_json,
     # report_dependency_tree,
     clone_report,
     launch_report,
     # translate_report_titles
 )
-from sempy_labs.report._report_rebind import (
+from ._report_rebind import (
     report_rebind,
     report_rebind_all,
 )
-from sempy_labs.report._report_bpa_rules import report_bpa_rules
-from sempy_labs.report._report_bpa import run_report_bpa
-from sempy_labs.report._export_report import (
+from ._report_bpa_rules import report_bpa_rules
+from ._report_bpa import run_report_bpa
+from ._export_report import (
     export_report,
 )
 

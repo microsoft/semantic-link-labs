@@ -1,17 +1,26 @@
-from typing import Literal, Optional
-from sempy.fabric._token_provider import TokenProvider
+from typing import Dict, Literal, Optional
+from azure.core.credentials import AccessToken, TokenCredential
 from azure.identity import ClientSecretCredential
 from sempy._utils._log import log
 from contextlib import contextmanager
 import contextvars
 
 
-class ServicePrincipalTokenProvider(TokenProvider):
+class ServicePrincipalTokenProvider(TokenCredential):
     """
-    Implementation of the sempy.fabric.TokenProvider to be used with Service Principal.
+    A class to acquire authentication token with Service Principal.
 
     For more information on Service Principal see: `Application and service principal objects in Microsoft Entra ID <https://learn.microsoft.com/en-us/entra/identity-platform/app-objects-and-service-principals?tabs=browser#service-principal-object>`_
     """
+
+    _shorthand_scopes: Dict[str, str] = {
+        "pbi": "https://analysis.windows.net/powerbi/api/.default",
+        "storage": "https://storage.azure.com/.default",
+        "azure": "https://management.azure.com/.default",
+        "graph": "https://graph.microsoft.com/.default",
+        "asazure": "https://{region}.asazure.windows.net/.default",
+        "keyvault": "https://vault.azure.net/.default",
+    }
 
     def __init__(self, credential: ClientSecretCredential):
 
@@ -20,7 +29,7 @@ class ServicePrincipalTokenProvider(TokenProvider):
     @classmethod
     def from_aad_application_key_authentication(
         cls, tenant_id: str, client_id: str, client_secret: str
-    ):
+    ) -> "ServicePrincipalTokenProvider":
         """
         Generates the ServicePrincipalTokenProvider, providing the Service Principal information.
 
@@ -37,7 +46,7 @@ class ServicePrincipalTokenProvider(TokenProvider):
 
         Returns
         -------
-        sempy.fabric.TokenProvider
+        ServicePrincipalTokenProvider
             Token provider to be used with FabricRestClient or PowerBIRestClient.
         """
         credential = ClientSecretCredential(
@@ -57,7 +66,7 @@ class ServicePrincipalTokenProvider(TokenProvider):
         key_vault_tenant_id: str,
         key_vault_client_id: str,
         key_vault_client_secret: str,
-    ):
+    ) -> "ServicePrincipalTokenProvider":
         """
         Generates the ServicePrincipalTokenProvider, providing the Azure Key Vault details.
 
@@ -76,7 +85,7 @@ class ServicePrincipalTokenProvider(TokenProvider):
 
         Returns
         -------
-        sempy.fabric.TokenProvider
+        ServicePrincipalTokenProvider
             Token provider to be used with FabricRestClient or PowerBIRestClient.
         """
 
@@ -117,32 +126,69 @@ class ServicePrincipalTokenProvider(TokenProvider):
         region : str, default=None
             The region of the Azure Analysis Services. For example: 'westus2'.
         """
-        if audience == "pbi":
-            return self.credential.get_token(
-                "https://analysis.windows.net/powerbi/api/.default"
-            ).token
-        elif audience == "storage":
-            return self.credential.get_token("https://storage.azure.com/.default").token
-        elif audience == "azure":
-            return self.credential.get_token(
-                "https://management.azure.com/.default"
-            ).token
-        elif audience == "graph":
-            return self.credential.get_token(
-                "https://graph.microsoft.com/.default"
-            ).token
-        elif audience == "asazure":
-            return self.credential.get_token(
-                f"https://{region}.asazure.windows.net/.default"
-            ).token
-        elif audience == "keyvault":
-            return self.credential.get_token("https://vault.azure.net/.default").token
-        else:
+        # Check if audience is supported
+        if audience not in self._shorthand_scopes:
             raise NotImplementedError
+
+        return self.get_token(audience, region=region).token
+
+    def get_token(self, *scopes, **kwargs) -> AccessToken:
+        """
+        Gets a token for the specified scopes.
+
+        Parameters
+        ----------
+        *scopes : str
+            The scopes for which to obtain a token.
+        **kwargs : dict
+            Additional parameters to pass to the token request.
+
+        Returns
+        -------
+        AccessToken
+            The access token.
+        """
+        if len(scopes) == 0:
+            scopes = ("pbi",)
+
+        region = kwargs.pop("region", None)
+        scopes = [
+            self._get_fully_qualified_scope(scope, region=region) for scope in scopes
+        ]
+        return self.credential.get_token(*scopes, **kwargs)
+
+    def _get_fully_qualified_scope(
+        self, scope: str, region: Optional[str] = None
+    ) -> str:
+        """
+        Resolve to fully qualified scope if Fabric short-handed scope is given.
+        Otherwise, return the original scope.
+
+        Parameters
+        ----------
+        scope : str
+            The scope to resolve.
+        region : str, default=None
+            The specific region to use to resolve scope.
+            Required if scope is "asazure".
+
+        Returns
+        -------
+        str
+            The resolved scope.
+        """
+        fully_qualified_scope = self._shorthand_scopes.get(scope, scope)
+
+        if scope == "asazure":
+            if region is None:
+                raise ValueError("Region is required for 'asazure' scope")
+            return fully_qualified_scope.format(region=region)
+
+        return fully_qualified_scope
 
 
 def _get_headers(
-    token_provider: str,
+    token_provider: TokenCredential,
     audience: Literal[
         "pbi", "storage", "azure", "graph", "asazure", "keyvault"
     ] = "azure",
@@ -151,7 +197,7 @@ def _get_headers(
     Generates headers for an API request.
     """
 
-    token = token_provider(audience=audience)
+    token = token_provider.get_token(audience).token
 
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -202,7 +248,14 @@ def service_principal_authentication(
         )
     )
     try:
-        yield
+        from sempy.fabric import set_service_principal
+
+        with set_service_principal(
+            (key_vault_uri, key_vault_tenant_id),
+            (key_vault_uri, key_vault_client_id),
+            client_secret=(key_vault_uri, key_vault_client_secret),
+        ):
+            yield
     finally:
         # Restore the prior state
         if prior_token is None:

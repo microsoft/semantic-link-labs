@@ -7,9 +7,12 @@ from sempy_labs._helper_functions import (
     _update_dataframe_datatypes,
     _base_api,
     _create_dataframe,
+    resolve_workspace_id,
+    resolve_item_id,
 )
 from uuid import UUID
 import sempy_labs._icons as icons
+import time
 
 
 @log
@@ -20,6 +23,8 @@ def list_item_job_instances(
     Returns a list of job instances for the specified item.
 
     This is a wrapper function for the following API: `Job Scheduler - List Item Job Instances <https://learn.microsoft.com/rest/api/fabric/core/job-scheduler/list-item-job-instances>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -38,9 +43,9 @@ def list_item_job_instances(
         Shows a list of job instances for the specified item.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
     (item_name, item_id) = resolve_item_name_and_id(
-        item=item, type=type, workspace=workspace
+        item=item, type=type, workspace=workspace_id
     )
 
     columns = {
@@ -61,34 +66,77 @@ def list_item_job_instances(
     responses = _base_api(
         request=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/instances",
         uses_pagination=True,
+        client="fabric_sp",
     )
 
     if not responses[0].get("value"):
         return df
 
-    dfs = []
+    rows = []
     for r in responses:
         for v in r.get("value", []):
             fail = v.get("failureReason", {})
-            new_data = {
-                "Job Instance Id": v.get("id"),
-                "Item Name": item_name,
-                "Item Id": v.get("itemId"),
-                "Item Type": type,
-                "Job Type": v.get("jobType"),
-                "Invoke Type": v.get("invokeType"),
-                "Status": v.get("status"),
-                "Root Activity Id": v.get("rootActivityId"),
-                "Start Time UTC": v.get("startTimeUtc"),
-                "End Time UTC": v.get("endTimeUtc"),
-                "Error Message": fail.get("message") if fail is not None else "",
-            }
-            dfs.append(pd.DataFrame(new_data, index=[0]))
+            rows.append(
+                {
+                    "Job Instance Id": v.get("id"),
+                    "Item Name": item_name,
+                    "Item Id": v.get("itemId"),
+                    "Item Type": type,
+                    "Job Type": v.get("jobType"),
+                    "Invoke Type": v.get("invokeType"),
+                    "Status": v.get("status"),
+                    "Root Activity Id": v.get("rootActivityId"),
+                    "Start Time UTC": v.get("startTimeUtc"),
+                    "End Time UTC": v.get("endTimeUtc"),
+                    "Error Message": fail.get("message") if fail is not None else "",
+                }
+            )
 
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
-    df = _update_dataframe_datatypes(dataframe=df, column_map=columns)
+    return df
+
+
+@log
+def _get_item_job_instance(url: str) -> pd.DataFrame:
+
+    columns = {
+        "Job Instance Id": "string",
+        "Item Id": "string",
+        "Job Type": "string",
+        "Invoke Type": "string",
+        "Status": "string",
+        "Root Activity Id": "string",
+        "Start Time UTC": "datetime",
+        "End Time UTC": "string",
+        "Error Message": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    response = _base_api(request=url, client="fabric_sp")
+
+    rows = []
+    v = response.json()
+    fail = v.get("failureReason", {})
+    rows.append(
+        {
+            "Job Instance Id": v.get("id"),
+            "Item Id": v.get("itemId"),
+            "Job Type": v.get("jobType"),
+            "Invoke Type": v.get("invokeType"),
+            "Status": v.get("status"),
+            "Root Activity Id": v.get("rootActivityId"),
+            "Start Time UTC": v.get("startTimeUtc"),
+            "End Time UTC": v.get("endTimeUtc"),
+            "Error Message": fail.get("message") if fail is not None else "",
+        }
+    )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -124,12 +172,10 @@ def list_item_schedules(
         Shows a list of scheduling settings for one specific item.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (item_name, item_id) = resolve_item_name_and_id(
-        item=item, type=type, workspace=workspace
-    )
+    workspace_id = resolve_workspace_id(workspace)
+    item_id = resolve_item_id(item=item, type=type, workspace=workspace_id)
 
-    columns = {
+    base_columns = {
         "Job Schedule Id": "string",
         "Enabled": "bool",
         "Created Date Time": "datetime",
@@ -137,39 +183,77 @@ def list_item_schedules(
         "End Date Time": "string",
         "Local Time Zone Id": "string",
         "Type": "string",
-        "Interval": "string",
-        "Weekdays": "string",
-        "Times": "string",
         "Owner Id": "string",
         "Owner Type": "string",
     }
-    df = _create_dataframe(columns=columns)
+
+    optional_columns = {
+        "Occurrence Day of Month": "int_fillna",
+        "Occurrence Week Index": "string",
+        "Occurrence Weekday": "string",
+        "Occurrence Type": "string",
+        "Interval": "int_fillna",
+        "Times": "string",
+        "Recurrence": "int_fillna",
+        "Weekdays": "string",
+    }
 
     response = _base_api(
-        request=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/{job_type}/schedules"
+        request=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/{job_type}/schedules",
+        client="fabric_sp",
     )
 
+    rows = []
     for v in response.json().get("value", []):
         config = v.get("configuration", {})
         own = v.get("owner", {})
-        new_data = {
+        occurrence = config.get("occurrence", {})
+        type = config.get("type")
+
+        row = {
             "Job Schedule Id": v.get("id"),
             "Enabled": v.get("enabled"),
             "Created Date Time": v.get("createdDateTime"),
             "Start Date Time": config.get("startDateTime"),
             "End Date Time": config.get("endDateTime"),
             "Local Time Zone Id": config.get("localTimeZoneId"),
-            "Type": config.get("type"),
-            "Interval": config.get("interval"),
-            "Weekdays": config.get("weekdays"),
-            "Times": config.get("times"),
+            "Type": type,
             "Owner Id": own.get("id"),
             "Owner Type": own.get("type"),
         }
 
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+        if type == "Cron":
+            row["Interval"] = config.get("interval")
+        elif type == "Daily":
+            row["Times"] = config.get("times")
+        elif type == "Weekly":
+            row["Times"] = config.get("times")
+            row["Weekdays"] = config.get("weekdays")
+        elif type == "Monthly":
+            occurrence_type = occurrence.get("occurrenceType")
+            row["Times"] = config.get("times")
+            row["Recurrence"] = config.get("recurrence")
+            row["Occurrence Type"] = occurrence_type
 
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+            if occurrence_type == "OrdinalWeekday":
+                row["Occurrence Week Index"] = occurrence.get("weekIndex")
+                row["Occurrence Weekday"] = occurrence.get("weekday")
+            elif occurrence_type == "DayOfMonth":
+                row["Occurrence Day of Month"] = occurrence.get("dayOfMonth")
+
+        rows.append(row)
+
+    # Build final column map based on what was actually present
+    columns = base_columns.copy()
+
+    if rows:
+        # Find which optional columns were actually included in rows
+        all_used_columns = set().union(*(r.keys() for r in rows))
+        for col in all_used_columns:
+            if col in optional_columns:
+                columns[col] = optional_columns[col]
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -210,11 +294,13 @@ def run_on_demand_item_job(
         method="post",
         lro_return_status_code=True,
         status_codes=202,
+        client="fabric_sp",
     )
 
     print(f"{icons.green_dot} The '{item_name}' {type.lower()} has been executed.")
 
 
+@log
 def create_item_schedule_cron(
     item: str | UUID,
     type: str,
@@ -276,6 +362,7 @@ def create_item_schedule_cron(
         method="post",
         payload=payload,
         status_codes=201,
+        client="fabric_sp",
     )
 
     print(
@@ -283,6 +370,7 @@ def create_item_schedule_cron(
     )
 
 
+@log
 def create_item_schedule_daily(
     item: str | UUID,
     type: str,
@@ -344,6 +432,7 @@ def create_item_schedule_daily(
         method="post",
         payload=payload,
         status_codes=201,
+        client="fabric_sp",
     )
 
     print(
@@ -351,6 +440,7 @@ def create_item_schedule_daily(
     )
 
 
+@log
 def create_item_schedule_weekly(
     item: str | UUID,
     type: str,
@@ -367,6 +457,8 @@ def create_item_schedule_weekly(
     Create a new daily schedule for an item.
 
     This is a wrapper function for the following API: `Job Scheduler - Create Item Schedule <https://learn.microsoft.com/rest/api/fabric/core/job-scheduler/create-item-schedule>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -394,7 +486,7 @@ def create_item_schedule_weekly(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
     (item_name, item_id) = resolve_item_name_and_id(
         item=item, type=type, workspace=workspace
     )
@@ -432,8 +524,86 @@ def create_item_schedule_weekly(
         method="post",
         payload=payload,
         status_codes=201,
+        client="fabric_sp",
     )
 
     print(
         f"{icons.green_dot} The schedule for the '{item_name}' {type.lower()} has been created."
     )
+
+
+@log
+def cancel_item_job_instance(
+    item: str | UUID,
+    job_instance_id: UUID,
+    type: str,
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Cancel an item's job instance.
+
+    This is a wrapper function for the following API: `Job Scheduler - Cancel Item Job Instance <https://learn.microsoft.com/rest/api/fabric/core/job-scheduler/cancel-item-job-instance>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    item : str | uuid.UUID
+        The item name or ID.
+    job_instance_id : uuid.UUID
+        The job instance ID to cancel.
+    type : str
+        The item `type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_. If specifying the item name as the item, the item type is required.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID used by the lakehouse.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    workspace_id = resolve_workspace_id(workspace)
+    (item_name, item_id) = resolve_item_name_and_id(
+        item=item, type=type, workspace=workspace
+    )
+
+    response = _base_api(
+        request=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/instances/{job_instance_id}",
+        client="fabric_sp",
+    )
+    current_status = response.json().get("status")
+
+    if current_status not in ["NotStarted", "InProgress"]:
+        print(
+            f"{icons.info} The job instance '{job_instance_id}' for the '{item_name}' {type.lower()} is in status '{current_status}' and cannot be cancelled."
+        )
+        return
+    else:
+        # Cancel the job instance
+        response = _base_api(
+            request=f"v1/workspaces/{workspace_id}/items/{item_id}/jobs/instances/{job_instance_id}/cancel",
+            method="post",
+            status_codes=202,
+            client="fabric_sp",
+        )
+
+        status_url = response.headers.get("Location").split("fabric.microsoft.com")[1]
+        status = None
+        while status not in ["Completed", "Failed", "Cancelled"]:
+            response = _base_api(request=status_url)
+            status = response.json().get("status")
+            time.sleep(3)
+
+        if status == "Cancelled":
+            print(
+                f"{icons.green_dot} The job instance '{job_instance_id}' for the '{item_name}' {type.lower()} has been cancelled."
+            )
+            return
+        elif status == "Failed":
+            print(
+                f"{icons.info} The job instance '{job_instance_id}' for the '{item_name}' {type.lower()} could not be cancelled and has failed."
+            )
+            return
+        elif status == "Completed":
+            print(
+                f"{icons.info} The job instance '{job_instance_id}' for the '{item_name}' {type.lower()} has already completed before it could be cancelled."
+            )
+            return

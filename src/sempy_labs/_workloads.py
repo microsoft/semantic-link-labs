@@ -7,8 +7,10 @@ from sempy_labs._helper_functions import (
     _create_dataframe,
 )
 from uuid import UUID
+from sempy._utils._log import log
 
 
+@log
 def list_workloads(capacity: str | UUID, **kwargs) -> pd.DataFrame:
     """
     Returns the current state of the specified capacity workloads.
@@ -59,6 +61,7 @@ def list_workloads(capacity: str | UUID, **kwargs) -> pd.DataFrame:
     return df
 
 
+@log
 def patch_workload(
     capacity: str | UUID,
     workload_name: str,

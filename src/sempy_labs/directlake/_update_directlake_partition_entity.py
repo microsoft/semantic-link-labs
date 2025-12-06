@@ -1,4 +1,3 @@
-import sempy
 from sempy_labs.tom import connect_semantic_model
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
 from sempy_labs.directlake._dl_helper import get_direct_lake_source
@@ -12,6 +11,7 @@ from sempy._utils._log import log
 from typing import List, Optional, Union
 import sempy_labs._icons as icons
 from uuid import UUID
+import json
 
 
 @log
@@ -76,6 +76,7 @@ def update_direct_lake_partition_entity(
                 for p in t.Partitions
                 if t.Name == tName
             )
+            current_slt = tom.model.Tables[tName].SourceLineageTag
 
             if part_name is None:
                 raise ValueError(
@@ -85,14 +86,56 @@ def update_direct_lake_partition_entity(
             tom.model.Tables[tName].Partitions[part_name].Source.EntityName = eName
 
             # Update source lineage tag
-            existing_schema = (
-                tom.model.Tables[tName].Partitions[part_name].Source.SchemaName or "dbo"
-            )
-            if schema is None:
-                schema = existing_schema
+            if schema:
+                # Only set schema for DL over SQL (not DL over OneLake)
+                expression_source_name = (
+                    tom.model.Tables[tName]
+                    .Partitions[part_name]
+                    .Source.ExpressionSource.Name
+                )
+                expr = tom.model.Expressions[expression_source_name].Expression
+                if "Sql.Database" in expr:
+                    tom.model.Tables[tName].Partitions[
+                        part_name
+                    ].Source.SchemaName = schema
+                tom.model.Tables[tName].SourceLineageTag = f"[{schema}].[{eName}]"
+            else:
+                tom.model.Tables[tName].SourceLineageTag = f"[dbo].[{eName}]"
 
-            tom.model.Tables[tName].Partitions[part_name].Source.SchemaName = schema
-            tom.model.Tables[tName].SourceLineageTag = f"[{schema}].[{eName}]"
+            new_slt = tom.model.Tables[tName].SourceLineageTag
+
+            # PBI_RemovedChildren logic
+            try:
+                e_name = (
+                    tom.model.Tables[tName]
+                    .Partitions[part_name]
+                    .Source.ExpressionSource.Name
+                )
+                ann = tom.get_annotation_value(
+                    object=tom.model.Expressions[e_name], name="PBI_RemovedChildren"
+                )
+                if ann:
+                    e = json.loads(ann)
+                    for i in e:
+                        sltag = (
+                            i.get("remoteItemId", {})
+                            .get("analysisServicesObject", {})
+                            .get("sourceLineageTag", {})
+                        )
+                        if sltag == current_slt:
+                            i["remoteItemId"]["analysisServicesObject"][
+                                "sourceLineageTag"
+                            ] = new_slt
+                    tom.set_annotation(
+                        object=tom.model.Expressions[e_name],
+                        name="PBI_RemovedChildren",
+                        value=json.dumps(e),
+                    )
+            except Exception as e:
+                print(
+                    f"{icons.yellow_dot} Warning: Could not update PBI_RemovedChildren annotation for table '{tName}'. {str(e)}"
+                )
+
             print(
                 f"{icons.green_dot} The '{tName}' table in the '{dataset_name}' semantic model within the '{workspace_name}' workspace has been updated to point to the '{eName}' table."
             )
@@ -105,6 +148,7 @@ def add_table_to_direct_lake_semantic_model(
     lakehouse_table_name: str,
     refresh: bool = True,
     workspace: Optional[str | UUID] = None,
+    columns: Optional[List[str] | str] = None,
 ):
     """
     Adds a table and all of its columns to a Direct Lake semantic model, based on a Fabric lakehouse table.
@@ -123,12 +167,12 @@ def add_table_to_direct_lake_semantic_model(
         The name or ID of the Fabric workspace in which the semantic model resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    columns : List[str] | str, default=None
+        A list of column names to add to the table. If None, all columns from the
+        lakehouse table will be added.
     """
 
-    sempy.fabric._client._utils._init_analysis_services()
-    import Microsoft.AnalysisServices.Tabular as TOM
     from sempy_labs.lakehouse._get_lakehouse_columns import get_lakehouse_columns
-    from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
@@ -147,6 +191,9 @@ def add_table_to_direct_lake_semantic_model(
             f"{icons.red_dot} This function only supports Direct Lake semantic models where the source lakehouse resides in the same workpace as the semantic model."
         )
 
+    if isinstance(columns, str):
+        columns = [columns]
+
     lakehouse_workspace = resolve_workspace_name(workspace_id=lakehouse_workspace_id)
 
     with connect_semantic_model(
@@ -160,41 +207,26 @@ def add_table_to_direct_lake_semantic_model(
                 f"{icons.red_dot} This function is only valid for Direct Lake semantic models or semantic models with no tables."
             )
 
-        if any(
-            p.Name == lakehouse_table_name
-            for p in tom.all_partitions()
-            if p.SourceType == TOM.PartitionSourceType.Entity
-        ):
-            t_name = next(
-                p.Parent.Name
-                for p in tom.all_partitions()
-                if p.Name
-                == lakehouse_table_name & p.SourceType
-                == TOM.PartitionSourceType.Entity
-            )
-            raise ValueError(
-                f"The '{lakehouse_table_name}' table already exists in the '{dataset_name}' semantic model within the '{workspace_name}' workspace as the '{t_name}' table."
-            )
-
         if any(t.Name == table_name for t in tom.model.Tables):
             raise ValueError(
                 f"The '{table_name}' table already exists in the '{dataset_name}' semantic model within the '{workspace_name}' workspace."
-            )
-
-        dfL = get_lakehouse_tables(
-            lakehouse=lakehouse_name, workspace=lakehouse_workspace
-        )
-        dfL_filt = dfL[dfL["Table Name"] == lakehouse_table_name]
-
-        if len(dfL_filt) == 0:
-            raise ValueError(
-                f"The '{lakehouse_table_name}' table does not exist in the '{lakehouse_name}' lakehouse within the '{lakehouse_workspace}' workspace."
             )
 
         dfLC = get_lakehouse_columns(
             lakehouse=lakehouse_name, workspace=lakehouse_workspace
         )
         dfLC_filt = dfLC[dfLC["Table Name"] == lakehouse_table_name]
+        if dfLC_filt.empty:
+            raise ValueError(
+                f"{icons.red_dot} The '{lakehouse_table_name}' table was not found in the '{lakehouse_name}' lakehouse within the '{lakehouse_workspace}' workspace."
+            )
+        if columns:
+            dfLC_filt = dfLC_filt[dfLC_filt["Column Name"].isin(columns)]
+
+        if dfLC_filt.empty:
+            raise ValueError(
+                f"{icons.red_dot} No matching columns were found in the '{lakehouse_table_name}' table in the '{lakehouse_name}' lakehouse within the '{lakehouse_workspace}' workspace."
+            )
 
         tom.add_table(name=table_name)
         print(
@@ -207,7 +239,7 @@ def add_table_to_direct_lake_semantic_model(
             f"{icons.green_dot} The '{lakehouse_table_name}' partition has been added to the '{table_name}' table in the '{dataset_name}' semantic model within the '{workspace_name}' workspace."
         )
 
-        for i, r in dfLC_filt.iterrows():
+        for _, r in dfLC_filt.iterrows():
             lakeCName = r["Column Name"]
             dType = r["Data Type"]
             dt = _convert_data_type(dType)

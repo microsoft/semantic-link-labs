@@ -218,6 +218,7 @@ def create_fabric_capacity(
     )
 
 
+@log
 def list_vcores() -> pd.DataFrame:
 
     columns = {
@@ -232,13 +233,14 @@ def list_vcores() -> pd.DataFrame:
         "Total Purchased Cores": response_json.get("totalPurchasedCores"),
         "Available Cores": response_json.get("availableCores"),
     }
-    df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
 
+    df = pd.DataFrame([new_data], columns=columns.keys())
     _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
 
+@log
 def get_capacity_resource_governance(capacity_name: str):
 
     dfC = list_capacities()
@@ -247,7 +249,7 @@ def get_capacity_resource_governance(capacity_name: str):
 
     response = _base_api(request=f"capacities/{capacity_id}/resourceGovernance")
 
-    return response.json()["workloadSettings"]
+    return response.json().get("workloadSettings", {})
 
 
 @log
@@ -586,15 +588,19 @@ def list_skus_for_capacity(
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/resourceGroups/{resource_group}/providers/Microsoft.Fabric/capacities/{capacity}/skus?api-version=2023-11-01"
     response = _base_api(request=url, client="azure")
 
+    rows = []
     for v in response.json().get("value", []):
         sku = v.get("sku", {})
-        new_data = {
-            "Resource Type": v.get("resourceType"),
-            "Sku": sku.get("name"),
-            "Sku Tier": sku.get("tier"),
-        }
+        rows.append(
+            {
+                "Resource Type": v.get("resourceType"),
+                "Sku": sku.get("name"),
+                "Sku Tier": sku.get("tier"),
+            }
+        )
 
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=columns.keys())
 
     return df
 
@@ -630,13 +636,17 @@ def list_skus(
     url = f"https://management.azure.com/subscriptions/{azure_subscription_id}/providers/Microsoft.Fabric/skus?api-version=2023-11-01"
     response = _base_api(request=url, client="azure")
 
+    rows = []
     for v in response.json().get("value", []):
-        new_data = {
-            "Sku": v.get("name"),
-            "Locations": v.get("locations", []),
-        }
+        rows.append(
+            {
+                "Sku": v.get("name"),
+                "Locations": v.get("locations", []),
+            }
+        )
 
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=columns.keys())
 
     return df
 
@@ -673,23 +683,27 @@ def list_subscriptions() -> pd.DataFrame:
     url = "https://management.azure.com/subscriptions?api-version=2022-12-01"
     response = _base_api(request=url, client="azure")
 
+    rows = []
     for v in response.json().get("value", []):
         policy = v.get("subscriptionPolicies", {})
         tenants = v.get("managedByTenants")
-        new_data = {
-            "Subscription Id": v.get("subscriptionId"),
-            "Subscription Name": v.get("displayName"),
-            "Tenant Id": v.get("tenantId"),
-            "State": v.get("state"),
-            "Location Placement Id": policy.get("locationPlacementId"),
-            "Quota Id": policy.get("quotaId"),
-            "Spending Limit": policy.get("spendingLimit"),
-            "Authorization Source": v.get("authorizationSource"),
-            "Managed by Tenants": tenants if tenants is not None else [],
-            "Tags": v.get("tags", {}),
-        }
+        rows.append(
+            {
+                "Subscription Id": v.get("subscriptionId"),
+                "Subscription Name": v.get("displayName"),
+                "Tenant Id": v.get("tenantId"),
+                "State": v.get("state"),
+                "Location Placement Id": policy.get("locationPlacementId"),
+                "Quota Id": policy.get("quotaId"),
+                "Spending Limit": policy.get("spendingLimit"),
+                "Authorization Source": v.get("authorizationSource"),
+                "Managed by Tenants": tenants if tenants is not None else [],
+                "Tags": v.get("tags", {}),
+            }
+        )
 
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=columns.keys())
 
     return df
 
@@ -747,7 +761,7 @@ def get_subscription(azure_subscription_id: str) -> pd.DataFrame:
         "Tags": v.get("tags", {}),
     }
 
-    df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    df = pd.DataFrame([new_data], columns=columns.keys())
 
     return df
 
@@ -804,20 +818,24 @@ def list_tenants() -> pd.DataFrame:
 
     response = _base_api(request=url, client="azure")
 
+    rows = []
     for v in response.json().get("value", []):
         d = v.get("domains")
-        new_data = {
-            "Tenant Id": v.get("tenantId"),
-            "Tenant Name": v.get("displayName"),
-            "Country Code": v.get("countryCode"),
-            "Domains": d if d is not None else "",
-            "Tenant Category": v.get("tenantCategory"),
-            "Default Domain": v.get("defaultDomain"),
-            "Tenant Type": v.get("tenantType"),
-            "Tenant Branding Logo Url": v.get("tenantBrandingLogoUrl"),
-        }
+        rows.append(
+            {
+                "Tenant Id": v.get("tenantId"),
+                "Tenant Name": v.get("displayName"),
+                "Country Code": v.get("countryCode"),
+                "Domains": d if d is not None else "",
+                "Tenant Category": v.get("tenantCategory"),
+                "Default Domain": v.get("defaultDomain"),
+                "Tenant Type": v.get("tenantType"),
+                "Tenant Branding Logo Url": v.get("tenantBrandingLogoUrl"),
+            }
+        )
 
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=columns.keys())
 
     return df
 
@@ -874,7 +892,7 @@ def create_storage_account(
     """
     Asynchronously creates a new storage account with the specified parameters. If an account is already created and a subsequent create request is issued with different properties, the account properties will be updated. If an account is already created and a subsequent create or update request is issued with the exact same set of properties, the request will succeed.
 
-    This is a wrapper function for the following API: `Storage Accounts - Create <https://learn.microsoft.com/rest/api/storagerp/storage-accounts/create`_.
+    This is a wrapper function for the following API: `Storage Accounts - Create <https://learn.microsoft.com/rest/api/storagerp/storage-accounts/create>`_.
 
     Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
@@ -964,35 +982,38 @@ def list_storage_accounts(
 
     response = _base_api(request=url, client="azure")
 
+    rows = []
     for v in response.json().get("value", []):
         p = v.get("properties", {})
-        new_data = {
-            "Storage Account Id": v.get("id"),
-            "Storage Account Name": v.get("name"),
-            "Kind": v.get("kind"),
-            "Location": v.get("location"),
-            "Sku Name": v.get("sku", {}).get("name"),
-            "Sku Tier": v.get("sku", {}).get("tier"),
-            "Is HNS Enabled": p.get("isHnsEnabled"),
-            "Creation Time": p.get("creationTime"),
-            "Web Endpoint": p.get("primaryEndpoints", {}).get("web"),
-            "DFS Endpoint": p.get("primaryEndpoints", {}).get("dfs"),
-            "Blob Endpoint": p.get("primaryEndpoints", {}).get("blob"),
-            "File Endpoint": p.get("primaryEndpoints", {}).get("file"),
-            "Queue Endpoint": p.get("primaryEndpoints", {}).get("queue"),
-            "Table Endpoint": p.get("primaryEndpoints", {}).get("table"),
-            "Primary Location": p.get("primaryLocation"),
-            "Provisioning State": p.get("provisioningState"),
-            "Secondary Location": p.get("secondaryLocation"),
-            "Status of Primary": p.get("statusOfPrimary"),
-            "Status of Secondary": p.get("statusOfSecondary"),
-            "Supports HTTPS Traffic Only": p.get("supportsHttpsTrafficOnly"),
-            "Tags": v.get("tags"),
-        }
+        rows.append(
+            {
+                "Storage Account Id": v.get("id"),
+                "Storage Account Name": v.get("name"),
+                "Kind": v.get("kind"),
+                "Location": v.get("location"),
+                "Sku Name": v.get("sku", {}).get("name"),
+                "Sku Tier": v.get("sku", {}).get("tier"),
+                "Is HNS Enabled": p.get("isHnsEnabled"),
+                "Creation Time": p.get("creationTime"),
+                "Web Endpoint": p.get("primaryEndpoints", {}).get("web"),
+                "DFS Endpoint": p.get("primaryEndpoints", {}).get("dfs"),
+                "Blob Endpoint": p.get("primaryEndpoints", {}).get("blob"),
+                "File Endpoint": p.get("primaryEndpoints", {}).get("file"),
+                "Queue Endpoint": p.get("primaryEndpoints", {}).get("queue"),
+                "Table Endpoint": p.get("primaryEndpoints", {}).get("table"),
+                "Primary Location": p.get("primaryLocation"),
+                "Provisioning State": p.get("provisioningState"),
+                "Secondary Location": p.get("secondaryLocation"),
+                "Status of Primary": p.get("statusOfPrimary"),
+                "Status of Secondary": p.get("statusOfSecondary"),
+                "Supports HTTPS Traffic Only": p.get("supportsHttpsTrafficOnly"),
+                "Tags": v.get("tags"),
+            }
+        )
 
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
-
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+    if rows:
+        df = pd.DataFrame(rows, columns=columns.keys())
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -1077,18 +1098,22 @@ def list_resource_groups(
 
     response = _base_api(request=url, client="azure")
 
+    rows = []
     for v in response.json().get("value", []):
-        new_data = {
-            "Resource Group Id": v.get("id"),
-            "Resource Group Name": v.get("name"),
-            "Location": v.get("location"),
-            "Managed By": v.get("managedBy"),
-            "Tags": v.get("tags"),
-            "Type": v.get("type"),
-            "Provisioning State": v.get("properties", {}).get("provisioningState"),
-        }
+        rows.append(
+            {
+                "Resource Group Id": v.get("id"),
+                "Resource Group Name": v.get("name"),
+                "Location": v.get("location"),
+                "Managed By": v.get("managedBy"),
+                "Tags": v.get("tags"),
+                "Type": v.get("type"),
+                "Provisioning State": v.get("properties", {}).get("provisioningState"),
+            }
+        )
 
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=columns.keys())
 
     return df
 
@@ -1154,15 +1179,20 @@ def list_capacities() -> pd.DataFrame:
 
     response = _base_api(request="/v1.0/myorg/capacities", client="fabric_sp")
 
+    rows = []
     for i in response.json().get("value", []):
-        new_data = {
-            "Id": i.get("id").lower(),
-            "Display Name": i.get("displayName"),
-            "Sku": i.get("sku"),
-            "Region": i.get("region"),
-            "State": i.get("state"),
-            "Admins": [i.get("admins", [])],
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+        rows.append(
+            {
+                "Id": i.get("id").lower(),
+                "Display Name": i.get("displayName"),
+                "Sku": i.get("sku"),
+                "Region": i.get("region"),
+                "State": i.get("state"),
+                "Admins": [i.get("admins", [])],
+            }
+        )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=columns.keys())
 
     return df

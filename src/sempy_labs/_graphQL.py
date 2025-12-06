@@ -4,11 +4,13 @@ from typing import Optional
 from sempy_labs._helper_functions import (
     _base_api,
     _create_dataframe,
-    resolve_workspace_name_and_id,
+    resolve_workspace_id,
     create_item,
 )
+from sempy._utils._log import log
 
 
+@log
 def list_graphql_apis(workspace: Optional[str | UUID]) -> pd.DataFrame:
     """
     Shows the Graph QL APIs within a workspace.
@@ -37,7 +39,7 @@ def list_graphql_apis(workspace: Optional[str | UUID]) -> pd.DataFrame:
     }
     df = _create_dataframe(columns=columns)
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
 
     responses = _base_api(
         request=f"/v1/workspaces/{workspace_id}/GraphQLApis",
@@ -45,18 +47,24 @@ def list_graphql_apis(workspace: Optional[str | UUID]) -> pd.DataFrame:
         client="fabric_sp",
     )
 
+    rows = []
     for r in responses:
         for v in r.get("value", []):
-            new_data = {
-                "GraphQL API Name": v.get("displayName"),
-                "GraphQL API Id": v.get("id"),
-                "Description": v.get("description"),
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            rows.append(
+                {
+                    "GraphQL API Name": v.get("displayName"),
+                    "GraphQL API Id": v.get("id"),
+                    "Description": v.get("description"),
+                }
+            )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 
 
+@log
 def create_graphql_api(
     name: str, description: Optional[str] = None, workspace: Optional[str | UUID] = None
 ):

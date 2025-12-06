@@ -6,8 +6,10 @@ from sempy_labs._helper_functions import (
     _create_dataframe,
 )
 import pandas as pd
+from sempy._utils._log import log
 
 
+@log
 def discover_catalogs(
     databricks_workspace_connection_id: UUID,
     workspace: Optional[str | UUID] = None,
@@ -52,24 +54,25 @@ def discover_catalogs(
 
     df = _create_dataframe(columns=columns)
 
-    dfs = []
+    rows = []
     for r in responses:
         for i in r.get("value", []):
-            new_data = {
-                "Catalog Name": i.get("name"),
-                "Catalog Full Name": i.get("fullName"),
-                "Catalog Type": i.get("catalogType"),
-                "Storage Location": i.get("storageLocation"),
-            }
+            rows.append(
+                {
+                    "Catalog Name": i.get("name"),
+                    "Catalog Full Name": i.get("fullName"),
+                    "Catalog Type": i.get("catalogType"),
+                    "Storage Location": i.get("storageLocation"),
+                }
+            )
 
-            dfs.append(pd.DataFrame(new_data, index=[0]))
-
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 
 
+@log
 def discover_schemas(
     catalog: str,
     databricks_workspace_connection_id: UUID,
@@ -117,24 +120,25 @@ def discover_schemas(
 
     df = _create_dataframe(columns=columns)
 
-    dfs = []
+    rows = []
     for r in responses:
         for i in r.get("value", []):
-            new_data = {
-                "Catalog Name": catalog,
-                "Schema Name": i.get("name"),
-                "Schema Full Name": i.get("fullName"),
-                "Storage Location": i.get("storageLocation"),
-            }
+            rows.append(
+                {
+                    "Catalog Name": catalog,
+                    "Schema Name": i.get("name"),
+                    "Schema Full Name": i.get("fullName"),
+                    "Storage Location": i.get("storageLocation"),
+                }
+            )
 
-            dfs.append(pd.DataFrame(new_data, index=[0]))
-
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
 
 
+@log
 def discover_tables(
     catalog: str,
     schema: str,
@@ -188,22 +192,22 @@ def discover_tables(
 
     df = _create_dataframe(columns=columns)
 
-    dfs = []
+    rows = []
     for r in responses:
         for i in r.get("value", []):
-            new_data = {
-                "Catalog Name": catalog,
-                "Schema Name": schema,
-                "Table Name": i.get("name"),
-                "Table Full Name": i.get("fullName"),
-                "Storage Location": i.get("storageLocation"),
-                "Table Type": i.get("tableType"),
-                "Data Source Format": i.get("dataSourceFormat"),
-            }
+            rows.append(
+                {
+                    "Catalog Name": catalog,
+                    "Schema Name": schema,
+                    "Table Name": i.get("name"),
+                    "Table Full Name": i.get("fullName"),
+                    "Storage Location": i.get("storageLocation"),
+                    "Table Type": i.get("tableType"),
+                    "Data Source Format": i.get("dataSourceFormat"),
+                }
+            )
 
-            dfs.append(pd.DataFrame(new_data, index=[0]))
-
-    if dfs:
-        df = pd.concat(dfs, ignore_index=True)
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df

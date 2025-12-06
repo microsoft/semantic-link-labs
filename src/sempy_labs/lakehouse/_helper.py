@@ -11,6 +11,7 @@ from sempy_labs._helper_functions import (
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 import os
+import json
 
 
 @log
@@ -51,9 +52,46 @@ def is_v_ordered(
     )
     ds_schema = ds.dataset(table_path).schema.metadata
 
-    return any(b"vorder" in key for key in ds_schema.keys())
+    if ds_schema:
+        return any(b"vorder" in key for key in ds_schema.keys())
+
+    delta_log_path = os.path.join(table_path, "_delta_log")
+
+    def read_vorder_tag(delta_log_path):
+        json_files = sorted(
+            [f for f in os.listdir(delta_log_path) if f.endswith(".json")], reverse=True
+        )
+
+        if not json_files:
+            return False
+
+        latest_file = os.path.join(delta_log_path, json_files[0])
+
+        with open(latest_file, "r") as f:
+            all_data = [
+                json.loads(line) for line in f if line.strip()
+            ]  # one dict per line
+            for data in all_data:
+                if "metaData" in data:
+                    return (
+                        data.get("metaData", {})
+                        .get("configuration", {})
+                        .get("delta.parquet.vorder.enabled", "false")
+                        == "true"
+                    )
+
+            # If no metaData, fall back to commitInfo
+            for data in all_data:
+                if "commitInfo" in data:
+                    tags = data["commitInfo"].get("tags", {})
+                    return tags.get("VORDER", "false").lower() == "true"
+
+        return False  # Default if not found
+
+    return read_vorder_tag(delta_log_path)
 
 
+@log
 def delete_lakehouse(
     lakehouse: str | UUID, workspace: Optional[str | UUID] = None
 ) -> None:
@@ -77,6 +115,7 @@ def delete_lakehouse(
     delete_item(item=lakehouse, item_type="lakehouse", workspace=workspace)
 
 
+@log
 def update_lakehouse(
     name: Optional[str] = None,
     description: Optional[str] = None,

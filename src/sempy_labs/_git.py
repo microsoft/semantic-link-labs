@@ -2,13 +2,17 @@ import pandas as pd
 import sempy_labs._icons as icons
 from typing import Optional, List
 from sempy_labs._helper_functions import (
+    _update_dataframe_datatypes,
+    resolve_workspace_id,
     resolve_workspace_name_and_id,
     _base_api,
     _create_dataframe,
 )
 from uuid import UUID
+from sempy._utils._log import log
 
 
+@log
 def connect_workspace_to_azure_dev_ops(
     organization_name: str,
     project_name: str,
@@ -64,6 +68,7 @@ def connect_workspace_to_azure_dev_ops(
     )
 
 
+@log
 def connect_workspace_to_github(
     owner_name: str,
     repository_name: str,
@@ -125,6 +130,7 @@ def connect_workspace_to_github(
     )
 
 
+@log
 def disconnect_workspace_from_git(workspace: Optional[str | UUID] = None):
     """
     Disconnects a workspace from a git repository.
@@ -148,11 +154,12 @@ def disconnect_workspace_from_git(workspace: Optional[str | UUID] = None):
     )
 
 
+@log
 def get_git_status(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Obtains the Git status of items in the workspace, that can be committed to Git.
 
-    This is a wrapper function for the following API: `Git - Get Status <https://learn.microsoft.com/rest/api/fabric/core/git/get-status>.
+    This is a wrapper function for the following API: `Git - Get Status <https://learn.microsoft.com/rest/api/fabric/core/git/get-status>`_.
 
     Parameters
     ----------
@@ -167,21 +174,21 @@ def get_git_status(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing the Git status of items in the workspace.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
 
-    df = pd.DataFrame(
-        columns=[
-            "Workspace Head",
-            "Remote Commit Hash",
-            "Object ID",
-            "Logical ID",
-            "Item Type",
-            "Item Name",
-            "Workspace Change",
-            "Remote Change",
-            "Conflict Type",
-        ]
-    )
+    columns = {
+        "Workspace Head": "str",
+        "Remote Commit Hash": "str",
+        "Object ID": "str",
+        "Logical ID": "str",
+        "Item Type": "str",
+        "Item Name": "str",
+        "Workspace Change": "str",
+        "Remote Change": "str",
+        "Conflict Type": "str",
+    }
+
+    df = _create_dataframe(columns=columns)
 
     result = _base_api(
         request=f"/v1/workspaces/{workspace_id}/git/status",
@@ -189,26 +196,32 @@ def get_git_status(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         status_codes=None,
     )
 
+    rows = []
     for changes in result.get("changes", []):
         item_metadata = changes.get("itemMetadata", {})
         item_identifier = item_metadata.get("itemIdentifier", {})
 
-        new_data = {
-            "Workspace Head": result.get("workspaceHead"),
-            "Remote Commit Hash": result.get("remoteCommitHash"),
-            "Object ID": item_identifier.get("objectId"),
-            "Logical ID": item_identifier.get("logicalId"),
-            "Item Type": item_metadata.get("itemType"),
-            "Item Name": item_metadata.get("displayName"),
-            "Remote Change": changes.get("remoteChange"),
-            "Workspace Change": changes.get("workspaceChange"),
-            "Conflict Type": changes.get("conflictType"),
-        }
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+        rows.append(
+            {
+                "Workspace Head": result.get("workspaceHead"),
+                "Remote Commit Hash": result.get("remoteCommitHash"),
+                "Object ID": item_identifier.get("objectId"),
+                "Logical ID": item_identifier.get("logicalId"),
+                "Item Type": item_metadata.get("itemType"),
+                "Item Name": item_metadata.get("displayName"),
+                "Remote Change": changes.get("remoteChange"),
+                "Workspace Change": changes.get("workspaceChange"),
+                "Conflict Type": changes.get("conflictType"),
+            }
+        )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=columns.keys())
 
     return df
 
 
+@log
 def get_git_connection(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Obtains the Git status of items in the workspace, that can be committed to Git.
@@ -228,27 +241,28 @@ def get_git_connection(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing the Git status of items in the workspace.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
 
-    df = pd.DataFrame(
-        columns=[
-            "Organization Name",
-            "Project Name",
-            "Git Provider Type",
-            "Repository Name",
-            "Branch Name",
-            "Directory Name",
-            "Workspace Head",
-            "Last Sync Time",
-            "Git Connection State",
-        ]
-    )
+    columns = {
+        "Organization Name": "str",
+        "Project Name": "str",
+        "Git Provider Type": "str",
+        "Repository Name": "str",
+        "Branch Name": "str",
+        "Directory Name": "str",
+        "Workspace Head": "str",
+        "Last Sync Time": "datetime",
+        "Git Connection State": "str",
+    }
+
+    df = _create_dataframe(columns=columns)
 
     response = _base_api(request=f"/v1/workspaces/{workspace_id}/git/connection")
 
     r = response.json()
     provider_details = r.get("gitProviderDetails", {})
     sync_details = r.get("gitSyncDetails", {})
+
     new_data = {
         "Organization Name": provider_details.get("organizationName"),
         "Project Name": provider_details.get("projectName"),
@@ -260,11 +274,13 @@ def get_git_connection(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         "Last Sync Time": sync_details.get("lastSyncTime"),
         "Git Connection State": r.get("gitConnectionState"),
     }
-    df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    df = pd.DataFrame([new_data], columns=columns.keys())
+    _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
 
+@log
 def initialize_git_connection(workspace: Optional[str | UUID] = None) -> str:
     """
     Initializes a connection for a workspace that is connected to Git.
@@ -300,6 +316,7 @@ def initialize_git_connection(workspace: Optional[str | UUID] = None) -> str:
     return response_json.get("remoteCommitHash")
 
 
+@log
 def commit_to_git(
     comment: str,
     item_ids: UUID | List[UUID] = None,
@@ -368,6 +385,7 @@ def commit_to_git(
         )
 
 
+@log
 def update_from_git(
     remote_commit_hash: str,
     conflict_resolution_policy: str,
@@ -435,6 +453,7 @@ def update_from_git(
     )
 
 
+@log
 def get_my_git_credentials(
     workspace: Optional[str | UUID] = None,
 ) -> pd.DataFrame:
@@ -456,7 +475,7 @@ def get_my_git_credentials(
         A pandas dataframe showing the user's Git credentials configuration details.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
 
     columns = {
         "Source": "string",
@@ -471,11 +490,12 @@ def get_my_git_credentials(
         "Source": r.get("source"),
         "Connection Id": r.get("connectionId"),
     }
-    df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+    df = pd.DataFrame([new_data], columns=columns.keys())
 
     return df
 
 
+@log
 def update_my_git_credentials(
     source: str,
     connection_id: Optional[UUID] = None,

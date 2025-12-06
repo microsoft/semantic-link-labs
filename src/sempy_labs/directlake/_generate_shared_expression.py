@@ -1,4 +1,4 @@
-from sempy_labs._helper_functions import (
+from .._helper_functions import (
     resolve_workspace_name_and_id,
     _base_api,
     resolve_lakehouse_name_and_id,
@@ -8,8 +8,10 @@ from sempy_labs._helper_functions import (
 from typing import Optional
 import sempy_labs._icons as icons
 from uuid import UUID
+from sempy._utils._log import log
 
 
+@log
 def generate_shared_expression(
     item_name: Optional[str] = None,
     item_type: str = "Lakehouse",

@@ -3,6 +3,7 @@ import pandas as pd
 from sempy_labs._helper_functions import (
     resolve_item_name_and_id,
     resolve_lakehouse_name_and_id,
+    resolve_workspace_id,
     resolve_workspace_name_and_id,
     _base_api,
     _create_dataframe,
@@ -229,6 +230,7 @@ def create_shortcut(
         method="post",
         payload=payload,
         status_codes=201,
+        client="fabric_sp",
     )
     print(
         f"{icons.green_dot} The shortcut '{shortcutActualName}' was created in the '{lakehouse_name}' lakehouse within"
@@ -236,6 +238,7 @@ def create_shortcut(
     )
 
 
+@log
 def delete_shortcut(
     shortcut_name: str,
     shortcut_path: str = "Tables",
@@ -280,11 +283,14 @@ def delete_shortcut(
     )
 
 
+@log
 def reset_shortcut_cache(workspace: Optional[str | UUID] = None):
     """
     Deletes any cached files that were stored while reading from shortcuts.
 
     This is a wrapper function for the following API: `OneLake Shortcuts - Reset Shortcut Cache <https://learn.microsoft.com/rest/api/fabric/core/onelake-shortcuts/reset-shortcut-cache>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -299,6 +305,7 @@ def reset_shortcut_cache(workspace: Optional[str | UUID] = None):
     _base_api(
         request=f"/v1/workspaces/{workspace_id}/onelake/resetShortcutCache",
         method="post",
+        client="fabric_sp",
         lro_return_status_code=True,
         status_codes=None,
     )
@@ -336,7 +343,7 @@ def list_shortcuts(
         A pandas dataframe showing all the shortcuts which exist in the specified lakehouse.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
     (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
         lakehouse=lakehouse, workspace=workspace_id
     )
@@ -377,6 +384,7 @@ def list_shortcuts(
     responses = _base_api(
         request=url,
         uses_pagination=True,
+        client="fabric_sp",
     )
 
     sources = {
@@ -389,6 +397,7 @@ def list_shortcuts(
         "S3Compatible": "s3Compatible",
     }
 
+    rows = []
     for r in responses:
         for i in r.get("value", []):
             tgt = i.get("target", {})
@@ -400,41 +409,52 @@ def list_shortcuts(
             source_item_id = tgt.get(sources.get(tgt_type), {}).get("itemId")
             bucket = tgt.get(sources.get(tgt_type), {}).get("bucket")
             source_workspace_name = (
-                resolve_workspace_name(workspace_id=source_workspace_id)
+                resolve_workspace_name(
+                    workspace_id=source_workspace_id, throw_error=False
+                )
                 if source_workspace_id is not None
                 else None
             )
             # Cache and use it to getitem type and name
             source_item_type = None
             source_item_name = None
-            dfI = source_items_df[
-                source_items_df["Workspace Id"] == source_workspace_id
-            ]
-            if dfI.empty:
-                dfI = fabric.list_items(workspace=source_workspace_id)
-                source_items_df = pd.concat([source_items_df, dfI], ignore_index=True)
+            try:
+                dfI = source_items_df[
+                    source_items_df["Workspace Id"] == source_workspace_id
+                ]
+                if dfI.empty:
+                    dfI = fabric.list_items(workspace=source_workspace_id)
+                    source_items_df = pd.concat(
+                        [source_items_df, dfI], ignore_index=True
+                    )
 
-            dfI_filt = dfI[dfI["Id"] == source_item_id]
-            if not dfI_filt.empty:
-                source_item_type = dfI_filt["Type"].iloc[0]
-                source_item_name = dfI_filt["Display Name"].iloc[0]
+                dfI_filt = dfI[dfI["Id"] == source_item_id]
+                if not dfI_filt.empty:
+                    source_item_type = dfI_filt["Type"].iloc[0]
+                    source_item_name = dfI_filt["Display Name"].iloc[0]
+            except Exception:
+                pass
 
-            new_data = {
-                "Shortcut Name": i.get("name"),
-                "Shortcut Path": i.get("path"),
-                "Source Type": tgt_type,
-                "Source Workspace Id": source_workspace_id,
-                "Source Workspace Name": source_workspace_name,
-                "Source Item Id": source_item_id,
-                "Source Item Name": source_item_name,
-                "Source Item Type": source_item_type,
-                "OneLake Path": tgt.get(sources.get("oneLake"), {}).get("path"),
-                "Connection Id": connection_id,
-                "Location": location,
-                "Bucket": bucket,
-                "SubPath": sub_path,
-                "Source Properties Raw": str(tgt),
-            }
-            df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            rows.append(
+                {
+                    "Shortcut Name": i.get("name"),
+                    "Shortcut Path": i.get("path"),
+                    "Source Type": tgt_type,
+                    "Source Workspace Id": source_workspace_id,
+                    "Source Workspace Name": source_workspace_name,
+                    "Source Item Id": source_item_id,
+                    "Source Item Name": source_item_name,
+                    "Source Item Type": source_item_type,
+                    "OneLake Path": tgt.get(sources.get("oneLake"), {}).get("path"),
+                    "Connection Id": connection_id,
+                    "Location": location,
+                    "Bucket": bucket,
+                    "SubPath": sub_path,
+                    "Source Properties Raw": str(tgt),
+                }
+            )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df

@@ -5,8 +5,10 @@ from sempy_labs._helper_functions import (
 from typing import Optional
 import sempy_labs._icons as icons
 from uuid import UUID
+from sempy._utils._log import log
 
 
+@log
 def provision_workspace_identity(workspace: Optional[str | UUID] = None):
     """
     Provisions a workspace identity for a workspace.
@@ -38,6 +40,7 @@ def provision_workspace_identity(workspace: Optional[str | UUID] = None):
     )
 
 
+@log
 def deprovision_workspace_identity(workspace: Optional[str | UUID] = None):
     """
     Deprovisions a workspace identity for a workspace.

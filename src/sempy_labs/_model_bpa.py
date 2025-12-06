@@ -300,6 +300,10 @@ def run_model_bpa(
                 tom.all_partitions(),
                 lambda obj: format_dax_object_name(obj.Parent.Name, obj.Name),
             ),
+            "Function": (
+                tom.all_functions(),
+                lambda obj: obj.Name,
+            ),
         }
 
         for i, r in rules.iterrows():
@@ -320,6 +324,8 @@ def run_model_bpa(
                         x = ["Model"]
                 elif scope == "Measure":
                     x = [nm(obj) for obj in tom.all_measures() if expr(obj, tom)]
+                elif scope == "Function":
+                    x = [nm(obj) for obj in tom.all_functions() if expr(obj, tom)]
                 elif scope == "Column":
                     x = [nm(obj) for obj in tom.all_columns() if expr(obj, tom)]
                 elif scope == "Partition":
@@ -391,7 +397,7 @@ def run_model_bpa(
         lakeT = get_lakehouse_tables()
         lakeT_filt = lakeT[lakeT["Table Name"] == delta_table_name]
 
-        dfExport["Severity"].replace(icons.severity_mapping, inplace=True)
+        dfExport["Severity"] = dfExport["Severity"].replace(icons.severity_mapping)
 
         if len(lakeT_filt) == 0:
             runId = 1

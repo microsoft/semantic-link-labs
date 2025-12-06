@@ -32,6 +32,7 @@ import sempy_labs._icons as icons
 from tqdm.auto import tqdm
 
 
+@log
 def get_parquet_file_infos(path):
 
     import notebookutils

@@ -1,34 +1,43 @@
-from sempy_labs.lakehouse._get_lakehouse_columns import (
+from ._get_lakehouse_columns import (
     get_lakehouse_columns,
 )
-from sempy_labs.lakehouse._get_lakehouse_tables import (
+from ._get_lakehouse_tables import (
     get_lakehouse_tables,
 )
-from sempy_labs.lakehouse._lakehouse import (
+from ._lakehouse import (
     lakehouse_attached,
     optimize_lakehouse_tables,
     vacuum_lakehouse_tables,
     run_table_maintenance,
+    list_lakehouses,
 )
-from sempy_labs.lakehouse._shortcuts import (
+from ._shortcuts import (
     # create_shortcut,
     create_shortcut_onelake,
     delete_shortcut,
     reset_shortcut_cache,
     list_shortcuts,
 )
-from sempy_labs.lakehouse._blobs import (
+from ._blobs import (
     recover_lakehouse_object,
     list_blobs,
 )
-from sempy_labs.lakehouse._livy_sessions import (
+from ._livy_sessions import (
     list_livy_sessions,
 )
-from sempy_labs.lakehouse._helper import (
+from ._helper import (
     is_v_ordered,
     delete_lakehouse,
     update_lakehouse,
     load_table,
+)
+from ._materialized_lake_views import (
+    refresh_materialized_lake_views,
+)
+from ._schemas import (
+    list_schemas,
+    schema_exists,
+    is_schema_enabled,
 )
 
 __all__ = [
@@ -50,4 +59,9 @@ __all__ = [
     "delete_lakehouse",
     "update_lakehouse",
     "load_table",
+    "refresh_materialized_lake_views",
+    "list_lakehouses",
+    "list_schemas",
+    "schema_exists",
+    "is_schema_enabled",
 ]

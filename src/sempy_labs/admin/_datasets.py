@@ -9,8 +9,10 @@ from sempy_labs._helper_functions import (
 )
 from uuid import UUID
 import sempy_labs._icons as icons
+from sempy._utils._log import log
 
 
+@log
 def list_datasets(
     top: Optional[int] = None,
     filter: Optional[str] = None,
@@ -52,8 +54,8 @@ def list_datasets(
         "Content Provider Type": "string",
         "Create Report Embed URL": "string",
         "QnA Embed URL": "string",
-        "Upstream Datasets": "string",
-        "Users": "string",
+        "Upstream Datasets": "list",
+        "Users": "list",
         "Is In Place Sharing Enabled": "bool",
         "Workspace Id": "string",
         "Auto Sync Read Only Replicas": "bool",
@@ -111,12 +113,12 @@ def list_datasets(
 
     if rows:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
-
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
 
+@log
 def _resolve_dataset_id(dataset: str | UUID) -> str:
     if _is_valid_uuid(dataset):
         return dataset
@@ -128,6 +130,7 @@ def _resolve_dataset_id(dataset: str | UUID) -> str:
         return df_filt["Dataset Id"].iloc[0]
 
 
+@log
 def list_dataset_users(dataset: str | UUID) -> pd.DataFrame:
     """
     Shows a list of users that have access to the specified dataset.
@@ -178,7 +181,6 @@ def list_dataset_users(dataset: str | UUID) -> pd.DataFrame:
 
     if rows:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
-
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df

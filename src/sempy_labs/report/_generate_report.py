@@ -11,13 +11,14 @@ from sempy_labs._helper_functions import (
     _update_dataframe_datatypes,
     _base_api,
     resolve_item_id,
-    get_item_definition,
+    _get_item_definition,
 )
 import sempy_labs._icons as icons
 from sempy._utils._log import log
 from uuid import UUID
 
 
+@log
 def create_report_from_reportjson(
     report: str,
     dataset: str | UUID,
@@ -29,6 +30,8 @@ def create_report_from_reportjson(
     Creates a report based on a report.json file (and an optional themes.json file).
 
     This is a wrapper function for the following API: `Items - Create Report <https://learn.microsoft.com/rest/api/fabric/report/items/create-report>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -112,6 +115,7 @@ def create_report_from_reportjson(
         payload=request_body,
         lro_return_status_code=True,
         status_codes=[201, 202],
+        client="fabric_sp",
     )
 
     print(
@@ -119,6 +123,7 @@ def create_report_from_reportjson(
     )
 
 
+@log
 def update_report_from_reportjson(
     report: str | UUID, report_json: dict, workspace: Optional[str | UUID] = None
 ):
@@ -126,6 +131,8 @@ def update_report_from_reportjson(
     Updates a report based on a report.json file.
 
     This is a wrapper function for the following API: `Items - Update Report Definition <https://learn.microsoft.com/rest/api/fabric/report/items/update-report-definition>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -171,6 +178,7 @@ def update_report_from_reportjson(
         payload=payload,
         lro_return_status_code=True,
         status_codes=None,
+        client="fabric_sp",
     )
 
     print(
@@ -189,6 +197,8 @@ def get_report_definition(
 
     This is a wrapper function for the following API: `Items - Get Report Definition <https://learn.microsoft.com/rest/api/fabric/report/items/get-report-definition>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     report : str | uuid.UUID
@@ -206,7 +216,7 @@ def get_report_definition(
         The collection of report definition files within a pandas dataframe.
     """
 
-    return get_item_definition(
+    return _get_item_definition(
         item=report,
         type="Report",
         workspace=workspace,

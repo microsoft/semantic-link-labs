@@ -4,26 +4,27 @@ import pandas as pd
 import re
 from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 from sempy_labs._helper_functions import (
-    resolve_lakehouse_name,
-    resolve_lakehouse_id,
     retry,
     generate_guid,
     save_as_delta_table,
+    resolve_lakehouse_name_and_id,
+    resolve_workspace_name_and_id,
 )
 from sempy_labs.tom import connect_semantic_model
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
+from uuid import UUID
 
 
 @log
 def migrate_calc_tables_to_lakehouse(
     dataset: str,
     new_dataset: str,
-    workspace: Optional[str] = None,
-    new_dataset_workspace: Optional[str] = None,
-    lakehouse: Optional[str] = None,
-    lakehouse_workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
+    new_dataset_workspace: Optional[str | UUID] = None,
+    lakehouse: Optional[str | UUID] = None,
+    lakehouse_workspace: Optional[str | UUID] = None,
 ):
     """
     Creates delta tables in your lakehouse based on the DAX expression of a calculated table in an import/DirectQuery semantic model.
@@ -35,18 +36,18 @@ def migrate_calc_tables_to_lakehouse(
         Name of the import/DirectQuery semantic model.
     new_dataset : str
         Name of the Direct Lake semantic model.
-    workspace : str, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name in which the import/DirectQuery semantic model exists.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    new_dataset_workspace : str
+    new_dataset_workspace : str | uuid.UUID
         The Fabric workspace name in which the Direct Lake semantic model will be created.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    lakehouse : str, default=None
+    lakehouse : str | uuid.UUID, default=None
         The Fabric lakehouse used by the Direct Lake semantic model.
         Defaults to None which resolves to the lakehouse attached to the notebook.
-    lakehouse_workspace : str, default=None
+    lakehouse_workspace : str | uuid.UUID, default=None
         The Fabric workspace used by the lakehouse.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -57,22 +58,16 @@ def migrate_calc_tables_to_lakehouse(
             f"{icons.red_dot} The 'dataset' and 'new_dataset' parameters are both set to '{dataset}'. These parameters must be set to different values."
         )
 
-    workspace = fabric.resolve_workspace_name(workspace)
-
-    if new_dataset_workspace is None:
-        new_dataset_workspace = workspace
-
-    if lakehouse_workspace is None:
-        lakehouse_workspace = new_dataset_workspace
-        lakehouse_workspace_id = fabric.resolve_workspace_id(lakehouse_workspace)
-    else:
-        lakehouse_workspace_id = fabric.resolve_workspace_id(lakehouse_workspace)
-
-    if lakehouse is None:
-        lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse = resolve_lakehouse_name(lakehouse_id, lakehouse_workspace)
-    else:
-        lakehouse_id = resolve_lakehouse_id(lakehouse, lakehouse_workspace)
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (new_dataset_workspace_name, new_dataset_workspace_id) = (
+        resolve_workspace_name_and_id(new_dataset_workspace)
+    )
+    (lakehouse_workspace_id, lakehouse_workspace_name) = resolve_workspace_name_and_id(
+        lakehouse_workspace
+    )
+    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+        lakehouse, lakehouse_workspace
+    )
 
     dfP = fabric.list_partitions(dataset=dataset, workspace=workspace)
     dfP_filt = dfP[(dfP["Source Type"] == "Calculated")]
@@ -90,7 +85,7 @@ def migrate_calc_tables_to_lakehouse(
 
         if dtName in lakeTables["Table Name"].values:
             print(
-                f"{icons.red_dot} The '{tName}' table already exists as '{dtName}' in the '{lakehouse}' lakehouse in the '{workspace}' workspace."
+                f"{icons.red_dot} The '{tName}' table already exists as '{dtName}' in the '{lakehouse_name}' lakehouse in the '{lakehouse_workspace_name}' workspace."
             )
             killFunction = True
 
@@ -99,7 +94,7 @@ def migrate_calc_tables_to_lakehouse(
 
     if len(dfP_filt) == 0:
         print(
-            f"{icons.yellow_dot} The '{dataset}' semantic model in the '{workspace}' workspace has no calculated tables."
+            f"{icons.yellow_dot} The '{dataset}' semantic model in the '{workspace_name}' workspace has no calculated tables."
         )
         return
 
@@ -175,7 +170,6 @@ def migrate_calc_tables_to_lakehouse(
                                             if str(c.Type) == "Calculated"
                                             and c.Name == new_column_name
                                         )
-
                                     if dataType == "Int64":
                                         df[new_column_name] = df[
                                             new_column_name
@@ -197,7 +191,7 @@ def migrate_calc_tables_to_lakehouse(
 
                                 save_as_delta_table(
                                     dataframe=df,
-                                    table_name=delta_table_name,
+                                    delta_table_name=delta_table_name,
                                     lakehouse=lakehouse,
                                     workspace=lakehouse_workspace,
                                     write_mode="overwrite",
@@ -231,20 +225,21 @@ def migrate_calc_tables_to_lakehouse(
 
                                 print(
                                     f"{icons.green_dot} Calculated table '{t.Name}' has been created as delta table '{delta_table_name.lower()}' "
-                                    f"in the '{lakehouse}' lakehouse within the '{lakehouse_workspace}' workspace."
+                                    f"in the '{lakehouse_name}' lakehouse within the '{lakehouse_workspace_name}' workspace."
                                 )
-                            except Exception:
+                            except Exception as e:
                                 print(
                                     f"{icons.red_dot} Failed to create calculated table '{t.Name}' as a delta table in the lakehouse."
                                 )
+                                print(e)
 
 
 @log
 def migrate_field_parameters(
     dataset: str,
     new_dataset: str,
-    workspace: Optional[str] = None,
-    new_dataset_workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
+    new_dataset_workspace: Optional[str | UUID] = None,
 ):
     """
     Migrates field parameters from one semantic model to another.
@@ -255,11 +250,11 @@ def migrate_field_parameters(
         Name of the import/DirectQuery semantic model.
     new_dataset : str
         Name of the Direct Lake semantic model.
-    workspace : str, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name in which the import/DirectQuery semantic model exists.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    new_dataset_workspace : str
+    new_dataset_workspace : str | uuid.UUID, default=None
         The Fabric workspace name in which the Direct Lake semantic model will be created.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -270,15 +265,11 @@ def migrate_field_parameters(
     sempy.fabric._client._utils._init_analysis_services()
     import Microsoft.AnalysisServices.Tabular as TOM
 
-    if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace = fabric.resolve_workspace_name(workspace_id)
-
-    if new_dataset_workspace is None:
-        new_dataset_workspace = workspace
-
     icons.sll_tags.append("DirectLakeMigration")
     fabric.refresh_tom_cache(workspace=workspace)
+    (new_dataset_workspace_name, new_dataset_workspace_id) = (
+        resolve_workspace_name_and_id(new_dataset_workspace)
+    )
 
     dfC = fabric.list_columns(dataset=dataset, workspace=workspace)
     dfC["Column Object"] = format_dax_object_name(dfC["Table Name"], dfC["Column Name"])
@@ -399,7 +390,7 @@ def migrate_field_parameters(
                 tom.model.Tables[tName].Columns["Value3"].Name = col3
 
                 print(
-                    f"{icons.green_dot} The '{tName}' table has been added as a field parameter to the '{new_dataset}' semantic model in the '{new_dataset_workspace}' workspace."
+                    f"{icons.green_dot} The '{tName}' table has been added as a field parameter to the '{new_dataset}' semantic model in the '{new_dataset_workspace_name}' workspace."
                 )
             except Exception:
                 print(
