@@ -23,7 +23,7 @@ classifiers = [
 license= { text = "MIT License" }
 
 dependencies = [
-    "semantic-link-sempy>=0.12.2",
+    "semantic-link-sempy>=0.13.0",
     "anytree",
     "polib",
     "jsonpath_ng",

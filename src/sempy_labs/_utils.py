@@ -75,4 +75,5 @@ items = {
     "GraphQuerySet": "GraphQuerySets",
     "OperationsAgent": "OperationsAgents",
     "SnowflakeDatabase": "snowflakeDatabases",
+    "CosmosDBDatabase": "cosmosDbDatabases",
 }
