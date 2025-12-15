@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Literal, Optional, List
 import sempy_labs._icons as icons
 import pandas as pd
 from uuid import UUID
@@ -205,6 +205,8 @@ def create_domain(
 
     This is a wrapper function for the following API: `Domains - Create Domain <https://learn.microsoft.com/rest/api/fabric/admin/domains/create-domain>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     domain_name : str
@@ -232,7 +234,11 @@ def create_domain(
         payload["parentDomainId"] = parent_domain_id
 
     _base_api(
-        request="/v1/admin/domains", method="post", payload=payload, status_codes=201
+        request="/v1/admin/domains",
+        method="post",
+        payload=payload,
+        status_codes=201,
+        client="fabric_sp",
     )
 
     print(f"{icons.green_dot} The '{domain_name}' domain has been created.")
@@ -244,6 +250,8 @@ def delete_domain(domain: Optional[str | UUID], **kwargs):
     Deletes a domain.
 
     This is a wrapper function for the following API: `Domains - Delete Domain <https://learn.microsoft.com/rest/api/fabric/admin/domains/delete-domain>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -261,7 +269,9 @@ def delete_domain(domain: Optional[str | UUID], **kwargs):
         raise ValueError(f"{icons.red_dot} Please provide a domain.")
 
     domain_id = resolve_domain_id(domain)
-    _base_api(request=f"/v1/admin/domains/{domain_id}", method="delete")
+    _base_api(
+        request=f"/v1/admin/domains/{domain_id}", method="delete", client="fabric_sp"
+    )
 
     print(f"{icons.green_dot} The '{domain}' domain has been deleted.")
 
@@ -277,6 +287,8 @@ def update_domain(
     Updates a domain's properties.
 
     This is a wrapper function for the following API: `Domains - Update Domain <https://learn.microsoft.com/rest/api/fabric/admin/domains/update-domain>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -314,7 +326,12 @@ def update_domain(
     if contributors_scope is not None:
         payload["contributorsScope"] = contributors_scope
 
-    _base_api(request=f"/v1/admin/domains/{domain_id}", method="patch", payload=payload)
+    _base_api(
+        request=f"/v1/admin/domains/{domain_id}",
+        method="patch",
+        payload=payload,
+        client="fabric_sp",
+    )
 
     print(f"{icons.green_dot} The '{domain_name}' domain has been updated.")
 
@@ -329,6 +346,8 @@ def assign_domain_workspaces_by_capacities(
     Assigns all workspaces that reside on the specified capacities to the specified domain.
 
     This is a wrapper function for the following API: `Domains - Assign Domain Workspaces By Capacities <https://learn.microsoft.com/rest/api/fabric/admin/domains/assign-domain-workspaces-by-capacities>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -381,6 +400,7 @@ def assign_domain_workspaces_by_capacities(
         payload=payload,
         lro_return_status_code=True,
         status_codes=202,
+        client="fabric_sp",
     )
 
     print(
@@ -394,6 +414,8 @@ def assign_domain_workspaces(domain: str | UUID, workspace_names: str | List[str
     Assigns workspaces to the specified domain by workspace.
 
     This is a wrapper function for the following API: `Domains - Assign Domain Workspaces By Ids <https://learn.microsoft.com/rest/api/fabric/admin/domains/assign-domain-workspaces-by-ids>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -433,6 +455,7 @@ def assign_domain_workspaces(domain: str | UUID, workspace_names: str | List[str
         request=f"/v1/admin/domains/{domain_id}/assignWorkspaces",
         method="post",
         payload=payload,
+        client="fabric_sp",
     )
 
     print(
@@ -447,6 +470,8 @@ def unassign_all_domain_workspaces(domain: str | UUID):
 
     This is a wrapper function for the following API: `Domains - Unassign All Domain Workspaces <https://learn.microsoft.com/rest/api/fabric/admin/domains/unassign-all-domain-workspaces>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     domain : str | uuid.UUID
@@ -458,8 +483,7 @@ def unassign_all_domain_workspaces(domain: str | UUID):
     _base_api(
         request=f"/v1/admin/domains/{domain_id}/unassignAllWorkspaces",
         method="post",
-        lro_return_status_code=True,
-        status_codes=200,
+        client="fabric_sp",
     )
 
     print(
@@ -476,6 +500,8 @@ def unassign_domain_workspaces(
     Unassigns workspaces from the specified domain by workspace.
 
     This is a wrapper function for the following API: `Domains - Unassign Domain Workspaces By Ids <https://learn.microsoft.com/rest/api/fabric/admin/domains/unassign-domain-workspaces-by-ids>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -515,8 +541,47 @@ def unassign_domain_workspaces(
         request=f"/v1/admin/domains/{domain_id}/unassignWorkspaces",
         method="post",
         payload=payload,
+        client="fabric_sp",
     )
 
     print(
         f"{icons.green_dot} The {workspace_names} workspaces assigned to the '{domain}' domain have been unassigned."
+    )
+
+
+@log
+def sync_role_assignments_to_subdomains(
+    domain: str | UUID, role: Literal["Admin", "Contributor"]
+):
+    """
+    Sync the role assignments from the specified domain to its subdomains.
+
+    This is a wrapper function for the following API: `Domains - Sync Role Assignments To Subdomains <https://learn.microsoft.com/rest/api/fabric/admin/domains/sync-role-assignments-to-subdomains>`_.
+
+    Parameters
+    ----------
+    domain : str | uuid.UUID
+        The domain name or ID.
+    role : Literal["Admin", "Contributor"]
+        The role to sync. Valid options: 'Admin', 'Contributor'.
+    """
+
+    role = role.capitalize()
+    valid_roles = ["Admin", "Contributor"]
+    if role not in valid_roles:
+        raise ValueError(f"{icons.red_dot} Invalid role. Valid options: {valid_roles}.")
+
+    domain_id = resolve_domain_id(domain)
+
+    payload = {"role": role}
+
+    _base_api(
+        request=f"/v1/admin/domains/{domain_id}/roleAssignments/syncToSubdomains",
+        method="post",
+        client="fabric_sp",
+        payload=payload,
+    )
+
+    print(
+        f"{icons.green_dot} The '{role}' role assignments for the '{domain}' domain have been synced to its subdomains."
     )

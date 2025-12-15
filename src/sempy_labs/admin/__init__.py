@@ -70,6 +70,7 @@ from ._domains import (
     resolve_domain_id,
     unassign_domain_workspaces,
     unassign_all_domain_workspaces,
+    sync_role_assignments_to_subdomains,
 )
 from ._items import (
     list_item_access_details,
@@ -167,4 +168,5 @@ __all__ = [
     "remove_sharing_links",
     "bulk_set_labels",
     "bulk_remove_labels",
+    "sync_role_assignments_to_subdomains",
 ]
