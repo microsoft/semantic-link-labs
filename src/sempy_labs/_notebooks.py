@@ -422,9 +422,9 @@ def search_notebooks(
                 status_codes=None,
                 lro_return_json=True,
             )
-            for part in definition.get("definition").get("parts"):
-                payload = _decode_b64(part["payload"])
-                if part["path"] in ("notebook-content.py", "notebook-content.sql"):
+            for part in definition.get("definition").get("parts", []):
+                payload = _decode_b64(part.get("payload", ""))
+                if part.get("path") in ("notebook-content.py", "notebook-content.sql"):
                     if search_string in payload:
                         rows.append(
                             {
