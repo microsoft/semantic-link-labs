@@ -177,6 +177,14 @@ def set_audit_actions_and_group(
         The name or ID of the item (Warehouse or SQLEndpoint).
     type : Literal['Warehouse', 'SQLEndpoint']
         The type of the item. Must be 'Warehouse' or 'SQLEndpoint'.
+    sql_audit_groups : List[str]
+        Set audit actions and groups request payload.
+        Example:
+        [
+        "SUCCESSFUL_DATABASE_AUTHENTICATION_GROUP",
+        "FAILED_DATABASE_AUTHENTICATION_GROUP",
+        "BATCH_COMPLETED_GROUP"
+        ]
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
