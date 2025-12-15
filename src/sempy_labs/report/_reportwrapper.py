@@ -790,7 +790,6 @@ class ReportWrapper:
                 hidden = flt.get("isHiddenInViewMode", False)
                 filter_type = flt.get("type", "Basic")
                 filter_used = True if "Where" in flt.get("filter", {}) else False
-                obj_display_name = flt.get("displayName")
 
                 entity_property_pairs = helper.find_entity_property_pairs(flt)
 
@@ -802,7 +801,7 @@ class ReportWrapper:
                             "Table Name": properties[0],
                             "Object Name": object_name,
                             "Object Type": properties[1],
-                            "Object Display Name": obj_display_name,
+                            "Object Display Name": flt.get("displayName", object_name),
                             "Hidden": hidden,
                             "Locked": locked,
                             "How Created": how_created,
@@ -866,7 +865,6 @@ class ReportWrapper:
                     hidden = flt.get("isHiddenInViewMode", False)
                     filter_type = flt.get("type", "Basic")
                     filter_used = True if "Where" in flt.get("filter", {}) else False
-                    obj_display_name = flt.get("displayName")
 
                     entity_property_pairs = helper.find_entity_property_pairs(flt)
 
@@ -880,7 +878,7 @@ class ReportWrapper:
                                 "Table Name": properties[0],
                                 "Object Name": object_name,
                                 "Object Type": properties[1],
-                                "Object Display Name": obj_display_name,
+                                "Object Display Name": flt.get("displayName", object_name),
                                 "Hidden": hidden,
                                 "Locked": locked,
                                 "How Created": how_created,
@@ -950,7 +948,6 @@ class ReportWrapper:
                     hidden = flt.get("isHiddenInViewMode", False)
                     filter_type = flt.get("type", "Basic")
                     filter_used = True if "Where" in flt.get("filter", {}) else False
-                    obj_display_name = flt.get("displayName")
 
                     entity_property_pairs = helper.find_entity_property_pairs(flt)
 
@@ -965,7 +962,7 @@ class ReportWrapper:
                                 "Table Name": properties[0],
                                 "Object Name": object_name,
                                 "Object Type": properties[1],
-                                "Object Display Name": obj_display_name,
+                                "Object Display Name": flt.get("displayName", object_name),
                                 "Hidden": hidden,
                                 "Locked": locked,
                                 "How Created": how_created,
@@ -1541,7 +1538,6 @@ class ReportWrapper:
                 obj_full = f"{table_name}.{object_name}"
                 is_agg = properties[2]
                 format_value = format_mapping.get(obj_full)
-                obj_display = obj_display_mapping.get(obj_full)
 
                 if is_agg:
                     for k, v in format_mapping.items():
@@ -1559,7 +1555,7 @@ class ReportWrapper:
                         "Sparkline": properties[4],
                         "Visual Calc": properties[3],
                         "Format": format_value,
-                        "Object Display Name": obj_display,
+                        "Object Display Name": obj_display_mapping.get(obj_full, object_name),
                     }
                 )
 
