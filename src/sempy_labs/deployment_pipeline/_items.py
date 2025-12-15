@@ -32,7 +32,7 @@ def resolve_deployment_pipeline_id(deployment_pipeline: str | UUID) -> UUID:
     if _is_valid_uuid(deployment_pipeline):
         return deployment_pipeline
     else:
-        dfP = list()
+        dfP = list_deployment_pipelines()
         dfP_filt = dfP[dfP["Deployment Pipeline Name"] == deployment_pipeline]
         if len(dfP_filt) == 0:
             raise ValueError(
