@@ -228,7 +228,7 @@ def add_user_to_workspace(
 
 
 @log
-def assign_workspace_to_capacity(
+def assign_to_capacity(
     capacity: str | UUID,
     workspace: Optional[str | UUID] = None,
     **kwargs,
@@ -274,7 +274,7 @@ def assign_workspace_to_capacity(
 
 
 @log
-def unassign_workspace_from_capacity(workspace: Optional[str | UUID] = None):
+def unassign_from_capacity(workspace: Optional[str | UUID] = None):
     """
     Unassigns a workspace from its assigned capacity.
 
@@ -304,7 +304,7 @@ def unassign_workspace_from_capacity(workspace: Optional[str | UUID] = None):
 
 
 @log
-def list_workspace_role_assignments(
+def list_role_assignments(
     workspace: Optional[str | UUID] = None,
 ) -> pd.DataFrame:
     """
@@ -391,7 +391,7 @@ def delete_workspace(workspace: Optional[str | UUID] = None):
 
 
 @log
-def get_workspace_network_communication_policy(
+def get_network_communication_policy(
     workspace: Optional[str | UUID] = None,
 ) -> pd.DataFrame:
     """
@@ -446,7 +446,7 @@ def get_workspace_network_communication_policy(
 
 
 @log
-def set_workspace_network_communication_policy(
+def set_network_communication_policy(
     inbound_policy: Literal["Allow", "Deny"],
     outbound_policy: Literal["Allow", "Deny"],
     workspace: Optional[str | UUID] = None,
@@ -509,7 +509,7 @@ def set_workspace_network_communication_policy(
 
 
 @log
-def get_workspace_git_outbound_policy(workspace: Optional[str | UUID] = None) -> str:
+def get_git_outbound_policy(workspace: Optional[str | UUID] = None) -> str:
     """
     Returns Git Outbound policy for the specified workspace.
     In cases the workspace restricts outbound policy, a workspace admin needs to allow the use of Git integration on the specified workspace.
@@ -541,7 +541,7 @@ def get_workspace_git_outbound_policy(workspace: Optional[str | UUID] = None) ->
 
 
 @log
-def set_workspace_git_outbound_policy(
+def set_git_outbound_policy(
     policy: Literal["Allow", "Deny"],
     workspace: Optional[str | UUID] = None,
 ):
@@ -592,4 +592,116 @@ def set_workspace_git_outbound_policy(
 
     print(
         f"{icons.green_dot} The Git outbound policy has been updated for the '{workspace_name}' workspace."
+    )
+
+
+@log
+def get_outbound_cloud_connection_rules(workspace: Optional[str | UUID] = None) -> dict:
+    """
+    Returns the cloud connection rules for the workspace enabled with Outbound Access Protection (OAP).
+
+    This is a wrapper function for the following API: `Workspaces - Get Outbound Cloud Connection Rules <https://learn.microsoft.com/rest/api/fabric/core/workspaces/get-outbound-cloud-connection-rules>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    dict
+        A dictionary showing the cloud connection rules for the workspace enabled with Outbound Access Protection (OAP).
+    """
+
+    workspace_id = resolve_workspace_id(workspace)
+    response = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/networking/communicationPolicy/outbound/connections",
+        client="fabric_sp",
+    )
+    return response.json()
+
+
+@log
+def get_outbound_gateway_rules(workspace: Optional[str | UUID] = None) -> dict:
+    """
+    Returns the gateway rules for the workspace enabled with Outbound Access Protection (OAP).
+
+    This is a wrapper function for the following API: `Workspaces - Get Outbound Gateway Rules <https://learn.microsoft.com/rest/api/fabric/core/workspaces/get-outbound-gateway-rules>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    dict
+        A dictionary showing the gateway rules for the workspace enabled with Outbound Access Protection (OAP).
+    """
+
+    workspace_id = resolve_workspace_id(workspace)
+    response = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/networking/communicationPolicy/outbound/gateways",
+        client="fabric_sp",
+    )
+    return response.json()
+
+
+# @log
+# def set_outbound_cloud_connection_rules():
+#    pass
+
+
+@log
+def set_outbound_gateway_rules(
+    default_action: Literal["Allow", "Deny"],
+    allowed_gateways: List[UUID],
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Sets the gateway rules for the workspace enabled with Outbound Access Protection (OAP).
+
+    This is a wrapper function for the following API: `Workspaces - Set Outbound Gateway Rules <https://learn.microsoft.com/rest/api/fabric/core/workspaces/set-outbound-gateway-rules>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    default_action : Literal['Allow', 'Deny']
+        The default action for outbound gateway communication policy.
+    allowed_gateways : List[uuid.UUID]
+        A list of allowed gateway IDs.
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    if default_action not in ["Allow", "Deny"]:
+        raise ValueError(
+            f"{icons.red_dot} The 'default_action' must be either 'Allow' or 'Deny'."
+        )
+    payload = {
+        "defaultAction": default_action,
+        "allowedGateways": [{"id": i} for i in allowed_gateways],
+    }
+
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/networking/communicationPolicy/outbound/gateways",
+        client="fabric_sp",
+        payload=payload,
+        method="put",
+    )
+
+    print(
+        f"{icons.green_dot} The outbound gateway rules have been updated for the '{workspace_name}' workspace."
     )
