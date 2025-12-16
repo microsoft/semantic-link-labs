@@ -772,6 +772,7 @@ class ReportWrapper:
             "Table Name": "str",
             "Object Name": "str",
             "Object Type": "str",
+            "Object Display Name": "str",
             "Hidden": "bool",
             "Locked": "bool",
             "How Created": "str",
@@ -800,6 +801,7 @@ class ReportWrapper:
                             "Table Name": properties[0],
                             "Object Name": object_name,
                             "Object Type": properties[1],
+                            "Object Display Name": flt.get("displayName", object_name),
                             "Hidden": hidden,
                             "Locked": locked,
                             "How Created": how_created,
@@ -841,6 +843,7 @@ class ReportWrapper:
             "Table Name": "str",
             "Object Name": "str",
             "Object Type": "str",
+            "Object Display Name": "str",
             "Hidden": "bool",
             "Locked": "bool",
             "How Created": "str",
@@ -875,6 +878,7 @@ class ReportWrapper:
                                 "Table Name": properties[0],
                                 "Object Name": object_name,
                                 "Object Type": properties[1],
+                                "Object Display Name": flt.get("displayName", object_name),
                                 "Hidden": hidden,
                                 "Locked": locked,
                                 "How Created": how_created,
@@ -918,6 +922,7 @@ class ReportWrapper:
             "Table Name": "str",
             "Object Name": "str",
             "Object Type": "str",
+            "Object Display Name": "str",
             "Hidden": "bool",
             "Locked": "bool",
             "How Created": "str",
@@ -957,6 +962,7 @@ class ReportWrapper:
                                 "Table Name": properties[0],
                                 "Object Name": object_name,
                                 "Object Type": properties[1],
+                                "Object Display Name": flt.get("displayName", object_name),
                                 "Hidden": hidden,
                                 "Locked": locked,
                                 "How Created": how_created,
@@ -1532,7 +1538,6 @@ class ReportWrapper:
                 obj_full = f"{table_name}.{object_name}"
                 is_agg = properties[2]
                 format_value = format_mapping.get(obj_full)
-                obj_display = obj_display_mapping.get(obj_full)
 
                 if is_agg:
                     for k, v in format_mapping.items():
@@ -1550,7 +1555,7 @@ class ReportWrapper:
                         "Sparkline": properties[4],
                         "Visual Calc": properties[3],
                         "Format": format_value,
-                        "Object Display Name": obj_display,
+                        "Object Display Name": obj_display_mapping.get(obj_full, object_name),
                     }
                 )
 
