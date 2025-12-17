@@ -40,14 +40,18 @@ def set_endorsement(
     token = notebookutils.credentials.getToken("pbi")
     headers = {"Authorization": f"Bearer {token}"}
     prefix = _get_url_prefix()
+    endorsement = endorsement.strip().lower()
 
-    endorsement = endorsement.capitalize()
-    if endorsement not in ["None", "Promoted"]:
+    endorsement_mapping = {
+        "none": 0,
+        "promoted": 1,
+    }
+
+    if endorsement not in endorsement_mapping:
         raise ValueError("Endorsement must be either 'None' or 'Promoted'.")
-    if endorsement == "None":
-        payload = {"stage": 0}
-    else:
-        payload = {"stage": 1}
+
+    stage = endorsement_mapping.get(endorsement)
+    payload = {"stage": stage}
 
     response = requests.put(
         url=f"{prefix}/metadata/gallery/reports/{report_id}",
