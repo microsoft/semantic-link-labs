@@ -218,6 +218,7 @@ def get_tables_mirroring_status(
         "Processed Bytes": "int",
         "Processed Rows": "int",
         "Last Sync Date": "datetime",
+        "Last Sync Latency In Seconds": "int",
     }
     df = _create_dataframe(columns=columns)
 
@@ -233,6 +234,7 @@ def get_tables_mirroring_status(
                     "Processed Bytes": m.get("processedBytes"),
                     "Processed Rows": m.get("processedRows"),
                     "Last Sync Date": m.get("lastSyncDateTime"),
+                    "Last Sync Latency In Seconds": m.get("lastSyncLatencyInSeconds"),
                 }
             )
 
