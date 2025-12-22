@@ -32,7 +32,7 @@ def resolve_deployment_pipeline_id(deployment_pipeline: str | UUID) -> UUID:
     if _is_valid_uuid(deployment_pipeline):
         return deployment_pipeline
     else:
-        dfP = list()
+        dfP = list_deployment_pipelines()
         dfP_filt = dfP[dfP["Deployment Pipeline Name"] == deployment_pipeline]
         if len(dfP_filt) == 0:
             raise ValueError(
@@ -516,7 +516,7 @@ def deploy_stage_content(
     items : dict | List[dict], default=None
         A list of items to deploy. Each item should be a dictionary with the following structure:
         {
-            "itemId": "1a201f2a-d1d8-45c0-8c61-1676338517de",
+            "sourceItemId": "1a201f2a-d1d8-45c0-8c61-1676338517de",
             "itemType": "SemanticModel"
         }
         If None, all items will be deployed.
