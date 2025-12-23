@@ -346,6 +346,7 @@ from ._sql_audit_settings import (
 from ._onelake import (
     get_onelake_settings,
     modify_onelake_diagnostics,
+    modify_immutability_policy,
 )
 from ._domains import (
     list_domains,
@@ -603,4 +604,5 @@ __all__ = [
     "get_workspace_git_outbound_policy",
     "set_workspace_git_outbound_policy",
     "cancel_item_job_instance",
+    "modify_immutability_policy",
 ]

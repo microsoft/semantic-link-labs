@@ -6,7 +6,7 @@ from sempy_labs._helper_functions import (
 )
 from sempy._utils._log import log
 from uuid import UUID
-from typing import Optional
+from typing import Optional, Literal
 import pandas as pd
 import sempy_labs._icons as icons
 
@@ -129,3 +129,44 @@ def modify_onelake_diagnostics(
         )
     else:
         print(f"{icons.green_dot} OneLake diagnostics have been disabled.")
+
+
+@log
+def modify_immutability_policy(
+    retention_days: int,
+    scope: Literal["DiagnosticLogs"] = "DiagnosticLogs",
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Create or update OneLake immutability settings.
+    Set immutability policy for data stored in OneLake. Currently, this feature supports configuring a retention period specifically for diagnostic logs within a workspace, ensuring they remain unaltered once written.
+
+    This is a wrapper function for the following API: `OneLake Settings - Modify Immutability Policy <https://learn.microsoft.com/rest/api/fabric/core/onelake-settings/modify-immutability-policy>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    retention_days : int
+        Retention Days for the action.
+    scope : Literal["DiagnosticLogs"], default="DiagnosticLogs"
+        The scope of the immutability policy. Currently, only "DiagnosticLogs" is supported.
+    workspace : str | uuid.UUID, default=None
+        The name or ID of the workspace.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    payload = {"scope": scope, "retentionDays": retention_days}
+
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/onelake/settings/modifyImmutabilityPolicy",
+        client="fabric_sp",
+        method="post",
+        payload=payload,
+    )
+
+    print(
+        f"{icons.green_dot} The OneLake immutability policy has been set to {retention_days} days for scope '{scope}' in the '{workspace_name}' workspace."
+    )
