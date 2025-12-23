@@ -76,4 +76,5 @@ items = {
     "OperationsAgent": "OperationsAgents",
     "SnowflakeDatabase": "snowflakeDatabases",
     "CosmosDBDatabase": "cosmosDbDatabases",
+    "Ontology": "ontologies",
 }
