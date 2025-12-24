@@ -350,6 +350,9 @@ from ._onelake import (
 from ._domains import (
     list_domains,
 )
+from ._takeover import (
+    takeover_item_ownership,
+)
 
 __all__ = [
     "resolve_warehouse_id",
@@ -603,4 +606,5 @@ __all__ = [
     "get_workspace_git_outbound_policy",
     "set_workspace_git_outbound_policy",
     "cancel_item_job_instance",
+    "takeover_item_ownership",
 ]
