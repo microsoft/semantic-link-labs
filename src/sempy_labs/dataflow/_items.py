@@ -274,6 +274,8 @@ def _resolve_dataflow_name_and_id_and_generation(
 
     if _is_valid_uuid(dataflow):
         dfD_filt = dfD[dfD["Dataflow Id"] == dataflow]
+        if dfD_filt.empty:
+            dfD_filt = dfD[dfD["Dataflow Name"] == dataflow]
     else:
         dfD_filt = dfD[dfD["Dataflow Name"] == dataflow]
 
