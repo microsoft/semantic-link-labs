@@ -208,7 +208,7 @@ def list_upstream_dataflows(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataflow_name, dataflow_id, dataflow_generation) = (
-        _resolve_dataflow_name_and_id_and_generation(
+        resolve_dataflow_name_and_id_and_generation(
             dataflow=dataflow, workspace=workspace_id
         )
     )
@@ -236,7 +236,7 @@ def list_upstream_dataflows(
             tgt_dataflow_id = v.get("targetDataflowId")
             tgt_workspace_id = v.get("groupId")
             tgt_workspace_name = resolve_workspace_name(workspace_id=tgt_workspace_id)
-            (tgt_dataflow_name, _, _) = _resolve_dataflow_name_and_id_and_generation(
+            (tgt_dataflow_name, _, _) = resolve_dataflow_name_and_id_and_generation(
                 dataflow=tgt_dataflow_id, workspace=tgt_workspace_id
             )
 
@@ -264,7 +264,7 @@ def list_upstream_dataflows(
 
 
 @log
-def _resolve_dataflow_name_and_id_and_generation(
+def resolve_dataflow_name_and_id_and_generation(
     dataflow: str | UUID, workspace: Optional[str | UUID] = None
 ) -> Tuple[str, UUID, str]:
 
@@ -322,7 +322,7 @@ def get_dataflow_definition(
     workspace_id = resolve_workspace_id(workspace)
 
     (dataflow_name, dataflow_id, dataflow_generation) = (
-        _resolve_dataflow_name_and_id_and_generation(
+        resolve_dataflow_name_and_id_and_generation(
             dataflow=dataflow, workspace=workspace_id
         )
     )
@@ -390,7 +390,7 @@ def upgrade_dataflow(
 
     # Resolve the dataflow name and ID
     (dataflow_name, dataflow_id, dataflow_generation) = (
-        _resolve_dataflow_name_and_id_and_generation(dataflow, workspace_id)
+        resolve_dataflow_name_and_id_and_generation(dataflow, workspace_id)
     )
 
     if dataflow_generation == "Gen2 CI/CD":
