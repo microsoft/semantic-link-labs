@@ -7,6 +7,8 @@ from ._functions import (
     get_variable_values,
     get_variable_value,
     create_variable_library,
+    update_variable_library,
+    update_variable,
 )
 
 __all__ = [
@@ -18,4 +20,6 @@ __all__ = [
     "get_variable_values",
     "get_variable_value",
     "create_variable_library",
+    "update_variable_library",
+    "update_variable",
 ]
