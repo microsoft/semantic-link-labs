@@ -110,6 +110,7 @@ from ._data_pipelines import (
     create_data_pipeline,
     delete_data_pipeline,
     get_data_pipeline_definition,
+    update_data_pipeline_definition,
 )
 from ._eventhouses import (
     create_eventhouse,
