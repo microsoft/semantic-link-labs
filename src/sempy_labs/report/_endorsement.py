@@ -2,7 +2,7 @@ import requests
 from sempy_labs._helper_functions import (
     _get_url_prefix,
     resolve_workspace_name_and_id,
-    resolve_dataset_name_and_id,
+    resolve_item_name_and_id,
 )
 from typing import Optional, Literal
 import sempy_labs._icons as icons
@@ -33,7 +33,7 @@ def set_endorsement(
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (report_name, report_id) = resolve_dataset_name_and_id(report, workspace_id)
+    (report_name, report_id) = resolve_item_name_and_id(item=report, type='Report', workspace=workspace_id)
 
     import notebookutils
 
