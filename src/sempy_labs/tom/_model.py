@@ -805,6 +805,15 @@ class TOMWrapper:
         bim = TOM.JsonScripter.ScriptCreateOrReplace(self.model.Database)
         fabric.execute_tmsl(script=bim, workspace=self._workspace_id)
 
+    def delete_user_defined_function(self, name: str):
+
+        try:
+            object = self.model.Functions[name]
+            object.Parent.Functions.Remove(object.Name)
+        except Exception:
+            pass
+        #    print(f"{icons.info} The user-defined function '{name}' does not exist within the semantic model.")
+
     def set_user_defined_function(self, name: str, expression: str):
         """
         Sets the definition of a `user-defined <https://learn.microsoft.com/en-us/dax/best-practices/dax-user-defined-functions#using-model-explorer>_` function within the semantic model. This function requires that the compatibility level is at least 1702.
@@ -820,7 +829,9 @@ class TOMWrapper:
 
         if self._compat_level < 1702:
             raise ValueError(
-                f"{icons.warning} User-defined functions require a compatibility level of at least 1702. The current compatibility level is {self._compat_level}. Use the 'tom.set_compatibility_level' function to change the compatibility level."
+                f"{icons.warning} User-defined functions require a compatibility level of at least 1702. The current compatibility level is {self._compat_level}. Use the 'tom.set_compatibility_level' function to change the compatibility level. See the example below:\n"
+                f"with connect_semantic_model(dataset='{self._dataset_name}', workspace='{self._workspace_name}', readonly=False):"
+                f"    tom.set_compatibility_level(compatibility_level=1702)"
             )
 
         existing = [f.Name for f in self.model.Functions]

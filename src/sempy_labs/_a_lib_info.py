@@ -74,7 +74,7 @@ def download_and_load_nuget_package(
         Assembly.LoadFrom(str(dll_path))  # LoadFile
 
 
-def set_dotnet_runtime():
+def init_dotnet():
     global _runtime_set
     if _runtime_set:
         return
@@ -87,10 +87,48 @@ def set_dotnet_runtime():
     rt = get_coreclr(runtime_config=str(runtime_config_path))
     set_runtime(rt)
     sempy.fabric._client._utils._init_analysis_services()
-    _runtime_set = True
 
     download_and_load_nuget_package("System.Text.Json", "7.0.4")
     download_and_load_nuget_package("Newtonsoft.Json", "13.0.3")
     download_and_load_nuget_package("NuGet.Versioning", "6.4.0")
     download_and_load_nuget_package("NuGet.Frameworks", "6.4.0")
     download_and_load_nuget_package("System.IO.Packaging", "7.0.0")
+
+    # DAXLib
+    DAX_LIB_VERSION = "0.5.3-beta"
+    DAX_LIB_ASSEMBLIES = [
+        "DaxLib.Client",
+    ]
+
+    for name in DAX_LIB_ASSEMBLIES:
+        download_and_load_nuget_package(
+            name, DAX_LIB_VERSION, nuget_dir, load_assembly=True
+        )
+
+    from System.Reflection import Assembly
+
+    # VPAX
+    VPA_VERSION = "1.10.0"
+    VPA_ASSEMBLIES = [
+        "Dax.Metadata",
+        "Dax.Model.Extractor",
+        "Dax.ViewVpaExport",
+        "Dax.Vpax",
+    ]
+
+    for name in VPA_ASSEMBLIES:
+        download_and_load_nuget_package(
+            name, VPA_VERSION, nuget_dir, load_assembly=False
+        )
+
+    # For some reason I have to load these after and not inside the download_and_load_nuget_package function
+    dll_paths = [
+        f"{nuget_dir}/Dax.Model.Extractor_1.10.0/lib/net6.0/Dax.Model.Extractor.dll",
+        f"{nuget_dir}/Dax.Metadata_1.10.0/lib/netstandard2.0/Dax.Metadata.dll",
+        f"{nuget_dir}/Dax.ViewVpaExport_1.10.0/lib/netstandard2.0/Dax.ViewVpaExport.dll",
+        f"{nuget_dir}/Dax.Vpax_1.10.0/lib/net6.0/Dax.Vpax.dll",
+    ]
+    for dll_path in dll_paths:
+        Assembly.LoadFile(dll_path)
+
+    _runtime_set = True

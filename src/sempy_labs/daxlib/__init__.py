@@ -1,9 +1,13 @@
 from ._functions import (
-    get_dax_lib_package,
-    add_dax_lib_package,
+    get_package,
+    get_package_functions,
+    add_package_to_semantic_model,
+    remove_package_from_semantic_model,
 )
 
 __all__ = [
-    "get_dax_lib_package",
-    "add_dax_lib_package",
+    "get_package",
+    "get_package_functions",
+    "add_package_to_semantic_model",
+    "remove_package_from_semantic_model",
 ]

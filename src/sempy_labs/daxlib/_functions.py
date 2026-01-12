@@ -8,48 +8,21 @@ from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_item_name_and_id,
 )
-from sempy_labs._vpax import download_and_load_nuget_package
 from sempy_labs._a_lib_info import (
     lib_name,
     lib_version,
-    set_dotnet_runtime,
-    nuget_dir,
+    init_dotnet,
 )
 from sempy_labs.tom import connect_semantic_model
 import sempy_labs._icons as icons
 
 
-DAX_LIB_VERSION = "0.5.3-beta"
-NUGET_BASE_URL = "https://www.nuget.org/api/v2/package"
-ASSEMBLIES = [
-    "DaxLib.Client",
-]
-
-_dax_lib_initialized = False
-
-
-def init_dax_lib():
-
-    global _dax_lib_initialized
-    if _dax_lib_initialized:
-        return
-
-    set_dotnet_runtime()
-
-    for name in ASSEMBLIES:
-        download_and_load_nuget_package(
-            name, DAX_LIB_VERSION, nuget_dir, load_assembly=True
-        )
-
-    _dax_lib_initialized = True
-
-
 @log
-def get_dax_lib_package_and_version(
+def get_daxlib_package_and_version(
     package_name: str, version: str = None
 ) -> Tuple[str, str]:
 
-    init_dax_lib()
+    init_dotnet()
 
     from DaxLib.Client import DaxLibClient, ProductInformation
     from DaxLib.Packaging import PackageId
@@ -114,7 +87,7 @@ def get_dax_lib_package_and_version(
 
 
 @log
-def get_dax_lib_package(package_name: str, version: str = None) -> str:
+def get_package(package_name: str, version: str = None) -> str:
     """
     Gets the TMDL of a DAXLib.org package.
 
@@ -130,24 +103,23 @@ def get_dax_lib_package(package_name: str, version: str = None) -> str:
     str
         The TMDL content of the package.
     """
-    tmdl, _ = get_dax_lib_package_and_version(
-        package_name=package_name, version=version
-    )
+    tmdl, _ = get_daxlib_package_and_version(package_name=package_name, version=version)
     return tmdl
 
 
+# Match function name, then everything inside the first pair of ```
 FUNC_RE = re.compile(
-    r"function\s+'(?P<name>[^']+)'\s*=\s*(?P<body>.*?)(?=^function\s+'|$(?![\r\n]))",
-    re.DOTALL | re.MULTILINE,
+    r"function\s+'(?P<name>[^']+)'\s*=\s*(```(?P<body>.*?)```)", re.DOTALL
 )
 
 
 def extract_functions_list(text: str) -> List[Dict[str, str]]:
     """
     Extract functions from text in the format:
-      function 'FunctionName' = ...
+        function 'FunctionName' = ``` ... ```
     Returns a list of dicts with 'name' and 'definition',
-    preserving everything after '=' (including ``` if present).
+    preserving everything inside the triple backticks and
+    stopping before annotations.
     """
     functions = []
     for m in FUNC_RE.finditer(text):
@@ -158,14 +130,93 @@ def extract_functions_list(text: str) -> List[Dict[str, str]]:
 
 
 @log
-def add_dax_lib_package(
+def get_package_functions(
+    package_name: str,
+    version: str = None,
+) -> List[Dict[str, str]]:
+    """
+    Gets the list of functions from a DAXLib.org package.
+
+    Parameters
+    ----------
+    package_name : str
+        The name of the DAXLib.org package.
+    version : str, default=None
+        The version of the package. If None, the latest version is used.
+
+    Returns
+    -------
+    List[Dict[str, str]]
+        A list of functions with 'name' and 'definition'.
+    """
+    tmdl, _ = get_daxlib_package_and_version(package_name=package_name, version=version)
+    return extract_functions_list(text=tmdl)
+
+
+def add_or_remove_package_to_semantic_model(
+    dataset: str | UUID,
+    package_name: str,
+    version: str = None,
+    workspace: Optional[str | UUID] = None,
+    remove: bool = False,
+):
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (dataset_name, dataset_id) = resolve_item_name_and_id(
+        item=dataset, type="SemanticModel", workspace=workspace_id
+    )
+    (tmdl, package_version) = get_daxlib_package_and_version(
+        package_name=package_name, version=version
+    )
+    funcs = extract_functions_list(text=tmdl)
+
+    # Remove functions within the specified package version
+    if remove:
+        for f in funcs:
+            name = f.get("name")
+
+            with connect_semantic_model(
+                dataset=dataset, workspace=workspace, readonly=False
+            ) as tom:
+                tom.delete_user_defined_function(name=name)
+        print(
+            f"{icons.green_dot} The '{dataset_name}' semantic model within the '{workspace_name}' workspace has been updated to remove the function(s) from the '{package_name}' DAXLib.org package (version '{package_version}')."
+        )
+    else:
+        # Delete existing functions from this package first
+        with connect_semantic_model(
+            dataset=dataset, workspace=workspace, readonly=False
+        ) as tom:
+            for f in tom.model.Functions:
+                if f.Name.startswith(f"{package_name}."):
+                    tom.delete_user_defined_function(name=f.Name)
+
+            # Add functions from the specified package version
+            for fn in funcs:
+                function_name = fn.get("name")
+                expr = fn.get("definition")
+
+                tom.set_user_defined_function(name=function_name, expression=expr)
+                tom.set_annotation(
+                    object=tom.model.Functions[function_name],
+                    name=package_name,
+                    value=package_version,
+                )
+
+        print(
+            f"{icons.green_dot} The '{dataset_name}' semantic model within the '{workspace_name}' workspace has been updated to include the function(s) within the '{package_name}' DAXLib.org package (version '{package_version}')."
+        )
+
+
+@log
+def add_package_to_semantic_model(
     dataset: str | UUID,
     package_name: str,
     version: str = None,
     workspace: Optional[str | UUID] = None,
 ):
     """
-    Adds functions from a DAXLib.org package to a semantic model.
+    Adds functions from a DAXLib.org package to a semantic model. First removes any existing functions from the same package (name).
 
     Parameters
     ----------
@@ -180,24 +231,43 @@ def add_dax_lib_package(
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (dataset_name, dataset_id) = resolve_item_name_and_id(
-        item=dataset, type="SemanticModel", workspace=workspace_id
+    add_or_remove_package_to_semantic_model(
+        dataset=dataset,
+        package_name=package_name,
+        version=version,
+        workspace=workspace,
+        remove=False,
     )
-    (tmdl, package_version) = get_dax_lib_package_and_version(
-        package_name=package_name, version=version
-    )
-    functions_to_add = extract_functions_list(text=tmdl)
 
-    for f in functions_to_add:
-        name = f.get("name")
-        expr = f.get("definition")
 
-        with connect_semantic_model(
-            dataset=dataset, workspace=workspace, readonly=False
-        ) as tom:
-            tom.set_user_defined_function(name=name, expression=expr)
+@log
+def remove_package_from_semantic_model(
+    dataset: str | UUID,
+    package_name: str,
+    version: str = None,
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Removes functions from a DAXLib.org package from a semantic model.
 
-    print(
-        f"{icons.green_dot} The '{dataset_name}' semantic model within the '{workspace_name}' workspace has been updated to include the function(s) within the '{package_name}' DAXLib.org package (version '{package_version}')."
+    Parameters
+    ----------
+    dataset : str | uuid.UUID
+        The name or ID of the semantic model (dataset).
+    package_name : str
+        The name of the DAXLib.org package.
+    version : str, default=None
+        The version of the package. If None, the latest version is used.
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    add_or_remove_package_to_semantic_model(
+        dataset=dataset,
+        package_name=package_name,
+        version=version,
+        workspace=workspace,
+        remove=True,
     )

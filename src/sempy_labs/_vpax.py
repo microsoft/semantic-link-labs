@@ -16,48 +16,8 @@ from sempy_labs._helper_functions import (
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from sempy_labs._a_lib_info import (
-    set_dotnet_runtime,
-    nuget_dir,
-    download_and_load_nuget_package,
+    init_dotnet,
 )
-
-
-VPA_VERSION = "1.10.0"
-ASSEMBLIES = [
-    "Dax.Metadata",
-    "Dax.Model.Extractor",
-    "Dax.ViewVpaExport",
-    "Dax.Vpax",
-]
-
-_vpa_initialized = False
-
-
-def init_vertipaq_analyzer():
-    global _vpa_initialized
-    if _vpa_initialized:
-        return
-
-    set_dotnet_runtime()
-
-    from System.Reflection import Assembly
-
-    for name in ASSEMBLIES:
-        download_and_load_nuget_package(
-            name, VPA_VERSION, nuget_dir, load_assembly=False
-        )
-
-    # For some reason I have to load these after and not inside the download_and_load_nuget_package function
-    dll_paths = [
-        f"{nuget_dir}/Dax.Model.Extractor_1.10.0/lib/net6.0/Dax.Model.Extractor.dll",
-        f"{nuget_dir}/Dax.Metadata_1.10.0/lib/netstandard2.0/Dax.Metadata.dll",
-        f"{nuget_dir}/Dax.ViewVpaExport_1.10.0/lib/netstandard2.0/Dax.ViewVpaExport.dll",
-        f"{nuget_dir}/Dax.Vpax_1.10.0/lib/net6.0/Dax.Vpax.dll",
-    ]
-    for dll_path in dll_paths:
-        Assembly.LoadFile(dll_path)
-
-    _vpa_initialized = True
 
 
 @log
@@ -104,7 +64,7 @@ def create_vpax(
         Whether to overwrite the .vpax file if it already exists in the lakehouse.
     """
 
-    init_vertipaq_analyzer()
+    init_dotnet()
 
     import notebookutils
     from Dax.Metadata import DirectLakeExtractionMode
