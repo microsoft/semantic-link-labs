@@ -89,7 +89,7 @@ def get_daxlib_package_and_version(
 @log
 def get_package(package_name: str, version: str = None) -> str:
     """
-    Gets the TMDL of a DAXLib.org package.
+    Gets the TMDL of a `DAXLib.org <https://www.daxlib.org>`_ package.
 
     Parameters
     ----------
@@ -135,7 +135,7 @@ def get_package_functions(
     version: str = None,
 ) -> List[Dict[str, str]]:
     """
-    Gets the list of functions from a DAXLib.org package.
+    Gets the list of functions from a `DAXLib.org <https://www.daxlib.org>`_ package.
 
     Parameters
     ----------
@@ -216,7 +216,7 @@ def add_package_to_semantic_model(
     workspace: Optional[str | UUID] = None,
 ):
     """
-    Adds functions from a DAXLib.org package to a semantic model. First removes any existing functions from the same package (name).
+    Adds functions from a `DAXLib.org <https://www.daxlib.org>`_ package to a semantic model. First removes any existing functions from the same package (name).
 
     Parameters
     ----------
@@ -248,7 +248,7 @@ def remove_package_from_semantic_model(
     workspace: Optional[str | UUID] = None,
 ):
     """
-    Removes functions from a DAXLib.org package from a semantic model.
+    Removes functions from a `DAXLib.org <https://www.daxlib.org>`_ package from a semantic model.
 
     Parameters
     ----------
