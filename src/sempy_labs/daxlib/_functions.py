@@ -183,10 +183,7 @@ def add_remove_update_package_to_semantic_model(
     funcs = extract_functions_list(text=tmdl)
 
     def package_exists(tom, package_name: str) -> bool:
-        return any(
-            f.Name.startswith(f"{package_name}.")
-            for f in tom.model.Functions
-        )
+        return any(f.Name.lower().startswith(f"{package_name.lower()}.") for f in tom.model.Functions)
 
     with connect_semantic_model(
         dataset=dataset, workspace=workspace, readonly=False
@@ -224,7 +221,7 @@ def add_remove_update_package_to_semantic_model(
 
         # add / update logic (shared); First remove existing functions from the package if they exist
         for f in tom.model.Functions:
-            if f.Name.startswith(f"{package_name}."):
+            if f.Name.lower().startswith(f"{package_name.lower()}."):
                 tom.delete_user_defined_function(name=f.Name)
         for fn in funcs:
             name = fn["name"]

@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 lib_name = "semanticlinklabs"
-lib_version = "0.12.9"
+lib_version = "0.13.0"
 
 NUGET_BASE_URL = "https://www.nuget.org/api/v2/package"
 current_dir = Path(__file__).parent
@@ -75,6 +75,11 @@ def download_and_load_nuget_package(
 
 
 def init_dotnet():
+    from pythonnet import _LOADED
+
+    if _LOADED:
+        # Runtime already initialized — do nothing
+        return
     global _runtime_set
     if _runtime_set:
         return
