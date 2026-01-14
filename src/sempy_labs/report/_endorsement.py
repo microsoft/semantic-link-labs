@@ -14,7 +14,7 @@ from sempy.fabric.exceptions import FabricHTTPException
 @log
 def set_endorsement(
     report: str | UUID,
-    endorsement: Literal["None", "Promoted", "Certified"],
+    endorsement: Literal["None", "Promoted", "Certified", "Master data"],
     workspace: Optional[str | UUID] = None,
 ):
     """
@@ -24,7 +24,7 @@ def set_endorsement(
     ----------
     report : str | uuid.UUID
         Name or ID of the Power BI report.
-    endorsement : Literal["None", "Promoted", "Certified]
+    endorsement : Literal["None", "Promoted", "Certified", "Master data"]
         The endorsement status to set for the report.
     workspace : str | uuid.UUID, default=None
         The workspace name or ID.
@@ -46,11 +46,11 @@ def set_endorsement(
         "none": 0,
         "promoted": 1,
         "certified": 2,
+        "master data": 3,
     }
 
     if endorsement not in endorsement_mapping:
-        raise ValueError("Endorsement must be either 'None', 'Promoted', or 'Certified'.")
-
+        raise ValueError("Endorsement must be either 'None', 'Promoted', 'Certified', or 'Master data'.")
     stage = endorsement_mapping.get(endorsement)
     payload = {"stage": stage}
 
