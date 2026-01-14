@@ -120,19 +120,20 @@ class TOMWrapper:
             self._tom_server.Connect(connection_str)
         # Service Principal Authentication for Power BI via token provider
         else:
+            from functools import partial
             from sempy.fabric._client._utils import _build_adomd_connection_string
             import Microsoft.AnalysisServices.Tabular as TOM
             from Microsoft.AnalysisServices import AccessToken
-            from sempy.fabric._token_provider import (
-                create_on_access_token_expired_callback,
-                ConstantTokenProvider,
-            )
+            from sempy.fabric._client._utils import refresh_tom_access_token
+            from sempy.fabric._credentials import ConstantTokenCredential
             from System import Func
 
             token = self._token_provider(audience="pbi")
+
             self._tom_server = TOM.Server()
-            get_access_token = create_on_access_token_expired_callback(
-                ConstantTokenProvider(token)
+            get_access_token = partial(
+                refresh_tom_access_token,
+                credential=ConstantTokenCredential(token)
             )
             self._tom_server.AccessToken = get_access_token(None)
             self._tom_server.OnAccessTokenExpired = Func[AccessToken, AccessToken](
@@ -5853,7 +5854,7 @@ class TOMWrapper:
 
             html = """
             <span style="font-family: Segoe UI, Arial, sans-serif; color: #cccccc;">
-                CODE BEAUTIFIED WITH 
+                CODE BEAUTIFIED WITH
             </span>
             <a href="https://www.daxformatter.com" target="_blank" style="font-family: Segoe UI, Arial, sans-serif; color: #ff5a5a; font-weight: bold; text-decoration: none;">
                 DAX FORMATTER
