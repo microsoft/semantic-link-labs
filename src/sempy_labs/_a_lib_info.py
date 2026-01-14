@@ -74,30 +74,56 @@ def download_and_load_nuget_package(
         Assembly.LoadFrom(str(dll_path))  # LoadFile
 
 
+def is_assembly_loaded(name: str) -> bool:
+
+    import System
+
+    return any(
+        asm.GetName().Name == name
+        for asm in System.AppDomain.CurrentDomain.GetAssemblies()
+    )
+
+
+_runtime_initialized = False
+_nuget_loaded = False
+
+
 def init_dotnet():
+    global _runtime_initialized, _nuget_loaded
+
     from pythonnet import _LOADED
 
-    if _LOADED:
-        # Runtime already initialized — do nothing
+    # -------------------------------
+    # 1. Initialize runtime (ONCE)
+    # -------------------------------
+    if not _runtime_initialized and not _LOADED:
+        from clr_loader import get_coreclr
+        from pythonnet import set_runtime
+
+        runtime_config_path = current_dir / "dotnet_lib" / "dotnet.runtime.config.json"
+        rt = get_coreclr(runtime_config=str(runtime_config_path))
+        set_runtime(rt)
+
+        sempy.fabric._client._utils._init_analysis_services()
+        _runtime_initialized = True
+
+    # -------------------------------
+    # 2. Load NuGet assemblies (ONCE)
+    # -------------------------------
+    if _nuget_loaded:
         return
-    global _runtime_set
-    if _runtime_set:
-        return
 
-    from clr_loader import get_coreclr
-    from pythonnet import set_runtime
+    def load_pkg(name, version):
+        if not is_assembly_loaded(name):
+            download_and_load_nuget_package(name, version)
 
-    # Load the runtime and set it BEFORE importing clr
-    runtime_config_path = current_dir / "dotnet_lib" / "dotnet.runtime.config.json"
-    rt = get_coreclr(runtime_config=str(runtime_config_path))
-    set_runtime(rt)
-    sempy.fabric._client._utils._init_analysis_services()
+    load_pkg("System.Text.Json", "7.0.4")
+    load_pkg("Newtonsoft.Json", "13.0.3")
+    load_pkg("NuGet.Versioning", "6.4.0")
+    load_pkg("NuGet.Frameworks", "6.4.0")
+    load_pkg("System.IO.Packaging", "7.0.0")
 
-    download_and_load_nuget_package("System.Text.Json", "7.0.4")
-    download_and_load_nuget_package("Newtonsoft.Json", "13.0.3")
-    download_and_load_nuget_package("NuGet.Versioning", "6.4.0")
-    download_and_load_nuget_package("NuGet.Frameworks", "6.4.0")
-    download_and_load_nuget_package("System.IO.Packaging", "7.0.0")
+    _nuget_loaded = True
 
     # DAXLib
     DAX_LIB_VERSION = "0.5.3-beta"
