@@ -61,7 +61,7 @@ def approved_for_copilot(
 @log
 def set_endorsement(
     dataset: str | UUID,
-    endorsement: Literal["None", "Promoted"],
+    endorsement: Literal["None", "Promoted", "Certified", "Master data"],
     workspace: Optional[str | UUID] = None,
 ):
     """
@@ -71,7 +71,7 @@ def set_endorsement(
     ----------
     dataset : str | uuid.UUID
         Name or ID of the semantic model.
-    endorsement : Literal["None", "Promoted"]
+    endorsement : Literal["None", "Promoted", "Certified", "Master data"]
         The endorsement status to set for the semantic model.
     workspace : str | uuid.UUID, default=None
         The workspace name or ID.
@@ -91,10 +91,12 @@ def set_endorsement(
     endorsement_mapping = {
         "none": 0,
         "promoted": 1,
+        "certified": 2,
+        "master data": 3,
     }
 
     if endorsement not in endorsement_mapping:
-        raise ValueError("Endorsement must be either 'None' or 'Promoted'.")
+        raise ValueError("Endorsement must be either 'None', 'Promoted', 'Certified', or 'Master data'.")
 
     stage = endorsement_mapping.get(endorsement)
     payload = {"stage": stage}
@@ -111,3 +113,52 @@ def set_endorsement(
     print(
         f"{icons.green_dot} The endorsement for the '{item_name}' semantic model within the '{workspace_name}' workspace has been set to '{endorsement}'."
     )
+
+
+@log
+def make_discoverable(dataset: str | UUID, make_discoverable: bool, workspace: Optional[str | UUID] = None):
+    """
+    Allow users without access to this semantic model to discover it and request permissions to access the data. The semantic model must be endorsed as 'Promoted', 'Certified', or 'Master data' to be made discoverable.
+
+    Parameters
+    ----------
+    dataset : str | uuid.UUID
+        Name or ID of the semantic model.
+    make_discoverable : bool
+        Whether to make the semantic model discoverable.
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (item_name, item_id) = resolve_item_name_and_id(
+        item=dataset, type="SemanticModel", workspace=workspace_id
+    )
+    headers = get_pbi_token_headers()
+    prefix = _get_url_prefix()
+    id = get_model_id(item_id=item_id, headers=headers, prefix=prefix)
+
+    if make_discoverable:
+        response = requests.post(
+            url=f"{prefix}/metadata/gallery/discover/models/{id}",
+            headers=headers,
+        )
+    else:
+        response = requests.delete(
+            url=f"{prefix}/metadata/gallery/discover/models/{id}",
+            headers=headers,
+        )
+
+    if response.status_code != 200:
+        raise FabricHTTPException(f"Failed to set endorsement: {response.text}")
+
+    if make_discoverable:
+        print(
+            f"{icons.green_dot} The '{item_name}' semantic model within the '{workspace_name}' workspace is now discoverable in the gallery."
+        )
+    else:
+        print(
+            f"{icons.green_dot} The '{item_name}' semantic model within the '{workspace_name}' workspace is no longer discoverable in the gallery."
+        )
