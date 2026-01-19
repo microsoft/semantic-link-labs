@@ -351,6 +351,10 @@ from ._onelake import (
 from ._domains import (
     list_domains,
 )
+from ._catalog import (
+    list_endorsements,
+    list_favorites,
+)
 
 __all__ = [
     "resolve_warehouse_id",
@@ -605,4 +609,6 @@ __all__ = [
     "set_workspace_git_outbound_policy",
     "cancel_item_job_instance",
     "modify_immutability_policy",
+    "list_endorsements",
+    "list_favorites",
 ]
