@@ -96,7 +96,9 @@ def set_endorsement(
     }
 
     if endorsement not in endorsement_mapping:
-        raise ValueError("Endorsement must be either 'None', 'Promoted', 'Certified', or 'Master data'.")
+        raise ValueError(
+            "Endorsement must be either 'None', 'Promoted', 'Certified', or 'Master data'."
+        )
 
     stage = endorsement_mapping.get(endorsement)
     payload = {"stage": stage}
@@ -116,7 +118,9 @@ def set_endorsement(
 
 
 @log
-def make_discoverable(dataset: str | UUID, make_discoverable: bool, workspace: Optional[str | UUID] = None):
+def make_discoverable(
+    dataset: str | UUID, make_discoverable: bool, workspace: Optional[str | UUID] = None
+):
     """
     Allow users without access to this semantic model to discover it and request permissions to access the data. The semantic model must be endorsed as 'Promoted', 'Certified', or 'Master data' to be made discoverable.
 
