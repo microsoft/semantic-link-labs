@@ -1,5 +1,6 @@
 from sempy_labs._helper_functions import (
     resolve_item_id,
+    resolve_item_name_and_id,
     resolve_workspace_id,
     _base_api,
     _create_dataframe,
@@ -7,9 +8,10 @@ from sempy_labs._helper_functions import (
     delete_item,
     _decode_b64,
     create_item,
+    resolve_workspace_name_and_id,
 )
 import pandas as pd
-from typing import Any, Optional, List, Union
+from typing import Any, Optional, List, Union, Literal
 from uuid import UUID
 from sempy._utils._log import log
 import json
@@ -209,7 +211,10 @@ def get_variable_library_definition(
         for part in result.get("definition", {}).get("parts", []):
             path = part.get("path")
             payload = _decode_b64(part.get("payload"))
-            definition["definition"]["parts"].append({"path": path, "payload": payload})
+            payload_type = part.get("payloadType")
+            definition["definition"]["parts"].append(
+                {"path": path, "payload": payload, "payloadType": payload_type}
+            )
     else:
         definition = result.copy()
 
@@ -595,4 +600,157 @@ def create_variable_library(
         definition=definition,
         workspace=workspace,
         folder=folder,
+    )
+
+
+@log
+def update_variable_library(
+    variable_library: str | UUID,
+    name: Optional[str] = None,
+    description: Optional[str] = None,
+    default_value_set: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Updates the properties of the specified variable library.
+
+    This is a wrapper function for the following API: `Items - Update Variable Library <https://learn.microsoft.com/rest/api/fabric/variablelibrary/items/update-variable-library>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    variable_library : str | uuid.UUID
+        Name or ID of the variable library.
+    name : str, default=None
+        New name of the variable library.
+    description : str, default=None
+        New description of the variable library.
+    default_value_set : str, default=None
+        New default value set name of the variable library.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (item_name, item_id) = resolve_item_name_and_id(
+        item=variable_library, type="VariableLibrary", workspace=workspace_id
+    )
+
+    payload = {}
+
+    if name:
+        payload["displayName"] = name
+    if description:
+        payload["description"] = description
+    if default_value_set:
+        payload["properties"] = {"activeValueSetName": default_value_set}
+
+    if not payload:
+        print(
+            f"{icons.info} No updates provided for the '{item_name}' variable library within the '{workspace_name}' workspace."
+        )
+
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/VariableLibraries/{item_id}",
+        method="patch",
+        payload=payload,
+        client="fabric_sp",
+    )
+
+    print(
+        f"{icons.green_dot} The '{item_name}' variable library within the '{workspace_name}' workspace has been updated."
+    )
+
+
+@log
+def update_variable(
+    variable_library: str | UUID,
+    name: str,
+    new_name: Optional[str] = None,
+    new_type: Literal["Boolean", "DateTime", "Number", "Integer", "String"] = None,
+    new_value: Optional[str] = None,
+    new_note: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
+):
+    """
+    Updates the properties of the specified variable within a variable library.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    variable_library : str | uuid.UUID
+        Name or ID of the variable library.
+    name : str
+        Name of the variable.
+    new_name : str, default=None
+        New name of the variable.
+    new_type : Literal["Boolean", "DateTime", "Number", "Integer", "String"], default=None
+        New type of the variable. Valid types are: "Boolean", "DateTime", "Number", "Integer", "String".
+    new_value : str, default=None
+        New value of the variable.
+    new_note : str, default=None
+        New note of the variable.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (item_name, item_id) = resolve_item_name_and_id(
+        item=variable_library, type="VariableLibrary", workspace=workspace_id
+    )
+
+    definition = get_variable_library_definition(
+        variable_library=item_id,
+        workspace=workspace_id,
+        decode=True,
+        return_dataframe=False,
+    )
+
+    if new_name is None and new_type is None and new_value is None and new_note is None:
+        print(
+            f"{icons.info} No updates provided for the variable '{name}' in the '{item_name}' variable library within the '{workspace_name}' workspace."
+        )
+        return
+
+    for part in definition.get("definition", {}).get("parts", []):
+        payload = json.loads(part.get("payload"))
+        if part.get("path") != "variables.json":
+            part["payload"] = _encode_b64(payload)
+        else:
+            variables = payload.get("variables", [])
+            if name not in [v.get("name") for v in variables]:
+                raise ValueError(
+                    f"{icons.red_dot} The variable '{name}' does not exist in the '{item_name}' variable library within the '{workspace_name}' workspace."
+                )
+
+            for variable in variables:
+                if variable.get("name") == name:
+                    if new_name is not None:
+                        variable["name"] = new_name
+                    if new_type is not None:
+                        variable["type"] = new_type
+                    if new_note is not None:
+                        variable["note"] = new_note
+                    if new_value is not None:
+                        variable["value"] = new_value
+                    break
+            part["payload"] = _encode_b64(payload)
+
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/variableLibraries/{item_id}/updateDefinition",
+        method="post",
+        payload=definition,
+        client="fabric_sp",
+        lro_return_status_code=True,
+        status_codes=[200, 202],
+    )
+
+    print(
+        f"{icons.green_dot} The variable '{name}' in the '{item_name}' variable library within the '{workspace_name}' workspace has been updated."
     )
