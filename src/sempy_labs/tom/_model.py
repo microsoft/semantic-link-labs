@@ -4932,12 +4932,7 @@ class TOMWrapper:
         import Microsoft.AnalysisServices.Tabular as TOM
         from sempy_labs._model_dependencies import get_model_calc_dependencies
 
-        fabric.refresh_tom_cache(workspace=self._workspace_id)
-        dfP = fabric.list_perspectives(
-            dataset=self._dataset_id, workspace=self._workspace_id
-        )
-        dfP = dfP[dfP["Perspective Name"] == perspective_name]
-        if dfP.empty:
+        if not any(p.Name == perspective_name for p in self.model.Perspectives):
             raise ValueError(
                 f"{icons.red_dot} The '{perspective_name}' is not a valid perspective in the '{self._dataset_name}' semantic model within the '{self._workspace_name}' workspace."
             )
