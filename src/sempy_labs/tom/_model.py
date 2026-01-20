@@ -132,8 +132,7 @@ class TOMWrapper:
 
             self._tom_server = TOM.Server()
             get_access_token = partial(
-                refresh_tom_access_token,
-                credential=ConstantTokenCredential(token)
+                refresh_tom_access_token, credential=ConstantTokenCredential(token)
             )
             self._tom_server.AccessToken = get_access_token(None)
             self._tom_server.OnAccessTokenExpired = Func[AccessToken, AccessToken](

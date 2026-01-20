@@ -33,7 +33,9 @@ def set_endorsement(
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (report_name, report_id) = resolve_item_name_and_id(item=report, type='Report', workspace=workspace_id)
+    (report_name, report_id) = resolve_item_name_and_id(
+        item=report, type="Report", workspace=workspace_id
+    )
 
     import notebookutils
 
@@ -50,7 +52,9 @@ def set_endorsement(
     }
 
     if endorsement not in endorsement_mapping:
-        raise ValueError("Endorsement must be either 'None', 'Promoted', 'Certified', or 'Master data'.")
+        raise ValueError(
+            "Endorsement must be either 'None', 'Promoted', 'Certified', or 'Master data'."
+        )
     stage = endorsement_mapping.get(endorsement)
     payload = {"stage": stage}
 

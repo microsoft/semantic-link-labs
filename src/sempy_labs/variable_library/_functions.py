@@ -670,9 +670,9 @@ def update_variable(
     variable_library: str | UUID,
     name: str,
     new_name: Optional[str] = None,
-    new_type: Literal["Boolean", "DateTime", "Number", "Integer", "String"] = None,
-    new_value: Optional[str] = None,
-    new_note: Optional[str] = None,
+    type: Literal["Boolean", "DateTime", "Number", "Integer", "String"] = None,
+    value: Optional[str] = None,
+    note: Optional[str] = None,
     workspace: Optional[str | UUID] = None,
 ):
     """
@@ -687,13 +687,13 @@ def update_variable(
     name : str
         Name of the variable.
     new_name : str, default=None
-        New name of the variable.
-    new_type : Literal["Boolean", "DateTime", "Number", "Integer", "String"], default=None
-        New type of the variable. Valid types are: "Boolean", "DateTime", "Number", "Integer", "String".
-    new_value : str, default=None
-        New value of the variable.
-    new_note : str, default=None
-        New note of the variable.
+        New name of the variable. Defaults to None which keeps the same name.
+    type : Literal["Boolean", "DateTime", "Number", "Integer", "String"], default=None
+        New type of the variable. Valid types are: "Boolean", "DateTime", "Number", "Integer", "String". Defaults to None which keeps the same type.
+    value : str, default=None
+        New value of the variable. Defaults to None which keeps the same value.
+    note : str, default=None
+        New note of the variable. Defaults to None which keeps the same note.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -712,7 +712,7 @@ def update_variable(
         return_dataframe=False,
     )
 
-    if new_name is None and new_type is None and new_value is None and new_note is None:
+    if new_name is None and type is None and value is None and note is None:
         print(
             f"{icons.info} No updates provided for the variable '{name}' in the '{item_name}' variable library within the '{workspace_name}' workspace."
         )
@@ -733,12 +733,12 @@ def update_variable(
                 if variable.get("name") == name:
                     if new_name is not None:
                         variable["name"] = new_name
-                    if new_type is not None:
-                        variable["type"] = new_type
-                    if new_note is not None:
-                        variable["note"] = new_note
-                    if new_value is not None:
-                        variable["value"] = new_value
+                    if type is not None:
+                        variable["type"] = type
+                    if note is not None:
+                        variable["note"] = note
+                    if value is not None:
+                        variable["value"] = value
                     break
             part["payload"] = _encode_b64(payload)
 
