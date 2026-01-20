@@ -354,6 +354,10 @@ from ._domains import (
 from ._takeover import (
     takeover_item_ownership,
 )
+from ._catalog import (
+    list_endorsements,
+    list_favorites,
+)
 
 __all__ = [
     "resolve_warehouse_id",
@@ -609,4 +613,6 @@ __all__ = [
     "cancel_item_job_instance",
     "modify_immutability_policy",
     "takeover_item_ownership",
+    "list_endorsements",
+    "list_favorites",
 ]
