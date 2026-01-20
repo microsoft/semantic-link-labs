@@ -2,7 +2,7 @@ import requests
 from sempy_labs._helper_functions import (
     _get_url_prefix,
     resolve_workspace_name_and_id,
-    resolve_dataset_name_and_id,
+    resolve_item_name_and_id,
 )
 from typing import Optional, Literal
 import sempy_labs._icons as icons
@@ -14,7 +14,7 @@ from sempy.fabric.exceptions import FabricHTTPException
 @log
 def set_endorsement(
     report: str | UUID,
-    endorsement: Literal["None", "Promoted"],
+    endorsement: Literal["None", "Promoted", "Certified", "Master data"],
     workspace: Optional[str | UUID] = None,
 ):
     """
@@ -24,7 +24,7 @@ def set_endorsement(
     ----------
     report : str | uuid.UUID
         Name or ID of the Power BI report.
-    endorsement : Literal["None", "Promoted"]
+    endorsement : Literal["None", "Promoted", "Certified", "Master data"]
         The endorsement status to set for the report.
     workspace : str | uuid.UUID, default=None
         The workspace name or ID.
@@ -33,7 +33,7 @@ def set_endorsement(
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    (report_name, report_id) = resolve_dataset_name_and_id(report, workspace_id)
+    (report_name, report_id) = resolve_item_name_and_id(item=report, type='Report', workspace=workspace_id)
 
     import notebookutils
 
@@ -45,11 +45,12 @@ def set_endorsement(
     endorsement_mapping = {
         "none": 0,
         "promoted": 1,
+        "certified": 2,
+        "master data": 3,
     }
 
     if endorsement not in endorsement_mapping:
-        raise ValueError("Endorsement must be either 'None' or 'Promoted'.")
-
+        raise ValueError("Endorsement must be either 'None', 'Promoted', 'Certified', or 'Master data'.")
     stage = endorsement_mapping.get(endorsement)
     payload = {"stage": stage}
 
