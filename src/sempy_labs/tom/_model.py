@@ -4717,12 +4717,14 @@ class TOMWrapper:
             )
             payload["scenarioDefinition"]["generateModelItemDescriptions"][
                 "modelItems"
-            ].append({
-                "urn": m,
-                "type": 1,
-                "name": m,
-                "expression": expr,
-            })
+            ].append(
+                {
+                    "urn": m,
+                    "type": 1,
+                    "name": m,
+                    "expression": expr,
+                }
+            )
 
             response = requests.post(
                 f"{prefix}/explore/v202304/nl2nl/completions",
