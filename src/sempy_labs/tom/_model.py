@@ -17,6 +17,7 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_id,
     _validate_weight,
     _get_url_prefix,
+    get_pbi_token_headers,
 )
 from sempy_labs._list_functions import list_relationships
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
@@ -4681,11 +4682,11 @@ class TOMWrapper:
         pandas.DataFrame
             A pandas dataframe showing the updated measure(s) and their new description(s).
         """
-        import notebookutils
 
         icons.sll_tags.append("GenerateMeasureDescriptions")
 
         prefix = _get_url_prefix()
+        headers = get_pbi_token_headers()
 
         df = pd.DataFrame(
             columns=["Table Name", "Measure Name", "Expression", "Description"]
@@ -4717,15 +4718,13 @@ class TOMWrapper:
             )
             payload["scenarioDefinition"]["generateModelItemDescriptions"][
                 "modelItems"
-            ] = {
+            ].append({
                 "urn": m,
                 "type": 1,
                 "name": m,
                 "expression": expr,
-            }
+            })
 
-            token = notebookutils.credentials.getToken("pbi")
-            headers = {"Authorization": f"Bearer {token}"}
             response = requests.post(
                 f"{prefix}/explore/v202304/nl2nl/completions",
                 headers=headers,
