@@ -257,7 +257,7 @@ def create_item(
     definition: Optional[dict] = None,
     workspace: Optional[str | UUID] = None,
     folder: Optional[str | PathLike] = None,
-):
+) -> str:
     """
     Creates an item in a Fabric workspace.
 
@@ -278,6 +278,11 @@ def create_item(
     folder : str | os.PathLike, default=None
         The folder within the workspace where the item will be created.
         Defaults to None which places the item in the root of the workspace.
+
+    Returns
+    -------
+    str
+        The ID of the created item.
     """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
@@ -295,17 +300,18 @@ def create_item(
             folder=folder, workspace=workspace_id
         )
 
-    _base_api(
+    response = _base_api(
         request=f"/v1/workspaces/{workspace_id}/{item_type_url}",
         method="post",
         payload=payload,
         status_codes=[201, 202],
-        lro_return_status_code=True,
+        lro_return_status_code=False,
         client="fabric_sp",
     )
     print(
         f"{icons.green_dot} The '{name}' {type} has been successfully created within the '{workspace_name}' workspace."
     )
+    return response.json().get("id")
 
 
 @log
