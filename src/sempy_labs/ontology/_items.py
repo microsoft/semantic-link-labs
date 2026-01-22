@@ -26,10 +26,14 @@ def accellerate(name: str, workspace: Optional[str | UUID] = None):
     ont_name = f"ont_{name}"
 
     # Create lakehouse
-    lakehouse_id = fabric.create_lakehouse(display_name=lh_name, workspace=workspace_id, enable_schema=True)
+    lakehouse_id = fabric.create_lakehouse(
+        display_name=lh_name, workspace=workspace_id, enable_schema=True
+    )
 
     # Create eventhouse
-    eventhouse_id = create_eventhouse(name=eh_name, definition={}, workspace=workspace_id)
+    eventhouse_id = create_eventhouse(
+        name=eh_name, definition={}, workspace=workspace_id
+    )
 
     # Get the cluster URI of the eventhouse's KQL database
     cluster_uri = _resolve_cluster_uri(kql_database=eh_name, workspace=workspace_id)
@@ -38,9 +42,20 @@ def accellerate(name: str, workspace: Optional[str | UUID] = None):
 
 
 @log
-def create_ontology(name: str, definition: dict, workspace: Optional[str | UUID] = None, folder: Optional[str | PathLike] = None,) -> str:
+def create_ontology(
+    name: str,
+    definition: dict,
+    workspace: Optional[str | UUID] = None,
+    folder: Optional[str | PathLike] = None,
+) -> str:
 
-    return create_item(name=name, type='Ontology', definition=definition, workspace=workspace, folder=folder)
+    return create_item(
+        name=name,
+        type="Ontology",
+        definition=definition,
+        workspace=workspace,
+        folder=folder,
+    )
 
 
 @log
@@ -56,7 +71,11 @@ def list_ontologies(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
     df = _create_dataframe(columns=columns)
 
-    responses = _base_api(request=f"/v1/workspaces/{workspace_id}/ontologies", uses_pagination=True, client="fabric_sp")
+    responses = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/ontologies",
+        uses_pagination=True,
+        client="fabric_sp",
+    )
 
     rows = []
     for r in responses:
@@ -76,6 +95,8 @@ def list_ontologies(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
 
 @log
-def delete_ontology(ontology: str | UUID, workspace: Optional[str | UUID] = None) -> None:
+def delete_ontology(
+    ontology: str | UUID, workspace: Optional[str | UUID] = None
+) -> None:
 
-    delete_item(item=ontology, type='Ontology', workspace=workspace)
+    delete_item(item=ontology, type="Ontology", workspace=workspace)

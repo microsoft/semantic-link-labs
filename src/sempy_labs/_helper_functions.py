@@ -300,18 +300,18 @@ def create_item(
             folder=folder, workspace=workspace_id
         )
 
-    response = _base_api(
+    response_json = _base_api(
         request=f"/v1/workspaces/{workspace_id}/{item_type_url}",
         method="post",
         payload=payload,
         status_codes=[201, 202],
-        lro_return_status_code=False,
+        lro_return_json=True,
         client="fabric_sp",
     )
     print(
         f"{icons.green_dot} The '{name}' {type} has been successfully created within the '{workspace_name}' workspace."
     )
-    return response.json().get("id")
+    return response_json.get("id")
 
 
 @log
