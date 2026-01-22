@@ -2667,9 +2667,16 @@ def generate_number_guid():
 
 def get_url_content(url: str):
 
-    if "github.com" in url and "/blob/" in url:
-        url = url.replace("github.com", "raw.githubusercontent.com")
-        url = url.replace("/blob/", "/")
+    parsed = urllib.parse.urlparse(url)
+
+    if parsed.netloc in {"github.com", "www.github.com"} and "/blob/" in parsed.path:
+        new_path = parsed.path.replace("/blob/", "/")
+        url = urllib.parse.urlunparse((
+            parsed.scheme,
+            "raw.githubusercontent.com",
+            new_path,
+            "", "", ""
+        ))
 
     response = requests.get(url)
     if response.ok:
