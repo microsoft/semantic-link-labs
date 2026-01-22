@@ -409,7 +409,7 @@ def assign_domain_workspaces_by_capacities(
 
 
 @log
-def assign_domain_workspaces(domain: str | UUID, workspace_names: str | List[str]):
+def assign_domain_workspaces(domain: str | UUID, workspace: str | UUID | List[str | UUID], **kwargs):
     """
     Assigns workspaces to the specified domain by workspace.
 
@@ -421,33 +421,46 @@ def assign_domain_workspaces(domain: str | UUID, workspace_names: str | List[str
     ----------
     domain : str | uuid.UUID
         The domain name or ID.
-    workspace_names : str | List[str]
-        The Fabric workspace(s).
+    workspace : str | uuid.UUID | List[str | uuid.UUID]
+        The Fabric workspace name or IDs.
     """
 
     domain_id = resolve_domain_id(domain)
 
-    if isinstance(workspace_names, str):
-        workspace_names = [workspace_names]
+    if "workspace_names" in kwargs:
+        workspace = kwargs["workspace_names"]
+        print(
+            f"{icons.warning} The 'workspace_names' parameter is deprecated. Please use 'workspace' instead."
+        )
 
-    dfW = list_workspaces()
+    if isinstance(workspace, str):
+        workspace = [workspace]
+    workspace_list = []
+
+    for w in workspace:
+        if _is_valid_uuid(w):
+            workspace_list.append(w)
+        else:
+            dfW = list_workspaces(workspace=w)
+            if not dfW.empty:
+                workspace_list.append(dfW["Id"].iloc[0])
 
     # Check for invalid capacities
-    invalid_workspaces = [
-        name for name in workspace_names if name not in dfW["Name"].values
-    ]
+    #invalid_workspaces = [
+    #    name for name in workspace_names if name not in dfW["Name"].values
+    #]
 
-    if len(invalid_workspaces) == 1:
-        raise ValueError(
-            f"{icons.red_dot} The {invalid_workspaces} workspace is not valid."
-        )
-    elif len(invalid_workspaces) > 1:
-        raise ValueError(
-            f"{icons.red_dot} The {invalid_workspaces} workspaces are not valid."
-        )
+    #if len(invalid_workspaces) == 1:
+    #    raise ValueError(
+    #        f"{icons.red_dot} The {invalid_workspaces} workspace is not valid."
+    #    )
+    #elif len(invalid_workspaces) > 1:
+    #    raise ValueError(
+    #        f"{icons.red_dot} The {invalid_workspaces} workspaces are not valid."
+    #    )
 
-    dfW_filt = dfW[dfW["Name"].isin(workspace_names)]
-    workspace_list = list(dfW_filt["Id"])
+    #dfW_filt = dfW[dfW["Name"].isin(workspace_names)]
+    #workspace_list = list(dfW_filt["Id"])
 
     payload = {"workspacesIds": workspace_list}
 
@@ -459,7 +472,7 @@ def assign_domain_workspaces(domain: str | UUID, workspace_names: str | List[str
     )
 
     print(
-        f"{icons.green_dot} The {workspace_names} workspaces have been assigned to the '{domain}' domain."
+        f"{icons.green_dot} The {workspace} workspaces have been assigned to the '{domain}' domain."
     )
 
 
