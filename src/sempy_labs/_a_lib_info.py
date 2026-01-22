@@ -117,7 +117,7 @@ def init_dotnet():
         if not is_assembly_loaded(name):
             download_and_load_nuget_package(name, version)
 
-    load_pkg("System.Text.Json", "7.0.4")
+    #load_pkg("System.Text.Json", "7.0.4")
     load_pkg("Newtonsoft.Json", "13.0.3")
     load_pkg("NuGet.Versioning", "6.4.0")
     load_pkg("NuGet.Frameworks", "6.4.0")
