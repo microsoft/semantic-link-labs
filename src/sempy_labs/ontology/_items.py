@@ -10,6 +10,7 @@ from sempy_labs._helper_functions import (
     resolve_workspace_id,
     resolve_workspace_name_and_id,
     create_item,
+    delete_item,
 )
 from sempy_labs.eventhouse import create_eventhouse
 from sempy_labs._kql_databases import _resolve_cluster_uri
@@ -72,3 +73,9 @@ def list_ontologies(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         df = pd.DataFrame(rows, columns=list(columns.keys()))
 
     return df
+
+
+@log
+def delete_ontology(ontology: str | UUID, workspace: Optional[str | UUID] = None) -> None:
+
+    delete_item(item=ontology, type='Ontology', workspace=workspace)
