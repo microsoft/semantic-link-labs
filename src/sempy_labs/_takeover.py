@@ -22,7 +22,7 @@ def takeover_item_ownership(
     ----------
     item : str | uuid.UUID
         The name or UUID of the Report or Semantic Model to take over.
-    type : Literal["Report", "SemanticModel"]
+    type : typing.Literal["Report", "SemanticModel"]
         The type of item to take over. Must be either 'Report' or 'SemanticModel'.
     workspace : Optional[str | uuid.UUID], default=None
         The name or ID of the workspace.

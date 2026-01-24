@@ -63,7 +63,7 @@ def qso_sync_status(
 
     Returns
     -------
-    Tuple[pandas.DataFrame, pandas.DataFrame]
+    typing.Tuple[pandas.DataFrame, pandas.DataFrame]
         2 pandas dataframes showing the query scale-out sync status.
     """
 

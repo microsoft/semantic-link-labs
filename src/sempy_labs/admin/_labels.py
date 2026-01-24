@@ -69,7 +69,7 @@ def bulk_set_labels(
 
     label_id : uuid.UUID
         The label ID, which must be in the user's label policy.
-    assignment_method : Literal["Standard", "Priviledged"], default="Standard"
+    assignment_method : typing.Literal["Standard", "Priviledged"], default="Standard"
         Specifies whether the assigned label was set by an automated process or manually. Additional tenant setting property types may be added over time.
     """
 

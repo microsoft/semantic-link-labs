@@ -1126,7 +1126,7 @@ def resolve_workspace_name_and_id(
 
     Returns
     -------
-    str, uuid.UUID
+    typing.Tuple[str, str]
         The name and ID of the Fabric workspace.
     """
 
@@ -1349,7 +1349,7 @@ def resolve_dataset_from_report(
 
     Returns
     -------
-    Tuple[uuid.UUID, str, uuid.UUID, str]
+    typing.Tuple[uuid.UUID, str, uuid.UUID, str]
         The semantic model UUID, semantic model name, semantic model workspace UUID, semantic model workspace name
     """
 
@@ -1389,7 +1389,7 @@ def resolve_workspace_capacity(
 
     Returns
     -------
-    Tuple[uuid.UUID, str]
+    typing.Tuple[uuid.UUID, str]
         capacity Id; capacity came.
     """
     from sempy_labs._capacities import list_capacities

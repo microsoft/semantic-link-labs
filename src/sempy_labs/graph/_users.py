@@ -207,13 +207,13 @@ def send_mail(
         The email address of the recipients.
     content : str
         The email content.
-    content_type : Literal["Text", "HTML"], default="Text"
+    content_type : typing.Literal["Text", "HTML"], default="Text"
         The email content type. Options: "Text" or "HTML".
     cc_recipients : str | List[str], default=None
         The email address of the CC recipients.
     bcc_recipients : str | List[str], default=None
         The email address of the BCC recipients.
-    priority : Literal["Normal", "High", "Low"], default="Normal"
+    priority : typing.Literal["Normal", "High", "Low"], default="Normal"
         The email priority.
     attachments : str | List[str], default=None
         The abfss path or a list of the abfss paths of the attachments to include in the email.

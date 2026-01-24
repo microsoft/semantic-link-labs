@@ -318,7 +318,7 @@ def _dax_perf_test(
 
     Returns
     -------
-    Tuple[pandas.DataFrame, dict]
+    typing.Tuple[pandas.DataFrame, dict]
         A pandas dataframe showing the SQL profiler trace results of the DAX queries.
         A dictionary of the query results in pandas dataframes.
     """

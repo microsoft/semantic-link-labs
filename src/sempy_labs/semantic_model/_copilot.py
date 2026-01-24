@@ -71,7 +71,7 @@ def set_endorsement(
     ----------
     dataset : str | uuid.UUID
         Name or ID of the semantic model.
-    endorsement : Literal["None", "Promoted", "Certified", "Master data"]
+    endorsement : typing.Literal["None", "Promoted", "Certified", "Master data"]
         The endorsement status to set for the semantic model.
     workspace : str | uuid.UUID, default=None
         The workspace name or ID.

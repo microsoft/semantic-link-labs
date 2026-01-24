@@ -80,13 +80,13 @@ def refresh_sql_endpoint_metadata(
     ----------
     item : str | uuid.UUID
         The name or ID of the item (Lakehouse or MirroredDatabase).
-    type : Literal['Lakehouse', 'MirroredDatabase']
+    type : typing.Literal['Lakehouse', 'MirroredDatabase']
         The type of the item. Must be 'Lakehouse' or 'MirroredDatabase'.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    timeout_unit : Literal['Seconds', 'Minutes', 'Hours', 'Days'], default='Minutes'
+    timeout_unit : typing.Literal['Seconds', 'Minutes', 'Hours', 'Days'], default='Minutes'
         The unit of time for the request duration before timing out. Additional duration types may be added over time.
     timeout_value : int, default=15
         The number of time units in the request duration.

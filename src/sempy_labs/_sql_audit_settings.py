@@ -51,7 +51,7 @@ def get_sql_audit_settings(
     ----------
     item : str | uuid.UUID
         The name or ID of the item (Warehouse or SQLEndpoint).
-    type : Literal['Warehouse', 'SQLEndpoint']
+    type : typing.Literal['Warehouse', 'SQLEndpoint']
         The type of the item. Must be 'Warehouse' or 'SQLEndpoint'.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
@@ -113,7 +113,7 @@ def update_sql_audit_settings(
     ----------
     item : str | uuid.UUID
         The name or ID of the item (Warehouse or SQLEndpoint).
-    type : Literal['Warehouse', 'SQLEndpoint']
+    type : typing.Literal['Warehouse', 'SQLEndpoint']
         The type of the item. Must be 'Warehouse' or 'SQLEndpoint'.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
@@ -175,7 +175,7 @@ def set_audit_actions_and_group(
     ----------
     item : str | uuid.UUID
         The name or ID of the item (Warehouse or SQLEndpoint).
-    type : Literal['Warehouse', 'SQLEndpoint']
+    type : typing.Literal['Warehouse', 'SQLEndpoint']
         The type of the item. Must be 'Warehouse' or 'SQLEndpoint'.
     sql_audit_groups : List[str]
         Set audit actions and groups request payload.

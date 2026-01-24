@@ -508,7 +508,7 @@ class ReportWrapper:
 
         Returns
         -------
-        Tuple[str, str]
+        typing.Tuple[str, str]
             The page name and display name.
         """
 
@@ -2557,7 +2557,7 @@ class ReportWrapper:
             If None, applies to all pages.
         transparency : int, default=0
             The transparency level of the wallpaper image. Valid values are between 0 and 100.
-        image_fit : str, default="Normal"
+        image_fit : typing.Literal["Normal", "Fit", "Fill"], default="Normal"
             The fit type of the wallpaper image. Valid options: "Normal", "Fit", "Fill".
         """
         self._ensure_pbir()
