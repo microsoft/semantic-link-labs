@@ -78,4 +78,5 @@ items = {
     "CosmosDBDatabase": "cosmosDbDatabases",
     "Ontology": "ontologies",
     "Lakehouse": "lakehouses",
+    "EventSchemaSet": "EventSchemaSets",
 }
