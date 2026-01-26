@@ -1,7 +1,15 @@
 import pandas as pd
 from typing import Optional
+from sempy_labs._helper_functions import (
+    resolve_workspace_id,
+    _decode_b64,
+    _base_api,
+    resolve_item_id,
+    _create_dataframe,
+    delete_item,
+    create_item,
+)
 from uuid import UUID
-import sempy_labs.data_pipeline as dp
 from sempy._utils._log import log
 
 
@@ -27,7 +35,35 @@ def list_data_pipelines(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing the data pipelines within a workspace.
     """
 
-    return dp.list_data_pipelines(workspace=workspace)
+    columns = {
+        "Data Pipeline Name": "string",
+        "Data Pipeline ID": "string",
+        "Description": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    workspace_id = resolve_workspace_id(workspace)
+
+    responses = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/dataPipelines",
+        uses_pagination=True,
+        client="fabric_sp",
+    )
+
+    rows = []
+    for r in responses:
+        for v in r.get("value", []):
+            rows.append(
+                {
+                    "Data Pipeline Name": v.get("displayName"),
+                    "Data Pipeline ID": v.get("id"),
+                    "Description": v.get("description"),
+                }
+            )
+    if rows:
+        df = pd.DataFrame(rows, columns=columns.keys())
+
+    return df
 
 
 @log
@@ -53,7 +89,9 @@ def create_data_pipeline(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    dp.create_data_pipeline(name=name, description=description, workspace=workspace)
+    create_item(
+        name=name, description=description, type="DataPipeline", workspace=workspace
+    )
 
 
 @log
@@ -75,7 +113,7 @@ def delete_data_pipeline(name: str | UUID, workspace: Optional[str | UUID] = Non
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    dp.delete_data_pipeline(name=name, workspace=workspace)
+    delete_item(item=name, type="DataPipeline", workspace=workspace)
 
 
 @log
@@ -104,8 +142,21 @@ def get_data_pipeline_definition(
         A pandas dataframe showing the data pipelines within a workspace.
     """
 
-    dp.get_data_pipeline_definition(
-        name=name,
-        workspace=workspace,
-        decode=decode,
+    workspace_id = resolve_workspace_id(workspace)
+
+    item_id = resolve_item_id(item=name, type="DataPipeline", workspace=workspace)
+    result = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/dataPipelines/{item_id}/getDefinition",
+        method="post",
+        lro_return_json=True,
+        status_codes=None,
+        client="fabric_sp",
     )
+    df = pd.json_normalize(result["definition"]["parts"])
+
+    if not decode:
+        return df
+    content = df[df["path"] == "pipeline-content.json"]
+    payload = content["payload"].iloc[0]
+
+    return _decode_b64(payload)
