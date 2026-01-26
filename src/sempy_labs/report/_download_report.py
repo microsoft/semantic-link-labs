@@ -87,7 +87,7 @@ def download_report(
         extension = ".rdl"
     else:
         response = _base_api(
-            request=f"v1.0/myorg/groups/{workspace_id}/reports/{report_id}/Export?downloadType={download_type}",
+            request=f"{base_url}?downloadType={download_type}",
             client="fabric_sp",
         )
 
