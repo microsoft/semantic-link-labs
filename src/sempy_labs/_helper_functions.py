@@ -4,11 +4,11 @@ import json
 import base64
 import time
 import uuid
-from sempy.fabric.exceptions import FabricHTTPException
+from sempy.fabric.exceptions import FabricHTTPException, WorkspaceNotFoundException
 import pandas as pd
 from functools import wraps
 import datetime
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Dict
 from uuid import UUID
 import sempy_labs._icons as icons
 from azure.core.credentials import TokenCredential, AccessToken
@@ -17,6 +17,11 @@ import numpy as np
 from IPython.display import display, HTML
 import requests
 import sempy_labs._authentication as auth
+from jsonpath_ng.ext import parse
+from jsonpath_ng.jsonpath import Fields, Index
+from sempy._utils._log import log
+from os import PathLike
+import sempy_labs._utils as utils
 
 
 def _build_url(url: str, params: dict) -> str:
@@ -30,28 +35,59 @@ def _build_url(url: str, params: dict) -> str:
     return url
 
 
+def _encode_user(user: str) -> str:
+
+    return urllib.parse.quote(user, safe="@")
+
+
+@log
 def create_abfss_path(
-    lakehouse_id: UUID, lakehouse_workspace_id: UUID, delta_table_name: str
+    lakehouse_id: UUID,
+    lakehouse_workspace_id: UUID,
+    delta_table_name: Optional[str] = None,
+    schema: Optional[str] = None,
 ) -> str:
     """
     Creates an abfss path for a delta table in a Fabric lakehouse.
 
     Parameters
     ----------
-    lakehouse_id : UUID
+    lakehouse_id : uuid.UUID
         ID of the Fabric lakehouse.
-    lakehouse_workspace_id : UUID
+    lakehouse_workspace_id : uuid.UUID
         ID of the Fabric workspace.
-    delta_table_name : str
+    delta_table_name : str, default=None
         Name of the delta table name.
+    schema : str, default=None
+        The schema of the delta table.
 
     Returns
     -------
     str
-        An abfss path which can be used to save/reference a delta table in a Fabric lakehouse.
+        An abfss path which can be used to save/reference a delta table in a Fabric lakehouse or lakehouse.
     """
 
-    return f"abfss://{lakehouse_workspace_id}@onelake.dfs.fabric.microsoft.com/{lakehouse_id}/Tables/{delta_table_name}"
+    fp = _get_default_file_path()
+    path = f"abfss://{lakehouse_workspace_id}@{fp}/{lakehouse_id}"
+
+    if delta_table_name is not None:
+        path += "/Tables"
+        if schema is not None:
+            path += f"/{schema}/{delta_table_name}"
+        else:
+            path += f"/{delta_table_name}"
+
+    return path
+
+
+@log
+def create_abfss_path_from_path(
+    lakehouse_id: UUID, workspace_id: UUID, file_path: str
+) -> str:
+
+    fp = _get_default_file_path()
+
+    return f"abfss://{workspace_id}@{fp}/{lakehouse_id}/{file_path}"
 
 
 def _get_default_file_path() -> str:
@@ -72,6 +108,7 @@ def _split_abfss_path(path: str) -> Tuple[UUID, UUID, str]:
     return workspace_id, item_id, delta_table_name
 
 
+@log
 def format_dax_object_name(table: str, column: str) -> str:
     """
     Formats a table/column combination to the 'Table Name'[Column Name] format.
@@ -92,6 +129,7 @@ def format_dax_object_name(table: str, column: str) -> str:
     return "'" + table + "'[" + column + "]"
 
 
+@log
 def create_relationship_name(
     from_table: str, from_column: str, to_table: str, to_column: str
 ) -> str:
@@ -122,14 +160,17 @@ def create_relationship_name(
     )
 
 
-def resolve_report_id(report: str, workspace: Optional[str | UUID] = None) -> UUID:
+@log
+def resolve_report_id(
+    report: str | UUID, workspace: Optional[str | UUID] = None
+) -> UUID:
     """
     Obtains the ID of the Power BI report.
 
     Parameters
     ----------
-    report : str
-        The name of the Power BI report.
+    report : str | uuid.UUID
+        The name or ID of the Power BI report.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -137,13 +178,14 @@ def resolve_report_id(report: str, workspace: Optional[str | UUID] = None) -> UU
 
     Returns
     -------
-    UUID
+    uuid.UUID
         The ID of the Power BI report.
     """
 
-    return fabric.resolve_item_id(item_name=report, type="Report", workspace=workspace)
+    return resolve_item_id(item=report, type="Report", workspace=workspace)
 
 
+@log
 def resolve_report_name(report_id: UUID, workspace: Optional[str | UUID] = None) -> str:
     """
     Obtains the name of the Power BI report.
@@ -163,71 +205,419 @@ def resolve_report_name(report_id: UUID, workspace: Optional[str | UUID] = None)
         The name of the Power BI report.
     """
 
-    return fabric.resolve_item_name(
-        item_id=report_id, type="Report", workspace=workspace
+    return resolve_item_name(item_id=report_id, workspace=workspace)
+
+
+@log
+def delete_item(
+    item: str | UUID, type: str, workspace: Optional[str | UUID] = None
+) -> None:
+    """
+    Deletes an item from a Fabric workspace.
+
+    Parameters
+    ----------
+    item : str | uuid.UUID
+        The name or ID of the item to be deleted.
+    type : str
+        The type of the item to be deleted.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    (item_name, item_id) = resolve_item_name_and_id(item, type, workspace_id)
+
+    fabric.delete_item(item_id=item_id, workspace=workspace_id)
+
+    print(
+        f"{icons.green_dot} The '{item_name}' {type} has been successfully deleted from the '{workspace_name}' workspace."
     )
 
 
-def resolve_item_id(
-    item: str | UUID, type: str, workspace: Optional[str] = None
+@log
+def create_folder_if_not_exists(
+    folder: str | PathLike, workspace: Optional[str | UUID] = None
 ) -> UUID:
+    try:
+        x = fabric.resolve_folder_id(folder=folder, workspace=workspace)
+    except:
+        x = fabric.create_folder(folder=folder, workspace=workspace)
 
-    if _is_valid_uuid(item):
-        return item
-    else:
-        return fabric.resolve_item_id(item_name=item, type=type, workspace=workspace)
+    return x
 
 
-def resolve_item_name_and_id(
-    item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None
-) -> Tuple[str, UUID]:
+@log
+def create_item(
+    name: str,
+    type: str,
+    description: Optional[str] = None,
+    definition: Optional[dict] = None,
+    workspace: Optional[str | UUID] = None,
+    folder: Optional[str | PathLike] = None,
+):
+    """
+    Creates an item in a Fabric workspace.
+
+    Parameters
+    ----------
+    name : str
+        The name of the item to be created.
+    type : str
+        The type of the item to be created.
+    description : str, default=None
+        A description of the item to be created.
+    definition : dict, default=None
+        The definition of the item to be created.
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    folder : str | os.PathLike, default=None
+        The folder within the workspace where the item will be created.
+        Defaults to None which places the item in the root of the workspace.
+    """
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    item_type_url = utils.items.get(type)
 
-    if _is_valid_uuid(item):
-        item_id = item
-        item_name = fabric.resolve_item_name(
-            item_id=item_id, type=type, workspace=workspace_id
+    payload = {
+        "displayName": name,
+    }
+    if description:
+        payload["description"] = description
+    if definition:
+        payload["definition"] = definition
+    if folder:
+        payload["folderId"] = create_folder_if_not_exists(
+            folder=folder, workspace=workspace_id
         )
-    else:
-        if type is None:
-            raise ValueError(
-                f"{icons.warning} Must specify a 'type' if specifying a name as the 'item'."
+
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/{item_type_url}",
+        method="post",
+        payload=payload,
+        status_codes=[201, 202],
+        lro_return_status_code=True,
+        client="fabric_sp",
+    )
+    print(
+        f"{icons.green_dot} The '{name}' {type} has been successfully created within the '{workspace_name}' workspace."
+    )
+
+
+@log
+def copy_item(
+    item: str | UUID,
+    type: str,
+    target_name: Optional[str] = None,
+    source_workspace: Optional[str | UUID] = None,
+    target_workspace: Optional[str | UUID] = None,
+    overwrite: bool = False,
+    keep_existing_bindings: bool = False,
+):
+    """
+    Copies an item (with its definition) from one location to another location.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    item : str | uuid.UUID
+        The name or ID of the item to be copied.
+    type : str
+        The type of the item.
+    target_name: str, default=None
+        The name of the item in the target workspace. Defaults to the same name as the source item.
+    source_workspace : str | uuid.UUID, default=None
+        The workspace name or ID in which the item exists.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    target_workspace : str | uuid.UUID, default=None
+        The workspace name or ID to which the item will be copied.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    overwrite : bool, default=False
+        If True, overwrites the item in the target workspace if it already exists.
+    keep_existing_bindings : bool, default=False
+        If True, ensures that reports are re-bound to the original semantic model.
+        If False, reports are binded to the semantic model to which the item is bound.
+    """
+
+    from sempy_labs.report import report_rebind
+
+    (item_name, item_id) = resolve_item_name_and_id(
+        item=item, type=type, workspace=source_workspace
+    )
+    (source_workspace_name, source_workspace_id) = resolve_workspace_name_and_id(
+        source_workspace
+    )
+    (target_workspace_name, target_workspace_id) = resolve_workspace_name_and_id(
+        target_workspace
+    )
+
+    if target_name is None:
+        target_name = item_name
+
+    if source_workspace_id == target_workspace_id and target_name == item_name:
+        raise ValueError(
+            f"{icons.red_dot} The source and target workspaces are the same and the target name is the same as the source name. No action taken."
+        )
+
+    type_url = utils.items.get(type)
+    result = _base_api(
+        request=f"v1/workspaces/{source_workspace_id}/{type_url}/{item_id}",
+        client="fabric_sp",
+    )
+    description = result.json().get("description")
+
+    payload = get_item_definition(
+        item=item_id,
+        type=type,
+        workspace=source_workspace_id,
+        return_dataframe=False,
+        decode=False,
+    )
+    payload["displayName"] = target_name
+    if description:
+        payload["description"] = description
+
+    # Check if item exists in target workspace
+    exists = False
+    try:
+        target_item_id = resolve_item_id(
+            item=target_name, type=type, workspace=target_workspace_id
+        )
+        exists = True
+    except Exception:
+        exists = False
+
+    if exists and not overwrite:
+        raise ValueError(
+            f"{icons.warning} The item '{target_name}' of type '{type}' already exists in the target workspace '{target_workspace_name}' and overwrite is set to False."
+        )
+    elif exists and overwrite:
+        # Update item definition
+        print(
+            f"{icons.in_progress} Updating existing item '{target_name}' of type '{type}' in the target workspace '{target_workspace_name}'..."
+        )
+        # Get the existing source model
+        if type == "Report" and keep_existing_bindings:
+            result = _base_api(
+                request=f"v1.0/myorg/groups/{target_workspace_id}/reports/{target_item_id}",
+                client="fabric_sp",
+            ).json()
+            dataset_id = result.get("datasetId")
+            dataset_workspace_id = result.get("datasetWorkspaceId")
+        _base_api(
+            request=f"/v1/workspaces/{target_workspace_id}/{type_url}/{target_item_id}/updateDefinition",
+            method="post",
+            client="fabric_sp",
+            payload=payload,
+            lro_return_status_code=True,
+            status_codes=None,
+        )
+        print(
+            f"{icons.green_dot} The item '{target_name}' of type '{type}' has been successfully updated in the target workspace '{target_workspace_name}'."
+        )
+
+        if keep_existing_bindings:
+            report_rebind(
+                report=target_item_id,
+                dataset=dataset_id,
+                report_workspace=target_workspace,
+                dataset_workspace=dataset_workspace_id,
             )
-        item_name = item
-        item_id = fabric.resolve_item_id(
-            item_name=item, type=type, workspace=workspace_id
+
+    else:
+        print(
+            f"{icons.in_progress} Creating new item '{target_name}' of type '{type}' in the target workspace '{target_workspace_name}'..."
+        )
+        create_item(
+            name=target_name,
+            type=type,
+            definition=payload["definition"],
+            workspace=target_workspace_id,
         )
 
-    return item_name, item_id
+
+@log
+def is_base64(s):
+    try:
+        # Add padding if needed
+        s_padded = s + "=" * (-len(s) % 4)
+        decoded = base64.b64decode(s_padded, validate=True)
+        # Optional: check if re-encoding gives the original (excluding padding)
+        return base64.b64encode(decoded).decode().rstrip("=") == s.rstrip("=")
+    except Exception:
+        return False
 
 
+@log
+def decode_payload(payload):
+
+    if is_base64(payload):
+        try:
+            decoded_payload = json.loads(base64.b64decode(payload).decode("utf-8"))
+        except Exception:
+            decoded_payload = base64.b64decode(payload)
+    elif isinstance(payload, dict):
+        decoded_payload = payload
+    else:
+        raise ValueError("Payload must be a dictionary or a base64 encoded value.")
+
+    return decoded_payload
+
+
+@log
+def get_item_definition(
+    item: str | UUID,
+    type: str,
+    workspace: Optional[str | UUID] = None,
+    return_dataframe: bool = False,
+    decode: bool = True,
+    format: Optional[str] = None,
+) -> dict | pd.DataFrame:
+    """
+    Gets a Fabric item's defintion.
+
+    This is a wrapper function for the following API: `<https://learn.microsoft.com/rest/api/fabric/core/items/get-item-definition>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    item : str | uuid.UUID
+        The name or ID of the item to be copied.
+    type : str
+        The `type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_ of the item.
+    target_name: str, default=None
+        The name of the item in the target workspace. Defaults to the same name as the source item.
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    return_dataframe : bool, default=False
+        If True, returns a pandas dataframe.
+        If False, returns a dictionary.
+    decode : bool, default=True
+        If True, decodes the base64 payload.
+    format : str, default=None
+        The `format <https://learn.microsoft.com/rest/api/fabric/core/items/get-item-definition?tabs=HTTP#itemdefinition>`_ of the item definition.
+    """
+
+    workspace_id = resolve_workspace_id(workspace)
+    item_id = resolve_item_id(item=item, type=type, workspace=workspace_id)
+
+    item_type_url = utils.items.get(type)
+    if not item_type_url:
+        raise ValueError(f"{icons.red_dot} Invalid item type '{type}'.")
+
+    url = f"/v1/workspaces/{workspace_id}/{item_type_url}/{item_id}/getDefinition"
+    if format:
+        url += f"?format={format}"
+
+    result = _base_api(
+        request=url,
+        method="post",
+        status_codes=None,
+        lro_return_json=True,
+        client="fabric_sp",
+    )
+
+    if return_dataframe:
+        return pd.json_normalize(result["definition"]["parts"]).rename(
+            columns={
+                "path": "Path",
+                "payload": "Payload",
+                "payloadType": "Payload Type",
+            }
+        )
+
+    definition = {"definition": {"parts": []}}
+    if decode:
+        for part in result.get("definition", {}).get("parts", []):
+            path = part.get("path")
+            payload = part.get("payload")
+            decoded_payload = decode_payload(payload)
+
+            # Keep structure similar to original but replace payload with decoded version
+            definition["definition"]["parts"].append(
+                {"path": path, "payload": decoded_payload}
+            )
+        return definition
+    else:
+        return result
+
+
+@log
+def _get_item_definition(
+    item: str | UUID,
+    type: str,
+    workspace: Optional[str | UUID] = None,
+    format: Optional[str] = None,
+    return_dataframe: bool = True,
+    decode: bool = True,
+):
+
+    workspace_id = resolve_workspace_id(workspace)
+    item_id = resolve_item_id(item, type, workspace_id)
+    item_type_url = utils.item_types.get(type)[1]
+    path = utils.item_types.get(type)[2]
+
+    url = f"/v1/workspaces/{workspace_id}/{item_type_url}/{item_id}/getDefinition"
+    if format:
+        url += f"?format={format}"
+
+    result = _base_api(
+        request=url,
+        method="post",
+        status_codes=None,
+        lro_return_json=True,
+        client="fabric_sp",
+    )
+
+    if return_dataframe:
+        return pd.json_normalize(result["definition"]["parts"])
+
+    value = next(
+        p.get("payload") for p in result["definition"]["parts"] if p.get("path") == path
+    )
+    if decode:
+        return json.loads(_decode_b64(value))
+    else:
+        return value
+
+
+@log
 def resolve_lakehouse_name_and_id(
     lakehouse: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None
 ) -> Tuple[str, UUID]:
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
     type = "Lakehouse"
 
     if lakehouse is None:
-        lakehouse_id = fabric.get_lakehouse_id()
-        lakehouse_name = fabric.resolve_item_name(
-            item_id=lakehouse_id, type=type, workspace=workspace_id
+        lakehouse_id = _get_fabric_context_setting(name="trident.lakehouse.id")
+        if lakehouse_id == "":
+            raise ValueError(
+                f"{icons.red_dot} Cannot resolve a lakehouse. Please enter a valid lakehouse or make sure a lakehouse is attached to the notebook."
+            )
+        (lakehouse_name, lakehouse_id) = resolve_item_name_and_id(
+            item=lakehouse_id, type=type, workspace=workspace_id
         )
-    elif _is_valid_uuid(lakehouse):
-        lakehouse_id = lakehouse
-        lakehouse_name = fabric.resolve_item_name(
-            item_id=lakehouse_id, type=type, workspace=workspace_id
-        )
+
     else:
-        lakehouse_name = lakehouse
-        lakehouse_id = fabric.resolve_item_id(
-            item_name=lakehouse, type=type, workspace=workspace_id
+        (lakehouse_name, lakehouse_id) = resolve_item_name_and_id(
+            item=lakehouse, type=type, workspace=workspace_id
         )
 
     return lakehouse_name, lakehouse_id
 
 
+@log
 def resolve_dataset_name_and_id(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> Tuple[str, UUID]:
@@ -239,6 +629,7 @@ def resolve_dataset_name_and_id(
     return dataset_name, dataset_id
 
 
+@log
 def resolve_dataset_id(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> UUID:
@@ -256,20 +647,14 @@ def resolve_dataset_id(
 
     Returns
     -------
-    UUID
+    uuid.UUID
         The ID of the semantic model.
     """
 
-    if _is_valid_uuid(dataset):
-        dataset_id = dataset
-    else:
-        dataset_id = fabric.resolve_item_id(
-            item_name=dataset, type="SemanticModel", workspace=workspace
-        )
-
-    return dataset_id
+    return resolve_item_id(item=dataset, type="SemanticModel", workspace=workspace)
 
 
+@log
 def resolve_dataset_name(
     dataset_id: UUID, workspace: Optional[str | UUID] = None
 ) -> str:
@@ -291,11 +676,10 @@ def resolve_dataset_name(
         The name of the semantic model.
     """
 
-    return fabric.resolve_item_name(
-        item_id=dataset_id, type="SemanticModel", workspace=workspace
-    )
+    return resolve_item_name(item_id=dataset_id, workspace=workspace)
 
 
+@log
 def resolve_lakehouse_name(
     lakehouse_id: Optional[UUID] = None, workspace: Optional[str | UUID] = None
 ) -> str:
@@ -319,13 +703,16 @@ def resolve_lakehouse_name(
     """
 
     if lakehouse_id is None:
-        lakehouse_id = fabric.get_lakehouse_id()
+        lakehouse_id = _get_fabric_context_setting(name="trident.lakehouse.id")
+        if lakehouse_id == "":
+            raise ValueError(
+                f"{icons.red_dot} Cannot resolve a lakehouse. Please enter a valid lakehouse or make sure a lakehouse is attached to the notebook."
+            )
 
-    return fabric.resolve_item_name(
-        item_id=lakehouse_id, type="Lakehouse", workspace=workspace
-    )
+    return resolve_item_name(item_id=lakehouse_id, workspace=workspace)
 
 
+@log
 def resolve_lakehouse_id(
     lakehouse: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None
 ) -> UUID:
@@ -348,17 +735,20 @@ def resolve_lakehouse_id(
     """
 
     if lakehouse is None:
-        lakehouse_id = fabric.get_lakehouse_id()
-    elif _is_valid_uuid(lakehouse):
-        lakehouse_id = lakehouse
+        lakehouse_id = _get_fabric_context_setting(name="trident.lakehouse.id")
+        if lakehouse_id == "":
+            raise ValueError(
+                f"{icons.red_dot} Cannot resolve a lakehouse. Please enter a valid lakehouse or make sure a lakehouse is attached to the notebook."
+            )
     else:
-        lakehouse_id = fabric.resolve_item_id(
-            item_name=lakehouse, type="Lakehouse", workspace=workspace
+        lakehouse_id = resolve_item_id(
+            item=lakehouse, type="Lakehouse", workspace=workspace
         )
 
     return lakehouse_id
 
 
+@log
 def get_direct_lake_sql_endpoint(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> UUID:
@@ -406,6 +796,7 @@ def get_direct_lake_sql_endpoint(
         return sqlEndpointId
 
 
+@log
 def generate_embedded_filter(filter: str) -> str:
     """
     Converts the filter expression to a filter expression which can be used by a Power BI embedded URL.
@@ -471,6 +862,7 @@ def generate_embedded_filter(filter: str) -> str:
     return revised_filter
 
 
+@log
 def save_as_delta_table(
     dataframe,
     delta_table_name: str,
@@ -481,11 +873,13 @@ def save_as_delta_table(
     workspace: Optional[str | UUID] = None,
 ):
     """
-    Saves a pandas dataframe as a delta table in a Fabric lakehouse.
+    Saves a pandas or spark dataframe as a delta table in a Fabric lakehouse.
+
+    This function may be executed in either a PySpark or pure Python notebook. If executing in a pure Python notebook, the dataframe must be a pandas dataframe.
 
     Parameters
     ----------
-    dataframe : pandas.DataFrame
+    dataframe : pandas.DataFrame | spark.Dataframe
         The dataframe to be saved as a delta table.
     delta_table_name : str
         The name of the delta table.
@@ -503,20 +897,6 @@ def save_as_delta_table(
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
-
-    from pyspark.sql import SparkSession
-    from pyspark.sql.types import (
-        StringType,
-        IntegerType,
-        FloatType,
-        DateType,
-        StructType,
-        StructField,
-        BooleanType,
-        LongType,
-        DoubleType,
-        TimestampType,
-    )
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
@@ -536,54 +916,108 @@ def save_as_delta_table(
             f"{icons.red_dot} Invalid 'delta_table_name'. Delta tables in the lakehouse cannot have spaces in their names."
         )
 
-    dataframe.columns = dataframe.columns.str.replace(" ", "_")
-    spark = SparkSession.builder.getOrCreate()
+    import pyarrow as pa
+    from pyspark.sql.types import (
+        StringType,
+        IntegerType,
+        FloatType,
+        DateType,
+        StructType,
+        StructField,
+        BooleanType,
+        LongType,
+        DoubleType,
+        TimestampType,
+    )
 
-    type_mapping = {
-        "string": StringType(),
-        "str": StringType(),
-        "integer": IntegerType(),
-        "int": IntegerType(),
-        "float": FloatType(),
-        "date": DateType(),
-        "bool": BooleanType(),
-        "boolean": BooleanType(),
-        "long": LongType(),
-        "double": DoubleType(),
-        "timestamp": TimestampType(),
-    }
+    def get_type_mapping(pure_python):
+        common_mapping = {
+            "string": ("pa", pa.string(), StringType()),
+            "str": ("pa", pa.string(), StringType()),
+            "integer": ("pa", pa.int32(), IntegerType()),
+            "int": ("pa", pa.int32(), IntegerType()),
+            "float": ("pa", pa.float32(), FloatType()),
+            "double": ("pa", pa.float64(), DoubleType()),
+            "long": ("pa", pa.int64(), LongType()),
+            "bool": ("pa", pa.bool_(), BooleanType()),
+            "boolean": ("pa", pa.bool_(), BooleanType()),
+            "date": ("pa", pa.date32(), DateType()),
+            "timestamp": ("pa", pa.timestamp("us"), TimestampType()),
+        }
+        return {k: v[1] if pure_python else v[2] for k, v in common_mapping.items()}
 
-    if isinstance(dataframe, pd.DataFrame):
-        if schema is None:
-            spark_df = spark.createDataFrame(dataframe)
+    def build_schema(schema_dict, type_mapping, use_arrow=True):
+        if use_arrow:
+            fields = [
+                pa.field(name, type_mapping.get(dtype.lower()))
+                for name, dtype in schema_dict.items()
+            ]
+            return pa.schema(fields)
         else:
-            schema_map = StructType(
+            return StructType(
                 [
-                    StructField(column_name, type_mapping[data_type], True)
-                    for column_name, data_type in schema.items()
+                    StructField(name, type_mapping.get(dtype.lower()), True)
+                    for name, dtype in schema_dict.items()
                 ]
             )
-            spark_df = spark.createDataFrame(dataframe, schema_map)
+
+    # Main logic
+    schema_map = None
+    if schema is not None:
+        use_arrow = _pure_python_notebook()
+        type_mapping = get_type_mapping(use_arrow)
+        schema_map = build_schema(schema, type_mapping, use_arrow)
+
+    if isinstance(dataframe, pd.DataFrame):
+        dataframe.columns = [col.replace(" ", "_") for col in dataframe.columns]
+        if _pure_python_notebook():
+            spark_df = dataframe
+        else:
+            spark = _create_spark_session()
+            if schema is None:
+                spark_df = spark.createDataFrame(dataframe)
+            else:
+                spark_df = spark.createDataFrame(dataframe, schema_map)
     else:
+        for col_name in dataframe.columns:
+            new_name = col_name.replace(" ", "_")
+            dataframe = dataframe.withColumnRenamed(col_name, new_name)
         spark_df = dataframe
 
-    filePath = create_abfss_path(
+    file_path = create_abfss_path(
         lakehouse_id=lakehouse_id,
         lakehouse_workspace_id=workspace_id,
         delta_table_name=delta_table_name,
     )
 
-    if merge_schema:
-        spark_df.write.mode(write_mode).format("delta").option(
-            "mergeSchema", "true"
-        ).save(filePath)
+    if _pure_python_notebook():
+        from deltalake import write_deltalake
+
+        write_args = {
+            "table_or_uri": file_path,
+            "data": spark_df,
+            "mode": write_mode,
+            "schema": schema_map,
+        }
+
+        if merge_schema:
+            write_args["schema_mode"] = "merge"
+            write_args["engine"] = "rust"
+
+        write_deltalake(**write_args)
     else:
-        spark_df.write.mode(write_mode).format("delta").save(filePath)
+        writer = spark_df.write.mode(write_mode).format("delta")
+        if merge_schema:
+            writer = writer.option("mergeSchema", "true")
+
+        writer.save(file_path)
+
     print(
         f"{icons.green_dot} The dataframe has been saved as the '{delta_table_name}' table in the '{lakehouse_name}' lakehouse within the '{workspace_name}' workspace."
     )
 
 
+@log
 def language_validate(language: str):
     """
     Validateds that the language specified exists within the supported langauges.
@@ -620,6 +1054,63 @@ def language_validate(language: str):
     return lang
 
 
+@log
+def resolve_workspace_id(
+    workspace: Optional[str | UUID] = None,
+) -> UUID:
+    if workspace is None:
+        workspace_id = _get_fabric_context_setting(name="trident.workspace.id")
+    elif _is_valid_uuid(workspace):
+        # Check (optional)
+        workspace_id = workspace
+        try:
+            _base_api(request=f"/v1/workspaces/{workspace_id}", client="fabric_sp")
+        except FabricHTTPException:
+            raise ValueError(
+                f"{icons.red_dot} The '{workspace_id}' workspace was not found."
+            )
+    else:
+        responses = _base_api(
+            request="/v1/workspaces", client="fabric_sp", uses_pagination=True
+        )
+        workspace_id = None
+        for r in responses:
+            for v in r.get("value", []):
+                display_name = v.get("displayName")
+                if display_name == workspace:
+                    workspace_id = v.get("id")
+                    break
+
+    if workspace_id is None:
+        raise WorkspaceNotFoundException(workspace)
+
+    return workspace_id
+
+
+@log
+def resolve_workspace_name(
+    workspace_id: Optional[UUID] = None, throw_error: bool = True
+) -> str:
+
+    if workspace_id is None:
+        workspace_id = _get_fabric_context_setting(name="trident.workspace.id")
+
+    try:
+        response = _base_api(
+            request=f"/v1/workspaces/{workspace_id}", client="fabric_sp"
+        ).json()
+    except FabricHTTPException:
+        if throw_error:
+            raise ValueError(
+                f"{icons.red_dot} The '{workspace_id}' workspace was not found."
+            )
+        else:
+            return workspace_id
+
+    return response.get("displayName")
+
+
+@log
 def resolve_workspace_name_and_id(
     workspace: Optional[str | UUID] = None,
 ) -> Tuple[str, str]:
@@ -635,23 +1126,121 @@ def resolve_workspace_name_and_id(
 
     Returns
     -------
-    str, str
+    str, uuid.UUID
         The name and ID of the Fabric workspace.
     """
 
     if workspace is None:
-        workspace_id = fabric.get_workspace_id()
-        workspace_name = fabric.resolve_workspace_name(workspace_id)
+        workspace_id = _get_fabric_context_setting(name="trident.workspace.id")
+        workspace_name = resolve_workspace_name(workspace_id)
     elif _is_valid_uuid(workspace):
         workspace_id = workspace
-        workspace_name = fabric.resolve_workspace_name(workspace_id)
+        workspace_name = resolve_workspace_name(workspace_id)
     else:
-        workspace_name = workspace
-        workspace_id = fabric.resolve_workspace_id(workspace_name)
+        responses = _base_api(
+            request="/v1/workspaces", client="fabric_sp", uses_pagination=True
+        )
+        workspace_id = None
+        workspace_name = None
+        for r in responses:
+            for v in r.get("value", []):
+                display_name = v.get("displayName")
+                if display_name == workspace:
+                    workspace_name = workspace
+                    workspace_id = v.get("id")
+                    break
 
-    return str(workspace_name), str(workspace_id)
+    if workspace_name is None or workspace_id is None:
+        raise WorkspaceNotFoundException(workspace)
+
+    return workspace_name, workspace_id
 
 
+@log
+def resolve_item_id(
+    item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None
+) -> UUID:
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    item_id = None
+
+    if _is_valid_uuid(item):
+        # Check (optional)
+        item_id = item
+        try:
+            _base_api(
+                request=f"/v1/workspaces/{workspace_id}/items/{item_id}",
+                client="fabric_sp",
+            )
+        except FabricHTTPException:
+            raise ValueError(
+                f"{icons.red_dot} The '{item_id}' item was not found in the '{workspace_name}' workspace."
+            )
+    else:
+        if type is None:
+            raise ValueError(
+                f"{icons.red_dot} The 'type' parameter is required if specifying an item name."
+            )
+        responses = _base_api(
+            request=f"/v1/workspaces/{workspace_id}/items?type={type}",
+            client="fabric_sp",
+            uses_pagination=True,
+        )
+        for r in responses:
+            for v in r.get("value", []):
+                display_name = v.get("displayName")
+                if display_name == item:
+                    item_id = v.get("id")
+                    break
+
+    if item_id is None:
+        raise ValueError(
+            f"{icons.red_dot} There's no item '{item}' of type '{type}' in the '{workspace_name}' workspace."
+        )
+
+    return item_id
+
+
+@log
+def resolve_item_name_and_id(
+    item: str | UUID, type: Optional[str] = None, workspace: Optional[str | UUID] = None
+) -> Tuple[str, UUID]:
+
+    workspace_id = resolve_workspace_id(workspace)
+    item_id = resolve_item_id(item=item, type=type, workspace=workspace_id)
+    item_name = (
+        _base_api(
+            request=f"/v1/workspaces/{workspace_id}/items/{item_id}", client="fabric_sp"
+        )
+        .json()
+        .get("displayName")
+    )
+
+    return item_name, item_id
+
+
+@log
+def resolve_item_name(item_id: UUID, workspace: Optional[str | UUID] = None) -> str:
+
+    workspace_id = resolve_workspace_id(workspace)
+    try:
+        item_name = (
+            _base_api(
+                request=f"/v1/workspaces/{workspace_id}/items/{item_id}",
+                client="fabric_sp",
+            )
+            .json()
+            .get("displayName")
+        )
+    except FabricHTTPException:
+        raise ValueError(
+            f"{icons.red_dot} The '{item_id}' item was not found in the '{workspace_id}' workspace."
+        )
+
+    return item_name
+
+
+@log
 def _extract_json(dataframe: pd.DataFrame) -> dict:
 
     payload = dataframe["payload"].iloc[0]
@@ -660,29 +1249,31 @@ def _extract_json(dataframe: pd.DataFrame) -> dict:
     return json.loads(json_file)
 
 
-def _conv_b64(file):
+@log
+def _conv_b64(file, json_dumps: bool = True):
 
-    loadJson = json.dumps(file)
-    f = base64.b64encode(loadJson.encode("utf-8")).decode("utf-8")
+    if json_dumps:
+        file = json.dumps(file)
+    return base64.b64encode(file.encode("utf-8")).decode("utf-8")
 
-    return f
 
-
+@log
 def _decode_b64(file, format: Optional[str] = "utf-8"):
 
     return base64.b64decode(file).decode(format)
 
 
+@log
 def is_default_semantic_model(
-    dataset: str, workspace: Optional[str | UUID] = None
+    dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> bool:
     """
     Identifies whether a semantic model is a default semantic model.
 
     Parameters
     ----------
-    dataset : str
-        The name of the semantic model.
+    dataset : str | uuid.UUID
+        The name or ID of the semantic model.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -694,7 +1285,10 @@ def is_default_semantic_model(
         A True/False value indicating whether the semantic model is a default semantic model.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
+    (dataset_name, dataset_id) = resolve_item_name_and_id(
+        item=dataset, type="SemanticModel", workspace=workspace_id
+    )
 
     dfI = fabric.list_items(workspace=workspace_id)
     filtered_df = dfI.groupby("Display Name").filter(
@@ -703,9 +1297,10 @@ def is_default_semantic_model(
     )
     default_semantic_models = filtered_df["Display Name"].unique().tolist()
 
-    return dataset in default_semantic_models
+    return dataset_name in default_semantic_models
 
 
+@log
 def resolve_item_type(item_id: UUID, workspace: Optional[str | UUID] = None) -> str:
     """
     Obtains the item type for a given Fabric Item Id within a Fabric workspace.
@@ -736,6 +1331,7 @@ def resolve_item_type(item_id: UUID, workspace: Optional[str | UUID] = None) -> 
     return dfI_filt["Type"].iloc[0]
 
 
+@log
 def resolve_dataset_from_report(
     report: str | UUID, workspace: Optional[str | UUID] = None
 ) -> Tuple[UUID, str, UUID, str]:
@@ -762,7 +1358,7 @@ def resolve_dataset_from_report(
     dfR = _get_report(report=report, workspace=workspace)
     dataset_id = dfR["Dataset Id"].iloc[0]
     dataset_workspace_id = dfR["Dataset Workspace Id"].iloc[0]
-    dataset_workspace = fabric.resolve_workspace_name(dataset_workspace_id)
+    dataset_workspace = resolve_workspace_name(workspace_id=dataset_workspace_id)
     dataset_name = resolve_dataset_name(
         dataset_id=dataset_id, workspace=dataset_workspace
     )
@@ -777,6 +1373,7 @@ def _add_part(target_dict, path, payload):
     target_dict["definition"]["parts"].append(part)
 
 
+@log
 def resolve_workspace_capacity(
     workspace: Optional[str | UUID] = None,
 ) -> Tuple[UUID, str]:
@@ -792,15 +1389,16 @@ def resolve_workspace_capacity(
 
     Returns
     -------
-    Tuple[UUID, str]
+    Tuple[uuid.UUID, str]
         capacity Id; capacity came.
     """
+    from sempy_labs._capacities import list_capacities
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     filter_condition = urllib.parse.quote(workspace_id)
     dfW = fabric.list_workspaces(filter=f"id eq '{filter_condition}'")
     capacity_id = dfW["Capacity Id"].iloc[0]
-    dfC = fabric.list_capacities()
+    dfC = list_capacities()
     dfC_filt = dfC[dfC["Id"] == capacity_id]
     if len(dfC_filt) == 1:
         capacity_name = dfC_filt["Display Name"].iloc[0]
@@ -810,6 +1408,7 @@ def resolve_workspace_capacity(
     return capacity_id, capacity_name
 
 
+@log
 def get_capacity_id(workspace: Optional[str | UUID] = None) -> UUID:
     """
     Obtains the Capacity Id for a given workspace.
@@ -823,7 +1422,7 @@ def get_capacity_id(workspace: Optional[str | UUID] = None) -> UUID:
 
     Returns
     -------
-    UUID
+    uuid.UUID
         The capacity Id.
     """
 
@@ -841,6 +1440,7 @@ def get_capacity_id(workspace: Optional[str | UUID] = None) -> UUID:
     return capacity_id
 
 
+@log
 def get_capacity_name(workspace: Optional[str | UUID] = None) -> str:
     """
     Obtains the capacity name for a given workspace.
@@ -858,8 +1458,10 @@ def get_capacity_name(workspace: Optional[str | UUID] = None) -> str:
         The capacity name.
     """
 
+    from sempy_labs._capacities import list_capacities
+
     capacity_id = get_capacity_id(workspace)
-    dfC = fabric.list_capacities()
+    dfC = list_capacities()
     dfC_filt = dfC[dfC["Id"] == capacity_id]
     if dfC_filt.empty:
         raise ValueError(
@@ -869,6 +1471,7 @@ def get_capacity_name(workspace: Optional[str | UUID] = None) -> str:
     return dfC_filt["Display Name"].iloc[0]
 
 
+@log
 def resolve_capacity_name(capacity_id: Optional[UUID] = None) -> str:
     """
     Obtains the capacity name for a given capacity Id.
@@ -885,11 +1488,12 @@ def resolve_capacity_name(capacity_id: Optional[UUID] = None) -> str:
     str
         The capacity name.
     """
+    from sempy_labs._capacities import list_capacities
 
     if capacity_id is None:
         return get_capacity_name()
 
-    dfC = fabric.list_capacities()
+    dfC = list_capacities()
     dfC_filt = dfC[dfC["Id"] == capacity_id]
 
     if dfC_filt.empty:
@@ -900,33 +1504,41 @@ def resolve_capacity_name(capacity_id: Optional[UUID] = None) -> str:
     return dfC_filt["Display Name"].iloc[0]
 
 
-def resolve_capacity_id(capacity_name: Optional[str] = None) -> UUID:
+@log
+def resolve_capacity_id(capacity: Optional[str | UUID] = None, **kwargs) -> UUID:
     """
     Obtains the capacity Id for a given capacity name.
 
     Parameters
     ----------
-    capacity_name : str, default=None
-        The capacity name.
+    capacity : str | uuid.UUID, default=None
+        The capacity name or ID.
         Defaults to None which resolves to the capacity id of the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the capacity name of the workspace of the notebook.
 
     Returns
     -------
-    UUID
+    uuid.UUID
         The capacity Id.
     """
+    from sempy_labs._capacities import list_capacities
 
-    if capacity_name is None:
+    if "capacity_name" in kwargs:
+        capacity = kwargs["capacity_name"]
+        print(
+            f"{icons.warning} The 'capacity_name' parameter is deprecated. Please use 'capacity' instead."
+        )
+
+    if capacity is None:
         return get_capacity_id()
+    if _is_valid_uuid(capacity):
+        return capacity
 
-    dfC = fabric.list_capacities()
-    dfC_filt = dfC[dfC["Display Name"] == capacity_name]
+    dfC = list_capacities()
+    dfC_filt = dfC[dfC["Display Name"] == capacity]
 
     if dfC_filt.empty:
-        raise ValueError(
-            f"{icons.red_dot} The '{capacity_name}' capacity does not exist."
-        )
+        raise ValueError(f"{icons.red_dot} The '{capacity}' capacity does not exist.")
 
     return dfC_filt["Id"].iloc[0]
 
@@ -955,7 +1567,9 @@ def lro(
     status_codes: Optional[List[str]] = [200, 202],
     sleep_time: Optional[int] = 1,
     return_status_code: bool = False,
+    job_scheduler: bool = False,
 ):
+    from sempy_labs._job_scheduler import _get_item_job_instance
 
     if response.status_code not in status_codes:
         raise FabricHTTPException(response)
@@ -965,20 +1579,32 @@ def lro(
         else:
             result = response
     if response.status_code == status_codes[1]:
-        operationId = response.headers["x-ms-operation-id"]
-        response = client.get(f"/v1/operations/{operationId}")
-        response_body = json.loads(response.content)
-        while response_body["status"] not in ["Succeeded", "Failed"]:
-            time.sleep(sleep_time)
-            response = client.get(f"/v1/operations/{operationId}")
-            response_body = json.loads(response.content)
-        if response_body["status"] != "Succeeded":
-            raise FabricHTTPException(response)
-        if return_status_code:
-            result = response.status_code
+        if job_scheduler:
+            status_url = response.headers.get("Location").split("fabric.microsoft.com")[
+                1
+            ]
+            status = None
+            while status not in ["Completed", "Failed"]:
+                response = _base_api(request=status_url)
+                status = response.json().get("status")
+                time.sleep(3)
+
+            return _get_item_job_instance(url=status_url)
         else:
-            response = client.get(f"/v1/operations/{operationId}/result")
-            result = response
+            operation_id = response.headers["x-ms-operation-id"]
+            response = client.get(f"/v1/operations/{operation_id}")
+            response_body = json.loads(response.content)
+            while response_body["status"] not in ["Succeeded", "Failed"]:
+                time.sleep(sleep_time)
+                response = client.get(f"/v1/operations/{operation_id}")
+                response_body = json.loads(response.content)
+            if response_body["status"] != "Succeeded":
+                raise FabricHTTPException(response)
+            if return_status_code:
+                result = response.status_code
+            else:
+                response = client.get(f"/v1/operations/{operation_id}/result")
+                result = response
 
     return result
 
@@ -1002,6 +1628,27 @@ def pagination(client, response):
         # Update the continuation token and URI for the next iteration
         continuation_token = response_json.get("continuationToken")
         continuation_uri = response_json.get("continuationUri")
+
+    return responses
+
+
+def graph_pagination(response, headers):
+
+    responses = []
+    response_json = response.json()
+    responses.append(response_json)
+
+    # Check for pagination
+    odata_next_link = response_json.get("@odata.nextLink")
+
+    # Loop to handle pagination
+    while odata_next_link is not None:
+        response = requests.get(odata_next_link, headers=headers)
+        response_json = response.json()
+        responses.append(response_json)
+
+        # Update the odata next link for the next iteration
+        odata_next_link = response_json.get("@odata.nextLink")
 
     return responses
 
@@ -1049,10 +1696,8 @@ class FabricTokenCredential(TokenCredential):
 
         import notebookutils
 
-        token = notebookutils.credentials.getToken(scopes)
-        access_token = AccessToken(token, 0)
-
-        return access_token
+        token = notebookutils.credentials.getToken("storage")
+        return AccessToken(token, 0)
 
 
 def _get_adls_client(account_name):
@@ -1061,13 +1706,24 @@ def _get_adls_client(account_name):
 
     account_url = f"https://{account_name}.dfs.core.windows.net"
 
-    service_client = DataLakeServiceClient(
-        account_url, credential=FabricTokenCredential()
+    return DataLakeServiceClient(account_url, credential=FabricTokenCredential())
+
+
+def _get_blob_client(workspace_id: UUID, item_id: UUID):
+
+    from azure.storage.blob import BlobServiceClient
+
+    endpoint = _get_fabric_context_setting(name="trident.onelake.endpoint").replace(
+        ".dfs.", ".blob."
     )
+    url = f"https://{endpoint}/{workspace_id}/{item_id}"
 
-    return service_client
+    # account_url = f"https://{account_name}.blob.core.windows.net"
+
+    return BlobServiceClient(url, credential=FabricTokenCredential())
 
 
+@log
 def resolve_warehouse_id(
     warehouse: str | UUID, workspace: Optional[str | UUID]
 ) -> UUID:
@@ -1089,12 +1745,7 @@ def resolve_warehouse_id(
         The warehouse Id.
     """
 
-    if _is_valid_uuid(warehouse):
-        return warehouse
-    else:
-        return fabric.resolve_item_id(
-            item_name=warehouse, type="Warehouse", workspace=workspace
-        )
+    return resolve_item_id(item=warehouse, type="Warehouse", workspace=workspace)
 
 
 def get_language_codes(languages: str | List[str]):
@@ -1153,15 +1804,16 @@ def convert_to_alphanumeric_lowercase(input_string):
     return cleaned_string
 
 
+@log
 def resolve_environment_id(
-    environment: str, workspace: Optional[str | UUID] = None
+    environment: str | UUID, workspace: Optional[str | UUID] = None
 ) -> UUID:
     """
     Obtains the environment Id for a given environment.
 
     Parameters
     ----------
-    environment: str
+    environment: str | uuid.UUID
         Name of the environment.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID in which the semantic model resides.
@@ -1170,13 +1822,11 @@ def resolve_environment_id(
 
     Returns
     -------
-    UUID
+    uuid.UUID
         The environment Id.
     """
 
-    return fabric.resolve_item_id(
-        item_name=environment, type="Environment", workspace=workspace
-    )
+    return resolve_item_id(item=environment, type="Environment", workspace=workspace)
 
 
 def _make_clickable(val):
@@ -1184,6 +1834,7 @@ def _make_clickable(val):
     return f'<a target="_blank" href="{val}">{val}</a>'
 
 
+@log
 def convert_to_friendly_case(text: str) -> str:
     """
     Converts a string of pascal/camel/snake case to business-friendly case.
@@ -1208,14 +1859,17 @@ def convert_to_friendly_case(text: str) -> str:
     return text
 
 
-def resolve_notebook_id(notebook: str, workspace: Optional[str | UUID] = None) -> UUID:
+@log
+def resolve_notebook_id(
+    notebook: str | UUID, workspace: Optional[str | UUID] = None
+) -> UUID:
     """
     Obtains the notebook Id for a given notebook.
 
     Parameters
     ----------
-    notebook: str
-        Name of the notebook.
+    notebook: str | uuid.UUID
+        Name or ID of the notebook.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID in which the semantic model resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -1223,13 +1877,11 @@ def resolve_notebook_id(notebook: str, workspace: Optional[str | UUID] = None) -
 
     Returns
     -------
-    UUID
+    uuid.UUID
         The notebook Id.
     """
 
-    return fabric.resolve_item_id(
-        item_name=notebook, type="Notebook", workspace=workspace
-    )
+    return resolve_item_id(item=notebook, type="Notebook", workspace=workspace)
 
 
 def generate_guid():
@@ -1237,33 +1889,119 @@ def generate_guid():
     return str(uuid.uuid4())
 
 
+@log
 def _get_column_aggregate(
     table_name: str,
-    column_name: str = "RunId",
-    lakehouse: Optional[str] = None,
+    column_name: str | List[str] = "RunId",
+    lakehouse: Optional[str | UUID] = None,
+    workspace: Optional[str | UUID] = None,
     function: str = "max",
     default_value: int = 0,
-    rsd: float = 0.05,
-) -> int:
+    schema_name: Optional[str] = None,
+) -> int | Dict[str, int]:
 
-    from pyspark.sql import SparkSession
+    workspace_id = resolve_workspace_id(workspace)
+    lakehouse_id = resolve_lakehouse_id(lakehouse, workspace_id)
+    path = create_abfss_path(lakehouse_id, workspace_id, table_name, schema_name)
+    df = _read_delta_table(path)
 
-    spark = SparkSession.builder.getOrCreate()
-    function = function.upper()
+    function = function.lower()
 
-    if lakehouse is None:
-        lakehouse = resolve_lakehouse_name()
+    if isinstance(column_name, str):
+        column_name = [column_name]
 
-    if function in {"COUNTDISTINCT", "DISTINCTCOUNT"}:
-        query = f"SELECT COUNT(DISTINCT({column_name})) FROM {lakehouse}.{table_name}"
-    elif "APPROX" in function:
-        query = f"SELECT approx_count_distinct({column_name}, {rsd}) FROM {table_name}"
+    if _pure_python_notebook():
+        import polars as pl
+
+        if not isinstance(df, pd.DataFrame):
+            df.to_pandas()
+
+        df = pl.from_pandas(df)
+
+        def get_expr(col):
+            col_dtype = df.schema[col]
+
+            if "approx" in function:
+                return pl.col(col).unique().count().alias(col)
+            elif "distinct" in function:
+                if col_dtype == pl.Decimal:
+                    return pl.col(col).cast(pl.Float64).n_unique().alias(col)
+                else:
+                    return pl.col(col).n_unique().alias(col)
+            elif function == "sum":
+                return pl.col(col).sum().alias(col)
+            elif function == "min":
+                return pl.col(col).min().alias(col)
+            elif function == "max":
+                return pl.col(col).max().alias(col)
+            elif function == "count":
+                return pl.col(col).count().alias(col)
+            elif function in {"avg", "mean"}:
+                return pl.col(col).mean().alias(col)
+            else:
+                raise ValueError(f"Unsupported function: {function}")
+
+        exprs = [get_expr(col) for col in column_name]
+        aggs = df.select(exprs).to_dict(as_series=False)
+
+        if len(column_name) == 1:
+            result = aggs[column_name[0]][0] or default_value
+        else:
+            result = {col: aggs[col][0] for col in column_name}
     else:
-        query = f"SELECT {function}({column_name}) FROM {lakehouse}.{table_name}"
+        from pyspark.sql.functions import (
+            count,
+            sum,
+            min,
+            max,
+            avg,
+            approx_count_distinct,
+            countDistinct,
+        )
 
-    dfSpark = spark.sql(query)
+        result = None
+        if "approx" in function:
+            spark_func = approx_count_distinct
+        elif "distinct" in function:
+            spark_func = countDistinct
+        elif function == "count":
+            spark_func = count
+        elif function == "sum":
+            spark_func = sum
+        elif function == "min":
+            spark_func = min
+        elif function == "max":
+            spark_func = max
+        elif function == "avg":
+            spark_func = avg
+        else:
+            raise ValueError(f"Unsupported function: {function}")
 
-    return dfSpark.collect()[0][0] or default_value
+        agg_exprs = []
+        for col in column_name:
+            agg_exprs.append(spark_func(col).alias(col))
+
+        aggs = df.agg(*agg_exprs).collect()[0]
+        if len(column_name) == 1:
+            result = aggs[0] or default_value
+        else:
+            result = {col: aggs[col] for col in column_name}
+
+    return result
+
+
+def _validate_weight(weight: float):
+
+    if weight is not None and (weight <= 0 or weight >= 1):
+        raise ValueError(
+            f"{icons.red_dot} Invalid weight parameter. Weight must be a value between 0 and 1."
+        )
+
+
+def _create_spark_dataframe(df: pd.DataFrame):
+
+    spark = _create_spark_session()
+    return spark.createDataFrame(df)
 
 
 def _make_list_unique(my_list):
@@ -1358,6 +2096,9 @@ def _process_and_display_chart(df, title, widget):
     df["Start"] = df["Start"] - Offset
     df["End"] = df["End"] - Offset
 
+    unique_objects = df["Object Name"].nunique()
+    height = min(max(400, unique_objects * 30), 1000)
+
     # Vega-Lite spec for Gantt chart
     spec = (
         """{
@@ -1367,7 +2108,9 @@ def _process_and_display_chart(df, title, widget):
         + df.to_json(orient="records")
         + """ },
         "width": 700,
-        "height": 400,
+        "height": """
+        + str(height)
+        + """,
         "mark": "bar",
         "encoding": {
             "y": {
@@ -1416,6 +2159,11 @@ def _process_and_display_chart(df, title, widget):
 
 def _convert_data_type(input_data_type: str) -> str:
 
+    if not input_data_type:
+        return None
+
+    input_data_type = input_data_type.lower()
+
     data_type_mapping = {
         "string": "String",
         "int": "Int64",
@@ -1427,12 +2175,14 @@ def _convert_data_type(input_data_type: str) -> str:
         "date": "DateTime",
         "double": "Double",
         "float": "Double",
+        "binary": "Boolean",
+        "long": "Int64",
     }
 
-    if "decimal" in input_data_type:
-        return "Decimal"
-    else:
-        return data_type_mapping.get(input_data_type)
+    if input_data_type.startswith("decimal"):
+        return "Double"
+
+    return data_type_mapping.get(input_data_type)
 
 
 def _is_valid_uuid(
@@ -1468,7 +2218,7 @@ def _get_fabric_context_setting(name: str):
 
 def get_tenant_id():
 
-    _get_fabric_context_setting(name="trident.tenant.id")
+    return _get_fabric_context_setting(name="trident.tenant.id")
 
 
 def _base_api(
@@ -1480,26 +2230,35 @@ def _base_api(
     uses_pagination: bool = False,
     lro_return_json: bool = False,
     lro_return_status_code: bool = False,
+    lro_return_df: bool = False,
 ):
-
+    import notebookutils
     from sempy_labs._authentication import _get_headers
 
     if (lro_return_json or lro_return_status_code) and status_codes is None:
         status_codes = [200, 202]
 
+    class FabricDefaultCredential(TokenCredential):
+
+        def get_token(self, *scopes, **kwargs) -> AccessToken:
+            from sempy.fabric._credentials import build_access_token
+
+            return build_access_token(notebookutils.credentials.getToken("pbi"))
+
     if isinstance(status_codes, int):
         status_codes = [status_codes]
 
     if client == "fabric":
-        c = fabric.FabricRestClient()
+        c = fabric.FabricRestClient(credential=FabricDefaultCredential())
     elif client == "fabric_sp":
-        c = fabric.FabricRestClient(token_provider=auth.token_provider.get())
-    elif client in ["azure", "graph"]:
+        token = auth.token_provider.get() or FabricDefaultCredential()
+        c = fabric.FabricRestClient(credential=token)
+    elif client in ["azure", "graph", "onelake"]:
         pass
     else:
         raise ValueError(f"{icons.red_dot} The '{client}' client is not supported.")
 
-    if client not in ["azure", "graph"]:
+    if client not in ["azure", "graph", "onelake"]:
         if method == "get":
             response = c.get(request)
         elif method == "delete":
@@ -1513,15 +2272,28 @@ def _base_api(
         else:
             raise NotImplementedError
     else:
-        headers = _get_headers(auth.token_provider.get(), audience=client)
+        if client == "onelake":
+            import notebookutils
+
+            token = notebookutils.credentials.getToken("storage")
+            headers = {"Authorization": f"Bearer {token}"}
+            url = f"https://onelake.table.fabric.microsoft.com/delta/{request}"
+        else:
+            headers = _get_headers(auth.token_provider.get(), audience=client)
+            if client == "graph":
+                url = f"https://graph.microsoft.com/v1.0/{request}"
+            elif client == "azure":
+                url = request
         response = requests.request(
             method.upper(),
-            f"https://graph.microsoft.com/v1.0/{request}",
+            url,
             headers=headers,
             json=payload,
         )
 
-    if lro_return_json:
+    if lro_return_df:
+        return lro(c, response, status_codes, job_scheduler=True)
+    elif lro_return_json:
         return lro(c, response, status_codes).json()
     elif lro_return_status_code:
         return lro(c, response, status_codes, return_status_code=True)
@@ -1529,7 +2301,10 @@ def _base_api(
         if response.status_code not in status_codes:
             raise FabricHTTPException(response)
         if uses_pagination:
-            responses = pagination(c, response)
+            if client == "graph":
+                responses = graph_pagination(response, headers)
+            else:
+                responses = pagination(c, response)
             return responses
         else:
             return response
@@ -1569,9 +2344,28 @@ def _update_dataframe_datatypes(dataframe: pd.DataFrame, column_map: dict):
                 dataframe[column] = dataframe[column].fillna(0).astype(float)
             # This is to avoid NaN values in integer columns (for delta analyzer)
             elif data_type == "int_fillna":
-                dataframe[column] = dataframe[column].fillna(0).astype(int)
+                dataframe[column] = (
+                    pd.to_numeric(dataframe[column], errors="coerce")
+                    .fillna(0)
+                    .astype(int)
+                )
             elif data_type in ["str", "string"]:
-                dataframe[column] = dataframe[column].astype(str)
+                try:
+                    dataframe[column] = dataframe[column].astype(str)
+                except Exception:
+                    pass
+            # Avoid having empty lists or lists with a value of None.
+            elif data_type in ["list"]:
+                dataframe[column] = dataframe[column].apply(
+                    lambda x: (
+                        None
+                        if (type(x) == list and len(x) == 1 and x[0] == None)
+                        or (type(x) == list and len(x) == 0)
+                        else x
+                    )
+                )
+            elif data_type in ["dict"]:
+                dataframe[column] = dataframe[column]
             else:
                 raise NotImplementedError
 
@@ -1587,3 +2381,473 @@ def _print_success(item_name, item_type, workspace_name, action="created"):
         )
     else:
         raise NotImplementedError
+
+
+def _pure_python_notebook() -> bool:
+
+    from sempy.fabric._environment import _on_jupyter
+
+    return _on_jupyter()
+
+
+def _create_spark_session():
+
+    if _pure_python_notebook():
+        raise ValueError(
+            f"{icons.red_dot} This function is only available in a PySpark notebook."
+        )
+
+    from pyspark.sql import SparkSession
+
+    return SparkSession.builder.getOrCreate()
+
+
+def _get_delta_table(path: str) -> str:
+
+    from delta import DeltaTable
+
+    spark = _create_spark_session()
+
+    return DeltaTable.forPath(spark, path)
+
+
+def _read_delta_table(path: str, to_pandas: bool = True, to_df: bool = False):
+
+    if _pure_python_notebook():
+        from deltalake import DeltaTable
+
+        df = DeltaTable(table_uri=path)
+        if to_pandas:
+            df = df.to_pandas()
+    else:
+        spark = _create_spark_session()
+        df = spark.read.format("delta").load(path)
+        if to_df:
+            df = df.toDF()
+
+    return df
+
+
+def _read_delta_table_history(path) -> pd.DataFrame:
+
+    if _pure_python_notebook():
+        from deltalake import DeltaTable
+
+        df = pd.DataFrame(DeltaTable(table_uri=path).history())
+    else:
+        from delta import DeltaTable
+
+        spark = _create_spark_session()
+        delta_table = DeltaTable.forPath(spark, path)
+        df = delta_table.history().toPandas()
+
+    return df
+
+
+def _delta_table_row_count(path: str) -> int:
+
+    if _pure_python_notebook():
+        from deltalake import DeltaTable
+
+        dt = DeltaTable(path)
+        arrow_table = dt.to_pyarrow_table()
+        return arrow_table.num_rows
+    else:
+        return _read_delta_table(path).count()
+
+
+def _run_spark_sql_query(query):
+
+    spark = _create_spark_session()
+
+    return spark.sql(query)
+
+
+def _mount(
+    lakehouse: Optional[str | UUID] = None,
+    workspace: Optional[str | UUID] = None,
+    verbose: bool = False,
+) -> str:
+    """
+    Mounts a lakehouse to a notebook if it is not already mounted. Returns the local path to the lakehouse.
+    """
+
+    import notebookutils
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace=workspace)
+    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+        lakehouse=lakehouse, workspace=workspace
+    )
+
+    # Hide display mounts
+    current_setting = ""
+    try:
+        current_setting = notebookutils.conf.get(
+            "spark.notebookutils.displaymountpoint.enabled"
+        )
+        notebookutils.conf.set("spark.notebookutils.displaymountpoint.enabled", "false")
+    except Exception:
+        pass
+
+    lake_path = create_abfss_path(lakehouse_id, workspace_id)
+    mounts = notebookutils.fs.mounts()
+    mount_point = f"/{workspace_name.replace(' ', '')}{lakehouse_name.replace(' ', '')}"
+    if not any(i.get("source") == lake_path for i in mounts):
+        # Mount lakehouse if not mounted
+        notebookutils.fs.mount(lake_path, mount_point)
+        if verbose:
+            print(
+                f"{icons.green_dot} Mounted the '{lakehouse_name}' lakehouse within the '{workspace_name}' to the notebook."
+            )
+
+    mounts = notebookutils.fs.mounts()
+
+    # Set display mounts to original setting
+    try:
+        if current_setting != "false":
+            notebookutils.conf.set(
+                "spark.notebookutils.displaymountpoint.enabled", "true"
+            )
+    except Exception:
+        pass
+
+    local_path = next(
+        i.get("localPath") for i in mounts if i.get("source") == lake_path
+    )
+
+    return local_path
+
+
+def _get_or_create_workspace(
+    workspace: str,
+    capacity: Optional[str | UUID] = None,
+    description: Optional[str] = None,
+) -> Tuple[str, UUID]:
+
+    capacity_id = resolve_capacity_id(capacity)
+    dfW = fabric.list_workspaces()
+    dfW_filt_name = dfW[dfW["Name"] == workspace]
+    dfW_filt_id = dfW[dfW["Id"] == workspace]
+
+    # Workspace already exists
+    if (not dfW_filt_name.empty) or (not dfW_filt_id.empty):
+        print(f"{icons.green_dot} The '{workspace}' workspace already exists.")
+        (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+        return (workspace_name, workspace_id)
+
+    # Do not create workspace with name of an ID
+    if _is_valid_uuid(workspace):
+        raise ValueError(f"{icons.warning} Must enter a workspace name, not an ID.")
+
+    print(f"{icons.in_progress} Creating the '{workspace}' workspace...")
+    workspace_id = fabric.create_workspace(
+        display_name=workspace, capacity_id=capacity_id, description=description
+    )
+    print(
+        f"{icons.green_dot} The '{workspace}' workspace has been successfully created."
+    )
+
+    return (workspace, workspace_id)
+
+
+def _get_or_create_lakehouse(
+    lakehouse: str,
+    workspace: Optional[str | UUID] = None,
+    description: Optional[str] = None,
+) -> Tuple[str, UUID]:
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    dfI = fabric.list_items(type="Lakehouse", workspace=workspace)
+    dfI_filt_name = dfI[dfI["Display Name"] == lakehouse]
+    dfI_filt_id = dfI[dfI["Id"] == lakehouse]
+
+    if (not dfI_filt_name.empty) or (not dfI_filt_id.empty):
+        print(f"{icons.green_dot} The '{lakehouse}' lakehouse already exists.")
+        (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+            lakehouse=lakehouse, workspace=workspace
+        )
+        return (lakehouse_name, lakehouse_id)
+    if _is_valid_uuid(lakehouse):
+        raise ValueError(f"{icons.warning} Must enter a lakehouse name, not an ID.")
+
+    print(f"{icons.in_progress} Creating the '{lakehouse}' lakehouse...")
+    lakehouse_id = fabric.create_lakehouse(
+        display_name=lakehouse, workspace=workspace, description=description
+    )
+    print(
+        f"{icons.green_dot} The '{lakehouse}' lakehouse has been successfully created within the '{workspace_name}' workspace."
+    )
+
+    return (lakehouse, lakehouse_id)
+
+
+def _get_or_create_warehouse(
+    warehouse: str,
+    workspace: Optional[str | UUID] = None,
+    description: Optional[str] = None,
+) -> Tuple[str, UUID]:
+
+    from sempy_labs._warehouses import create_warehouse
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    dfI = fabric.list_items(type="Warehouse", workspace=workspace)
+    dfI_filt_name = dfI[dfI["Display Name"] == warehouse]
+    dfI_filt_id = dfI[dfI["Id"] == warehouse]
+
+    if (not dfI_filt_name.empty) or (not dfI_filt_id.empty):
+        print(f"{icons.green_dot} The '{warehouse}' warehouse already exists.")
+        (warehouse_name, warehouse_id) = resolve_item_name_and_id(
+            warehouse=warehouse, type="Warehouse", workspace=workspace
+        )
+        return (warehouse_name, warehouse_id)
+    if _is_valid_uuid(warehouse):
+        raise ValueError(f"{icons.warning} Must enter a warehouse name, not an ID.")
+
+    print(f"{icons.in_progress} Creating the '{warehouse}' warehouse...")
+    warehouse_id = create_warehouse(
+        display_name=warehouse, workspace=workspace, description=description
+    )
+    print(
+        f"{icons.green_dot} The '{warehouse}' warehouse has been successfully created within the '{workspace_name}' workspace."
+    )
+
+    return (warehouse, warehouse_id)
+
+
+def _xml_to_dict(element):
+    data = {element.tag: {} if element.attrib else None}
+    children = list(element)
+    if children:
+        temp_dict = {}
+        for child in children:
+            child_dict = _xml_to_dict(child)
+            for key, value in child_dict.items():
+                if key in temp_dict:
+                    if isinstance(temp_dict[key], list):
+                        temp_dict[key].append(value)
+                    else:
+                        temp_dict[key] = [temp_dict[key], value]
+                else:
+                    temp_dict[key] = value
+        data[element.tag] = temp_dict
+    else:
+        data[element.tag] = (
+            element.text.strip() if element.text and element.text.strip() else None
+        )
+    return data
+
+
+def file_exists(file_path: str) -> bool:
+    """
+    Check if a file exists in the given path.
+
+    Parameters
+    ----------
+    file_path : str
+        The path to the file.
+
+    Returns
+    -------
+    bool
+        True if the file exists, False otherwise.
+    """
+
+    import notebookutils
+
+    return len(notebookutils.fs.ls(file_path)) > 0
+
+
+def generate_number_guid():
+
+    guid = uuid.uuid4()
+    return str(guid.int & ((1 << 64) - 1))
+
+
+def get_url_content(url: str):
+
+    if "github.com" in url and "/blob/" in url:
+        url = url.replace("github.com", "raw.githubusercontent.com")
+        url = url.replace("/blob/", "/")
+
+    response = requests.get(url)
+    if response.ok:
+        try:
+            data = response.json()  # Only works if the response is valid JSON
+        except ValueError:
+            data = response.text  # Fallback: get raw text content
+        return data
+    else:
+        print(f"Failed to fetch raw content: {response.status_code}")
+
+
+def generate_hex(length: int = 10) -> str:
+    """
+    Generate a random hex string of the specified length. Used for generating IDs for report objects (page, visual, bookmark etc.).
+    """
+    import secrets
+
+    return secrets.token_hex(length)
+
+
+def decode_payload(payload):
+
+    if is_base64(payload):
+        try:
+            decoded_payload = json.loads(base64.b64decode(payload).decode("utf-8"))
+        except Exception:
+            decoded_payload = base64.b64decode(payload)
+    elif isinstance(payload, dict):
+        decoded_payload = payload
+    else:
+        raise ValueError("Payload must be a dictionary or a base64 encoded value.")
+
+    return decoded_payload
+
+
+def is_base64(s):
+    try:
+        # Add padding if needed
+        s_padded = s + "=" * (-len(s) % 4)
+        decoded = base64.b64decode(s_padded, validate=True)
+        # Optional: check if re-encoding gives the original (excluding padding)
+        return base64.b64encode(decoded).decode().rstrip("=") == s.rstrip("=")
+    except Exception:
+        return False
+
+
+def get_jsonpath_value(
+    data, path, default=None, remove_quotes=False, fix_true: bool = False
+):
+    matches = parse(path).find(data)
+    result = matches[0].value if matches else default
+    if result and remove_quotes and isinstance(result, str):
+        if result.startswith("'") and result.endswith("'"):
+            result = result[1:-1]
+    if fix_true and isinstance(result, str):
+        if result.lower() == "true":
+            result = True
+        elif result.lower() == "false":
+            result = False
+    return result
+
+
+def set_json_value(payload: dict, json_path: str, json_value: str | dict | List):
+
+    jsonpath_expr = parse(json_path)
+    matches = jsonpath_expr.find(payload)
+
+    if matches:
+        # Update all matches
+        for match in matches:
+            parent = match.context.value
+            path = match.path
+            if isinstance(path, Fields):
+                parent[path.fields[0]] = json_value
+            elif isinstance(path, Index):
+                parent[path.index] = json_value
+    else:
+        # Handle creation
+        parts = json_path.lstrip("$").strip(".").split(".")
+        current = payload
+
+        for i, part in enumerate(parts):
+            is_last = i == len(parts) - 1
+
+            # Detect list syntax like "lockAspect[*]"
+            list_match = re.match(r"(\w+)\[\*\]", part)
+            if list_match:
+                list_key = list_match.group(1)
+                if list_key not in current or not isinstance(current[list_key], list):
+                    # Initialize with one dict element
+                    current[list_key] = [{}]
+
+                for item in current[list_key]:
+                    if is_last:
+                        # Last part, assign value
+                        item = json_value
+                    else:
+                        # Proceed to next level
+                        if not isinstance(item, dict):
+                            raise ValueError(
+                                f"Expected dict in list for key '{list_key}', got {type(item)}"
+                            )
+                        next_part = ".".join(parts[i + 1 :])
+                        set_json_value(item, "$." + next_part, json_value)
+                return payload
+            else:
+                if part not in current or not isinstance(current[part], dict):
+                    current[part] = {} if not is_last else json_value
+                elif is_last:
+                    current[part] = json_value
+                current = current[part]
+
+    return payload
+
+
+def remove_json_value(path: str, payload: dict, json_path: str, verbose: bool = True):
+
+    if not isinstance(payload, dict):
+        raise ValueError(
+            f"{icons.red_dot} Cannot apply json_path to non-dictionary payload in '{path}'."
+        )
+
+    jsonpath_expr = parse(json_path)
+    matches = jsonpath_expr.find(payload)
+
+    if not matches and verbose:
+        print(
+            f"{icons.red_dot} No match found for '{json_path}' in '{path}'. Skipping."
+        )
+        return payload
+
+    for match in matches:
+        parent = match.context.value
+        path_expr = match.path
+
+        if isinstance(path_expr, Fields):
+            key = path_expr.fields[0]
+            if key in parent:
+                del parent[key]
+                if verbose:
+                    print(f"{icons.green_dot} Removed key '{key}' from '{path}'.")
+        elif isinstance(path_expr, Index):
+            index = path_expr.index
+            if isinstance(parent, list) and 0 <= index < len(parent):
+                parent.pop(index)
+                if verbose:
+                    print(f"{icons.green_dot} Removed index [{index}] from '{path}'.")
+
+    return payload
+
+
+def _get_url_prefix() -> str:
+
+    client = fabric.PowerBIRestClient()
+    response = client.get("/v1.0/myorg/capacities")
+    if response.status_code != 200:
+        raise FabricHTTPException("Failed to retrieve URL prefix.")
+    context = response.json().get("@odata.context")
+
+    return context.split("/v1.0")[0]
+
+
+def get_pbi_token_headers():
+
+    import notebookutils
+
+    token = notebookutils.credentials.getToken("pbi")
+    return {"Authorization": f"Bearer {token}"}
+
+
+def get_model_id(item_id: UUID, prefix: str = None, headers: dict = None):
+
+    if prefix is None:
+        prefix = _get_url_prefix()
+    if headers is None:
+        headers = get_pbi_token_headers()
+
+    response = requests.get(url=f"{prefix}/metadata/models/{item_id}", headers=headers)
+
+    return response.json().get("model", {}).get("id")
