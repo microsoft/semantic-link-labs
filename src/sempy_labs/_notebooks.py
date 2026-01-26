@@ -21,8 +21,7 @@ def get_notebook_type(
     notebook_name: str, workspace: Optional[str | UUID] = None
 ) -> str:
 
-    return nb.get_notebook_type(
-        notebook_name=notebook_name, workspace=workspace)
+    return nb.get_notebook_type(notebook_name=notebook_name, workspace=workspace)
 
 
 @log

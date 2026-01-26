@@ -242,7 +242,7 @@ def get_workspace_network_communication_policy(
         A pandas dataframe showing the networking communication policy for the specified workspace.
     """
 
-    return wkspc.get_workspace_network_communication_policy(workspace=workspace)
+    return wkspc.get_network_communication_policy(workspace=workspace)
 
 
 @log
@@ -300,7 +300,7 @@ def get_workspace_git_outbound_policy(workspace: Optional[str | UUID] = None) ->
         The Git outbound policy for the specified workspace.
     """
 
-    return wkspc.get_workspace_git_outbound_policy(workspace=workspace)
+    return wkspc.get_git_outbound_policy(workspace=workspace)
 
 
 @log
@@ -325,4 +325,4 @@ def set_workspace_git_outbound_policy(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    wkspc.set_workspace_git_outbound_policy(policy=policy, workspace=workspace)
+    wkspc.set_git_outbound_policy(policy=policy, workspace=workspace)
