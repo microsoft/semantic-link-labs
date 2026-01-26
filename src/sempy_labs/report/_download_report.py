@@ -58,14 +58,14 @@ def download_report(
     if _is_valid_uuid(report):
         df = dfI_filt[dfI_filt["Id"] == str(report)]
     else:
-        df = dfI_filt[dfI_filt["Name"] == report]
+        df = dfI_filt[dfI_filt["Display Name"] == report]
 
     if df.empty:
         raise ValueError(
             f"{icons.red_dot} The report '{report}' was not found in the '{workspace_name}' workspace."
         )
 
-    report_name = df["Name"].iloc[0]
+    report_name = df["Display Name"].iloc[0]
     report_id = df["Id"].iloc[0]
     report_type = df["Type"].iloc[0]
 
