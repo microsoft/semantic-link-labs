@@ -149,7 +149,7 @@ def modify_immutability_policy(
     ----------
     retention_days : int
         Retention Days for the action.
-    scope : Literal["DiagnosticLogs"], default="DiagnosticLogs"
+    scope : typing.Literal["DiagnosticLogs"], default="DiagnosticLogs"
         The scope of the immutability policy. Currently, only "DiagnosticLogs" is supported.
     workspace : str | uuid.UUID, default=None
         The name or ID of the workspace.

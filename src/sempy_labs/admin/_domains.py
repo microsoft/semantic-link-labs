@@ -562,7 +562,7 @@ def sync_role_assignments_to_subdomains(
     ----------
     domain : str | uuid.UUID
         The domain name or ID.
-    role : Literal["Admin", "Contributor"]
+    role : typing.Literal["Admin", "Contributor"]
         The role to sync. Valid options: 'Admin', 'Contributor'.
     """
 

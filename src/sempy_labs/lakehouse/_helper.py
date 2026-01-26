@@ -195,7 +195,7 @@ def load_table(
         The name of the table to load.
     file_path : str
         The path to the data to load.
-    mode : Literal["Overwrite", "Append"]
+    mode : typing.Literal["Overwrite", "Append"]
         The mode to use when loading the data.
         "Overwrite" will overwrite the existing data.
         "Append" will append the data to the existing data.

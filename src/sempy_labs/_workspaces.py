@@ -260,9 +260,9 @@ def set_workspace_network_communication_policy(
 
     Parameters
     ----------
-    inbound_policy : Literal['Allow', 'Deny']
+    inbound_policy : typing.Literal['Allow', 'Deny']
         The policy for all inbound communications to a workspace.
-    outbound_policy : Literal['Allow', 'Deny']
+    outbound_policy : typing.Literal['Allow', 'Deny']
         The policy for all outbound communications to a workspace.
     workspace : str | uuid.UUID, default=None
         The workspace name or ID.
@@ -317,7 +317,7 @@ def set_workspace_git_outbound_policy(
 
     Parameters
     ----------
-    policy : Literal['Allow', 'Deny']
+    policy : typing.Literal['Allow', 'Deny']
         The policy for all Git outbound communications from a workspace.
     workspace : str | uuid.UUID, default=None
         The workspace name or ID.

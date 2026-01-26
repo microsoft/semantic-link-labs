@@ -688,7 +688,7 @@ def update_variable(
         Name of the variable.
     new_name : str, default=None
         New name of the variable. Defaults to None which keeps the same name.
-    type : Literal["Boolean", "DateTime", "Number", "Integer", "String"], default=None
+    type : typing.Literal["Boolean", "DateTime", "Number", "Integer", "String"], default=None
         New type of the variable. Valid types are: "Boolean", "DateTime", "Number", "Integer", "String". Defaults to None which keeps the same type.
     value : str, default=None
         New value of the variable. Defaults to None which keeps the same value.

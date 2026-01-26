@@ -883,7 +883,7 @@ class TOMWrapper:
             Name of the table.
         column_name : str, default=None
             Name of the column. Defaults to None which sets object level security for the entire table.
-        permission : Literal["Default", "None", "Read"], default="Default"
+        permission : typing.Literal["Default", "None", "Read"], default="Default"
             The object level security permission for the column.
             `Permission valid values <https://learn.microsoft.com/dotnet/api/microsoft.analysisservices.tabular.metadatapermission?view=analysisservices-dotnet>`_
         """

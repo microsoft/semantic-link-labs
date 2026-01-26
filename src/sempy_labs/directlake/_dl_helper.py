@@ -214,7 +214,7 @@ def get_direct_lake_source(
 
     Returns
     -------
-    Tuple[str, str, UUID, UUID]
+    typing.Tuple[str, str, uuid.UUID, uuid.UUID]
         If the source of the direct lake semantic model is a lakehouse this will return: 'Lakehouse', Lakehouse Name, SQL Endpoint Id, Workspace Id
         If the source of the direct lake semantic model is a warehouse this will return: 'Warehouse', Warehouse Name, Warehouse Id, Workspace Id
         If the semantic model is not a Direct Lake semantic model, it will return None, None, None.
