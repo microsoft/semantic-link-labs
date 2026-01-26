@@ -1,10 +1,9 @@
 import sempy_labs._icons as icons
-from typing import Optional
+from typing import Optional, Literal
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_lakehouse_name_and_id,
     _base_api,
-    resolve_item_id,
     _mount,
     resolve_workspace_name,
     _is_valid_uuid,
