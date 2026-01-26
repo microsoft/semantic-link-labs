@@ -9,7 +9,7 @@ from sempy._utils._log import log
 import requests
 import json
 from sempy_labs.kql_dashboard._items import create_kql_dashboard
-from sempy_labs._kql_databases import list_kql_databases
+from sempy_labs.kql_database._items import list_kql_databases
 
 
 @log

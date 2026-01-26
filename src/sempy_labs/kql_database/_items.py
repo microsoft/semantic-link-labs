@@ -133,7 +133,7 @@ def delete_kql_database(
 
 
 @log
-def _resolve_cluster_uri(
+def resolve_cluster_uri(
     kql_database: str | UUID, workspace: Optional[str | UUID] = None
 ) -> str:
 

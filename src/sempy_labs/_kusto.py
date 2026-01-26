@@ -5,7 +5,7 @@ from sempy._utils._log import log
 import sempy_labs._icons as icons
 from typing import Optional
 from uuid import UUID
-from sempy_labs._kql_databases import _resolve_cluster_uri
+from sempy_labs.kql_database._items import resolve_cluster_uri
 from sempy_labs._helper_functions import resolve_item_id
 
 
@@ -46,7 +46,7 @@ def query_kusto(
             f"{icons._red_dot} Invalid language '{language}'. Only 'kql' and 'sql' are supported."
         )
 
-    cluster_uri = _resolve_cluster_uri(kql_database=kql_database, workspace=workspace)
+    cluster_uri = resolve_cluster_uri(kql_database=kql_database, workspace=workspace)
     token = notebookutils.credentials.getToken(cluster_uri)
 
     headers = {
