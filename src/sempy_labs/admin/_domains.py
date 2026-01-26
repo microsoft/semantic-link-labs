@@ -409,7 +409,9 @@ def assign_domain_workspaces_by_capacities(
 
 
 @log
-def assign_domain_workspaces(domain: str | UUID, workspace: str | UUID | List[str | UUID], **kwargs):
+def assign_domain_workspaces(
+    domain: str | UUID, workspace: str | UUID | List[str | UUID], **kwargs
+):
     """
     Assigns workspaces to the specified domain by workspace.
 
@@ -446,21 +448,21 @@ def assign_domain_workspaces(domain: str | UUID, workspace: str | UUID | List[st
                 workspace_list.append(dfW["Id"].iloc[0])
 
     # Check for invalid capacities
-    #invalid_workspaces = [
+    # invalid_workspaces = [
     #    name for name in workspace_names if name not in dfW["Name"].values
-    #]
+    # ]
 
-    #if len(invalid_workspaces) == 1:
+    # if len(invalid_workspaces) == 1:
     #    raise ValueError(
     #        f"{icons.red_dot} The {invalid_workspaces} workspace is not valid."
     #    )
-    #elif len(invalid_workspaces) > 1:
+    # elif len(invalid_workspaces) > 1:
     #    raise ValueError(
     #        f"{icons.red_dot} The {invalid_workspaces} workspaces are not valid."
     #    )
 
-    #dfW_filt = dfW[dfW["Name"].isin(workspace_names)]
-    #workspace_list = list(dfW_filt["Id"])
+    # dfW_filt = dfW[dfW["Name"].isin(workspace_names)]
+    # workspace_list = list(dfW_filt["Id"])
 
     payload = {"workspacesIds": workspace_list}
 

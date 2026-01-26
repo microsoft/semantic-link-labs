@@ -2669,12 +2669,9 @@ def get_url_content(url: str):
 
     if parsed.netloc in {"github.com", "www.github.com"} and "/blob/" in parsed.path:
         new_path = parsed.path.replace("/blob/", "/")
-        url = urllib.parse.urlunparse((
-            parsed.scheme,
-            "raw.githubusercontent.com",
-            new_path,
-            "", "", ""
-        ))
+        url = urllib.parse.urlunparse(
+            (parsed.scheme, "raw.githubusercontent.com", new_path, "", "", "")
+        )
 
     response = requests.get(url)
     if response.ok:
