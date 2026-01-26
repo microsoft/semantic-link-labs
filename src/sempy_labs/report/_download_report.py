@@ -7,17 +7,19 @@ from sempy_labs._helper_functions import (
     resolve_item_id,
     _mount,
     resolve_workspace_name,
+    _is_valid_uuid,
 )
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
 from uuid import UUID
 from sempy._utils._log import log
+import sempy.fabric as fabric
 
 
 @log
 def download_report(
     report: str | UUID,
     file_name: Optional[str] = None,
-    download_type: str = "LiveConnect",
+    download_type: Literal["LiveConnect", "IncludeModel"] = "LiveConnect",
     workspace: Optional[str | UUID] = None,
 ):
     """
@@ -30,12 +32,12 @@ def download_report(
     Parameters
     ----------
     report: str | uuid.UUID
-        Name or ID of the report.
+        Name or ID of the Power BI report or Paginated Report.
     file_name : str, default=None
-        Name of the .pbix file to be saved.
+        Name of the .pbix or .rdl file to be saved. Do not include the file extension.
         Defaults to None which resolves to the name of the report.
-    download_type : str, default="LiveConnect"
-        The type of download. Valid values are "LiveConnect" and "IncludeModel".
+    download_type : typing.Literal["LiveConnect", "IncludeModel"], default="LiveConnect"
+        The type of download. Valid values are "LiveConnect" and "IncludeModel". This parameter is ignored for Paginated Reports.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -51,26 +53,50 @@ def download_report(
     (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id()
     lakehouse_workspace = resolve_workspace_name()
 
+    dfI = fabric.list_items(workspace=workspace_id)
+    dfI_filt = dfI[dfI["Type"].isin(["Report", "PaginatedReport"])]
+    if _is_valid_uuid(report):
+        df = dfI_filt[dfI_filt["Id"] == str(report)]
+    else:
+        df = dfI_filt[dfI_filt["Name"] == report]
+
+    if df.empty:
+        raise ValueError(
+            f"{icons.red_dot} The report '{report}' was not found in the '{workspace_name}' workspace."
+        )
+
+    report_name = df["Name"].iloc[0]
+    report_id = df["Id"].iloc[0]
+    report_type = df["Type"].iloc[0]
+
     download_types = ["LiveConnect", "IncludeModel"]
-    if download_type not in download_types:
+    if download_type not in download_types and report_type != "PaginatedReport":
         raise ValueError(
             f"{icons.red_dot} Invalid download_type parameter. Valid options: {download_types}."
         )
 
-    file_name = file_name or report
-    report_id = resolve_item_id(item=report, type="Report", workspace=workspace)
+    file_name = file_name or report_name
 
-    response = _base_api(
-        request=f"v1.0/myorg/groups/{workspace_id}/reports/{report_id}/Export?downloadType={download_type}",
-        client="fabric_sp",
-    )
+    base_url = f"v1.0/myorg/groups/{workspace_id}/reports/{report_id}/Export"
+    extension = ".pbix"
+    if report_type == "PaginatedReport":
+        response = _base_api(
+            request=base_url,
+            client="fabric_sp",
+        )
+        extension = ".rdl"
+    else:
+        response = _base_api(
+            request=f"v1.0/myorg/groups/{workspace_id}/reports/{report_id}/Export?downloadType={download_type}",
+            client="fabric_sp",
+        )
 
     # Save file to the attached lakehouse
     local_path = _mount()
-    save_file = f"{local_path}/Files/{file_name}.pbix"
+    save_file = f"{local_path}/Files/{file_name}{extension}"
     with open(save_file, "wb") as file:
         file.write(response.content)
 
     print(
-        f"{icons.green_dot} The '{report}' report within the '{workspace_name}' workspace has been exported as the '{file_name}' file in the '{lakehouse_name}' lakehouse within the '{lakehouse_workspace}' workspace."
+        f"{icons.green_dot} The '{report_name}' {report_type} within the '{workspace_name}' workspace has been exported as the '{file_name}' file in the '{lakehouse_name}' lakehouse within the '{lakehouse_workspace}' workspace."
     )
