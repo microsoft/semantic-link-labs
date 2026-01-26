@@ -243,7 +243,7 @@ def create_folder_if_not_exists(
 ) -> UUID:
     try:
         x = fabric.resolve_folder_id(folder=folder, workspace=workspace)
-    except:
+    except Exception:
         x = fabric.create_folder(folder=folder, workspace=workspace)
 
     return x
@@ -2273,8 +2273,6 @@ def _base_api(
             raise NotImplementedError
     else:
         if client == "onelake":
-            import notebookutils
-
             token = notebookutils.credentials.getToken("storage")
             headers = {"Authorization": f"Bearer {token}"}
             url = f"https://onelake.table.fabric.microsoft.com/delta/{request}"
@@ -2696,32 +2694,6 @@ def generate_hex(length: int = 10) -> str:
     import secrets
 
     return secrets.token_hex(length)
-
-
-def decode_payload(payload):
-
-    if is_base64(payload):
-        try:
-            decoded_payload = json.loads(base64.b64decode(payload).decode("utf-8"))
-        except Exception:
-            decoded_payload = base64.b64decode(payload)
-    elif isinstance(payload, dict):
-        decoded_payload = payload
-    else:
-        raise ValueError("Payload must be a dictionary or a base64 encoded value.")
-
-    return decoded_payload
-
-
-def is_base64(s):
-    try:
-        # Add padding if needed
-        s_padded = s + "=" * (-len(s) % 4)
-        decoded = base64.b64decode(s_padded, validate=True)
-        # Optional: check if re-encoding gives the original (excluding padding)
-        return base64.b64encode(decoded).decode().rstrip("=") == s.rstrip("=")
-    except Exception:
-        return False
 
 
 def get_jsonpath_value(
