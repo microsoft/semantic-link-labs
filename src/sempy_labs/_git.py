@@ -1,15 +1,8 @@
 import pandas as pd
-import sempy_labs._icons as icons
 from typing import Optional, List
-from sempy_labs._helper_functions import (
-    _update_dataframe_datatypes,
-    resolve_workspace_id,
-    resolve_workspace_name_and_id,
-    _base_api,
-    _create_dataframe,
-)
 from uuid import UUID
 from sempy._utils._log import log
+import sempy_labs.git as git
 
 
 @log
@@ -44,27 +37,13 @@ def connect_workspace_to_azure_dev_ops(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    payload = {
-        "gitProviderDetails": {
-            "organizationName": organization_name,
-            "projectName": project_name,
-            "gitProviderType": "AzureDevOps",
-            "repositoryName": repository_name,
-            "branchName": branch_name,
-            "directoryName": directory_name,
-        }
-    }
-
-    _base_api(
-        request=f"/v1/workspaces/{workspace_id}/git/connect",
-        payload=payload,
-        method="post",
-    )
-
-    print(
-        f"{icons.green_dot} The '{workspace_name}' workspace has been connected to the '{project_name}' Git project in Azure DevOps within the '{repository_name}' repository."
+    git.connect_workspace_to_azure_dev_ops(
+        organization_name=organization_name,
+        project_name=project_name,
+        repository_name=repository_name,
+        branch_name=branch_name,
+        directory_name=directory_name,
+        workspace=workspace,
     )
 
 
@@ -103,30 +82,14 @@ def connect_workspace_to_github(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    payload = {
-        "gitProviderDetails": {
-            "ownerName": owner_name,
-            "gitProviderType": "GitHub",
-            "repositoryName": repository_name,
-            "branchName": branch_name,
-            "directoryName": directory_name,
-        },
-        "myGitCredentials": {
-            "source": source,
-            "connectionId": connection_id,
-        },
-    }
-
-    _base_api(
-        request=f"/v1/workspaces/{workspace_id}/git/connect",
-        payload=payload,
-        method="post",
-    )
-
-    print(
-        f"{icons.green_dot} The '{workspace_name}' workspace has been connected to the '{repository_name}' GitHub repository."
+    git.connect_workspace_to_github(
+        owner_name=owner_name,
+        repository_name=repository_name,
+        branch_name=branch_name,
+        directory_name=directory_name,
+        connection_id=connection_id,
+        source=source,
+        workspace=workspace,
     )
 
 
@@ -145,13 +108,7 @@ def disconnect_workspace_from_git(workspace: Optional[str | UUID] = None):
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    _base_api(request=f"/v1/workspaces/{workspace_id}/git/disconnect", method="post")
-
-    print(
-        f"{icons.green_dot} The '{workspace_name}' workspace has been disconnected from Git."
-    )
+    git.disconnect_workspace_from_git(workspace=workspace)
 
 
 @log
@@ -174,51 +131,7 @@ def get_git_status(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing the Git status of items in the workspace.
     """
 
-    workspace_id = resolve_workspace_id(workspace)
-
-    columns = {
-        "Workspace Head": "str",
-        "Remote Commit Hash": "str",
-        "Object ID": "str",
-        "Logical ID": "str",
-        "Item Type": "str",
-        "Item Name": "str",
-        "Workspace Change": "str",
-        "Remote Change": "str",
-        "Conflict Type": "str",
-    }
-
-    df = _create_dataframe(columns=columns)
-
-    result = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/git/status",
-        lro_return_json=True,
-        status_codes=None,
-    )
-
-    rows = []
-    for changes in result.get("changes", []):
-        item_metadata = changes.get("itemMetadata", {})
-        item_identifier = item_metadata.get("itemIdentifier", {})
-
-        rows.append(
-            {
-                "Workspace Head": result.get("workspaceHead"),
-                "Remote Commit Hash": result.get("remoteCommitHash"),
-                "Object ID": item_identifier.get("objectId"),
-                "Logical ID": item_identifier.get("logicalId"),
-                "Item Type": item_metadata.get("itemType"),
-                "Item Name": item_metadata.get("displayName"),
-                "Remote Change": changes.get("remoteChange"),
-                "Workspace Change": changes.get("workspaceChange"),
-                "Conflict Type": changes.get("conflictType"),
-            }
-        )
-
-    if rows:
-        df = pd.DataFrame(rows, columns=columns.keys())
-
-    return df
+    return git.get_status(workspace=workspace)
 
 
 @log
@@ -241,43 +154,7 @@ def get_git_connection(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing the Git status of items in the workspace.
     """
 
-    workspace_id = resolve_workspace_id(workspace)
-
-    columns = {
-        "Organization Name": "str",
-        "Project Name": "str",
-        "Git Provider Type": "str",
-        "Repository Name": "str",
-        "Branch Name": "str",
-        "Directory Name": "str",
-        "Workspace Head": "str",
-        "Last Sync Time": "datetime",
-        "Git Connection State": "str",
-    }
-
-    df = _create_dataframe(columns=columns)
-
-    response = _base_api(request=f"/v1/workspaces/{workspace_id}/git/connection")
-
-    r = response.json()
-    provider_details = r.get("gitProviderDetails", {})
-    sync_details = r.get("gitSyncDetails", {})
-
-    new_data = {
-        "Organization Name": provider_details.get("organizationName"),
-        "Project Name": provider_details.get("projectName"),
-        "Git Provider Type": provider_details.get("gitProviderType"),
-        "Repository Name": provider_details.get("repositoryName"),
-        "Branch Name": provider_details.get("branchName"),
-        "Directory Name": provider_details.get("directoryName"),
-        "Workspace Head": sync_details.get("head"),
-        "Last Sync Time": sync_details.get("lastSyncTime"),
-        "Git Connection State": r.get("gitConnectionState"),
-    }
-    df = pd.DataFrame([new_data], columns=columns.keys())
-    _update_dataframe_datatypes(dataframe=df, column_map=columns)
-
-    return df
+    return git.get_connection(workspace=workspace)
 
 
 @log
@@ -300,20 +177,7 @@ def initialize_git_connection(workspace: Optional[str | UUID] = None) -> str:
         Remote full SHA commit hash.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    response_json = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/git/initializeConnection",
-        method="post",
-        lro_return_json=True,
-        status_codes=None,
-    )
-
-    print(
-        f"{icons.green_dot} The '{workspace_name}' workspace git connection has been initialized."
-    )
-
-    return response_json.get("remoteCommitHash")
+    return git.initialize_connection(workspace=workspace)
 
 
 @log
@@ -340,49 +204,7 @@ def commit_to_git(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    gs = get_git_status(workspace=workspace_id)
-    if not gs.empty:
-        workspace_head = gs["Workspace Head"].iloc[0]
-
-        if item_ids is None:
-            commit_mode = "All"
-        else:
-            commit_mode = "Selective"
-
-        if isinstance(item_ids, str):
-            item_ids = [item_ids]
-
-        payload = {
-            "mode": commit_mode,
-            "workspaceHead": workspace_head,
-            "comment": comment,
-        }
-
-        if item_ids is not None:
-            payload["items"] = [{"objectId": item_id} for item_id in item_ids]
-
-        _base_api(
-            request=f"/v1/workspaces/{workspace_id}/git/commitToGit",
-            method="post",
-            payload=payload,
-            lro_return_status_code=True,
-            status_codes=None,
-        )
-
-        if commit_mode == "All":
-            print(
-                f"{icons.green_dot} All items within the '{workspace_name}' workspace have been committed to Git."
-            )
-        else:
-            print(
-                f"{icons.green_dot} The {item_ids} items within the '{workspace_name}' workspace have been committed to Git."
-            )
-    else:
-        print(
-            f"{icons.info} Git already up to date: no modified items found within the '{workspace_name}' workspace."
-        )
+    git.commit_to_git(comment=comment, item_ids=item_ids, workspace=workspace)
 
 
 @log
@@ -415,41 +237,12 @@ def update_from_git(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    conflict_resolution_policies = ["PreferWorkspace", "PreferRemote"]
-    if "remote" in [policy.lower() for policy in conflict_resolution_policies]:
-        conflict_resolution_policies = "PreferRemote"
-    elif "workspace" in [policy.lower() for policy in conflict_resolution_policies]:
-        conflict_resolution_policies = "PreferWorkspace"
-
-    if conflict_resolution_policy not in conflict_resolution_policies:
-        raise ValueError(
-            f"{icons.red_dot} Invalid conflict resolution policy. Valid options: {conflict_resolution_policies}."
-        )
-
-    payload = {}
-    payload["remoteCommitHash"] = remote_commit_hash
-    payload["conflictResolution"] = {
-        "conflictResolutionType": "Workspace",
-        "conflictResolutionPolicy": conflict_resolution_policy,
-    }
-
-    if workspace_head is not None:
-        payload["workspaceHead"] = workspace_head
-    if allow_override is not None:
-        payload["options"] = {"allowOverrideItems": allow_override}
-
-    _base_api(
-        request=f"/v1/workspaces/{workspace_id}/git/updateFromGit",
-        method="post",
-        payload=payload,
-        lro_return_status_code=True,
-        status_codes=None,
-    )
-
-    print(
-        f"{icons.green_dot} The '{workspace_name}' workspace has been updated with commits pushed to the connected branch."
+    git.update_from_git(
+        remote_commit_hash=remote_commit_hash,
+        conflict_resolution_policy=conflict_resolution_policy,
+        workspace_head=workspace_head,
+        allow_override=allow_override,
+        workspace=workspace,
     )
 
 
@@ -475,24 +268,7 @@ def get_my_git_credentials(
         A pandas dataframe showing the user's Git credentials configuration details.
     """
 
-    workspace_id = resolve_workspace_id(workspace)
-
-    columns = {
-        "Source": "string",
-    }
-
-    df = _create_dataframe(columns)
-
-    response = _base_api(request=f"/v1/workspaces/{workspace_id}/git/myGitCredentials")
-
-    r = response.json()
-    new_data = {
-        "Source": r.get("source"),
-        "Connection Id": r.get("connectionId"),
-    }
-    df = pd.DataFrame([new_data], columns=columns.keys())
-
-    return df
+    return git.get_my_git_credentials(workspace=workspace)
 
 
 @log
@@ -518,26 +294,6 @@ def update_my_git_credentials(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    if source == "ConfiguredConnection" and connection_id is None:
-        raise ValueError(
-            f"{icons.red_dot} The 'ConfiguredConnection' source requires a connection_id."
-        )
-
-    payload = {
-        "source": source,
-    }
-
-    if connection_id is not None:
-        payload["connectionId"] = connection_id
-
-    _base_api(
-        request=f"/v1/workspaces/{workspace_id}/git/myGitCredentials",
-        method="patch",
-        payload=payload,
-    )
-
-    print(
-        f"{icons.green_dot} The user's Git credentials have been updated accordingly."
+    git.update_my_git_credentials(
+        source=source, connection_id=connection_id, workspace=workspace
     )

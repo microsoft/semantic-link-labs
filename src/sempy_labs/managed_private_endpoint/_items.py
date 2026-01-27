@@ -1,8 +1,16 @@
 import pandas as pd
+import sempy_labs._icons as icons
 from typing import Optional
+from sempy_labs._helper_functions import (
+    resolve_workspace_name_and_id,
+    _is_valid_uuid,
+    _base_api,
+    _print_success,
+    _create_dataframe,
+    resolve_workspace_id,
+)
 from uuid import UUID
 from sempy._utils._log import log
-import sempy_labs.managed_private_endpoint as mpe
 
 
 @log
@@ -36,12 +44,34 @@ def create_managed_private_endpoint(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    mpe.create_managed_private_endpoint(
-        name=name,
-        target_private_link_resource_id=target_private_link_resource_id,
-        target_subresource_type=target_subresource_type,
-        request_message=request_message,
-        workspace=workspace,
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    request_body = {
+        "name": name,
+        "targetPrivateLinkResourceId": target_private_link_resource_id,
+        "targetSubresourceType": target_subresource_type,
+    }
+
+    if request_message is not None:
+        if len(request_message) > 140:
+            raise ValueError(
+                f"{icons.red_dot} The request message cannot be more than 140 characters."
+            )
+        request_body["requestMessage"] = request_message
+
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/managedPrivateEndpoints",
+        method="post",
+        status_codes=[201, 202],
+        payload=request_body,
+        lro_return_status_code=True,
+        client="fabric_sp",
+    )
+    _print_success(
+        item_name=name,
+        item_type="managed private endpoint",
+        workspace_name=workspace_name,
+        action="created",
     )
 
 
@@ -69,7 +99,47 @@ def list_managed_private_endpoints(
         A pandas dataframe showing the managed private endpoints within a workspace.
     """
 
-    return mpe.list_managed_private_endpoints(workspace=workspace)
+    columns = {
+        "Managed Private Endpoint Name": "string",
+        "Managed Private Endpoint Id": "string",
+        "Target Private Link Resource Id": "string",
+        "Provisioning State": "string",
+        "Connection Status": "string",
+        "Connection Description": "string",
+        "Target Subresource Type": "string",
+    }
+    df = _create_dataframe(columns=columns)
+
+    workspace_id = resolve_workspace_id(workspace)
+
+    responses = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/managedPrivateEndpoints",
+        uses_pagination=True,
+        client="fabric_sp",
+    )
+
+    rows = []
+    for r in responses:
+        for v in r.get("value", []):
+            conn = v.get("connectionState", {})
+            rows.append(
+                {
+                    "Managed Private Endpoint Name": v.get("name"),
+                    "Managed Private Endpoint Id": v.get("id"),
+                    "Target Private Link Resource Id": v.get(
+                        "targetPrivateLinkResourceId"
+                    ),
+                    "Provisioning State": v.get("provisioningState"),
+                    "Connection Status": conn.get("status"),
+                    "Connection Description": conn.get("description"),
+                    "Target Subresource Type": v.get("targetSubresourceType"),
+                }
+            )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+
+    return df
 
 
 @log
@@ -93,9 +163,32 @@ def delete_managed_private_endpoint(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    mpe.delete_managed_private_endpoint(
-        managed_private_endpoint=managed_private_endpoint,
-        workspace=workspace,
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+
+    if _is_valid_uuid(managed_private_endpoint):
+        item_id = managed_private_endpoint
+    else:
+        df = list_managed_private_endpoints(workspace=workspace)
+        df_filt = df[df["Managed Private Endpoint Name"] == managed_private_endpoint]
+
+        if df_filt.empty:
+            raise ValueError(
+                f"{icons.red_dot} The '{managed_private_endpoint}' managed private endpoint does not exist within the '{workspace_name}' workspace."
+            )
+
+        item_id = df_filt["Managed Private Endpoint Id"].iloc[0]
+
+    _base_api(
+        request=f"/v1/workspaces/{workspace_id}/managedPrivateEndpoints/{item_id}",
+        method="delete",
+        client="fabric_sp",
+    )
+
+    _print_success(
+        item_name=managed_private_endpoint,
+        item_type="managed private endpoint",
+        workspace_name=workspace_name,
+        action="deleted",
     )
 
 
@@ -125,7 +218,36 @@ def list_managed_private_endpoint_fqdns(
         A pandas dataframe showing a list of fully qualified domain names (FQDNs) associated with the specified managed private endpoint.
     """
 
-    return mpe.list_managed_private_endpoint_fqdns(
-        managed_private_endpoint=managed_private_endpoint,
-        workspace=workspace,
+    workspace_id = resolve_workspace_id(workspace)
+    if _is_valid_uuid(managed_private_endpoint):
+        item_id = managed_private_endpoint
+    else:
+        df = list_managed_private_endpoints(workspace=workspace_id)
+        df_filt = df[df["Managed Private Endpoint Name"] == managed_private_endpoint]
+        if df_filt.empty:
+            raise ValueError(
+                f"{icons.red_dot} The '{managed_private_endpoint}' managed private endpoint does not exist within the workspace."
+            )
+        item_id = df_filt["Managed Private Endpoint Id"].iloc[0]
+
+    columns = {"FQDN": "str"}
+    df = _create_dataframe(columns=columns)
+    responses = _base_api(
+        request=f"/v1/workspaces/{workspace_id}/managedPrivateEndpoints/{item_id}/targetFQDNs",
+        uses_pagination=True,
+        client="fabric_sp",
     )
+
+    rows = []
+    for r in responses:
+        for v in r.get("value", []):
+            rows.append(
+                {
+                    "FQDN": v,
+                }
+            )
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+
+    return df
