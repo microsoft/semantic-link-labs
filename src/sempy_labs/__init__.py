@@ -111,6 +111,15 @@ from ._data_pipelines import (
     delete_data_pipeline,
     get_data_pipeline_definition,
 )
+from ._copy_jobs import (
+    list_copy_jobs,
+    create_copy_job,
+    delete_copy_job,
+    get_copy_job,
+    update_copy_job,
+    get_copy_job_definition,
+    update_copy_job_definition,
+)
 from ._eventhouses import (
     create_eventhouse,
     list_eventhouses,
@@ -484,6 +493,13 @@ __all__ = [
     "list_sql_endpoints",
     "list_datamarts",
     "get_data_pipeline_definition",
+    "list_copy_jobs",
+    "create_copy_job",
+    "delete_copy_job",
+    "get_copy_job",
+    "update_copy_job",
+    "get_copy_job_definition",
+    "update_copy_job_definition",
     "list_external_data_shares_in_item",
     "create_external_data_share",
     "revoke_external_data_share",
