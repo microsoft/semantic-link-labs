@@ -169,7 +169,7 @@ def get_copy_job(
     response = _base_api(
         request=f"/v1/workspaces/{workspace_id}/copyJobs/{item_id}",
         client="fabric_sp",
-    )
+    ).json()
 
     rows = [
         {
