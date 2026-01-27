@@ -123,6 +123,30 @@ def _base_api(
 | `graph` | Microsoft Graph | Service Principal |
 | `onelake` | OneLake storage | Storage token |
 
+### Return Types
+
+**The `_base_api` function returns different types depending on the parameters used:**
+
+| Parameters | Return Type | How to Access Data |
+|------------|-------------|-------------------|
+| Default (no special flags) | `Response` object | Call `.json()` to get dict |
+| `uses_pagination=True` | `list[dict]` | Iterate over list, each item has `.get("value", [])` |
+| `lro_return_json=True` | `dict` | Access directly, already parsed JSON |
+| `lro_return_status_code=True` | `int` | HTTP status code |
+| `lro_return_df=True` | `DataFrame` | Use directly |
+
+**⚠️ COMMON MISTAKE:** Forgetting to call `.json()` on the response for simple GET requests.
+
+```python
+# ❌ WRONG - response is a Response object, not a dict
+response = _base_api(request=f"/v1/workspaces/{workspace_id}/items/{item_id}")
+name = response.get("displayName")  # AttributeError: 'Response' object has no attribute 'get'
+
+# ✅ CORRECT - call .json() to get the dict
+response = _base_api(request=f"/v1/workspaces/{workspace_id}/items/{item_id}").json()
+name = response.get("displayName")  # Works!
+```
+
 ---
 
 ## Common API Patterns

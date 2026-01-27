@@ -267,11 +267,11 @@ The `_base_api` function in `_helper_functions.py` is the standard way to make R
 ```python
 from sempy_labs._helper_functions import _base_api
 
-# Simple GET request
+# Simple GET request - MUST call .json() to get dict
 response = _base_api(
-    request="/v1/workspaces/{workspace_id}/items",
+    request="/v1/workspaces/{workspace_id}/items/{item_id}",
     client="fabric_sp",
-)
+).json()  # <-- Don't forget .json()!
 
 # POST with payload
 response = _base_api(
@@ -282,14 +282,14 @@ response = _base_api(
     client="fabric_sp",
 )
 
-# With pagination
+# With pagination - returns list of dicts, no .json() needed
 responses = _base_api(
     request=url,
     uses_pagination=True,
     client="fabric_sp",
 )
 
-# Long-running operation
+# Long-running operation - returns dict directly, no .json() needed
 result = _base_api(
     request=url,
     method="post",
@@ -297,6 +297,15 @@ result = _base_api(
     client="fabric_sp",
 )
 ```
+
+### `_base_api` Return Types (IMPORTANT)
+
+| Parameters | Return Type | Usage |
+|------------|-------------|-------|
+| Default | `Response` | **Must call `.json()` to get dict** |
+| `uses_pagination=True` | `list[dict]` | Iterate directly |
+| `lro_return_json=True` | `dict` | Use directly |
+| `lro_return_status_code=True` | `int` | HTTP status code |
 
 ### Client Types
 
