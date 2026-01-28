@@ -10,7 +10,7 @@ from sempy_labs._helper_functions import (
 )
 from uuid import UUID
 import sempy_labs._icons as icons
-from sempy_labs._gateways import _resolve_gateway_id
+from sempy_labs.gateway._items import resolve_gateway_id
 from sempy._utils._log import log
 import warnings
 
@@ -316,7 +316,7 @@ def _list_supported_connection_types(
 
     url = f"/v1/connections/supportedConnectionTypes?showAllCreationMethods={show_all_creation_methods}&"
     if gateway is not None:
-        gateway_id = _resolve_gateway_id(gateway)
+        gateway_id = resolve_gateway_id(gateway)
         url += f"gatewayId={gateway_id}"
 
     columns = {
@@ -476,7 +476,7 @@ def create_on_prem_connection(
         If True, skips the test connection.
     """
 
-    gateway_id = _resolve_gateway_id(gateway)
+    gateway_id = resolve_gateway_id(gateway)
 
     payload = {
         "connectivityType": "OnPremisesGateway",
@@ -562,7 +562,7 @@ def create_vnet_connection(
         If True, skips the test connection.
     """
 
-    gateway_id = _resolve_gateway_id(gateway)
+    gateway_id = resolve_gateway_id(gateway)
 
     payload = {
         "connectivityType": "VirtualNetworkGateway",
