@@ -1,18 +1,8 @@
 import pandas as pd
 from typing import Optional
-from sempy_labs._helper_functions import (
-    _is_valid_uuid,
-    resolve_workspace_id,
-    _update_dataframe_datatypes,
-    _base_api,
-    _create_dataframe,
-    resolve_item_id,
-)
 from uuid import UUID
-import sempy_labs._icons as icons
-from sempy_labs.gateway._items import resolve_gateway_id
 from sempy._utils._log import log
-import warnings
+import sempy_labs.connection as conn
 
 
 @log
@@ -30,11 +20,7 @@ def delete_connection(connection: str | UUID):
         The connection name or ID.
     """
 
-    connection_id = _resolve_connection_id(connection)
-    _base_api(
-        request=f"/v1/connections/{connection_id}", client="fabric_sp", method="delete"
-    )
-    print(f"{icons.green_dot} The '{connection}' connection has been deleted.")
+    conn.delete_connection(connection)
 
 
 @log
@@ -54,33 +40,13 @@ def delete_connection_role_assignment(connection: str | UUID, role_assignment_id
         The role assignment ID.
     """
 
-    connection_id = _resolve_connection_id(connection)
-    _base_api(
-        request=f"/v1/connections/{connection_id}/roleAssignments/{role_assignment_id}",
-        client="fabric_sp",
-        method="delete",
-    )
-
-    print(
-        f"{icons.green_dot} The '{role_assignment_id}' role assignment Id has been deleted from the '{connection}' connection."
-    )
+    conn.delete_connection_role_assignment(connection, role_assignment_id)
 
 
 @log
-def _resolve_connection_id(connection: str | UUID) -> UUID:
+def resolve_connection_id(connection: str | UUID) -> UUID:
 
-    if _is_valid_uuid(connection):
-        return connection
-
-    dfC = list_connections()
-    dfC_filt = dfC[dfC["Connection Name"] == connection]
-
-    if dfC_filt.empty:
-        raise ValueError(
-            f"{icons.red_dot} The '{connection}' is not a valid connection."
-        )
-
-    return dfC_filt["Connection Id"].iloc[0]
+    return conn.resolve_connection_id(connection)
 
 
 @log
@@ -103,39 +69,7 @@ def list_connection_role_assignments(connection: str | UUID) -> pd.DataFrame:
         A pandas dataframe showing a list of connection role assignments.
     """
 
-    connection_id = _resolve_connection_id(connection)
-
-    columns = {
-        "Connection Role Assignment Id": "string",
-        "Principal Id": "string",
-        "Principal Type": "string",
-        "Role": "string",
-    }
-
-    df = _create_dataframe(columns=columns)
-
-    responses = _base_api(
-        request=f"/v1/connections/{connection_id}/roleAssignments",
-        client="fabric_sp",
-        uses_pagination=True,
-    )
-
-    rows = []
-    for r in responses:
-        for v in r.get("value", []):
-            rows.append(
-                {
-                    "Connection Role Assignment Id": v.get("id"),
-                    "Principal Id": v.get("principal", {}).get("id"),
-                    "Principal Type": v.get("principal", {}).get("type"),
-                    "Role": v.get("role"),
-                }
-            )
-
-    if rows:
-        df = pd.DataFrame(rows, columns=list(columns.keys()))
-
-    return df
+    return conn.list_connection_role_assignments(connection)
 
 
 @log
@@ -151,68 +85,7 @@ def list_connections() -> pd.DataFrame:
         A pandas dataframe showing all available connections.
     """
 
-    columns = {
-        "Connection Id": "string",
-        "Connection Name": "string",
-        "Gateway Id": "string",
-        "Connectivity Type": "string",
-        "Connection Path": "string",
-        "Connection Type": "string",
-        "Privacy Level": "string",
-        "Credential Type": "string",
-        "Single Sign On Type": "string",
-        "Connection Encryption": "string",
-        "Skip Test Connection": "bool",
-    }
-    df = _create_dataframe(columns=columns)
-
-    responses = _base_api(
-        request="/v1/connections", client="fabric_sp", uses_pagination=True
-    )
-
-    rows = []
-    for r in responses:
-        for i in r.get("value", []):
-            connection_details = i.get("connectionDetails", {})
-            credential_details = i.get("credentialDetails", {})
-
-            rows.append(
-                {
-                    "Connection Id": i.get("id"),
-                    "Connection Name": i.get("displayName"),
-                    "Gateway Id": i.get("gatewayId"),
-                    "Connectivity Type": i.get("connectivityType"),
-                    "Connection Path": connection_details.get("path"),
-                    "Connection Type": connection_details.get("type"),
-                    "Privacy Level": i.get("privacyLevel"),
-                    "Credential Type": (
-                        credential_details.get("credentialType")
-                        if credential_details
-                        else None
-                    ),
-                    "Single Sign On Type": (
-                        credential_details.get("singleSignOnType")
-                        if credential_details
-                        else None
-                    ),
-                    "Connection Encryption": (
-                        credential_details.get("connectionEncryption")
-                        if credential_details
-                        else None
-                    ),
-                    "Skip Test Connection": (
-                        credential_details.get("skipTestConnection")
-                        if credential_details
-                        else None
-                    ),
-                }
-            )
-
-    if rows:
-        df = pd.DataFrame(rows, columns=list(columns.keys()))
-        _update_dataframe_datatypes(dataframe=df, column_map=columns)
-
-    return df
+    return conn.list_connections()
 
 
 @log
@@ -246,113 +119,19 @@ def list_item_connections(
         A pandas dataframe showing the list of connections that the specified item is connected to.
     """
 
-    if "item_name" in kwargs:
-        if item is not None:
-            raise TypeError("Cannot specify both 'item' and 'item_name'")
-        item = kwargs.pop("item_name")
-        warnings.warn(
-            "'item_name' parameter is deprecated, use 'item' instead.",
-            FutureWarning,
-            stacklevel=2,
-        )
-    if "item_type" in kwargs:
-        if type is not None:
-            raise TypeError("Cannot specify both 'type' and 'item_type'")
-        type = kwargs.pop("item_type")
-        warnings.warn(
-            "'item_type' parameter is deprecated, use 'type' instead.",
-            FutureWarning,
-            stacklevel=2,
-        )
-
-    if item is None or type is None:
-        raise TypeError(
-            "Missing required parameters: 'item' and 'type' must be provided either directly or via 'item_name' and 'item_type'."
-        )
-
-    workspace_id = resolve_workspace_id(workspace)
-    item_id = resolve_item_id(item=item, type=type, workspace=workspace_id)
-
-    columns = {
-        "Connection Name": "string",
-        "Connection Id": "string",
-        "Connectivity Type": "string",
-        "Connection Type": "string",
-        "Connection Path": "string",
-        "Gateway Id": "string",
-    }
-    df = _create_dataframe(columns=columns)
-
-    responses = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/items/{item_id}/connections",
-        client="fabric_sp",
-        uses_pagination=True,
+    return conn.list_item_connections(
+        item=item, type=type, workspace=workspace, **kwargs
     )
-
-    rows = []
-    for r in responses:
-        for v in r.get("value", []):
-            rows.append(
-                {
-                    "Connection Name": v.get("displayName"),
-                    "Connection Id": v.get("id"),
-                    "Connectivity Type": v.get("connectivityType"),
-                    "Connection Type": v.get("connectionDetails", {}).get("type"),
-                    "Connection Path": v.get("connectionDetails", {}).get("path"),
-                    "Gateway Id": v.get("gatewayId"),
-                }
-            )
-
-    if rows:
-        df = pd.DataFrame(rows, columns=list(columns.keys()))
-
-    return df
 
 
 @log
-def _list_supported_connection_types(
+def list_supported_connection_types(
     gateway: Optional[str | UUID] = None, show_all_creation_methods: bool = False
 ) -> pd.DataFrame:
 
-    url = f"/v1/connections/supportedConnectionTypes?showAllCreationMethods={show_all_creation_methods}&"
-    if gateway is not None:
-        gateway_id = resolve_gateway_id(gateway)
-        url += f"gatewayId={gateway_id}"
-
-    columns = {
-        "Connection Type": "string",
-        "Creation Method": "string",
-        "Supported Credential Types": "string",
-        "Supported Connection Encryption Types": "string",
-        "Supports Skip Test Connection": "bool",
-    }
-    df = _create_dataframe(columns=columns)
-
-    url = url.rstrip("&")
-    responses = _base_api(request=url, client="fabric_sp", uses_pagination=True)
-
-    rows = []
-    for r in responses:
-        for v in r.get("value", []):
-            rows.append(
-                {
-                    "Connection Type": v.get("type"),
-                    "Creation Method": v["creationMethods"][0]["name"],
-                    "Supported Credential Types": v.get("supportedCredentialTypes"),
-                    "Supported Connection Encryption Types": v.get(
-                        "supportedConnectionEncryptionTypes"
-                    ),
-                    "Supports Skip Test Connection": v.get(
-                        "supportsSkipTestConnection"
-                    ),
-                }
-            )
-
-    if rows:
-        df = pd.DataFrame(rows, columns=list(columns.keys()))
-        _update_dataframe_datatypes(dataframe=df, column_map=columns)
-
-    return df
+    return conn.list_supported_connection_types(
+        gateway=gateway, show_all_creation_methods=show_all_creation_methods
+    )
 
 
 @log
@@ -393,47 +172,16 @@ def create_cloud_connection(
         If True, skips the test connection.
     """
 
-    payload = {
-        "connectivityType": "ShareableCloud",
-        "displayName": name,
-        "connectionDetails": {
-            "type": "SQL",
-            "creationMethod": "SQL",
-            "parameters": [
-                {
-                    "dataType": "Text",
-                    "name": "server",
-                    "value": server_name,
-                },
-                {
-                    "dataType": "Text",
-                    "name": "database",
-                    "value": database_name,
-                },
-            ],
-        },
-        "privacyLevel": privacy_level,
-        "credentialDetails": {
-            "singleSignOnType": "None",
-            "connectionEncryption": connection_encryption,
-            "skipTestConnection": skip_test_connection,
-            "credentials": {
-                "credentialType": "Basic",
-                "username": user_name,
-                "password": password,
-            },
-        },
-    }
-
-    _base_api(
-        request="/v1/connections",
-        client="fabric_sp",
-        method="post",
-        payload=payload,
-        status_codes=201,
+    conn.create_cloud_connection(
+        name=name,
+        server_name=server_name,
+        database_name=database_name,
+        user_name=user_name,
+        password=password,
+        privacy_level=privacy_level,
+        connection_encryption=connection_encryption,
+        skip_test_connection=skip_test_connection,
     )
-
-    print(f"{icons.green_dot} The '{name}' cloud connection has been created.")
 
 
 @log
@@ -476,49 +224,12 @@ def create_on_prem_connection(
         If True, skips the test connection.
     """
 
-    gateway_id = resolve_gateway_id(gateway)
-
-    payload = {
-        "connectivityType": "OnPremisesGateway",
-        "gatewayId": gateway_id,
-        "displayName": name,
-        "connectionDetails": {
-            "type": "SQL",
-            "creationMethod": "SQL",
-            "parameters": [
-                {
-                    "dataType": "Text",
-                    "name": "server",
-                    "value": server_name,
-                },
-                {
-                    "dataType": "Text",
-                    "name": "database",
-                    "value": database_name,
-                },
-            ],
-        },
-        "privacyLevel": privacy_level,
-        "credentialDetails": {
-            "singleSignOnType": "None",
-            "connectionEncryption": connection_encryption,
-            "skipTestConnection": skip_test_connection,
-            "credentials": {
-                "credentialType": "Windows",
-                "values": [{"gatewayId": gateway_id, "credentials": credentials}],
-            },
-        },
-    }
-
-    _base_api(
-        request="/v1/connections",
-        client="fabric_sp",
-        method="post",
-        payload=payload,
-        status_codes=201,
+    conn.create_on_prem_connection(
+        name=name,
+        gateway=gateway,
+        server_name=server_name,
+        database_name=database_name,
     )
-
-    print(f"{icons.green_dot} The '{name}' on-prem connection has been created.")
 
 
 @log
@@ -562,49 +273,14 @@ def create_vnet_connection(
         If True, skips the test connection.
     """
 
-    gateway_id = resolve_gateway_id(gateway)
-
-    payload = {
-        "connectivityType": "VirtualNetworkGateway",
-        "gatewayId": gateway_id,
-        "displayName": name,
-        "connectionDetails": {
-            "type": "SQL",
-            "creationMethod": "SQL",
-            "parameters": [
-                {
-                    "dataType": "Text",
-                    "name": "server",
-                    "value": server_name,
-                },
-                {
-                    "dataType": "Text",
-                    "name": "database",
-                    "value": database_name,
-                },
-            ],
-        },
-        "privacyLevel": privacy_level,
-        "credentialDetails": {
-            "singleSignOnType": "None",
-            "connectionEncryption": connection_encryption,
-            "skipTestConnection": skip_test_connection,
-            "credentials": {
-                "credentialType": "Basic",
-                "username": user_name,
-                "password": password,
-            },
-        },
-    }
-
-    _base_api(
-        request="/v1/connections",
-        client="fabric_sp",
-        method="post",
-        payload=payload,
-        status_codes=201,
-    )
-
-    print(
-        f"{icons.green_dot} The '{name}' virtual network gateway connection has been created."
+    conn.create_vnet_connection(
+        name=name,
+        gateway=gateway,
+        server_name=server_name,
+        database_name=database_name,
+        user_name=user_name,
+        password=password,
+        privacy_level=privacy_level,
+        connection_encryption=connection_encryption,
+        skip_test_connection=skip_test_connection,
     )

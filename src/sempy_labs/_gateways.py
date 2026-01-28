@@ -1,17 +1,7 @@
 from sempy._utils._log import log
 import pandas as pd
 from typing import Optional
-from sempy_labs._helper_functions import (
-    _is_valid_uuid,
-    resolve_capacity_id,
-    resolve_workspace_name_and_id,
-    resolve_dataset_name_and_id,
-    _update_dataframe_datatypes,
-    _base_api,
-    _create_dataframe,
-)
 from uuid import UUID
-import sempy_labs._icons as icons
 import sempy_labs.gateway as g
 
 
