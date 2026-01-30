@@ -36,7 +36,7 @@ def get_direct_lake_lakehouse(
 
     Returns
     -------
-    Tuple[str, uuid.UUID]
+    typing.Tuple[str, uuid.UUID]
         The lakehouse name and lakehouse ID.
     """
 

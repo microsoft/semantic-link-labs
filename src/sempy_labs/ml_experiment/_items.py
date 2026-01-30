@@ -1,6 +1,6 @@
 import pandas as pd
 from typing import Optional
-from ._helper_functions import (
+from sempy_labs._helper_functions import (
     resolve_workspace_id,
     _base_api,
     delete_item,
@@ -12,11 +12,11 @@ from sempy._utils._log import log
 
 
 @log
-def list_ml_models(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
+def list_ml_experiments(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
-    Shows the ML models within a workspace.
+    Shows the ML experiments within a workspace.
 
-    This is a wrapper function for the following API: `Items - List ML Models <https://learn.microsoft.com/rest/api/fabric/mlmodel/items/list-ml-models>`_.
+    This is a wrapper function for the following API: `Items - List ML Experiments <https://learn.microsoft.com/rest/api/fabric/mlexperiment/items/list-ml-experiments>`_.
 
     Parameters
     ----------
@@ -32,8 +32,8 @@ def list_ml_models(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
 
     columns = {
-        "ML Model Name": "string",
-        "ML Model Id": "string",
+        "ML Experiment Name": "string",
+        "ML Experiment Id": "string",
         "Description": "string",
     }
     df = _create_dataframe(columns=columns)
@@ -41,7 +41,7 @@ def list_ml_models(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     workspace_id = resolve_workspace_id(workspace)
 
     responses = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/mlModels",
+        request=f"/v1/workspaces/{workspace_id}/mlExperiments",
         status_codes=200,
         uses_pagination=True,
     )
@@ -55,8 +55,8 @@ def list_ml_models(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
             rows.append(
                 {
-                    "ML Model Name": modelName,
-                    "ML Model Id": model_id,
+                    "ML Experiment Name": modelName,
+                    "ML Experiment Id": model_id,
                     "Description": desc,
                 }
             )
@@ -68,44 +68,46 @@ def list_ml_models(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
 
 @log
-def create_ml_model(
+def create_ml_experiment(
     name: str, description: Optional[str] = None, workspace: Optional[str | UUID] = None
 ):
     """
-    Creates a Fabric ML model.
+    Creates a Fabric ML experiment.
 
-    This is a wrapper function for the following API: `Items - Create ML Model <https://learn.microsoft.com/rest/api/fabric/mlmodel/items/create-ml-model>`_.
+    This is a wrapper function for the following API: `Items - Create ML Experiment <https://learn.microsoft.com/rest/api/fabric/mlexperiment/items/create-ml-experiment>`_.
 
     Parameters
     ----------
     name: str
-        Name of the ML model.
+        Name of the ML experiment.
     description : str, default=None
-        A description of the ML model.
+        A description of the ML experiment.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    create_item(name=name, description=description, type="MLModel", workspace=workspace)
+    create_item(
+        name=name, description=description, type="MLExperiment", workspace=workspace
+    )
 
 
 @log
-def delete_ml_model(name: str | UUID, workspace: Optional[str | UUID] = None):
+def delete_ml_experiment(name: str, workspace: Optional[str | UUID] = None):
     """
-    Deletes a Fabric ML model.
+    Deletes a Fabric ML experiment.
 
-    This is a wrapper function for the following API: `Items - Delete ML Model <https://learn.microsoft.com/rest/api/fabric/mlmodel/items/delete-ml-model>`_.
+    This is a wrapper function for the following API: `Items - Delete ML Experiment <https://learn.microsoft.com/rest/api/fabric/mlexperiment/items/delete-ml-experiment>`_.
 
     Parameters
     ----------
-    name: str | uuid.UUID
-        Name or ID of the ML model.
+    name: str
+        Name of the ML experiment.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    delete_item(item=name, type="MLModel", workspace=workspace)
+    delete_item(item=name, type="MLExperiment", workspace=workspace)

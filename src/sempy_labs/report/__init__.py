@@ -31,6 +31,9 @@ from ._report_bpa import run_report_bpa
 from ._export_report import (
     export_report,
 )
+from ._endorsement import (
+    set_endorsement,
+)
 
 __all__ = [
     "create_report_from_reportjson",
@@ -52,4 +55,5 @@ __all__ = [
     "download_report",
     "save_report_as_pbip",
     "connect_report",
+    "set_endorsement",
 ]

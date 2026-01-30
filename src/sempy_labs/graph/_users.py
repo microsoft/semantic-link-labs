@@ -4,10 +4,11 @@ import base64
 from uuid import UUID
 import sempy_labs._icons as icons
 from typing import List, Literal, Optional
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     _is_valid_uuid,
     _base_api,
     _create_dataframe,
+    _update_dataframe_datatypes,
     _mount,
 )
 from sempy._utils._log import log
@@ -39,7 +40,7 @@ def resolve_user_id(user: str | UUID) -> UUID:
 
 
 @log
-def get_user(user: str | UUID) -> pd.DataFrame:
+def get_user(user: str | UUID, show_manager: bool = False) -> pd.DataFrame:
     """
     Shows properties of a given user.
 
@@ -51,6 +52,8 @@ def get_user(user: str | UUID) -> pd.DataFrame:
     ----------
     user : str | uuid.UUID
         The user ID or user principal name.
+    show_manager : bool, default=False
+        Whether to include the user's manager information.
 
     Returns
     -------
@@ -58,7 +61,11 @@ def get_user(user: str | UUID) -> pd.DataFrame:
         A pandas dataframe showing properties of a given user.
     """
 
-    result = _base_api(request=f"users/{user}", client="graph").json()
+    url = f"users/{user}?$select=id,userPrincipalName,displayName,mail,jobTitle,officeLocation,mobilePhone,businessPhones,preferredLanguage,surname,department"
+    if show_manager:
+        url += "&$expand=manager($select=displayName,id,mail,jobTitle)"
+
+    result = _base_api(request=url, client="graph").json()
 
     new_data = {
         "User Id": result.get("id"),
@@ -71,13 +78,22 @@ def get_user(user: str | UUID) -> pd.DataFrame:
         "Business Phones": str(result.get("businessPhones")),
         "Preferred Language": result.get("preferredLanguage"),
         "Surname": result.get("surname"),
+        "Department": result.get("department"),
     }
+    if show_manager:
+        manager = result.get("manager", {})
+        new_data |= {
+            "Manager Id": manager.get("id"),
+            "Manager Name": manager.get("displayName"),
+            "Manager Mail": manager.get("mail"),
+            "Manager Job Title": manager.get("jobTitle"),
+        }
 
     return pd.DataFrame([new_data])
 
 
 @log
-def list_users() -> pd.DataFrame:
+def list_users(show_manager: bool = False) -> pd.DataFrame:
     """
     Shows a list of users and their properties.
 
@@ -85,13 +101,21 @@ def list_users() -> pd.DataFrame:
 
     Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
+    Parameters
+    ----------
+    show_manager : bool, default=False
+        Whether to include the user's manager information.
+
     Returns
     -------
     pandas.DataFrame
         A pandas dataframe showing a list of users and their properties.
     """
 
-    result = _base_api(request="users", client="graph").json()
+    url = "users?$select=id,userPrincipalName,displayName,mail,jobTitle,officeLocation,mobilePhone,businessPhones,preferredLanguage,surname,department"
+    if show_manager:
+        url += "&$expand=manager($select=displayName,id,mail,jobTitle)"
+    result = _base_api(request=url, client="graph", uses_pagination=True)
 
     columns = {
         "User Id": "string",
@@ -104,25 +128,52 @@ def list_users() -> pd.DataFrame:
         "Business Phones": "string",
         "Preferred Language": "string",
         "Surname": "string",
+        "Department": "string",
     }
+
+    if show_manager:
+        columns.update(
+            {
+                "Manager Id": "string",
+                "Manager Name": "string",
+                "Manager Mail": "string",
+                "Manager Job Title": "string",
+            }
+        )
 
     df = _create_dataframe(columns=columns)
 
-    for v in result.get("value"):
-        new_data = {
-            "User Id": v.get("id"),
-            "User Principal Name": v.get("userPrincipalName"),
-            "User Name": v.get("displayName"),
-            "Mail": v.get("mail"),
-            "Job Title": v.get("jobTitle"),
-            "Office Location": v.get("officeLocation"),
-            "Mobile Phone": v.get("mobilePhone"),
-            "Business Phones": str(v.get("businessPhones")),
-            "Preferred Language": v.get("preferredLanguage"),
-            "Surname": v.get("surname"),
-        }
+    rows = []
+    for r in result:
+        for v in r.get("value", []):
+            user_data = {
+                "User Id": v.get("id"),
+                "User Principal Name": v.get("userPrincipalName"),
+                "User Name": v.get("displayName"),
+                "Mail": v.get("mail"),
+                "Job Title": v.get("jobTitle"),
+                "Office Location": v.get("officeLocation"),
+                "Mobile Phone": v.get("mobilePhone"),
+                "Business Phones": str(v.get("businessPhones")),
+                "Preferred Language": v.get("preferredLanguage"),
+                "Surname": v.get("surname"),
+                "Department": v.get("department"),
+            }
 
-        df = pd.concat([df, pd.DataFrame(new_data, index=[0])], ignore_index=True)
+            if show_manager:
+                manager = v.get("manager", {})
+                user_data |= {
+                    "Manager Id": manager.get("id"),
+                    "Manager Name": manager.get("displayName"),
+                    "Manager Mail": manager.get("mail"),
+                    "Manager Job Title": manager.get("jobTitle"),
+                }
+
+            rows.append(user_data)
+
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+        _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
 
@@ -137,7 +188,6 @@ def send_mail(
     cc_recipients: Optional[str | List[str]] = None,
     bcc_recipients: Optional[str | List[str]] = None,
     priority: Literal["Normal", "High", "Low"] = "Normal",
-    follow_up_flag: bool = False,
     attachments: Optional[str | List[str]] = None,
 ):
     """
@@ -157,16 +207,14 @@ def send_mail(
         The email address of the recipients.
     content : str
         The email content.
-    content_type : Literal["Text", "HTML"], default="Text"
+    content_type : typing.Literal["Text", "HTML"], default="Text"
         The email content type. Options: "Text" or "HTML".
     cc_recipients : str | List[str], default=None
         The email address of the CC recipients.
     bcc_recipients : str | List[str], default=None
         The email address of the BCC recipients.
-    priority : Literal["Normal", "High", "Low"], default="Normal"
+    priority : typing.Literal["Normal", "High", "Low"], default="Normal"
         The email priority.
-    follow_up_flag : bool, default=False
-        Whether to set a follow-up flag for the email.
     attachments : str | List[str], default=None
         The abfss path or a list of the abfss paths of the attachments to include in the email.
     """
@@ -220,8 +268,8 @@ def send_mail(
     if bcc_email_addresses:
         payload["message"]["bccRecipients"] = bcc_email_addresses
 
-    if follow_up_flag:
-        payload["message"]["flag"] = {"flagStatus": "flagged"}
+    # if follow_up_flag:
+    #    payload["message"]["flag"] = {"flagStatus": "flagged"}
 
     content_types = {
         ".txt": "text/plain",
@@ -244,6 +292,7 @@ def send_mail(
         ".pbip": "application/vnd.ms-powerbi.report",
         ".pbit": "application/vnd.ms-powerbi.report",
         ".vpax": "application/zip",
+        ".geojson": "application/geo+json",
     }
 
     def file_path_to_content_bytes(file_path):
@@ -303,3 +352,165 @@ def send_mail(
     if attachments:
         printout += f" with {len(attachments)} attachment(s)"
     print(f"{printout}.")
+
+
+@log
+def create_user(
+    display_name: str,
+    user_principal_name: str,
+    mail_nickname: str,
+    password: str,
+    account_enabled: bool = True,
+    force_change_password_next_sign_in: bool = True,
+):
+    """
+    Creates a new user.
+
+    This is a wrapper function for the following API: `Create User <https://learn.microsoft.com/graph/api/user-post-users>`_.
+
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    display_name : str
+        The name to display in the address book for the user.
+    user_principal_name : str
+        The user principal name (someuser@contoso.com).
+    mail_nickname : str
+        The mail alias for the user.
+    password : str
+        The initial password for the user.
+    account_enabled : bool, default=True
+        Whether the account is enabled. Default is True.
+    force_change_password_next_sign_in : bool, default=True
+        Whether the user must change their password on next sign-in. Default is True.
+    """
+
+    payload = {
+        "accountEnabled": account_enabled,
+        "displayName": display_name,
+        "mailNickname": mail_nickname,
+        "userPrincipalName": user_principal_name,
+        "passwordProfile": {
+            "forceChangePasswordNextSignIn": force_change_password_next_sign_in,
+            "password": password,
+        },
+    }
+
+    _base_api(
+        request="users",
+        client="graph",
+        status_codes=201,
+        payload=payload,
+        method="post",
+    )
+
+    print(f"{icons.green_dot} The '{display_name}' user has been created successfully.")
+
+
+@log
+def delete_user(user: str | UUID):
+    """
+    Deletes a user.
+
+    This is a wrapper function for the following API: `Delete User <https://learn.microsoft.com/graph/api/user-delete>`_.
+
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    user : str | uuid.UUID
+        The user name or ID.
+    """
+
+    user_id = resolve_user_id(user)
+
+    _base_api(
+        request=f"users/{user_id}",
+        client="graph",
+        status_codes=204,
+        method="delete",
+    )
+
+    print(f"{icons.green_dot} The '{user}' user has been deleted successfully.")
+
+
+@log
+def update_user(
+    user: str | UUID,
+    display_name: Optional[str] = None,
+    user_principal_name: Optional[str] = None,
+    given_name: Optional[str] = None,
+    surname: Optional[str] = None,
+    job_title: Optional[str] = None,
+    mail_nickname: Optional[str] = None,
+    my_site: Optional[str] = None,
+    office_location: Optional[str] = None,
+    account_enabled: Optional[bool] = None,
+):
+    """
+    Updates a user's properties.
+
+    This is a wrapper function for the following API: `Update user <https://learn.microsoft.com/graph/api/user-update>`_.
+
+    Service Principal Authentication is required (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    user : str | uuid.UUID
+        The user name or ID.
+    display_name : str, default=None
+        The name displayed in the address book for the user.
+    user_principal_name : str, default=None
+        The user principal name (UPN) of the user.
+    given_name : str, default=None
+        The given name (first name) of the user.
+    surname : str, default=None
+        The user's surname (family name or last name).
+    job_title : str, default=None
+        The user's job title.
+    mail_nickname : str, default=None
+        The mail alias for the user. This property must be specified when a user is created.
+    my_site : str, default=None
+        The URL for the user's personal site.
+    office_location : str, default=None
+        The office location in the user's place of business.
+    account_enabled : bool, default=None
+        Whether the account is enabled. If None, the property will not be updated.
+    """
+
+    user_id = resolve_user_id(user)
+
+    payload = {}
+    if display_name is not None:
+        payload["displayName"] = display_name
+    if mail_nickname is not None:
+        payload["mailNickname"] = mail_nickname
+    if user_principal_name is not None:
+        payload["userPrincipalName"] = user_principal_name
+    if given_name is not None:
+        payload["givenName"] = given_name
+    if job_title is not None:
+        payload["jobTitle"] = job_title
+    if my_site is not None:
+        payload["mySite"] = my_site
+    if office_location is not None:
+        payload["officeLocation"] = office_location
+    if surname is not None:
+        payload["surname"] = surname
+    if account_enabled is not None and isinstance(account_enabled, bool):
+        payload["accountEnabled"] = account_enabled
+
+    if not payload:
+        print(f"{icons.info} No properties to update.")
+        return
+
+    _base_api(
+        request=f"users/{user_id}",
+        client="graph",
+        status_codes=204,
+        payload=payload,
+        method="patch",
+    )
+
+    print(f"{icons.green_dot} The '{user}' user has been updated successfully.")

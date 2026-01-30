@@ -708,7 +708,9 @@ def model_bpa_rules(
                 "Measure",
                 "Info",
                 "Provide format string for measures",
-                lambda obj, tom: obj.IsHidden is False and len(obj.FormatString) == 0,
+                lambda obj, tom: obj.IsHidden is False
+                and len(obj.FormatString) == 0
+                and not obj.FormatStringDefinition,
                 "Visible measures should have their format string property assigned.",
             ),
             (

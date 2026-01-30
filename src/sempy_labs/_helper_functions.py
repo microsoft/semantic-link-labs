@@ -20,6 +20,8 @@ import sempy_labs._authentication as auth
 from jsonpath_ng.ext import parse
 from jsonpath_ng.jsonpath import Fields, Index
 from sempy._utils._log import log
+from os import PathLike
+import sempy_labs._utils as utils
 
 
 def _build_url(url: str, params: dict) -> str:
@@ -225,17 +227,26 @@ def delete_item(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    from sempy_labs._utils import item_types
-
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (item_name, item_id) = resolve_item_name_and_id(item, type, workspace_id)
-    item_type = item_types.get(type)[0].lower()
 
     fabric.delete_item(item_id=item_id, workspace=workspace_id)
 
     print(
-        f"{icons.green_dot} The '{item_name}' {item_type} has been successfully deleted from the '{workspace_name}' workspace."
+        f"{icons.green_dot} The '{item_name}' {type} has been successfully deleted from the '{workspace_name}' workspace."
     )
+
+
+@log
+def create_folder_if_not_exists(
+    folder: str | PathLike, workspace: Optional[str | UUID] = None
+) -> UUID:
+    try:
+        x = fabric.resolve_folder_id(folder=folder, workspace=workspace)
+    except Exception:
+        x = fabric.create_folder(folder=folder, workspace=workspace)
+
+    return x
 
 
 @log
@@ -245,6 +256,7 @@ def create_item(
     description: Optional[str] = None,
     definition: Optional[dict] = None,
     workspace: Optional[str | UUID] = None,
+    folder: Optional[str | PathLike] = None,
 ):
     """
     Creates an item in a Fabric workspace.
@@ -263,12 +275,13 @@ def create_item(
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    folder : str | os.PathLike, default=None
+        The folder within the workspace where the item will be created.
+        Defaults to None which places the item in the root of the workspace.
     """
-    from sempy_labs._utils import item_types
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    item_type = item_types.get(type)[0].lower()
-    item_type_url = item_types.get(type)[1]
+    item_type_url = utils.items.get(type)
 
     payload = {
         "displayName": name,
@@ -277,6 +290,10 @@ def create_item(
         payload["description"] = description
     if definition:
         payload["definition"] = definition
+    if folder:
+        payload["folderId"] = create_folder_if_not_exists(
+            folder=folder, workspace=workspace_id
+        )
 
     _base_api(
         request=f"/v1/workspaces/{workspace_id}/{item_type_url}",
@@ -284,10 +301,174 @@ def create_item(
         payload=payload,
         status_codes=[201, 202],
         lro_return_status_code=True,
+        client="fabric_sp",
     )
     print(
-        f"{icons.green_dot} The '{name}' {item_type} has been successfully created within the '{workspace_name}' workspace."
+        f"{icons.green_dot} The '{name}' {type} has been successfully created within the '{workspace_name}' workspace."
     )
+
+
+@log
+def copy_item(
+    item: str | UUID,
+    type: str,
+    target_name: Optional[str] = None,
+    source_workspace: Optional[str | UUID] = None,
+    target_workspace: Optional[str | UUID] = None,
+    overwrite: bool = False,
+    keep_existing_bindings: bool = False,
+):
+    """
+    Copies an item (with its definition) from one location to another location.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    item : str | uuid.UUID
+        The name or ID of the item to be copied.
+    type : str
+        The type of the item.
+    target_name: str, default=None
+        The name of the item in the target workspace. Defaults to the same name as the source item.
+    source_workspace : str | uuid.UUID, default=None
+        The workspace name or ID in which the item exists.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    target_workspace : str | uuid.UUID, default=None
+        The workspace name or ID to which the item will be copied.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    overwrite : bool, default=False
+        If True, overwrites the item in the target workspace if it already exists.
+    keep_existing_bindings : bool, default=False
+        If True, ensures that reports are re-bound to the original semantic model.
+        If False, reports are binded to the semantic model to which the item is bound.
+    """
+
+    from sempy_labs.report import report_rebind
+
+    (item_name, item_id) = resolve_item_name_and_id(
+        item=item, type=type, workspace=source_workspace
+    )
+    (source_workspace_name, source_workspace_id) = resolve_workspace_name_and_id(
+        source_workspace
+    )
+    (target_workspace_name, target_workspace_id) = resolve_workspace_name_and_id(
+        target_workspace
+    )
+
+    if target_name is None:
+        target_name = item_name
+
+    if source_workspace_id == target_workspace_id and target_name == item_name:
+        raise ValueError(
+            f"{icons.red_dot} The source and target workspaces are the same and the target name is the same as the source name. No action taken."
+        )
+
+    type_url = utils.items.get(type)
+    result = _base_api(
+        request=f"v1/workspaces/{source_workspace_id}/{type_url}/{item_id}",
+        client="fabric_sp",
+    )
+    description = result.json().get("description")
+
+    payload = get_item_definition(
+        item=item_id,
+        type=type,
+        workspace=source_workspace_id,
+        return_dataframe=False,
+        decode=False,
+    )
+    payload["displayName"] = target_name
+    if description:
+        payload["description"] = description
+
+    # Check if item exists in target workspace
+    exists = False
+    try:
+        target_item_id = resolve_item_id(
+            item=target_name, type=type, workspace=target_workspace_id
+        )
+        exists = True
+    except Exception:
+        exists = False
+
+    if exists and not overwrite:
+        raise ValueError(
+            f"{icons.warning} The item '{target_name}' of type '{type}' already exists in the target workspace '{target_workspace_name}' and overwrite is set to False."
+        )
+    elif exists and overwrite:
+        # Update item definition
+        print(
+            f"{icons.in_progress} Updating existing item '{target_name}' of type '{type}' in the target workspace '{target_workspace_name}'..."
+        )
+        # Get the existing source model
+        if type == "Report" and keep_existing_bindings:
+            result = _base_api(
+                request=f"v1.0/myorg/groups/{target_workspace_id}/reports/{target_item_id}",
+                client="fabric_sp",
+            ).json()
+            dataset_id = result.get("datasetId")
+            dataset_workspace_id = result.get("datasetWorkspaceId")
+        _base_api(
+            request=f"/v1/workspaces/{target_workspace_id}/{type_url}/{target_item_id}/updateDefinition",
+            method="post",
+            client="fabric_sp",
+            payload=payload,
+            lro_return_status_code=True,
+            status_codes=None,
+        )
+        print(
+            f"{icons.green_dot} The item '{target_name}' of type '{type}' has been successfully updated in the target workspace '{target_workspace_name}'."
+        )
+
+        if keep_existing_bindings:
+            report_rebind(
+                report=target_item_id,
+                dataset=dataset_id,
+                report_workspace=target_workspace,
+                dataset_workspace=dataset_workspace_id,
+            )
+
+    else:
+        print(
+            f"{icons.in_progress} Creating new item '{target_name}' of type '{type}' in the target workspace '{target_workspace_name}'..."
+        )
+        create_item(
+            name=target_name,
+            type=type,
+            definition=payload["definition"],
+            workspace=target_workspace_id,
+        )
+
+
+@log
+def is_base64(s):
+    try:
+        # Add padding if needed
+        s_padded = s + "=" * (-len(s) % 4)
+        decoded = base64.b64decode(s_padded, validate=True)
+        # Optional: check if re-encoding gives the original (excluding padding)
+        return base64.b64encode(decoded).decode().rstrip("=") == s.rstrip("=")
+    except Exception:
+        return False
+
+
+@log
+def decode_payload(payload):
+
+    if is_base64(payload):
+        try:
+            decoded_payload = json.loads(base64.b64decode(payload).decode("utf-8"))
+        except Exception:
+            decoded_payload = base64.b64decode(payload)
+    elif isinstance(payload, dict):
+        decoded_payload = payload
+    else:
+        raise ValueError("Payload must be a dictionary or a base64 encoded value.")
+
+    return decoded_payload
 
 
 @log
@@ -295,16 +476,44 @@ def get_item_definition(
     item: str | UUID,
     type: str,
     workspace: Optional[str | UUID] = None,
-    format: Optional[str] = None,
-    return_dataframe: bool = True,
+    return_dataframe: bool = False,
     decode: bool = True,
-):
-    from sempy_labs._utils import item_types
+    format: Optional[str] = None,
+) -> dict | pd.DataFrame:
+    """
+    Gets a Fabric item's defintion.
+
+    This is a wrapper function for the following API: `<https://learn.microsoft.com/rest/api/fabric/core/items/get-item-definition>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    item : str | uuid.UUID
+        The name or ID of the item to be copied.
+    type : str
+        The `type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_ of the item.
+    target_name: str, default=None
+        The name of the item in the target workspace. Defaults to the same name as the source item.
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    return_dataframe : bool, default=False
+        If True, returns a pandas dataframe.
+        If False, returns a dictionary.
+    decode : bool, default=True
+        If True, decodes the base64 payload.
+    format : str, default=None
+        The `format <https://learn.microsoft.com/rest/api/fabric/core/items/get-item-definition?tabs=HTTP#itemdefinition>`_ of the item definition.
+    """
 
     workspace_id = resolve_workspace_id(workspace)
-    item_id = resolve_item_id(item, type, workspace_id)
-    item_type_url = item_types.get(type)[1]
-    path = item_types.get(type)[2]
+    item_id = resolve_item_id(item=item, type=type, workspace=workspace_id)
+
+    item_type_url = utils.items.get(type)
+    if not item_type_url:
+        raise ValueError(f"{icons.red_dot} Invalid item type '{type}'.")
 
     url = f"/v1/workspaces/{workspace_id}/{item_type_url}/{item_id}/getDefinition"
     if format:
@@ -315,6 +524,59 @@ def get_item_definition(
         method="post",
         status_codes=None,
         lro_return_json=True,
+        client="fabric_sp",
+    )
+
+    if return_dataframe:
+        return pd.json_normalize(result["definition"]["parts"]).rename(
+            columns={
+                "path": "Path",
+                "payload": "Payload",
+                "payloadType": "Payload Type",
+            }
+        )
+
+    definition = {"definition": {"parts": []}}
+    if decode:
+        for part in result.get("definition", {}).get("parts", []):
+            path = part.get("path")
+            payload = part.get("payload")
+            decoded_payload = decode_payload(payload)
+
+            # Keep structure similar to original but replace payload with decoded version
+            definition["definition"]["parts"].append(
+                {"path": path, "payload": decoded_payload}
+            )
+        return definition
+    else:
+        return result
+
+
+@log
+def _get_item_definition(
+    item: str | UUID,
+    type: str,
+    workspace: Optional[str | UUID] = None,
+    format: Optional[str] = None,
+    return_dataframe: bool = True,
+    decode: bool = True,
+):
+
+    workspace_id = resolve_workspace_id(workspace)
+    item_id = resolve_item_id(item, type, workspace_id)
+    item_type_url = utils.item_types.get(type)[1]
+    path = utils.item_types.get(type)[2]
+
+    url = f"/v1/workspaces/{workspace_id}/{item_type_url}/{item_id}/getDefinition"
+    if format:
+        url += f"?format={format}"
+
+    result = _base_api(
+        request=url,
+        method="post",
+        status_codes=None,
+        lro_return_json=True,
+        client="fabric_sp",
     )
 
     if return_dataframe:
@@ -740,6 +1002,7 @@ def save_as_delta_table(
 
         if merge_schema:
             write_args["schema_mode"] = "merge"
+            write_args["engine"] = "rust"
 
         write_deltalake(**write_args)
     else:
@@ -825,7 +1088,9 @@ def resolve_workspace_id(
 
 
 @log
-def resolve_workspace_name(workspace_id: Optional[UUID] = None) -> str:
+def resolve_workspace_name(
+    workspace_id: Optional[UUID] = None, throw_error: bool = True
+) -> str:
 
     if workspace_id is None:
         workspace_id = _get_fabric_context_setting(name="trident.workspace.id")
@@ -835,9 +1100,12 @@ def resolve_workspace_name(workspace_id: Optional[UUID] = None) -> str:
             request=f"/v1/workspaces/{workspace_id}", client="fabric_sp"
         ).json()
     except FabricHTTPException:
-        raise ValueError(
-            f"{icons.red_dot} The '{workspace_id}' workspace was not found."
-        )
+        if throw_error:
+            raise ValueError(
+                f"{icons.red_dot} The '{workspace_id}' workspace was not found."
+            )
+        else:
+            return workspace_id
 
     return response.get("displayName")
 
@@ -858,7 +1126,7 @@ def resolve_workspace_name_and_id(
 
     Returns
     -------
-    str, uuid.UUID
+    typing.Tuple[str, str]
         The name and ID of the Fabric workspace.
     """
 
@@ -997,15 +1265,15 @@ def _decode_b64(file, format: Optional[str] = "utf-8"):
 
 @log
 def is_default_semantic_model(
-    dataset: str, workspace: Optional[str | UUID] = None
+    dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> bool:
     """
     Identifies whether a semantic model is a default semantic model.
 
     Parameters
     ----------
-    dataset : str
-        The name of the semantic model.
+    dataset : str | uuid.UUID
+        The name or ID of the semantic model.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
@@ -1017,7 +1285,10 @@ def is_default_semantic_model(
         A True/False value indicating whether the semantic model is a default semantic model.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+    workspace_id = resolve_workspace_id(workspace)
+    (dataset_name, dataset_id) = resolve_item_name_and_id(
+        item=dataset, type="SemanticModel", workspace=workspace_id
+    )
 
     dfI = fabric.list_items(workspace=workspace_id)
     filtered_df = dfI.groupby("Display Name").filter(
@@ -1026,7 +1297,7 @@ def is_default_semantic_model(
     )
     default_semantic_models = filtered_df["Display Name"].unique().tolist()
 
-    return dataset in default_semantic_models
+    return dataset_name in default_semantic_models
 
 
 @log
@@ -1078,7 +1349,7 @@ def resolve_dataset_from_report(
 
     Returns
     -------
-    Tuple[uuid.UUID, str, uuid.UUID, str]
+    typing.Tuple[uuid.UUID, str, uuid.UUID, str]
         The semantic model UUID, semantic model name, semantic model workspace UUID, semantic model workspace name
     """
 
@@ -1118,7 +1389,7 @@ def resolve_workspace_capacity(
 
     Returns
     -------
-    Tuple[uuid.UUID, str]
+    typing.Tuple[uuid.UUID, str]
         capacity Id; capacity came.
     """
     from sempy_labs._capacities import list_capacities
@@ -1296,7 +1567,9 @@ def lro(
     status_codes: Optional[List[str]] = [200, 202],
     sleep_time: Optional[int] = 1,
     return_status_code: bool = False,
+    job_scheduler: bool = False,
 ):
+    from sempy_labs._job_scheduler import _get_item_job_instance
 
     if response.status_code not in status_codes:
         raise FabricHTTPException(response)
@@ -1306,20 +1579,32 @@ def lro(
         else:
             result = response
     if response.status_code == status_codes[1]:
-        operationId = response.headers["x-ms-operation-id"]
-        response = client.get(f"/v1/operations/{operationId}")
-        response_body = json.loads(response.content)
-        while response_body["status"] not in ["Succeeded", "Failed"]:
-            time.sleep(sleep_time)
-            response = client.get(f"/v1/operations/{operationId}")
-            response_body = json.loads(response.content)
-        if response_body["status"] != "Succeeded":
-            raise FabricHTTPException(response)
-        if return_status_code:
-            result = response.status_code
+        if job_scheduler:
+            status_url = response.headers.get("Location").split("fabric.microsoft.com")[
+                1
+            ]
+            status = None
+            while status not in ["Completed", "Failed"]:
+                response = _base_api(request=status_url)
+                status = response.json().get("status")
+                time.sleep(3)
+
+            return _get_item_job_instance(url=status_url)
         else:
-            response = client.get(f"/v1/operations/{operationId}/result")
-            result = response
+            operation_id = response.headers["x-ms-operation-id"]
+            response = client.get(f"/v1/operations/{operation_id}")
+            response_body = json.loads(response.content)
+            while response_body["status"] not in ["Succeeded", "Failed"]:
+                time.sleep(sleep_time)
+                response = client.get(f"/v1/operations/{operation_id}")
+                response_body = json.loads(response.content)
+            if response_body["status"] != "Succeeded":
+                raise FabricHTTPException(response)
+            if return_status_code:
+                result = response.status_code
+            else:
+                response = client.get(f"/v1/operations/{operation_id}/result")
+                result = response
 
     return result
 
@@ -1343,6 +1628,27 @@ def pagination(client, response):
         # Update the continuation token and URI for the next iteration
         continuation_token = response_json.get("continuationToken")
         continuation_uri = response_json.get("continuationUri")
+
+    return responses
+
+
+def graph_pagination(response, headers):
+
+    responses = []
+    response_json = response.json()
+    responses.append(response_json)
+
+    # Check for pagination
+    odata_next_link = response_json.get("@odata.nextLink")
+
+    # Loop to handle pagination
+    while odata_next_link is not None:
+        response = requests.get(odata_next_link, headers=headers)
+        response_json = response.json()
+        responses.append(response_json)
+
+        # Update the odata next link for the next iteration
+        odata_next_link = response_json.get("@odata.nextLink")
 
     return responses
 
@@ -1853,6 +2159,11 @@ def _process_and_display_chart(df, title, widget):
 
 def _convert_data_type(input_data_type: str) -> str:
 
+    if not input_data_type:
+        return None
+
+    input_data_type = input_data_type.lower()
+
     data_type_mapping = {
         "string": "String",
         "int": "Int64",
@@ -1868,10 +2179,10 @@ def _convert_data_type(input_data_type: str) -> str:
         "long": "Int64",
     }
 
-    if "decimal" in input_data_type:
-        return "Decimal"
-    else:
-        return data_type_mapping.get(input_data_type)
+    if input_data_type.startswith("decimal"):
+        return "Double"
+
+    return data_type_mapping.get(input_data_type)
 
 
 def _is_valid_uuid(
@@ -1919,6 +2230,7 @@ def _base_api(
     uses_pagination: bool = False,
     lro_return_json: bool = False,
     lro_return_status_code: bool = False,
+    lro_return_df: bool = False,
 ):
     import notebookutils
     from sempy_labs._authentication import _get_headers
@@ -1926,23 +2238,27 @@ def _base_api(
     if (lro_return_json or lro_return_status_code) and status_codes is None:
         status_codes = [200, 202]
 
-    def get_token(audience="pbi"):
-        return notebookutils.credentials.getToken(audience)
+    class FabricDefaultCredential(TokenCredential):
+
+        def get_token(self, *scopes, **kwargs) -> AccessToken:
+            from sempy.fabric._credentials import build_access_token
+
+            return build_access_token(notebookutils.credentials.getToken("pbi"))
 
     if isinstance(status_codes, int):
         status_codes = [status_codes]
 
     if client == "fabric":
-        c = fabric.FabricRestClient(token_provider=get_token)
+        c = fabric.FabricRestClient(credential=FabricDefaultCredential())
     elif client == "fabric_sp":
-        token = auth.token_provider.get() or get_token
-        c = fabric.FabricRestClient(token_provider=token)
-    elif client in ["azure", "graph"]:
+        token = auth.token_provider.get() or FabricDefaultCredential()
+        c = fabric.FabricRestClient(credential=token)
+    elif client in ["azure", "graph", "onelake"]:
         pass
     else:
         raise ValueError(f"{icons.red_dot} The '{client}' client is not supported.")
 
-    if client not in ["azure", "graph"]:
+    if client not in ["azure", "graph", "onelake"]:
         if method == "get":
             response = c.get(request)
         elif method == "delete":
@@ -1956,13 +2272,16 @@ def _base_api(
         else:
             raise NotImplementedError
     else:
-        headers = _get_headers(auth.token_provider.get(), audience=client)
-        if client == "graph":
-            url = f"https://graph.microsoft.com/v1.0/{request}"
-        elif client == "azure":
-            url = request
+        if client == "onelake":
+            token = notebookutils.credentials.getToken("storage")
+            headers = {"Authorization": f"Bearer {token}"}
+            url = f"https://onelake.table.fabric.microsoft.com/delta/{request}"
         else:
-            raise NotImplementedError
+            headers = _get_headers(auth.token_provider.get(), audience=client)
+            if client == "graph":
+                url = f"https://graph.microsoft.com/v1.0/{request}"
+            elif client == "azure":
+                url = request
         response = requests.request(
             method.upper(),
             url,
@@ -1970,7 +2289,9 @@ def _base_api(
             json=payload,
         )
 
-    if lro_return_json:
+    if lro_return_df:
+        return lro(c, response, status_codes, job_scheduler=True)
+    elif lro_return_json:
         return lro(c, response, status_codes).json()
     elif lro_return_status_code:
         return lro(c, response, status_codes, return_status_code=True)
@@ -1978,7 +2299,10 @@ def _base_api(
         if response.status_code not in status_codes:
             raise FabricHTTPException(response)
         if uses_pagination:
-            responses = pagination(c, response)
+            if client == "graph":
+                responses = graph_pagination(response, headers)
+            else:
+                responses = pagination(c, response)
             return responses
         else:
             return response
@@ -2018,9 +2342,16 @@ def _update_dataframe_datatypes(dataframe: pd.DataFrame, column_map: dict):
                 dataframe[column] = dataframe[column].fillna(0).astype(float)
             # This is to avoid NaN values in integer columns (for delta analyzer)
             elif data_type == "int_fillna":
-                dataframe[column] = dataframe[column].fillna(0).astype(int)
+                dataframe[column] = (
+                    pd.to_numeric(dataframe[column], errors="coerce")
+                    .fillna(0)
+                    .astype(int)
+                )
             elif data_type in ["str", "string"]:
-                dataframe[column] = dataframe[column].astype(str)
+                try:
+                    dataframe[column] = dataframe[column].astype(str)
+                except Exception:
+                    pass
             # Avoid having empty lists or lists with a value of None.
             elif data_type in ["list"]:
                 dataframe[column] = dataframe[column].apply(
@@ -2334,9 +2665,13 @@ def generate_number_guid():
 
 def get_url_content(url: str):
 
-    if "github.com" in url and "/blob/" in url:
-        url = url.replace("github.com", "raw.githubusercontent.com")
-        url = url.replace("/blob/", "/")
+    parsed = urllib.parse.urlparse(url)
+
+    if parsed.netloc in {"github.com", "www.github.com"} and "/blob/" in parsed.path:
+        new_path = parsed.path.replace("/blob/", "/")
+        url = urllib.parse.urlunparse(
+            (parsed.scheme, "raw.githubusercontent.com", new_path, "", "", "")
+        )
 
     response = requests.get(url)
     if response.ok:
@@ -2356,32 +2691,6 @@ def generate_hex(length: int = 10) -> str:
     import secrets
 
     return secrets.token_hex(length)
-
-
-def decode_payload(payload):
-
-    if is_base64(payload):
-        try:
-            decoded_payload = json.loads(base64.b64decode(payload).decode("utf-8"))
-        except Exception:
-            decoded_payload = base64.b64decode(payload)
-    elif isinstance(payload, dict):
-        decoded_payload = payload
-    else:
-        raise ValueError("Payload must be a dictionary or a base64 encoded value.")
-
-    return decoded_payload
-
-
-def is_base64(s):
-    try:
-        # Add padding if needed
-        s_padded = s + "=" * (-len(s) % 4)
-        decoded = base64.b64decode(s_padded, validate=True)
-        # Optional: check if re-encoding gives the original (excluding padding)
-        return base64.b64encode(decoded).decode().rstrip("=") == s.rstrip("=")
-    except Exception:
-        return False
 
 
 def get_jsonpath_value(
@@ -2487,3 +2796,34 @@ def remove_json_value(path: str, payload: dict, json_path: str, verbose: bool = 
                     print(f"{icons.green_dot} Removed index [{index}] from '{path}'.")
 
     return payload
+
+
+def _get_url_prefix() -> str:
+
+    client = fabric.PowerBIRestClient()
+    response = client.get("/v1.0/myorg/capacities")
+    if response.status_code != 200:
+        raise FabricHTTPException("Failed to retrieve URL prefix.")
+    context = response.json().get("@odata.context")
+
+    return context.split("/v1.0")[0]
+
+
+def get_pbi_token_headers():
+
+    import notebookutils
+
+    token = notebookutils.credentials.getToken("pbi")
+    return {"Authorization": f"Bearer {token}"}
+
+
+def get_model_id(item_id: UUID, prefix: str = None, headers: dict = None):
+
+    if prefix is None:
+        prefix = _get_url_prefix()
+    if headers is None:
+        headers = get_pbi_token_headers()
+
+    response = requests.get(url=f"{prefix}/metadata/models/{item_id}", headers=headers)
+
+    return response.json().get("model", {}).get("id")

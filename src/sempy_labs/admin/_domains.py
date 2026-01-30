@@ -1,9 +1,9 @@
-from typing import Optional, List
+from typing import Literal, Optional, List
 import sempy_labs._icons as icons
 import pandas as pd
 from uuid import UUID
-from ._basic_functions import list_workspaces
-from .._helper_functions import (
+from sempy_labs.admin._basic_functions import list_workspaces
+from sempy_labs._helper_functions import (
     _base_api,
     _create_dataframe,
     _is_valid_uuid,
@@ -205,6 +205,8 @@ def create_domain(
 
     This is a wrapper function for the following API: `Domains - Create Domain <https://learn.microsoft.com/rest/api/fabric/admin/domains/create-domain>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     domain_name : str
@@ -232,7 +234,11 @@ def create_domain(
         payload["parentDomainId"] = parent_domain_id
 
     _base_api(
-        request="/v1/admin/domains", method="post", payload=payload, status_codes=201
+        request="/v1/admin/domains",
+        method="post",
+        payload=payload,
+        status_codes=201,
+        client="fabric_sp",
     )
 
     print(f"{icons.green_dot} The '{domain_name}' domain has been created.")
@@ -244,6 +250,8 @@ def delete_domain(domain: Optional[str | UUID], **kwargs):
     Deletes a domain.
 
     This is a wrapper function for the following API: `Domains - Delete Domain <https://learn.microsoft.com/rest/api/fabric/admin/domains/delete-domain>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -261,7 +269,9 @@ def delete_domain(domain: Optional[str | UUID], **kwargs):
         raise ValueError(f"{icons.red_dot} Please provide a domain.")
 
     domain_id = resolve_domain_id(domain)
-    _base_api(request=f"/v1/admin/domains/{domain_id}", method="delete")
+    _base_api(
+        request=f"/v1/admin/domains/{domain_id}", method="delete", client="fabric_sp"
+    )
 
     print(f"{icons.green_dot} The '{domain}' domain has been deleted.")
 
@@ -277,6 +287,8 @@ def update_domain(
     Updates a domain's properties.
 
     This is a wrapper function for the following API: `Domains - Update Domain <https://learn.microsoft.com/rest/api/fabric/admin/domains/update-domain>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -314,7 +326,12 @@ def update_domain(
     if contributors_scope is not None:
         payload["contributorsScope"] = contributors_scope
 
-    _base_api(request=f"/v1/admin/domains/{domain_id}", method="patch", payload=payload)
+    _base_api(
+        request=f"/v1/admin/domains/{domain_id}",
+        method="patch",
+        payload=payload,
+        client="fabric_sp",
+    )
 
     print(f"{icons.green_dot} The '{domain_name}' domain has been updated.")
 
@@ -329,6 +346,8 @@ def assign_domain_workspaces_by_capacities(
     Assigns all workspaces that reside on the specified capacities to the specified domain.
 
     This is a wrapper function for the following API: `Domains - Assign Domain Workspaces By Capacities <https://learn.microsoft.com/rest/api/fabric/admin/domains/assign-domain-workspaces-by-capacities>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -381,6 +400,7 @@ def assign_domain_workspaces_by_capacities(
         payload=payload,
         lro_return_status_code=True,
         status_codes=202,
+        client="fabric_sp",
     )
 
     print(
@@ -389,43 +409,60 @@ def assign_domain_workspaces_by_capacities(
 
 
 @log
-def assign_domain_workspaces(domain: str | UUID, workspace_names: str | List[str]):
+def assign_domain_workspaces(
+    domain: str | UUID, workspace: str | UUID | List[str | UUID], **kwargs
+):
     """
     Assigns workspaces to the specified domain by workspace.
 
     This is a wrapper function for the following API: `Domains - Assign Domain Workspaces By Ids <https://learn.microsoft.com/rest/api/fabric/admin/domains/assign-domain-workspaces-by-ids>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     domain : str | uuid.UUID
         The domain name or ID.
-    workspace_names : str | List[str]
-        The Fabric workspace(s).
+    workspace : str | uuid.UUID | List[str | uuid.UUID]
+        The Fabric workspace name or IDs.
     """
 
     domain_id = resolve_domain_id(domain)
 
-    if isinstance(workspace_names, str):
-        workspace_names = [workspace_names]
+    if "workspace_names" in kwargs:
+        workspace = kwargs["workspace_names"]
+        print(
+            f"{icons.warning} The 'workspace_names' parameter is deprecated. Please use 'workspace' instead."
+        )
 
-    dfW = list_workspaces()
+    if isinstance(workspace, str):
+        workspace = [workspace]
+    workspace_list = []
+
+    for w in workspace:
+        if _is_valid_uuid(w):
+            workspace_list.append(w)
+        else:
+            dfW = list_workspaces(workspace=w)
+            if not dfW.empty:
+                workspace_list.append(dfW["Id"].iloc[0])
 
     # Check for invalid capacities
-    invalid_workspaces = [
-        name for name in workspace_names if name not in dfW["Name"].values
-    ]
+    # invalid_workspaces = [
+    #    name for name in workspace_names if name not in dfW["Name"].values
+    # ]
 
-    if len(invalid_workspaces) == 1:
-        raise ValueError(
-            f"{icons.red_dot} The {invalid_workspaces} workspace is not valid."
-        )
-    elif len(invalid_workspaces) > 1:
-        raise ValueError(
-            f"{icons.red_dot} The {invalid_workspaces} workspaces are not valid."
-        )
+    # if len(invalid_workspaces) == 1:
+    #    raise ValueError(
+    #        f"{icons.red_dot} The {invalid_workspaces} workspace is not valid."
+    #    )
+    # elif len(invalid_workspaces) > 1:
+    #    raise ValueError(
+    #        f"{icons.red_dot} The {invalid_workspaces} workspaces are not valid."
+    #    )
 
-    dfW_filt = dfW[dfW["Name"].isin(workspace_names)]
-    workspace_list = list(dfW_filt["Id"])
+    # dfW_filt = dfW[dfW["Name"].isin(workspace_names)]
+    # workspace_list = list(dfW_filt["Id"])
 
     payload = {"workspacesIds": workspace_list}
 
@@ -433,10 +470,11 @@ def assign_domain_workspaces(domain: str | UUID, workspace_names: str | List[str
         request=f"/v1/admin/domains/{domain_id}/assignWorkspaces",
         method="post",
         payload=payload,
+        client="fabric_sp",
     )
 
     print(
-        f"{icons.green_dot} The {workspace_names} workspaces have been assigned to the '{domain}' domain."
+        f"{icons.green_dot} The {workspace} workspaces have been assigned to the '{domain}' domain."
     )
 
 
@@ -446,6 +484,8 @@ def unassign_all_domain_workspaces(domain: str | UUID):
     Unassigns all workspaces from the specified domain.
 
     This is a wrapper function for the following API: `Domains - Unassign All Domain Workspaces <https://learn.microsoft.com/rest/api/fabric/admin/domains/unassign-all-domain-workspaces>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -458,8 +498,7 @@ def unassign_all_domain_workspaces(domain: str | UUID):
     _base_api(
         request=f"/v1/admin/domains/{domain_id}/unassignAllWorkspaces",
         method="post",
-        lro_return_status_code=True,
-        status_codes=200,
+        client="fabric_sp",
     )
 
     print(
@@ -476,6 +515,8 @@ def unassign_domain_workspaces(
     Unassigns workspaces from the specified domain by workspace.
 
     This is a wrapper function for the following API: `Domains - Unassign Domain Workspaces By Ids <https://learn.microsoft.com/rest/api/fabric/admin/domains/unassign-domain-workspaces-by-ids>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -515,8 +556,47 @@ def unassign_domain_workspaces(
         request=f"/v1/admin/domains/{domain_id}/unassignWorkspaces",
         method="post",
         payload=payload,
+        client="fabric_sp",
     )
 
     print(
         f"{icons.green_dot} The {workspace_names} workspaces assigned to the '{domain}' domain have been unassigned."
+    )
+
+
+@log
+def sync_role_assignments_to_subdomains(
+    domain: str | UUID, role: Literal["Admin", "Contributor"]
+):
+    """
+    Sync the role assignments from the specified domain to its subdomains.
+
+    This is a wrapper function for the following API: `Domains - Sync Role Assignments To Subdomains <https://learn.microsoft.com/rest/api/fabric/admin/domains/sync-role-assignments-to-subdomains>`_.
+
+    Parameters
+    ----------
+    domain : str | uuid.UUID
+        The domain name or ID.
+    role : typing.Literal["Admin", "Contributor"]
+        The role to sync. Valid options: 'Admin', 'Contributor'.
+    """
+
+    role = role.capitalize()
+    valid_roles = ["Admin", "Contributor"]
+    if role not in valid_roles:
+        raise ValueError(f"{icons.red_dot} Invalid role. Valid options: {valid_roles}.")
+
+    domain_id = resolve_domain_id(domain)
+
+    payload = {"role": role}
+
+    _base_api(
+        request=f"/v1/admin/domains/{domain_id}/roleAssignments/syncToSubdomains",
+        method="post",
+        client="fabric_sp",
+        payload=payload,
+    )
+
+    print(
+        f"{icons.green_dot} The '{role}' role assignments for the '{domain}' domain have been synced to its subdomains."
     )

@@ -29,7 +29,7 @@ def show_unsupported_direct_lake_objects(
 
     Returns
     -------
-    pandas.DataFrame, pandas.DataFrame, pandas.DataFrame
+    typing.Tuple[pandas.DataFrame, pandas.DataFrame, pandas.DataFrame]
         3 pandas dataframes showing objects in a semantic model which are not supported by Direct Lake.
     """
 

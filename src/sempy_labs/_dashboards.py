@@ -1,7 +1,7 @@
 from typing import Optional
 from uuid import UUID
 import pandas as pd
-from ._helper_functions import (
+from sempy_labs._helper_functions import (
     _create_dataframe,
     _base_api,
     resolve_workspace_id,
@@ -14,6 +14,8 @@ from sempy._utils._log import log
 def list_dashboards(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows a list of the dashboards within a workspace.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -42,7 +44,9 @@ def list_dashboards(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
     workspace_id = resolve_workspace_id(workspace)
 
-    response = _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/dashboards")
+    response = _base_api(
+        request=f"/v1.0/myorg/groups/{workspace_id}/dashboards", client="fabric_sp"
+    )
 
     rows = []
     for v in response.json().get("value", []):

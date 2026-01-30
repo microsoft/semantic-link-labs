@@ -1,7 +1,7 @@
 import sempy.fabric as fabric
 import pandas as pd
 import datetime
-from ._helper_functions import (
+from sempy_labs._helper_functions import (
     save_as_delta_table,
     resolve_workspace_capacity,
     retry,
@@ -9,11 +9,11 @@ from ._helper_functions import (
     resolve_workspace_id,
     resolve_lakehouse_name_and_id,
 )
-from .lakehouse import (
+from sempy_labs.lakehouse import (
     get_lakehouse_tables,
     lakehouse_attached,
 )
-from ._model_bpa import run_model_bpa
+from sempy_labs._model_bpa import run_model_bpa
 from typing import Optional, List
 from sempy._utils._log import log
 import sempy_labs._icons as icons
@@ -55,6 +55,7 @@ def run_model_bpa_bulk(
             "Workspace B": ["Dataset5", "Dataset 8"],
         }
     """
+    from sempy_labs.lakehouse._schemas import is_schema_enabled
 
     if not lakehouse_attached():
         raise ValueError(
@@ -67,7 +68,9 @@ def run_model_bpa_bulk(
     skip_models.extend(["ModelBPA", "Fabric Capacity Metrics"])
 
     now = datetime.datetime.now()
-    output_table = "modelbparesults"
+    schema_enabled = is_schema_enabled()
+    output_table = "dbo/modelbparesults" if schema_enabled else "modelbparesults"
+
     lakeT = get_lakehouse_tables()
     lakeT_filt = lakeT[lakeT["Table Name"] == output_table]
     if lakeT_filt.empty:

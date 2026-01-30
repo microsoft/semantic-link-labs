@@ -1,6 +1,6 @@
 import sempy.fabric as fabric
 import time
-from ._helper_functions import (
+from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     _get_partition_map,
     _process_and_display_chart,

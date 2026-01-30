@@ -1,13 +1,8 @@
 import pandas as pd
 from uuid import UUID
 from typing import Optional
-from ._helper_functions import (
-    _base_api,
-    _create_dataframe,
-    resolve_workspace_id,
-    create_item,
-)
 from sempy._utils._log import log
+import sempy_labs.graphql as graphql
 
 
 @log
@@ -32,36 +27,7 @@ def list_graphql_apis(workspace: Optional[str | UUID]) -> pd.DataFrame:
         A pandas dataframe showing the GraphQL APIs within a workspace.
     """
 
-    columns = {
-        "GraphQL API Name": "string",
-        "GraphQL API Id": "string",
-        "Description": "string",
-    }
-    df = _create_dataframe(columns=columns)
-
-    workspace_id = resolve_workspace_id(workspace)
-
-    responses = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/GraphQLApis",
-        uses_pagination=True,
-        client="fabric_sp",
-    )
-
-    rows = []
-    for r in responses:
-        for v in r.get("value", []):
-            rows.append(
-                {
-                    "GraphQL API Name": v.get("displayName"),
-                    "GraphQL API Id": v.get("id"),
-                    "Description": v.get("description"),
-                }
-            )
-
-    if rows:
-        df = pd.DataFrame(rows, columns=list(columns.keys()))
-
-    return df
+    return graphql.list_graphql_apis(workspace=workspace)
 
 
 @log
@@ -85,6 +51,4 @@ def create_graphql_api(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    create_item(
-        name=name, description=description, type="GraphQLApi", workspace=workspace
-    )
+    graphql.create_graphql_api(name=name, description=description, workspace=workspace)

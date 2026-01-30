@@ -1,6 +1,6 @@
 import pandas as pd
 import re
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     format_dax_object_name,
     resolve_workspace_name_and_id,
     resolve_lakehouse_name_and_id,

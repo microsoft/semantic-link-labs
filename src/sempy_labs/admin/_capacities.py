@@ -3,7 +3,7 @@ from uuid import UUID
 import sempy_labs._icons as icons
 from typing import Optional, Tuple
 from sempy._utils._log import log
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     _base_api,
     _build_url,
     _create_dataframe,
@@ -181,8 +181,7 @@ def get_capacity_assignment_status(
         "Capacity Name": capacity_name,
     }
 
-    df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
-
+    df = pd.DataFrame([new_data], columns=list(columns.keys()))
     _update_dataframe_datatypes(dataframe=df, column_map=columns)
 
     return df
@@ -226,6 +225,7 @@ def get_capacity_state(capacity: Optional[str | UUID] = None):
 @log
 def list_capacities(
     capacity: Optional[str | UUID] = None,
+    include_tenant_key: bool = False,
 ) -> pd.DataFrame:
     """
     Shows the a list of capacities and their properties.
@@ -238,6 +238,8 @@ def list_capacities(
     ----------
     capacity : str | uuid.UUID, default=None
         The capacity name or ID to filter. If None, all capacities are returned.
+    include_tenant_key : bool, default=False
+        If True, obtains the `tenant key <https://learn.microsoft.com/rest/api/power-bi/admin/get-capacities-as-admin#example-with-expand-on-tenant-key>`_ properties.
 
     Returns
     -------
@@ -252,26 +254,46 @@ def list_capacities(
         "Region": "string",
         "State": "string",
         "Admins": "list",
+        "Users": "list",
     }
+    if include_tenant_key:
+        columns.update(
+            {
+                "Tenant Key Id": "string",
+                "Tenant Key Name": "string",
+            }
+        )
     df = _create_dataframe(columns=columns)
 
-    responses = _base_api(
-        request="/v1.0/myorg/admin/capacities", client="fabric_sp", uses_pagination=True
-    )
+    url = "/v1.0/myorg/admin/capacities"
+    if include_tenant_key:
+        url += "?$expand=tenantKey"
+
+    responses = _base_api(request=url, client="fabric_sp", uses_pagination=True)
 
     rows = []
     for r in responses:
         for i in r.get("value", []):
-            rows.append(
-                {
-                    "Capacity Id": i.get("id").lower(),
-                    "Capacity Name": i.get("displayName"),
-                    "Sku": i.get("sku"),
-                    "Region": i.get("region"),
-                    "State": i.get("state"),
-                    "Admins": [i.get("admins", [])],
-                }
-            )
+            row = {
+                "Capacity Id": i.get("id", "").lower(),
+                "Capacity Name": i.get("displayName"),
+                "Sku": i.get("sku"),
+                "Region": i.get("region"),
+                "State": i.get("state"),
+                "Admins": i.get("admins", []),
+                "Users": i.get("users", []),
+            }
+
+            if include_tenant_key:
+                tenant_key = i.get("tenantKey") or {}
+                row.update(
+                    {
+                        "Tenant Key Id": tenant_key.get("id"),
+                        "Tenant Key Name": tenant_key.get("name"),
+                    }
+                )
+
+            rows.append(row)
 
     if rows:
         df = pd.DataFrame(rows, columns=list(columns.keys()))

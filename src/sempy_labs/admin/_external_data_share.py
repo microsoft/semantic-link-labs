@@ -1,8 +1,8 @@
 from uuid import UUID
 import sempy_labs._icons as icons
 import pandas as pd
-from ._basic_functions import _resolve_workspace_name_and_id
-from .._helper_functions import (
+from sempy_labs.admin._basic_functions import _resolve_workspace_name_and_id
+from sempy_labs._helper_functions import (
     _base_api,
     _create_dataframe,
     _update_dataframe_datatypes,

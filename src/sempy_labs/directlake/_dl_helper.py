@@ -145,7 +145,7 @@ def generate_direct_lake_semantic_model(
     expr = generate_shared_expression(
         item_name=lakehouse, item_type="Lakehouse", workspace=lakehouse_workspace
     )
-    dfD = fabric.list_datasets(workspace=workspace_id)
+    dfD = fabric.list_datasets(workspace=workspace_id, mode="rest")
     dfD_filt = dfD[dfD["Dataset Name"] == dataset]
 
     if len(dfD_filt) > 0 and not overwrite:
@@ -214,7 +214,7 @@ def get_direct_lake_source(
 
     Returns
     -------
-    Tuple[str, str, UUID, UUID]
+    typing.Tuple[str, str, uuid.UUID, uuid.UUID]
         If the source of the direct lake semantic model is a lakehouse this will return: 'Lakehouse', Lakehouse Name, SQL Endpoint Id, Workspace Id
         If the source of the direct lake semantic model is a warehouse this will return: 'Warehouse', Warehouse Name, Warehouse Id, Workspace Id
         If the semantic model is not a Direct Lake semantic model, it will return None, None, None.
@@ -225,7 +225,10 @@ def get_direct_lake_source(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     sql_endpoint_id = get_direct_lake_sql_endpoint(dataset=dataset, workspace=workspace)
     dfI = fabric.list_items(workspace=workspace)
-    dfI_filt = dfI[(dfI["Id"] == sql_endpoint_id) & (dfI["Type"] == "SQLEndpoint")]
+    dfI_filt = dfI[
+        (dfI["Id"] == sql_endpoint_id)
+        & (dfI["Type"].isin(["SQLEndpoint", "Warehouse"]))
+    ]
 
     artifact_type, artifact_name, artifact_id = None, None, None
 

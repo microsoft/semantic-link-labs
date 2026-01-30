@@ -1,4 +1,4 @@
-from ._helper_functions import (
+from sempy_labs._helper_functions import (
     resolve_workspace_id,
     _base_api,
     _create_dataframe,
@@ -20,6 +20,8 @@ def create_sql_database(
     Creates a SQL database.
 
     This is a wrapper function for the following API: `Items - Create SQL Database <https://learn.microsoft.com/rest/api/fabric/sqldatabase/items/create-sql-database>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
@@ -46,6 +48,8 @@ def delete_sql_database(
     Deletes a SQL Database.
 
     This is a wrapper function for the following API: `Items - Delete SQL Database <https://learn.microsoft.com/rest/api/fabric/sqldatabase/items/delete-sql-database>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------

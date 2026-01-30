@@ -1,10 +1,9 @@
+from ._labels import (
+    list_item_labels,
+)
 from ._sql_endpoints import (
     list_sql_endpoints,
     refresh_sql_endpoint_metadata,
-)
-from ._variable_libraries import (
-    list_variable_libraries,
-    delete_variable_library,
 )
 from ._kusto import (
     query_kusto,
@@ -15,9 +14,6 @@ from ._vpax import (
 )
 from ._delta_analyzer_history import (
     delta_analyzer_history,
-)
-from ._dax_query_view import (
-    generate_dax_query_view_url,
 )
 from ._mounted_data_factories import (
     list_mounted_data_factories,
@@ -35,6 +31,8 @@ from ._semantic_models import (
     delete_semantic_model,
     update_semantic_model_refresh_schedule,
     list_semantic_model_datasources,
+    bind_semantic_model_connection,
+    unbind_semantic_model_connection,
 )
 from ._graphQL import (
     list_graphql_apis,
@@ -46,6 +44,7 @@ from ._job_scheduler import (
     create_item_schedule_cron,
     create_item_schedule_daily,
     create_item_schedule_weekly,
+    cancel_item_job_instance,
 )
 from ._delta_analyzer import (
     delta_analyzer,
@@ -82,6 +81,7 @@ from ._managed_private_endpoints import (
     list_managed_private_endpoints,
     create_managed_private_endpoint,
     delete_managed_private_endpoint,
+    list_managed_private_endpoint_fqdns,
 )
 from ._workloads import (
     list_workloads,
@@ -91,11 +91,7 @@ from ._external_data_shares import (
     list_external_data_shares_in_item,
     create_external_data_share,
     revoke_external_data_share,
-)
-from ._ml_models import (
-    list_ml_models,
-    create_ml_model,
-    delete_ml_model,
+    delete_external_data_share,
 )
 from ._ml_experiments import (
     list_ml_experiments,
@@ -121,28 +117,12 @@ from ._eventhouses import (
     delete_eventhouse,
     get_eventhouse_definition,
 )
-from ._eventstreams import (
-    list_eventstreams,
-    create_eventstream,
-    delete_eventstream,
-)
 from ._kql_querysets import (
     list_kql_querysets,
     create_kql_queryset,
     delete_kql_queryset,
 )
-from ._kql_databases import (
-    list_kql_databases,
-    # create_kql_database,
-    delete_kql_database,
-)
 from ._mirrored_warehouses import list_mirrored_warehouses
-from ._environments import (
-    create_environment,
-    delete_environment,
-    publish_environment,
-    list_environments,
-)
 from ._clear_cache import (
     clear_cache,
     backup_semantic_model,
@@ -196,33 +176,27 @@ from ._workspaces import (
     unassign_workspace_from_capacity,
     list_workspace_role_assignments,
     delete_workspace,
+    get_workspace_network_communication_policy,
+    set_workspace_network_communication_policy,
+    get_workspace_git_outbound_policy,
+    set_workspace_git_outbound_policy,
 )
 from ._notebooks import (
     get_notebook_definition,
     import_notebook_from_web,
     update_notebook_definition,
     create_notebook,
+    search_notebooks,
+    list_notebooks,
 )
 from ._sql import (
     ConnectWarehouse,
     ConnectLakehouse,
     ConnectSQLDatabase,
 )
-from ._sqldatabase import (
-    get_sql_database_columns,
-    get_sql_database_tables,
-    create_sql_database,
-    delete_sql_database,
-    list_sql_databases,
-)
 from ._workspace_identity import (
     provision_workspace_identity,
     deprovision_workspace_identity,
-)
-from ._deployment_pipelines import (
-    list_deployment_pipeline_stage_items,
-    list_deployment_pipeline_stages,
-    list_deployment_pipelines,
 )
 from ._git import (
     get_git_connection,
@@ -243,6 +217,7 @@ from ._dataflows import (
     list_upstream_dataflows,
     upgrade_dataflow,
     get_dataflow_definition,
+    discover_dataflow_parameters,
 )
 from ._connections import (
     list_connections,
@@ -286,8 +261,11 @@ from ._list_functions import (
     list_server_properties,
     list_semantic_model_errors,
     list_synonyms,
+    list_user_defined_functions,
 )
 from ._helper_functions import (
+    get_item_definition,
+    copy_item,
     convert_to_friendly_case,
     resolve_environment_id,
     resolve_capacity_id,
@@ -348,6 +326,32 @@ from ._vertipaq import (
 )
 from ._user_delegation_key import (
     get_user_delegation_key,
+)
+from ._data_access_security import (
+    list_data_access_roles,
+)
+from ._get_connection_string import (
+    get_connection_string,
+)
+from ._sql_audit_settings import (
+    get_sql_audit_settings,
+    update_sql_audit_settings,
+    set_audit_actions_and_group,
+)
+from ._onelake import (
+    get_onelake_settings,
+    modify_onelake_diagnostics,
+    modify_immutability_policy,
+)
+from ._domains import (
+    list_domains,
+)
+from ._takeover import (
+    takeover_item_ownership,
+)
+from ._catalog import (
+    list_endorsements,
+    list_favorites,
 )
 
 __all__ = [
@@ -441,9 +445,6 @@ __all__ = [
     "resolve_capacity_name",
     "run_model_bpa_bulk",
     "create_model_bpa_semantic_model",
-    "list_deployment_pipeline_stage_items",
-    "list_deployment_pipeline_stages",
-    "list_deployment_pipelines",
     "get_git_connection",
     "get_git_status",
     "commit_to_git",
@@ -452,9 +453,6 @@ __all__ = [
     "connect_workspace_to_azure_dev_ops",
     "connect_workspace_to_github",
     "disconnect_workspace_from_git",
-    "create_environment",
-    "delete_environment",
-    "publish_environment",
     "resolve_capacity_id",
     "resolve_environment_id",
     "list_item_connections",
@@ -471,24 +469,15 @@ __all__ = [
     "create_fabric_capacity",
     "convert_to_friendly_case",
     "list_mirrored_warehouses",
-    "list_kql_databases",
-    # "create_kql_database",
-    "delete_kql_database",
     "create_eventhouse",
     "list_eventhouses",
     "delete_eventhouse",
     "list_data_pipelines",
     "create_data_pipeline",
     "delete_data_pipeline",
-    "list_eventstreams",
-    "create_eventstream",
-    "delete_eventstream",
     "list_kql_querysets",
     "create_kql_queryset",
     "delete_kql_queryset",
-    "list_ml_models",
-    "create_ml_model",
-    "delete_ml_model",
     "list_ml_experiments",
     "create_ml_experiment",
     "delete_ml_experiment",
@@ -498,6 +487,7 @@ __all__ = [
     "list_external_data_shares_in_item",
     "create_external_data_share",
     "revoke_external_data_share",
+    "delete_external_data_share",
     "migrate_fabric_trial_capacity",
     "create_resource_group",
     "list_workloads",
@@ -510,6 +500,7 @@ __all__ = [
     "list_managed_private_endpoints",
     "create_managed_private_endpoint",
     "delete_managed_private_endpoint",
+    "list_managed_private_endpoint_fqdns",
     "get_dax_query_dependencies",
     "get_dax_query_memory_size",
     "get_mirrored_database_definition",
@@ -567,8 +558,6 @@ __all__ = [
     "get_eventhouse_definition",
     "enable_semantic_model_scheduled_refresh",
     "get_delta_table_history",
-    "get_sql_database_columns",
-    "get_sql_database_tables",
     "create_item_schedule_cron",
     "create_item_schedule_daily",
     "create_item_schedule_weekly",
@@ -577,19 +566,12 @@ __all__ = [
     "list_mounted_data_factories",
     "get_mounted_data_factory_definition",
     "delete_mounted_data_factory",
-    "generate_dax_query_view_url",
     "delete_semantic_model",
     "delete_workspace",
-    "create_sql_database",
-    "delete_sql_database",
-    "list_sql_databases",
     "delta_analyzer_history",
     "query_kusto",
     "query_workspace_monitoring",
-    "list_environments",
     "list_tags",
-    "list_variable_libraries",
-    "delete_variable_library",
     "create_vpax",
     "update_semantic_model_refresh_schedule",
     "apply_tags",
@@ -599,4 +581,30 @@ __all__ = [
     "list_semantic_model_datasources",
     "upgrade_dataflow",
     "get_dataflow_definition",
+    "list_item_labels",
+    "copy_item",
+    "search_notebooks",
+    "list_notebooks",
+    "get_item_definition",
+    "get_workspace_network_communication_policy",
+    "set_workspace_network_communication_policy",
+    "get_connection_string",
+    "list_data_access_roles",
+    "bind_semantic_model_connection",
+    "unbind_semantic_model_connection",
+    "list_user_defined_functions",
+    "get_sql_audit_settings",
+    "update_sql_audit_settings",
+    "set_audit_actions_and_group",
+    "discover_dataflow_parameters",
+    "get_onelake_settings",
+    "modify_onelake_diagnostics",
+    "list_domains",
+    "get_workspace_git_outbound_policy",
+    "set_workspace_git_outbound_policy",
+    "cancel_item_job_instance",
+    "modify_immutability_policy",
+    "takeover_item_ownership",
+    "list_endorsements",
+    "list_favorites",
 ]

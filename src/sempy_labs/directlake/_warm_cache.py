@@ -201,7 +201,9 @@ def _put_columns_into_memory(dataset, workspace, col_df, return_dataframe: bool 
         if not dfT_filt.empty:
             row_count = dfT_filt["Row Count"].iloc[0]
             bar.set_description(f"Warming the '{table_name}' table...")
-            if row_count < row_limit:
+            if pd.isna(row_count):
+                pass
+            elif row_count < row_limit:
                 columns = col_df_filt["DAX Object"].tolist()
                 css = ", ".join(columns)
                 dax = f"EVALUATE TOPN(1, SELECTCOLUMNS('{table_name}', {css}))"

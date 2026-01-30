@@ -1,23 +1,24 @@
 import sempy
 import sempy.fabric as fabric
 import re
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     create_relationship_name,
     retry,
     format_dax_object_name,
 )
-from ..tom import connect_semantic_model
+from sempy_labs.tom import connect_semantic_model
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
+from uuid import UUID
 
 
 @log
 def migrate_model_objects_to_semantic_model(
     dataset: str,
     new_dataset: str,
-    workspace: Optional[str] = None,
-    new_dataset_workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
+    new_dataset_workspace: Optional[str | UUID] = None,
 ):
     """
     Adds the rest of the model objects (besides tables/columns) and their properties to a Direct Lake semantic model based on an import/DirectQuery semantic model.
@@ -28,11 +29,11 @@ def migrate_model_objects_to_semantic_model(
         Name of the import/DirectQuery semantic model.
     new_dataset : str
         Name of the Direct Lake semantic model.
-    workspace : str, default=None
+    workspace : str | uuid.UUID, default=None
         The Fabric workspace name in which the import/DirectQuery semantic model exists.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    new_dataset_workspace : str
+    new_dataset_workspace : str | uuid.UUID, default=None
         The Fabric workspace name in which the Direct Lake semantic model will be created.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -47,12 +48,7 @@ def migrate_model_objects_to_semantic_model(
             f"{icons.red_dot} The 'dataset' and 'new_dataset' parameters are both set to '{dataset}'. These parameters must be set to different values."
         )
 
-    workspace = fabric.resolve_workspace_name(workspace)
     fabric.refresh_tom_cache(workspace=workspace)
-
-    if new_dataset_workspace is None:
-        new_dataset_workspace = workspace
-
     icons.sll_tags.append("DirectLakeMigration")
 
     dfT = fabric.list_tables(dataset=dataset, workspace=workspace)

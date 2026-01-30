@@ -1,23 +1,9 @@
-import sempy.fabric as fabric
 import pandas as pd
-import sempy_labs._icons as icons
-from typing import Optional
-import base64
-import requests
+from typing import Optional, List
 from sempy._utils._log import log
-from ._helper_functions import (
-    resolve_workspace_name_and_id,
-    resolve_workspace_id,
-    _decode_b64,
-    _base_api,
-    resolve_item_id,
-    create_item,
-)
-from sempy.fabric.exceptions import FabricHTTPException
-import os
+from os import PathLike
 from uuid import UUID
-
-_notebook_prefix = "notebook-content."
+import sempy_labs.notebook as nb
 
 
 def _get_notebook_definition_base(
@@ -26,38 +12,16 @@ def _get_notebook_definition_base(
     format: Optional[str] = None,
 ) -> pd.DataFrame:
 
-    workspace_id = resolve_workspace_id(workspace)
-    item_id = resolve_item_id(item=notebook_name, type="Notebook", workspace=workspace)
-
-    url = f"v1/workspaces/{workspace_id}/notebooks/{item_id}/getDefinition"
-    if format == "ipynb":
-        url += f"?format={format}"
-
-    result = _base_api(
-        request=url,
-        method="post",
-        lro_return_json=True,
-        status_codes=None,
+    return nb.get_notebook_definition_base(
+        notebook_name=notebook_name, workspace=workspace, format=format
     )
 
-    return pd.json_normalize(result["definition"]["parts"])
 
-
-def _get_notebook_type(
+def get_notebook_type(
     notebook_name: str, workspace: Optional[str | UUID] = None
 ) -> str:
 
-    df_items = _get_notebook_definition_base(
-        notebook_name=notebook_name, workspace=workspace
-    )
-
-    file_path = df_items[df_items["path"].str.startswith(_notebook_prefix)][
-        "path"
-    ].iloc[0]
-
-    _, file_extension = os.path.splitext(file_path)
-
-    return file_extension[1:]
+    return nb.get_notebook_type(notebook_name=notebook_name, workspace=workspace)
 
 
 @log
@@ -93,18 +57,12 @@ def get_notebook_definition(
         The notebook definition.
     """
 
-    df_items = _get_notebook_definition_base(
-        notebook_name=notebook_name, workspace=workspace, format=format
+    return nb.get_notebook_definition(
+        notebook_name=notebook_name,
+        workspace=workspace,
+        decode=decode,
+        format=format,
     )
-    df_items_filt = df_items[df_items["path"].str.startswith(_notebook_prefix)]
-    payload = df_items_filt["payload"].iloc[0]
-
-    if decode:
-        result = _decode_b64(payload)
-    else:
-        result = payload
-
-    return result
 
 
 @log
@@ -114,6 +72,7 @@ def import_notebook_from_web(
     description: Optional[str] = None,
     workspace: Optional[str | UUID] = None,
     overwrite: bool = False,
+    folder: Optional[str | PathLike] = None,
 ):
     """
     Creates a new notebook within a workspace based on a Jupyter notebook hosted in the web.
@@ -136,41 +95,19 @@ def import_notebook_from_web(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     overwrite : bool, default=False
         If set to True, overwrites the existing notebook in the workspace if it exists.
+    folder : str | os.PathLike, default=None
+        The folder within the workspace where the notebook will be created.
+        Defaults to None which places the notebook in the root of the workspace.
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-
-    # Fix links to go to the raw github file
-    starting_text = "https://github.com/"
-    starting_text_len = len(starting_text)
-    if url.startswith(starting_text):
-        url = f"https://raw.githubusercontent.com/{url[starting_text_len:]}".replace(
-            "/blob/", "/"
-        )
-
-    response = requests.get(url)
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    dfI = fabric.list_items(workspace=workspace, type="Notebook")
-    dfI_filt = dfI[dfI["Display Name"] == notebook_name]
-    if len(dfI_filt) == 0:
-        create_notebook(
-            name=notebook_name,
-            notebook_content=response.content,
-            workspace=workspace_id,
-            description=description,
-            format="ipynb",
-        )
-    elif len(dfI_filt) > 0 and overwrite:
-        print(f"{icons.info} Overwrite of notebooks is currently not supported.")
-        # update_notebook_definition(
-        #    name=notebook_name, notebook_content=response.content, workspace=workspace
-        # )
-    else:
-        raise ValueError(
-            f"{icons.red_dot} The '{notebook_name}' already exists within the '{workspace_name}' workspace and 'overwrite' is set to False."
-        )
+    nb.import_notebook_from_web(
+        notebook_name=notebook_name,
+        url=url,
+        description=description,
+        workspace=workspace,
+        overwrite=overwrite,
+        folder=folder,
+    )
 
 
 @log
@@ -181,6 +118,7 @@ def create_notebook(
     description: Optional[str] = None,
     workspace: Optional[str | UUID] = None,
     format: Optional[str] = None,
+    folder: Optional[str | PathLike] = None,
 ):
     """
     Creates a new notebook with a definition within a workspace.
@@ -203,29 +141,19 @@ def create_notebook(
     format : str, default=None
         If 'ipynb' is provided than notebook_content should be standard ipynb format
         otherwise notebook_content should be GIT friendly format
+    folder : str | os.PathLike, default=None
+        The folder within the workspace where the notebook will be created.
+        Defaults to None which places the notebook in the root of the workspace.
     """
 
-    notebook_payload = base64.b64encode(notebook_content).decode("utf-8")
-
-    definition_payload = {
-        "parts": [
-            {
-                "path": f"{_notebook_prefix}{type}",
-                "payload": notebook_payload,
-                "payloadType": "InlineBase64",
-            }
-        ],
-    }
-
-    if format == "ipynb":
-        definition_payload["format"] = "ipynb"
-
-    create_item(
+    nb.create_notebook(
         name=name,
-        type="Notebook",
-        workspace=workspace,
+        notebook_content=notebook_content,
+        type=type,
         description=description,
-        definition=definition_payload,
+        workspace=workspace,
+        format=format,
+        folder=folder,
     )
 
 
@@ -254,36 +182,66 @@ def update_notebook_definition(
         otherwise notebook_content should be GIT friendly format
     """
 
-    (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    notebook_payload = base64.b64encode(notebook_content.encode("utf-8")).decode(
-        "utf-8"
-    )
-    item_id = resolve_item_id(item=name, type="Notebook", workspace=workspace)
-    type = _get_notebook_type(notebook_name=name, workspace=workspace)
-
-    payload = {
-        "definition": {
-            "parts": [
-                {
-                    "path": f"{_notebook_prefix}{type}",
-                    "payload": notebook_payload,
-                    "payloadType": "InlineBase64",
-                }
-            ],
-        },
-    }
-
-    if format == "ipynb":
-        payload["definition"]["format"] = "ipynb"
-
-    _base_api(
-        request=f"v1/workspaces/{workspace_id}/notebooks/{item_id}/updateDefinition",
-        payload=payload,
-        method="post",
-        lro_return_status_code=True,
-        status_codes=None,
+    nb.update_notebook_definition(
+        name=name,
+        notebook_content=notebook_content,
+        workspace=workspace,
+        format=format,
     )
 
-    print(
-        f"{icons.green_dot} The '{name}' notebook was updated within the '{workspace_name}' workspace."
+
+@log
+def list_notebooks(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
+    """
+    Shows the notebooks within a workspace.
+
+    Parameters
+    ----------
+    workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the notebooks within a workspace.
+    """
+
+    return nb.list_notebooks(workspace=workspace)
+
+
+@log
+def search_notebooks(
+    search_string: str,
+    notebook: Optional[str | UUID] = None,
+    workspace: Optional[str | UUID | List[str | UUID]] = None,
+) -> pd.DataFrame:
+    """
+    Searches notebooks within a workspace or across multiple workspaces for a given search string.
+
+    Parameters
+    ----------
+    search_string : str
+        The string to search for within the notebook definitions.
+    notebook : str | uuid.UUID, default=None
+        The name or ID of a specific notebook to search within.
+        Defaults to None which searches across all notebooks in the specified workspace(s).
+    workspace : str | uuid.UUID | list, default=None
+        The name or ID of the workspace or a list of workspaces to search within.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+        If a list is provided, it should contain workspace names or IDs.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing the notebooks that contain the search string in their definitions.
+        The dataframe includes the workspace name, workspace ID, notebook name, and notebook ID.
+    """
+
+    return nb.search_notebooks(
+        search_string=search_string,
+        notebook=notebook,
+        workspace=workspace,
     )

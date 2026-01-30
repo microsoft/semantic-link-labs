@@ -70,6 +70,7 @@ from ._domains import (
     resolve_domain_id,
     unassign_domain_workspaces,
     unassign_all_domain_workspaces,
+    sync_role_assignments_to_subdomains,
 )
 from ._items import (
     list_item_access_details,
@@ -89,6 +90,18 @@ from ._tags import (
     list_tags,
     create_tags,
     delete_tag,
+)
+from ._tenant_keys import (
+    list_tenant_keys,
+    rotate_tenant_key,
+)
+from ._sharing_links import (
+    remove_all_sharing_links,
+    remove_sharing_links,
+)
+from ._labels import (
+    bulk_set_labels,
+    bulk_remove_labels,
 )
 
 __all__ = [
@@ -149,4 +162,11 @@ __all__ = [
     "list_tags",
     "create_tags",
     "delete_tag",
+    "list_tenant_keys",
+    "rotate_tenant_key",
+    "remove_all_sharing_links",
+    "remove_sharing_links",
+    "bulk_set_labels",
+    "bulk_remove_labels",
+    "sync_role_assignments_to_subdomains",
 ]

@@ -1,6 +1,6 @@
 import sempy.fabric as fabric
 import pandas as pd
-from ._helper_functions import (
+from sempy_labs._helper_functions import (
     format_dax_object_name,
     resolve_dataset_name_and_id,
     resolve_workspace_name_and_id,
@@ -334,7 +334,10 @@ def measure_dependency_tree(
 
     # Visualize the tree structure using RenderTree
     for pre, _, node in RenderTree(node_dict[measure_name]):
-        if icons.table_icon in node.custom_property:
+        if (
+            hasattr(node, "custom_property")
+            and icons.table_icon in node.custom_property
+        ):
             print(f"{pre}{node.custom_property}'{node.name}'")
         else:
-            print(f"{pre}{node.custom_property}[{node.name}]")
+            print(f"{pre}'{node.name}'")

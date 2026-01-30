@@ -1,14 +1,8 @@
 import pandas as pd
 from typing import Optional
-from ._helper_functions import (
-    resolve_workspace_id,
-    _base_api,
-    delete_item,
-    _create_dataframe,
-    create_item,
-)
 from uuid import UUID
 from sempy._utils._log import log
+import sempy_labs.ml_experiment as ml
 
 
 @log
@@ -31,40 +25,7 @@ def list_ml_experiments(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         A pandas dataframe showing the ML models within a workspace.
     """
 
-    columns = {
-        "ML Experiment Name": "string",
-        "ML Experiment Id": "string",
-        "Description": "string",
-    }
-    df = _create_dataframe(columns=columns)
-
-    workspace_id = resolve_workspace_id(workspace)
-
-    responses = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/mlExperiments",
-        status_codes=200,
-        uses_pagination=True,
-    )
-
-    rows = []
-    for r in responses:
-        for v in r.get("value", []):
-            model_id = v.get("id")
-            modelName = v.get("displayName")
-            desc = v.get("description")
-
-            rows.append(
-                {
-                    "ML Experiment Name": modelName,
-                    "ML Experiment Id": model_id,
-                    "Description": desc,
-                }
-            )
-
-    if rows:
-        df = pd.DataFrame(rows, columns=list(columns.keys()))
-
-    return df
+    return ml.list_ml_experiments(workspace=workspace)
 
 
 @log
@@ -88,9 +49,7 @@ def create_ml_experiment(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    create_item(
-        name=name, description=description, type="MLExperiment", workspace=workspace
-    )
+    ml.create_ml_experiment(name=name, description=description, workspace=workspace)
 
 
 @log
@@ -110,4 +69,4 @@ def delete_ml_experiment(name: str, workspace: Optional[str | UUID] = None):
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    delete_item(item=name, type="MLExperiment", workspace=workspace)
+    ml.delete_ml_experiment(name=name, workspace=workspace)

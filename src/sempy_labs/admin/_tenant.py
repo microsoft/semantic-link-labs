@@ -1,4 +1,4 @@
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     _update_dataframe_datatypes,
     _base_api,
     _create_dataframe,
@@ -6,7 +6,7 @@ from .._helper_functions import (
 from sempy._utils._log import log
 import pandas as pd
 from uuid import UUID
-from ._capacities import _resolve_capacity_name_and_id
+from sempy_labs.admin._capacities import _resolve_capacity_name_and_id
 import sempy_labs._icons as icons
 from typing import Optional, List
 

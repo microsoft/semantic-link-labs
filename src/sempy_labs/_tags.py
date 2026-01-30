@@ -1,4 +1,4 @@
-from ._helper_functions import (
+from sempy_labs._helper_functions import (
     _base_api,
     _create_dataframe,
     _update_dataframe_datatypes,
@@ -61,6 +61,8 @@ def list_tags() -> pd.DataFrame:
 def resolve_tags(tags: str | List[str]) -> List[str]:
     """
     Resolves the tags to a list of strings.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------

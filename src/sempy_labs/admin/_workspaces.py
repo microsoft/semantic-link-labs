@@ -1,4 +1,4 @@
-from .._helper_functions import (
+from sempy_labs._helper_functions import (
     _base_api,
     _build_url,
     _encode_user,
@@ -8,7 +8,7 @@ from .._helper_functions import (
 
 from uuid import UUID
 from typing import Optional
-from ._basic_functions import (
+from sempy_labs.admin._basic_functions import (
     _resolve_workspace_name_and_id,
 )
 import sempy_labs._icons as icons
