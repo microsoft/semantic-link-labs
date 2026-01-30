@@ -1877,13 +1877,15 @@ class ReportWrapper:
             "Data Category": "str",
         }
 
+        df = _create_dataframe(columns=columns)
+
         rlm = self.list_report_level_measures()
         if rlm.empty:
             if not self._readonly:
                 print(
                     f"{icons.info} The '{self._report_name}' report within the '{self._workspace_name}' workspace has no report-level measures."
                 )
-            return _create_dataframe(columns=columns)
+            return df
 
         all_removed_measures = []
         iteration = 0
@@ -2030,7 +2032,7 @@ class ReportWrapper:
                 print(
                     f"{icons.info} No unused report-level measures found in the '{self._report_name}' report within the '{self._workspace_name}' workspace."
                 )
-            return _create_dataframe(columns=columns)
+            return df
 
     def get_theme(self, theme_type: str = "baseTheme") -> dict:
         """
