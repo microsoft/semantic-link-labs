@@ -2269,7 +2269,7 @@ class ReportWrapper:
                 f"{icons.green_dot} The report-level measures have been migrated to the '{dataset_name}' semantic model within the '{dataset_workspace_name}' workspace."
             )
 
-    def remove_unused_report_level_measures(self) -> pd.DataFrame:
+    def remove_unused_report_level_measures(self, dry_run: bool = False) -> pd.DataFrame:
         """
         Removes unused report-level measures from the report.
 
@@ -2279,47 +2279,55 @@ class ReportWrapper:
 
         This method will recursively remove measures until no more unused measures are found.
 
+        Parameters
+        ----------
+        dry_run : bool, default=False
+            If True, identifies unused measures without removing them from the report.
+
         Returns
         -------
         pandas.DataFrame
-            A pandas dataframe showing the measures that were removed.
+            A pandas dataframe showing the measures that were removed (or would be removed if dry_run=True).
         """
         self._ensure_pbir()
 
-        # Get report-level measures
+        columns = {
+            "Measure Name": "str",
+            "Table Name": "str",
+            "Expression": "str",
+            "Data Type": "str",
+            "Format String": "str",
+            "Data Category": "str",
+        }
+
         rlm = self.list_report_level_measures()
         if rlm.empty:
             if not self._readonly:
                 print(
                     f"{icons.info} The '{self._report_name}' report within the '{self._workspace_name}' workspace has no report-level measures."
                 )
-            return pd.DataFrame()
+            return _create_dataframe(columns=columns)
 
         all_removed_measures = []
         iteration = 0
-        max_iterations = 10  # Prevent infinite loops
+        max_iterations = 10
 
         while iteration < max_iterations:
             iteration += 1
 
-            # Get current report-level measures
             current_rlm = self.list_report_level_measures()
             if current_rlm.empty:
                 break
 
-            # Build a map of all report-level measures with their entities
             rlm_map = {}
             for _, r in current_rlm.iterrows():
                 rlm_map[r["Measure Name"]] = r["Table Name"]
 
-            # Check which measures are used
             used_measures = set()
 
-            # Helper function to recursively check if a measure is referenced in JSON data
             def is_measure_referenced_in_json(json_data, measure_name: str, entity_name: str):
                 """Recursively search JSON for measure references"""
                 if isinstance(json_data, dict):
-                    # Check for direct Measure.Property reference with matching Entity
                     if "Measure" in json_data:
                         measure_obj = json_data["Measure"]
                         if isinstance(measure_obj, dict):
@@ -2332,33 +2340,27 @@ class ReportWrapper:
                             if property_name == measure_name and measure_entity == entity_name:
                                 return True
 
-                    # Check for DAX expression containing the measure
                     if "Expression" in json_data and isinstance(json_data["Expression"], str):
                         expr = json_data["Expression"]
-                        # Match [MeasureName] pattern
                         pattern = r"\[" + re.escape(measure_name) + r"\]"
                         if re.search(pattern, expr):
                             return True
 
-                    # Recurse into dictionary values
                     for value in json_data.values():
                         if is_measure_referenced_in_json(value, measure_name, entity_name):
                             return True
 
                 elif isinstance(json_data, list):
-                    # Recurse into list items
                     for item in json_data:
                         if is_measure_referenced_in_json(item, measure_name, entity_name):
                             return True
 
                 return False
 
-            # Check all report definition files for measure references (excluding reportExtensions.json)
             for _, r in current_rlm.iterrows():
                 measure_name = r["Measure Name"]
                 entity_name = r["Table Name"]
 
-                # Check in all report files except reportExtensions.json
                 for part in self._report_definition.get("parts"):
                     path = part.get("path")
                     if path == self._report_extensions_path:
@@ -2367,33 +2369,31 @@ class ReportWrapper:
                     payload = part.get("payload")
                     if is_measure_referenced_in_json(payload, measure_name, entity_name):
                         used_measures.add(measure_name)
-                        break  # No need to check other files for this measure
+                        break
 
-            # Also check for measures referenced in DAX expressions within reportExtensions.json
-            # (measures that depend on other measures)
-            extensions_data = self.get(file_path=self._report_extensions_path)
+            try:
+                extensions_data = self.get(file_path=self._report_extensions_path)
+            except Exception:
+                extensions_data = {}
+            
             for entity in extensions_data.get("entities", []):
                 for measure in entity.get("measures", []):
                     expr = measure.get("expression", "")
                     if isinstance(expr, str):
-                        # Find [MeasureName] references in DAX
                         measure_refs = re.findall(r"\[([^\]]+)\]", expr)
                         for ref in measure_refs:
                             if ref in rlm_map:
                                 used_measures.add(ref)
 
-            # Identify unused measures in this iteration
             unused_in_iteration = []
             for _, r in current_rlm.iterrows():
                 measure_name = r["Measure Name"]
                 if measure_name not in used_measures:
                     unused_in_iteration.append(measure_name)
 
-            # If no unused measures found, we're done
             if not unused_in_iteration:
                 break
 
-            # Remove unused measures from reportExtensions.json
             entities = self.get(
                 file_path=self._report_extensions_path, json_path="$.entities"
             )
@@ -2403,57 +2403,57 @@ class ReportWrapper:
                 table_name = entity.get("name")
                 original_measures = entity.get("measures", [])
 
-                # Track which measures we're removing from this entity
                 for m in original_measures:
                     if m.get("name") in unused_in_iteration:
                         removed_in_iteration.append(
                             {
-                                "Table Name": table_name,
                                 "Measure Name": m.get("name"),
+                                "Table Name": table_name,
                                 "Expression": m.get("expression"),
                                 "Data Type": m.get("dataType"),
                                 "Format String": m.get("formatString"),
+                                "Data Category": m.get("dataCategory"),
                             }
                         )
 
-                # Filter out unused measures
                 entity["measures"] = [
                     m
                     for m in original_measures
                     if m.get("name") not in unused_in_iteration
                 ]
 
-            # Remove entities that now have no measures
             entities = [e for e in entities if len(e.get("measures", [])) > 0]
 
-            # Update the report definition
-            if entities:
-                self.set_json(
-                    file_path=self._report_extensions_path,
-                    json_path="$.entities",
-                    json_value=entities,
-                )
-            else:
-                # Remove reportExtensions.json if no measures remain
-                self.remove(file_path=self._report_extensions_path, verbose=False)
+            if not dry_run:
+                if entities:
+                    self.set_json(
+                        file_path=self._report_extensions_path,
+                        json_path="$.entities",
+                        json_value=entities,
+                    )
+                else:
+                    self.remove(file_path=self._report_extensions_path, verbose=False)
 
-            # Track all removed measures
             all_removed_measures.extend(removed_in_iteration)
 
-        # Create result dataframe
         if all_removed_measures:
-            df_removed = pd.DataFrame(all_removed_measures).drop_duplicates()
+            df_removed = pd.DataFrame(all_removed_measures, columns=list(columns.keys())).drop_duplicates()
             if not self._readonly:
-                print(
-                    f"{icons.green_dot} Removed {len(df_removed)} unused report-level measure(s) from the '{self._report_name}' report."
-                )
+                if dry_run:
+                    print(
+                        f"{icons.info} Found {len(df_removed)} unused report-level measure(s) in the '{self._report_name}' report that would be removed."
+                    )
+                else:
+                    print(
+                        f"{icons.green_dot} Removed {len(df_removed)} unused report-level measure(s) from the '{self._report_name}' report."
+                    )
             return df_removed
         else:
             if not self._readonly:
                 print(
                     f"{icons.info} No unused report-level measures found in the '{self._report_name}' report within the '{self._workspace_name}' workspace."
                 )
-            return pd.DataFrame()
+            return _create_dataframe(columns=columns)
 
     # In progress...
     def _list_annotations(self) -> pd.DataFrame:
