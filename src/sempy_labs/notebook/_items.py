@@ -74,6 +74,8 @@ def get_notebook_definition(
 
     This is a wrapper function for the following API: `Items - Get Notebook Definition <https://learn.microsoft.com/rest/api/fabric/notebook/items/get-notebook-definition>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     notebook_name : str
@@ -193,6 +195,10 @@ def create_notebook(
     """
     Creates a new notebook with a definition within a workspace.
 
+    This is a wrapper function for the following API: `Items - Create Notebook Definition <https://learn.microsoft.com/rest/api/fabric/notebook/items/create-notebook>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     name : str
@@ -253,7 +259,9 @@ def update_notebook_definition(
     """
     Updates an existing notebook with a new definition.
 
-    Parameters
+    This is a wrapper function for the following API: `Items - Update Notebook Definition <https://learn.microsoft.com/rest/api/fabric/notebook/items/update-notebook-definition>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
     ----------
     name : str
         The name of the notebook to be updated.
@@ -307,6 +315,10 @@ def update_notebook_definition(
 def list_notebooks(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     """
     Shows the notebooks within a workspace.
+
+    This is a wrapper function for the following API: `Items - List Notebooks <https://learn.microsoft.com/rest/api/fabric/notebook/items/list-notebooks>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
