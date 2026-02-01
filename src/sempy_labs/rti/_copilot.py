@@ -23,6 +23,10 @@ def nl_to_kql(
     """
     Returns a KQL query generated from natural language.
 
+    This is a wrapper function for the following API: `Copilot - NL To KQL <https://learn.microsoft.com/rest/api/fabric/realtimeintelligence/copilot/nl-to-kql(beta)>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     kql_database : str | uuid.UUID
