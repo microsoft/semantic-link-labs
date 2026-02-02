@@ -2774,3 +2774,23 @@ def _get_url_prefix() -> str:
     context = response.json().get("@odata.context")
 
     return context.split("/v1.0")[0]
+
+
+def get_pbi_token_headers():
+
+    import notebookutils
+
+    token = notebookutils.credentials.getToken("pbi")
+    return {"Authorization": f"Bearer {token}"}
+
+
+def get_model_id(item_id: UUID, prefix: str = None, headers: dict = None):
+
+    if prefix is None:
+        prefix = _get_url_prefix()
+    if headers is None:
+        headers = get_pbi_token_headers()
+
+    response = requests.get(url=f"{prefix}/metadata/models/{item_id}", headers=headers)
+
+    return response.json().get("model", {}).get("id")
