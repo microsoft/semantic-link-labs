@@ -299,6 +299,19 @@ def set_background_operation_rules(
 
 @log
 def delete_workspace_consumption_rules(capacity: str | UUID = None):
+    """
+    Deletes the workspace consumption surge protection rules for the specified capacity.
+
+    Workspace Consumption
+        When total CU consumption by a single workspace reaches the rejection threshold, reject new operation requests and block the workspace for the specified amount of time.
+
+    Parameters
+    ----------
+    capacity : str | uuid.UUID, default=None
+        The capacity name or ID.
+        Defaults to None which resolves to the capacity id of the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the capacity name of the workspace of the notebook.
+    """
 
     rules = get_workspace_consumption_rules(capacity=capacity, return_dataframe=False)
     for v in rules.get("value", []):
@@ -316,6 +329,19 @@ def delete_workspace_consumption_rules(capacity: str | UUID = None):
 
 @log
 def delete_background_operation_rules(capacity: str | UUID = None):
+    """
+    Deletes the background operation surge protection rules for the specified capacity.
+
+    Background Operations
+        When total CU consumption reaches the rejection threshold, reject new background operation requests. When total CU consumption drops below the recovery threshold, accept new background operation requests.
+
+    Parameters
+    ----------
+    capacity : str | uuid.UUID, default=None
+        The capacity name or ID.
+        Defaults to None which resolves to the capacity id of the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the capacity name of the workspace of the notebook.
+    """
 
     return _surge_api(
         capacity=capacity,
