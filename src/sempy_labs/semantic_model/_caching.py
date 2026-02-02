@@ -14,11 +14,11 @@ import sempy_labs._icons as icons
 
 
 @log
-def enable_caching(
+def enable_query_caching(
     dataset: str | UUID, enable: bool = True, workspace: Optional[str | UUID] = None
 ):
     """
-    Enables or disables query caching for a semantic model.
+    Enables or disables `query caching <http://aka.ms/queryCaching>_` for a semantic model.
 
     Parameters
     ----------

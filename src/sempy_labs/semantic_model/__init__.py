@@ -4,7 +4,7 @@ from ._copilot import (
     make_discoverable,
 )
 from ._caching import (
-    enable_caching,
+    enable_query_caching,
 )
 
 
@@ -12,5 +12,5 @@ __all__ = [
     "approved_for_copilot",
     "set_endorsement",
     "make_discoverable",
-    "enable_caching",
+    "enable_query_caching",
 ]
