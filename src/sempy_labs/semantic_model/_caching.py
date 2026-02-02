@@ -15,7 +15,7 @@ import sempy_labs._icons as icons
 
 @log
 def enable_query_caching(
-    dataset: str | UUID, enable: bool = True, workspace: Optional[str | UUID] = None
+    dataset: str | UUID, workspace: Optional[str | UUID] = None, enable: bool = True,
 ):
     """
     Enables or disables `query caching <http://aka.ms/queryCaching>_` for a semantic model.
@@ -24,12 +24,12 @@ def enable_query_caching(
     ----------
     dataset : str | uuid.UUID
         Name or ID of the semantic model.
-    enable : bool, default=True
-        Set to True to enable query caching, or False to disable it.
     workspace : str | uuid.UUID, default=None
         The workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
+    enable : bool, default=True
+        Set to True to enable query caching, or False to disable it.
     """
     prefix = _get_url_prefix()
     headers = get_pbi_token_headers()
