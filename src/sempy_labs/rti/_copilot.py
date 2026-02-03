@@ -16,9 +16,9 @@ def nl_to_kql(
     billing_item: str | UUID,
     billing_item_type: Literal["KQLQueryset", "KQLDashboard", "Eventhouse"],
     prompt: str,
-    chat_messages: Optional[str | List[str]] = None,
-    user_shots: Optional[List[str]] = None,
-    workspace: Optional[str | List[str]] = None,
+    chat_messages: Optional[dict | List[dict]] = None,
+    user_shots: Optional[List[dict]] = None,
+    workspace: Optional[str | UUID] = None,
 ) -> str:
     """
     Returns a KQL query generated from natural language.

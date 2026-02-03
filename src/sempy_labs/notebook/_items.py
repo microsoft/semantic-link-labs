@@ -262,6 +262,8 @@ def update_notebook_definition(
     This is a wrapper function for the following API: `Items - Update Notebook Definition <https://learn.microsoft.com/rest/api/fabric/notebook/items/update-notebook-definition>`_.
 
     Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
     ----------
     name : str
         The name of the notebook to be updated.
