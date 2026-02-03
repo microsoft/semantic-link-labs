@@ -1,5 +1,5 @@
 import pandas as pd
-from typing import Optional
+from typing import Literal, Optional
 from uuid import UUID
 from sempy._utils._log import log
 import sempy_labs.connection as conn
@@ -142,7 +142,7 @@ def create_cloud_connection(
     user_name: str,
     password: str,
     privacy_level: str,
-    connection_encryption: str = "NotEncrypted",
+    connection_encryption: Literal["Encrypted", "Any", "NotEncrypted"] = "NotEncrypted",
     skip_test_connection: bool = False,
 ):
     """
@@ -166,8 +166,8 @@ def create_cloud_connection(
         The password.
     privacy_level : str
         The `privacy level <https://learn.microsoft.com/rest/api/fabric/core/connections/create-connection?tabs=HTTP#privacylevel>`_ of the connection.
-    connection_encryption : str, default="NotEncrypted"
-        The connection encrpytion.
+    connection_encryption : typing.Literal["Encrypted", "Any", "NotEncrypted"], default="NotEncrypted"
+        The connection encryption type.
     skip_test_connection: bool, default=False
         If True, skips the test connection.
     """
@@ -192,7 +192,7 @@ def create_on_prem_connection(
     database_name: str,
     credentials: str,
     privacy_level: str,
-    connection_encryption: str = "NotEncrypted",
+    connection_encryption: Literal["Encrypted", "Any", "NotEncrypted"] = "NotEncrypted",
     skip_test_connection: bool = False,
 ):
     """
@@ -212,14 +212,12 @@ def create_on_prem_connection(
         The name of the server.
     database_name : str
         The name of the database.
-    user_name : str
-        The username.
-    password : str
-        The password.
+    credentials : str
+        The encrypted credentials obtained from the gateway.
     privacy_level : str
         The `privacy level <https://learn.microsoft.com/rest/api/fabric/core/connections/create-connection?tabs=HTTP#privacylevel>`_ of the connection.
-    connection_encryption : str, default="NotEncrypted"
-        The connection encrpytion.
+    connection_encryption : typing.Literal["Encrypted", "Any", "NotEncrypted"], default="NotEncrypted"
+        The connection encryption type.
     skip_test_connection: bool, default=False
         If True, skips the test connection.
     """
@@ -229,6 +227,10 @@ def create_on_prem_connection(
         gateway=gateway,
         server_name=server_name,
         database_name=database_name,
+        credentials=credentials,
+        privacy_level=privacy_level,
+        connection_encryption=connection_encryption,
+        skip_test_connection=skip_test_connection,
     )
 
 
@@ -241,7 +243,7 @@ def create_vnet_connection(
     user_name: str,
     password: str,
     privacy_level: str,
-    connection_encryption: str = "NotEncrypted",
+    connection_encryption: Literal["Encrypted", "Any", "NotEncrypted"] = "NotEncrypted",
     skip_test_connection: bool = False,
 ):
     """
@@ -267,8 +269,8 @@ def create_vnet_connection(
         The password.
     privacy_level : str
         The `privacy level <https://learn.microsoft.com/rest/api/fabric/core/connections/create-connection?tabs=HTTP#privacylevel>`_ of the connection.
-    connection_encryption : str, default="NotEncrypted"
-        The connection encrpytion.
+    connection_encryption : typing.Literal["Encrypted", "Any", "NotEncrypted"], default="NotEncrypted"
+        The connection encryption type.
     skip_test_connection: bool, default=False
         If True, skips the test connection.
     """
