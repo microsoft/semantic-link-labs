@@ -1,8 +1,6 @@
 from sempy_labs._helper_functions import (
     resolve_workspace_name_and_id,
     resolve_item_name_and_id,
-    _get_url_prefix,
-    get_pbi_token_headers,
     get_model_id,
     _base_api,
 )
@@ -10,8 +8,6 @@ from typing import Optional, Literal
 from uuid import UUID
 from sempy._utils._log import log
 import sempy_labs._icons as icons
-import requests
-from sempy.fabric.exceptions import FabricHTTPException
 
 
 @log

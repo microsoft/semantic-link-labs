@@ -1,12 +1,11 @@
 import pandas as pd
-import requests
 from sempy._utils._log import log
-from sempy_labs._helper_functions import get_pbi_token_headers
+from sempy_labs._helper_functions import (
+    _base_api,
+)
 
 
 def _list_endorsements_or_favorites(type: str = "endorsements"):
-
-    headers = get_pbi_token_headers()
 
     endorsement_map = {
         0: "None",
@@ -101,10 +100,11 @@ def _list_endorsements_or_favorites(type: str = "endorsements"):
 
         payload = {**base_payload, "supportedTypes": supported_types}
 
-        response_list = requests.post(
-            "https://df-msit-scus-redirect.analysis.windows.net/metadata/datahub/V2/artifacts",
-            headers=headers,
-            json=payload,
+        response_list = _base_api(
+            request="metadata/datahub/V2/artifacts",
+            client="interal",
+            method="post",
+            payload=payload,
         ).json()
 
         for item in response_list:

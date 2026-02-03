@@ -1,16 +1,13 @@
-import requests
 from sempy_labs._helper_functions import (
-    _get_url_prefix,
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
-    get_pbi_token_headers,
     get_model_id,
+    _base_api,
 )
 from typing import Optional
 import sempy_labs._icons as icons
 from sempy._utils._log import log
 from uuid import UUID
-from sempy.fabric.exceptions import FabricHTTPException
 
 
 @log
@@ -35,19 +32,16 @@ def set_autosync(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    headers = get_pbi_token_headers()
-    prefix = _get_url_prefix()
-    id = get_model_id(item_id=dataset_id, headers=headers, prefix=prefix)
+    id = get_model_id(item_id=dataset_id)
 
     payload = {"directLakeAutoSync": enable}
-    response = requests.post(
-        url=f"{prefix}/metadata/models/{id}/settings", headers=headers, json=payload
+    _base_api(
+        request=f"metadata/models/{id}/settings",
+        client="internal",
+        method="post",
+        payload=payload,
+        status_codes=204,
     )
-
-    if response.status_code != 204:
-        raise FabricHTTPException(
-            f"{icons.red_dot} Failed to retrieve labels: {response.text}"
-        )
 
     print(
         f"{icons.green_dot} Direct Lake AutoSync has been {'enabled' if enable else 'disabled'} for the '{dataset_name}' semantic model within the '{workspace_name}' workspace."

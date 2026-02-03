@@ -1,14 +1,12 @@
-import requests
 from sempy_labs._helper_functions import (
-    _get_url_prefix,
     resolve_workspace_name_and_id,
     resolve_item_name_and_id,
+    _base_api,
 )
 from typing import Optional, Literal
 import sempy_labs._icons as icons
 from sempy._utils._log import log
 from uuid import UUID
-from sempy.fabric.exceptions import FabricHTTPException
 
 
 @log
@@ -37,11 +35,6 @@ def set_endorsement(
         item=report, type="Report", workspace=workspace_id
     )
 
-    import notebookutils
-
-    token = notebookutils.credentials.getToken("pbi")
-    headers = {"Authorization": f"Bearer {token}"}
-    prefix = _get_url_prefix()
     endorsement = endorsement.strip().lower()
 
     endorsement_mapping = {
@@ -58,14 +51,12 @@ def set_endorsement(
     stage = endorsement_mapping.get(endorsement)
     payload = {"stage": stage}
 
-    response = requests.put(
-        url=f"{prefix}/metadata/gallery/reports/{report_id}",
-        headers=headers,
-        json=payload,
+    _base_api(
+        request=f"metadata/gallery/reports/{report_id}",
+        client="internal",
+        method="put",
+        payload=payload,
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(f"Failed to set endorsement: {response.text}")
 
     print(
         f"{icons.green_dot} The endorsement for the '{report_name}' report within the '{workspace_name}' workspace has been set to '{endorsement}'."

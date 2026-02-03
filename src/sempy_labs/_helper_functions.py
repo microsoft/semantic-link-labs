@@ -2231,6 +2231,7 @@ def _base_api(
     lro_return_json: bool = False,
     lro_return_status_code: bool = False,
     lro_return_df: bool = False,
+    headers: Optional[dict] = None,
 ):
     import notebookutils
     from sempy_labs._authentication import _get_headers
@@ -2254,7 +2255,15 @@ def _base_api(
         token = auth.token_provider.get() or FabricDefaultCredential()
         c = fabric.FabricRestClient(credential=token)
 
-    if client not in ["fabric", "fabric_sp", "onelake", "azure", "graph", "internal"]:
+    if client not in [
+        "fabric",
+        "fabric_sp",
+        "onelake",
+        "azure",
+        "graph",
+        "internal",
+        "kusto",
+    ]:
         raise NotImplementedError(
             f"{icons.red_dot} The '{client}' client is not supported."
         )
@@ -2282,6 +2291,8 @@ def _base_api(
             url = f"https://graph.microsoft.com/v1.0/{request}"
         elif client == "azure":
             url = request
+    elif client == "kusto":
+        url = request
     elif client == "internal":
         headers = get_pbi_token_headers()
         prefix = _get_url_prefix()

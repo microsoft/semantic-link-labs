@@ -1,12 +1,10 @@
 import sempy.fabric as fabric
-import requests
 import pandas as pd
 from typing import Optional, Union
 from uuid import UUID
-from sempy.fabric.exceptions import FabricHTTPException
 from sempy._utils._log import log
 from sempy_labs._helper_functions import (
-    _get_url_prefix,
+    _base_api,
 )
 
 
@@ -28,11 +26,6 @@ def list_item_labels(workspace: Optional[Union[str, UUID]] = None) -> pd.DataFra
     pandas.DataFrame
         A pandas dataframe showing a list of all items within a workspace and their sensitivity labels.
     """
-
-    import notebookutils
-
-    token = notebookutils.credentials.getToken("pbi")
-    headers = {"Authorization": f"Bearer {token}"}
 
     # Item types handled in special payload fields
     grouped_types = {
@@ -90,16 +83,12 @@ def list_item_labels(workspace: Optional[Union[str, UUID]] = None) -> pd.DataFra
     if artifact_ids:
         payload["artifacts"] = [{"artifactId": i} for i in artifact_ids]
 
-    prefix = _get_url_prefix()
-
-    response = requests.post(
-        f"{prefix}/metadata/informationProtection/artifacts",
-        json=payload,
-        headers=headers,
-    )
-    if response.status_code != 200:
-        raise FabricHTTPException(f"Failed to retrieve labels: {response.text}")
-    result = response.json()
+    result = _base_api(
+        request="metadata/informationProtection/artifacts",
+        client="internal",
+        method="post",
+        payload=payload,
+    ).json()
 
     label_keys = [
         "artifactInformationProtections",

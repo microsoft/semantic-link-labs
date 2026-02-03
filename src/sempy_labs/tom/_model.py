@@ -17,8 +17,6 @@ from sempy_labs._helper_functions import (
     resolve_item_id,
     resolve_lakehouse_id,
     _validate_weight,
-    _get_url_prefix,
-    get_pbi_token_headers,
 )
 from sempy_labs._list_functions import list_relationships
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
@@ -31,8 +29,6 @@ import ast
 from uuid import UUID
 import sempy_labs._authentication as auth
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
-import requests
-from sempy.fabric.exceptions import FabricHTTPException
 
 
 if TYPE_CHECKING:
