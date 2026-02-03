@@ -29,7 +29,7 @@ def _surge_api(
     )
 
     if response.status_code != status_code:
-        raise FabricHTTPException(response.text)
+        raise FabricHTTPException(response)
     if return_json:
         return response.json()
     else:
