@@ -321,7 +321,8 @@ def delete_workspace_consumption_rules(capacity: str | UUID = None):
     for v in rules.get("value", []):
         rule_id = v.get("detectionRuleId")
         break
-    return _surge_api(
+
+    _surge_api(
         capacity=capacity,
         request=f"detectionRules/{rule_id}",
         payload=None,
@@ -329,6 +330,8 @@ def delete_workspace_consumption_rules(capacity: str | UUID = None):
         status_code=204,
         return_json=False,
     )
+
+    print(f"{icons.green_dot} The workspace consumption rules deleted successfully.")
 
 
 @log
@@ -347,7 +350,7 @@ def delete_background_operation_rules(capacity: str | UUID = None):
         or if no lakehouse attached, resolves to the capacity name of the workspace of the notebook.
     """
 
-    return _surge_api(
+    _surge_api(
         capacity=capacity,
         request="surgeProtectionRules",
         payload=None,
@@ -355,3 +358,5 @@ def delete_background_operation_rules(capacity: str | UUID = None):
         status_code=200,
         return_json=False,
     )
+
+    print(f"{icons.green_dot} The background operation rules deleted successfully.")
