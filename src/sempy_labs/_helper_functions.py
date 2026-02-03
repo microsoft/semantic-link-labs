@@ -2253,12 +2253,13 @@ def _base_api(
     elif client == "fabric_sp":
         token = auth.token_provider.get() or FabricDefaultCredential()
         c = fabric.FabricRestClient(credential=token)
-    elif client in ["azure", "graph", "onelake"]:
-        pass
-    else:
-        raise ValueError(f"{icons.red_dot} The '{client}' client is not supported.")
 
-    if client not in ["azure", "graph", "onelake"]:
+    if client not in ["fabric", "fabric_sp", "onelake", "azure", "graph", "internal"]:
+        raise NotImplementedError(
+            f"{icons.red_dot} The '{client}' client is not supported."
+        )
+
+    if client in ["fabric", "fabric_sp"]:
         if method == "get":
             response = c.get(request)
         elif method == "delete":
@@ -2271,17 +2272,24 @@ def _base_api(
             response = c.put(request, json=payload)
         else:
             raise NotImplementedError
+    elif client == "onelake":
+        token = notebookutils.credentials.getToken("storage")
+        headers = {"Authorization": f"Bearer {token}"}
+        url = f"https://onelake.table.fabric.microsoft.com/delta/{request}"
+    elif client in ["azure", "graph"]:
+        headers = _get_headers(auth.token_provider.get(), audience=client)
+        if client == "graph":
+            url = f"https://graph.microsoft.com/v1.0/{request}"
+        elif client == "azure":
+            url = request
+    elif client == "internal":
+        headers = get_pbi_token_headers()
+        prefix = _get_url_prefix()
+        url = f"{prefix}/{request}"
     else:
-        if client == "onelake":
-            token = notebookutils.credentials.getToken("storage")
-            headers = {"Authorization": f"Bearer {token}"}
-            url = f"https://onelake.table.fabric.microsoft.com/delta/{request}"
-        else:
-            headers = _get_headers(auth.token_provider.get(), audience=client)
-            if client == "graph":
-                url = f"https://graph.microsoft.com/v1.0/{request}"
-            elif client == "azure":
-                url = request
+        raise NotImplementedError
+
+    if client not in ["fabric", "fabric_sp"]:
         response = requests.request(
             method.upper(),
             url,
@@ -2819,11 +2827,6 @@ def get_pbi_token_headers():
 
 def get_model_id(item_id: UUID, prefix: str = None, headers: dict = None):
 
-    if prefix is None:
-        prefix = _get_url_prefix()
-    if headers is None:
-        headers = get_pbi_token_headers()
-
-    response = requests.get(url=f"{prefix}/metadata/models/{item_id}", headers=headers)
+    response = _base_api(request=f"metadata/models/{item_id}", client="internal")
 
     return response.json().get("model", {}).get("id")

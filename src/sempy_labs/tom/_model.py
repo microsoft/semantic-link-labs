@@ -7,6 +7,7 @@ import json
 from datetime import datetime
 from decimal import Decimal
 from sempy_labs._helper_functions import (
+    _base_api,
     format_dax_object_name,
     generate_guid,
     _make_list_unique,
@@ -4695,9 +4696,6 @@ class TOMWrapper:
 
         icons.sll_tags.append("GenerateMeasureDescriptions")
 
-        prefix = _get_url_prefix()
-        headers = get_pbi_token_headers()
-
         df = pd.DataFrame(
             columns=["Table Name", "Measure Name", "Expression", "Description"]
         )
@@ -4737,13 +4735,12 @@ class TOMWrapper:
                 }
             )
 
-            response = requests.post(
-                f"{prefix}/explore/v202304/nl2nl/completions",
-                headers=headers,
-                json=payload,
+            response = _base_api(
+                request="explore/v202304/nl2nl/completions",
+                client="internal",
+                method="post",
+                payload=payload,
             )
-            if response.status_code != 200:
-                raise FabricHTTPException(response)
 
             for item in response.json().get("modelItems", []):
                 ms_name = item["urn"]

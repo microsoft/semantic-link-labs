@@ -4,6 +4,7 @@ from sempy_labs._helper_functions import (
     _get_url_prefix,
     get_pbi_token_headers,
     get_model_id,
+    _base_api,
 )
 from typing import Optional, Literal
 from uuid import UUID
@@ -34,24 +35,18 @@ def approved_for_copilot(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    headers = get_pbi_token_headers()
-    url_prefix = _get_url_prefix()
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (item_name, item_id) = resolve_item_name_and_id(
         item=dataset, type="SemanticModel", workspace=workspace_id
     )
     payload = {"preppedForCopilot": approved_for_copilot, "isReadOnly": False}
 
-    response = requests.put(
-        url=f"{url_prefix}/metadata/workspace/{workspace_id}/model/{item_id}/preppedCopilot",
-        json=payload,
-        headers=headers,
+    _base_api(
+        request=f"metadata/workspace/{workspace_id}/model/{item_id}/preppedCopilot",
+        client="internal",
+        method="put",
+        payload=payload,
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(
-            f"{icons.red_dot} Failed to set approved_for_copilot: {response.text}"
-        )
 
     print(
         f"{icons.green_dot} The '{item_name}' semantic model within the '{workspace_name}' workspace has been set to to approved_for_copilot={approved_for_copilot}."
@@ -83,9 +78,7 @@ def set_endorsement(
     (item_name, item_id) = resolve_item_name_and_id(
         item=dataset, type="SemanticModel", workspace=workspace_id
     )
-    headers = get_pbi_token_headers()
-    prefix = _get_url_prefix()
-    id = get_model_id(item_id=item_id, headers=headers, prefix=prefix)
+    id = get_model_id(item_id=item_id)
     endorsement = endorsement.strip().lower()
 
     endorsement_mapping = {
@@ -103,14 +96,12 @@ def set_endorsement(
     stage = endorsement_mapping.get(endorsement)
     payload = {"stage": stage}
 
-    response = requests.put(
-        url=f"{prefix}/metadata/gallery/models/{id}",
-        headers=headers,
-        json=payload,
+    _base_api(
+        request=f"metadata/gallery/models/{id}",
+        client="internal",
+        method="put",
+        payload=payload,
     )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(f"Failed to set endorsement: {response.text}")
 
     print(
         f"{icons.green_dot} The endorsement for the '{item_name}' semantic model within the '{workspace_name}' workspace has been set to '{endorsement}'."
@@ -140,29 +131,23 @@ def make_discoverable(
     (item_name, item_id) = resolve_item_name_and_id(
         item=dataset, type="SemanticModel", workspace=workspace_id
     )
-    headers = get_pbi_token_headers()
-    prefix = _get_url_prefix()
-    id = get_model_id(item_id=item_id, headers=headers, prefix=prefix)
+    id = get_model_id(item_id=item_id)
 
     if make_discoverable:
-        response = requests.post(
-            url=f"{prefix}/metadata/gallery/discover/models/{id}",
-            headers=headers,
+        _base_api(
+            request=f"metadata/gallery/discover/models/{id}",
+            client="internal",
+            method="post",
         )
-    else:
-        response = requests.delete(
-            url=f"{prefix}/metadata/gallery/discover/models/{id}",
-            headers=headers,
-        )
-
-    if response.status_code != 200:
-        raise FabricHTTPException(f"Failed to set endorsement: {response.text}")
-
-    if make_discoverable:
         print(
             f"{icons.green_dot} The '{item_name}' semantic model within the '{workspace_name}' workspace is now discoverable in the gallery."
         )
     else:
+        _base_api(
+            request=f"metadata/gallery/discover/models/{id}",
+            client="internal",
+            method="delete",
+        )
         print(
             f"{icons.green_dot} The '{item_name}' semantic model within the '{workspace_name}' workspace is no longer discoverable in the gallery."
         )
