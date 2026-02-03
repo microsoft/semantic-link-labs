@@ -18,7 +18,7 @@ def enable_query_caching(
     dataset: str | UUID, workspace: Optional[str | UUID] = None, enable: bool = True,
 ):
     """
-    Enables or disables `query caching <http://aka.ms/queryCaching>_` for a semantic model.
+    Enables or disables `query caching <http://aka.ms/queryCaching>`_ for a semantic model.
 
     Parameters
     ----------
@@ -38,6 +38,8 @@ def enable_query_caching(
         item=dataset, type="SemanticModel", workspace=workspace_id
     )
     model_id = get_model_id(item_id=item_id, headers=headers, prefix=prefix)
+    if model_id is None:
+        raise ValueError(f"Failed to retrieve model ID for semantic model '{item_name}'")
 
     caching_map = {
         True: 2,
