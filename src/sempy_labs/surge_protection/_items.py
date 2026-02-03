@@ -314,6 +314,10 @@ def delete_workspace_consumption_rules(capacity: str | UUID = None):
     """
 
     rules = get_workspace_consumption_rules(capacity=capacity, return_dataframe=False)
+    if not rules:
+        print(f"{icons.yellow_dot} No workspace consumption rules found to delete.")
+        return
+
     for v in rules.get("value", []):
         rule_id = v.get("detectionRuleId")
         break
