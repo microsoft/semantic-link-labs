@@ -262,7 +262,7 @@ def set_background_operation_rules(
         )
     if recovery_threshold < 5 or recovery_threshold > 100:
         raise ValueError(
-            f"{icons.red_dot} The recovery_threshold must be between 1 and 100."
+            f"{icons.red_dot} The recovery_threshold must be between 5 and 100."
         )
     if recovery_threshold >= rejection_threshold:
         raise ValueError(
