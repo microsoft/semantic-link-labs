@@ -2263,6 +2263,7 @@ def _base_api(
         "graph",
         "internal",
         "kusto",
+        "blob",
     ]:
         raise NotImplementedError(
             f"{icons.red_dot} The '{client}' client is not supported."
@@ -2293,6 +2294,8 @@ def _base_api(
             url = request
     elif client == "kusto":
         url = request
+    elif client == "blob":
+        url = f"https://onelake.blob.fabric.microsoft.com/{request}"
     elif client == "internal":
         headers = get_pbi_token_headers()
         prefix = _get_url_prefix()
@@ -2300,7 +2303,21 @@ def _base_api(
     else:
         raise NotImplementedError
 
-    if client not in ["fabric", "fabric_sp"]:
+    if client == "blob":
+        token = notebookutils.credentials.getToken("storage")
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/xml",
+            "x-ms-version": "2025-05-05",
+        }
+
+        response = requests.request(
+            method.upper(),
+            url,
+            headers=headers,
+            data=payload if method.lower() != "get" else None,
+        )
+    elif client not in ["fabric", "fabric_sp"]:
         response = requests.request(
             method.upper(),
             url,
