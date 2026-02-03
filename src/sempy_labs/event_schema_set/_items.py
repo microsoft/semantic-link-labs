@@ -56,6 +56,9 @@ def list_event_schema_sets(workspace: Optional[str | UUID] = None) -> pd.DataFra
             }
             rows.append(row)
 
+    if rows:
+        df = pd.DataFrame(rows, columns=list(columns.keys()))
+
     return df
 
 
