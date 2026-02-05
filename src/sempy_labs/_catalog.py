@@ -102,7 +102,7 @@ def _list_endorsements_or_favorites(type: str = "endorsements"):
 
         response_list = _base_api(
             request="metadata/datahub/V2/artifacts",
-            client="interal",
+            client="internal",
             method="post",
             payload=payload,
         ).json()
