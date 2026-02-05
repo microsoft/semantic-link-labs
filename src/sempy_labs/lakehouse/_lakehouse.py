@@ -258,7 +258,7 @@ def vacuum_lakehouse_tables(
         full_table_name = f"{schema_name}.{table_name}"
         path = r["Location"]
         bar.set_description(
-            f"Vacuuming the '{full_table_name if schema_name else table_name}' table ({idx}/{total})..."
+            f"Vacuuming the '{full_table_name if schema_name else table_name}' table ({idx + 1}/{total})..."
         )
         _vacuum_table(path=path, retain_n_hours=retain_n_hours)
 
