@@ -144,6 +144,45 @@ def _vacuum_table(path, retain_n_hours):
         DeltaTable.forPath(spark, path).vacuum(retain_n_hours)
 
 
+def _collect_tables(tables, lakehouse, workspace) -> pd.DataFrame:
+
+    from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
+
+    df = get_lakehouse_tables(
+        lakehouse=lakehouse, workspace=workspace, exclude_shortcuts=True
+    )
+    df_delta = df[df["Format"] == "delta"]
+
+    if isinstance(tables, str):
+        tables = [tables]
+
+    if tables:
+        filters = []
+
+        for t in tables:
+            if "." in t:
+                schema, table = t.split(".", 1)
+                filters.append(
+                    (df_delta["Schema Name"] == schema)
+                    & (df_delta["Table Name"] == table)
+                )
+            else:
+                filters.append(df_delta["Table Name"] == t)
+
+        # Combine all filters with OR
+        combined_filter = filters[0]
+        for f in filters[1:]:
+            combined_filter |= f
+
+        df_tables = df_delta[combined_filter]
+    else:
+        df_tables = df_delta
+
+    df_tables.reset_index(drop=True, inplace=True)
+
+    return df_tables
+
+
 @log
 def optimize_lakehouse_tables(
     tables: Optional[Union[str, List[str]]] = None,
@@ -156,8 +195,8 @@ def optimize_lakehouse_tables(
     Parameters
     ----------
     tables : str | List[str], default=None
-        The table(s) to optimize.
-        Defaults to None which resovles to optimizing all tables within the lakehouse.
+        The table(s) to optimize. If the tables have a schema, use the 'schema.table' format.
+        Defaults to None which resolves to optimizing all tables within the lakehouse.
     lakehouse : str | uuid.UUID, default=None
         The Fabric lakehouse name or ID.
         Defaults to None which resolves to the lakehouse attached to the notebook.
@@ -167,25 +206,16 @@ def optimize_lakehouse_tables(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
-
-    df = get_lakehouse_tables(
-        lakehouse=lakehouse, workspace=workspace, exclude_shortcuts=True
-    )
-    df_delta = df[df["Format"] == "delta"]
-
-    if isinstance(tables, str):
-        tables = [tables]
-
-    df_tables = df_delta[df_delta["Table Name"].isin(tables)] if tables else df_delta
-    df_tables.reset_index(drop=True, inplace=True)
+    df_tables = _collect_tables(tables=tables, lakehouse=lakehouse, workspace=workspace)
 
     total = len(df_tables)
     for idx, r in (bar := tqdm(df_tables.iterrows(), total=total, bar_format="{desc}")):
         table_name = r["Table Name"]
+        schema_name = r["Schema Name"]
+        full_table_name = f"{schema_name}.{table_name}"
         path = r["Location"]
         bar.set_description(
-            f"Optimizing the '{table_name}' table ({idx + 1}/{total})..."
+            f"Optimizing the '{full_table_name if schema_name else table_name}' table ({idx + 1}/{total})..."
         )
         _optimize_table(path=path)
 
@@ -202,8 +232,9 @@ def vacuum_lakehouse_tables(
 
     Parameters
     ----------
-    tables : str | List[str] | None
-        The table(s) to vacuum. If no tables are specified, all tables in the lakehouse will be vacuumed.
+    tables : str | List[str], default=None
+        The table(s) to vacuum. If the tables have a schema, use the 'schema.table' format.
+        Defaults to None which resolves to vacuuming all tables in the lakehouse.
     lakehouse : str | uuid.UUID, default=None
         The Fabric lakehouse name or ID.
         Defaults to None which resolves to the lakehouse attached to the notebook.
@@ -218,24 +249,17 @@ def vacuum_lakehouse_tables(
         The default retention period is 168 hours (7 days) unless manually configured via table properties.
     """
 
-    from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
-
-    df = get_lakehouse_tables(
-        lakehouse=lakehouse, workspace=workspace, exclude_shortcuts=True
-    )
-    df_delta = df[df["Format"] == "delta"]
-
-    if isinstance(tables, str):
-        tables = [tables]
-
-    df_tables = df_delta[df_delta["Table Name"].isin(tables)] if tables else df_delta
-    df_tables.reset_index(drop=True, inplace=True)
+    df_tables = _collect_tables(tables=tables, lakehouse=lakehouse, workspace=workspace)
 
     total = len(df_tables)
     for idx, r in (bar := tqdm(df_tables.iterrows(), total=total, bar_format="{desc}")):
         table_name = r["Table Name"]
+        schema_name = r["Schema Name"]
+        full_table_name = f"{schema_name}.{table_name}"
         path = r["Location"]
-        bar.set_description(f"Vacuuming the '{table_name}' table ({idx}/{total})...")
+        bar.set_description(
+            f"Vacuuming the '{full_table_name if schema_name else table_name}' table ({idx + 1}/{total})..."
+        )
         _vacuum_table(path=path, retain_n_hours=retain_n_hours)
 
 
