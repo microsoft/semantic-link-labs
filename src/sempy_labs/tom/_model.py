@@ -3123,6 +3123,14 @@ class TOMWrapper:
             data_type="Int64",
             hidden=True,
         )
+        if hierarchy_names:
+            self.add_calculated_table_column(
+                table_name=table_name,
+                column_name='Grouping',
+                source_column="[Value4]",
+                data_type="String",
+                hidden=False,
+            )
 
         self.set_extended_property(
             object=self.model.Tables[table_name].Columns[col2],
