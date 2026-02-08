@@ -2980,7 +2980,11 @@ class TOMWrapper:
         self.model.Tables.Add(t)
 
     def add_field_parameter(
-        self, table_name: str, objects: List[str], object_names: List[str] = None
+        self,
+        table_name: str,
+        objects: List[str],
+        object_names: List[str] = None,
+        hierarchy_names: List[str] = None,
     ):
         """
         Adds a `field parameter <https://learn.microsoft.com/power-bi/create-reports/power-bi-field-parameters>`_ to the semantic model.
@@ -2989,13 +2993,18 @@ class TOMWrapper:
         ----------
         table_name : str
             Name of the table.
-        objects : List[str]
+        objects : typing.List[str]
             The columns/measures to be included in the field parameter.
             Columns must be specified as such : 'Table Name'[Column Name].
             Measures may be formatted as '[Measure Name]' or 'Measure Name'.
-        object_names : List[str], default=None
+        object_names : typing.List[str], default=None
             The corresponding visible name for the measures/columns in the objects list.
             Defaults to None which shows the measure/column name.
+        hierarchy_names : typing.List[str], default=None
+            The corresponding hierarchy name for the measures/columns in the objects list if they are to be added to a hierarchy.
+             Defaults to None which adds all fields to the same level (i.e. no hierarchy).
+
+            For details see `here <https://www.youtube.com/watch?v=5G_xSJy5muo>`_.
         """
 
         import Microsoft.AnalysisServices.Tabular as TOM
@@ -3015,39 +3024,83 @@ class TOMWrapper:
                 f"{icons.red_dot} If the 'object_names' parameter is specified, it must correspond exactly to the 'objects' parameter."
             )
 
-        expr = ""
-        i = 0
-        for obj in objects:
-            index = objects.index(obj)
-            success = False
-            for m in self.all_measures():
-                obj_name = m.Name
-                if obj == f"[{obj_name}]" or obj == obj_name:
-                    if object_names is not None:
-                        obj_name = object_names[index]
-                    expr = f'{expr}\n\t("{obj_name}", NAMEOF([{m.Name}]), {str(i)}),'
-                    success = True
-            for c in self.all_columns():
-                obj_name = c.Name
-                fullObjName = format_dax_object_name(c.Parent.Name, c.Name)
-                if obj == fullObjName or obj == c.Parent.Name + "[" + c.Name + "]":
-                    if object_names is not None:
-                        obj_name = object_names[index]
-                    expr = f'{expr}\n\t("{obj_name}", NAMEOF({fullObjName}), {str(i)}),'
-                    success = True
-            if not success:
+        if hierarchy_names is not None and len(objects) != len(hierarchy_names):
+            raise ValueError(
+                f"{icons.red_dot} If the 'hierarchy_names' parameter is specified, it must correspond exactly to the 'objects' parameter."
+            )
+
+        # Measures lookup
+        measure_lookup = {}
+        for m in self.all_measures():
+            measure_lookup[m.Name] = m
+            measure_lookup[f"[{m.Name}]"] = m
+
+        # Columns lookup
+        column_lookup = {}
+        for c in self.all_columns():
+            key1 = f"{c.Parent.Name}[{c.Name}]"
+            key2 = format_dax_object_name(c.Parent.Name, c.Name)
+            column_lookup[key1] = c
+            column_lookup[key2] = c
+
+        def resolve_object(o):
+            """
+            Resolves an object string to a Measure or Column.
+            Returns a dict or None.
+            """
+            if o in measure_lookup:
+                m = measure_lookup[o]
+                return {"type": "Measure", "name": m.Name, "table": m.Parent.Name}
+
+            if o in column_lookup:
+                c = column_lookup[o]
+                return {
+                    "type": "Column",
+                    "name": c.Name,
+                    "table": c.Parent.Name,
+                    "full_name": format_dax_object_name(c.Parent.Name, c.Name),
+                }
+
+            return None
+
+        rows = []
+
+        for index, o in enumerate(objects):
+            resolved = resolve_object(o)
+
+            if not resolved:
                 raise ValueError(
-                    f"{icons.red_dot} The '{obj}' object was not found in the '{self._dataset_name}' semantic model."
+                    f"{icons.red_dot} The '{o} object does not exist in the semantic model."
                 )
+
+            obj_type = resolved["type"]
+            name = resolved["name"]
+
+            display_name = object_names[index] if index < len(object_names) else None
+            h_name = hierarchy_names[index] if index < len(hierarchy_names) else None
+
+            obj_name = display_name or name
+
+            if obj_type == "Measure":
+                expr = f'("{obj_name}", NAMEOF([{name}]), {index}'
             else:
-                i += 1
+                full_object_name = resolved["full_name"]
+                expr = f'("{obj_name}", NAMEOF({full_object_name}), {index}'
 
-        expr = "{" + expr.rstrip(",") + "\n}"
+            if h_name:
+                expr += f', "{h_name}"'
 
-        self.add_calculated_table(name=table_name, expression=expr)
+            expr += ")"
 
-        col2 = table_name + " Fields"
-        col3 = table_name + " Order"
+            rows.append(f"\t{expr}")
+
+        calc_table_expr = "{\n" + ",\n".join(rows) + "\n}"
+
+        # Build calc table and columns
+        self.add_calculated_table(name=table_name, expression=calc_table_expr)
+
+        col2 = f"{table_name} Fields"
+        col3 = f"{table_name} Order"
 
         self.add_calculated_table_column(
             table_name=table_name,
