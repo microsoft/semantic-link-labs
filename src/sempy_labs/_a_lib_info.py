@@ -3,14 +3,12 @@ import requests
 import zipfile
 from pathlib import Path
 
-
 lib_name = "semanticlinklabs"
-lib_version = "0.12.10"
+lib_version = "0.13.0"
 
 NUGET_BASE_URL = "https://www.nuget.org/api/v2/package"
 current_dir = Path(__file__).parent
 nuget_dir = current_dir / "nuget_dlls"
-_runtime_set = False
 
 
 def find_lib_folder(pkg_folder: Path) -> Path:
