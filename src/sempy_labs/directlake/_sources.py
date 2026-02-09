@@ -57,6 +57,7 @@ def _get_direct_lake_expressions(
     return result
 
 
+@log
 def get_direct_lake_sources(
     dataset: str | UUID, workspace: Optional[str | UUID] = None
 ) -> List[dict]:
