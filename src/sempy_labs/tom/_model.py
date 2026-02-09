@@ -3076,8 +3076,8 @@ class TOMWrapper:
             obj_type = resolved["type"]
             name = resolved["name"]
 
-            display_name = object_names[index] if index < len(object_names) else None
-            h_name = hierarchy_names[index] if index < len(hierarchy_names) else None
+            display_name = object_names[index] if index < len(object_names or []) else None
+            h_name = hierarchy_names[index] if index < len(hierarchy_names or []) else None
 
             obj_name = display_name or name
 
