@@ -66,8 +66,7 @@ def update_direct_lake_partition_entity(
                 f"{icons.red_dot} The '{dataset_name}' semantic model within the '{workspace_name}' workspace is not in Direct Lake mode."
             )
 
-        for tName in table_name:
-            i = table_name.index(tName)
+        for i, tName in enumerate(table_name):
             eName = entity_name[i]
             part_name = next(
                 p.Name
@@ -86,15 +85,8 @@ def update_direct_lake_partition_entity(
 
             # Update source lineage tag
             if schema:
-                # Only set schema for DL over SQL (not DL over OneLake)
-                expression_source_name = (
-                    tom.model.Tables[tName]
-                    .Partitions[part_name]
-                    .Source.ExpressionSource.Name
-                )
-                expr = tom.model.Expressions[expression_source_name].Expression
-                if "Sql.Database" in expr:
-                    tom.model.Tables[tName].Partitions[
+                # Updated to all DL patterns (DLOL, DLSQL)
+                tom.model.Tables[tName].Partitions[
                         part_name
                     ].Source.SchemaName = schema
                 tom.model.Tables[tName].SourceLineageTag = f"[{schema}].[{eName}]"
