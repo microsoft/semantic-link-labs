@@ -8,6 +8,8 @@ version: 2
 # Set the OS, Python version and other tools you might need
 build:
   os: ubuntu-22.04
+  tools:
+    python: "mambaforge-23.11"
   jobs:
     pre_build:
       - sphinx-apidoc -f -o docs/source src/sempy_labs/
