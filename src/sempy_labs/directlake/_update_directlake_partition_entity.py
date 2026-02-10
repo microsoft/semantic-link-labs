@@ -1,17 +1,16 @@
+from uuid import UUID
+from typing import List, Optional, Union
+import json
+from sempy._utils._log import log
+import sempy_labs._icons as icons
 from sempy_labs.tom import connect_semantic_model
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
-from sempy_labs.directlake._dl_helper import get_direct_lake_source
+from sempy_labs.directlake._sources import get_direct_lake_sources
 from sempy_labs._helper_functions import (
     _convert_data_type,
     resolve_dataset_name_and_id,
     resolve_workspace_name_and_id,
-    resolve_workspace_name,
 )
-from sempy._utils._log import log
-from typing import List, Optional, Union
-import sempy_labs._icons as icons
-from uuid import UUID
-import json
 
 
 @log
@@ -177,24 +176,17 @@ def add_table_to_direct_lake_semantic_model(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    artifact_type, lakehouse_name, lakehouse_id, lakehouse_workspace_id = (
-        get_direct_lake_source(dataset=dataset_id, workspace=workspace_id)
-    )
-
-    if artifact_type == "Warehouse":
+    sources = get_direct_lake_sources(dataset=dataset_id, workspace=workspace_id)[0]
+    if sources.get("itemType") != "Lakehouse":
         raise ValueError(
-            f"{icons.red_dot} This function is only valid for Direct Lake semantic models which source from Fabric lakehouses (not warehouses)."
+            f"{icons.red_dot} The source of the '{dataset_name}' semantic model within the '{workspace_name}' workspace is not a Fabric lakehouse. This function only supports Direct Lake semantic models which source from Fabric lakehouses."
         )
 
-    if artifact_type is None:
-        raise ValueError(
-            f"{icons.red_dot} This function only supports Direct Lake semantic models where the source lakehouse resides in the same workpace as the semantic model."
-        )
-
+    lakehouse_id = sources.get("itemId")
+    lakehouse_workspace_id = sources.get("workspaceId")
+    lakehouse_workspace_name = sources.get("workspaceName")
     if isinstance(columns, str):
         columns = [columns]
-
-    lakehouse_workspace = resolve_workspace_name(workspace_id=lakehouse_workspace_id)
 
     with connect_semantic_model(
         dataset=dataset_id, readonly=False, workspace=workspace_id
@@ -213,19 +205,19 @@ def add_table_to_direct_lake_semantic_model(
             )
 
         dfLC = get_lakehouse_columns(
-            lakehouse=lakehouse_name, workspace=lakehouse_workspace
+            lakehouse=lakehouse_id, workspace=lakehouse_workspace_id
         )
         dfLC_filt = dfLC[dfLC["Table Name"] == lakehouse_table_name]
         if dfLC_filt.empty:
             raise ValueError(
-                f"{icons.red_dot} The '{lakehouse_table_name}' table was not found in the '{lakehouse_name}' lakehouse within the '{lakehouse_workspace}' workspace."
+                f"{icons.red_dot} The '{lakehouse_table_name}' table was not found in the '{lakehouse_id}' lakehouse within the '{lakehouse_workspace_name}' workspace."
             )
         if columns:
             dfLC_filt = dfLC_filt[dfLC_filt["Column Name"].isin(columns)]
 
         if dfLC_filt.empty:
             raise ValueError(
-                f"{icons.red_dot} No matching columns were found in the '{lakehouse_table_name}' table in the '{lakehouse_name}' lakehouse within the '{lakehouse_workspace}' workspace."
+                f"{icons.red_dot} No matching columns were found in the '{lakehouse_table_name}' table in the '{lakehouse_id}' lakehouse within the '{lakehouse_workspace_name}' workspace."
             )
 
         tom.add_table(name=table_name)

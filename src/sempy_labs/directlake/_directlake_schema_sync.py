@@ -1,17 +1,17 @@
 import sempy
 import pandas as pd
-from ..lakehouse import get_lakehouse_columns
-from ._dl_helper import get_direct_lake_source
-from ..tom import connect_semantic_model
-from .._helper_functions import (
+from typing import Optional
+from uuid import UUID
+from sempy._utils._log import log
+import sempy_labs._icons as icons
+from sempy_labs.lakehouse._get_lakehouse_columns import get_lakehouse_columns
+from sempy_labs.tom import connect_semantic_model
+from sempy_labs._helper_functions import (
     _convert_data_type,
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
 )
-from typing import Optional
-from sempy._utils._log import log
-import sempy_labs._icons as icons
-from uuid import UUID
+from sempy_labs.directlake._sources import get_direct_lake_sources
 
 
 @log
@@ -49,21 +49,16 @@ def direct_lake_schema_sync(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    artifact_type, lakehouse_name, lakehouse_id, lakehouse_workspace_id = (
-        get_direct_lake_source(dataset=dataset_id, workspace=workspace_id)
-    )
-
-    if artifact_type == "Warehouse":
+    sources = get_direct_lake_sources(dataset=dataset_id, workspace=workspace_id)[0]
+    if sources.get("itemType") != "Lakehouse":
         raise ValueError(
-            f"{icons.red_dot} This function is only valid for Direct Lake semantic models which source from Fabric lakehouses (not warehouses)."
+            f"{icons.red_dot} The source of the '{dataset_name}' semantic model within the '{workspace_name}' workspace is not a Fabric lakehouse. This function only supports Direct Lake semantic models which source from Fabric lakehouses."
         )
 
-    if artifact_type is None:
-        raise ValueError(
-            f"{icons.red_dot} This function only supports Direct Lake semantic models where the source lakehouse resides in the same workpace as the semantic model."
-        )
+    lakehouse_id = sources.get("itemId")
+    lakehouse_workspace_id = sources.get("workspaceId")
 
-    lc = get_lakehouse_columns(lakehouse_id, lakehouse_workspace_id)
+    lc = get_lakehouse_columns(lakehouse=lakehouse_id, workspace=lakehouse_workspace_id)
 
     readonly = True
     if add_to_model or remove_from_model:
@@ -78,6 +73,9 @@ def direct_lake_schema_sync(
         ]
     )
 
+    rows_to_add = []
+    rows_to_remove = []
+
     with connect_semantic_model(
         dataset=dataset_id, readonly=readonly, workspace=workspace_id
     ) as tom:
@@ -87,7 +85,7 @@ def direct_lake_schema_sync(
             table_name = c.Parent.Name
             partition_name = next(p.Name for p in c.Table.Partitions)
             p = c.Table.Partitions[partition_name]
-            if p.SourceType == TOM.PartitionSourceType.Entity:
+            if p.Mode == TOM.ModeType.DirectLake:
                 entity_name = p.Source.EntityName
                 source_column = c.SourceColumn
                 lc_filt = lc[
@@ -96,15 +94,14 @@ def direct_lake_schema_sync(
                 ]
                 # Remove column from model if it doesn't exist in the lakehouse
                 if lc_filt.empty:
-                    new_data = {
-                        "TableName": table_name,
-                        "ColumnName": column_name,
-                        "SourceTableName": entity_name,
-                        "SourceColumnName": source_column,
-                        "Status": "Not in lakehouse",
-                    }
-                    df = pd.concat(
-                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    rows_to_remove.append(
+                        {
+                            "TableName": table_name,
+                            "ColumnName": column_name,
+                            "SourceTableName": entity_name,
+                            "SourceColumnName": source_column,
+                            "Status": "Not in lakehouse",
+                        }
                     )
                     if remove_from_model:
                         tom.remove_object(object=c)
@@ -113,49 +110,56 @@ def direct_lake_schema_sync(
                         )
 
         # Check if the lakehouse columns exist in the semantic model
-        for i, r in lc.iterrows():
-            lakeTName = r["Table Name"]
-            lakeCName = r["Column Name"]
+        for _, r in lc.iterrows():
+            source_table = r["Table Name"]
+            source_column = r["Column Name"]
             dType = r["Data Type"]
 
             if any(
-                p.Source.EntityName == lakeTName
+                p.Source.EntityName == source_table
                 for p in tom.all_partitions()
-                if p.SourceType == TOM.PartitionSourceType.Entity
+                if p.Mode == TOM.ModeType.DirectLake
             ):
                 table_name = next(
                     t.Name
                     for t in tom.model.Tables
                     for p in t.Partitions
-                    if p.SourceType == TOM.PartitionSourceType.Entity
-                    and p.Source.EntityName == lakeTName
+                    if p.Mode == TOM.ModeType.DirectLake
+                    and p.Source.EntityName == source_table
                 )
 
                 if not any(
-                    c.SourceColumn == lakeCName and c.Parent.Name == table_name
+                    c.SourceColumn == source_column and c.Parent.Name == table_name
                     for c in tom.all_columns()
                 ):
-                    new_data = {
-                        "TableName": table_name,
-                        "ColumnName": None,
-                        "SourceTableName": lakeTName,
-                        "SourceColumnName": lakeCName,
-                        "Status": "Not in semantic model",
-                    }
-                    df = pd.concat(
-                        [df, pd.DataFrame(new_data, index=[0])], ignore_index=True
+                    rows_to_add.append(
+                        {
+                            "TableName": table_name,
+                            "ColumnName": None,
+                            "SourceTableName": source_table,
+                            "SourceColumnName": source_column,
+                            "Status": "Not in semantic model",
+                        }
                     )
 
                     if add_to_model:
                         dt = _convert_data_type(dType)
                         tom.add_data_column(
                             table_name=table_name,
-                            column_name=lakeCName,
-                            source_column=lakeCName,
+                            column_name=source_column,
+                            source_column=source_column,
                             data_type=dt,
                         )
                         print(
-                            f"{icons.green_dot} The '{lakeCName}' column in the '{lakeTName}' lakehouse table was added to the '{dataset_name}' semantic model within the '{workspace_name}' workspace."
+                            f"{icons.green_dot} The '{source_column}' column in the '{source_table}' lakehouse table was added to the '{dataset_name}' semantic model within the '{workspace_name}' workspace."
                         )
 
+        COLUMNS = [
+            "TableName",
+            "ColumnName",
+            "SourceTableName",
+            "SourceColumnName",
+            "Status",
+        ]
+        df = pd.DataFrame(rows_to_add + rows_to_remove, columns=COLUMNS)
         return df
