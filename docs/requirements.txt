@@ -1,3 +1,4 @@
+setuptools<82.0.0
 semantic-link-sempy
 sphinx_rtd_theme
 pandas==2.0.3
@@ -12,4 +13,3 @@ IPython
 polib
 powerbiclient
 jsonpath_ng
-setuptools<82.0.0
