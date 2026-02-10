@@ -99,6 +99,10 @@ class ReportWrapper:
         self._readonly = readonly
         self._show_diffs = show_diffs
 
+        # Check that the report is in the PBIR format.
+        response = _base_api(request=f"/v1.0/myorg/groups/{self._workspace_id}/reports/{self._report_id}", client="fabric_sp")
+        self.format = response.json().get('format')
+
         result = _base_api(
             request=f"/v1/workspaces/{self._workspace_id}/items/{self._report_id}/getDefinition",
             method="post",
@@ -111,10 +115,6 @@ class ReportWrapper:
 
         # Check that the report is in the PBIR format
         parts = result.get("definition", {}).get("parts", [])
-        if self._report_file_path not in [p.get("path") for p in parts]:
-            self.format = "PBIR-Legacy"
-        else:
-            self.format = "PBIR"
         self._report_definition = {"parts": []}
         for part in parts:
             path = part.get("path")
