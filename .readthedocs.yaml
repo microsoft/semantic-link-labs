@@ -9,11 +9,7 @@ version: 2
 build:
   os: ubuntu-22.04
   tools:
-    python: "3.12"
-    # You can also specify other tool versions:
-    # nodejs: "19"
-    # rust: "1.64"
-    # golang: "1.19"
+    python: "mambaforge-23.11"
   jobs:
     pre_build:
       - sphinx-apidoc -f -o docs/source src/sempy_labs/
@@ -28,6 +24,5 @@ sphinx:
 #    - epub
 
 # See https://docs.readthedocs.io/en/stable/guides/reproducible-builds.html
-python:
-   install:
-   - requirements: docs/requirements.txt
+conda:
+  environment: docs/environment.yml

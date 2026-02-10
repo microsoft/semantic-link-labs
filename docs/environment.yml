@@ -1,0 +1,11 @@
+name: docs
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - setuptools<82.0.0
+  - sphinx
+  - pip
+  - pip:
+    - -r requirements.txt
