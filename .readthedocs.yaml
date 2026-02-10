@@ -28,6 +28,5 @@ sphinx:
 #    - epub
 
 # See https://docs.readthedocs.io/en/stable/guides/reproducible-builds.html
-python:
-   install:
-   - requirements: docs/requirements.txt
+conda:
+  environment: docs/environment.yml
