@@ -3076,8 +3076,12 @@ class TOMWrapper:
             obj_type = resolved["type"]
             name = resolved["name"]
 
-            display_name = object_names[index] if index < len(object_names or []) else None
-            h_name = hierarchy_names[index] if index < len(hierarchy_names or []) else None
+            display_name = (
+                object_names[index] if index < len(object_names or []) else None
+            )
+            h_name = (
+                hierarchy_names[index] if index < len(hierarchy_names or []) else None
+            )
 
             obj_name = display_name or name
 
@@ -3126,7 +3130,7 @@ class TOMWrapper:
         if hierarchy_names:
             self.add_calculated_table_column(
                 table_name=table_name,
-                column_name='Grouping',
+                column_name="Grouping",
                 source_column="[Value4]",
                 data_type="String",
                 hidden=False,
