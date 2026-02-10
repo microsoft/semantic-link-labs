@@ -12,3 +12,4 @@ IPython
 polib
 powerbiclient
 jsonpath_ng
+setuptools<82.0.0
