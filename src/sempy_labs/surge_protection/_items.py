@@ -1,35 +1,23 @@
-import requests
 import pandas as pd
 from uuid import UUID
 from sempy_labs._helper_functions import (
-    get_pbi_token_headers,
-    _get_url_prefix,
     resolve_capacity_id,
     _create_dataframe,
     _update_dataframe_datatypes,
+    _base_api,
 )
 import sempy_labs._icons as icons
 from sempy._utils._log import log
-from sempy.fabric.exceptions import FabricHTTPException
 
 
 def _surge_api(
-    capacity, request, payload, method="get", status_code=200, return_json=True
+    capacity, url, payload, method="get", status_code=200, return_json=True
 ):
 
-    headers = get_pbi_token_headers()
-    prefix = _get_url_prefix()
     capacity_id = resolve_capacity_id(capacity)
 
-    response = requests.request(
-        method=method,
-        url=f"{prefix}/capacities/{capacity_id}/{request}",
-        headers=headers,
-        json=payload,
-    )
+    response = _base_api(request=f"capacities/{capacity_id}/{url}", client="internal", method=method, payload=payload, status_codes=status_code)
 
-    if response.status_code != status_code:
-        raise FabricHTTPException(response)
     if return_json:
         return response.json()
     else:
@@ -61,7 +49,7 @@ def get_workspace_consumption_rules(
     """
 
     response_json = _surge_api(
-        capacity=capacity, request="detectionRules", payload=None
+        capacity=capacity, url="detectionRules", payload=None
     )
 
     if not return_dataframe:
@@ -121,7 +109,7 @@ def get_background_operation_rules(
     """
 
     response_json = _surge_api(
-        capacity=capacity, request="surgeProtectionRules", payload=None
+        capacity=capacity, url="surgeProtectionRules", payload=None
     )
 
     if not return_dataframe:
@@ -223,7 +211,7 @@ def set_workspace_consumption_rules(
     }
 
     return _surge_api(
-        capacity=capacity, request="detectionRules", payload=payload, method="post"
+        capacity=capacity, url="detectionRules", payload=payload, method="post"
     )
 
 
@@ -288,7 +276,7 @@ def set_background_operation_rules(
 
     _surge_api(
         capacity=capacity,
-        request="surgeProtectionRules",
+        url="surgeProtectionRules",
         payload=payload,
         method="put",
         return_json=False,
@@ -324,7 +312,7 @@ def delete_workspace_consumption_rules(capacity: str | UUID = None):
 
     _surge_api(
         capacity=capacity,
-        request=f"detectionRules/{rule_id}",
+        url=f"detectionRules/{rule_id}",
         payload=None,
         method="delete",
         status_code=204,
@@ -352,11 +340,11 @@ def delete_background_operation_rules(capacity: str | UUID = None):
 
     _surge_api(
         capacity=capacity,
-        request="surgeProtectionRules",
+        url="surgeProtectionRules",
         payload=None,
         method="delete",
         status_code=200,
         return_json=False,
     )
 
-    print(f"{icons.green_dot} The background operation rules deleted successfully.")
+    print(f"{icons.green_dot} The background operation rules have been deleted successfully.")
