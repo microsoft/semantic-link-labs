@@ -38,11 +38,12 @@ def get_lakehouse_columns(
     pandas.DataFrame
         Shows the tables/columns within a lakehouse and their properties.
     """
-    from ._get_lakehouse_tables import get_lakehouse_tables
+    from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 
     columns = {
         "Workspace Name": "string",
         "Lakehouse Name": "string",
+        "Schema Name": "string",
         "Table Name": "string",
         "Column Name": "string",
         "Full Column Name": "string",
@@ -60,11 +61,12 @@ def get_lakehouse_columns(
     )
     tables_filt = tables[tables["Format"] == "delta"]
 
-    def add_column_metadata(table_name, col_name, data_type):
+    def add_column_metadata(table_name, schema_name, col_name, data_type):
         new_rows.append(
             {
                 "Workspace Name": workspace_name,
                 "Lakehouse Name": lakehouse_name,
+                "Schema Name": schema_name,
                 "Table Name": table_name,
                 "Column Name": col_name,
                 "Full Column Name": format_dax_object_name(table_name, col_name),
@@ -76,6 +78,7 @@ def get_lakehouse_columns(
 
     for _, r in tables_filt.iterrows():
         table_name = r["Table Name"]
+        schema_name = r['Schema Name']
         path = r["Location"]
 
         if _pure_python_notebook():
@@ -91,12 +94,12 @@ def get_lakehouse_columns(
                         f"{icons.red_dot} Could not find data type for column {col_name}."
                     )
                 data_type = match.group(1)
-                add_column_metadata(table_name, col_name, data_type)
+                add_column_metadata(table_name, schema_name, col_name, data_type)
         else:
             delta_table = _get_delta_table(path=path)
             table_df = delta_table.toDF()
 
             for col_name, data_type in table_df.dtypes:
-                add_column_metadata(table_name, col_name, data_type)
+                add_column_metadata(table_name, schema_name, col_name, data_type)
 
     return pd.concat([df, pd.DataFrame(new_rows)], ignore_index=True)
