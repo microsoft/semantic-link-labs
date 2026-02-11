@@ -5,6 +5,7 @@ from sempy_labs._helper_functions import (
     resolve_lakehouse_name_and_id,
     _base_api,
     _create_dataframe,
+    _create_spark_session,
 )
 from uuid import UUID
 from sempy._utils._log import log
@@ -155,3 +156,51 @@ def _delete_materialized_lake_view_schedule(
     print(
         f"{icons.green_dot} The materialized lake view schedule with ID '{schedule_id}' has been deleted from the '{lakehouse_name}' lakehouse within the '{workspace_id}' workspace."
     )
+
+
+@log
+def list_materialized_lake_views() -> pd.DataFrame:
+
+    """
+    Shows the materialized lake views within the default lakehouse attached to the notebook. Note that the lakehouse must have schemas enabled to use this function.
+
+    This function must be run in a PySpark notebook.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A DataFrame showing the materialized lake views within the default lakehouse attached to the notebook.
+    """
+
+    from sempy_labs.lakehouse._schemas import is_schema_enabled, list_schemas
+    spark = _create_spark_session()
+
+    if not is_schema_enabled():
+        raise Exception(
+            f"{icons.red_dot} Lakehouse schemas are not enabled in this environment. This function only supports lakehouses with schemas enabled since materialized lake views are only supported in lakehouses with schemas enabled."
+        )
+
+    columns = {
+        "Materialized Lake View Name": "string",
+        "Schema Name": "string",
+    }
+
+    df = _create_dataframe(columns=columns)
+
+    schemas = list_schemas()
+
+    rows = []
+    for _, r in schemas.iterrows():
+        schema_name = r['Schema Name']
+        df = spark.sql(f"show materialized lake views from {schema_name}").toPandas()
+        views = df['name'].values.tolist()
+        for view in views:
+            rows.append({
+                "Materialized Lake View Name": view,
+                "Schema Name": schema_name,
+            })
+
+    if rows:
+        df = pd.DataFrame(rows, columns=columns.keys())
+
+    return df
