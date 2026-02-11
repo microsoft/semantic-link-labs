@@ -814,7 +814,7 @@ class TOMWrapper:
 
     def set_user_defined_function(self, name: str, expression: str):
         """
-        Sets the definition of a `user-defined <https://learn.microsoft.com/en-us/dax/best-practices/dax-user-defined-functions#using-model-explorer>_` function within the semantic model. This function requires that the compatibility level is at least 1702.
+        Sets the definition of a `user-defined <https://learn.microsoft.com/en-us/dax/best-practices/dax-user-defined-functions#using-model-explorer>`_ function within the semantic model. This function requires that the compatibility level is at least 1702.
 
         Parameters
         ----------
