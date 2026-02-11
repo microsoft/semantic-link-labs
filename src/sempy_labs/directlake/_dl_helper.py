@@ -180,16 +180,27 @@ def generate_direct_lake_semantic_model(
         for t in lakehouse_tables:
             tom.add_table(name=t)
             tom.add_entity_partition(table_name=t, entity_name=t, schema_name=schema)
-            dfLC_filt = dfLC[dfLC["Table Name"] == t]
+            dfLC_filt = dfLC.loc[dfLC["Table Name"] == t].drop_duplicates("Column Name")
             for i, r in dfLC_filt.iterrows():
                 lakeCName = r["Column Name"]
                 dType = r["Data Type"]
                 dt = _convert_data_type(dType)
+                summarize_by = "Sum" if dt in ["Int64", "Double", "Decimal"] else "None"
+                data_category = (
+                    "Date" if dt == "DateTime" else "Text" if dt == "String" else "None"
+                )
+                format_string = "0.00" if dt in ["Double", "Decimal"] else "General"
+                hidden = False
+
                 tom.add_data_column(
                     table_name=t,
                     column_name=lakeCName,
                     source_column=lakeCName,
                     data_type=dt,
+                    summarize_by=summarize_by,
+                    data_category=data_category,
+                    format_string=format_string,
+                    hidden=hidden,
                 )
 
     if refresh:
