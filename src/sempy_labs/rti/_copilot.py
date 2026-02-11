@@ -114,4 +114,4 @@ def nl_to_kql(
         method="post",
         client="fabric_sp",
     )
-    return response.get("kqlQuery")
+    return response.json().get("kqlQuery")
