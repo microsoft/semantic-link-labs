@@ -1,16 +1,8 @@
 import pandas as pd
 from typing import Optional
-from sempy_labs._helper_functions import (
-    resolve_workspace_id,
-    _base_api,
-    _create_dataframe,
-    _update_dataframe_datatypes,
-    _get_item_definition,
-    delete_item,
-)
-
 from uuid import UUID
 from sempy._utils._log import log
+import sempy_labs.mounted_data_factory as mdf
 
 
 @log
@@ -35,36 +27,7 @@ def list_mounted_data_factories(
         A pandas dataframe showing a list of mounted data factories from the specified workspace.
     """
 
-    workspace_id = resolve_workspace_id(workspace)
-
-    columns = {
-        "Mounted Data Factory Name": "str",
-        "Mounted Data Factory Id": "str",
-        "Description": "str",
-    }
-
-    df = _create_dataframe(columns=columns)
-    responses = _base_api(
-        request=f"/v1/workspaces/{workspace_id}/mountedDataFactories",
-        uses_pagination=True,
-    )
-
-    rows = []
-    for r in responses:
-        for v in r.get("value", []):
-            rows.append(
-                {
-                    "Mounted Data Factory Name": v.get("displayName"),
-                    "Mounted Data Factory Id": v.get("id"),
-                    "Description": v.get("description"),
-                }
-            )
-
-    if rows:
-        df = pd.DataFrame(rows, columns=list(columns.keys()))
-        _update_dataframe_datatypes(dataframe=df, column_map=columns)
-
-    return df
+    return mdf.list_mounted_data_factories(workspace=workspace)
 
 
 @log
@@ -91,11 +54,8 @@ def get_mounted_data_factory_definition(
         The 'mountedDataFactory-content.json' file from the mounted data factory definition.
     """
 
-    return _get_item_definition(
-        item=mounted_data_factory,
-        type="MountedDataFactory",
-        workspace=workspace,
-        return_dataframe=False,
+    return mdf.get_mounted_data_factory_definition(
+        mounted_data_factory=mounted_data_factory, workspace=workspace
     )
 
 
@@ -118,6 +78,6 @@ def delete_mounted_data_factory(
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
 
-    delete_item(
-        item=mounted_data_factory, type="MountedDataFactory", workspace=workspace
+    mdf.delete_mounted_data_factory(
+        mounted_data_factory=mounted_data_factory, workspace=workspace
     )
