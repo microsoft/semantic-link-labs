@@ -71,7 +71,7 @@ Check out the video below for an introduction to Semantic Link, Semantic Link La
     * [Analyze delta tables for Direct Lake semantic models using Delta Analyzer](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Delta%20Analyzer.ipynb)
     * [Recover a soft-deleted lakehouse table/file/folder](https://github.com/microsoft/semantic-link-labs/wiki/Code-Examples#recover-a-lakehouse-object)
 * Notebooks
-    * [Import a notebook from the web](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.import_notebook_from_web)    
+    * [Import a notebook from the web](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.import_notebook_from_web)
 * APIs
     * Wrapper functions for [Power BI](https://learn.microsoft.com/rest/api/power-bi/), [Fabric](https://learn.microsoft.com/rest/api/fabric/articles/using-fabric-apis), [Azure](https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities?view=rest-microsoftfabric-2023-11-01), and [Microsoft Graph](https://learn.microsoft.com/graph/api/overview?view=graph-rest-1.0) APIs
 * Service Principal Authentication
@@ -79,7 +79,7 @@ Check out the video below for an introduction to Semantic Link, Semantic Link La
 
 ## Helper Notebooks
 
-Check out the [helper notebooks](https://github.com/microsoft/semantic-link-labs/tree/main/notebooks) for getting started! 
+Check out the [helper notebooks](https://github.com/microsoft/semantic-link-labs/tree/main/notebooks) for getting started!
 Run the code below to load all the helper notebooks to the workspace of your choice at once.
 ```python
 import sempy_labs as labs
@@ -325,8 +325,8 @@ python -m black src
 
 ## Trademarks
 
-This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft 
-trademarks or logos is subject to and must follow 
+This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft
+trademarks or logos is subject to and must follow
 [Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general).
 Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
 Any use of third-party trademarks or logos are subject to those third-party's policies.
