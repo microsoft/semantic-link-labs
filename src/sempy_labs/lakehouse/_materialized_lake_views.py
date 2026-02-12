@@ -181,11 +181,16 @@ def list_materialized_lake_views() -> pd.DataFrame:
         )
 
     columns = {
+        "Workspace Name": "string",
+        "Lakehouse Name": "string",
         "Materialized Lake View Name": "string",
         "Schema Name": "string",
     }
 
     df = _create_dataframe(columns=columns)
+
+    (workspace_name, workspace_id) = resolve_workspace_name_and_id()
+    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id()
 
     schemas = list_schemas()
 
@@ -196,6 +201,8 @@ def list_materialized_lake_views() -> pd.DataFrame:
         views = df['name'].values.tolist()
         for view in views:
             rows.append({
+                "Workspace Name": workspace_name,
+                "Lakehouse Name": lakehouse_name,
                 "Materialized Lake View Name": view,
                 "Schema Name": schema_name,
             })
