@@ -6,6 +6,7 @@ from uuid import UUID
 import sempy_labs._icons as icons
 from sempy._utils._log import log
 from sempy_labs._helper_functions import (
+    resolve_lakehouse_name_and_id,
     retry,
     _convert_data_type,
     resolve_dataset_name_and_id,
@@ -83,7 +84,7 @@ def generate_direct_lake_semantic_model(
     workspace: Optional[str | UUID] = None,
     lakehouse: Optional[str] = None,
     lakehouse_workspace: Optional[str | UUID] = None,
-    schema: str = "dbo",
+    schema: Optional[str] = None,
     overwrite: bool = False,
     refresh: bool = True,
 ):
@@ -107,7 +108,7 @@ def generate_direct_lake_semantic_model(
         The Fabric workspace name or ID in which the lakehouse resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    schema : str, default="dbo"
+    schema : str, default=None
         The schema used for the lakehouse.
     overwrite : bool, default=False
         If set to True, overwrites the existing semantic model if it already exists.
@@ -127,10 +128,16 @@ def generate_direct_lake_semantic_model(
         lakehouse_tables = [lakehouse_tables]
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
-    if lakehouse_workspace is None:
-        lakehouse_workspace = workspace
+    (lakehouse_workspace_name, lakehouse_workspace_id) = resolve_workspace_name_and_id(
+        lakehouse_workspace
+    )
+    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
+        lakehouse, lakehouse_workspace_id
+    )
 
-    dfLT = get_lakehouse_tables(lakehouse=lakehouse, workspace=lakehouse_workspace)
+    dfLT = get_lakehouse_tables(
+        lakehouse=lakehouse_id, workspace=lakehouse_workspace_id
+    )
 
     icons.sll_tags.append("GenerateDLModel")
 
@@ -141,9 +148,9 @@ def generate_direct_lake_semantic_model(
                 f"{icons.red_dot} The '{t}' table does not exist as a delta table in the '{lakehouse}' within the '{workspace_name}' workspace."
             )
 
-    dfLC = get_lakehouse_columns(lakehouse=lakehouse, workspace=lakehouse_workspace)
+    dfLC = get_lakehouse_columns(lakehouse=lakehouse, workspace=lakehouse_workspace_id)
     expr = generate_shared_expression(
-        item_name=lakehouse, item_type="Lakehouse", workspace=lakehouse_workspace
+        item_name=lakehouse, item_type="Lakehouse", workspace=lakehouse_workspace_id
     )
     dfD = fabric.list_datasets(workspace=workspace_id, mode="rest")
     dfD_filt = dfD[dfD["Dataset Name"] == dataset]
@@ -179,9 +186,17 @@ def generate_direct_lake_semantic_model(
 
         for t in lakehouse_tables:
             tom.add_table(name=t)
-            tom.add_entity_partition(table_name=t, entity_name=t, schema_name=schema)
+            tom.add_entity_partition(
+                table_name=t, entity_name=t, schema_name=schema or "dbo"
+            )
             dfLC_filt = dfLC[dfLC["Table Name"] == t]
-            for i, r in dfLC_filt.iterrows():
+            if schema:
+                dfLC_filt = dfLC_filt[dfLC_filt["Schema Name"] == schema]
+            if dfLC_filt.empty:
+                raise ValueError(
+                    f"{icons.red_dot} No columns found for the '{t}' table in the '{lakehouse_name}' lakehouse. Please ensure the table has columns and if a schema is provided, that the schema name is correct."
+                )
+            for _, r in dfLC_filt.iterrows():
                 lakeCName = r["Column Name"]
                 dType = r["Data Type"]
                 dt = _convert_data_type(dType)

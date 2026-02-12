@@ -10,13 +10,17 @@ import sempy_labs._icons as icons
 from sempy._utils._log import log
 
 
-def _surge_api(
-    capacity, url, payload, method="get", status_code=200, return_json=True
-):
+def _surge_api(capacity, url, payload, method="get", status_code=200, return_json=True):
 
     capacity_id = resolve_capacity_id(capacity)
 
-    response = _base_api(request=f"capacities/{capacity_id}/{url}", client="internal", method=method, payload=payload, status_codes=status_code)
+    response = _base_api(
+        request=f"capacities/{capacity_id}/{url}",
+        client="internal",
+        method=method,
+        payload=payload,
+        status_codes=status_code,
+    )
 
     if return_json:
         return response.json()
@@ -48,9 +52,7 @@ def get_workspace_consumption_rules(
         or a dictionary if return_dataframe is set to False.
     """
 
-    response_json = _surge_api(
-        capacity=capacity, url="detectionRules", payload=None
-    )
+    response_json = _surge_api(capacity=capacity, url="detectionRules", payload=None)
 
     if not return_dataframe:
         return response_json
@@ -347,4 +349,6 @@ def delete_background_operation_rules(capacity: str | UUID = None):
         return_json=False,
     )
 
-    print(f"{icons.green_dot} The background operation rules have been deleted successfully.")
+    print(
+        f"{icons.green_dot} The background operation rules have been deleted successfully."
+    )

@@ -100,8 +100,11 @@ class ReportWrapper:
         self._show_diffs = show_diffs
 
         # Check that the report is in the PBIR format.
-        response = _base_api(request=f"/v1.0/myorg/groups/{self._workspace_id}/reports/{self._report_id}", client="fabric_sp")
-        self.format = response.json().get('format')
+        response = _base_api(
+            request=f"/v1.0/myorg/groups/{self._workspace_id}/reports/{self._report_id}",
+            client="fabric_sp",
+        )
+        self.format = response.json().get("format")
 
         result = _base_api(
             request=f"/v1/workspaces/{self._workspace_id}/items/{self._report_id}/getDefinition",

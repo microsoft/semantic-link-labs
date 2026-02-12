@@ -12,7 +12,9 @@ import sempy_labs._icons as icons
 
 @log
 def enable_query_caching(
-    dataset: str | UUID, workspace: Optional[str | UUID] = None, enable: bool = True,
+    dataset: str | UUID,
+    workspace: Optional[str | UUID] = None,
+    enable: bool = True,
 ):
     """
     Enables or disables `query caching <http://aka.ms/queryCaching>`_ for a semantic model.
@@ -35,7 +37,9 @@ def enable_query_caching(
     )
     model_id = get_model_id(item_id=item_id)
     if model_id is None:
-        raise ValueError(f"Failed to retrieve model ID for semantic model '{item_name}'")
+        raise ValueError(
+            f"Failed to retrieve model ID for semantic model '{item_name}'"
+        )
 
     caching_map = {
         True: 2,
@@ -44,7 +48,12 @@ def enable_query_caching(
 
     payload = {"queryCachingState": caching_map.get(enable)}
 
-    _base_api(request=f"metadata/models/{model_id}/caching", method="internal", payload=payload, status_codes=204)
+    _base_api(
+        request=f"metadata/models/{model_id}/caching",
+        method="internal",
+        payload=payload,
+        status_codes=204,
+    )
 
     print(
         f"{icons.green_dot} Query caching has been {'enabled' if enable else 'disabled'} for the '{item_name}' semantic model within the '{workspace_name}' workspace."

@@ -78,7 +78,7 @@ def get_lakehouse_columns(
 
     for _, r in tables_filt.iterrows():
         table_name = r["Table Name"]
-        schema_name = r['Schema Name']
+        schema_name = r["Schema Name"]
         path = r["Location"]
 
         if _pure_python_notebook():

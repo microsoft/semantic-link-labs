@@ -86,9 +86,7 @@ def update_direct_lake_partition_entity(
             # Update source lineage tag
             if schema:
                 # Updated to all DL patterns (DLOL, DLSQL)
-                tom.model.Tables[tName].Partitions[
-                        part_name
-                    ].Source.SchemaName = schema
+                tom.model.Tables[tName].Partitions[part_name].Source.SchemaName = schema
                 tom.model.Tables[tName].SourceLineageTag = f"[{schema}].[{eName}]"
             else:
                 tom.model.Tables[tName].SourceLineageTag = f"[dbo].[{eName}]"
