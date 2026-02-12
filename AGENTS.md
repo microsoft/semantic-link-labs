@@ -96,11 +96,14 @@ Main source code is located under `src/sempy_labs/`:
 
 ### Core Principles
 
-1. **Backward compatibility** — ALWAYS maintain backward compatibility for existing functions.
-2. **Minimal changes** — Do NOT change existing code unless strongly necessary.
+1. **USE SKILLS PROACTIVELY** — Before starting ANY task, check the Skills Reference section below and read the relevant SKILL.md files. Skills contain domain-specific knowledge, patterns, fixtures, and best practices developed by the team. Failing to use skills leads to suboptimal implementations that require refactoring.
+2. **Break down complexity** — Decompose large tasks into smaller, manageable subtasks. Use the planning-with-files skill for complex work.
 3. **Understand before coding** — Fully understand requirements, context, and constraints before writing code.
-4. **Follow existing patterns** — Match the coding style and patterns already in the codebase.
-5. **Document everything** — Every public function must have complete docstrings.
+4. **Clarify, don't assume** — Ask for specifics rather than making assumptions about requirements.
+5. **Backward compatibility** — ALWAYS maintain backward compatibility for existing functions.
+6. **Minimal changes** — Do NOT change existing code unless strongly necessary.
+7. **Follow existing patterns** — Match the coding style and patterns already in the codebase.
+8. **Document everything** — Every public function must have complete docstrings.
 
 ---
 
@@ -552,21 +555,31 @@ make html
 
 ## Pre-Commit Checklist
 
-Before committing code changes:
+Before committing code changes, run these checks:
 
 ```bash
-# Check style (if enabled)
-# flake8 src/sempy_labs tests
+# 1. Format code
+black src/sempy_labs tests
 
-# Check types (if enabled)
-# mypy src/sempy_labs tests
+# 2. Check style violations
+flake8 src/sempy_labs tests
 
-# Run tests
-pytest -s tests/
+# 3. Verify type correctness (optional but recommended)
+mypy src/sempy_labs
 
-# Install package locally to verify
-pip install -e .
+# 4. Run relevant tests
+pytest -s tests/ -k <test_pattern>
+
+# 5. Build documentation (if functions were added or modified)
+cd docs && sphinx-apidoc -f -o source ../src/sempy_labs/ && make html && cd ..
 ```
+
+**Verify before committing:**
+- [ ] All new public functions have the `@log` decorator
+- [ ] Docstrings follow numpydoc style with all required sections
+- [ ] API reference links are included in docstrings (for API wrappers)
+- [ ] Functions are exported in the appropriate `__init__.py`
+- [ ] Tests pass locally
 
 ---
 
@@ -597,19 +610,64 @@ pip install -e .
 
 ## Skills Reference
 
-For detailed workflows, refer to these skill files:
+> **CRITICAL: ALWAYS USE SKILLS**
+>
+> Skills are **mandatory reading** before starting any task. They contain:
+> - Established patterns and conventions used by the team
+> - Step-by-step workflows validated by developers
+> - Common pitfalls and how to avoid them
+> - Templates and examples for common tasks
+>
+> **Before writing any code:**
+> 1. Identify which skills apply to your task (see table below)
+> 2. Read the full SKILL.md content
+> 3. Follow the patterns and use the helpers defined in the skill
+>
+> **Examples of when to use skills:**
+> - **Complex multi-step tasks → Read `planning-with-files` FIRST**
+> - Adding new functions → Read `add-function` AND `rest-api-patterns`
+> - Writing tests → Read `write-tests`
+> - Running tests → Read `run-tests`
+> - Need reference implementations → Read `github-repo-explore`
+> - Building docs → Read `build-docs`
+>
+> Skipping skills leads to implementations that miss established patterns and require refactoring.
+
+### Development Skills
 
 | Skill | File | Purpose |
 |-------|------|---------|
-| Code Style | [SKILL.md](.claude/skills/code-style/SKILL.md) | Linting with flake8, formatting with black |
-| Build Docs | [SKILL.md](.claude/skills/build-docs/SKILL.md) | Building and validating Sphinx documentation |
-| Run Tests | [SKILL.md](.claude/skills/run-tests/SKILL.md) | Running pytest tests locally |
-| Write Tests | [SKILL.md](.claude/skills/write-tests/SKILL.md) | Writing unit tests with pytest |
-| Add Function | [SKILL.md](.claude/skills/add-function/SKILL.md) | Adding new API wrapper functions |
-| TOM Operations | [SKILL.md](.claude/skills/tom-operations/SKILL.md) | Working with TOM wrapper for semantic models |
-| REST API Patterns | [SKILL.md](.claude/skills/rest-api-patterns/SKILL.md) | Implementing REST API wrapper functions |
-| Direct Lake | [SKILL.md](.claude/skills/direct-lake-operations/SKILL.md) | Direct Lake model operations and migration |
-| Task Management | [SKILL.md](.claude/skills/task-management/SKILL.md) | Plan, track, and checkpoint multi-step workloads |
+| **Add Function** | [SKILL.md](.claude/skills/add-function/SKILL.md) | Adding new API wrapper functions to the library |
+| **REST API Patterns** | [SKILL.md](.claude/skills/rest-api-patterns/SKILL.md) | Implementing REST API wrapper functions with `_base_api` |
+| **TOM Operations** | [SKILL.md](.claude/skills/tom-operations/SKILL.md) | Working with TOM wrapper for semantic models |
+| **Direct Lake** | [SKILL.md](.claude/skills/direct-lake-operations/SKILL.md) | Direct Lake model operations and migration |
+
+### Testing Skills
+
+| Skill | File | Purpose |
+|-------|------|---------|
+| **Run Tests** | [SKILL.md](.claude/skills/run-tests/SKILL.md) | Running pytest tests locally |
+| **Write Tests** | [SKILL.md](.claude/skills/write-tests/SKILL.md) | Writing unit tests with pytest |
+
+### Code Quality Skills
+
+| Skill | File | Purpose |
+|-------|------|---------|
+| **Code Style** | [SKILL.md](.claude/skills/code-style/SKILL.md) | Linting with flake8, formatting with black, type checking with mypy |
+| **Build Docs** | [SKILL.md](.claude/skills/build-docs/SKILL.md) | Building and validating Sphinx documentation |
+
+### Planning & Task Management
+
+| Skill | File | Purpose |
+|-------|------|---------|
+| **Planning with Files** | [SKILL.md](.claude/skills/planning-with-files/SKILL.md) | **USE FOR COMPLEX TASKS.** Manus-style file-based planning with task_plan.md, findings.md, progress.md |
+
+### External Resources & Review
+
+| Skill | File | Purpose |
+|-------|------|---------|
+| **GitHub Repo Explore** | [SKILL.md](.claude/skills/github-repo-explore/SKILL.md) | Search and explore external GitHub repositories for reference implementations |
+| **PR Review Comments** | [SKILL.md](.claude/skills/pr-review-comments/SKILL.md) | Posting inline PR review comments to GitHub |
 
 ---
 

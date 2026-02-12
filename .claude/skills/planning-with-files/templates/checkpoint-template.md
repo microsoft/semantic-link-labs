@@ -43,11 +43,11 @@ Example:
 
 ```
 Stage 1: [Base Layer] (no dependencies)
-    ↓
+    |
 Stage 2: [Second Layer] (depends on Stage 1)
-    ↓
+    |
 Stage 3: [Third Layer] (depends on Stages 1-2)
-    ↓
+    |
 Stage N: [Final Layer] (depends on all previous)
 ```
 
