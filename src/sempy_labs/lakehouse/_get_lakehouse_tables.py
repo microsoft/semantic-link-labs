@@ -154,7 +154,8 @@ def get_lakehouse_tables(
 
             if count_rows:
                 if _pure_python_notebook():
-                    row_count = delta_table.to_pyarrow_table().num_rows
+                    add_actions = delta_table.get_add_actions(flatten=True)
+                    row_count = add_actions["num_records"].sum()
                 else:
                     row_count = table_df.count()
                 df.at[i, "Row Count"] = row_count
@@ -177,7 +178,12 @@ def get_lakehouse_tables(
         df["Parquet File Guardrail Hit"] = df["Files"] > df["Parquet File Guardrail"]
         df["Row Group Guardrail Hit"] = df["Row Groups"] > df["Row Group Guardrail"]
     if count_rows:
-        df["Row Count"] = df["Row Count"].astype(int)
+        if _pure_python_notebook:
+            df["Row Count"] = df["Row Count"].map(
+                lambda x: x.as_py() if hasattr(x, "as_py") else x
+            ).astype("Int64")
+        else:
+            df["Row Count"] = df["Row Count"].astype(int)
         df["Row Count Guardrail Hit"] = df["Row Count"] > df["Row Count Guardrail"]
 
     if exclude_shortcuts:
