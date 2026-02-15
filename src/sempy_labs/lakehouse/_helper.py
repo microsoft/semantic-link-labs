@@ -73,18 +73,18 @@ def is_v_ordered(
             ]  # one dict per line
             for data in all_data:
                 if "metaData" in data:
-                    return (
-                        data.get("metaData", {})
-                        .get("configuration", {})
-                        .get("delta.parquet.vorder.enabled", "false")
-                        == "true"
-                    )
+                    value_a = data.get("metaData", {}).get("configuration", {}).get("delta.parquet.vorder.enabled", False)
+                    value_a = bool(value_a)
 
             # If no metaData, fall back to commitInfo
             for data in all_data:
                 if "commitInfo" in data:
-                    tags = data["commitInfo"].get("tags", {})
-                    return tags.get("VORDER", "false").lower() == "true"
+                    value_b = data.get('commitInfo', {}).get('tags', {}).get('VORDER', False)
+                    value_b = bool(value_b)
+            if value_a or value_b:
+                return True
+            else:
+                return False
 
         return False  # Default if not found
 
