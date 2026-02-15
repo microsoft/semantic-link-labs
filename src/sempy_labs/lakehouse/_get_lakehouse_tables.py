@@ -4,7 +4,6 @@ import pyarrow.parquet as pq
 from datetime import datetime
 from sempy_labs._helper_functions import (
     _get_column_aggregate,
-    resolve_lakehouse_name_and_id,
     save_as_delta_table,
     resolve_workspace_id,
     _read_delta_table,
@@ -12,6 +11,7 @@ from sempy_labs._helper_functions import (
     _mount,
     create_abfss_path,
     _pure_python_notebook,
+    resolve_lakehouse_id,
 )
 from sempy_labs.directlake._guardrails import (
     get_sku_size,
@@ -68,11 +68,10 @@ def get_lakehouse_tables(
     pandas.DataFrame
         Shows the tables/columns within a lakehouse and their properties.
     """
+    from sempy_labs.lakehouse._shortcuts import list_shortcuts
 
     workspace_id = resolve_workspace_id(workspace)
-    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
-        lakehouse=lakehouse, workspace=workspace_id
-    )
+    lakehouse_id = resolve_lakehouse_id(lakehouse=lakehouse, workspace=workspace_id)
 
     df = list_tables(lakehouse=lakehouse, workspace=workspace)
 
@@ -128,7 +127,9 @@ def get_lakehouse_tables(
                     num_latest_files = table_details.get("numFiles", 0)
 
                 if schema_name:
-                    table_path = os.path.join(local_path, "Tables", schema_name, table_name)
+                    table_path = os.path.join(
+                        local_path, "Tables", schema_name, table_name
+                    )
                 else:
                     table_path = os.path.join(local_path, "Tables", table_name)
 
@@ -182,15 +183,14 @@ def get_lakehouse_tables(
         df["Row Group Guardrail Hit"] = df["Row Groups"] > df["Row Group Guardrail"]
     if count_rows:
         if _pure_python_notebook:
-            df["Row Count"] = df["Row Count"].map(
-                lambda x: x.as_py() if hasattr(x, "as_py") else x
-            ).astype("Int64")
+            df["Row Count"] = (
+                df["Row Count"]
+                .map(lambda x: x.as_py() if hasattr(x, "as_py") else x)
+                .astype("Int64")
+            )
         else:
             df["Row Count"] = df["Row Count"].astype(int)
         df["Row Count Guardrail Hit"] = df["Row Count"] > df["Row Count Guardrail"]
-
-    
-    from sempy_labs.lakehouse._shortcuts import list_shortcuts
 
     # Exclude shortcuts
     shortcuts = (
