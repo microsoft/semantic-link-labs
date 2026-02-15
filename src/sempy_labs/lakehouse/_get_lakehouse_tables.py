@@ -127,7 +127,10 @@ def get_lakehouse_tables(
                     size_in_bytes = table_details.get("sizeInBytes", 0)
                     num_latest_files = table_details.get("numFiles", 0)
 
-                table_path = os.path.join(local_path, "Tables", schema_name, table_name)
+                if schema_name:
+                    table_path = os.path.join(local_path, "Tables", schema_name, table_name)
+                else:
+                    table_path = os.path.join(local_path, "Tables", table_name)
 
                 file_paths = []
                 for file in latest_files:
@@ -186,31 +189,36 @@ def get_lakehouse_tables(
             df["Row Count"] = df["Row Count"].astype(int)
         df["Row Count Guardrail Hit"] = df["Row Count"] > df["Row Count Guardrail"]
 
+    
+    from sempy_labs.lakehouse._shortcuts import list_shortcuts
+
+    # Exclude shortcuts
+    shortcuts = (
+        list_shortcuts(lakehouse=lakehouse, workspace=workspace)
+        .query("`Shortcut Path`.str.startswith('/Tables')", engine="python")
+        .assign(
+            FullPath=lambda df: df["Shortcut Path"].str.rstrip("/")
+            + "/"
+            + df["Shortcut Name"]
+        )["FullPath"]
+        .tolist()
+    )
+
+    df["FullPath"] = df.apply(
+        lambda x: (
+            f"/Tables/{x['Table Name']}"
+            if pd.isna(x["Schema Name"]) or x["Schema Name"] == ""
+            else f"/Tables/{x['Schema Name']}/{x['Table Name']}"
+        ),
+        axis=1,
+    )
+
+    df["Is Shortcut"] = df["FullPath"].isin(shortcuts)
+
     if exclude_shortcuts:
-        from sempy_labs.lakehouse._shortcuts import list_shortcuts
-
-        # Exclude shortcuts
-        shortcuts = (
-            list_shortcuts(lakehouse=lakehouse, workspace=workspace)
-            .query("`Shortcut Path`.str.startswith('/Tables')", engine="python")
-            .assign(
-                FullPath=lambda df: df["Shortcut Path"].str.rstrip("/")
-                + "/"
-                + df["Shortcut Name"]
-            )["FullPath"]
-            .tolist()
-        )
-
-        df["FullPath"] = df.apply(
-            lambda x: (
-                f"/Tables/{x['Table Name']}"
-                if pd.isna(x["Schema Name"]) or x["Schema Name"] == ""
-                else f"/Tables/{x['Schema Name']}/{x['Table Name']}"
-            ),
-            axis=1,
-        )
-
         df = df[~df["FullPath"].isin(shortcuts)].reset_index(drop=True)
+
+    df.drop(columns=["FullPath"], inplace=True)
 
     if export:
         if not lakehouse_attached():
