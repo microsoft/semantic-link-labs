@@ -485,11 +485,52 @@ def perspective_editor(dataset: str | UUID, workspace: Optional[str | UUID] = No
             {"action": "save", "perspective": perspective_name, "selected": selected}
         )
 
+    # -- Delete confirmation dialog --
+    confirm_delete_label = widgets.HTML()
+    confirm_delete_yes = widgets.Button(
+        description="Yes, Delete",
+        button_style="danger",
+        layout=widgets.Layout(width="110px"),
+    )
+    confirm_delete_no = widgets.Button(
+        description="Cancel",
+        layout=widgets.Layout(width="80px"),
+    )
+    confirm_delete_box = widgets.HBox(
+        [
+            confirm_delete_label,
+            confirm_delete_yes,
+            confirm_delete_no,
+        ],
+        layout=widgets.Layout(
+            display="none",
+            align_items="center",
+            gap="10px",
+            padding="10px 14px",
+            margin="8px 0",
+            border="1px solid #ff3b30",
+            border_radius="8px",
+        ),
+    )
+
+    def _hide_confirm_delete():
+        confirm_delete_box.layout.display = "none"
+
     def on_delete(_):
         perspective_name = perspective_dropdown.value
         if not perspective_name:
             show_status("No perspective selected.", "#ff3b30")
             return
+        confirm_delete_label.value = (
+            f'<span style="font-size:14px; '
+            f'font-family:-apple-system,BlinkMacSystemFont,sans-serif;">'
+            f'Are you sure you want to delete <b>{perspective_name}</b>?</span>'
+        )
+        confirm_delete_box.layout.display = "flex"
+
+    def on_confirm_delete(_):
+        _hide_confirm_delete()
+        perspective_name = perspective_dropdown.value
         execute_action({"action": "delete", "perspective": perspective_name})
         perspectives.remove(perspective_name)
         perspective_dropdown.options = _dropdown_options()
@@ -498,6 +539,12 @@ def perspective_editor(dataset: str | UUID, workspace: Optional[str | UUID] = No
         ]
         if real_opts:
             perspective_dropdown.value = real_opts[0]
+
+    def on_cancel_delete(_):
+        _hide_confirm_delete()
+
+    confirm_delete_yes.on_click(on_confirm_delete)
+    confirm_delete_no.on_click(on_cancel_delete)
 
     def _hide_create_inputs():
         new_name_input.value = ""
@@ -531,7 +578,7 @@ def perspective_editor(dataset: str | UUID, workspace: Optional[str | UUID] = No
     # DISPLAY
     # -----------------------------
     container = widgets.VBox(
-        [header, summary_label, tree_container, button_row, status],
+        [header, summary_label, tree_container, button_row, confirm_delete_box, status],
         layout=widgets.Layout(
             width="900px",
             padding="20px",
