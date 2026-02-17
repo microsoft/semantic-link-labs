@@ -1,5 +1,6 @@
 from IPython.display import display, HTML
 import uuid
+from sempy._utils._log import log
 
 
 def copilot():
@@ -223,46 +224,81 @@ def copilot():
 
     <script>
         (function() {{
-            const input = document.getElementById("chat-input-{session_id}");
-            const messages = document.getElementById("chat-messages-{session_id}");
-            const sendBtn = document.getElementById("send-btn-{session_id}");
-            const historyList = document.getElementById("history-list-{session_id}");
-            const historyPanel = document.getElementById("history-panel-{session_id}");
-            const historyToggle = document.getElementById("history-toggle-{session_id}");
-            const expandBtn = document.getElementById("expand-history-{session_id}");
+            const SID = "{session_id}";
+    """
+
+    # JavaScript with regex patterns kept in a regular string to avoid
+    # f-string mangling of \\b, \\s, \\w, \\d, \\n etc.
+    js_body = r"""
+            const input = document.getElementById("chat-input-" + SID);
+            const messages = document.getElementById("chat-messages-" + SID);
+            const sendBtn = document.getElementById("send-btn-" + SID);
+            const historyList = document.getElementById("history-list-" + SID);
+            const historyPanel = document.getElementById("history-panel-" + SID);
+            const historyToggle = document.getElementById("history-toggle-" + SID);
+            const expandBtn = document.getElementById("expand-history-" + SID);
 
             // Auto-resize textarea
-            input.addEventListener("input", function() {{
+            input.addEventListener("input", function() {
                 this.style.height = "auto";
                 this.style.height = Math.min(this.scrollHeight, 120) + "px";
-            }});
+            });
 
             // Toggle history panel
-            historyToggle.onclick = function() {{
+            historyToggle.onclick = function() {
                 historyPanel.classList.add("collapsed");
                 expandBtn.style.display = "inline";
-            }};
+            };
 
-            expandBtn.onclick = function() {{
+            expandBtn.onclick = function() {
                 historyPanel.classList.remove("collapsed");
                 expandBtn.style.display = "none";
-            }};
+            };
 
-            function addMessage(text, cls) {{
+            function addMessage(text, cls) {
                 const div = document.createElement("div");
-                div.className = "bubble-{session_id} " + cls + "-{session_id}";
-                if (cls === "assistant") {{
-                    div.innerHTML = text.replace(/\\n/g, "<br>");
-                }} else {{
+                div.className = "bubble-" + SID + " " + cls + "-" + SID;
+                if (cls === "assistant") {
+                    div.innerHTML = text.replace(/\n/g, "<br>");
+                } else {
                     div.textContent = text;
-                }}
+                }
                 messages.appendChild(div);
                 messages.scrollTop = messages.scrollHeight;
-            }}
+            }
 
-            function addCodeBlock(code) {{
+            // ---- Python syntax highlighter (VS Code Dark+ theme) ----
+            // Single-pass tokenizer to avoid rules interfering with each other
+            function highlightPython(code) {
+                var html = code
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;");
+
+                var keywords = new Set(["import","from","as","def","class","return","if","elif","else","for","while","with","try","except","finally","raise","pass","break","continue","and","or","not","in","is","None","True","False","lambda","yield","assert","del","global","nonlocal","async","await"]);
+                var builtins = new Set(["print","len","range","type","int","str","float","list","dict","set","tuple","bool","open","super","isinstance","getattr","setattr","hasattr","enumerate","zip","map","filter","sorted","reversed","any","all","min","max","sum","abs","round","format"]);
+
+                // Single regex that matches tokens in priority order
+                var tokenRe = /('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")|(#[^\n]*)|(@\w+)|(\b\d+\.?\d*\b)|(\b[a-zA-Z_]\w*\b)/g;
+
+                html = html.replace(tokenRe, function(match, str, comment, decorator, number, word) {
+                    if (str) return '<span style="color:#ce9178">' + str + '</span>';
+                    if (comment) return '<span style="color:#6a9955">' + comment + '</span>';
+                    if (decorator) return '<span style="color:#dcdcaa">' + decorator + '</span>';
+                    if (number) return '<span style="color:#b5cea8">' + number + '</span>';
+                    if (word) {
+                        if (keywords.has(word)) return '<span style="color:#569cd6">' + word + '</span>';
+                        if (builtins.has(word)) return '<span style="color:#dcdcaa">' + word + '</span>';
+                    }
+                    return match;
+                });
+
+                return html;
+            }
+
+            function addCodeBlock(code) {
                 const wrapper = document.createElement("div");
-                wrapper.className = "bubble-{session_id} assistant-{session_id}";
+                wrapper.className = "bubble-" + SID + " assistant-" + SID;
                 wrapper.style.fontFamily = "'SF Mono', 'Menlo', 'Consolas', monospace";
                 wrapper.style.fontSize = "13px";
                 wrapper.style.background = "#1e1e1e";
@@ -272,72 +308,72 @@ def copilot():
                 wrapper.style.whiteSpace = "pre";
                 wrapper.style.overflowX = "auto";
                 wrapper.style.maxWidth = "90%";
-                wrapper.textContent = code;
+                wrapper.style.lineHeight = "1.5";
+                wrapper.innerHTML = highlightPython(code);
                 messages.appendChild(wrapper);
                 messages.scrollTop = messages.scrollHeight;
-            }}
+            }
 
             // ------- Intent matching -------
-            function extractQuoted(text) {{
-                const matches = [];
-                const re = /['"\u2018\u2019\u201c\u201d]([^'"\u2018\u2019\u201c\u201d]+)['"\u2018\u2019\u201c\u201d]/g;
-                let m;
+            function extractQuoted(text) {
+                var matches = [];
+                var re = /['"\u2018\u2019\u201c\u201d]([^'"\u2018\u2019\u201c\u201d]+)['"\u2018\u2019\u201c\u201d]/g;
+                var m;
                 while ((m = re.exec(text)) !== null) matches.push(m[1]);
                 return matches;
-            }}
+            }
 
-            function generateResponse(text) {{
-                const lower = text.toLowerCase();
+            function generateResponse(text) {
+                var lower = text.toLowerCase();
 
                 // ---- rebind report ----
-                if (lower.includes("rebind") && lower.includes("report")) {{
-                    const quoted = extractQuoted(text);
-                    let report = quoted[0] || "MyReport";
-                    let dataset = null;
-                    let reportWs = null;
-                    let datasetWs = null;
+                if (lower.includes("rebind") && lower.includes("report")) {
+                    var quoted = extractQuoted(text);
+                    var report = quoted[0] || "MyReport";
+                    var dataset = null;
+                    var reportWs = null;
+                    var datasetWs = null;
 
-                    // Try to parse: report X in workspace Y to semantic model Z in workspace W
-                    const rebindRe = /rebind\\s+report\\s+['"\u2018\u2019\u201c\u201d]([^'"\u2018\u2019\u201c\u201d]+)['"\u2018\u2019\u201c\u201d](?:\\s+in\\s+workspace\\s+['"\u2018\u2019\u201c\u201d]([^'"\u2018\u2019\u201c\u201d]+)['"\u2018\u2019\u201c\u201d])?\\s+to\\s+(?:semantic\\s+model|dataset)\\s+['"\u2018\u2019\u201c\u201d]([^'"\u2018\u2019\u201c\u201d]+)['"\u2018\u2019\u201c\u201d](?:\\s+in\\s+workspace\\s+['"\u2018\u2019\u201c\u201d]([^'"\u2018\u2019\u201c\u201d]+)['"\u2018\u2019\u201c\u201d])?/i;
-                    const match = text.match(rebindRe);
-                    if (match) {{
+                    var rebindRe = /rebind\s+report\s+['"]([\w\s]+)['"](?:\s+in\s+workspace\s+['"]([\w\s]+)['"])?\s+to\s+(?:semantic\s+model|dataset)\s+['"]([\w\s]+)['"](?:\s+in\s+workspace\s+['"]([\w\s]+)['"])?/i;
+                    var match = text.match(rebindRe);
+                    if (match) {
                         report = match[1];
                         reportWs = match[2] || null;
                         dataset = match[3];
                         datasetWs = match[4] || null;
-                    }}
+                    }
 
                     if (!dataset) dataset = quoted.length > 1 ? quoted[1] : "MyModel";
                     if (!reportWs && quoted.length > 2) reportWs = quoted[2];
                     if (!datasetWs && quoted.length > 3) datasetWs = quoted[3];
 
-                    let code = "import sempy_labs.report\\n";
-                    code += "sempy_labs.report.report_rebind(\\n";
-                    code += "    report='" + report + "',\\n";
-                    code += "    dataset='" + dataset + "',\\n";
-                    if (reportWs) code += "    report_workspace='" + reportWs + "',\\n";
-                    if (datasetWs) code += "    dataset_workspace='" + datasetWs + "',\\n";
+                    var code = "import sempy_labs.report\n";
+                    code += "sempy_labs.report.report_rebind(\n";
+                    code += "    report='" + report + "',\n";
+                    code += "    dataset='" + dataset + "',\n";
+                    if (reportWs) code += "    report_workspace='" + reportWs + "',\n";
+                    if (datasetWs) code += "    dataset_workspace='" + datasetWs + "',\n";
                     code += ")";
 
                     addMessage("Here's the code to rebind the report:", "assistant");
                     addCodeBlock(code);
                     return;
-                }}
+                }
 
                 // ---- fallback: echo ----
                 addMessage(text, "assistant");
-            }}
+            }
 
-            function addHistory(text) {{
-                const item = document.createElement("div");
-                item.className = "history-item-{session_id}";
+            function addHistory(text) {
+                var item = document.createElement("div");
+                item.className = "history-item-" + SID;
                 item.textContent = text;
                 item.title = text;
                 historyList.insertBefore(item, historyList.firstChild);
-            }}
+            }
 
-            function sendMessage() {{
-                const text = input.value.trim();
+            function sendMessage() {
+                var text = input.value.trim();
                 if (!text) return;
 
                 addMessage(text, "user");
@@ -346,18 +382,21 @@ def copilot():
 
                 input.value = "";
                 input.style.height = "auto";
-            }}
+            }
 
             sendBtn.onclick = sendMessage;
 
-            input.addEventListener("keydown", function(e) {{
-                if (e.key === "Enter" && !e.shiftKey) {{
+            input.addEventListener("keydown", function(e) {
+                if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     sendMessage();
-                }}
-            }});
-        }})();
+                }
+            });
+        })();
+    """
+
+    html_end = """
     </script>
     """
 
-    display(HTML(html))
+    display(HTML(html + js_body + html_end))
