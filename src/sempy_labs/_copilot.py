@@ -13,11 +13,11 @@ def _parse_skills():
     Returns a list of dicts with keys: patterns, fn, and optionally code_template.
     code_template may contain {dataset} and {workspace} placeholders.
     """
-    skills_path = "/home/trusted-service-user/jupyter-env/python3.11/lib/python3.11/site-packages/sempy_labs/skills.md"
-    #skills_path = os.path.join(os.path.dirname(__file__), "skills.md")
+    #skills_path = "/home/trusted-service-user/jupyter-env/python3.11/lib/python3.11/site-packages/sempy_labs/skills.md"
+    skills_path = os.path.join(os.path.dirname(__file__), "skills.md")
 
-    #if not os.path.exists(skills_path):
-    #    return []
+    if not os.path.exists(skills_path):
+        return []
 
     with open(skills_path, "r", encoding="utf-8") as f:
         text = f.read()
@@ -727,7 +727,7 @@ def chat():
                 for (var a = 0; a < params.length; a++) {
                     var pn = params[a].name;
                     if (assignments[pn]) {
-                        code += "    " + pn + "='" + assignments[pn] + "',\n";
+                        code += "    " + pn + '=\"' + assignments[pn] + '\",\n';
                         hasAny = true;
                     } else if (!params[a].optional) {
                         code += "    " + pn + "=...,  # required\n";
@@ -781,13 +781,13 @@ def chat():
                 }
 
                 var code = template;
-                code = code.replace(/\{dataset\}/g, dataset ? "'" + dataset + "'" : "...");
-                code = code.replace(/\{workspace\}/g, workspace ? "'" + workspace + "'" : "None");
+                code = code.replace(/\{dataset\}/g, dataset ? '"' + dataset + '"' : "...");
+                code = code.replace(/\{workspace\}/g, workspace ? '"' + workspace + '"' : "None");
                 if (foundLanguages.length > 0) {
-                    var langStr = "[" + foundLanguages.map(function(l) { return "'" + l + "'"; }).join(", ") + "]";
+                    var langStr = "[" + foundLanguages.map(function(l) { return '"' + l + '"'; }).join(", ") + "]";
                     code = code.replace(/\{languages\}/g, langStr);
                 } else {
-                    code = code.replace(/\{languages\}/g, "['...']  # specify language(s)");
+                    code = code.replace(/\{languages\}/g, '["..."]  # specify language(s)');
                 }
                 // Generic placeholder fallback for any remaining {xyz} placeholders
                 code = code.replace(/\{(\w+)\}/g, "...");
