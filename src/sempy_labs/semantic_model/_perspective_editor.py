@@ -5,7 +5,10 @@ from typing import Optional
 from uuid import UUID
 
 
-def perspective_editor(dataset: str | UUID, workspace: Optional[str | UUID] = None):
+def perspective_editor(
+    dataset: str | UUID,
+    workspace: Optional[str | UUID] = None,
+):
 
     # -----------------------------
     # LOAD MODEL METADATA
@@ -56,6 +59,18 @@ def perspective_editor(dataset: str | UUID, workspace: Optional[str | UUID] = No
             perspective_members[p.Name] = members
 
     # -----------------------------
+    # COLOR THEME
+    # -----------------------------
+
+    text_color = "inherit"
+    gray_color = "#999"
+    summary_color = "#666"
+    table_summary_color = "#888"
+    border_color = "#e0e0e0"
+    # container_bg = "transparent"
+    icon_accent = "#FF9500"
+
+    # -----------------------------
     # STATUS
     # -----------------------------
     status = widgets.HTML(value="")
@@ -71,8 +86,8 @@ def perspective_editor(dataset: str | UUID, workspace: Optional[str | UUID] = No
     # HEADER ROW
     # -----------------------------
     title_label = widgets.HTML(
-        value='<div style="font-size:20px; font-weight:600; '
-        'font-family:-apple-system,BlinkMacSystemFont,sans-serif;">Perspective</div>'
+        value=f'<div style="font-size:20px; font-weight:600; color:{text_color}; '
+        f'font-family:-apple-system,BlinkMacSystemFont,sans-serif;">Perspective</div>'
     )
 
     NEW_PERSPECTIVE_SENTINEL = "+ New Perspective"
@@ -128,10 +143,9 @@ def perspective_editor(dataset: str | UUID, workspace: Optional[str | UUID] = No
     table_icon = "⊞"  # "☷" ≣ ≡
     expand_arrow = "▶"
     collapse_arrow = "▼"
-    gray_color = "#999"
 
     # Selection state icons (orange circles)
-    _icon_style = "color:#FF9500; display:inline-block; width:30px; text-align:center; vertical-align:middle;"
+    _icon_style = f"color:{icon_accent}; display:inline-block; width:30px; text-align:center; vertical-align:middle;"
     ICON_ALL = (
         f'<span style="{_icon_style} font-size:30px;" title="All selected">●</span>'
     )
@@ -143,8 +157,8 @@ def perspective_editor(dataset: str | UUID, workspace: Optional[str | UUID] = No
     # Global summary
     total_tables = len(metadata)
     _summary_style = (
-        "font-size:13px; color:#666; "
-        "font-family:-apple-system,BlinkMacSystemFont,sans-serif;"
+        f"font-size:13px; color:{summary_color}; "
+        f"font-family:-apple-system,BlinkMacSystemFont,sans-serif;"
     )
     summary_label = widgets.HTML(
         value=f'<span style="{_summary_style}">0/{total_tables} tables</span>',
@@ -177,7 +191,7 @@ def perspective_editor(dataset: str | UUID, workspace: Optional[str | UUID] = No
         expand_btn.style.button_color = "transparent"
         expand_btn.style.font_weight = "500"
 
-        table_color = gray_color if table_name in hidden_tables else "inherit"
+        table_color = gray_color if table_name in hidden_tables else text_color
         table_label = widgets.HTML(
             value=(
                 f'<span style="font-size:20px; vertical-align:middle; color:{table_color};">{table_icon}</span>'
@@ -191,7 +205,7 @@ def perspective_editor(dataset: str | UUID, workspace: Optional[str | UUID] = No
         n_hier = len(table_data["hierarchies"])
         table_summary = widgets.HTML(
             value=(
-                f'<span style="font-size:12px; color:#888; margin-left:8px;">'
+                f'<span style="font-size:12px; color:{table_summary_color}; margin-left:8px;">'
                 f"0/{n_cols} columns, 0/{n_meas} measures, 0/{n_hier} hierarchies</span>"
             ),
         )
@@ -207,15 +221,19 @@ def perspective_editor(dataset: str | UUID, workspace: Optional[str | UUID] = No
             icon = icon_map[obj_type]
             for obj_name in table_data[obj_type]:
                 is_hidden = (
-                    table_name in hidden_tables
-                    or (table_name, obj_type, obj_name) in hidden_objects
+                    (table_name, obj_type, obj_name) in hidden_objects
+                    if obj_type == "measures"
+                    else (
+                        table_name in hidden_tables
+                        or (table_name, obj_type, obj_name) in hidden_objects
+                    )
                 )
                 cb = widgets.Checkbox(
                     value=False,
                     indent=False,
                     layout=widgets.Layout(width="22px", margin="0"),
                 )
-                label_color = gray_color if is_hidden else "inherit"
+                label_color = gray_color if is_hidden else text_color
                 label = widgets.HTML(
                     value=(
                         f'<span style="font-size:16px; color:{label_color};'
@@ -271,7 +289,7 @@ def perspective_editor(dataset: str | UUID, workspace: Optional[str | UUID] = No
                     if cb.value:
                         counts[obj_type] += 1
                 tbl_summary.value = (
-                    f'<span style="font-size:12px; color:#888; margin-left:8px;">'
+                    f'<span style="font-size:12px; color:{table_summary_color}; margin-left:8px;">'
                     f'{counts["columns"]}/{totals["columns"]} columns, '
                     f'{counts["measures"]}/{totals["measures"]} measures, '
                     f'{counts["hierarchies"]}/{totals["hierarchies"]} hierarchies</span>'
@@ -522,7 +540,7 @@ def perspective_editor(dataset: str | UUID, workspace: Optional[str | UUID] = No
             show_status("No perspective selected.", "#ff3b30")
             return
         confirm_delete_label.value = (
-            f'<span style="font-size:14px; '
+            f'<span style="font-size:14px; color:{text_color}; '
             f'font-family:-apple-system,BlinkMacSystemFont,sans-serif;">'
             f'Are you sure you want to delete <b>{perspective_name}</b>?</span>'
         )
@@ -577,12 +595,15 @@ def perspective_editor(dataset: str | UUID, workspace: Optional[str | UUID] = No
     # -----------------------------
     # DISPLAY
     # -----------------------------
+    children = [header, summary_label, tree_container, button_row, confirm_delete_box, status]
+
     container = widgets.VBox(
-        [header, summary_label, tree_container, button_row, confirm_delete_box, status],
+        children,
         layout=widgets.Layout(
             width="900px",
             padding="20px",
-            border="1px solid #e0e0e0",
+            border=f"1px solid {border_color}",
         ),
     )
+
     display(container)
