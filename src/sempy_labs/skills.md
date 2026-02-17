@@ -11,17 +11,19 @@ Each rule needs a `Patterns` line (comma-separated trigger phrases) and a `Funct
 
 ---
 
+## Semantic Modeling
+
 ### Run Model BPA
 - **Patterns**: model bpa, best practice analyzer, run bpa
-- **Function**: sempy_labs.run_model_bpa
+- **Function**: run_model_bpa
 
 ### Vertipaq Analyzer
 - **Patterns**: vertipaq, verti paq, verti-paq
-- **Function**: sempy_labs.vertipaq_analyzer
+- **Function**: vertipaq_analyzer
 
 ### VPAX
-- **Patterns**: vpax, .vpax
-- **Function**: sempy_labs.create_vpax
+- **Patterns**: vpax, .vpax, create vpax
+- **Function**: create_vpax
 
 ### Format DAX
 - **Patterns**: format dax, dax format, dax formatter
@@ -33,3 +35,36 @@ with connect_semantic_model(dataset={dataset}, readonly=False, workspace={worksp
     tom.format_dax()
 ```
 
+### Translate Semantic Model
+- **Patterns**: translate semantic model, translate model, translate dataset, translation
+- **Function**: translate_semantic_model
+
+### Refresh Semantic Model
+- **Patterns**: refresh semantic model, refresh model, refresh dataset
+- **Function**: refresh_semantic_model
+
+### Backup Semantic Model
+- **Patterns**: backup semantic model, backup model, backup dataset
+- **Function**: backup_semantic_model
+
+### Restore Semantic Model
+- **Patterns**: restore semantic model, restore model, restore dataset
+- **Function**: restore_semantic_model
+
+### Deploy Semantic Model
+- **Patterns**: deploy semantic model, deploy model, deploy dataset
+- **Function**: deploy_semantic_model
+
+### Semantic Model Size
+- **Patterns**: semantic model size, model size, dataset size, size of model
+- **Function**: get_semantic_model_size
+
+### Auto-generate Measure Descriptions
+- **Patterns**: generate measure description, generate description, auto generate description, measure description
+- **Function**: tom.generate_measure_descriptions
+- **Code**:
+```python
+from sempy_labs.tom import connect_semantic_model
+with connect_semantic_model(dataset={dataset}, readonly=False, workspace={workspace}) as tom:
+    tom.generate_measure_descriptions()
+```
