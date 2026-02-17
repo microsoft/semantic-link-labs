@@ -9,6 +9,18 @@ def perspective_editor(
     dataset: str | UUID,
     workspace: Optional[str | UUID] = None,
 ):
+    """
+    Generates an interactive editor for managing perspectives within a semantic model.
+
+    Parameters
+    ----------
+    dataset : str | uuid.UUID
+        Name or ID of the semantic model.
+    workspace : str | uuid.UUID, default=None
+        The workspace name or ID.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    """
 
     # -----------------------------
     # LOAD MODEL METADATA
