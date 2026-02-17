@@ -556,7 +556,7 @@ def perspective_editor(
         confirm_delete_label.value = (
             f'<span style="font-size:14px; color:{text_color}; '
             f'font-family:-apple-system,BlinkMacSystemFont,sans-serif;">'
-            f'Are you sure you want to delete <b>{perspective_name}</b>?</span>'
+            f"Are you sure you want to delete <b>{perspective_name}</b>?</span>"
         )
         confirm_delete_box.layout.display = "flex"
 
@@ -609,7 +609,14 @@ def perspective_editor(
     # -----------------------------
     # DISPLAY
     # -----------------------------
-    children = [header, summary_label, tree_container, button_row, confirm_delete_box, status]
+    children = [
+        header,
+        summary_label,
+        tree_container,
+        button_row,
+        confirm_delete_box,
+        status,
+    ]
 
     container = widgets.VBox(
         children,

@@ -2,84 +2,7 @@ from IPython.display import display, HTML
 import uuid
 import json
 import inspect
-import os
-import re as _re
 from sempy._utils._log import log
-
-
-def _parse_skills():
-    """
-    Parse skills.md to extract intent-override rules.
-    Returns a list of dicts with keys: patterns, fn, and optionally code_template.
-    code_template may contain {dataset} and {workspace} placeholders.
-    """
-    skills_path = "/home/trusted-service-user/jupyter-env/python3.11/lib/python3.11/site-packages/sempy_labs/skills.md"
-    #skills_path = os.path.join(os.path.dirname(__file__), "skills.md")
-
-    #if not os.path.exists(skills_path):
-    #    return []
-
-    with open(skills_path, "r", encoding="utf-8") as f:
-        text = f.read()
-
-    overrides = []
-    current_patterns = None
-    current_fn = None
-    current_code = None
-    in_code_block = False
-    code_lines = []
-
-    for line in text.splitlines():
-        stripped = line.strip()
-
-        # Code fence handling
-        if in_code_block:
-            if stripped.startswith("```"):
-                current_code = "\n".join(code_lines)
-                in_code_block = False
-                code_lines = []
-            else:
-                code_lines.append(line)
-            continue
-
-        m_pat = _re.match(r"^-\s+\*\*Patterns\*\*:\s*(.+)$", stripped)
-        m_fn = _re.match(r"^-\s+\*\*Function\*\*:\s*(\S+)", stripped)
-        m_code = _re.match(r"^-\s+\*\*Code\*\*:", stripped)
-        is_heading = stripped.startswith("### ")
-
-        if is_heading:
-            # Flush previous rule if any
-            if current_patterns and current_fn:
-                entry = {"patterns": current_patterns, "fn": current_fn}
-                if current_code:
-                    entry["code_template"] = current_code
-                overrides.append(entry)
-            current_patterns = None
-            current_fn = None
-            current_code = None
-        elif m_pat:
-            current_patterns = [
-                p.strip().lower() for p in m_pat.group(1).split(",") if p.strip()
-            ]
-        elif m_fn:
-            current_fn = m_fn.group(1).strip()
-        elif m_code:
-            in_code_block = False
-            code_lines = []
-            # The code fence should be on the next line, but check this line too
-        elif stripped.startswith("```python") or stripped.startswith("```"):
-            if current_patterns:  # only capture code blocks inside a rule
-                in_code_block = True
-                code_lines = []
-
-    # Flush last rule
-    if current_patterns and current_fn:
-        entry = {"patterns": current_patterns, "fn": current_fn}
-        if current_code:
-            entry["code_template"] = current_code
-        overrides.append(entry)
-
-    return overrides
 
 
 def _build_function_registry():
@@ -156,6 +79,51 @@ def _build_function_registry():
                     "description": description,
                     "keywords": keywords,
                     "aliases": aliases,
+                    "desc_words": desc_
+            for kw in keywords:
+                if kw in _aliases:
+                    aliases.extend(_aliases[kw])
+            # Also add description words as searchable terms
+            desc_words = description.lower().replace(".", " ").split()
+
+            registry.append(
+                {
+                    "name": name,
+                    "module": import_path,
+                    "params": params,
+                    "description": description,
+                    "keywords": keywords,
+                    "aliases": aliases,
+                    "desc_words": desc_
+            for kw in keywords:
+                if kw in _aliases:
+                    aliases.extend(_aliases[kw])
+            # Also add description words as searchable aliases
+            desc_words = description.lower().replace(".", " ").split()
+
+            registry.append(
+                {
+                    "name": name,
+                    "module": import_path,
+                    "params": params,
+                    "description": description,
+                    "keywords": keywords,
+                    "aliases": aliases,
+                    "desc_words": desc_
+            for kw in keywords:
+                if kw in _abbrev:
+                    aliases.extend(_abbrev[kw])
+            # Also add description words as searchable terms
+            desc_words = description.lower().replace(".", " ").split()
+
+            registry.append(
+                {
+                    "name": name,
+                    "module": import_path,
+                    "params": params,
+                    "description": description,
+                    "keywords": keywords,
+                    "aliases": aliases,
                     "desc_words": desc_words,
                 }
             )
@@ -204,7 +172,7 @@ def _build_function_registry():
         "tom",
         "warehouse",
         "warehouse_snapshot",
-        "workspace",
+        "workspace"
     ]
     for sub in submodules:
         try:
@@ -219,17 +187,12 @@ def _build_function_registry():
     return registry
 
 
-@log
-def chat():
+def copilot():
     session_id = str(uuid.uuid4()).replace("-", "")
 
     # Build function registry from library introspection
     registry = _build_function_registry()
     registry_json = json.dumps(registry)
-
-    # Load intent overrides from skills.md
-    overrides = _parse_skills()
-    overrides_json = json.dumps(overrides)
 
     html = f"""
     <style>
@@ -319,37 +282,7 @@ def chat():
             background: #f5f5f7;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
-            border: 1px solid #ddd;
-        }}
-
-        #history-panel-{session_id}.collapsed + #chat-container-{session_id} {{
-            border-radius: 18px;
-        }}
-
-        #chat-header-{session_id} {{
-            padding: 14px 16px;
-            background: rgba(255,255,255,0.85);
-            backdrop-filter: blur(12px);
-            font-weight: 600;
-            font-size: 15px;
-            border-bottom: 1px solid #ddd;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }}
-
-        #chat-messages-{session_id} {{
-            flex: 1;
-            padding: 16px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }}
-
-        .bubble-{session_id} {{
-            max-width: 85%;
+            overflow: h85%;
             min-width: 200px;
             padding: 10px 14px;
             border-radius: 18px;
@@ -358,7 +291,40 @@ def chat():
             word-wrap: break-word;
             white-space: pre-wrap;
             box-sizing: border-box;
-            flex-shrink: 0;
+            flex-shrink: 0
+
+        #chat-header-{session_id} {{
+            padding: 14px 16px;
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(12px);
+            font-weight: 600;
+            font-size: 15px;
+            border-bottom: 1px solid #ddd;
+            display: fl85%;
+            min-width: 200px;
+            padding: 10px 14px;
+            border-radius: 18px;
+            font-size: 14px;
+            line-height: 1.35;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            box-sizing: border-box;
+            flex-shrink: 0
+            padding: 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }}
+
+        .bubble-{session_id} {{
+            max-width: 75%;
+            padding: 10px 14px;
+            border-radius: 18px;
+            font-size: 14px;
+            line-height: 1.35;
+            word-wrap: break-word;
+            white-space: pre-wrap;
         }}
 
         .user-{session_id} {{
@@ -434,7 +400,7 @@ def chat():
         <div id="chat-container-{session_id}">
             <div id="chat-header-{session_id}">
                 <span id="expand-history-{session_id}" style="display:none; cursor:pointer; font-size:18px;" title="Show history">▶</span>
-                <span>Sempy Chat</span>
+                <span>Chat</span>
             </div>
 
             <div id="chat-messages-{session_id}"></div>
@@ -454,11 +420,10 @@ def chat():
         (function() {{
             const SID = "{session_id}";
             const REGISTRY = {registry_json};
-            const OVERRIDES = {overrides_json};
     """
 
-    # JavaScript with regex patterns kept in a raw string to avoid
-    # f-string mangling of \b, \s, \w, \d, \n etc.
+    # JavaScript with regex patterns kept in a regular string to avoid
+    # f-string mangling of \\b, \\s, \\w, \\d, \\n etc.
     js_body = r"""
             const input = document.getElementById("chat-input-" + SID);
             const messages = document.getElementById("chat-messages-" + SID);
@@ -506,57 +471,6 @@ def chat():
                     .replace(/>/g, "&gt;");
 
                 var keywords = new Set(["import","from","as","def","class","return","if","elif","else","for","while","with","try","except","finally","raise","pass","break","continue","and","or","not","in","is","None","True","False","lambda","yield","assert","del","global","nonlocal","async","await"]);
-                var builtins = new Set(["print","len","range","type","int","str","float","list","dict","set","tuple","bool","open","super","isinstance","getattr","setattr","hasattr","enumerate","zip","map","filter","sorted","reversed","any","all","min","max","sum","abs","round","format"]);
-
-                // Single regex that matches tokens in priority order
-                var tokenRe = /('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")|(#[^\n]*)|(@\w+)|(\b\d+\.?\d*\b)|(\b[a-zA-Z_]\w*\b)/g;
-
-                html = html.replace(tokenRe, function(match, str, comment, decorator, number, word) {
-                    if (str) return '<span style="color:#ce9178">' + str + '</span>';
-                    if (comment) return '<span style="color:#6a9955">' + comment + '</span>';
-                    if (decorator) return '<span style="color:#dcdcaa">' + decorator + '</span>';
-                    if (number) return '<span style="color:#b5cea8">' + number + '</span>';
-                    if (word) {
-                        if (keywords.has(word)) return '<span style="color:#569cd6">' + word + '</span>';
-                        if (builtins.has(word)) return '<span style="color:#dcdcaa">' + word + '</span>';
-                    }
-                    return match;
-                });
-
-                return html;
-            }
-
-            function addCodeBlock(code) {
-                const wrapper = document.createElement("div");
-                wrapper.className = "bubble-" + SID + " assistant-" + SID;
-                wrapper.style.fontFamily = "'SF Mono', 'Menlo', 'Consolas', monospace";
-                wrapper.style.fontSize = "13px";
-                wrapper.style.background = "#1e1e1e";
-                wrapper.style.color = "#d4d4d4";
-                wrapper.style.padding = "12px 14px";
-                wrapper.style.borderRadius = "10px";
-                wrapper.style.whiteSpace = "pre";
-                wrapper.style.overflowX = "auto";
-                wrapper.style.maxWidth = "90%";
-                wrapper.style.lineHeight = "1.5";
-                wrapper.innerHTML = highlightPython(code);
-                messages.appendChild(wrapper);
-                messages.scrollTop = messages.scrollHeight;
-            }
-
-            // ------- Intent matching -------
-            function extractQuoted(text) {
-                var matches = [];
-                var re = /['"\u2018\u2019\u201c\u201d]([^'"\u2018\u2019\u201c\u201d]+)['"\u2018\u2019\u201c\u201d]/g;
-                var m;
-                while ((m = re.exec(text)) !== null) matches.push(m[1]);
-                return matches;
-            }
-
-            // Score how well a function matches the user's prompt
-            function scoreFunction(fn, words) {
-                var score = 0;
-                var fnWords = fn.keywords;
                 var fnAliases = fn.aliases || {};
                 var fnDescWords = fn.desc_words || [];
                 var fnName = fn.name.toLowerCase();
@@ -583,10 +497,15 @@ def chat():
                         }
                     }
 
-                    // Alias match: aliases is a dict mapping alias_word -> keyword_index
-                    if (fnAliases.hasOwnProperty(w)) {
-                        score += 8;
-                        matchedFnWords.add(fnAliases[w]);
+                    // Alias match (e.g., "best", "practice", "analyzer" -> bpa)
+                    for (var a = 0; a < fnAliases.length; a++) {
+                        if (fnAliases[a] === w) {
+                            score += 8;
+                            // Mark all abbreviated keywords as matched
+                            for (var mk = 0; mk < fnWords.length; mk++) {
+                                matchedFnWords.add(mk);
+                            }
+                        }
                     }
 
                     // Description word match
@@ -597,10 +516,114 @@ def chat():
                     }
                 }
 
-                // Bonus: if the first keyword (action verb) is an exact match, boost score
-                if (matchedFnWords.has(0)) {
-                    for (var vi = 0; vi < words.length; vi++) {
-                        if (fnWords[0] === words[vi]) { score += 5; break; }
+                // Penalize function keywords NOT mentioned in the prompt
+                var unmatchedFnWords = 0;
+                for (var u = 0; u < fnWords.length; u++) {
+                    if (!matchedFnWords.has(u)) unmatchedFnWords++;
+                }
+                    // Keyword match (from function name)
+                    for (var k = 0; k < fnWords.length; k++) {
+                        if (fnWords[k] === w) {
+                            score += 10;
+                            matchedFnWords.add(k);
+                        } else if (fnWords[k].indexOf(w) >= 0 || w.indexOf(fnWords[k]) >= 0) {
+                            score += 3;
+                            matchedFnWords.add(k);
+                        }
+                    }
+
+                    // Alias match (e.g., "best", "practice", "analyzer" -> bpa)
+                    for (var a = 0; a < fnAliases.length; a++) {
+                        if (fnAliases[a] === w) {
+                            score += 8;
+                            // Mark all abbreviated keywords as matched
+                            for (var mk = 0; mk < fnWords.length; mk++) {
+                                matchedFnWords.add(mk);
+                            }
+                        }
+                    }
+
+                    // Description word match
+                    for (var d = 0; d < fnDescWords.length; d++) {
+                        if (fnDescWords[d] === w && w.length > 2) {
+                            score += 2;
+                        }
+                    }
+                }
+
+                // Penalize function keywords NOT mentioned in the prompt
+                var unmatchedFnWords = 0;
+                for (var u = 0; u < fnWords.length; u++) {
+                    if (!matchedFnWords.has(u)) unmatchedFnWords++;
+                }
+                // Check each word in the prompt against keywords, aliases, and description words
+                var matchedFnWords = new Set();
+                for (var i = 0; i < words.length; i++) {
+                    var w = words[i];
+                    if (w.length < 2) continue;
+
+                    // Keyword match (from function name)
+                    for (var k = 0; k < fnWords.length; k++) {
+                        if (fnWords[k] === w) {
+                            score += 10;
+                            matchedFnWords.add(k);
+                        } else if (fnWords[k].indexOf(w) >= 0 || w.indexOf(fnWords[k]) >= 0) {
+                            score += 3;
+                            matchedFnWords.add(k);
+                        }
+                    }
+
+                    // Alias match (e.g., "best", "practice", "analyzer" -> bpa)
+                    for (var a = 0; a < fnAliases.length; a++) {
+                        if (fnAliases[a] === w) {
+                            score += 8;
+                            // Also mark the parent keyword as matched
+                            matchedFnWords.add(fnWords.indexOf("bpa"));
+                            matchedFnWords.add(fnWords.indexOf("qso"));
+                            matchedFnWords.add(fnWords.indexOf("dl"));
+                        }
+                    }
+
+                    // Description word match
+                    for (var d = 0; d < fnDescWords.length; d++) {
+                        if (fnDescWords[d] === w && w.length > 2) {
+                            score += 2;
+                        }
+                    }
+                }
+
+                // Penalize function keywords NOT mentioned in the prompt
+                var unmatchedFnWords = 0;
+                for (var u = 0; u < fnWords.length; u++) {
+                    if (!matchedFnWords.has(u)) unmatchedFnWords++;
+                }
+                    // Keyword match (from function name)
+                    for (var k = 0; k < fnWords.length; k++) {
+                        if (fnWords[k] === w) {
+                            score += 10;
+                            matchedFnWords.add(k);
+                        } else if (fnWords[k].indexOf(w) >= 0 || w.indexOf(fnWords[k]) >= 0) {
+                            score += 3;
+                            matchedFnWords.add(k);
+                        }
+                    }
+
+                    // Alias match (e.g., "best", "practice", "analyzer" -> bpa)
+                    for (var a = 0; a < fnAliases.length; a++) {
+                        if (fnAliases[a] === w) {
+                            score += 8;
+                            // Mark all abbreviated keywords as matched
+                            for (var mk = 0; mk < fnWords.length; mk++) {
+                                matchedFnWords.add(mk);
+                            }
+                        }
+                    }
+
+                    // Description word match
+                    for (var d = 0; d < fnDescWords.length; d++) {
+                        if (fnDescWords[d] === w && w.length > 2) {
+                            score += 2;
+                        }
                     }
                 }
 
@@ -628,38 +651,15 @@ def chat():
                 var lower = text.toLowerCase()
                     .replace(/['"]/g, " ")
                     .replace(/[^\w\s]/g, " ");
-
-                // Intent overrides loaded from skills.md
-                for (var oi = 0; oi < OVERRIDES.length; oi++) {
-                    var entry = OVERRIDES[oi];
-                    for (var pi = 0; pi < entry.patterns.length; pi++) {
-                        if (lower.indexOf(entry.patterns[pi]) >= 0) {
-                            // If override has a code_template, return a synthetic entry
-                            if (entry.code_template) {
-                                return {
-                                    name: entry.fn,
-                                    module: "",
-                                    params: [],
-                                    description: "",
-                                    keywords: [],
-                                    aliases: {},
-                                    desc_words: [],
-                                    _override_template: entry.code_template
-                                };
-                            }
-                            for (var ri = 0; ri < REGISTRY.length; ri++) {
-                                var fnBaseName = entry.fn.indexOf(".") >= 0 ? entry.fn.substring(entry.fn.lastIndexOf(".") + 1) : entry.fn;
-                                if (REGISTRY[ri].name === fnBaseName) return REGISTRY[ri];
-                            }
-                        }
-                    }
-                }
                 var words = lower.split(/\s+/).filter(function(w) { return w.length > 0; });
                 // Remove common filler words
-                var stopwords = new Set(["the","a","an","to","in","for","of","my","i","me","can","you","how","do","please","want","need","use","using","code","show","write","give","help","with","against","on","from","that","this","it","its","all","just"]);
+                var stopwords = new Set(["the","a","an","to","in","for","of","my","i","me","can","you","how","do","please","want","need","use","using","code","show","write","give","help","with"]);
                 var filtered = words.filter(function(w) { return !stopwords.has(w); });
                 if (filtered.length === 0) filtered = words;
-
+ else if (pn === "workspace") {
+                        code += "    workspace=None,\n";
+                        hasAny = true;
+                    }
                 var best = null;
                 var bestScore = 0;
                 for (var i = 0; i < REGISTRY.length; i++) {
@@ -742,57 +742,13 @@ def chat():
                 return code;
             }
 
-            // Fill {dataset} and {workspace} placeholders in a code template
-            function fillTemplate(template, text) {
-                var quoted = extractQuoted(text);
-                var lower = text.toLowerCase();
-                var dataset = null;
-                var workspace = null;
-
-                // Try contextual matching: look for "workspace" or "model/dataset/semantic" near quoted values
-                for (var i = 0; i < quoted.length; i++) {
-                    var qval = quoted[i];
-                    var qpos = lower.indexOf(qval.toLowerCase());
-                    if (qpos < 0) continue;
-                    var before = lower.substring(Math.max(0, qpos - 50), qpos);
-                    if (!workspace && (before.indexOf("workspace") >= 0)) {
-                        workspace = qval;
-                    } else if (!dataset && (before.indexOf("model") >= 0 || before.indexOf("dataset") >= 0 || before.indexOf("semantic") >= 0)) {
-                        dataset = qval;
-                    }
-                }
-
-                // Assign remaining by position: first unassigned -> dataset, second -> workspace
-                for (var j = 0; j < quoted.length; j++) {
-                    if (!dataset && quoted[j] !== workspace) { dataset = quoted[j]; continue; }
-                    if (!workspace && quoted[j] !== dataset) { workspace = quoted[j]; continue; }
-                }
-
-                var code = template;
-                code = code.replace(/\{dataset\}/g, dataset ? "'" + dataset + "'" : "...");
-                code = code.replace(/\{workspace\}/g, workspace ? "'" + workspace + "'" : "None");
-                return code;
-            }
-
             function generateResponse(text) {
                 var fn = findBestFunction(text);
 
                 if (fn) {
-                    // Check if this function came from an override with a code template
-                    var template = null;
-                    if (fn._override_template) {
-                        template = fn._override_template;
-                    }
-
-                    if (template) {
-                        var code = fillTemplate(template, text);
-                        addMessage("Here's the code for <b>" + fn.name + "</b>:", "assistant");
-                        addCodeBlock(code);
-                    } else {
-                        var code = buildCode(fn, text);
-                        addMessage("Here's the code for <b>" + fn.name + "</b>:", "assistant");
-                        addCodeBlock(code);
-                    }
+                    var code = buildCode(fn, text);
+                    addMessage("Here's the code for <b>" + fn.name + "</b>:", "assistant");
+                    addCodeBlock(code);
                     if (fn.description) {
                         addMessage(fn.description, "assistant");
                     }
@@ -800,7 +756,7 @@ def chat():
                 }
 
                 // ---- fallback ----
-                addMessage("I couldn't find a matching function. Try describing what you want to do, for example:\n\n\u2022 rebind report 'A' to semantic model 'B'\n\u2022 list workspaces\n\u2022 refresh semantic model 'Sales'\n\u2022 export report 'MyReport'", "assistant");
+                addMessage("I couldn't find a matching function. Try describing what you want to do, for example:\n\n• rebind report 'A' to semantic model 'B'\n• list workspaces\n• refresh semantic model 'Sales'\n• export report 'MyReport'", "assistant");
             }
 
             function addHistory(text) {
