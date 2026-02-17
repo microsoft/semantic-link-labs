@@ -77,6 +77,9 @@ def get_lakehouse_tables(
 
     local_path = _mount(lakehouse=lakehouse_id, workspace=workspace_id)
 
+    if count_rows:
+        extended = True
+
     if extended:
         sku_value = get_sku_size(workspace_id)
         guardrail = get_directlake_guardrails_for_sku(sku_value)
@@ -110,9 +113,14 @@ def get_lakehouse_tables(
                     ]
                     size_in_bytes = 0
                     for f in latest_files:
-                        local_file_path = os.path.join(
-                            local_path, "Tables", schema_name, table_name, f
-                        )
+                        if schema_name:
+                            local_file_path = os.path.join(
+                                local_path, "Tables", schema_name, table_name, f
+                            )
+                        else:
+                            local_file_path = os.path.join(
+                                local_path, "Tables", table_name, f
+                            )
 
                         if os.path.exists(local_file_path):
                             size_in_bytes += os.path.getsize(local_file_path)
