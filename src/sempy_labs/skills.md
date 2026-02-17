@@ -38,6 +38,11 @@ with connect_semantic_model(dataset={dataset}, readonly=False, workspace={worksp
 ### Translate Semantic Model
 - **Patterns**: translate semantic model, translate model, translate dataset, translation
 - **Function**: translate_semantic_model
+- **Code**:
+```python
+import sempy_labs as labs
+labs.translate_semantic_model(dataset={dataset}, languages={languages}, workspace={workspace})
+```
 
 ### Refresh Semantic Model
 - **Patterns**: refresh semantic model, refresh model, refresh dataset

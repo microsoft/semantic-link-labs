@@ -768,9 +768,29 @@ def chat():
                     if (!workspace && quoted[j] !== dataset) { workspace = quoted[j]; continue; }
                 }
 
+                // Detect language names in the prompt
+                var knownLanguages = ["afrikaans","albanian","amharic","arabic","armenian","azerbaijani","basque","belarusian","bengali","bosnian","bulgarian","burmese","catalan","cebuano","chichewa","chinese","corsican","croatian","czech","danish","dutch","english","esperanto","estonian","filipino","finnish","french","frisian","galician","georgian","german","greek","gujarati","haitian creole","hausa","hawaiian","hebrew","hindi","hmong","hungarian","icelandic","igbo","indonesian","irish","italian","japanese","javanese","kannada","kazakh","khmer","kinyarwanda","korean","kurdish","kyrgyz","lao","latin","latvian","lithuanian","luxembourgish","macedonian","malagasy","malay","malayalam","maltese","maori","marathi","mongolian","nepali","norwegian","odia","pashto","persian","polish","portuguese","punjabi","romanian","russian","samoan","scots gaelic","serbian","sesotho","shona","sindhi","sinhala","slovak","slovenian","somali","spanish","sundanese","swahili","swedish","tajik","tamil","tatar","telugu","thai","turkish","turkmen","ukrainian","urdu","uyghur","uzbek","vietnamese","welsh","xhosa","yiddish","yoruba","zulu"];
+                var foundLanguages = [];
+                var lowerWords = lower.split(/[\s,]+/);
+                for (var li = 0; li < lowerWords.length; li++) {
+                    var lw = lowerWords[li].replace(/[^a-z]/g, "");
+                    if (lw.length > 2 && knownLanguages.indexOf(lw) >= 0) {
+                        // Capitalize first letter
+                        foundLanguages.push(lw.charAt(0).toUpperCase() + lw.slice(1));
+                    }
+                }
+
                 var code = template;
                 code = code.replace(/\{dataset\}/g, dataset ? "'" + dataset + "'" : "...");
                 code = code.replace(/\{workspace\}/g, workspace ? "'" + workspace + "'" : "None");
+                if (foundLanguages.length > 0) {
+                    var langStr = "[" + foundLanguages.map(function(l) { return "'" + l + "'"; }).join(", ") + "]";
+                    code = code.replace(/\{languages\}/g, langStr);
+                } else {
+                    code = code.replace(/\{languages\}/g, "['...']  # specify language(s)");
+                }
+                // Generic placeholder fallback for any remaining {xyz} placeholders
+                code = code.replace(/\{(\w+)\}/g, "...");
                 return code;
             }
 
