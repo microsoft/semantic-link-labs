@@ -77,6 +77,17 @@ with connect_semantic_model(dataset={dataset}, readonly=False, workspace={worksp
     tom.generate_measure_descriptions()
 ```
 
+### Set compatibility level
+- **Patterns**: set compatibility level, set the compatibility level
+- **Function**: tom.set_compatibility_level
+- **Code**:
+```python
+from sempy_labs.tom import connect_semantic_model
+
+with connect_semantic_model(dataset={dataset}, readonly=False, workspace={workspace}) as tom:
+    tom.set_compatibility_level(compatibility_level={value})
+```
+
 ### DAX Query Dependencies
 - **Patterns**: dax query dependencies, dax dependencies, columns used by dax
 - **Function**: get_dax_query_dependencies
@@ -488,3 +499,58 @@ df[df["Valid Semantic Model Object"] == False]
 ### List User Defined Functions
 - **Patterns**: list user defined function, list udf, user defined functions
 - **Function**: list_user_defined_functions
+
+### List workspaces
+- **Patterns**: list workspaces
+- **Function**: sempy.fabric.list_workspaces
+- **Code**:
+```python
+import sempy.fabric as fabric
+
+df = fabric.list_workspaces()
+df
+```
+
+### List reports
+- **Patterns**: list reports, reports list, list of reports, show reports, list the reports, show the reports
+- **Function**: sempy.fabric.list_reports
+- **Code**:
+```python
+import sempy.fabric as fabric
+
+df = fabric.list_reports(workspace={workspace})
+df
+```
+
+### List semantic models
+- **Patterns**: list semantic models, list datasets, list models, show semantic models, show datasets, list the semantic models, list the datasets, show the semantic models, show the datasets
+- **Function**: sempy.fabric.list_datasets
+- **Code**:
+```python
+import sempy.fabric as fabric
+
+df = fabric.list_datasets(mode='rest', workspace={workspace})
+df
+```
+
+### List workspaces Admin
+- **Patterns**: list workspaces admin, list admin workspaces, admin list workspaces
+- **Function**: sempy_labs.admin.list_workspaces
+- **Code**:
+```python
+import sempy_labs.admin as admin
+
+df = admin.list_workspaces()
+df
+```
+
+### List reports Admin
+- **Patterns**: list reports admin, list admin reports, admin list reports, list the admin reports, show the admin reports, show admin reports
+- **Function**: sempy_labs.admin.list_reports
+- **Code**:
+```python
+import sempy_labs.admin as admin
+
+df = admin.list_reports()
+df
+```

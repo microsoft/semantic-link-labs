@@ -13,8 +13,8 @@ def _parse_skills():
     Returns a list of dicts with keys: patterns, fn, and optionally code_template.
     code_template may contain {dataset} and {workspace} placeholders.
     """
-    #skills_path = "/home/trusted-service-user/jupyter-env/python3.11/lib/python3.11/site-packages/sempy_labs/skills.md"
-    skills_path = os.path.join(os.path.dirname(__file__), "skills.md")
+    skills_path = "/home/trusted-service-user/jupyter-env/python3.11/lib/python3.11/site-packages/sempy_labs/skills.md"
+    # skills_path = os.path.join(os.path.dirname(__file__), "skills.md")
 
     if not os.path.exists(skills_path):
         return []
@@ -647,8 +647,26 @@ def chat():
                                     _override_template: entry.code_template
                                 };
                             }
+                            // If fn has dots (external like sempy.fabric.list_reports), generate a fallback template
+                            if (entry.fn.indexOf(".") >= 0) {
+                                var parts = entry.fn.split(".");
+                                var funcName = parts.pop();
+                                var modPath = parts.join(".");
+                                var alias = parts[parts.length - 1];
+                                var fallback = "import " + modPath + " as " + alias + "\n\n" + alias + "." + funcName + "()";
+                                return {
+                                    name: entry.fn,
+                                    module: "",
+                                    params: [],
+                                    description: "",
+                                    keywords: [],
+                                    aliases: {},
+                                    desc_words: [],
+                                    _override_template: fallback
+                                };
+                            }
                             for (var ri = 0; ri < REGISTRY.length; ri++) {
-                                var fnBaseName = entry.fn.indexOf(".") >= 0 ? entry.fn.substring(entry.fn.lastIndexOf(".") + 1) : entry.fn;
+                                var fnBaseName = entry.fn.substring(entry.fn.lastIndexOf(".") + 1);
                                 if (REGISTRY[ri].name === fnBaseName) return REGISTRY[ri];
                             }
                         }
@@ -704,7 +722,25 @@ def chat():
                         }
                     }
                 }
-
+                // Detect "in" (optionally followed by "the") before a quoted value as a workspace hint
+                var hasWorkspaceParam = params.some(function(p) { return p.name === "workspace"; });
+                if (hasWorkspaceParam && !assignments["workspace"]) {
+                    for (var j = 0; j < quoted.length; j++) {
+                        var qval = quoted[j];
+                        var alreadyUsed = false;
+                        for (var k in assignments) {
+                            if (assignments[k] === qval) { alreadyUsed = true; break; }
+                        }
+                        if (alreadyUsed) continue;
+                        var qpos = lower.indexOf(qval.toLowerCase());
+                        if (qpos < 0) continue;
+                        var before = lower.substring(Math.max(0, qpos - 25), qpos).replace(/['"]/g, "").trimEnd();
+                        if (/\bin(\s+the)?$/.test(before)) {
+                            assignments["workspace"] = qval;
+                            break;
+                        }
+                    }
+                }
                 // Assign remaining quoted values to unassigned required params in order
                 for (var r = 0; r < required.length; r++) {
                     if (!assignments[required[r].name] && qi < quoted.length) {
@@ -762,9 +798,27 @@ def chat():
                     }
                 }
 
-                // Assign remaining by position: first unassigned -> dataset, second -> workspace
+                // Detect "in" (optionally followed by "the") before a quoted value as a workspace hint
+                if (!workspace) {
+                    for (var i = 0; i < quoted.length; i++) {
+                        var qval = quoted[i];
+                        if (qval === dataset) continue;
+                        var qpos = lower.indexOf(qval.toLowerCase());
+                        if (qpos < 0) continue;
+                        var before = lower.substring(Math.max(0, qpos - 25), qpos).replace(/['"]/g, "").trimEnd();
+                        if (/\bin(\s+the)?$/.test(before)) {
+                            workspace = qval;
+                            break;
+                        }
+                    }
+                }
+
+                // Check which placeholders the template actually uses
+                var tplNeedsDataset = template.indexOf("{dataset}") >= 0 || template.indexOf("{report}") >= 0;
+
+                // Assign remaining by position based on template placeholders
                 for (var j = 0; j < quoted.length; j++) {
-                    if (!dataset && quoted[j] !== workspace) { dataset = quoted[j]; continue; }
+                    if (tplNeedsDataset && !dataset && quoted[j] !== workspace) { dataset = quoted[j]; continue; }
                     if (!workspace && quoted[j] !== dataset) { workspace = quoted[j]; continue; }
                 }
 
@@ -788,6 +842,13 @@ def chat():
                     code = code.replace(/\{languages\}/g, langStr);
                 } else {
                     code = code.replace(/\{languages\}/g, '["..."]  # specify language(s)');
+                }
+                // Extract standalone numbers from the prompt for {value} placeholder
+                if (template.indexOf("{value}") >= 0) {
+                    var numMatch = text.match(/\b(\d+)\b/);
+                    if (numMatch) {
+                        code = code.replace(/\{value\}/g, numMatch[1]);
+                    }
                 }
                 // Generic placeholder fallback for any remaining {xyz} placeholders
                 code = code.replace(/\{(\w+)\}/g, "...");
