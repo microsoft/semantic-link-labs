@@ -1709,28 +1709,42 @@ class TOMWrapper:
                 f"{icons.red_dot} The '{perspective_name}' perspective does not exist."
             )
 
+        def add_table_if_not_in_perspective(object):
+
+            if not any(
+                pt.Name
+                for pt in self.model.Perspectives[perspective_name].PerspectiveTables
+                if pt.Name == object.Parent.Name
+            ):
+                pt = TOM.PerspectiveTable()
+                pt.Table = object.Parent
+                self.model.Perspectives[perspective_name].PerspectiveTables.Add(pt)
+
         if objectType == TOM.ObjectType.Table:
             pt = TOM.PerspectiveTable()
             if include_all:
                 pt.IncludeAll = True
             pt.Table = object
-            object.Model.Perspectives[perspective_name].PerspectiveTables.Add(pt)
+            self.model.Perspectives[perspective_name].PerspectiveTables.Add(pt)
         elif objectType == TOM.ObjectType.Column:
             pc = TOM.PerspectiveColumn()
             pc.Column = object
-            object.Model.Perspectives[perspective_name].PerspectiveTables[
+            add_table_if_not_in_perspective(object)
+            self.model.Perspectives[perspective_name].PerspectiveTables[
                 object.Parent.Name
             ].PerspectiveColumns.Add(pc)
         elif objectType == TOM.ObjectType.Measure:
             pm = TOM.PerspectiveMeasure()
             pm.Measure = object
-            object.Model.Perspectives[perspective_name].PerspectiveTables[
+            add_table_if_not_in_perspective(object)
+            self.model.Perspectives[perspective_name].PerspectiveTables[
                 object.Parent.Name
             ].PerspectiveMeasures.Add(pm)
         elif objectType == TOM.ObjectType.Hierarchy:
             ph = TOM.PerspectiveHierarchy()
             ph.Hierarchy = object
-            object.Model.Perspectives[perspective_name].PerspectiveTables[
+            add_table_if_not_in_perspective(object)
+            self.model.Perspectives[perspective_name].PerspectiveTables[
                 object.Parent.Name
             ].PerspectiveHierarchies.Add(ph)
 
