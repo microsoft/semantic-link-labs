@@ -393,7 +393,6 @@ def chat():
             border-radius: 14px;
             background: #f1f1f3;
             resize: none;
-            min-height: 60px;
             max-height: 120px;
             line-height: 1.4;
             font-family: inherit;
@@ -434,7 +433,7 @@ def chat():
         <div id="chat-container-{session_id}">
             <div id="chat-header-{session_id}">
                 <span id="expand-history-{session_id}" style="display:none; cursor:pointer; font-size:18px;" title="Show history">▶</span>
-                <span>Sempy Chat</span>
+                <span>SemPy Chat</span>
             </div>
 
             <div id="chat-messages-{session_id}"></div>
@@ -443,7 +442,7 @@ def chat():
                 <textarea
                     id="chat-input-{session_id}"
                     placeholder="Message"
-                    rows="3"
+                    rows="1"
                 ></textarea>
                 <button id="send-btn-{session_id}">↑</button>
             </div>
