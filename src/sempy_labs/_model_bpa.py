@@ -715,10 +715,15 @@ def run_model_bpa(
             background: #f5f5f7;
             color: #6e6e73;
             white-space: nowrap;
+            min-width: 62px;
+            text-align: center;
+            box-sizing: border-box;
         }}
         .bpa-rule-severity {{
             font-size: 14px;
             flex-shrink: 0;
+            width: 1.4em;
+            text-align: center;
         }}
         .bpa-rule-desc {{
             padding: 0 18px 8px 48px;
