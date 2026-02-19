@@ -24,7 +24,288 @@ import sempy_labs._icons as icons
 from pyspark.sql.functions import col, flatten
 from pyspark.sql.types import StructType, StructField, StringType
 import os
+import inspect as _inspect
 from uuid import UUID
+
+
+def _highlight_python(source):
+    """Return HTML with syntax-highlighted Python source code."""
+    import re
+    from html import escape
+
+    if not source:
+        return ""
+
+    _KW = {
+        "and", "as", "assert", "async", "await", "break", "class",
+        "continue", "def", "del", "elif", "else", "except", "finally",
+        "for", "from", "global", "if", "import", "in", "is", "lambda",
+        "nonlocal", "not", "or", "pass", "raise", "return", "try",
+        "while", "with", "yield",
+    }
+    _CONST = {"True", "False", "None"}
+    _BUILT = {
+        "any", "all", "sum", "max", "min", "len", "int", "str",
+        "float", "bool", "list", "dict", "set", "tuple", "range",
+        "print", "isinstance", "hasattr", "getattr", "setattr",
+        "type", "enumerate", "zip", "map", "filter", "sorted",
+        "reversed", "abs", "round", "re",
+    }
+
+    # Tokenise source into ('str', ...), ('cmt', ...) and ('code', ...)
+    tokens = []
+    i = 0
+    n = len(source)
+    while i < n:
+        ch = source[i]
+        if source[i:i + 3] in ('"""', "'''"):
+            q3 = source[i:i + 3]
+            end = source.find(q3, i + 3)
+            end = end + 3 if end != -1 else n
+            tokens.append(("str", source[i:end]))
+            i = end
+        elif ch in ('"', "'"):
+            j = i + 1
+            while j < n and source[j] != ch:
+                if source[j] == "\\":
+                    j += 1
+                j += 1
+            j = min(j + 1, n)
+            tokens.append(("str", source[i:j]))
+            i = j
+        elif ch == "#":
+            end = source.find("\n", i)
+            end = end if end != -1 else n
+            tokens.append(("cmt", source[i:end]))
+            i = end
+        else:
+            nxt = n
+            for marker in ('"', "'", "#"):
+                pos = source.find(marker, i)
+                if pos != -1 and pos < nxt:
+                    nxt = pos
+            tokens.append(("code", source[i:nxt]))
+            i = nxt
+
+    _CODE_PAT = re.compile(
+        r"(TOM(?:\.\w+)+)"
+        r"|([a-zA-Z_]\w*)"
+        r"|(\d+\.?\d*(?:e[+-]?\d+)?)"
+        r"|(==|!=|>=|<=|>(?!=)|<(?!=))"
+    )
+
+    def _code_repl(m):
+        if m.group(1):
+            return '<span class="hl-t">' + escape(m.group(1)) + "</span>"
+        if m.group(2):
+            w = m.group(2)
+            ew = escape(w)
+            if w in _KW:
+                return '<span class="hl-k">' + ew + "</span>"
+            if w in _CONST:
+                return '<span class="hl-cn">' + ew + "</span>"
+            if w in _BUILT:
+                return '<span class="hl-bi">' + ew + "</span>"
+            return ew
+        if m.group(3):
+            return '<span class="hl-n">' + escape(m.group(3)) + "</span>"
+        if m.group(4):
+            return '<span class="hl-o">' + escape(m.group(4)) + "</span>"
+        return escape(m.group(0))
+
+    parts = []
+    for ttype, text in tokens:
+        escaped = escape(text)
+        if ttype == "str":
+            parts.append('<span class="hl-s">' + escaped + "</span>")
+        elif ttype == "cmt":
+            parts.append('<span class="hl-c">' + escaped + "</span>")
+        else:
+            last = 0
+            buf = []
+            for m in _CODE_PAT.finditer(text):
+                if m.start() > last:
+                    buf.append(escape(text[last:m.start()]))
+                buf.append(_code_repl(m))
+                last = m.end()
+            if last < len(text):
+                buf.append(escape(text[last:]))
+            parts.append("".join(buf))
+
+    return "".join(parts)
+
+
+def _extract_lambda_source(expr):
+    """
+    Extract the full lambda body from its source file.
+
+    inspect.getsource() fails for multi-line lambdas that use implicit
+    line continuation (e.g. ``== 0`` at EOL followed by ``and ...``).
+    This function reads the actual source file and parses forward from
+    the lambda's starting line, tracking bracket depth to find where the
+    lambda body truly ends.
+    """
+    try:
+        source_file = _inspect.getfile(expr)
+        start_line = expr.__code__.co_firstlineno
+    except (TypeError, OSError):
+        return None
+
+    try:
+        with open(source_file, "r", encoding="utf-8") as f:
+            all_lines = f.readlines()
+    except (IOError, OSError):
+        return None
+
+    # Join from the lambda line onward
+    text = "".join(all_lines[start_line - 1:])
+
+    # Locate "lambda obj, tom:" (or similar) and skip past the colon
+    lam_idx = text.find("lambda ")
+    if lam_idx < 0:
+        return None
+    colon_idx = text.find(":", lam_idx + 7)
+    if colon_idx < 0:
+        return None
+
+    # Parse the lambda body, tracking paren/bracket depth.
+    # The body ends at a comma or closing paren at depth 0.
+    body_start = colon_idx + 1
+    depth = 0
+    i = body_start
+    n = len(text)
+
+    while i < n:
+        ch = text[i]
+        if ch in ('"', "'"):
+            q3 = text[i: i + 3]
+            if q3 in ('"""', "'''"):
+                end = text.find(q3, i + 3)
+                i = end + 3 if end != -1 else n
+            else:
+                j = i + 1
+                while j < n:
+                    if text[j] == "\\":
+                        j += 2
+                    elif text[j] == ch:
+                        j += 1
+                        break
+                    else:
+                        j += 1
+                i = j
+        elif ch == "#":
+            end = text.find("\n", i)
+            i = end if end != -1 else n
+        elif ch in ("(", "[", "{"):
+            depth += 1
+            i += 1
+        elif ch in (")", "]", "}"):
+            if depth == 0:
+                break  # closing paren of containing tuple
+            depth -= 1
+            i += 1
+        elif ch == "," and depth == 0:
+            break  # comma separating from next tuple element
+        else:
+            i += 1
+
+    return text[body_start: i]
+
+
+def _format_rule_source(src):
+    """Normalise extracted lambda body with proper indentation."""
+    import ast as _ast
+
+    src = src.strip()
+    if not src:
+        return src
+
+    # Dedent manually first (for multi-line sources)
+    lines = src.split("\n")
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    while lines and not lines[-1].strip():
+        lines.pop()
+    if lines:
+        min_indent = min(
+            (len(l) - len(l.lstrip()) for l in lines if l.strip()),
+            default=0,
+        )
+        if min_indent > 0:
+            lines = [l[min_indent:] if len(l) >= min_indent else l
+                     for l in lines]
+        src = "\n".join(lines).strip()
+
+    # Round-trip through AST to normalise spacing
+    try:
+        tree = _ast.parse(src, mode="eval")
+        src = _ast.unparse(tree.body)
+    except (SyntaxError, ValueError):
+        pass  # keep the dedented version
+
+    if len(src) <= 80:
+        return src
+
+    # Split at top-level 'and'/'or' (outside parens/strings)
+    parts = []
+    depth = 0
+    seg_start = 0
+    seg_kw = ""
+    i = 0
+    n = len(src)
+
+    while i < n:
+        ch = src[i]
+        if ch in ("(", "[", "{"):
+            depth += 1
+            i += 1
+        elif ch in (")", "]", "}"):
+            depth -= 1
+            i += 1
+        elif ch in ('"', "'"):
+            q3 = src[i: i + 3]
+            if q3 in ('"""', "'''"):
+                end = src.find(q3, i + 3)
+                i = end + 3 if end != -1 else n
+            else:
+                j = i + 1
+                while j < n:
+                    if src[j] == "\\":
+                        j += 2
+                    elif src[j] == ch:
+                        j += 1
+                        break
+                    else:
+                        j += 1
+                i = j
+        elif depth == 0:
+            matched = False
+            for kw in (" and ", " or "):
+                if src[i: i + len(kw)] == kw:
+                    parts.append((seg_kw, src[seg_start:i].strip()))
+                    seg_kw = kw.strip()
+                    i += len(kw)
+                    seg_start = i
+                    matched = True
+                    break
+            if not matched:
+                i += 1
+        else:
+            i += 1
+
+    parts.append((seg_kw, src[seg_start:].strip()))
+
+    if len(parts) <= 1:
+        return src
+
+    result = []
+    for kw, expr in parts:
+        if kw:
+            result.append(kw + " " + expr)
+        else:
+            result.append(expr)
+
+    return "\n".join(result)
 
 
 @log
@@ -257,6 +538,23 @@ def run_model_bpa(
         rules.loc[rules["Severity"] == "Error", "Severity"] = icons.error
         rules.loc[rules["Severity"] == "Info", "Severity"] = icons.info
 
+        # Extract rule logic source code for display
+        rule_logic_map = {}
+        for _, r in rules.iterrows():
+            rname = r["Rule Name"]
+            expr = r["Expression"]
+            try:
+                src = _extract_lambda_source(expr)
+                if src:
+                    src = _format_rule_source(src)
+                    rule_logic_map[rname] = _highlight_python(
+                        src.strip()
+                    )
+                else:
+                    rule_logic_map[rname] = ""
+            except Exception:
+                rule_logic_map[rname] = ""
+
         pd.set_option("display.max_colwidth", 1000)
 
         violations = pd.DataFrame(columns=["Object Name", "Scope", "Rule Name"])
@@ -373,6 +671,24 @@ def run_model_bpa(
             how="left",
         )
         prepDF.rename(columns={"Scope": "Object Type"}, inplace=True)
+        _plural_map = {
+            "Column": "Columns",
+            "Calculated Column": "Calculated Columns",
+            "Measure": "Measures",
+            "Table": "Tables",
+            "Calculated Table": "Calculated Tables",
+            "Relationship": "Relationships",
+            "Partition": "Partitions",
+            "Hierarchy": "Hierarchies",
+            "Role": "Roles",
+            "Model": "Models",
+            "Calculation Item": "Calculation Items",
+            "Row Level Security": "Row Level Security",
+            "Function": "Functions",
+        }
+        prepDF["Object Type"] = prepDF["Object Type"].map(
+            _plural_map
+        ).fillna(prepDF["Object Type"])
         finalDF = prepDF[
             [
                 "Category",
@@ -498,6 +814,7 @@ def run_model_bpa(
     object_types_json = _json.dumps(all_object_types)
     severities_json = _json.dumps(all_severities)
     severity_label_json = _json.dumps(severity_label_map)
+    rule_logic_json = _json.dumps(rule_logic_map)
 
     html_output = f"""
     <style>
@@ -733,6 +1050,69 @@ def run_model_bpa(
             display: none;
         }}
         .bpa-rule-group.open .bpa-rule-desc {{ display: block; }}
+        .bpa-rule-logic-toggle {{
+            padding: 4px 18px 10px 48px;
+            font-size: 12px;
+            color: #0071e3;
+            cursor: pointer;
+            user-select: none;
+            display: none;
+            align-items: center;
+            gap: 6px;
+        }}
+        .bpa-rule-group.open .bpa-rule-logic-toggle {{ display: inline-flex; }}
+        .bpa-rule-logic-toggle:hover {{ color: #0077ed; text-decoration: underline; }}
+        .bpa-rule-logic-icon {{
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+        }}
+        .bpa-rule-logic {{
+            display: none;
+            margin: 0 18px 10px 48px;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #383838;
+        }}
+        .bpa-rule-logic.visible {{ display: block; }}
+        .bpa-rule-logic-hdr {{
+            background: #2d2d2d;
+            color: #9d9da0;
+            padding: 8px 14px;
+            font-size: 11px;
+            font-weight: 600;
+            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+            border-bottom: 1px solid #383838;
+        }}
+        .bpa-rule-logic-hdr svg {{
+            width: 13px;
+            height: 13px;
+            opacity: 0.6;
+        }}
+        .bpa-rule-logic-code {{
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 14px 16px;
+            font-family: "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 11.5px;
+            line-height: 1.7;
+            overflow-x: auto;
+            white-space: pre;
+            margin: 0;
+        }}
+        .hl-k  {{ color: #c586c0; }}
+        .hl-cn {{ color: #569cd6; }}
+        .hl-s  {{ color: #ce9178; }}
+        .hl-c  {{ color: #6a9955; font-style: italic; }}
+        .hl-n  {{ color: #b5cea8; }}
+        .hl-t  {{ color: #4ec9b0; }}
+        .hl-bi {{ color: #dcdcaa; }}
+        .hl-o  {{ color: #d4d4d4; }}
         .bpa-rule-body {{
             display: none;
             border-top: 1px solid #f0f0f5;
@@ -813,6 +1193,7 @@ def run_model_bpa(
         var OBJ_TYPES = {object_types_json};
         var SEVERITIES = {severities_json};
         var SEV_LABELS = {severity_label_json};
+        var RULE_LOGIC = {rule_logic_json};
 
         var activeTab = null;
 
@@ -829,19 +1210,19 @@ def run_model_bpa(
             filterRule.appendChild(o);
         }});
         var OBJ_TYPE_ICONS = {{
-            'Column': '▯',
-            'Calculated Column': '▯',
-            'Measure': '∑',
-            'Table': '▦',
-            'Calculated Table': '▦',
-            'Relationship': '⟷',
-            'Hierarchy': '≡',
-            'Partition': '▤',
-            'Role': '🔒',
+            'Columns': '▯',
+            'Calculated Columns': '▯',
+            'Measures': '∑',
+            'Tables': '▦',
+            'Calculated Tables': '▦',
+            'Relationships': '⟷',
+            'Hierarchies': '≡',
+            'Partitions': '▤',
+            'Roles': '🔒',
             'Row Level Security': '🛡',
-            'Calculation Item': '⚙',
-            'Model': '⧈',
-            'Function': '𝑓'
+            'Calculation Items': '⚙',
+            'Models': '⧈',
+            'Functions': '𝑓'
         }};
 
         OBJ_TYPES.forEach(function(t) {{
@@ -992,6 +1373,33 @@ def run_model_bpa(
                     desc.className = 'bpa-rule-desc';
                     desc.textContent = first.description;
                     group.appendChild(desc);
+                }}
+
+                // Rule Logic
+                if (RULE_LOGIC[rule]) {{
+                    var logicToggle = document.createElement('div');
+                    logicToggle.className = 'bpa-rule-logic-toggle';
+                    var codeIcon = '<svg class="bpa-rule-logic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>';
+                    logicToggle.innerHTML = codeIcon + ' View Rule Logic';
+                    var logicWrapper = document.createElement('div');
+                    logicWrapper.className = 'bpa-rule-logic';
+                    var logicHdr = document.createElement('div');
+                    logicHdr.className = 'bpa-rule-logic-hdr';
+                    logicHdr.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg> Python';
+                    logicWrapper.appendChild(logicHdr);
+                    var logicCode = document.createElement('pre');
+                    logicCode.className = 'bpa-rule-logic-code';
+                    logicCode.innerHTML = RULE_LOGIC[rule];
+                    logicWrapper.appendChild(logicCode);
+                    logicToggle.addEventListener('click', function(toggle, wrapper, icon) {{
+                        return function(e) {{
+                            e.stopPropagation();
+                            var isVisible = wrapper.classList.toggle('visible');
+                            toggle.innerHTML = icon + (isVisible ? ' Hide Rule Logic' : ' View Rule Logic');
+                        }};
+                    }}(logicToggle, logicWrapper, codeIcon));
+                    group.appendChild(logicToggle);
+                    group.appendChild(logicWrapper);
                 }}
 
                 // Body - grouped by object type
