@@ -601,6 +601,69 @@ def run_model_bpa(
         .bpa-filter-select:hover {{ border-color: #0071e3; }}
         .bpa-filter-select:focus {{ outline: none; border-color: #0071e3; box-shadow: 0 0 0 3px rgba(0,113,227,0.15); }}
 
+        /* ── Custom severity dropdown ── */
+        .bpa-sev-dropdown {{
+            position: relative;
+            display: inline-block;
+            min-width: 140px;
+        }}
+        .bpa-sev-toggle {{
+            padding: 7px 30px 7px 12px;
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            background: #fff;
+            font-size: 13px;
+            color: #1d1d1f;
+            font-family: inherit;
+            cursor: pointer;
+            transition: border-color 0.2s;
+            min-width: 140px;
+            box-sizing: border-box;
+            user-select: none;
+            white-space: nowrap;
+            background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%2386868b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+        }}
+        .bpa-sev-toggle:hover {{ border-color: #0071e3; }}
+        .bpa-sev-dropdown.open .bpa-sev-toggle {{ border-color: #0071e3; box-shadow: 0 0 0 3px rgba(0,113,227,0.15); }}
+        .bpa-sev-menu {{
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 2px;
+            background: #fff;
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            z-index: 100;
+            padding: 4px 0;
+            min-width: 100%;
+        }}
+        .bpa-sev-dropdown.open .bpa-sev-menu {{ display: block; }}
+        .bpa-sev-item {{
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #1d1d1f;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+        }}
+        .bpa-sev-item:hover {{ background: #f0f0f5; }}
+        .bpa-sev-item.selected {{ background: #e8f0fe; }}
+        .bpa-sev-icon {{
+            display: inline-block;
+            width: 1.2em;
+            text-align: center;
+            flex-shrink: 0;
+        }}
+        .bpa-sev-label {{
+            margin-left: 6px;
+        }}
+
         /* ── Tab content ── */
         .bpa-tab-content {{ display: none; }}
         .bpa-tab-content.active {{ display: block; }}
@@ -730,7 +793,10 @@ def run_model_bpa(
             <span class="bpa-filter-label">Filters</span>
             <select class="bpa-filter-select" id="filterRule"><option value="">All Rules</option></select>
             <select class="bpa-filter-select" id="filterObjType"><option value="">All Object Types</option></select>
-            <select class="bpa-filter-select" id="filterSeverity"><option value="">All Severities</option></select>
+            <div class="bpa-sev-dropdown" id="sevDropdown">
+                <div class="bpa-sev-toggle" id="sevToggle">All Severities</div>
+                <div class="bpa-sev-menu" id="sevMenu"></div>
+            </div>
         </div>
         <div id="bpaContent"></div>
     </div>
@@ -748,7 +814,10 @@ def run_model_bpa(
         // Populate filter dropdowns
         var filterRule = document.getElementById('filterRule');
         var filterObjType = document.getElementById('filterObjType');
-        var filterSeverity = document.getElementById('filterSeverity');
+        var sevDropdown = document.getElementById('sevDropdown');
+        var sevToggle = document.getElementById('sevToggle');
+        var sevMenu = document.getElementById('sevMenu');
+        var filterSeverityValue = '';
 
         RULE_NAMES.forEach(function(r) {{
             var o = document.createElement('option'); o.value = r; o.textContent = r;
@@ -775,16 +844,64 @@ def run_model_bpa(
             o.textContent = (OBJ_TYPE_ICONS[t] || '') + '  ' + t;
             filterObjType.appendChild(o);
         }});
+        // Build custom severity dropdown items
+        var sevAllItem = document.createElement('div');
+        sevAllItem.className = 'bpa-sev-item selected';
+        sevAllItem.setAttribute('data-value', '');
+        sevAllItem.textContent = 'All Severities';
+        sevMenu.appendChild(sevAllItem);
+
         SEVERITIES.forEach(function(s) {{
-            var o = document.createElement('option');
-            o.value = s;
-            o.textContent = s + '  ' + (SEV_LABELS[s] || s);
-            filterSeverity.appendChild(o);
+            var item = document.createElement('div');
+            item.className = 'bpa-sev-item';
+            item.setAttribute('data-value', s);
+            var iconSpan = document.createElement('span');
+            iconSpan.className = 'bpa-sev-icon';
+            iconSpan.textContent = s;
+            var labelSpan = document.createElement('span');
+            labelSpan.className = 'bpa-sev-label';
+            labelSpan.textContent = SEV_LABELS[s] || s;
+            item.appendChild(iconSpan);
+            item.appendChild(labelSpan);
+            sevMenu.appendChild(item);
+        }});
+
+        // Severity dropdown interaction
+        sevToggle.addEventListener('click', function(e) {{
+            e.stopPropagation();
+            sevDropdown.classList.toggle('open');
+        }});
+        document.addEventListener('click', function() {{
+            sevDropdown.classList.remove('open');
+        }});
+        sevMenu.addEventListener('click', function(e) {{
+            var item = e.target.closest('.bpa-sev-item');
+            if (!item) return;
+            var val = item.getAttribute('data-value');
+            filterSeverityValue = val;
+            // Update selected state
+            sevMenu.querySelectorAll('.bpa-sev-item').forEach(function(el) {{ el.classList.remove('selected'); }});
+            item.classList.add('selected');
+            // Update toggle display
+            if (val === '') {{
+                sevToggle.textContent = 'All Severities';
+            }} else {{
+                sevToggle.textContent = '';
+                var tIcon = document.createElement('span');
+                tIcon.className = 'bpa-sev-icon';
+                tIcon.textContent = val;
+                var tLabel = document.createElement('span');
+                tLabel.className = 'bpa-sev-label';
+                tLabel.textContent = SEV_LABELS[val] || val;
+                sevToggle.appendChild(tIcon);
+                sevToggle.appendChild(tLabel);
+            }}
+            sevDropdown.classList.remove('open');
+            render();
         }});
 
         filterRule.addEventListener('change', render);
         filterObjType.addEventListener('change', render);
-        filterSeverity.addEventListener('change', render);
 
         // Category icon map (SVG inline icons)
         var CAT_ICONS = {{
@@ -825,7 +942,7 @@ def run_model_bpa(
 
             var fRule = filterRule.value;
             var fType = filterObjType.value;
-            var fSev = filterSeverity.value;
+            var fSev = filterSeverityValue;
 
             var rows = DATA[activeTab].filter(function(r) {{
                 if (fRule && r.rule !== fRule) return false;
