@@ -461,97 +461,465 @@ def run_model_bpa(
         for cat in bpa2["Category"].drop_duplicates().values
     }
 
-    styles = """
-    <style>
-        .tab { overflow: hidden; border: 1px solid #ccc; background-color: #f1f1f1; }
-        .tab button { background-color: inherit; float: left; border: none; outline: none; cursor: pointer; padding: 14px 16px; transition: 0.3s; }
-        .tab button:hover { background-color: #ddd; }
-        .tab button.active { background-color: #ccc; }
-        .tabcontent { display: none; padding: 6px 12px; border: 1px solid #ccc; border-top: none; }
-        .tabcontent.active { display: block; }
-        .tooltip { position: relative; display: inline-block; }
-        .tooltip .tooltiptext { visibility: hidden; width: 300px; background-color: #555; color: #fff; text-align: center; border-radius: 6px; padding: 5px; position: absolute; z-index: 1; bottom: 125%; left: 50%; margin-left: -110px; opacity: 0; transition: opacity 0.3s; }
-        .tooltip:hover .tooltiptext { visibility: visible; opacity: 1; }
-    </style>
-    """
+    import json as _json
 
-    # JavaScript for tab functionality
-    script = """
-    <script>
-    function openTab(evt, tabName) {
-        var i, tabcontent, tablinks;
-        tabcontent = document.getElementsByClassName("tabcontent");
-        for (i = 0; i < tabcontent.length; i++) {
-            tabcontent[i].style.display = "none";
-        }
-        tablinks = document.getElementsByClassName("tablinks");
-        for (i = 0; i < tablinks.length; i++) {
-            tablinks[i].className = tablinks[i].className.replace(" active", "");
-        }
-        document.getElementById(tabName).style.display = "block";
-        evt.currentTarget.className += " active";
+    # Collect unique filter values
+    all_rule_names = sorted(bpa2["Rule Name"].dropna().unique().tolist())
+    all_object_types = sorted(bpa2["Object Type"].dropna().unique().tolist())
+    all_severities = sorted(bpa2["Severity"].dropna().unique().tolist())
+
+    severity_label_map = {
+        icons.warning: "Warning",
+        icons.error: "Error",
+        icons.info: "Info",
     }
-    </script>
-    """
 
-    # JavaScript for dynamic tooltip positioning
-    dynamic_script = """
-    <script>
-    function adjustTooltipPosition(event) {
-        var tooltip = event.target.querySelector('.tooltiptext');
-        var rect = tooltip.getBoundingClientRect();
-        var topSpace = rect.top;
-        var bottomSpace = window.innerHeight - rect.bottom;
-
-        if (topSpace < bottomSpace) {
-            tooltip.style.bottom = '125%';
-        } else {
-            tooltip.style.bottom = 'auto';
-            tooltip.style.top = '125%';
-        }
-    }
-    </script>
-    """
-
-    # HTML for tabs
-    tab_html = '<div class="tab">'
-    content_html = ""
-    for i, (title, df) in enumerate(bpa_dict.items()):
+    # Build data payload for JS
+    categories_data = {}
+    for cat, df in bpa_dict.items():
         if df.shape[0] == 0:
             continue
-
-        tab_id = f"tab{i}"
-        active_class = ""
-        if i == 0:
-            active_class = "active"
-
-        summary = " + ".join(
-            [f"{idx} ({v})" for idx, v in df["Severity"].value_counts().items()]
-        )
-        tab_html += f'<button class="tablinks {active_class}" onclick="openTab(event, \'{tab_id}\')"><b>{title}</b><br/>{summary}</button>'
-        content_html += f'<div id="{tab_id}" class="tabcontent {active_class}">'
-
-        # Adding tooltip for Rule Name using Description column
-        content_html += '<table border="1">'
-        content_html += "<tr><th>Rule Name</th><th>Object Type</th><th>Object Name</th><th>Severity</th></tr>"
+        rows = []
         for _, row in df.iterrows():
-            content_html += "<tr>"
-            if pd.notnull(row["URL"]):
-                content_html += f'<td class="tooltip" onmouseover="adjustTooltipPosition(event)"><a href="{row["URL"]}">{row["Rule Name"]}</a><span class="tooltiptext">{row["Description"]}</span></td>'
-            elif pd.notnull(row["Description"]):
-                content_html += f'<td class="tooltip" onmouseover="adjustTooltipPosition(event)">{row["Rule Name"]}<span class="tooltiptext">{row["Description"]}</span></td>'
-            else:
-                content_html += f'<td>{row["Rule Name"]}</td>'
-            content_html += f'<td>{row["Object Type"]}</td>'
-            content_html += f'<td>{row["Object Name"]}</td>'
-            content_html += f'<td style="text-align: center;">{row["Severity"]}</td>'
-            # content_html += f'<td>{row["Severity"]}</td>'
-            content_html += "</tr>"
-        content_html += "</table>"
+            rows.append(
+                {
+                    "rule": str(row["Rule Name"]),
+                    "objectType": str(row["Object Type"]),
+                    "objectName": str(row["Object Name"]),
+                    "severity": str(row["Severity"]),
+                    "description": str(row["Description"]) if pd.notnull(row["Description"]) else "",
+                    "url": str(row["URL"]) if pd.notnull(row["URL"]) else "",
+                }
+            )
+        categories_data[cat] = rows
 
-        content_html += "</div>"
-    tab_html += "</div>"
+    data_json = _json.dumps(categories_data)
+    rule_names_json = _json.dumps(all_rule_names)
+    object_types_json = _json.dumps(all_object_types)
+    severities_json = _json.dumps(all_severities)
+    severity_label_json = _json.dumps(severity_label_map)
 
-    # Display the tabs, tab contents, and run the script
+    html_output = f"""
+    <style>
+        .bpa-root {{
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+            color: #1d1d1f;
+            max-width: 100%;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }}
+
+        /* ── Tab bar ── */
+        .bpa-tabs {{
+            display: flex;
+            gap: 6px;
+            padding: 4px;
+            background: #f5f5f7;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }}
+        .bpa-tab-btn {{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 18px;
+            border: none;
+            border-radius: 10px;
+            background: transparent;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            color: #6e6e73;
+            transition: all 0.25s ease;
+            text-align: left;
+            line-height: 1.4;
+            white-space: nowrap;
+        }}
+        .bpa-tab-btn:hover {{ background: rgba(0,0,0,0.04); }}
+        .bpa-tab-btn.active {{
+            background: #fff;
+            color: #1d1d1f;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            font-weight: 600;
+        }}
+        .bpa-tab-btn .tab-count {{
+            font-size: 11px;
+            font-weight: 400;
+            color: #86868b;
+            display: block;
+            margin-top: 2px;
+        }}
+        .bpa-tab-text {{
+            display: flex;
+            flex-direction: column;
+        }}
+        .bpa-cat-icon {{
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+            opacity: 0.55;
+        }}
+        .bpa-tab-btn.active .bpa-cat-icon {{
+            opacity: 1;
+            color: #0071e3;
+        }}
+
+        /* ── Filter bar ── */
+        .bpa-filters {{
+            display: flex;
+            gap: 10px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+            align-items: center;
+        }}
+        .bpa-filter-label {{
+            font-size: 12px;
+            font-weight: 600;
+            color: #86868b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-right: 2px;
+        }}
+        .bpa-filter-select {{
+            padding: 7px 30px 7px 12px;
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            background: #fff;
+            font-size: 13px;
+            color: #1d1d1f;
+            font-family: inherit;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%2386868b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            cursor: pointer;
+            transition: border-color 0.2s;
+            min-width: 140px;
+        }}
+        .bpa-filter-select:hover {{ border-color: #0071e3; }}
+        .bpa-filter-select:focus {{ outline: none; border-color: #0071e3; box-shadow: 0 0 0 3px rgba(0,113,227,0.15); }}
+
+        /* ── Tab content ── */
+        .bpa-tab-content {{ display: none; }}
+        .bpa-tab-content.active {{ display: block; }}
+
+        /* ── Collapsible rule group ── */
+        .bpa-rule-group {{
+            background: #fff;
+            border: 1px solid #e8e8ed;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            overflow: hidden;
+            transition: box-shadow 0.2s ease;
+        }}
+        .bpa-rule-group:hover {{ box-shadow: 0 2px 12px rgba(0,0,0,0.06); }}
+        .bpa-rule-header {{
+            display: flex;
+            align-items: center;
+            padding: 14px 18px;
+            cursor: pointer;
+            user-select: none;
+            gap: 12px;
+            transition: background 0.15s;
+        }}
+        .bpa-rule-header:hover {{ background: #fafafa; }}
+        .bpa-chevron {{
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+            transition: transform 0.25s ease;
+            color: #86868b;
+        }}
+        .bpa-rule-group.open .bpa-chevron {{ transform: rotate(90deg); }}
+        .bpa-rule-title {{
+            font-size: 14px;
+            font-weight: 600;
+            color: #1d1d1f;
+            flex: 1;
+        }}
+        .bpa-rule-title a {{
+            color: #0071e3;
+            text-decoration: none;
+        }}
+        .bpa-rule-title a:hover {{ text-decoration: underline; }}
+        .bpa-rule-badge {{
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 10px;
+            border-radius: 20px;
+            background: #f5f5f7;
+            color: #6e6e73;
+            white-space: nowrap;
+        }}
+        .bpa-rule-severity {{
+            font-size: 14px;
+            flex-shrink: 0;
+        }}
+        .bpa-rule-desc {{
+            padding: 0 18px 8px 48px;
+            font-size: 12px;
+            color: #86868b;
+            line-height: 1.5;
+            display: none;
+        }}
+        .bpa-rule-group.open .bpa-rule-desc {{ display: block; }}
+        .bpa-rule-body {{
+            display: none;
+            border-top: 1px solid #f0f0f5;
+        }}
+        .bpa-rule-group.open .bpa-rule-body {{ display: block; }}
+
+        /* ── Object type sub-group ── */
+        .bpa-otype-group {{ border-top: 1px solid #f0f0f5; }}
+        .bpa-otype-header {{
+            display: flex;
+            align-items: center;
+            padding: 10px 18px 10px 36px;
+            cursor: pointer;
+            user-select: none;
+            gap: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #6e6e73;
+            transition: background 0.15s;
+        }}
+        .bpa-otype-header:hover {{ background: #fafafa; }}
+        .bpa-otype-chevron {{
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+            transition: transform 0.25s ease;
+            color: #aeaeb2;
+        }}
+        .bpa-otype-group.open .bpa-otype-chevron {{ transform: rotate(90deg); }}
+        .bpa-otype-badge {{
+            font-size: 11px;
+            padding: 1px 8px;
+            border-radius: 20px;
+            background: #f0f0f5;
+            color: #86868b;
+        }}
+        .bpa-obj-list {{
+            display: none;
+            padding: 0 18px 8px 60px;
+        }}
+        .bpa-otype-group.open .bpa-obj-list {{ display: block; }}
+        .bpa-obj-item {{
+            padding: 6px 0;
+            font-size: 13px;
+            color: #424245;
+            border-bottom: 1px solid #f5f5f7;
+            font-family: "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+        }}
+        .bpa-obj-item:last-child {{ border-bottom: none; }}
+
+        /* ── Empty state ── */
+        .bpa-empty {{
+            text-align: center;
+            padding: 40px 20px;
+            color: #86868b;
+            font-size: 14px;
+        }}
+    </style>
+
+    <div class="bpa-root" id="bpaRoot">
+        <div class="bpa-tabs" id="bpaTabs"></div>
+        <div class="bpa-filters" id="bpaFilters">
+            <span class="bpa-filter-label">Filters</span>
+            <select class="bpa-filter-select" id="filterRule"><option value="">All Rules</option></select>
+            <select class="bpa-filter-select" id="filterObjType"><option value="">All Object Types</option></select>
+            <select class="bpa-filter-select" id="filterSeverity"><option value="">All Severities</option></select>
+        </div>
+        <div id="bpaContent"></div>
+    </div>
+
+    <script>
+    (function() {{
+        var DATA = {data_json};
+        var RULE_NAMES = {rule_names_json};
+        var OBJ_TYPES = {object_types_json};
+        var SEVERITIES = {severities_json};
+        var SEV_LABELS = {severity_label_json};
+
+        var activeTab = null;
+
+        // Populate filter dropdowns
+        var filterRule = document.getElementById('filterRule');
+        var filterObjType = document.getElementById('filterObjType');
+        var filterSeverity = document.getElementById('filterSeverity');
+
+        RULE_NAMES.forEach(function(r) {{
+            var o = document.createElement('option'); o.value = r; o.textContent = r;
+            filterRule.appendChild(o);
+        }});
+        var OBJ_TYPE_ICONS = {{
+            'Column': '▯',
+            'Calculated Column': '▯',
+            'Measure': '∑',
+            'Table': '▦',
+            'Calculated Table': '▦',
+            'Relationship': '⟷',
+            'Hierarchy': '≡',
+            'Partition': '▤',
+            'Role': '🔒',
+            'Row Level Security': '🛡',
+            'Calculation Item': '⚙',
+            'Model': '⧈',
+            'Function': '𝑓'
+        }};
+
+        OBJ_TYPES.forEach(function(t) {{
+            var o = document.createElement('option'); o.value = t;
+            o.textContent = (OBJ_TYPE_ICONS[t] || '') + '  ' + t;
+            filterObjType.appendChild(o);
+        }});
+        SEVERITIES.forEach(function(s) {{
+            var o = document.createElement('option');
+            o.value = s;
+            o.textContent = s + '  ' + (SEV_LABELS[s] || s);
+            filterSeverity.appendChild(o);
+        }});
+
+        filterRule.addEventListener('change', render);
+        filterObjType.addEventListener('change', render);
+        filterSeverity.addEventListener('change', render);
+
+        // Category icon map (SVG inline icons)
+        var CAT_ICONS = {{
+            'Performance': '<svg class="bpa-cat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
+            'Formatting': '<svg class="bpa-cat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
+            'Maintenance': '<svg class="bpa-cat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+            'DAX Expressions': '<svg class="bpa-cat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/><line x1="14" y1="4" x2="10" y2="20"/></svg>',
+            'Error Prevention': '<svg class="bpa-cat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+            'Naming Conventions': '<svg class="bpa-cat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>'
+        }};
+        var DEFAULT_ICON = '<svg class="bpa-cat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
+
+        // Build tabs
+        var tabsEl = document.getElementById('bpaTabs');
+        var cats = Object.keys(DATA);
+        cats.forEach(function(cat, idx) {{
+            var btn = document.createElement('button');
+            btn.className = 'bpa-tab-btn' + (idx === 0 ? ' active' : '');
+            var icon = CAT_ICONS[cat] || DEFAULT_ICON;
+            btn.innerHTML = icon + '<span class="bpa-tab-text"><strong>' + cat + '</strong><span class="tab-count">' + DATA[cat].length + ' violations</span></span>';
+            btn.addEventListener('click', function() {{
+                tabsEl.querySelectorAll('.bpa-tab-btn').forEach(function(b) {{ b.classList.remove('active'); }});
+                btn.classList.add('active');
+                activeTab = cat;
+                render();
+            }});
+            tabsEl.appendChild(btn);
+        }});
+        activeTab = cats[0] || null;
+
+        var chevronSvg = '<svg class="bpa-chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 4 13 10 7 16"/></svg>';
+        var chevronSmall = '<svg class="bpa-otype-chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 4 13 10 7 16"/></svg>';
+
+        function render() {{
+            var container = document.getElementById('bpaContent');
+            container.innerHTML = '';
+            if (!activeTab || !DATA[activeTab]) return;
+
+            var fRule = filterRule.value;
+            var fType = filterObjType.value;
+            var fSev = filterSeverity.value;
+
+            var rows = DATA[activeTab].filter(function(r) {{
+                if (fRule && r.rule !== fRule) return false;
+                if (fType && r.objectType !== fType) return false;
+                if (fSev && r.severity !== fSev) return false;
+                return true;
+            }});
+
+            if (rows.length === 0) {{
+                container.innerHTML = '<div class="bpa-empty">No violations match the current filters.</div>';
+                return;
+            }}
+
+            // Group by rule
+            var ruleMap = {{}};
+            rows.forEach(function(r) {{
+                if (!ruleMap[r.rule]) ruleMap[r.rule] = [];
+                ruleMap[r.rule].push(r);
+            }});
+
+            Object.keys(ruleMap).sort().forEach(function(rule) {{
+                var items = ruleMap[rule];
+                var first = items[0];
+
+                var group = document.createElement('div');
+                group.className = 'bpa-rule-group';
+
+                // Header
+                var header = document.createElement('div');
+                header.className = 'bpa-rule-header';
+                var titleHtml = first.url ? '<a href="' + first.url + '" target="_blank">' + rule + '</a>' : rule;
+                header.innerHTML = chevronSvg +
+                    '<span class="bpa-rule-title">' + titleHtml + '</span>' +
+                    '<span class="bpa-rule-badge">' + items.length + ' object' + (items.length !== 1 ? 's' : '') + '</span>' +
+                    '<span class="bpa-rule-severity">' + first.severity + '</span>';
+                header.addEventListener('click', function() {{ group.classList.toggle('open'); }});
+                group.appendChild(header);
+
+                // Description
+                if (first.description) {{
+                    var desc = document.createElement('div');
+                    desc.className = 'bpa-rule-desc';
+                    desc.textContent = first.description;
+                    group.appendChild(desc);
+                }}
+
+                // Body - grouped by object type
+                var body = document.createElement('div');
+                body.className = 'bpa-rule-body';
+
+                var typeMap = {{}};
+                items.forEach(function(it) {{
+                    if (!typeMap[it.objectType]) typeMap[it.objectType] = [];
+                    typeMap[it.objectType].push(it);
+                }});
+
+                Object.keys(typeMap).sort().forEach(function(otype) {{
+                    var objs = typeMap[otype];
+                    var otGroup = document.createElement('div');
+                    otGroup.className = 'bpa-otype-group';
+
+                    var otHeader = document.createElement('div');
+                    otHeader.className = 'bpa-otype-header';
+                    otHeader.innerHTML = chevronSmall +
+                        '<span>' + otype + '</span>' +
+                        '<span class="bpa-otype-badge">' + objs.length + '</span>';
+                    otHeader.addEventListener('click', function(e) {{
+                        e.stopPropagation();
+                        otGroup.classList.toggle('open');
+                    }});
+                    otGroup.appendChild(otHeader);
+
+                    var list = document.createElement('div');
+                    list.className = 'bpa-obj-list';
+                    objs.forEach(function(o) {{
+                        var item = document.createElement('div');
+                        item.className = 'bpa-obj-item';
+                        item.textContent = o.objectName;
+                        list.appendChild(item);
+                    }});
+                    otGroup.appendChild(list);
+                    body.appendChild(otGroup);
+                }});
+
+                group.appendChild(body);
+                container.appendChild(group);
+            }});
+        }}
+
+        render();
+    }})();
+    </script>
+    """
+
+    # Display the modern BPA visualization
     if not export:
-        return display(HTML(styles + tab_html + content_html + script))
+        return display(HTML(html_output))
