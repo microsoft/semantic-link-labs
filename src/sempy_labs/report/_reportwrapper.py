@@ -847,7 +847,7 @@ class ReportWrapper:
             page_id = payload.get("name")
             page_display = payload.get("displayName")
 
-            if "filterConfig" in payload:
+            if isinstance(payload, dict) and "filterConfig" in payload:
                 for flt in payload.get("filterConfig", {}).get("filters", {}):
                     filter_name = flt.get("name")
                     how_created = flt.get("howCreated")
@@ -928,7 +928,7 @@ class ReportWrapper:
             page_display = visual_mapping.get(path)[1]
             visual_name = payload.get("name")
 
-            if "filterConfig" in payload:
+            if isinstance(payload, dict) and "filterConfig" in payload:
                 for flt in payload.get("filterConfig", {}).get("filters", {}):
                     filter_name = flt.get("name")
                     how_created = flt.get("howCreated")
