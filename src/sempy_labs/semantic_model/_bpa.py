@@ -22,7 +22,6 @@ from sempy_labs._helper_functions import (
 )
 from sempy_labs.lakehouse import get_lakehouse_tables, lakehouse_attached
 from sempy_labs.tom import connect_semantic_model
-from sempy_labs._model_bpa_rules import model_bpa_rules
 from typing import Optional
 from sempy._utils._log import log
 import sempy_labs._icons as icons
@@ -30,18 +29,7 @@ from pyspark.sql.functions import col, flatten
 from pyspark.sql.types import StructType, StructField, StringType
 from uuid import UUID
 from pathlib import Path
-
-
-def strip_lambda_params(func):
-    source = inspect.getsource(func).strip()
-
-    # Extract everything after the first colon
-    body = source.split(":", 1)[1].strip()
-
-    # Remove trailing comma if present
-    body = body.rstrip(",")
-
-    return body
+import sempy_labs.semantic_model._bpa_rules as bpa
 
 
 def save_as_file(
@@ -434,13 +422,12 @@ def _format_rule_source(src):
 def run_model_bpa(
     dataset: str | UUID,
     rules: Optional[pd.DataFrame] = None,
-    workspace: Optional[str] = None,
+    workspace: Optional[str | UUID] = None,
     export: bool = False,
     return_dataframe: bool = False,
     extended: bool = False,
     language: Optional[str] = None,
     check_dependencies: bool = True,
-    **kwargs,
 ):
     """
     Displays an HTML visualization of the results of the Best Practice Analyzer scan for a semantic model.
@@ -569,32 +556,25 @@ def run_model_bpa(
 
         translated = False
 
+        default_rules = bpa.rules
         # Translations
         if language is not None and rules is None and language in language_list:
-            rules = model_bpa_rules()
-            translate_using_po(rules)
-            rules["ExpressionText"] = rules["Expression"].apply(strip_lambda_params)
+            rules = default_rules
+            rules_df = pd.DataFrame(rules, columns=["Category", "Scope", "Severity", "Name", "Expression", "Description", "URL"])
+            translate_using_po(rules_df)
             translated = True
         if rules is None:
-            rules = model_bpa_rules()
-            rules["ExpressionText"] = rules["Expression"].apply(strip_lambda_params)
+            rules = default_rules
         elif isinstance(rules, str):
             with open(rules, "r") as f:
                 data = json.load(f)
-            rules = pd.DataFrame(json.loads(data))
-            rules["ExpressionText"] = rules["Expression"]
-            rules["Expression"] = rules["Expression"].apply(
-                lambda expr: eval(f"lambda obj, tom, dep, TOM, re: {expr}")
-            )
+            rules = json.loads(data)
+
+        rules_df = pd.DataFrame(rules, columns=["Category", "Scope", "Severity", "Name", "Expression", "Description", "URL"])
 
         # Save Rules locally
         file_path = "./builtin/SLL/modelbpa/rules.json"
-        df_to_save = rules.copy()
-        df_to_save = df_to_save.drop(columns=["Expression"], errors="ignore")
-        df_to_save = df_to_save.rename(columns={"ExpressionText": "Expression"})
-        # df_to_save["Expression"] = df_to_save["Expression"].apply(strip_lambda_params)
-        content = df_to_save.to_json(orient="records", indent=4)
-        save_as_file(file_path=file_path, content=content, overwrite=False)
+        save_as_file(file_path=file_path, content=rules, overwrite=False)
 
         if language is not None and not translated:
 
@@ -602,7 +582,7 @@ def run_model_bpa(
 
                 from synapse.ml.services import Translate
 
-                rules_temp = rule_file.copy()
+                rules_temp = rule_df.copy()
                 rules_temp = rules_temp.drop(["Expression", "URL", "Severity"], axis=1)
 
                 schema = StructType(
@@ -669,33 +649,30 @@ def run_model_bpa(
 
                 return rule_file
 
-            rules = translate_using_spark(rules)
+            rules = translate_using_spark(rules_df)
 
-        rules.loc[rules["Severity"] == "Warning", "Severity"] = icons.warning
-        rules.loc[rules["Severity"] == "Error", "Severity"] = icons.error
-        rules.loc[rules["Severity"] == "Info", "Severity"] = icons.info
+        for rule in rules:
+            if rule["Severity"] == "Warning":
+                rule["Severity"] = icons.warning
+            elif rule["Severity"] == "Error":
+                rule["Severity"] = icons.error
+            elif rule["Severity"] == "Info":
+                rule["Severity"] = icons.info
+
+        # Rebuild rules_df after severity icons have been applied
+        rules_df = pd.DataFrame(rules, columns=["Category", "Scope", "Severity", "Name", "Expression", "Description", "URL"])
 
         # Extract rule logic source code for display
         rule_logic_map = {}
-        has_expr_text = "ExpressionText" in rules.columns
-        for _, r in rules.iterrows():
-            rname = r["Rule Name"]
-            expr = r["Expression"]
+        for rule in rules:
+            rname = rule.get("Name")
+            expr = rule.get("Expression")
             src = None
-            try:
-                if callable(expr):
-                    src = _extract_lambda_source(expr)
-                    if src:
-                        src = _format_rule_source(src)
-            except Exception:
-                src = None
-            if not src and has_expr_text:
-                raw = r.get("ExpressionText", "")
-                if raw and isinstance(raw, str):
-                    try:
-                        src = _format_rule_source(raw)
-                    except Exception:
-                        src = raw
+            if expr and isinstance(expr, str):
+                try:
+                    src = _format_rule_source(expr)
+                except Exception:
+                    src = expr
             rule_logic_map[rname] = _highlight_python(src.strip()) if src else ""
 
         pd.set_option("display.max_colwidth", 1000)
@@ -748,14 +725,14 @@ def run_model_bpa(
         }
 
         import sempy
-
         sempy.fabric._client._utils._init_analysis_services()
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        for i, r in rules.iterrows():
-            ruleName = r["Rule Name"]
-            expr = r["Expression"]
-            scopes = r["Scope"]
+        for rule in rules:
+            ruleName = rule.get("Name")
+            expr_text = rule.get("Expression")
+            scopes = rule.get("Scope")
+            expr = eval(f"lambda obj, tom, dep, TOM, re: ({expr_text})")
 
             if isinstance(scopes, str):
                 scopes = [scopes]
@@ -851,11 +828,12 @@ def run_model_bpa(
 
         prepDF = pd.merge(
             violations,
-            rules[["Rule Name", "Category", "Severity", "Description", "URL"]],
+            rules_df[["Name", "Category", "Severity", "Description", "URL"]],
             left_on="Rule Name",
-            right_on="Rule Name",
+            right_on="Name",
             how="left",
         )
+    
         prepDF.rename(columns={"Scope": "Object Type"}, inplace=True)
         _plural_map = {
             "Column": "Columns",
@@ -1552,7 +1530,21 @@ def run_model_bpa(
                     '<span class="bpa-rule-title">' + titleHtml + '</span>' +
                     '<span class="bpa-rule-badge">' + items.length + ' object' + (items.length !== 1 ? 's' : '') + '</span>' +
                     '<span class="bpa-rule-severity">' + first.severity + '</span>';
-                header.addEventListener('click', function() {{ group.classList.toggle('open'); }});
+                header.addEventListener('click', function() {{
+                    var wasOpen = group.classList.contains('open');
+                    group.classList.toggle('open');
+                    if (wasOpen) {{
+                        var lw = group.querySelector('.bpa-rule-logic.visible');
+                        if (lw) {{
+                            lw.classList.remove('visible');
+                            var lt = group.querySelector('.bpa-rule-logic-toggle');
+                            if (lt) {{
+                                var ci = '<svg class="bpa-rule-logic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>';
+                                lt.innerHTML = ci + ' View Rule Logic';
+                            }}
+                        }}
+                    }}
+                }});
                 group.appendChild(header);
 
                 // Description
