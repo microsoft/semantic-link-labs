@@ -2523,7 +2523,7 @@ class TOMWrapper:
 
         return (
             self.is_calculated_table(table_name=table_name)
-            and t.Columns.Count == 4
+            and t.Columns.Count in [4, 5]
             and any(
                 "NAMEOF(" in p.Source.Expression.replace(" ", "") for p in t.Partitions
             )
