@@ -745,16 +745,29 @@ def _show_landing(rules, dataset_name, workspace_id):
             line-height: 1;
         }}
         .bpa-editor-close:hover {{ background: #f0f0f5; color: #1d1d1f; }}
+        .bpa-editor-header {{
+            flex-shrink: 0;
+            padding: 0 24px;
+            background: #fff;
+        }}
         .bpa-editor-body {{
             overflow-y: auto;
-            padding: 16px 24px;
+            padding: 0 24px 16px 24px;
             flex: 1;
         }}
         .bpa-editor-table {{
             width: 100%;
-            border-collapse: collapse;
+            table-layout: fixed;
+            border-collapse: separate;
+            border-spacing: 0;
             font-size: 12px;
         }}
+        .bpa-editor-table col.col-name {{ width: 20%; }}
+        .bpa-editor-table col.col-category {{ width: 14%; }}
+        .bpa-editor-table col.col-scope {{ width: 12%; }}
+        .bpa-editor-table col.col-severity {{ width: 10%; }}
+        .bpa-editor-table col.col-expression {{ width: 30%; }}
+        .bpa-editor-table col.col-actions {{ width: 14%; }}
         .bpa-editor-table th {{
             text-align: left;
             padding: 8px 10px;
@@ -765,13 +778,14 @@ def _show_landing(rules, dataset_name, workspace_id):
             letter-spacing: 0.3px;
             border-bottom: 2px solid #e8e8ed;
             white-space: nowrap;
+            background: #fff;
         }}
         .bpa-editor-table td {{
+            text-align: left;
             padding: 8px 10px;
             border-bottom: 1px solid #f0f0f5;
             vertical-align: top;
             color: #1d1d1f;
-            max-width: 200px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -952,8 +966,16 @@ def _show_landing(rules, dataset_name, workspace_id):
                     <button class="bpa-editor-close" id="closeEditorBtn">&times;</button>
                 </div>
             </div>
-            <div class="bpa-editor-body">
+            <div class="bpa-editor-header">
                 <table class="bpa-editor-table">
+                    <colgroup>
+                        <col class="col-name"/>
+                        <col class="col-category"/>
+                        <col class="col-scope"/>
+                        <col class="col-severity"/>
+                        <col class="col-expression"/>
+                        <col class="col-actions"/>
+                    </colgroup>
                     <thead>
                         <tr>
                             <th>Name</th>
@@ -964,6 +986,18 @@ def _show_landing(rules, dataset_name, workspace_id):
                             <th>Actions</th>
                         </tr>
                     </thead>
+                </table>
+            </div>
+            <div class="bpa-editor-body">
+                <table class="bpa-editor-table">
+                    <colgroup>
+                        <col class="col-name"/>
+                        <col class="col-category"/>
+                        <col class="col-scope"/>
+                        <col class="col-severity"/>
+                        <col class="col-expression"/>
+                        <col class="col-actions"/>
+                    </colgroup>
                     <tbody id="editorTableBody"></tbody>
                 </table>
             </div>
@@ -2084,16 +2118,29 @@ def visualize_bpa(rules, violations_df, dataset_name="", workspace_id=""):
             line-height: 1;
         }}
         .bpa-editor-close:hover {{ background: #f0f0f5; color: #1d1d1f; }}
+        .bpa-editor-header {{
+            flex-shrink: 0;
+            padding: 0 24px;
+            background: #fff;
+        }}
         .bpa-editor-body {{
             overflow-y: auto;
-            padding: 16px 24px;
+            padding: 0 24px 16px 24px;
             flex: 1;
         }}
         .bpa-editor-table {{
             width: 100%;
-            border-collapse: collapse;
+            table-layout: fixed;
+            border-collapse: separate;
+            border-spacing: 0;
             font-size: 12px;
         }}
+        .bpa-editor-table col.col-name {{ width: 20%; }}
+        .bpa-editor-table col.col-category {{ width: 14%; }}
+        .bpa-editor-table col.col-scope {{ width: 12%; }}
+        .bpa-editor-table col.col-severity {{ width: 10%; }}
+        .bpa-editor-table col.col-expression {{ width: 30%; }}
+        .bpa-editor-table col.col-actions {{ width: 14%; }}
         .bpa-editor-table th {{
             text-align: left;
             padding: 8px 10px;
@@ -2104,13 +2151,14 @@ def visualize_bpa(rules, violations_df, dataset_name="", workspace_id=""):
             letter-spacing: 0.3px;
             border-bottom: 2px solid #e8e8ed;
             white-space: nowrap;
+            background: #fff;
         }}
         .bpa-editor-table td {{
+            text-align: left;
             padding: 8px 10px;
             border-bottom: 1px solid #f0f0f5;
             vertical-align: top;
             color: #1d1d1f;
-            max-width: 200px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -2376,8 +2424,16 @@ def visualize_bpa(rules, violations_df, dataset_name="", workspace_id=""):
                     <button class="bpa-editor-close" id="closeEditorBtn">&times;</button>
                 </div>
             </div>
-            <div class="bpa-editor-body">
+            <div class="bpa-editor-header">
                 <table class="bpa-editor-table">
+                    <colgroup>
+                        <col class="col-name"/>
+                        <col class="col-category"/>
+                        <col class="col-scope"/>
+                        <col class="col-severity"/>
+                        <col class="col-expression"/>
+                        <col class="col-actions"/>
+                    </colgroup>
                     <thead>
                         <tr>
                             <th>Name</th>
@@ -2388,6 +2444,18 @@ def visualize_bpa(rules, violations_df, dataset_name="", workspace_id=""):
                             <th>Actions</th>
                         </tr>
                     </thead>
+                </table>
+            </div>
+            <div class="bpa-editor-body">
+                <table class="bpa-editor-table">
+                    <colgroup>
+                        <col class="col-name"/>
+                        <col class="col-category"/>
+                        <col class="col-scope"/>
+                        <col class="col-severity"/>
+                        <col class="col-expression"/>
+                        <col class="col-actions"/>
+                    </colgroup>
                     <tbody id="editorTableBody"></tbody>
                 </table>
             </div>
