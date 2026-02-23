@@ -495,8 +495,13 @@ def bpa(
     except Exception:
         pass
 
+    if return_dataframe:
+        violations_df = capture_violations(tom, dep, rules)
+        return violations_df  # TODO
+
     # Show the landing page; violations are captured when the user clicks Run BPA
-    _show_landing(rules, dataset_name, str(workspace_id))
+    if not export:
+        _show_landing(rules, dataset_name, str(workspace_id))
 
 
 def _execute_bpa():
@@ -3097,5 +3102,4 @@ def visualize_bpa(rules, violations_df, dataset_name="", workspace_id=""):
     """
 
     # Display the modern BPA visualization
-    if not export:
-        return display(HTML(html_output))
+    return display(HTML(html_output))
