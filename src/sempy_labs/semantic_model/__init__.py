@@ -7,7 +7,7 @@ from ._caching import (
     enable_query_caching,
 )
 from ._bpa import (
-    run_model_bpa,
+    bpa,
 )
 
 
@@ -16,5 +16,5 @@ __all__ = [
     "set_endorsement",
     "make_discoverable",
     "enable_query_caching",
-    "run_model_bpa",
+    "bpa",
 ]

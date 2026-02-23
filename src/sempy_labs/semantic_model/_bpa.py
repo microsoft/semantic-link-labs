@@ -22,69 +22,40 @@ from sempy_labs._helper_functions import (
 )
 from sempy_labs.lakehouse import get_lakehouse_tables, lakehouse_attached
 from sempy_labs.tom import connect_semantic_model
-from typing import Optional
+from typing import Optional, List
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from pyspark.sql.functions import col, flatten
 from pyspark.sql.types import StructType, StructField, StringType
 from uuid import UUID
 from pathlib import Path
-import sempy_labs.semantic_model._bpa_rules as bpa
+import sempy_labs.semantic_model._bpa_rules as bpa_rules
 
 
-def save_as_file(
-    file_path: str, content, file_type: Optional[str] = None, overwrite: bool = False
-):
-    """
-    Saves the content to a file in the specified format.
+severity_map = {
+    "Warning": icons.warning,
+    "Error": icons.error,
+    "Info": icons.info,
+}
 
-    Parameters
-    ----------
-    file_path : str
-        The file path where the content will be saved.
-        Example: "./builtin/myfolder/myfile.json" (will save to the Notebook resources)
-    content : any
-        The content to be saved.
-    file_type : str, default=None
-        The file type to save the content as. If None, it will be inferred from the file path.
-    overwrite : bool, default=False
-        If True, will overwrite the file if it already exists. If False, will raise an
-    """
+_plural_map = {
+        "Column": "Columns",
+        "Calculated Column": "Calculated Columns",
+        "Measure": "Measures",
+        "Table": "Tables",
+        "Calculated Table": "Calculated Tables",
+        "Relationship": "Relationships",
+        "Partition": "Partitions",
+        "Hierarchy": "Hierarchies",
+        "Role": "Roles",
+        "Model": "Models",
+        "Calculation Item": "Calculation Items",
+        "Row Level Security": "Row Level Security",
+        "Function": "Functions",
+    }
 
-    file_path = Path(file_path)
-    file_path.parent.mkdir(parents=True, exist_ok=True)
-
-    # Check if folder exists
-    if not file_path.parent.exists():
-        if overwrite:
-            file_path.parent.mkdir(parents=True, exist_ok=True)
-        else:
-            # print(f"Folder '{file_path.parent}' does not exist. Cannot save the file.")
-            return
-
-    # Check if file exists
-    if file_path.exists() and not overwrite:
-        # print(f"File '{file_path}' already exists. Skipping write because overwrite=False.")
-        return
-
-    if file_type is None:
-        file_type = file_path.suffix.lower()
-
-    if file_type == ".json":
-        with open(file_path, "w") as f:
-            json.dump(content, f, indent=4)
-    elif file_type == ".txt":
-        with open(file_path, "w") as f:
-            f.write(str(content))
-    elif file_type in [".csv", ".tsv"]:
-        delimiter = "\t" if file_type == ".tsv" else ","
-        with open(file_path, "w", newline="") as f:
-
-            writer = csv.writer(f, delimiter=delimiter)
-            writer.writerows(content)
-    else:
-        with open(file_path, "wb") as f:
-            f.write(content)
+# Module-level state shared between bpa() landing page and _execute_bpa() callback
+_bpa_state = {}
 
 
 def _highlight_python(source):
@@ -419,9 +390,9 @@ def _format_rule_source(src):
 
 
 @log
-def run_model_bpa(
+def bpa(
     dataset: str | UUID,
-    rules: Optional[pd.DataFrame] = None,
+    rules: Optional[List[dict]] = None,
     workspace: Optional[str | UUID] = None,
     export: bool = False,
     return_dataframe: bool = False,
@@ -463,50 +434,35 @@ def run_model_bpa(
         A pandas dataframe in HTML format showing semantic model objects which violated the best practice analyzer rules.
     """
 
-    import polib
-
-    warnings.filterwarnings(
-        "ignore",
-        message="This pattern is interpreted as a regular expression, and has match groups.",
-    )
-    warnings.filterwarnings(
-        "ignore", category=UserWarning, message=".*Arrow optimization.*"
-    )
-
-    language_list = list(icons.language_map.keys())
-    if language is not None:
-        language = get_language_codes(languages=language)[0]
-
-    # Map languages to the closest language (first 2 letters matching)
-    def map_language(language, language_list):
-
-        mapped = False
-
-        if language in language_list:
-            mapped is True
-            return language
-
-        language_prefix = language[:2]
-        for lang_code in language_list:
-            if lang_code.startswith(language_prefix):
-                mapped is True
-                return lang_code
-        if not mapped:
-            return language
-
-        if language is not None:
-            language = map_language(language, language_list)
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(
         dataset, workspace=workspace_id
     )
 
-    if language is not None and language not in language_list:
-        print(
-            f"{icons.yellow_dot} The '{language}' language code is not in our predefined language list. Please file an issue and let us know which language code you are using: https://github.com/microsoft/semantic-link-labs/issues/new?assignees=&labels=&projects=&template=bug_report.md&title=."
+    if check_dependencies:
+        dep = get_model_calc_dependencies(
+            dataset=dataset_id, workspace=workspace_id
+        )
+    else:
+        dep = pd.DataFrame(
+            columns=[
+                "Table Name",
+                "Object Name",
+                "Object Type",
+                "Expression",
+                "Referenced Table",
+                "Referenced Object",
+                "Referenced Object Type",
+                "Full Object Name",
+                "Referenced Full Object Name",
+                "Parent Node",
+            ]
         )
 
+    rules = bpa_rules.rules
+
+    # Open TOM connection once upfront
     with connect_semantic_model(
         dataset=dataset_id, workspace=workspace_id, readonly=True
     ) as tom:
@@ -514,410 +470,1091 @@ def run_model_bpa(
         if extended:
             tom.set_vertipaq_annotations()
 
-        # Do not run BPA for models with no tables
-        if tom.model.Tables.Count == 0:
-            print(
-                f"{icons.warning} The '{dataset_name}' semantic model within the '{workspace_name}' workspace has no tables and therefore there are no valid BPA results."
-            )
-            return
+        # Store state for the _execute_bpa callback (triggered by UI Run BPA button)
+        _bpa_state.update(
+            {
+                "dataset_id": str(dataset_id),
+                "dataset_name": dataset_name,
+                "workspace_id": str(workspace_id),
+                "workspace_name": workspace_name,
+                "dep": dep,
+                "rules": [dict(r) for r in rules],
+                "extended": extended,
+                "export": export,
+                "return_dataframe": return_dataframe,
+                "tom": tom,
+            }
+        )
 
-        if check_dependencies:
-            dep = get_model_calc_dependencies(
-                dataset=dataset_id, workspace=workspace_id
-            )
+    # Register globals in the notebook namespace so the Run BPA button
+    # can call _execute_bpa() directly without any module imports.
+    try:
+        _ip = get_ipython()  # noqa: F821
+        _ip.user_ns["_bpa_state"] = _bpa_state
+        _ip.user_ns["_execute_bpa"] = _execute_bpa
+    except Exception:
+        pass
+
+    # Show the landing page; violations are captured when the user clicks Run BPA
+    _show_landing(rules, dataset_name, str(workspace_id))
+
+
+def _execute_bpa():
+    """
+    Callback triggered by the Run BPA button in the landing page.
+
+    References the tom, dep, and rules that were already captured
+    in bpa() and stored in _bpa_state.
+    """
+
+    state = _bpa_state
+    tom = state["tom"]
+    dep = state["dep"]
+    rules = state["rules"]
+    workspace_name = state["workspace_name"]
+    workspace_id = state["workspace_id"]
+    dataset_name = state["dataset_name"]
+
+    if tom.model.Tables.Count == 0:
+        print(
+            f"{icons.warning} The '{dataset_name}' semantic model within the "
+            f"'{workspace_name}' workspace has no tables and therefore there "
+            f"are no valid BPA results."
+        )
+        return
+
+    violations_df = capture_violations(tom, dep, rules)
+    visualize_bpa(rules, violations_df, dataset_name, workspace_id)
+
+
+def _show_landing(rules, dataset_name, workspace_id):
+    """
+    Render the BPA landing page with Run BPA, Edit Rules, and Import Rules.
+
+    When the user clicks Run BPA, JavaScript communicates with the Python
+    kernel to call ``_execute_bpa()`` which captures violations and renders
+    the results view.
+    """
+
+    # Build rules payload for the editor
+    all_rules_for_editor = []
+    for rule in rules:
+        sev = rule.get("Severity", "")
+        scope = rule.get("Scope", "")
+        if isinstance(scope, list):
+            scope_str = ", ".join(scope)
         else:
-            dep = pd.DataFrame(
-                columns=[
-                    "Table Name",
-                    "Object Name",
-                    "Object Type",
-                    "Expression",
-                    "Referenced Table",
-                    "Referenced Object",
-                    "Referenced Object Type",
-                    "Full Object Name",
-                    "Referenced Full Object Name",
-                    "Parent Node",
+            scope_str = scope
+        all_rules_for_editor.append(
+            {
+                "Category": rule.get("Category", ""),
+                "Scope": scope_str,
+                "Severity": sev,
+                "Name": rule.get("Name", ""),
+                "Expression": rule.get("Expression", ""),
+                "Description": rule.get("Description", "") or "",
+                "URL": rule.get("URL", "") or "",
+            }
+        )
+
+    all_rules_json = json.dumps(all_rules_for_editor)
+    dataset_name_json = json.dumps(dataset_name)
+    workspace_id_json = json.dumps(workspace_id)
+
+    html_output = f"""
+    <style>
+        .bpa-root {{
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+            color: #1d1d1f;
+            max-width: 100%;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }}
+
+        /* ── Landing page ── */
+        .bpa-landing {{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            text-align: center;
+        }}
+        .bpa-landing-icon {{
+            margin-bottom: 16px;
+            opacity: 0.85;
+        }}
+        .bpa-landing-title {{
+            font-size: 22px;
+            font-weight: 700;
+            color: #1d1d1f;
+            margin: 0 0 8px 0;
+        }}
+        .bpa-landing-desc {{
+            font-size: 14px;
+            color: #6e6e73;
+            margin: 0 0 24px 0;
+            max-width: 420px;
+        }}
+        .bpa-run-btn {{
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 28px;
+            background: #0071e3;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            font-family: inherit;
+        }}
+        .bpa-run-btn:hover {{ background: #0077ed; transform: scale(1.02); }}
+        .bpa-run-btn:active {{ transform: scale(0.98); }}
+        .bpa-run-btn:disabled {{
+            background: #86868b;
+            cursor: not-allowed;
+            transform: none;
+        }}
+        .bpa-editor-btn {{
+            padding: 8px 18px;
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            background: #fff;
+            font-size: 13px;
+            font-weight: 500;
+            color: #0071e3;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }}
+        .bpa-editor-btn:hover {{ background: #f0f5ff; border-color: #0071e3; }}
+        .bpa-import-btn {{
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 20px;
+            background: #fff;
+            color: #1d1d1f;
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: inherit;
+            margin-top: 8px;
+        }}
+        .bpa-import-btn:hover {{ background: #f5f5f7; }}
+        .bpa-import-btn svg {{ width: 14px; height: 14px; }}
+        .bpa-import-status {{
+            font-size: 12px;
+            margin-top: 10px;
+            padding: 6px 14px;
+            border-radius: 8px;
+            display: none;
+        }}
+        .bpa-import-status.success {{
+            display: inline-block;
+            background: #f0fff4;
+            color: #34c759;
+            border: 1px solid #34c759;
+        }}
+        .bpa-import-status.error {{
+            display: inline-block;
+            background: #fff5f5;
+            color: #ff3b30;
+            border: 1px solid #ff3b30;
+        }}
+
+        /* ── Spinner ── */
+        @keyframes bpa-spin {{
+            to {{ transform: rotate(360deg); }}
+        }}
+        .bpa-spinner {{
+            width: 28px;
+            height: 28px;
+            border: 3px solid #e8e8ed;
+            border-top-color: #0071e3;
+            border-radius: 50%;
+            animation: bpa-spin 0.8s linear infinite;
+            margin: 0 auto;
+        }}
+
+        /* ── Rule Editor ── */
+        .bpa-editor-overlay {{
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 9999;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+            overflow-y: auto;
+        }}
+        .bpa-editor-overlay.open {{ display: flex; }}
+        .bpa-editor-panel {{
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+            width: 100%;
+            max-width: 1100px;
+            height: 92vh;
+            max-height: 92vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }}
+        .bpa-editor-topbar {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 24px;
+            border-bottom: 1px solid #e8e8ed;
+            flex-shrink: 0;
+        }}
+        .bpa-editor-topbar h2 {{
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: #1d1d1f;
+        }}
+        .bpa-editor-topbar-actions {{
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }}
+        .bpa-editor-close {{
+            background: none;
+            border: none;
+            font-size: 22px;
+            color: #86868b;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            line-height: 1;
+        }}
+        .bpa-editor-close:hover {{ background: #f0f0f5; color: #1d1d1f; }}
+        .bpa-editor-body {{
+            overflow-y: auto;
+            padding: 16px 24px;
+            flex: 1;
+        }}
+        .bpa-editor-table {{
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }}
+        .bpa-editor-table th {{
+            text-align: left;
+            padding: 8px 10px;
+            font-weight: 600;
+            color: #86868b;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            border-bottom: 2px solid #e8e8ed;
+            white-space: nowrap;
+        }}
+        .bpa-editor-table td {{
+            padding: 8px 10px;
+            border-bottom: 1px solid #f0f0f5;
+            vertical-align: top;
+            color: #1d1d1f;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }}
+        .bpa-editor-table tr:hover td {{ background: #fafafa; }}
+        .bpa-editor-table .bpa-ed-actions {{
+            white-space: nowrap;
+            display: flex;
+            gap: 4px;
+        }}
+        .bpa-ed-btn {{
+            padding: 4px 10px;
+            border: 1px solid #d2d2d7;
+            border-radius: 6px;
+            background: #fff;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.15s;
+            color: #1d1d1f;
+        }}
+        .bpa-ed-btn:hover {{ border-color: #0071e3; color: #0071e3; }}
+        .bpa-ed-btn.danger {{ color: #ff3b30; }}
+        .bpa-ed-btn.danger:hover {{ border-color: #ff3b30; background: #fff5f5; }}
+        .bpa-ed-btn.primary {{
+            background: #0071e3;
+            color: #fff;
+            border-color: #0071e3;
+        }}
+        .bpa-ed-btn.primary:hover {{ background: #0077ed; }}
+        .bpa-ed-btn.add {{
+            background: #fff;
+            color: #34c759;
+            border-color: #34c759;
+            font-weight: 600;
+        }}
+        .bpa-ed-btn.add:hover {{ background: #f0fff4; }}
+        .bpa-save-status {{
+            font-size: 12px;
+            padding: 6px 14px;
+            border-radius: 8px;
+            display: none;
+            align-items: center;
+            gap: 6px;
+        }}
+        .bpa-save-status.success {{
+            display: inline-flex;
+            background: #f0fff4;
+            color: #34c759;
+            border: 1px solid #34c759;
+        }}
+        .bpa-save-status.error {{
+            display: inline-flex;
+            background: #fff5f5;
+            color: #ff3b30;
+            border: 1px solid #ff3b30;
+        }}
+
+        /* ── Rule Form (modal inside editor) ── */
+        .bpa-form-overlay {{
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.35);
+            z-index: 10001;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }}
+        .bpa-form-overlay.open {{ display: flex; }}
+        .bpa-form-panel {{
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 640px;
+            max-height: 92vh;
+            overflow-y: auto;
+            padding: 24px;
+        }}
+        .bpa-form-panel h3 {{
+            margin: 0 0 18px 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: #1d1d1f;
+        }}
+        .bpa-form-group {{
+            margin-bottom: 14px;
+        }}
+        .bpa-form-group label {{
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #6e6e73;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }}
+        .bpa-form-group label .bpa-req {{
+            color: #ff3b30;
+            margin-left: 2px;
+        }}
+        .bpa-form-group input,
+        .bpa-form-group textarea,
+        .bpa-form-group select {{
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: inherit;
+            color: #1d1d1f;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }}
+        .bpa-form-group input:focus,
+        .bpa-form-group textarea:focus,
+        .bpa-form-group select:focus {{
+            outline: none;
+            border-color: #0071e3;
+            box-shadow: 0 0 0 3px rgba(0,113,227,0.15);
+        }}
+        .bpa-form-group textarea {{
+            min-height: 70px;
+            resize: vertical;
+            font-family: "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 12px;
+        }}
+        .bpa-form-group .bpa-form-error {{
+            color: #ff3b30;
+            font-size: 11px;
+            margin-top: 3px;
+            display: none;
+        }}
+        .bpa-form-actions {{
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }}
+    </style>
+
+    <div class="bpa-root" id="bpaRoot">
+        <div class="bpa-landing" id="bpaLanding">
+            <div class="bpa-landing-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0071e3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+            </div>
+            <h2 class="bpa-landing-title">Best Practice Analyzer</h2>
+            <p class="bpa-landing-desc">Click below to analyze your semantic model against best practice rules, or edit the rules first.</p>
+            <button class="bpa-run-btn" id="runBpaBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Run BPA
+            </button>
+            <button class="bpa-editor-btn" id="openEditorBtnLanding" style="margin-top: 12px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Edit Rules
+            </button>
+            <input type="file" id="importRulesFile" accept=".json" style="display:none;"/>
+            <button class="bpa-import-btn" id="importRulesBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Import Rules
+            </button>
+            <span class="bpa-import-status" id="importStatus"></span>
+        </div>
+    </div>
+
+    <!-- Rule Editor Overlay -->
+    <div class="bpa-editor-overlay" id="editorOverlay">
+        <div class="bpa-editor-panel">
+            <div class="bpa-editor-topbar">
+                <h2>Rule Editor</h2>
+                <div class="bpa-editor-topbar-actions">
+                    <span class="bpa-save-status" id="editorSaveStatus"></span>
+                    <button class="bpa-ed-btn add" id="addRuleBtn">+ Add Rule</button>
+                    <button class="bpa-ed-btn primary" id="saveRulesBtn">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Save Rules
+                    </button>
+                    <button class="bpa-editor-close" id="closeEditorBtn">&times;</button>
+                </div>
+            </div>
+            <div class="bpa-editor-body">
+                <table class="bpa-editor-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Scope</th>
+                            <th>Severity</th>
+                            <th>Expression</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="editorTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rule Form Overlay (for Add/Edit) -->
+    <div class="bpa-form-overlay" id="formOverlay">
+        <div class="bpa-form-panel">
+            <h3 id="formTitle">Edit Rule</h3>
+            <input type="hidden" id="formIdx" value="-1"/>
+            <div class="bpa-form-group">
+                <label>Name <span class="bpa-req">*</span></label>
+                <input type="text" id="formName" placeholder="Rule name"/>
+                <div class="bpa-form-error" id="formNameErr">Name is required.</div>
+            </div>
+            <div class="bpa-form-group">
+                <label>Category <span class="bpa-req">*</span></label>
+                <input type="text" id="formCategory" placeholder="e.g. Performance"/>
+                <div class="bpa-form-error" id="formCategoryErr">Category is required.</div>
+            </div>
+            <div class="bpa-form-group">
+                <label>Scope <span class="bpa-req">*</span> (comma-separated for multiple)</label>
+                <input type="text" id="formScope" placeholder="e.g. Column, Measure"/>
+                <div class="bpa-form-error" id="formScopeErr">Scope is required.</div>
+            </div>
+            <div class="bpa-form-group">
+                <label>Severity <span class="bpa-req">*</span></label>
+                <select id="formSeverity">
+                    <option value="">-- Select --</option>
+                    <option value="Warning">Warning</option>
+                    <option value="Error">Error</option>
+                    <option value="Info">Info</option>
+                </select>
+                <div class="bpa-form-error" id="formSeverityErr">Severity is required.</div>
+            </div>
+            <div class="bpa-form-group">
+                <label>Expression <span class="bpa-req">*</span></label>
+                <textarea id="formExpression" placeholder="Python expression..."></textarea>
+                <div class="bpa-form-error" id="formExpressionErr">Expression is required.</div>
+            </div>
+            <div class="bpa-form-group">
+                <label>Description</label>
+                <textarea id="formDescription" placeholder="Optional description..." style="font-family:inherit;"></textarea>
+            </div>
+            <div class="bpa-form-group">
+                <label>URL</label>
+                <input type="text" id="formURL" placeholder="Optional reference URL"/>
+            </div>
+            <div class="bpa-form-actions">
+                <button class="bpa-ed-btn" id="formCancelBtn">Cancel</button>
+                <button class="bpa-ed-btn primary" id="formSaveBtn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function() {{
+        var ALL_RULES = {all_rules_json};
+        var DATASET_NAME = {dataset_name_json};
+        var WORKSPACE_ID = {workspace_id_json};
+        var rulesModified = false;
+
+        /* ── Run BPA via kernel ── */
+        document.getElementById('runBpaBtn').addEventListener('click', function() {{
+            var btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="bpa-spinner" style="width:16px;height:16px;border-width:2px;display:inline-block;vertical-align:middle;"></span> Running\u2026';
+
+            // Build kernel command referencing the global _execute_bpa / _bpa_state
+            var cmd = '';
+            if (rulesModified) {{
+                // Push edited/imported rules into the already-registered global state
+                var rulesForPython = ALL_RULES.map(function(r) {{
+                    var scopeVal = r.Scope;
+                    if (typeof scopeVal === 'string' && scopeVal.indexOf(',') !== -1) {{
+                        scopeVal = scopeVal.split(',').map(function(s) {{ return s.trim(); }});
+                    }}
+                    return {{
+                        Category: r.Category,
+                        Scope: scopeVal,
+                        Severity: r.Severity,
+                        Name: r.Name,
+                        Expression: r.Expression,
+                        Description: r.Description || null,
+                        URL: r.URL || null
+                    }};
+                }});
+                var rulesB64 = btoa(unescape(encodeURIComponent(JSON.stringify(rulesForPython))));
+                cmd += 'import json as _j, base64 as _b\\n'
+                    + '_bpa_state["rules"] = _j.loads(_b.b64decode("' + rulesB64 + '").decode("utf-8"))\\n';
+            }}
+            cmd += '_execute_bpa()';
+
+            var kernel = null;
+            try {{
+                if (typeof Jupyter !== 'undefined' && Jupyter.notebook && Jupyter.notebook.kernel) {{
+                    kernel = Jupyter.notebook.kernel;
+                }} else if (typeof IPython !== 'undefined' && IPython.notebook && IPython.notebook.kernel) {{
+                    kernel = IPython.notebook.kernel;
+                }}
+            }} catch(e) {{}}
+
+            if (kernel) {{
+                kernel.execute(cmd);
+            }} else {{
+                var statusEl = document.getElementById('importStatus');
+                statusEl.textContent = 'Could not access notebook kernel. Please run _execute_bpa() in a cell.';
+                statusEl.className = 'bpa-import-status error';
+                statusEl.style.display = '';
+                btn.disabled = false;
+                btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg> Run BPA';
+            }}
+        }});
+
+        /* ── Import Rules Logic ── */
+        var REQUIRED_KEYS = ['Category', 'Scope', 'Severity', 'Name', 'Expression'];
+        var importFileInput = document.getElementById('importRulesFile');
+        var importStatus = document.getElementById('importStatus');
+
+        document.getElementById('importRulesBtn').addEventListener('click', function() {{
+            importFileInput.value = '';
+            importFileInput.click();
+        }});
+
+        importFileInput.addEventListener('change', function(e) {{
+            var file = e.target.files[0];
+            if (!file) return;
+            if (!file.name.toLowerCase().endsWith('.json')) {{
+                importStatus.textContent = 'Invalid file type. Please select a .json file.';
+                importStatus.className = 'bpa-import-status error';
+                return;
+            }}
+            var reader = new FileReader();
+            reader.onload = function(ev) {{
+                try {{
+                    var parsed = JSON.parse(ev.target.result);
+                }} catch (err) {{
+                    importStatus.textContent = 'Invalid JSON: ' + err.message;
+                    importStatus.className = 'bpa-import-status error';
+                    return;
+                }}
+                if (!Array.isArray(parsed) || parsed.length === 0) {{
+                    importStatus.textContent = 'Rules file must be a non-empty JSON array.';
+                    importStatus.className = 'bpa-import-status error';
+                    return;
+                }}
+                for (var i = 0; i < parsed.length; i++) {{
+                    var rule = parsed[i];
+                    if (typeof rule !== 'object' || rule === null || Array.isArray(rule)) {{
+                        importStatus.textContent = 'Rule #' + (i + 1) + ' is not a valid object.';
+                        importStatus.className = 'bpa-import-status error';
+                        return;
+                    }}
+                    for (var k = 0; k < REQUIRED_KEYS.length; k++) {{
+                        if (!(REQUIRED_KEYS[k] in rule) || !rule[REQUIRED_KEYS[k]]) {{
+                            importStatus.textContent = 'Rule #' + (i + 1) + ' is missing required key: ' + REQUIRED_KEYS[k];
+                            importStatus.className = 'bpa-import-status error';
+                            return;
+                        }}
+                    }}
+                }}
+                var imported = parsed.map(function(r) {{
+                    var scope = r.Scope;
+                    if (Array.isArray(scope)) scope = scope.join(', ');
+                    return {{
+                        Category: r.Category || '',
+                        Scope: scope || '',
+                        Severity: r.Severity || '',
+                        Name: r.Name || '',
+                        Expression: r.Expression || '',
+                        Description: r.Description || '',
+                        URL: r.URL || ''
+                    }};
+                }});
+                ALL_RULES = imported;
+                rulesModified = true;
+                renderEditorTable();
+                importStatus.textContent = 'Imported ' + imported.length + ' rule' + (imported.length !== 1 ? 's' : '') + ' from ' + file.name;
+                importStatus.className = 'bpa-import-status success';
+            }};
+            reader.readAsText(file);
+        }});
+
+        /* ── Rule Editor Logic ── */
+        var editorOverlay = document.getElementById('editorOverlay');
+        var formOverlay = document.getElementById('formOverlay');
+        var editorTableBody = document.getElementById('editorTableBody');
+        var editorSaveStatus = document.getElementById('editorSaveStatus');
+
+        function openEditor() {{
+            renderEditorTable();
+            editorOverlay.classList.add('open');
+        }}
+        document.getElementById('openEditorBtnLanding').addEventListener('click', openEditor);
+        document.getElementById('closeEditorBtn').addEventListener('click', function() {{
+            editorOverlay.classList.remove('open');
+            editorSaveStatus.className = 'bpa-save-status';
+            editorSaveStatus.style.display = 'none';
+        }});
+        editorOverlay.addEventListener('click', function(e) {{
+            if (e.target === editorOverlay) {{
+                editorOverlay.classList.remove('open');
+                editorSaveStatus.className = 'bpa-save-status';
+                editorSaveStatus.style.display = 'none';
+            }}
+        }});
+
+        function escHtml(str) {{
+            if (!str) return '';
+            var d = document.createElement('div');
+            d.textContent = str;
+            return d.innerHTML;
+        }}
+
+        function renderEditorTable() {{
+            editorTableBody.innerHTML = '';
+            ALL_RULES.forEach(function(rule, idx) {{
+                var tr = document.createElement('tr');
+                tr.innerHTML =
+                    '<td title="' + escHtml(rule.Name) + '">' + escHtml(rule.Name) + '</td>' +
+                    '<td>' + escHtml(rule.Category) + '</td>' +
+                    '<td>' + escHtml(rule.Scope) + '</td>' +
+                    '<td>' + escHtml(rule.Severity) + '</td>' +
+                    '<td title="' + escHtml(rule.Expression) + '">' + escHtml(rule.Expression).substring(0, 50) + (rule.Expression.length > 50 ? '...' : '') + '</td>' +
+                    '<td class="bpa-ed-actions"></td>';
+                var actTd = tr.querySelector('.bpa-ed-actions');
+                var editBtn = document.createElement('button');
+                editBtn.className = 'bpa-ed-btn';
+                editBtn.textContent = 'Edit';
+                editBtn.addEventListener('click', (function(i) {{ return function() {{ openForm(i); }}; }})(idx));
+                var delBtn = document.createElement('button');
+                delBtn.className = 'bpa-ed-btn danger';
+                delBtn.textContent = 'Delete';
+                delBtn.addEventListener('click', (function(i) {{ return function() {{ deleteRule(i); }}; }})(idx));
+                actTd.appendChild(editBtn);
+                actTd.appendChild(delBtn);
+                editorTableBody.appendChild(tr);
+            }});
+        }}
+
+        function downloadRulesJson() {{
+            var rulesForSave = ALL_RULES.map(function(r) {{
+                var scopeVal = r.Scope;
+                if (scopeVal.indexOf(',') !== -1) {{
+                    scopeVal = scopeVal.split(',').map(function(s) {{ return s.trim(); }});
+                }}
+                return {{
+                    Category: r.Category,
+                    Scope: scopeVal,
+                    Severity: r.Severity,
+                    Name: r.Name,
+                    Expression: r.Expression,
+                    Description: r.Description || null,
+                    URL: r.URL || null
+                }};
+            }});
+            var jsonStr = JSON.stringify(rulesForSave, null, 4);
+            var blob = new Blob([jsonStr], {{ type: 'application/json' }});
+            var dlUrl = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = dlUrl;
+            a.download = 'rules.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(dlUrl);
+            return 'rules.json';
+        }}
+
+        function deleteRule(idx) {{
+            var rows = document.getElementById('editorTableBody').querySelectorAll('tr');
+            if (!rows[idx]) return;
+            var actTd = rows[idx].querySelector('td:last-child');
+            if (actTd.querySelector('.bpa-confirm-delete')) return;
+
+            var wrapper = document.createElement('span');
+            wrapper.className = 'bpa-confirm-delete';
+            wrapper.style.cssText = 'display:inline-flex;gap:4px;align-items:center;';
+            var label = document.createElement('span');
+            label.textContent = 'Delete?';
+            label.style.cssText = 'color:#ff3b30;font-size:11px;font-weight:600;';
+            var yesBtn = document.createElement('button');
+            yesBtn.className = 'bpa-ed-btn danger';
+            yesBtn.textContent = 'Yes';
+            yesBtn.style.cssText = 'padding:2px 8px;font-size:11px;';
+            var noBtn = document.createElement('button');
+            noBtn.className = 'bpa-ed-btn';
+            noBtn.textContent = 'No';
+            noBtn.style.cssText = 'padding:2px 8px;font-size:11px;';
+            wrapper.appendChild(label);
+            wrapper.appendChild(yesBtn);
+            wrapper.appendChild(noBtn);
+            actTd.innerHTML = '';
+            actTd.appendChild(wrapper);
+
+            yesBtn.addEventListener('click', function() {{
+                ALL_RULES.splice(idx, 1);
+                rulesModified = true;
+                renderEditorTable();
+            }});
+            noBtn.addEventListener('click', function() {{
+                renderEditorTable();
+            }});
+        }}
+
+        // Form logic
+        document.getElementById('addRuleBtn').addEventListener('click', function() {{
+            openForm(-1);
+        }});
+        document.getElementById('formCancelBtn').addEventListener('click', function() {{
+            formOverlay.classList.remove('open');
+        }});
+        formOverlay.addEventListener('click', function(e) {{
+            if (e.target === formOverlay) formOverlay.classList.remove('open');
+        }});
+
+        function openForm(idx) {{
+            var title = document.getElementById('formTitle');
+            document.getElementById('formIdx').value = idx;
+            ['formNameErr','formCategoryErr','formScopeErr','formSeverityErr','formExpressionErr'].forEach(function(id) {{
+                document.getElementById(id).style.display = 'none';
+            }});
+            if (idx >= 0) {{
+                title.textContent = 'Edit Rule';
+                var r = ALL_RULES[idx];
+                document.getElementById('formName').value = r.Name || '';
+                document.getElementById('formCategory').value = r.Category || '';
+                document.getElementById('formScope').value = r.Scope || '';
+                document.getElementById('formSeverity').value = r.Severity || '';
+                document.getElementById('formExpression').value = r.Expression || '';
+                document.getElementById('formDescription').value = r.Description || '';
+                document.getElementById('formURL').value = r.URL || '';
+            }} else {{
+                title.textContent = 'Add New Rule';
+                document.getElementById('formName').value = '';
+                document.getElementById('formCategory').value = '';
+                document.getElementById('formScope').value = '';
+                document.getElementById('formSeverity').value = '';
+                document.getElementById('formExpression').value = '';
+                document.getElementById('formDescription').value = '';
+                document.getElementById('formURL').value = '';
+            }}
+            formOverlay.classList.add('open');
+        }}
+
+        document.getElementById('formSaveBtn').addEventListener('click', function() {{
+            var idx = parseInt(document.getElementById('formIdx').value, 10);
+            var name = document.getElementById('formName').value.trim();
+            var category = document.getElementById('formCategory').value.trim();
+            var scope = document.getElementById('formScope').value.trim();
+            var severity = document.getElementById('formSeverity').value.trim();
+            var expression = document.getElementById('formExpression').value.trim();
+            var description = document.getElementById('formDescription').value.trim();
+            var url = document.getElementById('formURL').value.trim();
+
+            var valid = true;
+            if (!name) {{ document.getElementById('formNameErr').style.display = 'block'; valid = false; }}
+            else {{ document.getElementById('formNameErr').style.display = 'none'; }}
+            if (!category) {{ document.getElementById('formCategoryErr').style.display = 'block'; valid = false; }}
+            else {{ document.getElementById('formCategoryErr').style.display = 'none'; }}
+            if (!scope) {{ document.getElementById('formScopeErr').style.display = 'block'; valid = false; }}
+            else {{ document.getElementById('formScopeErr').style.display = 'none'; }}
+            if (!severity) {{ document.getElementById('formSeverityErr').style.display = 'block'; valid = false; }}
+            else {{ document.getElementById('formSeverityErr').style.display = 'none'; }}
+            if (!expression) {{ document.getElementById('formExpressionErr').style.display = 'block'; valid = false; }}
+            else {{ document.getElementById('formExpressionErr').style.display = 'none'; }}
+            if (!valid) return;
+
+            var ruleObj = {{
+                Name: name,
+                Category: category,
+                Scope: scope,
+                Severity: severity,
+                Expression: expression,
+                Description: description || '',
+                URL: url || ''
+            }};
+
+            if (idx >= 0) {{
+                ALL_RULES[idx] = ruleObj;
+            }} else {{
+                ALL_RULES.push(ruleObj);
+            }}
+            rulesModified = true;
+            renderEditorTable();
+            formOverlay.classList.remove('open');
+        }});
+
+        // Save Rules (download)
+        document.getElementById('saveRulesBtn').addEventListener('click', function() {{
+            var fileName = downloadRulesJson();
+            editorSaveStatus.textContent = 'Downloaded ' + fileName;
+            editorSaveStatus.className = 'bpa-save-status success';
+            editorSaveStatus.style.display = '';
+        }});
+    }})();
+    </script>
+    """
+
+    return display(HTML(html_output))
+
+
+def get_rule_logic_map(rules):
+    """Build a mapping from rule name to syntax-highlighted Python source."""
+    rule_logic_map = {}
+    for rule in rules:
+        rname = rule.get("Name")
+        expr = rule.get("Expression")
+        src = None
+        if expr and isinstance(expr, str):
+            try:
+                src = _format_rule_source(expr)
+            except Exception:
+                src = expr
+        rule_logic_map[rname] = _highlight_python(src.strip()) if src else ""
+    return rule_logic_map
+
+
+def capture_violations(tom, dep, rules):
+
+    violations = pd.DataFrame(columns=["Object Name", "Scope", "Rule Name"])
+    rules_df = pd.DataFrame(rules, columns=["Category", "Scope", "Severity", "Name", "Expression", "Description", "URL"])
+
+    scope_to_dataframe = {
+        "Relationship": (
+            tom.model.Relationships,
+            lambda obj: create_relationship_name(
+                obj.FromTable.Name,
+                obj.FromColumn.Name,
+                obj.ToTable.Name,
+                obj.ToColumn.Name,
+            ),
+        ),
+        "Column": (
+            tom.all_columns(),
+            lambda obj: format_dax_object_name(obj.Parent.Name, obj.Name),
+        ),
+        "Calculated Column": (
+            tom.all_calculated_columns(),
+            lambda obj: format_dax_object_name(obj.Parent.Name, obj.Name),
+        ),
+        "Measure": (tom.all_measures(), lambda obj: obj.Name),
+        "Hierarchy": (
+            tom.all_hierarchies(),
+            lambda obj: format_dax_object_name(obj.Parent.Name, obj.Name),
+        ),
+        "Table": (tom.model.Tables, lambda obj: obj.Name),
+        "Calculated Table": (tom.all_calculated_tables(), lambda obj: obj.Name),
+        "Role": (tom.model.Roles, lambda obj: obj.Name),
+        "Model": (tom.model, lambda obj: obj.Model.Name),
+        "Calculation Item": (
+            tom.all_calculation_items(),
+            lambda obj: format_dax_object_name(obj.Parent.Table.Name, obj.Name),
+        ),
+        "Row Level Security": (
+            tom.all_rls(),
+            lambda obj: format_dax_object_name(obj.Parent.Name, obj.Name),
+        ),
+        "Partition": (
+            tom.all_partitions(),
+            lambda obj: format_dax_object_name(obj.Parent.Name, obj.Name),
+        ),
+        "Function": (
+            tom.all_functions(),
+            lambda obj: obj.Name,
+        ),
+    }
+
+    import sempy
+    sempy.fabric._client._utils._init_analysis_services()
+    import Microsoft.AnalysisServices.Tabular as TOM
+
+    rows = []
+    for rule in rules:
+        ruleName = rule.get("Name")
+        expr_text = rule.get("Expression")
+        scopes = rule.get("Scope")
+        expr = eval(f"lambda obj, tom, dep, TOM, re: ({expr_text})")
+
+        if isinstance(scopes, str):
+            scopes = [scopes]
+
+        for scope in scopes:
+            func = scope_to_dataframe[scope][0]
+            nm = scope_to_dataframe[scope][1]
+
+            if scope == "Model":
+                x = []
+                if expr(func, tom, dep, TOM, re):
+                    x = ["Model"]
+            elif scope == "Measure":
+                x = [
+                    nm(obj)
+                    for obj in tom.all_measures()
+                    if expr(obj, tom, dep, TOM, re)
                 ]
-            )
+            elif scope == "Function":
+                x = [
+                    nm(obj)
+                    for obj in tom.all_functions()
+                    if expr(obj, tom, dep, TOM, re)
+                ]
+            elif scope == "Column":
+                x = [
+                    nm(obj)
+                    for obj in tom.all_columns()
+                    if expr(obj, tom, dep, TOM, re)
+                ]
+            elif scope == "Partition":
+                x = [
+                    nm(obj)
+                    for obj in tom.all_partitions()
+                    if expr(obj, tom, dep, TOM, re)
+                ]
+            elif scope == "Hierarchy":
+                x = [
+                    nm(obj)
+                    for obj in tom.all_hierarchies()
+                    if expr(obj, tom, dep, TOM, re)
+                ]
+            elif scope == "Table":
+                x = [
+                    nm(obj)
+                    for obj in tom.model.Tables
+                    if expr(obj, tom, dep, TOM, re)
+                ]
+            elif scope == "Calculated Table":
+                x = [
+                    nm(obj)
+                    for obj in tom.all_calculated_tables()
+                    if expr(obj, tom, dep, TOM, re)
+                ]
+            elif scope == "Relationship":
+                x = [
+                    nm(obj)
+                    for obj in tom.model.Relationships
+                    if expr(obj, tom, dep, TOM, re)
+                ]
+            elif scope == "Role":
+                x = [
+                    nm(obj)
+                    for obj in tom.model.Roles
+                    if expr(obj, tom, dep, TOM, re)
+                ]
+            elif scope == "Row Level Security":
+                x = [
+                    nm(obj) for obj in tom.all_rls() if expr(obj, tom, dep, TOM, re)
+                ]
+            elif scope == "Calculation Item":
+                x = [
+                    nm(obj)
+                    for obj in tom.all_calculation_items()
+                    if expr(obj, tom, dep, TOM, re)
+                ]
+            elif scope == "Calculated Column":
+                x = [
+                    nm(obj)
+                    for obj in tom.all_calculated_columns()
+                    if expr(obj, tom, dep, TOM, re)
+                ]
 
-        def translate_using_po(rule_file):
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            translation_file = (
-                f"{current_dir}/_bpa_translation/_model/_translations_{language}.po"
-            )
-            for c in ["Category", "Description", "Rule Name"]:
-                po = polib.pofile(translation_file)
-                for entry in po:
-                    if entry.tcomment == c.lower().replace(" ", "_"):
-                        rule_file.loc[rule_file["Rule Name"] == entry.msgid, c] = (
-                            entry.msgstr
-                        )
+            if len(x) > 0:
+                rows.append({
+                    "Object Name": x,
+                    "Scope": scope,
+                    "Rule Name": ruleName,
+                })
 
-        translated = False
+    if rows:
+        violations = pd.DataFrame(rows, columns=["Object Name", "Scope", "Rule Name"])
 
-        default_rules = bpa.rules
-        # Translations
-        if language is not None and rules is None and language in language_list:
-            rules = default_rules
-            rules_df = pd.DataFrame(rules, columns=["Category", "Scope", "Severity", "Name", "Expression", "Description", "URL"])
-            translate_using_po(rules_df)
-            translated = True
-        if rules is None:
-            rules = default_rules
-        elif isinstance(rules, str):
-            with open(rules, "r") as f:
-                data = json.load(f)
-            rules = json.loads(data)
+    prepDF = pd.merge(
+        violations,
+        rules_df[["Name", "Category", "Severity", "Description", "URL"]],
+        left_on="Rule Name",
+        right_on="Name",
+        how="left",
+    )
 
-        rules_df = pd.DataFrame(rules, columns=["Category", "Scope", "Severity", "Name", "Expression", "Description", "URL"])
+    prepDF.rename(columns={"Scope": "Object Type"}, inplace=True)
 
-        # Save Rules locally
-        file_path = "./builtin/SLL/modelbpa/rules.json"
-        save_as_file(file_path=file_path, content=rules, overwrite=False)
-
-        if language is not None and not translated:
-
-            def translate_using_spark(rule_file):
-
-                from synapse.ml.services import Translate
-
-                rules_temp = rule_df.copy()
-                rules_temp = rules_temp.drop(["Expression", "URL", "Severity"], axis=1)
-
-                schema = StructType(
-                    [
-                        StructField("Category", StringType(), True),
-                        StructField("Scope", StringType(), True),
-                        StructField("Rule Name", StringType(), True),
-                        StructField("Description", StringType(), True),
-                    ]
-                )
-
-                spark = _create_spark_session()
-                dfRules = spark.createDataFrame(rules_temp, schema)
-
-                columns = ["Category", "Rule Name", "Description"]
-                for clm in columns:
-                    translate = (
-                        Translate()
-                        .setTextCol(clm)
-                        .setToLanguage(language)
-                        .setOutputCol("translation")
-                        .setConcurrency(5)
-                    )
-
-                    if clm == "Rule Name":
-                        transDF = (
-                            translate.transform(dfRules)
-                            .withColumn(
-                                "translation",
-                                flatten(col("translation.translations")),
-                            )
-                            .withColumn("translation", col("translation.text"))
-                            .select(clm, "translation")
-                        )
-                    else:
-                        transDF = (
-                            translate.transform(dfRules)
-                            .withColumn(
-                                "translation",
-                                flatten(col("translation.translations")),
-                            )
-                            .withColumn("translation", col("translation.text"))
-                            .select("Rule Name", clm, "translation")
-                        )
-
-                    df_panda = transDF.toPandas()
-                    rule_file = pd.merge(
-                        rule_file,
-                        df_panda[["Rule Name", "translation"]],
-                        on="Rule Name",
-                        how="left",
-                    )
-
-                    rule_file = rule_file.rename(
-                        columns={"translation": f"{clm}Translated"}
-                    )
-                    rule_file[f"{clm}Translated"] = rule_file[f"{clm}Translated"].apply(
-                        lambda x: x[0] if x is not None else None
-                    )
-
-                for clm in columns:
-                    rule_file = rule_file.drop([clm], axis=1)
-                    rule_file = rule_file.rename(columns={f"{clm}Translated": clm})
-
-                return rule_file
-
-            rules = translate_using_spark(rules_df)
-
-        for rule in rules:
-            if rule["Severity"] == "Warning":
-                rule["Severity"] = icons.warning
-            elif rule["Severity"] == "Error":
-                rule["Severity"] = icons.error
-            elif rule["Severity"] == "Info":
-                rule["Severity"] = icons.info
-
-        # Rebuild rules_df after severity icons have been applied
-        rules_df = pd.DataFrame(rules, columns=["Category", "Scope", "Severity", "Name", "Expression", "Description", "URL"])
-
-        # Extract rule logic source code for display
-        rule_logic_map = {}
-        for rule in rules:
-            rname = rule.get("Name")
-            expr = rule.get("Expression")
-            src = None
-            if expr and isinstance(expr, str):
-                try:
-                    src = _format_rule_source(expr)
-                except Exception:
-                    src = expr
-            rule_logic_map[rname] = _highlight_python(src.strip()) if src else ""
-
-        pd.set_option("display.max_colwidth", 1000)
-
-        violations = pd.DataFrame(columns=["Object Name", "Scope", "Rule Name"])
-
-        scope_to_dataframe = {
-            "Relationship": (
-                tom.model.Relationships,
-                lambda obj: create_relationship_name(
-                    obj.FromTable.Name,
-                    obj.FromColumn.Name,
-                    obj.ToTable.Name,
-                    obj.ToColumn.Name,
-                ),
-            ),
-            "Column": (
-                tom.all_columns(),
-                lambda obj: format_dax_object_name(obj.Parent.Name, obj.Name),
-            ),
-            "Calculated Column": (
-                tom.all_calculated_columns(),
-                lambda obj: format_dax_object_name(obj.Parent.Name, obj.Name),
-            ),
-            "Measure": (tom.all_measures(), lambda obj: obj.Name),
-            "Hierarchy": (
-                tom.all_hierarchies(),
-                lambda obj: format_dax_object_name(obj.Parent.Name, obj.Name),
-            ),
-            "Table": (tom.model.Tables, lambda obj: obj.Name),
-            "Calculated Table": (tom.all_calculated_tables(), lambda obj: obj.Name),
-            "Role": (tom.model.Roles, lambda obj: obj.Name),
-            "Model": (tom.model, lambda obj: obj.Model.Name),
-            "Calculation Item": (
-                tom.all_calculation_items(),
-                lambda obj: format_dax_object_name(obj.Parent.Table.Name, obj.Name),
-            ),
-            "Row Level Security": (
-                tom.all_rls(),
-                lambda obj: format_dax_object_name(obj.Parent.Name, obj.Name),
-            ),
-            "Partition": (
-                tom.all_partitions(),
-                lambda obj: format_dax_object_name(obj.Parent.Name, obj.Name),
-            ),
-            "Function": (
-                tom.all_functions(),
-                lambda obj: obj.Name,
-            ),
-        }
-
-        import sempy
-        sempy.fabric._client._utils._init_analysis_services()
-        import Microsoft.AnalysisServices.Tabular as TOM
-
-        for rule in rules:
-            ruleName = rule.get("Name")
-            expr_text = rule.get("Expression")
-            scopes = rule.get("Scope")
-            expr = eval(f"lambda obj, tom, dep, TOM, re: ({expr_text})")
-
-            if isinstance(scopes, str):
-                scopes = [scopes]
-
-            for scope in scopes:
-                func = scope_to_dataframe[scope][0]
-                nm = scope_to_dataframe[scope][1]
-
-                if scope == "Model":
-                    x = []
-                    if expr(func, tom, dep, TOM, re):
-                        x = ["Model"]
-                elif scope == "Measure":
-                    x = [
-                        nm(obj)
-                        for obj in tom.all_measures()
-                        if expr(obj, tom, dep, TOM, re)
-                    ]
-                elif scope == "Function":
-                    x = [
-                        nm(obj)
-                        for obj in tom.all_functions()
-                        if expr(obj, tom, dep, TOM, re)
-                    ]
-                elif scope == "Column":
-                    x = [
-                        nm(obj)
-                        for obj in tom.all_columns()
-                        if expr(obj, tom, dep, TOM, re)
-                    ]
-                elif scope == "Partition":
-                    x = [
-                        nm(obj)
-                        for obj in tom.all_partitions()
-                        if expr(obj, tom, dep, TOM, re)
-                    ]
-                elif scope == "Hierarchy":
-                    x = [
-                        nm(obj)
-                        for obj in tom.all_hierarchies()
-                        if expr(obj, tom, dep, TOM, re)
-                    ]
-                elif scope == "Table":
-                    x = [
-                        nm(obj)
-                        for obj in tom.model.Tables
-                        if expr(obj, tom, dep, TOM, re)
-                    ]
-                elif scope == "Calculated Table":
-                    x = [
-                        nm(obj)
-                        for obj in tom.all_calculated_tables()
-                        if expr(obj, tom, dep, TOM, re)
-                    ]
-                elif scope == "Relationship":
-                    x = [
-                        nm(obj)
-                        for obj in tom.model.Relationships
-                        if expr(obj, tom, dep, TOM, re)
-                    ]
-                elif scope == "Role":
-                    x = [
-                        nm(obj)
-                        for obj in tom.model.Roles
-                        if expr(obj, tom, dep, TOM, re)
-                    ]
-                elif scope == "Row Level Security":
-                    x = [
-                        nm(obj) for obj in tom.all_rls() if expr(obj, tom, dep, TOM, re)
-                    ]
-                elif scope == "Calculation Item":
-                    x = [
-                        nm(obj)
-                        for obj in tom.all_calculation_items()
-                        if expr(obj, tom, dep, TOM, re)
-                    ]
-                elif scope == "Calculated Column":
-                    x = [
-                        nm(obj)
-                        for obj in tom.all_calculated_columns()
-                        if expr(obj, tom, dep, TOM, re)
-                    ]
-
-                if len(x) > 0:
-                    new_data = {
-                        "Object Name": x,
-                        "Scope": scope,
-                        "Rule Name": ruleName,
-                    }
-                    violations = pd.concat(
-                        [violations, pd.DataFrame(new_data)], ignore_index=True
-                    )
-
-        prepDF = pd.merge(
-            violations,
-            rules_df[["Name", "Category", "Severity", "Description", "URL"]],
-            left_on="Rule Name",
-            right_on="Name",
-            how="left",
-        )
-    
-        prepDF.rename(columns={"Scope": "Object Type"}, inplace=True)
-        _plural_map = {
-            "Column": "Columns",
-            "Calculated Column": "Calculated Columns",
-            "Measure": "Measures",
-            "Table": "Tables",
-            "Calculated Table": "Calculated Tables",
-            "Relationship": "Relationships",
-            "Partition": "Partitions",
-            "Hierarchy": "Hierarchies",
-            "Role": "Roles",
-            "Model": "Models",
-            "Calculation Item": "Calculation Items",
-            "Row Level Security": "Row Level Security",
-            "Function": "Functions",
-        }
-        prepDF["Object Type"] = (
-            prepDF["Object Type"].map(_plural_map).fillna(prepDF["Object Type"])
-        )
-        finalDF = prepDF[
-            [
-                "Category",
-                "Rule Name",
-                "Severity",
-                "Object Type",
-                "Object Name",
-                "Description",
-                "URL",
-            ]
+    prepDF["Object Type"] = (
+        prepDF["Object Type"].map(_plural_map).fillna(prepDF["Object Type"])
+    )
+    finalDF = prepDF[
+        [
+            "Category",
+            "Rule Name",
+            "Severity",
+            "Object Type",
+            "Object Name",
+            "Description",
+            "URL",
         ]
-
-    if export:
-        if not lakehouse_attached():
-            raise ValueError(
-                f"{icons.red_dot} In order to save the Best Practice Analyzer results, a lakehouse must be attached to the notebook. Please attach a lakehouse to this notebook."
-            )
-
-        dfExport = finalDF.copy()
-        delta_table_name = "modelbparesults"
-
-        lakeT = get_lakehouse_tables()
-        lakeT_filt = lakeT[lakeT["Table Name"] == delta_table_name]
-
-        dfExport["Severity"] = dfExport["Severity"].replace(icons.severity_mapping)
-
-        if len(lakeT_filt) == 0:
-            runId = 1
-        else:
-            max_run_id = _get_column_aggregate(table_name=delta_table_name)
-            runId = max_run_id + 1
-
-        now = datetime.datetime.now()
-        dfD = fabric.list_datasets(workspace=workspace_id, mode="rest")
-        dfD_filt = dfD[dfD["Dataset Id"] == dataset_id]
-        configured_by = dfD_filt["Configured By"].iloc[0]
-        capacity_id, capacity_name = resolve_workspace_capacity(workspace=workspace_id)
-        dfExport["Capacity Name"] = capacity_name
-        dfExport["Capacity Id"] = capacity_id
-        dfExport["Workspace Name"] = workspace_name
-        dfExport["Workspace Id"] = workspace_id
-        dfExport["Dataset Name"] = dataset_name
-        dfExport["Dataset Id"] = dataset_id
-        dfExport["Configured By"] = configured_by
-        dfExport["Timestamp"] = now
-        dfExport["RunId"] = runId
-        dfExport["RunId"] = dfExport["RunId"].astype("int")
-
-        dfExport = dfExport[list(icons.bpa_schema.keys())]
-        dfExport["RunId"] = dfExport["RunId"].astype("int")
-        schema = {
-            key.replace(" ", "_"): value for key, value in icons.bpa_schema.items()
-        }
-        save_as_delta_table(
-            dataframe=dfExport,
-            delta_table_name=delta_table_name,
-            write_mode="append",
-            schema=schema,
-            merge_schema=True,
-        )
-
-    if return_dataframe:
-        return finalDF
-
-    pd.set_option("display.max_colwidth", 100)
+    ]
 
     finalDF = (
         finalDF[
@@ -935,22 +1572,35 @@ def run_model_bpa(
         .set_index(["Category", "Rule Name"])
     )
 
-    bpa2 = finalDF.reset_index()
+    violations_df = finalDF.reset_index()
+
+    return violations_df
+
+
+def visualize_bpa(rules, violations_df, dataset_name="", workspace_id=""):
+
+    # Map severity text to icons for display (without mutating original rules)
+    sev_icon_map = {}
+    for rule in rules:
+        sev = rule.get("Severity", "")
+        if sev in severity_map:
+            sev_icon_map[sev] = severity_map[sev]
+
+    rule_logic_map = get_rule_logic_map(rules)
+
+    # Replace severity text with icons in violations_df for display
+    violations_display = violations_df.copy()
+    violations_display["Severity"] = violations_display["Severity"].replace(sev_icon_map)
+
     bpa_dict = {
-        cat: bpa2[bpa2["Category"] == cat].drop("Category", axis=1)
-        for cat in bpa2["Category"].drop_duplicates().values
+        cat: violations_display[violations_display["Category"] == cat].drop("Category", axis=1)
+        for cat in violations_display["Category"].drop_duplicates().values
     }
 
     # Collect unique filter values
-    all_rule_names = sorted(bpa2["Rule Name"].dropna().unique().tolist())
-    all_object_types = sorted(bpa2["Object Type"].dropna().unique().tolist())
-    all_severities = sorted(bpa2["Severity"].dropna().unique().tolist())
-
-    severity_label_map = {
-        icons.warning: "Warning",
-        icons.error: "Error",
-        icons.info: "Info",
-    }
+    all_rule_names = sorted(violations_display["Rule Name"].dropna().unique().tolist())
+    all_object_types = sorted(violations_display["Object Type"].dropna().unique().tolist())
+    all_severities = sorted(violations_display["Severity"].dropna().unique().tolist())
 
     # Build data payload for JS
     categories_data = {}
@@ -975,12 +1625,34 @@ def run_model_bpa(
             )
         categories_data[cat] = rows
 
+    # Build the full rules payload for the editor (already text severity)
+    all_rules_for_editor = []
+    for rule in rules:
+        sev = rule.get("Severity", "")
+        scope = rule.get("Scope", "")
+        if isinstance(scope, list):
+            scope_str = ", ".join(scope)
+        else:
+            scope_str = scope
+        all_rules_for_editor.append({
+            "Category": rule.get("Category", ""),
+            "Scope": scope_str,
+            "Severity": sev,
+            "Name": rule.get("Name", ""),
+            "Expression": rule.get("Expression", ""),
+            "Description": rule.get("Description", "") or "",
+            "URL": rule.get("URL", "") or "",
+        })
+
     data_json = json.dumps(categories_data)
     rule_names_json = json.dumps(all_rule_names)
     object_types_json = json.dumps(all_object_types)
     severities_json = json.dumps(all_severities)
-    severity_label_json = json.dumps(severity_label_map)
+    severity_label_json = json.dumps(icons.severity_mapping)
     rule_logic_json = json.dumps(rule_logic_map)
+    all_rules_json = json.dumps(all_rules_for_editor)
+    dataset_name_json = json.dumps(dataset_name)
+    workspace_id_json = json.dumps(workspace_id)
 
     html_output = f"""
     <style>
@@ -1336,20 +2008,435 @@ def run_model_bpa(
             color: #86868b;
             font-size: 14px;
         }}
+
+        /* ── Rule Editor ── */
+        .bpa-editor-btn {{
+            padding: 8px 18px;
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            background: #fff;
+            font-size: 13px;
+            font-weight: 500;
+            color: #0071e3;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }}
+        .bpa-editor-btn:hover {{ background: #f0f5ff; border-color: #0071e3; }}
+        .bpa-editor-overlay {{
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 9999;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+            overflow-y: auto;
+        }}
+        .bpa-editor-overlay.open {{ display: flex; }}
+        .bpa-editor-panel {{
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+            width: 100%;
+            max-width: 1100px;
+            height: 92vh;
+            max-height: 92vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }}
+        .bpa-editor-topbar {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 24px;
+            border-bottom: 1px solid #e8e8ed;
+            flex-shrink: 0;
+        }}
+        .bpa-editor-topbar h2 {{
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: #1d1d1f;
+        }}
+        .bpa-editor-topbar-actions {{
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }}
+        .bpa-editor-close {{
+            background: none;
+            border: none;
+            font-size: 22px;
+            color: #86868b;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            line-height: 1;
+        }}
+        .bpa-editor-close:hover {{ background: #f0f0f5; color: #1d1d1f; }}
+        .bpa-editor-body {{
+            overflow-y: auto;
+            padding: 16px 24px;
+            flex: 1;
+        }}
+        .bpa-editor-table {{
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }}
+        .bpa-editor-table th {{
+            text-align: left;
+            padding: 8px 10px;
+            font-weight: 600;
+            color: #86868b;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            border-bottom: 2px solid #e8e8ed;
+            white-space: nowrap;
+        }}
+        .bpa-editor-table td {{
+            padding: 8px 10px;
+            border-bottom: 1px solid #f0f0f5;
+            vertical-align: top;
+            color: #1d1d1f;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }}
+        .bpa-editor-table tr:hover td {{ background: #fafafa; }}
+        .bpa-editor-table .bpa-ed-actions {{
+            white-space: nowrap;
+            display: flex;
+            gap: 4px;
+        }}
+        .bpa-ed-btn {{
+            padding: 4px 10px;
+            border: 1px solid #d2d2d7;
+            border-radius: 6px;
+            background: #fff;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.15s;
+            color: #1d1d1f;
+        }}
+        .bpa-ed-btn:hover {{ border-color: #0071e3; color: #0071e3; }}
+        .bpa-ed-btn.danger {{ color: #ff3b30; }}
+        .bpa-ed-btn.danger:hover {{ border-color: #ff3b30; background: #fff5f5; }}
+        .bpa-ed-btn.primary {{
+            background: #0071e3;
+            color: #fff;
+            border-color: #0071e3;
+        }}
+        .bpa-ed-btn.primary:hover {{ background: #0077ed; }}
+        .bpa-ed-btn.add {{
+            background: #fff;
+            color: #34c759;
+            border-color: #34c759;
+            font-weight: 600;
+        }}
+        .bpa-ed-btn.add:hover {{ background: #f0fff4; }}
+        .bpa-save-dropdown {{
+            position: relative;
+            display: inline-flex;
+        }}
+        .bpa-save-dropdown-toggle {{
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            background: #0071e3;
+            color: #fff;
+            border: 1px solid #0071e3;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.15s;
+        }}
+        .bpa-save-dropdown-toggle:hover {{ background: #0077ed; }}
+        .bpa-save-dropdown-toggle svg {{
+            width: 10px;
+            height: 10px;
+            fill: currentColor;
+        }}
+        .bpa-save-dropdown-menu {{
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 4px;
+            background: #fff;
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+            z-index: 100;
+            min-width: 180px;
+            overflow: hidden;
+        }}
+        .bpa-save-dropdown.open .bpa-save-dropdown-menu {{ display: block; }}
+        .bpa-save-dropdown-item {{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            font-size: 12px;
+            color: #1d1d1f;
+            cursor: pointer;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            transition: background 0.1s;
+        }}
+        .bpa-save-dropdown-item:hover {{ background: #f5f5f7; }}
+        .bpa-save-dropdown-item svg {{
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+        }}
+        /* ── Rule Form (modal inside editor) ── */
+        .bpa-form-overlay {{
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.35);
+            z-index: 10001;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }}
+        .bpa-form-overlay.open {{ display: flex; }}
+        .bpa-form-panel {{
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 640px;
+            max-height: 92vh;
+            overflow-y: auto;
+            padding: 24px;
+        }}
+        .bpa-form-panel h3 {{
+            margin: 0 0 18px 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: #1d1d1f;
+        }}
+        .bpa-form-group {{
+            margin-bottom: 14px;
+        }}
+        .bpa-form-group label {{
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #6e6e73;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }}
+        .bpa-form-group label .bpa-req {{
+            color: #ff3b30;
+            margin-left: 2px;
+        }}
+        .bpa-form-group input,
+        .bpa-form-group textarea,
+        .bpa-form-group select {{
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: inherit;
+            color: #1d1d1f;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }}
+        .bpa-form-group input:focus,
+        .bpa-form-group textarea:focus,
+        .bpa-form-group select:focus {{
+            outline: none;
+            border-color: #0071e3;
+            box-shadow: 0 0 0 3px rgba(0,113,227,0.15);
+        }}
+        .bpa-form-group textarea {{
+            min-height: 70px;
+            resize: vertical;
+            font-family: "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 12px;
+        }}
+        .bpa-form-group .bpa-form-error {{
+            color: #ff3b30;
+            font-size: 11px;
+            margin-top: 3px;
+            display: none;
+        }}
+        .bpa-form-actions {{
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }}
+        .bpa-save-status {{
+            font-size: 12px;
+            padding: 6px 14px;
+            border-radius: 8px;
+            display: none;
+            align-items: center;
+            gap: 6px;
+        }}
+        .bpa-save-status.success {{
+            display: inline-flex;
+            background: #f0fff4;
+            color: #34c759;
+            border: 1px solid #34c759;
+        }}
+        .bpa-save-status.error {{
+            display: inline-flex;
+            background: #fff5f5;
+            color: #ff3b30;
+            border: 1px solid #ff3b30;
+        }}
+
+        /* ── Re-run button ── */
+        .bpa-rerun-btn {{
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 14px;
+            background: #f5f5f7;
+            color: #1d1d1f;
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: inherit;
+        }}
+        .bpa-rerun-btn:hover {{ background: #e8e8ed; }}
+        .bpa-rerun-btn svg {{ width: 13px; height: 13px; }}
+        .bpa-rerun-status {{
+            font-size: 11px;
+            color: #34c759;
+            margin-left: 8px;
+            font-weight: 500;
+        }}
+
     </style>
 
     <div class="bpa-root" id="bpaRoot">
-        <div class="bpa-tabs" id="bpaTabs"></div>
-        <div class="bpa-filters" id="bpaFilters">
-            <span class="bpa-filter-label">Filters</span>
-            <select class="bpa-filter-select" id="filterRule"><option value="">All Rules</option></select>
-            <select class="bpa-filter-select" id="filterObjType"><option value="">All Object Types</option></select>
-            <div class="bpa-sev-dropdown" id="sevDropdown">
-                <div class="bpa-sev-toggle" id="sevToggle">All Severities</div>
-                <div class="bpa-sev-menu" id="sevMenu"></div>
+        <div class="bpa-results" id="bpaResults">
+            <div class="bpa-tabs" id="bpaTabs"></div>
+            <div class="bpa-filters" id="bpaFilters">
+                <span class="bpa-filter-label">Filters</span>
+                <select class="bpa-filter-select" id="filterRule"><option value="">All Rules</option></select>
+                <select class="bpa-filter-select" id="filterObjType"><option value="">All Object Types</option></select>
+                <div class="bpa-sev-dropdown" id="sevDropdown">
+                    <div class="bpa-sev-toggle" id="sevToggle">All Severities</div>
+                    <div class="bpa-sev-menu" id="sevMenu"></div>
+                </div>
+                <button class="bpa-editor-btn" id="openEditorBtn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    Edit Rules
+                </button>
+                <button class="bpa-rerun-btn" id="rerunBpaBtn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                    Re-run BPA
+                </button>
+                <span class="bpa-rerun-status" id="rerunStatus"></span>
+            </div>
+            <div id="bpaContent"></div>
+        </div>
+    </div>
+
+    <!-- Rule Editor Overlay -->
+    <div class="bpa-editor-overlay" id="editorOverlay">
+        <div class="bpa-editor-panel">
+            <div class="bpa-editor-topbar">
+                <h2>Rule Editor</h2>
+                <div class="bpa-editor-topbar-actions">
+                    <span class="bpa-save-status" id="editorSaveStatus"></span>
+                    <button class="bpa-ed-btn add" id="addRuleBtn">+ Add Rule</button>
+                    <button class="bpa-ed-btn primary" id="saveRulesBtn">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Save Rules
+                    </button>
+                    <button class="bpa-editor-close" id="closeEditorBtn">&times;</button>
+                </div>
+            </div>
+            <div class="bpa-editor-body">
+                <table class="bpa-editor-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Scope</th>
+                            <th>Severity</th>
+                            <th>Expression</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="editorTableBody"></tbody>
+                </table>
             </div>
         </div>
-        <div id="bpaContent"></div>
+    </div>
+
+    <!-- Rule Form Overlay (for Add/Edit) -->
+    <div class="bpa-form-overlay" id="formOverlay">
+        <div class="bpa-form-panel">
+            <h3 id="formTitle">Edit Rule</h3>
+            <input type="hidden" id="formIdx" value="-1"/>
+            <div class="bpa-form-group">
+                <label>Name <span class="bpa-req">*</span></label>
+                <input type="text" id="formName" placeholder="Rule name"/>
+                <div class="bpa-form-error" id="formNameErr">Name is required.</div>
+            </div>
+            <div class="bpa-form-group">
+                <label>Category <span class="bpa-req">*</span></label>
+                <input type="text" id="formCategory" placeholder="e.g. Performance"/>
+                <div class="bpa-form-error" id="formCategoryErr">Category is required.</div>
+            </div>
+            <div class="bpa-form-group">
+                <label>Scope <span class="bpa-req">*</span> (comma-separated for multiple)</label>
+                <input type="text" id="formScope" placeholder="e.g. Column, Measure"/>
+                <div class="bpa-form-error" id="formScopeErr">Scope is required.</div>
+            </div>
+            <div class="bpa-form-group">
+                <label>Severity <span class="bpa-req">*</span></label>
+                <select id="formSeverity">
+                    <option value="">-- Select --</option>
+                    <option value="Warning">Warning</option>
+                    <option value="Error">Error</option>
+                    <option value="Info">Info</option>
+                </select>
+                <div class="bpa-form-error" id="formSeverityErr">Severity is required.</div>
+            </div>
+            <div class="bpa-form-group">
+                <label>Expression <span class="bpa-req">*</span></label>
+                <textarea id="formExpression" placeholder="Python expression..."></textarea>
+                <div class="bpa-form-error" id="formExpressionErr">Expression is required.</div>
+            </div>
+            <div class="bpa-form-group">
+                <label>Description</label>
+                <textarea id="formDescription" placeholder="Optional description..." style="font-family:inherit;"></textarea>
+            </div>
+            <div class="bpa-form-group">
+                <label>URL</label>
+                <input type="text" id="formURL" placeholder="Optional reference URL"/>
+            </div>
+            <div class="bpa-form-actions">
+                <button class="bpa-ed-btn" id="formCancelBtn">Cancel</button>
+                <button class="bpa-ed-btn primary" id="formSaveBtn">Save</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -1360,7 +2447,11 @@ def run_model_bpa(
         var SEVERITIES = {severities_json};
         var SEV_LABELS = {severity_label_json};
         var RULE_LOGIC = {rule_logic_json};
+        var ALL_RULES = {all_rules_json};
+        var DATASET_NAME = {dataset_name_json};
+        var WORKSPACE_ID = {workspace_id_json};
 
+        var rulesModified = false;
         var activeTab = null;
 
         // Populate filter dropdowns
@@ -1626,6 +2717,381 @@ def run_model_bpa(
         }}
 
         render();
+
+        /* ── Run / Re-run BPA Logic ── */
+        var bpaLanding = document.getElementById('bpaLanding');
+        var bpaResults = document.getElementById('bpaResults');
+
+        document.getElementById('runBpaBtn').addEventListener('click', function() {{
+            if (!rulesModified) {{
+                // Rules unchanged – show pre-computed results
+                bpaLanding.style.display = 'none';
+                bpaResults.style.display = '';
+            }} else {{
+                // Rules were imported or edited – copy run command to clipboard
+                var code = buildRerunCode();
+                var statusEl = document.getElementById('importStatus');
+                function showCopied() {{
+                    statusEl.textContent = 'Copied run command \u2014 paste in a new cell to run BPA with the updated rules';
+                    statusEl.className = 'bpa-import-status success';
+                    statusEl.style.display = '';
+                }}
+                function showFallback() {{
+                    // Fallback: select from a textarea
+                    var ta = document.createElement('textarea');
+                    ta.value = code;
+                    ta.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:500px;height:200px;z-index:99999;font-size:12px;padding:10px;';
+                    document.body.appendChild(ta);
+                    ta.focus();
+                    ta.select();
+                    statusEl.textContent = 'Copy the code from the text box, paste in a new cell, and run it.';
+                    statusEl.className = 'bpa-import-status success';
+                    statusEl.style.display = '';
+                    ta.addEventListener('blur', function() {{ document.body.removeChild(ta); }});
+                }}
+                try {{
+                    if (navigator.clipboard && navigator.clipboard.writeText) {{
+                        navigator.clipboard.writeText(code).then(showCopied, showFallback);
+                    }} else {{
+                        showFallback();
+                    }}
+                }} catch(e) {{
+                    showFallback();
+                }}
+            }}
+        }});
+
+        /* ── Import Rules Logic ── */
+        var REQUIRED_KEYS = ['Category', 'Scope', 'Severity', 'Name', 'Expression'];
+        var VALID_KEYS = ['Category', 'Scope', 'Severity', 'Name', 'Expression', 'Description', 'URL'];
+        var importFileInput = document.getElementById('importRulesFile');
+        var importStatus = document.getElementById('importStatus');
+
+        document.getElementById('importRulesBtn').addEventListener('click', function() {{
+            importFileInput.value = '';
+            importFileInput.click();
+        }});
+
+        importFileInput.addEventListener('change', function(e) {{
+            var file = e.target.files[0];
+            if (!file) return;
+
+            // Check extension
+            if (!file.name.toLowerCase().endsWith('.json')) {{
+                importStatus.textContent = 'Invalid file type. Please select a .json file.';
+                importStatus.className = 'bpa-import-status error';
+                return;
+            }}
+
+            var reader = new FileReader();
+            reader.onload = function(ev) {{
+                try {{
+                    var parsed = JSON.parse(ev.target.result);
+                }} catch (err) {{
+                    importStatus.textContent = 'Invalid JSON: ' + err.message;
+                    importStatus.className = 'bpa-import-status error';
+                    return;
+                }}
+
+                if (!Array.isArray(parsed) || parsed.length === 0) {{
+                    importStatus.textContent = 'Rules file must be a non-empty JSON array.';
+                    importStatus.className = 'bpa-import-status error';
+                    return;
+                }}
+
+                // Validate each rule has all required keys
+                for (var i = 0; i < parsed.length; i++) {{
+                    var rule = parsed[i];
+                    if (typeof rule !== 'object' || rule === null || Array.isArray(rule)) {{
+                        importStatus.textContent = 'Rule #' + (i + 1) + ' is not a valid object.';
+                        importStatus.className = 'bpa-import-status error';
+                        return;
+                    }}
+                    for (var k = 0; k < REQUIRED_KEYS.length; k++) {{
+                        if (!(REQUIRED_KEYS[k] in rule) || !rule[REQUIRED_KEYS[k]]) {{
+                            importStatus.textContent = 'Rule #' + (i + 1) + ' is missing required key: ' + REQUIRED_KEYS[k];
+                            importStatus.className = 'bpa-import-status error';
+                            return;
+                        }}
+                    }}
+                }}
+
+                // Convert to editor format
+                var imported = parsed.map(function(r) {{
+                    var scope = r.Scope;
+                    if (Array.isArray(scope)) scope = scope.join(', ');
+                    return {{
+                        Category: r.Category || '',
+                        Scope: scope || '',
+                        Severity: r.Severity || '',
+                        Name: r.Name || '',
+                        Expression: r.Expression || '',
+                        Description: r.Description || '',
+                        URL: r.URL || ''
+                    }};
+                }});
+
+                ALL_RULES = imported;
+                rulesModified = true;
+                importStatus.textContent = 'Imported ' + imported.length + ' rule' + (imported.length !== 1 ? 's' : '') + ' from ' + file.name;
+                importStatus.className = 'bpa-import-status success';
+            }};
+            reader.readAsText(file);
+        }});
+
+        function buildRerunCode() {{
+            var rulesArr = ALL_RULES.map(function(r) {{
+                var scopeVal = r.Scope;
+                if (scopeVal.indexOf(',') !== -1) {{
+                    scopeVal = scopeVal.split(',').map(function(s) {{ return s.trim(); }});
+                }}
+                return {{
+                    Category: r.Category,
+                    Scope: scopeVal,
+                    Severity: r.Severity,
+                    Name: r.Name,
+                    Expression: r.Expression,
+                    Description: r.Description || null,
+                    URL: r.URL || null
+                }};
+            }});
+            var b64 = btoa(unescape(encodeURIComponent(JSON.stringify(rulesArr))));
+            var code = 'import json, base64\\n'
+                + '_rules = json.loads(base64.b64decode(\"' + b64 + '\").decode(\"utf-8\"))\\n'
+                + 'from sempy_labs.semantic_model._bpa import run_model_bpa\\n'
+                + 'run_model_bpa(\"' + DATASET_NAME.replace(/\"/g, '\\\\\"') + '\", workspace=\"' + WORKSPACE_ID + '\", rules=_rules)';
+            return code;
+        }}
+
+        document.getElementById('rerunBpaBtn').addEventListener('click', function() {{
+            var code = buildRerunCode();
+            var statusEl = document.getElementById('rerunStatus');
+            if (navigator.clipboard && navigator.clipboard.writeText) {{
+                navigator.clipboard.writeText(code).then(function() {{
+                    statusEl.textContent = 'Copied — paste in a new cell to re-run';
+                    setTimeout(function() {{ statusEl.textContent = ''; }}, 4000);
+                }});
+            }}
+        }});
+
+        /* ── Rule Editor Logic ── */
+        var editorOverlay = document.getElementById('editorOverlay');
+        var formOverlay = document.getElementById('formOverlay');
+        var editorTableBody = document.getElementById('editorTableBody');
+        var editorSaveStatus = document.getElementById('editorSaveStatus');
+
+        function openEditor() {{
+            renderEditorTable();
+            editorOverlay.classList.add('open');
+        }}
+        document.getElementById('openEditorBtn').addEventListener('click', openEditor);
+        document.getElementById('openEditorBtnLanding').addEventListener('click', openEditor);
+        document.getElementById('closeEditorBtn').addEventListener('click', function() {{
+            editorOverlay.classList.remove('open');
+            editorSaveStatus.className = 'bpa-save-status';
+            editorSaveStatus.style.display = 'none';
+        }});
+        editorOverlay.addEventListener('click', function(e) {{
+            if (e.target === editorOverlay) {{
+                editorOverlay.classList.remove('open');
+                editorSaveStatus.className = 'bpa-save-status';
+                editorSaveStatus.style.display = 'none';
+            }}
+        }});
+
+        function renderEditorTable() {{
+            editorTableBody.innerHTML = '';
+            ALL_RULES.forEach(function(rule, idx) {{
+                var tr = document.createElement('tr');
+                tr.innerHTML =
+                    '<td title="' + escHtml(rule.Name) + '">' + escHtml(rule.Name) + '</td>' +
+                    '<td>' + escHtml(rule.Category) + '</td>' +
+                    '<td>' + escHtml(rule.Scope) + '</td>' +
+                    '<td>' + escHtml(rule.Severity) + '</td>' +
+                    '<td title="' + escHtml(rule.Expression) + '">' + escHtml(rule.Expression).substring(0, 50) + (rule.Expression.length > 50 ? '...' : '') + '</td>' +
+                    '<td class="bpa-ed-actions"></td>';
+                var actTd = tr.querySelector('.bpa-ed-actions');
+                var editBtn = document.createElement('button');
+                editBtn.className = 'bpa-ed-btn';
+                editBtn.textContent = 'Edit';
+                editBtn.addEventListener('click', (function(i) {{ return function() {{ openForm(i); }}; }})(idx));
+                var delBtn = document.createElement('button');
+                delBtn.className = 'bpa-ed-btn danger';
+                delBtn.textContent = 'Delete';
+                delBtn.addEventListener('click', (function(i) {{ return function() {{ deleteRule(i); }}; }})(idx));
+                actTd.appendChild(editBtn);
+                actTd.appendChild(delBtn);
+                editorTableBody.appendChild(tr);
+            }});
+        }}
+
+        function escHtml(str) {{
+            if (!str) return '';
+            var d = document.createElement('div');
+            d.textContent = str;
+            return d.innerHTML;
+        }}
+
+        function downloadRulesJson() {{
+            var rulesForSave = ALL_RULES.map(function(r) {{
+                var scopeVal = r.Scope;
+                if (scopeVal.indexOf(',') !== -1) {{
+                    scopeVal = scopeVal.split(',').map(function(s) {{ return s.trim(); }});
+                }}
+                return {{
+                    Category: r.Category,
+                    Scope: scopeVal,
+                    Severity: r.Severity,
+                    Name: r.Name,
+                    Expression: r.Expression,
+                    Description: r.Description || null,
+                    URL: r.URL || null
+                }};
+            }});
+            var jsonStr = JSON.stringify(rulesForSave, null, 4);
+            var blob = new Blob([jsonStr], {{ type: 'application/json' }});
+            var dlUrl = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = dlUrl;
+            var fileName = RULES_FILE_PATH.split('/').pop() || 'rules.json';
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(dlUrl);
+            return fileName;
+        }}
+
+        function deleteRule(idx) {{
+            var rule = ALL_RULES[idx];
+            // Show inline confirmation on the delete button
+            var rows = document.getElementById('editorTableBody').querySelectorAll('tr');
+            if (!rows[idx]) return;
+            var actTd = rows[idx].querySelector('td:last-child');
+            if (actTd.querySelector('.bpa-confirm-delete')) return; // already showing
+
+            var wrapper = document.createElement('span');
+            wrapper.className = 'bpa-confirm-delete';
+            wrapper.style.cssText = 'display:inline-flex;gap:4px;align-items:center;';
+            var label = document.createElement('span');
+            label.textContent = 'Delete?';
+            label.style.cssText = 'color:#ff3b30;font-size:11px;font-weight:600;';
+            var yesBtn = document.createElement('button');
+            yesBtn.className = 'bpa-ed-btn danger';
+            yesBtn.textContent = 'Yes';
+            yesBtn.style.cssText = 'padding:2px 8px;font-size:11px;';
+            var noBtn = document.createElement('button');
+            noBtn.className = 'bpa-ed-btn';
+            noBtn.textContent = 'No';
+            noBtn.style.cssText = 'padding:2px 8px;font-size:11px;';
+            wrapper.appendChild(label);
+            wrapper.appendChild(yesBtn);
+            wrapper.appendChild(noBtn);
+            actTd.innerHTML = '';
+            actTd.appendChild(wrapper);
+
+            yesBtn.addEventListener('click', function() {{
+                ALL_RULES.splice(idx, 1);
+                rulesModified = true;
+                renderEditorTable();
+            }});
+            noBtn.addEventListener('click', function() {{
+                renderEditorTable();
+            }});
+        }}
+
+        // Form logic
+        document.getElementById('addRuleBtn').addEventListener('click', function() {{
+            openForm(-1);
+        }});
+        document.getElementById('formCancelBtn').addEventListener('click', function() {{
+            formOverlay.classList.remove('open');
+        }});
+        formOverlay.addEventListener('click', function(e) {{
+            if (e.target === formOverlay) formOverlay.classList.remove('open');
+        }});
+
+        function openForm(idx) {{
+            var title = document.getElementById('formTitle');
+            document.getElementById('formIdx').value = idx;
+            // Clear errors
+            ['formNameErr','formCategoryErr','formScopeErr','formSeverityErr','formExpressionErr'].forEach(function(id) {{
+                document.getElementById(id).style.display = 'none';
+            }});
+            if (idx >= 0) {{
+                title.textContent = 'Edit Rule';
+                var r = ALL_RULES[idx];
+                document.getElementById('formName').value = r.Name || '';
+                document.getElementById('formCategory').value = r.Category || '';
+                document.getElementById('formScope').value = r.Scope || '';
+                document.getElementById('formSeverity').value = r.Severity || '';
+                document.getElementById('formExpression').value = r.Expression || '';
+                document.getElementById('formDescription').value = r.Description || '';
+                document.getElementById('formURL').value = r.URL || '';
+            }} else {{
+                title.textContent = 'Add New Rule';
+                document.getElementById('formName').value = '';
+                document.getElementById('formCategory').value = '';
+                document.getElementById('formScope').value = '';
+                document.getElementById('formSeverity').value = '';
+                document.getElementById('formExpression').value = '';
+                document.getElementById('formDescription').value = '';
+                document.getElementById('formURL').value = '';
+            }}
+            formOverlay.classList.add('open');
+        }}
+
+        document.getElementById('formSaveBtn').addEventListener('click', function() {{
+            var idx = parseInt(document.getElementById('formIdx').value, 10);
+            var name = document.getElementById('formName').value.trim();
+            var category = document.getElementById('formCategory').value.trim();
+            var scope = document.getElementById('formScope').value.trim();
+            var severity = document.getElementById('formSeverity').value.trim();
+            var expression = document.getElementById('formExpression').value.trim();
+            var description = document.getElementById('formDescription').value.trim();
+            var url = document.getElementById('formURL').value.trim();
+
+            // Validate required fields
+            var valid = true;
+            if (!name) {{ document.getElementById('formNameErr').style.display = 'block'; valid = false; }}
+            else {{ document.getElementById('formNameErr').style.display = 'none'; }}
+            if (!category) {{ document.getElementById('formCategoryErr').style.display = 'block'; valid = false; }}
+            else {{ document.getElementById('formCategoryErr').style.display = 'none'; }}
+            if (!scope) {{ document.getElementById('formScopeErr').style.display = 'block'; valid = false; }}
+            else {{ document.getElementById('formScopeErr').style.display = 'none'; }}
+            if (!severity) {{ document.getElementById('formSeverityErr').style.display = 'block'; valid = false; }}
+            else {{ document.getElementById('formSeverityErr').style.display = 'none'; }}
+            if (!expression) {{ document.getElementById('formExpressionErr').style.display = 'block'; valid = false; }}
+            else {{ document.getElementById('formExpressionErr').style.display = 'none'; }}
+            if (!valid) return;
+
+            var ruleObj = {{
+                Name: name,
+                Category: category,
+                Scope: scope,
+                Severity: severity,
+                Expression: expression,
+                Description: description || '',
+                URL: url || ''
+            }};
+
+            if (idx >= 0) {{
+                ALL_RULES[idx] = ruleObj;
+            }} else {{
+                ALL_RULES.push(ruleObj);
+            }}
+            rulesModified = true;
+            renderEditorTable();
+            formOverlay.classList.remove('open');
+        }});
+
+        // Save Rules (download)
+        document.getElementById('saveRulesBtn').addEventListener('click', function() {{
+            var fileName = downloadRulesJson();
+            editorSaveStatus.textContent = 'Downloaded ' + fileName;
+            editorSaveStatus.className = 'bpa-save-status success';
+            editorSaveStatus.style.display = '';
+        }});
     }})();
     </script>
     """
