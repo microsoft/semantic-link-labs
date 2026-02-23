@@ -948,6 +948,10 @@ def _show_landing(rules, dataset_name, workspace_id):
                 Import Rules
             </button>
             <span class="bpa-import-status" id="importStatus"></span>
+            <div id="ruleCountDisplay" style="margin-top: 28px; display: inline-flex; align-items: center; gap: 8px; padding: 8px 20px; background: #f0f0f5; border-radius: 20px;">
+                <span style="font-size: 22px; font-weight: 700; color: #0071e3;">{len(rules)}</span>
+                <span style="font-size: 14px; font-weight: 500; color: #6e6e73;">{'rule' if len(rules) == 1 else 'rules'} loaded</span>
+            </div>
         </div>
     </div>
 
@@ -1060,6 +1064,15 @@ def _show_landing(rules, dataset_name, workspace_id):
         var DATASET_NAME = {dataset_name_json};
         var WORKSPACE_ID = {workspace_id_json};
         var rulesModified = false;
+
+        function updateRuleCount() {{
+            var el = document.getElementById('ruleCountDisplay');
+            if (el) {{
+                var n = ALL_RULES.length;
+                el.innerHTML = '<span style="font-size:22px;font-weight:700;color:#0071e3;">' + n + '</span>' +
+                    '<span style="font-size:14px;font-weight:500;color:#6e6e73;">' + (n === 1 ? 'rule' : 'rules') + ' loaded</span>';
+            }}
+        }}
 
         /* ── Run BPA via kernel ── */
         document.getElementById('runBpaBtn').addEventListener('click', function() {{
@@ -1176,6 +1189,7 @@ def _show_landing(rules, dataset_name, workspace_id):
                 ALL_RULES = imported;
                 rulesModified = true;
                 renderEditorTable();
+                updateRuleCount();
                 importStatus.textContent = 'Imported ' + imported.length + ' rule' + (imported.length !== 1 ? 's' : '') + ' from ' + file.name;
                 importStatus.className = 'bpa-import-status success';
             }};
@@ -1298,6 +1312,7 @@ def _show_landing(rules, dataset_name, workspace_id):
                 ALL_RULES.splice(idx, 1);
                 rulesModified = true;
                 renderEditorTable();
+                updateRuleCount();
             }});
             noBtn.addEventListener('click', function() {{
                 renderEditorTable();
@@ -1384,6 +1399,7 @@ def _show_landing(rules, dataset_name, workspace_id):
             }}
             rulesModified = true;
             renderEditorTable();
+            updateRuleCount();
             formOverlay.classList.remove('open');
         }});
 
