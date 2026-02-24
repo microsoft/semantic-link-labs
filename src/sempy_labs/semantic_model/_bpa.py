@@ -644,7 +644,7 @@ def _show_landing(rules, dataset_name, workspace_id):
             gap: 6px;
             padding: 8px 20px;
             background: #fff;
-            color: #1d1d1f;
+            color: #0071e3;
             border: 1px solid #d2d2d7;
             border-radius: 8px;
             font-size: 13px;
@@ -654,7 +654,7 @@ def _show_landing(rules, dataset_name, workspace_id):
             font-family: inherit;
             margin-top: 8px;
         }}
-        .bpa-import-btn:hover {{ background: #f5f5f7; }}
+        .bpa-import-btn:hover {{ background: #f0f5ff; border-color: #0071e3; }}
         .bpa-import-btn svg {{ width: 14px; height: 14px; }}
         .bpa-import-status {{
             font-size: 12px;
