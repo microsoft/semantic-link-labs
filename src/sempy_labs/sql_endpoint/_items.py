@@ -68,6 +68,7 @@ def refresh_sql_endpoint_metadata(
     workspace: Optional[str | UUID] = None,
     timeout_unit: Literal["Seconds", "Minutes", "Hours", "Days"] = "Minutes",
     timeout_value: int = 15,
+    recreate_tables: bool = False,
 ) -> pd.DataFrame:
     """
     Refreshes the metadata of a SQL endpoint.
@@ -90,6 +91,8 @@ def refresh_sql_endpoint_metadata(
         The unit of time for the request duration before timing out. Additional duration types may be added over time.
     timeout_value : int, default=15
         The number of time units in the request duration.
+    recreate_tables : bool, default=False
+        When set to true, this property instructs the system to drop and recreate all tables on SQL analytics endpoint during the refresh process. Use this option if you need to fully rebuild tables from their source definitions, for example to resolve inconsistencies or ensure a clean refresh.
 
     Returns
     -------
@@ -147,6 +150,8 @@ def refresh_sql_endpoint_metadata(
         )
 
     payload = {"timeout": {"timeUnit": timeout_unit, "value": timeout_value}}
+    if recreate_tables:
+        payload["recreateTables"] = True
 
     result = _base_api(
         request=f"v1/workspaces/{workspace_id}/sqlEndpoints/{sql_endpoint_id}/refreshMetadata",
