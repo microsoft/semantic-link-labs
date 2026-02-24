@@ -2249,9 +2249,7 @@ def _base_api(
     if isinstance(status_codes, int):
         status_codes = [status_codes]
 
-    if client == "fabric":
-        c = fabric.FabricRestClient(credential=FabricDefaultCredential())
-    elif client == "fabric_sp":
+    if client in ["fabric", "fabric_sp"]:
         token = auth.token_provider.get() or FabricDefaultCredential()
         c = fabric.FabricRestClient(credential=token)
 
