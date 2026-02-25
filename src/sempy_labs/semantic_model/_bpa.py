@@ -583,12 +583,23 @@ def _show_landing(rules, dataset_name, workspace_id):
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 60px 20px;
+            padding: 60px 20px 20px 20px;
             text-align: center;
         }}
         .bpa-landing-icon {{
-            margin-bottom: 16px;
-            opacity: 0.85;
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, #0071e3 0%, #40a9ff 100%);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px auto;
+        }}
+        .bpa-landing-icon svg {{
+            width: 30px;
+            height: 30px;
+            stroke: #fff;
         }}
         .bpa-landing-title {{
             font-size: 22px;
@@ -931,10 +942,10 @@ def _show_landing(rules, dataset_name, workspace_id):
     <div class="bpa-root" id="bpaRoot">
         <div class="bpa-landing" id="bpaLanding">
             <div class="bpa-landing-icon">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0071e3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
             </div>
             <h2 class="bpa-landing-title">Best Practice Analyzer</h2>
-            <p class="bpa-landing-desc">Analyze your semantic model against best practice rules.</p>
+            <p class="bpa-landing-desc">Analyze your semantic model against best practice rules to identify performance issues, formatting problems and more.</p>
             <button class="bpa-editor-btn" id="openEditorBtnLanding" style="margin-top: 12px;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 Edit Rules
@@ -945,9 +956,9 @@ def _show_landing(rules, dataset_name, workspace_id):
                 Import Rules
             </button>
             <span class="bpa-import-status" id="importStatus"></span>
-            <div id="ruleCountDisplay" style="margin-top: 28px; display: inline-flex; align-items: center; gap: 8px; padding: 8px 20px; background: #f0f0f5; border-radius: 20px;">
-                <span style="font-size: 22px; font-weight: 700; color: #0071e3;">{len(rules)}</span>
-                <span style="font-size: 14px; font-weight: 500; color: #6e6e73;">{'rule' if len(rules) == 1 else 'rules'} loaded</span>
+            <div id="ruleCountDisplay" style="margin-top: 20px; display: inline-flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 24px 0 24px;">
+                <span style="font-size: 28px; font-weight: 700; color: #1d1d1f; line-height: 1;">{len(rules)}</span>
+                <span style="font-size: 11px; font-weight: 600; color: #86868b; letter-spacing: 0.5px;">{'RULE' if len(rules) == 1 else 'RULES'} LOADED</span>
             </div>
         </div>
     </div>
@@ -1066,8 +1077,8 @@ def _show_landing(rules, dataset_name, workspace_id):
             var el = document.getElementById('ruleCountDisplay');
             if (el) {{
                 var n = ALL_RULES.length;
-                el.innerHTML = '<span style="font-size:22px;font-weight:700;color:#0071e3;">' + n + '</span>' +
-                    '<span style="font-size:14px;font-weight:500;color:#6e6e73;">' + (n === 1 ? 'rule' : 'rules') + ' loaded</span>';
+                el.innerHTML = '<span style="font-size:28px;font-weight:700;color:#1d1d1f;line-height:1;">' + n + '</span>' +
+                    '<span style="font-size:11px;font-weight:600;color:#86868b;letter-spacing:0.5px;">' + (n === 1 ? 'RULE' : 'RULES') + ' LOADED</span>';
             }}
         }}
 
@@ -1368,7 +1379,7 @@ def _show_landing(rules, dataset_name, workspace_id):
         layout=_ipyw.Layout(
             width="220px",
             height="48px",
-            margin="4px auto 16px auto",
+            margin="4px auto",
         ),
     )
     _run_btn.style.font_weight = "bold"
