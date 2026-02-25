@@ -29,6 +29,7 @@ from pyspark.sql.functions import col, flatten
 from pyspark.sql.types import StructType, StructField, StringType
 from uuid import UUID
 from pathlib import Path
+import ipywidgets as _ipyw
 import sempy_labs.semantic_model._bpa_rules as bpa_rules
 
 
@@ -933,11 +934,7 @@ def _show_landing(rules, dataset_name, workspace_id):
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0071e3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
             </div>
             <h2 class="bpa-landing-title">Best Practice Analyzer</h2>
-            <p class="bpa-landing-desc">Click below to analyze your semantic model against best practice rules, or edit the rules first.</p>
-            <button class="bpa-run-btn" id="runBpaBtn">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                Run BPA
-            </button>
+            <p class="bpa-landing-desc">Analyze your semantic model against best practice rules.</p>
             <button class="bpa-editor-btn" id="openEditorBtnLanding" style="margin-top: 12px;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 Edit Rules
@@ -1073,58 +1070,6 @@ def _show_landing(rules, dataset_name, workspace_id):
                     '<span style="font-size:14px;font-weight:500;color:#6e6e73;">' + (n === 1 ? 'rule' : 'rules') + ' loaded</span>';
             }}
         }}
-
-        /* ── Run BPA via kernel ── */
-        document.getElementById('runBpaBtn').addEventListener('click', function() {{
-            var btn = this;
-            btn.disabled = true;
-            btn.innerHTML = '<span class="bpa-spinner" style="width:16px;height:16px;border-width:2px;display:inline-block;vertical-align:middle;"></span> Running\u2026';
-
-            // Build kernel command referencing the global _execute_bpa / _bpa_state
-            var cmd = '';
-            if (rulesModified) {{
-                // Push edited/imported rules into the already-registered global state
-                var rulesForPython = ALL_RULES.map(function(r) {{
-                    var scopeVal = r.Scope;
-                    if (typeof scopeVal === 'string' && scopeVal.indexOf(',') !== -1) {{
-                        scopeVal = scopeVal.split(',').map(function(s) {{ return s.trim(); }});
-                    }}
-                    return {{
-                        Category: r.Category,
-                        Scope: scopeVal,
-                        Severity: r.Severity,
-                        Name: r.Name,
-                        Expression: r.Expression,
-                        Description: r.Description || null,
-                        URL: r.URL || null
-                    }};
-                }});
-                var rulesB64 = btoa(unescape(encodeURIComponent(JSON.stringify(rulesForPython))));
-                cmd += 'import json as _j, base64 as _b\\n'
-                    + '_bpa_state["rules"] = _j.loads(_b.b64decode("' + rulesB64 + '").decode("utf-8"))\\n';
-            }}
-            cmd += '_execute_bpa()';
-
-            var kernel = null;
-            try {{
-                if (typeof Jupyter !== 'undefined' && Jupyter.notebook && Jupyter.notebook.kernel) {{
-                    kernel = Jupyter.notebook.kernel;
-                }} else if (typeof IPython !== 'undefined' && IPython.notebook && IPython.notebook.kernel) {{
-                    kernel = IPython.notebook.kernel;
-                }}
-            }} catch(e) {{}}
-
-            if (kernel) {{
-                kernel.execute(cmd);
-            }} else {{
-                var statusEl = document.getElementById('importStatus');
-                statusEl.textContent = 'Could not access notebook kernel. Please run _execute_bpa() in a cell.';
-                statusEl.className = 'bpa-import-status error';
-                statusEl.style.display = '';
-                btn.disabled = false;
-                btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg> Run BPA';
-            }}
-        }});
 
         /* ── Import Rules Logic ── */
         var REQUIRED_KEYS = ['Category', 'Scope', 'Severity', 'Name', 'Expression'];
@@ -1414,7 +1359,82 @@ def _show_landing(rules, dataset_name, workspace_id):
     </script>
     """
 
-    return display(HTML(html_output))
+    # ── ipywidgets: real Button + Output for BPA results ──
+    _bpa_output = _ipyw.Output()
+
+    _run_btn = _ipyw.Button(
+        description="\u25B6  Run BPA",
+        button_style="",
+        layout=_ipyw.Layout(
+            width="220px",
+            height="48px",
+            margin="4px auto 16px auto",
+        ),
+    )
+    _run_btn.style.font_weight = "bold"
+    _run_btn.add_class("bpa-run-widget-btn")
+
+    # Custom CSS to polish the ipywidgets button
+    _btn_css = _ipyw.HTML(
+        value=(
+            "<style>"
+            ".bpa-run-widget-btn .widget-button {"
+            "  font-size: 15px;"
+            "  letter-spacing: 0.3px;"
+            "  background: #0071e3;"
+            "  color: #fff;"
+            "  border: none;"
+            "  border-radius: 12px;"
+            "  box-shadow: 0 2px 8px rgba(0,113,227,0.25);"
+            "  transition: background 0.2s, transform 0.1s, box-shadow 0.2s;"
+            "}"
+            ".bpa-run-widget-btn .widget-button:hover {"
+            "  background: #0077ed;"
+            "  box-shadow: 0 4px 14px rgba(0,113,227,0.35);"
+            "  transform: translateY(-1px);"
+            "}"
+            ".bpa-run-widget-btn .widget-button:active {"
+            "  transform: translateY(0);"
+            "  box-shadow: 0 1px 4px rgba(0,113,227,0.2);"
+            "}"
+            ".bpa-run-widget-btn .widget-button:disabled {"
+            "  background: #86868b;"
+            "  box-shadow: none;"
+            "  transform: none;"
+            "  cursor: not-allowed;"
+            "}"
+            "</style>"
+        )
+    )
+
+    def _on_run_click(b):
+        b.disabled = True
+        b.description = "Running\u2026"
+        try:
+            _bpa_output.clear_output(wait=True)
+            with _bpa_output:
+                _execute_bpa()
+            # Hide the landing page and button once results are rendered
+            _landing_output.layout.display = "none"
+            b.layout.display = "none"
+        except Exception:
+            import traceback as _tb
+            with _bpa_output:
+                _tb.print_exc()
+            b.disabled = False
+            b.description = "\u25B6  Run BPA"
+
+    _run_btn.on_click(_on_run_click)
+
+    # Landing page HTML in its own Output widget
+    _landing_output = _ipyw.Output()
+    with _landing_output:
+        display(HTML(html_output))
+
+    display(_ipyw.VBox(
+        [_btn_css, _landing_output, _run_btn, _bpa_output],
+        layout=_ipyw.Layout(width="100%"),
+    ))
 
 
 def get_rule_logic_map(rules):
@@ -1576,9 +1596,9 @@ def capture_violations(tom, dep, rules):
                     if expr(obj, tom, dep, TOM, re)
                 ]
 
-            if len(x) > 0:
+            for obj_name in x:
                 rows.append({
-                    "Object Name": x,
+                    "Object Name": obj_name,
                     "Scope": scope,
                     "Rule Name": ruleName,
                 })
@@ -2004,8 +2024,8 @@ def visualize_bpa(rules, violations_df, dataset_name="", workspace_id=""):
         .hl-c  {{ color: #6a9955; font-style: italic; }}
         .hl-n  {{ color: #b5cea8; }}
         .hl-t  {{ color: #4ec9b0; }}
-        .hl-bi {{ color: #dcdcaa; }}
-        .hl-o  {{ color: #d4d4d4; }}
+        .hl-bi {{ color: #e5c07b; }}
+        .hl-o  {{ color: #56b6c2; }}
         .bpa-rule-body {{
             display: none;
             border-top: 1px solid #f0f0f5;
@@ -2973,8 +2993,10 @@ def visualize_bpa(rules, violations_df, dataset_name="", workspace_id=""):
             renderEditorTable();
             editorOverlay.classList.add('open');
         }}
-        document.getElementById('openEditorBtn').addEventListener('click', openEditor);
-        document.getElementById('openEditorBtnLanding').addEventListener('click', openEditor);
+        var _openEdBtn = document.getElementById('openEditorBtn');
+        var _openEdBtnLanding = document.getElementById('openEditorBtnLanding');
+        if (_openEdBtn) _openEdBtn.addEventListener('click', openEditor);
+        if (_openEdBtnLanding) _openEdBtnLanding.addEventListener('click', openEditor);
         document.getElementById('closeEditorBtn').addEventListener('click', function() {{
             editorOverlay.classList.remove('open');
             editorSaveStatus.className = 'bpa-save-status';
