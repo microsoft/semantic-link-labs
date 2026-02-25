@@ -3,9 +3,9 @@ import pandas as pd
 from IPython.display import display, HTML
 import zipfile
 import os
+import uuid
 import shutil
 import datetime
-import warnings
 from sempy_labs._helper_functions import (
     format_dax_object_name,
     save_as_delta_table,
@@ -32,7 +32,6 @@ def vertipaq_analyzer(
     workspace: Optional[str | UUID] = None,
     export: Optional[str] = None,
     read_stats_from_data: bool = False,
-    **kwargs,
 ) -> dict[str, pd.DataFrame]:
     """
     Displays an HTML visualization of the `Vertipaq Analyzer <https://www.sqlbi.com/tools/vertipaq-analyzer/>`_ statistics from a semantic model.
@@ -61,17 +60,6 @@ def vertipaq_analyzer(
     """
 
     from sempy_labs.tom import connect_semantic_model
-
-    if "lakehouse_workspace" in kwargs:
-        print(
-            f"{icons.info} The 'lakehouse_workspace' parameter has been deprecated as it is no longer necessary. Please remove this parameter from the function going forward."
-        )
-        del kwargs["lakehouse_workspace"]
-
-    pd.options.mode.copy_on_write = True
-    warnings.filterwarnings(
-        "ignore", message="createDataFrame attempted Arrow optimization*"
-    )
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
@@ -917,9 +905,7 @@ def visualize_vertipaq(dataframes):
         "Hierarchies": "Hierarchy",
     }
 
-    import uuid as _uuid
-
-    uid = _uuid.uuid4().hex[:8]
+    uid = uuid.uuid4().hex[:8]
 
     # Build tooltip lookup for fast access
     tooltip_lookup = {}
