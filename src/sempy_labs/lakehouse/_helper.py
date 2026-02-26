@@ -67,20 +67,35 @@ def is_v_ordered(
 
         latest_file = os.path.join(delta_log_path, json_files[0])
 
+        value_a = False
+        value_b = False
+
         with open(latest_file, "r") as f:
             all_data = [
                 json.loads(line) for line in f if line.strip()
             ]  # one dict per line
             for data in all_data:
                 if "metaData" in data:
-                    value_a = data.get("metaData", {}).get("configuration", {}).get("delta.parquet.vorder.enabled", False)
-                    value_a = bool(value_a)
+                    value_a = (
+                        str(
+                            data.get("metaData", {})
+                            .get("configuration", {})
+                            .get("delta.parquet.vorder.enabled", False)
+                        ).lower()
+                        == "true"
+                    )
 
             # If no metaData, fall back to commitInfo
             for data in all_data:
                 if "commitInfo" in data:
-                    value_b = data.get('commitInfo', {}).get('tags', {}).get('VORDER', False)
-                    value_b = bool(value_b)
+                    value_b = (
+                        str(
+                            data.get("commitInfo", {})
+                            .get("tags", {})
+                            .get("VORDER", False)
+                        ).lower()
+                        == "true"
+                    )
             if value_a or value_b:
                 return True
             else:
