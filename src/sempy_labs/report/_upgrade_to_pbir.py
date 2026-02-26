@@ -81,12 +81,13 @@ def upgrade_to_pbir(
         A pandas dataframe showing the format of all reports in the specified workspace(s) after conducting the upgrade.
     """
 
-    if isinstance(workspace, (str, UUID)):
+    if isinstance(workspace, (str, UUID)) or workspace is None:
         workspace = [workspace]
-    workspaces = {
-        resolve_workspace_name_and_id(w)[1]: resolve_workspace_name_and_id(w)[0]
-        for w in workspace
-    }
+
+    workspaces = {}
+    for w in workspace:
+        workspace_name, workspace_id = resolve_workspace_name_and_id(w)
+        workspaces[workspace_id] = workspace_name
 
     columns = {
         "Workspace Name": "str",
@@ -110,7 +111,7 @@ def upgrade_to_pbir(
             rpt_format = rpt.get("format")
             embed_url = rpt.get("embedUrl")
             dataset_id = rpt.get("datasetId")
-            if rpt_format == "PBIRLegacy":
+            if rpt_format == "PBIRLegacy" and dataset_id is not None and embed_url is not None:
                 eligible_for_upgrade[rpt_id] = (embed_url, dataset_id)
 
         if report is None:
