@@ -4,7 +4,6 @@ import pyarrow.parquet as pq
 from datetime import datetime
 from sempy_labs._helper_functions import (
     _get_column_aggregate,
-    resolve_lakehouse_name_and_id,
     save_as_delta_table,
     resolve_workspace_id,
     _read_delta_table,
@@ -12,6 +11,7 @@ from sempy_labs._helper_functions import (
     _mount,
     create_abfss_path,
     _pure_python_notebook,
+    resolve_lakehouse_id,
 )
 from sempy_labs.directlake._guardrails import (
     get_sku_size,
@@ -68,15 +68,17 @@ def get_lakehouse_tables(
     pandas.DataFrame
         Shows the tables/columns within a lakehouse and their properties.
     """
+    from sempy_labs.lakehouse._shortcuts import list_shortcuts
 
     workspace_id = resolve_workspace_id(workspace)
-    (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
-        lakehouse=lakehouse, workspace=workspace_id
-    )
+    lakehouse_id = resolve_lakehouse_id(lakehouse=lakehouse, workspace=workspace_id)
 
     df = list_tables(lakehouse=lakehouse, workspace=workspace)
 
     local_path = _mount(lakehouse=lakehouse_id, workspace=workspace_id)
+
+    if count_rows:
+        extended = True
 
     if extended:
         sku_value = get_sku_size(workspace_id)
@@ -111,9 +113,14 @@ def get_lakehouse_tables(
                     ]
                     size_in_bytes = 0
                     for f in latest_files:
-                        local_file_path = os.path.join(
-                            local_path, "Tables", schema_name, table_name, f
-                        )
+                        if schema_name:
+                            local_file_path = os.path.join(
+                                local_path, "Tables", schema_name, table_name, f
+                            )
+                        else:
+                            local_file_path = os.path.join(
+                                local_path, "Tables", table_name, f
+                            )
 
                         if os.path.exists(local_file_path):
                             size_in_bytes += os.path.getsize(local_file_path)
@@ -127,7 +134,12 @@ def get_lakehouse_tables(
                     size_in_bytes = table_details.get("sizeInBytes", 0)
                     num_latest_files = table_details.get("numFiles", 0)
 
-                table_path = os.path.join(local_path, "Tables", schema_name, table_name)
+                if schema_name:
+                    table_path = os.path.join(
+                        local_path, "Tables", schema_name, table_name
+                    )
+                else:
+                    table_path = os.path.join(local_path, "Tables", table_name)
 
                 file_paths = []
                 for file in latest_files:
@@ -154,7 +166,8 @@ def get_lakehouse_tables(
 
             if count_rows:
                 if _pure_python_notebook():
-                    row_count = delta_table.to_pyarrow_table().num_rows
+                    add_actions = delta_table.get_add_actions(flatten=True)
+                    row_count = add_actions["num_records"].sum()
                 else:
                     row_count = table_df.count()
                 df.at[i, "Row Count"] = row_count
@@ -177,34 +190,43 @@ def get_lakehouse_tables(
         df["Parquet File Guardrail Hit"] = df["Files"] > df["Parquet File Guardrail"]
         df["Row Group Guardrail Hit"] = df["Row Groups"] > df["Row Group Guardrail"]
     if count_rows:
-        df["Row Count"] = df["Row Count"].astype(int)
+        if _pure_python_notebook():
+            df["Row Count"] = (
+                df["Row Count"]
+                .map(lambda x: x.as_py() if hasattr(x, "as_py") else x)
+                .astype("Int64")
+            )
+        else:
+            df["Row Count"] = df["Row Count"].astype(int)
         df["Row Count Guardrail Hit"] = df["Row Count"] > df["Row Count Guardrail"]
 
+    # Exclude shortcuts
+    shortcuts = (
+        list_shortcuts(lakehouse=lakehouse, workspace=workspace)
+        .query("`Shortcut Path`.str.startswith('/Tables')", engine="python")
+        .assign(
+            FullPath=lambda df: df["Shortcut Path"].str.rstrip("/")
+            + "/"
+            + df["Shortcut Name"]
+        )["FullPath"]
+        .tolist()
+    )
+
+    df["FullPath"] = df.apply(
+        lambda x: (
+            f"/Tables/{x['Table Name']}"
+            if pd.isna(x["Schema Name"]) or x["Schema Name"] == ""
+            else f"/Tables/{x['Schema Name']}/{x['Table Name']}"
+        ),
+        axis=1,
+    )
+
+    df["Is Shortcut"] = df["FullPath"].isin(shortcuts)
+
     if exclude_shortcuts:
-        from sempy_labs.lakehouse._shortcuts import list_shortcuts
-
-        # Exclude shortcuts
-        shortcuts = (
-            list_shortcuts(lakehouse=lakehouse, workspace=workspace)
-            .query("`Shortcut Path`.str.startswith('/Tables')", engine="python")
-            .assign(
-                FullPath=lambda df: df["Shortcut Path"].str.rstrip("/")
-                + "/"
-                + df["Shortcut Name"]
-            )["FullPath"]
-            .tolist()
-        )
-
-        df["FullPath"] = df.apply(
-            lambda x: (
-                f"/Tables/{x['Table Name']}"
-                if pd.isna(x["Schema Name"]) or x["Schema Name"] == ""
-                else f"/Tables/{x['Schema Name']}/{x['Table Name']}"
-            ),
-            axis=1,
-        )
-
         df = df[~df["FullPath"].isin(shortcuts)].reset_index(drop=True)
+
+    df.drop(columns=["FullPath"], inplace=True)
 
     if export:
         if not lakehouse_attached():
