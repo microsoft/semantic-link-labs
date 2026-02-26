@@ -17,6 +17,7 @@ from sempy_labs._helper_functions import (
     resolve_item_id,
     resolve_lakehouse_id,
     _validate_weight,
+    _create_dataframe,
 )
 from sempy_labs._list_functions import list_relationships
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
@@ -4759,17 +4760,25 @@ class TOMWrapper:
 
         icons.sll_tags.append("GenerateMeasureDescriptions")
 
-        df = pd.DataFrame(
-            columns=["Table Name", "Measure Name", "Expression", "Description"]
-        )
-        data = []
+        columns = {
+            "Table Name": "string",
+            "Measure Name": "string",
+            "Expression": "string",
+            "Description": "string",
+        }
 
+        df = _create_dataframe(columns=columns)
+
+        rows = []
+        measures = []
         # import concurrent.futures
         if measure_name is None:
-            measure_name = [m.Name for m in self.all_measures()]
+            measures = [m.Name for m in self.all_measures()]
 
         if isinstance(measure_name, str):
-            measure_name = [measure_name]
+            measures = [measure_name]
+        elif isinstance(measure_name, list):
+            measures = measure_name
 
         payload = {
             "scenarioDefinition": {
@@ -4781,12 +4790,13 @@ class TOMWrapper:
             "artifactInfo": {"artifactType": "SemanticModel"},
         }
 
-        for m in measure_name:
-            (table_name, expr) = next(
-                (ms.Parent.Name, ms.Expression)
-                for ms in self.all_measures()
-                if ms.Name == m
-            )
+        measure_mapping = {}
+        for m in self.all_measures():
+            measure_mapping[m.Name] = (m.Parent.Name, m.Expression)
+
+        for m in measures:
+            (table_name, expr) = measure_mapping.get(m, (None, None))
+
             payload["scenarioDefinition"]["generateModelItemDescriptions"][
                 "modelItems"
             ].append(
@@ -4810,11 +4820,7 @@ class TOMWrapper:
                 if ms_name.startswith("urn: "):
                     ms_name = ms_name[5:]
                 desc = item.get("description")
-                (table_name, expr) = next(
-                    (m.Parent.Name, m.Expression)
-                    for m in self.all_measures()
-                    if m.Name == ms_name
-                )
+                (table_name, expr) = measure_mapping.get(ms_name, (None, None))
                 self.model.Tables[table_name].Measures[ms_name].Description = desc
 
                 # Collect new descriptions in a dataframe
@@ -4825,21 +4831,26 @@ class TOMWrapper:
                     "Description": desc,
                 }
 
-                data.append(new_data)
+                rows.append(new_data)
 
-        if data:
-            df = pd.concat([df, pd.DataFrame(data)], ignore_index=True)
+        if rows:
+            df = pd.DataFrame(rows, columns=list(columns.keys()))
 
         return df
 
-    def set_value_filter_behavior(self, value_filter_behavior: str = "Automatic"):
+    def set_value_filter_behavior(
+        self,
+        value_filter_behavior: Literal[
+            "Automatic", "Independent", "Coalesced"
+        ] = "Automatic",
+    ):
         """
         Sets the `Value Filter Behavior <https://learn.microsoft.com/power-bi/transform-model/value-filter-behavior>`_ property for the semantic model.
 
         Parameters
         ----------
-        value_filter_behavior : str , default="Automatic"
-            Determines value filter behavior for SummarizeColumns. Valid options: 'Automatic', 'Independent', 'Coalesced'.
+        value_filter_behavior : typing.Literal["Automatic", "Independent", "Coalesced"] , default="Automatic"
+            Determines value filter behavior for SummarizeColumns.
         """
 
         import Microsoft.AnalysisServices.Tabular as TOM
