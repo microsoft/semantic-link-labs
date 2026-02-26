@@ -4560,6 +4560,8 @@ class TOMWrapper:
             Defaults to None which keeps the existing setting.
         """
 
+        import Microsoft.AnalysisServices.Tabular as TOM
+
         obj = self.model.Tables[table_name].CalculationGroup.CalculationItems[
             calculation_item_name
         ]
