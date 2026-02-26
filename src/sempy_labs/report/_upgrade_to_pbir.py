@@ -164,6 +164,32 @@ def upgrade_to_pbir(
 
             rows.append(row)
 
+        # Double check if there are any reports that were not upgraded yet and check their status again (to account for any potential delay in the upgrade process)
+        not_upgraded_yet = [
+            row["Report Id"]
+            for row in rows
+            if row.get("Format") == "PBIRLegacy"
+        ]
+        if not_upgraded_yet:
+            for r in rows:
+                rpt_id = r.get('Report Id')
+                rpt_name = r.get('Report Name')
+                ws_id = r.get('Workspace Id')
+                ws_name = r.get('Workspace Name')
+                row = check_upgrade_status(
+                    report_id=rpt_id,
+                    report_name=rpt_name,
+                    workspace_id=ws_id,
+                    workspace_name=ws_name,
+                    verbose=True,
+                    time_limit=120) # check for up to 2 minutes
+                if row.get('Format') == 'PBIR':
+                    # Update the row in the list of rows
+                    for idx, existing_row in enumerate(rows):
+                        if existing_row.get('Report Id') == rpt_id:
+                            rows[idx] = row
+                            break
+
     if rows:
         df = pd.DataFrame(rows)
 
@@ -171,28 +197,27 @@ def upgrade_to_pbir(
 
 
 # Define the time limit (2 minute)
-TIME_LIMIT = 120  # seconds
 TIME_BETWEEN_REQUESTS = 2  # seconds
 
 
 # Function to check the upgrade status
-def check_upgrade_status(report_id, report_name, workspace_id, workspace_name):
+def check_upgrade_status(report_id, report_name, workspace_id, workspace_name, verbose=False, time_limit = 30):
     start_time = time.time()
-    while time.time() - start_time < TIME_LIMIT:
+    while time.time() - start_time < time_limit:
         response = _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/reports/{report_id}", client="fabric_sp")
         format = response.json().get('format')
         if format == "PBIR":
-            print(
-                f"{icons.green_dot} The '{report_name}' report within the '{workspace_name}' workspace has been upgraded to PBIR format."
-            )
+            #print(
+            #    f"{icons.green_dot} The '{report_name}' report within the '{workspace_name}' workspace has been upgraded to PBIR format."
+            #)
             break
 
         # Wait for 2 seconds before the next request
         time.sleep(TIME_BETWEEN_REQUESTS)
 
-    if format != "PBIR":
+    if format != "PBIR" and verbose:
         print(
-            f"{icons.yellow_dot} The '{report_name}' report within the '{workspace_name}' workspace has not been upgraded to PBIR format."
+            f"{icons.yellow_dot} The '{report_name}' report within the '{workspace_name}' workspace has not yet been upgraded to PBIR format."
         )
 
     return {
@@ -202,3 +227,5 @@ def check_upgrade_status(report_id, report_name, workspace_id, workspace_name):
         "Report Id": report_id,
         "Format": format,
     }
+
+
