@@ -145,7 +145,7 @@ def upgrade_to_pbir(
         ):
             embed_url, dataset_id, rpt_name = eligible_for_upgrade[rpt_id]
             bar.set_description(
-                f"Upgrading '{rpt_name}' ({idx}/{total_reports})"
+                f"Upgrading '{rpt_name}' within the '{workspace_name}' workspace ({idx}/{total_reports})"
             )
 
             access_token = generate_embed_token(
