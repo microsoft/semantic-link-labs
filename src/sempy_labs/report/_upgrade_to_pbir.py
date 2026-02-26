@@ -1,6 +1,7 @@
 from uuid import UUID
 import pandas as pd
 from typing import Optional, List
+from tqdm.auto import tqdm
 from sempy_labs._helper_functions import (
     resolve_item_name_and_id,
     resolve_workspace_name_and_id,
@@ -105,56 +106,63 @@ def upgrade_to_pbir(
         response = _base_api(request=url, client="fabric_sp")
 
         eligible_for_upgrade = {}
-        updated_reports = []
+        # Collect reports eligible for upgrade within the workspace
         for rpt in response.json().get("value", []):
             rpt_id = rpt.get("id")
+            rpt_name = rpt.get("name")
             rpt_format = rpt.get("format")
             embed_url = rpt.get("embedUrl")
             dataset_id = rpt.get("datasetId")
             if rpt_format == "PBIRLegacy" and dataset_id is not None and embed_url is not None:
-                eligible_for_upgrade[rpt_id] = (embed_url, dataset_id)
+                eligible_for_upgrade[rpt_id] = (embed_url, dataset_id, rpt_name)     
 
+        # Determine which reports to process
         if report is None:
-            for rpt_id, (embed_url, dataset_id) in eligible_for_upgrade.items():
-                access_token = generate_embed_token(
-                    dataset_ids=[dataset_id], report_ids=[rpt_id]
-                )
-                embed_report_save_in_edit_mode(embed_url, access_token)
-                updated_reports.append(rpt_id)
-        elif isinstance(report, list):
+            report_ids_to_process = list(eligible_for_upgrade.keys())
+        else:
+            if isinstance(report, str):
+                report = [report]
+
+            report_ids_to_process = []
+
             for r in report:
-                (rpt_name, rpt_id) = resolve_item_name_and_id(
+                rpt_name, rpt_id = resolve_item_name_and_id(
                     item=r, type="Report", workspace=workspace_id
                 )
+
                 if rpt_id in eligible_for_upgrade:
-                    embed_url, dataset_id = eligible_for_upgrade[rpt_id]
-                    access_token = generate_embed_token(
-                        dataset_ids=[dataset_id], report_ids=[rpt_id]
-                    )
-                    embed_report_save_in_edit_mode(embed_url, access_token)
-                    updated_reports.append(rpt_id)
+                    report_ids_to_process.append(rpt_id)
                 else:
                     print(
                         f"{icons.warning} The {rpt_name} report in the '{workspace_name}' workspace is not eligible for upgrade."
                     )
-        else:
-            (rpt_name, rpt_id) = resolve_item_name_and_id(
-                item=report, type="Report", workspace=workspace_id
-            )
-            if rpt_id in eligible_for_upgrade:
-                embed_url, dataset_id = eligible_for_upgrade[rpt_id]
-                access_token = generate_embed_token(
-                    dataset_ids=[dataset_id], report_ids=[rpt_id]
-                )
-                embed_report_save_in_edit_mode(embed_url, access_token)
-                updated_reports.append(rpt_id)
-            else:
-                print(
-                    f"{icons.warning} The {rpt_name} report in the '{workspace_name}' workspace is not eligible for upgrade."
-                )
 
-        x = check_upgrade_status(url, updated_reports, workspace_id, workspace_name)
-        rows.extend(x)
+        # Run upgrade for selected reports
+        total_reports = len(report_ids_to_process)
+        for idx, rpt_id in enumerate(
+            bar := tqdm(report_ids_to_process, desc="Upgrading reports", unit="report"),
+            start=1,
+        ):
+            embed_url, dataset_id, rpt_name = eligible_for_upgrade[rpt_id]
+            bar.set_description(
+                f"Upgrading '{rpt_name}' ({idx}/{total_reports})"
+            )
+
+            access_token = generate_embed_token(
+                dataset_ids=[dataset_id],
+                report_ids=[rpt_id],
+            )
+
+            embed_report_save_in_edit_mode(embed_url, access_token)
+
+            row = check_upgrade_status(
+                report_id=rpt_id,
+                report_name=rpt_name,
+                workspace_id=workspace_id,
+                workspace_name=workspace_name,
+            )
+
+            rows.append(row)
 
     if rows:
         df = pd.DataFrame(rows)
@@ -168,49 +176,29 @@ TIME_BETWEEN_REQUESTS = 2  # seconds
 
 
 # Function to check the upgrade status
-def check_upgrade_status(url, updated_reports, workspace_id, workspace_name):
+def check_upgrade_status(report_id, report_name, workspace_id, workspace_name):
     start_time = time.time()
     while time.time() - start_time < TIME_LIMIT:
-        response = _base_api(request=url, client="fabric_sp")
-        verified_reports = {}
-        unverified_reports = {}
-
-        rows = []
-        for rpt in response.json().get("value", []):
-            rpt_id = rpt.get("id")
-            rpt_name = rpt.get("name")
-            rpt_format = rpt.get("format")
-            rows.append(
-                {
-                    "Workspace Name": workspace_name,
-                    "Workspace Id": workspace_id,
-                    "Report Name": rpt_name,
-                    "Report Id": rpt_id,
-                    "Format": rpt_format,
-                }
+        response = _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/reports/{report_id}", client="fabric_sp")
+        format = response.json().get('format')
+        if format == "PBIR":
+            print(
+                f"{icons.green_dot} The '{report_name}' report within the '{workspace_name}' workspace has been upgraded to PBIR format."
             )
-
-            # Check if the report is updated and format is PBIR or not
-            if rpt_id in updated_reports and rpt_format == "PBIR":
-                verified_reports[rpt_id] = rpt_name
-            elif rpt_id in updated_reports and rpt_format != "PBIR":
-                unverified_reports[rpt_id] = rpt_name
-
-        # If there are no unverified reports, break out of the loop
-        if not unverified_reports:
             break
 
         # Wait for 2 seconds before the next request
         time.sleep(TIME_BETWEEN_REQUESTS)
 
-    for rpt_id, rpt_name in verified_reports.items():
+    if format != "PBIR":
         print(
-            f"{icons.green_dot} The '{rpt_name}' report within the '{workspace_name}' workspace has been upgraded to PBIR format."
+            f"{icons.yellow_dot} The '{report_name}' report within the '{workspace_name}' workspace has not been upgraded to PBIR format."
         )
 
-    for rpt_id, rpt_name in unverified_reports.items():
-        print(
-            f"{icons.yellow_dot} The '{rpt_name}' report within the '{workspace_name}' workspace has not been upgraded to PBIR format."
-        )
-
-    return rows
+    return {
+        "Workspace Name": workspace_name,
+        "Workspace Id": workspace_id,
+        "Report Name": report_name,
+        "Report Id": report_id,
+        "Format": format,
+    }
