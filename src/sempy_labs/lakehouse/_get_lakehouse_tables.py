@@ -190,7 +190,7 @@ def get_lakehouse_tables(
         df["Parquet File Guardrail Hit"] = df["Files"] > df["Parquet File Guardrail"]
         df["Row Group Guardrail Hit"] = df["Row Groups"] > df["Row Group Guardrail"]
     if count_rows:
-        if _pure_python_notebook:
+        if _pure_python_notebook():
             df["Row Count"] = (
                 df["Row Count"]
                 .map(lambda x: x.as_py() if hasattr(x, "as_py") else x)
