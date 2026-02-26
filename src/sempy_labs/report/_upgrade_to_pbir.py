@@ -113,8 +113,12 @@ def upgrade_to_pbir(
             rpt_format = rpt.get("format")
             embed_url = rpt.get("embedUrl")
             dataset_id = rpt.get("datasetId")
-            if rpt_format == "PBIRLegacy" and dataset_id is not None and embed_url is not None:
-                eligible_for_upgrade[rpt_id] = (embed_url, dataset_id, rpt_name)     
+            if (
+                rpt_format == "PBIRLegacy"
+                and dataset_id is not None
+                and embed_url is not None
+            ):
+                eligible_for_upgrade[rpt_id] = (embed_url, dataset_id, rpt_name)
 
         # Determine which reports to process
         if report is None:
@@ -166,29 +170,29 @@ def upgrade_to_pbir(
 
         # Double check if there are any reports that were not upgraded yet and check their status again (to account for any potential delay in the upgrade process)
         not_upgraded_yet = [
-            row["Report Id"]
-            for row in rows
-            if row.get("Format") == "PBIRLegacy"
+            row["Report Id"] for row in rows if row.get("Format") == "PBIRLegacy"
         ]
         if not_upgraded_yet:
             for r in rows:
-                rpt_id = r.get('Report Id')
-                rpt_name = r.get('Report Name')
-                ws_id = r.get('Workspace Id')
-                ws_name = r.get('Workspace Name')
-                row = check_upgrade_status(
-                    report_id=rpt_id,
-                    report_name=rpt_name,
-                    workspace_id=ws_id,
-                    workspace_name=ws_name,
-                    verbose=True,
-                    time_limit=120) # check for up to 2 minutes
-                if row.get('Format') == 'PBIR':
-                    # Update the row in the list of rows
-                    for idx, existing_row in enumerate(rows):
-                        if existing_row.get('Report Id') == rpt_id:
-                            rows[idx] = row
-                            break
+                rpt_id = r.get("Report Id")
+                if rpt_id in not_upgraded_yet:
+                    rpt_name = r.get("Report Name")
+                    ws_id = r.get("Workspace Id")
+                    ws_name = r.get("Workspace Name")
+                    row = check_upgrade_status(
+                        report_id=rpt_id,
+                        report_name=rpt_name,
+                        workspace_id=ws_id,
+                        workspace_name=ws_name,
+                        verbose=True,
+                        time_limit=120,
+                    )  # check for up to 2 minutes
+                    if row.get("Format") == "PBIR":
+                        # Update the row in the list of rows
+                        for idx, existing_row in enumerate(rows):
+                            if existing_row.get("Report Id") == rpt_id:
+                                rows[idx] = row
+                                break
 
     if rows:
         df = pd.DataFrame(rows)
@@ -201,15 +205,17 @@ TIME_BETWEEN_REQUESTS = 2  # seconds
 
 
 # Function to check the upgrade status
-def check_upgrade_status(report_id, report_name, workspace_id, workspace_name, verbose=False, time_limit = 30):
+def check_upgrade_status(
+    report_id, report_name, workspace_id, workspace_name, verbose=False, time_limit=30
+):
     start_time = time.time()
     while time.time() - start_time < time_limit:
-        response = _base_api(request=f"/v1.0/myorg/groups/{workspace_id}/reports/{report_id}", client="fabric_sp")
-        format = response.json().get('format')
+        response = _base_api(
+            request=f"/v1.0/myorg/groups/{workspace_id}/reports/{report_id}",
+            client="fabric_sp",
+        )
+        format = response.json().get("format")
         if format == "PBIR":
-            #print(
-            #    f"{icons.green_dot} The '{report_name}' report within the '{workspace_name}' workspace has been upgraded to PBIR format."
-            #)
             break
 
         # Wait for 2 seconds before the next request
@@ -227,5 +233,3 @@ def check_upgrade_status(report_id, report_name, workspace_id, workspace_name, v
         "Report Id": report_id,
         "Format": format,
     }
-
-
