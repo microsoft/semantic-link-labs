@@ -55,7 +55,7 @@ def create_shortcut_onelake(
     source_item : str | uuid.UUID, default=None
         The source Fabric data store item in which the table resides. Can be either the Name or ID of the item.
     source_item_type: str, default="Lakehouse"
-        The source Fabric data store item type. Options are 'Lakehouse', 'Warehouse', 'MirroredDatabase', 'SQLDatabase', and 'KQLDatabase'.
+        The source Fabric data store item type. Options are 'Lakehouse', 'Warehouse', 'MirroredDatabase', 'SQLDatabase', 'KQLDatabase', and 'MirroredAzureDatabricksCatalog'.
     source_path : str, default="Tables"
         A string representing the full path to the table/file in the source lakehouse, including either "Files" or "Tables". Examples: Tables/FolderName/SubFolderName; Files/FolderName/SubFolderName.
     destination_path: str, default="Tables"
@@ -84,10 +84,17 @@ def create_shortcut_onelake(
         )
     if not (
         source_item_type
-        in ["Lakehouse", "Warehouse", "MirroredDatabase", "SQLDatabase", "KQLDatabase"]
+        in [
+            "Lakehouse",
+            "Warehouse",
+            "MirroredDatabase",
+            "SQLDatabase",
+            "KQLDatabase",
+            "MirroredAzureDatabricksCatalog",
+        ]
     ):
         raise ValueError(
-            f"{icons.red_dot} The 'source_item_type' parameter must be 'Lakehouse', 'Warehouse', 'MirroredDatabase', 'SQLDatabase', or 'KQLDatabase'"
+            f"{icons.red_dot} The 'source_item_type' parameter must be 'Lakehouse', 'Warehouse', 'MirroredDatabase', 'SQLDatabase', 'KQLDatabase', or 'MirroredAzureDatabricksCatalog'"
         )
 
     (source_workspace_name, source_workspace_id) = resolve_workspace_name_and_id(
