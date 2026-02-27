@@ -1,0 +1,797 @@
+from IPython.display import display, HTML
+import uuid
+import json
+import inspect
+from sempy._utils._log import log
+
+
+def _build_function_registry():
+    """
+    Introspect sempy_labs and its submodules to build a registry of public
+    functions with their signatures, module paths, and descriptions.
+    """
+    import sempy_labs
+
+    registry = []
+    seen = set()
+
+    def _add_module(mod, import_path):
+        all_names = getattr(mod, "__all__", [])
+        for name in all_names:
+            obj = getattr(mod, name, None)
+            if obj is None or not callable(obj):
+                continue
+            obj_id = id(obj)
+            if obj_id in seen:
+                continue
+            seen.add(obj_id)
+            try:
+                sig = inspect.signature(obj)
+            except (ValueError, TypeError):
+                continue
+
+            params = []
+            for pname, param in sig.parameters.items():
+                if pname in ("self", "cls", "kwargs", "args"):
+                    continue
+                if pname.startswith("_"):
+                    continue
+                p_info = {"name": pname}
+                if param.default is not inspect.Parameter.empty:
+                    d = param.default
+                    if d is None:
+                        p_info["default"] = None
+                        p_info["optional"] = True
+                    elif isinstance(d, (str, int, float, bool)):
+                        p_info["default"] = d
+                        p_info["optional"] = True
+                    else:
+                        p_info["optional"] = True
+                else:
+                    p_info["optional"] = False
+                params.append(p_info)
+
+            doc = inspect.getdoc(obj) or ""
+            description = doc.split("\n")[0] if doc else ""
+
+            # Build search keywords from function name
+            keywords = name.replace("_", " ").lower().split()
+
+            # Common abbreviation aliases: maps alias word -> keyword index
+            _abbrev = {
+                "bpa": ["best", "practice", "analyzer"],
+                "qso": ["query", "scale", "out"],
+                "dl": ["direct", "lake"],
+            }
+            aliases = {}
+            for ki, kw in enumerate(keywords):
+                if kw in _abbrev:
+                    for aw in _abbrev[kw]:
+                        aliases[aw] = ki
+            # Also add description words as searchable terms
+            desc_words = description.lower().replace(".", " ").split()
+
+            registry.append(
+                {
+                    "name": name,
+                    "module": import_path,
+                    "params": params,
+                    "description": description,
+                    "keywords": keywords,
+                    "aliases": aliases,
+                    "desc_words": desc_
+            for kw in keywords:
+                if kw in _aliases:
+                    aliases.extend(_aliases[kw])
+            # Also add description words as searchable terms
+            desc_words = description.lower().replace(".", " ").split()
+
+            registry.append(
+                {
+                    "name": name,
+                    "module": import_path,
+                    "params": params,
+                    "description": description,
+                    "keywords": keywords,
+                    "aliases": aliases,
+                    "desc_words": desc_
+            for kw in keywords:
+                if kw in _aliases:
+                    aliases.extend(_aliases[kw])
+            # Also add description words as searchable aliases
+            desc_words = description.lower().replace(".", " ").split()
+
+            registry.append(
+                {
+                    "name": name,
+                    "module": import_path,
+                    "params": params,
+                    "description": description,
+                    "keywords": keywords,
+                    "aliases": aliases,
+                    "desc_words": desc_
+            for kw in keywords:
+                if kw in _abbrev:
+                    aliases.extend(_abbrev[kw])
+            # Also add description words as searchable terms
+            desc_words = description.lower().replace(".", " ").split()
+
+            registry.append(
+                {
+                    "name": name,
+                    "module": import_path,
+                    "params": params,
+                    "description": description,
+                    "keywords": keywords,
+                    "aliases": aliases,
+                    "desc_words": desc_words,
+                }
+            )
+
+    # Process submodules first so they get the more specific import path
+    submodules = [
+        "admin",
+        "apache_airflow_job",
+        "connection",
+        "data_pipeline",
+        "dataflow",
+        "daxlib",
+        "directlake",
+        "environment",
+        "event_schema_set",
+        "eventhouse",
+        "eventstream",
+        "external_data_share",
+        "gateway",
+        "git",
+        "graph",
+        "graph_model",
+        "graphql",
+        "kql_dashboard",
+        "kql_database",
+        "kql_queryset",
+        "lakehouse",
+        "managed_private_endpoint",
+        "migration",
+        "mirrored_azure_databricks_catalog",
+        "mirrored_database",
+        "mirrored_warehouse",
+        "ml_experiment",
+        "ml_model",
+        "mounted_data_factory",
+        "notebook",
+        "operations_agent",
+        "report",
+        "rti",
+        "semantic_model",
+        "snowflake_database",
+        "spark",
+        "sql_database",
+        "sql_endpoint",
+        "surge_protection",
+        "tom",
+        "warehouse",
+        "warehouse_snapshot",
+        "workspace"
+    ]
+    for sub in submodules:
+        try:
+            mod = __import__(f"sempy_labs.{sub}", fromlist=[sub])
+            _add_module(mod, f"sempy_labs.{sub}")
+        except ImportError:
+            continue
+
+    # Top-level functions (skips any already seen from submodules)
+    _add_module(sempy_labs, "sempy_labs")
+
+    return registry
+
+
+def copilot():
+    session_id = str(uuid.uuid4()).replace("-", "")
+
+    # Build function registry from library introspection
+    registry = _build_function_registry()
+    registry_json = json.dumps(registry)
+
+    html = f"""
+    <style>
+        #chat-wrapper-{session_id} {{
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: row;
+            gap: 0;
+            height: 560px;
+        }}
+
+        /* ---- History sidebar ---- */
+        #history-panel-{session_id} {{
+            width: 200px;
+            min-width: 200px;
+            background: #ffffff;
+            border-radius: 18px 0 0 18px;
+            border: 1px solid #ddd;
+            border-right: none;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: width 0.2s, min-width 0.2s, padding 0.2s, opacity 0.2s;
+        }}
+
+        #history-panel-{session_id}.collapsed {{
+            width: 0;
+            min-width: 0;
+            padding: 0;
+            opacity: 0;
+            border: none;
+        }}
+
+        #history-header-{session_id} {{
+            padding: 14px 12px;
+            font-weight: 600;
+            font-size: 13px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }}
+
+        #history-list-{session_id} {{
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
+        }}
+
+        .history-item-{session_id} {{
+            padding: 8px 12px;
+            font-size: 13px;
+            color: #333;
+            cursor: pointer;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            border-bottom: 1px solid #f0f0f0;
+        }}
+
+        .history-item-{session_id}:hover {{
+            background: #f0f0f5;
+        }}
+
+        #history-toggle-{session_id} {{
+            background: none;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 4px 8px;
+            color: #666;
+        }}
+
+        #history-toggle-{session_id}:hover {{
+            background: #f0f0f5;
+        }}
+
+        /* ---- Chat panel ---- */
+        #chat-container-{session_id} {{
+            width: 480px;
+            border-radius: 0 18px 18px 0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+            background: #f5f5f7;
+            display: flex;
+            flex-direction: column;
+            overflow: h85%;
+            min-width: 200px;
+            padding: 10px 14px;
+            border-radius: 18px;
+            font-size: 14px;
+            line-height: 1.35;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            box-sizing: border-box;
+            flex-shrink: 0
+
+        #chat-header-{session_id} {{
+            padding: 14px 16px;
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(12px);
+            font-weight: 600;
+            font-size: 15px;
+            border-bottom: 1px solid #ddd;
+            display: fl85%;
+            min-width: 200px;
+            padding: 10px 14px;
+            border-radius: 18px;
+            font-size: 14px;
+            line-height: 1.35;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            box-sizing: border-box;
+            flex-shrink: 0
+            padding: 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }}
+
+        .bubble-{session_id} {{
+            max-width: 75%;
+            padding: 10px 14px;
+            border-radius: 18px;
+            font-size: 14px;
+            line-height: 1.35;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }}
+
+        .user-{session_id} {{
+            align-self: flex-end;
+            background: #007aff;
+            color: white;
+            border-bottom-right-radius: 6px;
+        }}
+
+        .assistant-{session_id} {{
+            align-self: flex-start;
+            background: white;
+            color: #1c1c1e;
+            border-bottom-left-radius: 6px;
+        }}
+
+        #chat-input-area-{session_id} {{
+            display: flex;
+            align-items: flex-end;
+            padding: 10px;
+            background: rgba(255,255,255,0.9);
+            border-top: 1px solid #ddd;
+            gap: 8px;
+        }}
+
+        #chat-input-{session_id} {{
+            flex: 1;
+            border: none;
+            outline: none;
+            padding: 10px 12px;
+            font-size: 14px;
+            border-radius: 14px;
+            background: #f1f1f3;
+            resize: none;
+            min-height: 60px;
+            max-height: 120px;
+            line-height: 1.4;
+            font-family: inherit;
+        }}
+
+        #send-btn-{session_id} {{
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: none;
+            background: #007aff;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-bottom: 4px;
+        }}
+
+        #send-btn-{session_id}:hover {{
+            background: #0060df;
+        }}
+    </style>
+
+    <div id="chat-wrapper-{session_id}">
+        <!-- History sidebar -->
+        <div id="history-panel-{session_id}">
+            <div id="history-header-{session_id}">
+                <span>History</span>
+                <button id="history-toggle-{session_id}" title="Collapse history">◀</button>
+            </div>
+            <div id="history-list-{session_id}"></div>
+        </div>
+
+        <!-- Chat panel -->
+        <div id="chat-container-{session_id}">
+            <div id="chat-header-{session_id}">
+                <span id="expand-history-{session_id}" style="display:none; cursor:pointer; font-size:18px;" title="Show history">▶</span>
+                <span>Chat</span>
+            </div>
+
+            <div id="chat-messages-{session_id}"></div>
+
+            <div id="chat-input-area-{session_id}">
+                <textarea
+                    id="chat-input-{session_id}"
+                    placeholder="Message"
+                    rows="3"
+                ></textarea>
+                <button id="send-btn-{session_id}">↑</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {{
+            const SID = "{session_id}";
+            const REGISTRY = {registry_json};
+    """
+
+    # JavaScript with regex patterns kept in a regular string to avoid
+    # f-string mangling of \\b, \\s, \\w, \\d, \\n etc.
+    js_body = r"""
+            const input = document.getElementById("chat-input-" + SID);
+            const messages = document.getElementById("chat-messages-" + SID);
+            const sendBtn = document.getElementById("send-btn-" + SID);
+            const historyList = document.getElementById("history-list-" + SID);
+            const historyPanel = document.getElementById("history-panel-" + SID);
+            const historyToggle = document.getElementById("history-toggle-" + SID);
+            const expandBtn = document.getElementById("expand-history-" + SID);
+
+            // Auto-resize textarea
+            input.addEventListener("input", function() {
+                this.style.height = "auto";
+                this.style.height = Math.min(this.scrollHeight, 120) + "px";
+            });
+
+            // Toggle history panel
+            historyToggle.onclick = function() {
+                historyPanel.classList.add("collapsed");
+                expandBtn.style.display = "inline";
+            };
+
+            expandBtn.onclick = function() {
+                historyPanel.classList.remove("collapsed");
+                expandBtn.style.display = "none";
+            };
+
+            function addMessage(text, cls) {
+                const div = document.createElement("div");
+                div.className = "bubble-" + SID + " " + cls + "-" + SID;
+                if (cls === "assistant") {
+                    div.innerHTML = text.replace(/\n/g, "<br>");
+                } else {
+                    div.textContent = text;
+                }
+                messages.appendChild(div);
+                messages.scrollTop = messages.scrollHeight;
+            }
+
+            // ---- Python syntax highlighter (VS Code Dark+ theme) ----
+            // Single-pass tokenizer to avoid rules interfering with each other
+            function highlightPython(code) {
+                var html = code
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;");
+
+                var keywords = new Set(["import","from","as","def","class","return","if","elif","else","for","while","with","try","except","finally","raise","pass","break","continue","and","or","not","in","is","None","True","False","lambda","yield","assert","del","global","nonlocal","async","await"]);
+                var fnAliases = fn.aliases || {};
+                var fnDescWords = fn.desc_words || [];
+                var fnName = fn.name.toLowerCase();
+
+                // Exact function name match (underscores removed)
+                var nameNoUnder = fnName.replace(/_/g, "");
+                var textNoSpaces = words.join("");
+                if (nameNoUnder === textNoSpaces) return 1000;
+
+                // Check each word in the prompt against keywords, aliases, and description words
+                var matchedFnWords = new Set();
+                for (var i = 0; i < words.length; i++) {
+                    var w = words[i];
+                    if (w.length < 2) continue;
+
+                    // Keyword match (from function name)
+                    for (var k = 0; k < fnWords.length; k++) {
+                        if (fnWords[k] === w) {
+                            score += 10;
+                            matchedFnWords.add(k);
+                        } else if (fnWords[k].indexOf(w) >= 0 || w.indexOf(fnWords[k]) >= 0) {
+                            score += 3;
+                            matchedFnWords.add(k);
+                        }
+                    }
+
+                    // Alias match (e.g., "best", "practice", "analyzer" -> bpa)
+                    for (var a = 0; a < fnAliases.length; a++) {
+                        if (fnAliases[a] === w) {
+                            score += 8;
+                            // Mark all abbreviated keywords as matched
+                            for (var mk = 0; mk < fnWords.length; mk++) {
+                                matchedFnWords.add(mk);
+                            }
+                        }
+                    }
+
+                    // Description word match
+                    for (var d = 0; d < fnDescWords.length; d++) {
+                        if (fnDescWords[d] === w && w.length > 2) {
+                            score += 2;
+                        }
+                    }
+                }
+
+                // Penalize function keywords NOT mentioned in the prompt
+                var unmatchedFnWords = 0;
+                for (var u = 0; u < fnWords.length; u++) {
+                    if (!matchedFnWords.has(u)) unmatchedFnWords++;
+                }
+                    // Keyword match (from function name)
+                    for (var k = 0; k < fnWords.length; k++) {
+                        if (fnWords[k] === w) {
+                            score += 10;
+                            matchedFnWords.add(k);
+                        } else if (fnWords[k].indexOf(w) >= 0 || w.indexOf(fnWords[k]) >= 0) {
+                            score += 3;
+                            matchedFnWords.add(k);
+                        }
+                    }
+
+                    // Alias match (e.g., "best", "practice", "analyzer" -> bpa)
+                    for (var a = 0; a < fnAliases.length; a++) {
+                        if (fnAliases[a] === w) {
+                            score += 8;
+                            // Mark all abbreviated keywords as matched
+                            for (var mk = 0; mk < fnWords.length; mk++) {
+                                matchedFnWords.add(mk);
+                            }
+                        }
+                    }
+
+                    // Description word match
+                    for (var d = 0; d < fnDescWords.length; d++) {
+                        if (fnDescWords[d] === w && w.length > 2) {
+                            score += 2;
+                        }
+                    }
+                }
+
+                // Penalize function keywords NOT mentioned in the prompt
+                var unmatchedFnWords = 0;
+                for (var u = 0; u < fnWords.length; u++) {
+                    if (!matchedFnWords.has(u)) unmatchedFnWords++;
+                }
+                // Check each word in the prompt against keywords, aliases, and description words
+                var matchedFnWords = new Set();
+                for (var i = 0; i < words.length; i++) {
+                    var w = words[i];
+                    if (w.length < 2) continue;
+
+                    // Keyword match (from function name)
+                    for (var k = 0; k < fnWords.length; k++) {
+                        if (fnWords[k] === w) {
+                            score += 10;
+                            matchedFnWords.add(k);
+                        } else if (fnWords[k].indexOf(w) >= 0 || w.indexOf(fnWords[k]) >= 0) {
+                            score += 3;
+                            matchedFnWords.add(k);
+                        }
+                    }
+
+                    // Alias match (e.g., "best", "practice", "analyzer" -> bpa)
+                    for (var a = 0; a < fnAliases.length; a++) {
+                        if (fnAliases[a] === w) {
+                            score += 8;
+                            // Also mark the parent keyword as matched
+                            matchedFnWords.add(fnWords.indexOf("bpa"));
+                            matchedFnWords.add(fnWords.indexOf("qso"));
+                            matchedFnWords.add(fnWords.indexOf("dl"));
+                        }
+                    }
+
+                    // Description word match
+                    for (var d = 0; d < fnDescWords.length; d++) {
+                        if (fnDescWords[d] === w && w.length > 2) {
+                            score += 2;
+                        }
+                    }
+                }
+
+                // Penalize function keywords NOT mentioned in the prompt
+                var unmatchedFnWords = 0;
+                for (var u = 0; u < fnWords.length; u++) {
+                    if (!matchedFnWords.has(u)) unmatchedFnWords++;
+                }
+                    // Keyword match (from function name)
+                    for (var k = 0; k < fnWords.length; k++) {
+                        if (fnWords[k] === w) {
+                            score += 10;
+                            matchedFnWords.add(k);
+                        } else if (fnWords[k].indexOf(w) >= 0 || w.indexOf(fnWords[k]) >= 0) {
+                            score += 3;
+                            matchedFnWords.add(k);
+                        }
+                    }
+
+                    // Alias match (e.g., "best", "practice", "analyzer" -> bpa)
+                    for (var a = 0; a < fnAliases.length; a++) {
+                        if (fnAliases[a] === w) {
+                            score += 8;
+                            // Mark all abbreviated keywords as matched
+                            for (var mk = 0; mk < fnWords.length; mk++) {
+                                matchedFnWords.add(mk);
+                            }
+                        }
+                    }
+
+                    // Description word match
+                    for (var d = 0; d < fnDescWords.length; d++) {
+                        if (fnDescWords[d] === w && w.length > 2) {
+                            score += 2;
+                        }
+                    }
+                }
+
+                // Penalize function keywords NOT mentioned in the prompt
+                var unmatchedFnWords = 0;
+                for (var u = 0; u < fnWords.length; u++) {
+                    if (!matchedFnWords.has(u)) unmatchedFnWords++;
+                }
+                score -= unmatchedFnWords * 5;
+
+                // Bonus for matching parameter names mentioned in prompt
+                for (var p = 0; p < fn.params.length; p++) {
+                    var pname = fn.params[p].name.replace(/_/g, " ").toLowerCase();
+                    for (var j = 0; j < words.length; j++) {
+                        if (pname.indexOf(words[j]) >= 0 && words[j].length > 2) {
+                            score += 1;
+                        }
+                    }
+                }
+
+                return score;
+            }
+
+            function findBestFunction(text) {
+                var lower = text.toLowerCase()
+                    .replace(/['"]/g, " ")
+                    .replace(/[^\w\s]/g, " ");
+                var words = lower.split(/\s+/).filter(function(w) { return w.length > 0; });
+                // Remove common filler words
+                var stopwords = new Set(["the","a","an","to","in","for","of","my","i","me","can","you","how","do","please","want","need","use","using","code","show","write","give","help","with"]);
+                var filtered = words.filter(function(w) { return !stopwords.has(w); });
+                if (filtered.length === 0) filtered = words;
+ else if (pn === "workspace") {
+                        code += "    workspace=None,\n";
+                        hasAny = true;
+                    }
+                var best = null;
+                var bestScore = 0;
+                for (var i = 0; i < REGISTRY.length; i++) {
+                    var s = scoreFunction(REGISTRY[i], filtered);
+                    if (s > bestScore) {
+                        bestScore = s;
+                        best = REGISTRY[i];
+                    }
+                }
+                return (bestScore >= 5) ? best : null;
+            }
+
+            function buildCode(fn, text) {
+                var quoted = extractQuoted(text);
+                var module = fn.module;
+                var name = fn.name;
+                var params = fn.params;
+
+                // Map quoted values to required params first, then optional
+                var required = params.filter(function(p) { return !p.optional; });
+                var optional = params.filter(function(p) { return p.optional; });
+
+                var assignments = {};
+                var qi = 0;
+
+                // Try to match quoted values to params by name hints in text
+                var lower = text.toLowerCase();
+                for (var i = 0; i < params.length; i++) {
+                    var pname = params[i].name.replace(/_/g, " ").toLowerCase();
+                    // Look for pattern: param_name 'value' or param_name "value"
+                    var pwords = pname.split(" ");
+                    for (var j = 0; j < quoted.length; j++) {
+                        if (assignments[params[i].name]) break;
+                        // Check if the param name words appear near this quoted value
+                        var qval = quoted[j];
+                        var qpos = lower.indexOf(qval.toLowerCase());
+                        if (qpos < 0) continue;
+                        var before = lower.substring(Math.max(0, qpos - 40), qpos);
+                        var matched = pwords.some(function(pw) { return pw.length > 2 && before.indexOf(pw) >= 0; });
+                        if (matched) {
+                            assignments[params[i].name] = qval;
+                        }
+                    }
+                }
+
+                // Assign remaining quoted values to unassigned required params in order
+                for (var r = 0; r < required.length; r++) {
+                    if (!assignments[required[r].name] && qi < quoted.length) {
+                        assignments[required[r].name] = quoted[qi++];
+                    }
+                }
+
+                // Assign leftover quoted values to unassigned optional params in order
+                for (var o = 0; o < optional.length; o++) {
+                    if (!assignments[optional[o].name] && qi < quoted.length) {
+                        assignments[optional[o].name] = quoted[qi++];
+                    }
+                }
+
+                // Build code string
+                var code = "import " + module + "\n";
+                code += module + "." + name + "(\n";
+
+                var hasAny = false;
+                for (var a = 0; a < params.length; a++) {
+                    var pn = params[a].name;
+                    if (assignments[pn]) {
+                        code += "    " + pn + "='" + assignments[pn] + "',\n";
+                        hasAny = true;
+                    } else if (!params[a].optional) {
+                        code += "    " + pn + "=...,  # required\n";
+                        hasAny = true;
+                    } else if (pn === "workspace") {
+                        code += "    workspace=None,\n";
+                        hasAny = true;
+                    }
+                }
+                code += ")";
+
+                return code;
+            }
+
+            function generateResponse(text) {
+                var fn = findBestFunction(text);
+
+                if (fn) {
+                    var code = buildCode(fn, text);
+                    addMessage("Here's the code for <b>" + fn.name + "</b>:", "assistant");
+                    addCodeBlock(code);
+                    if (fn.description) {
+                        addMessage(fn.description, "assistant");
+                    }
+                    return;
+                }
+
+                // ---- fallback ----
+                addMessage("I couldn't find a matching function. Try describing what you want to do, for example:\n\n• rebind report 'A' to semantic model 'B'\n• list workspaces\n• refresh semantic model 'Sales'\n• export report 'MyReport'", "assistant");
+            }
+
+            function addHistory(text) {
+                var item = document.createElement("div");
+                item.className = "history-item-" + SID;
+                item.textContent = text;
+                item.title = text;
+                historyList.insertBefore(item, historyList.firstChild);
+            }
+
+            function sendMessage() {
+                var text = input.value.trim();
+                if (!text) return;
+
+                addMessage(text, "user");
+                generateResponse(text);
+                addHistory(text);
+
+                input.value = "";
+                input.style.height = "auto";
+            }
+
+            sendBtn.onclick = sendMessage;
+
+            input.addEventListener("keydown", function(e) {
+                if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+        })();
+    """
+
+    html_end = """
+    </script>
+    """
+
+    display(HTML(html + js_body + html_end))
