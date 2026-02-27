@@ -860,7 +860,7 @@ class ReportWrapper:
             page_id = payload.get("name")
             page_display = payload.get("displayName")
 
-            if "filterConfig" in payload:
+            if isinstance(payload, dict) and "filterConfig" in payload:
                 for flt in payload.get("filterConfig", {}).get("filters", {}):
                     filter_name = flt.get("name")
                     how_created = flt.get("howCreated")
@@ -945,7 +945,7 @@ class ReportWrapper:
             page_display = visual_mapping.get(path)[1]
             visual_name = payload.get("name")
 
-            if "filterConfig" in payload:
+            if isinstance(payload, dict) and "filterConfig" in payload:
                 for flt in payload.get("filterConfig", {}).get("filters", {}):
                     filter_name = flt.get("name")
                     how_created = flt.get("howCreated")
@@ -1881,6 +1881,181 @@ class ReportWrapper:
         if rows:
             df = pd.DataFrame(rows, columns=list(columns.keys()))
 
+        return df
+
+    def remove_unused_report_level_measures(self, dry_run: bool = True, ignore_unapplied_filters: bool = False) -> pd.DataFrame:
+        """
+        Removes unused report-level measures from the report.
+
+        A measure is considered unused if:
+        1. It is not directly referenced in any visuals, filters, or pages
+        2. No other report-level measures depend on it
+
+        This method will recursively remove measures until no more unused measures are found.
+
+        Parameters
+        ----------
+        dry_run : bool, default=False
+            If True, identifies unused measures without removing them from the report.
+        ignore_unapplied_filters : bool, default=False
+            If True, measures that appear in filter panes but have no filter logic applied will be considered unused.
+            If False, any measure in a filter pane is considered used regardless of whether filter logic is applied.
+
+        Returns
+        -------
+        pandas.DataFrame
+            A pandas dataframe showing the measures that were removed (or would be removed if dry_run=True).
+        """
+        self._ensure_pbir()
+
+        columns = {
+            "Measure Name": "str",
+            "Table Name": "str",
+            "Expression": "str",
+            "Data Type": "str",
+            "Format String": "str",
+            "Data Category": "str",
+        }
+
+        df = _create_dataframe(columns=columns)
+
+        rlm = self.list_report_level_measures()
+        if rlm.empty:
+            if not self._readonly:
+                print(
+                    f"{icons.info} The '{self._report_name}' report within the '{self._workspace_name}' workspace has no report-level measures."
+                )
+            return df
+
+        all_removed_measures = []
+        virtually_removed = set()
+        iteration = 0
+        max_iterations = 10
+
+        while iteration < max_iterations:
+            iteration += 1
+
+            current_rlm = self.list_report_level_measures()
+            if dry_run:
+                current_rlm = current_rlm[~current_rlm["Measure Name"].isin(virtually_removed)]
+            
+            if current_rlm.empty:
+                break
+
+            rlm_map = {r["Measure Name"]: r["Table Name"] for _, r in current_rlm.iterrows()}
+            used_measures = set()
+
+            def is_measure_referenced(json_data, measure_name: str, entity_name: str, path="", pattern=None):
+                if isinstance(json_data, dict):
+                    if ignore_unapplied_filters and "filterConfig" in path:
+                        if "field" in json_data and "Measure" in json_data.get("field", {}):
+                            measure_obj = json_data["field"]["Measure"]
+                            if isinstance(measure_obj, dict):
+                                property_name = measure_obj.get("Property")
+                                measure_entity = measure_obj.get("Expression", {}).get("SourceRef", {}).get("Entity")
+                                if property_name == measure_name and measure_entity == entity_name:
+                                    return "filter" in json_data
+                    
+                    if "Measure" in json_data:
+                        measure_obj = json_data["Measure"]
+                        if isinstance(measure_obj, dict):
+                            property_name = measure_obj.get("Property")
+                            measure_entity = measure_obj.get("Expression", {}).get("SourceRef", {}).get("Entity")
+                            if property_name == measure_name and measure_entity == entity_name:
+                                return True
+
+                    if "Expression" in json_data and isinstance(json_data["Expression"], str):
+                        if pattern and pattern.search(json_data["Expression"]):
+                            return True
+
+                    for key, value in json_data.items():
+                        new_path = f"{path}.{key}" if path else key
+                        if is_measure_referenced(value, measure_name, entity_name, new_path, pattern):
+                            return True
+
+                elif isinstance(json_data, list):
+                    for item in json_data:
+                        if is_measure_referenced(item, measure_name, entity_name, path, pattern):
+                            return True
+
+                return False
+
+            for _, r in current_rlm.iterrows():
+                measure_name = r["Measure Name"]
+                entity_name = r["Table Name"]
+                measure_pattern = re.compile(r"\[" + re.escape(measure_name) + r"\]")
+
+                for part in self._report_definition.get("parts"):
+                    if part.get("path") == self._report_extensions_path:
+                        continue
+
+                    if is_measure_referenced(part.get("payload"), measure_name, entity_name, pattern=measure_pattern):
+                        used_measures.add(measure_name)
+                        break
+
+            try:
+                extensions_data = self.get(file_path=self._report_extensions_path)
+            except Exception:
+                extensions_data = {}
+            
+            for entity in extensions_data.get("entities", []):
+                for measure in entity.get("measures", []):
+                    if dry_run and measure.get("name") in virtually_removed:
+                        continue
+                    expr = measure.get("expression", "")
+                    if isinstance(expr, str):
+                        for ref in re.findall(r"\[([^\]]+)\]", expr):
+                            if ref in rlm_map:
+                                used_measures.add(ref)
+
+            unused_measures = [r["Measure Name"] for _, r in current_rlm.iterrows() if r["Measure Name"] not in used_measures]
+
+            if not unused_measures:
+                break
+
+            entities = self.get(file_path=self._report_extensions_path, json_path="$.entities")
+            removed_measures = []
+
+            for entity in entities:
+                for m in entity.get("measures", []):
+                    if m.get("name") in unused_measures:
+                        removed_measures.append({
+                            "Measure Name": m.get("name"),
+                            "Table Name": entity.get("name"),
+                            "Expression": m.get("expression"),
+                            "Data Type": m.get("dataType"),
+                            "Format String": m.get("formatString"),
+                            "Data Category": m.get("dataCategory"),
+                        })
+
+            if not dry_run:
+                for entity in entities:
+                    entity["measures"] = [m for m in entity.get("measures", []) if m.get("name") not in unused_measures]
+                
+                entities = [e for e in entities if e.get("measures")]
+
+                if entities:
+                    self.set_json(
+                        file_path=self._report_extensions_path,
+                        json_path="$.entities",
+                        json_value=entities,
+                    )
+                else:
+                    self.remove(file_path=self._report_extensions_path, verbose=False)
+            else:
+                virtually_removed.update(unused_measures)
+
+            all_removed_measures.extend(removed_measures)
+
+        if all_removed_measures:
+            df = pd.DataFrame(all_removed_measures, columns=list(columns.keys())).drop_duplicates()
+            if not self._readonly:
+                action = "Found" if dry_run else "Removed"
+                print(f"{icons.info if dry_run else icons.green_dot} {action} {len(df)} unused report-level measure(s) in the '{self._report_name}' report{' that would be removed' if dry_run else ''}.")
+            return df
+        
+        if not self._readonly:
+            print(f"{icons.info} No unused report-level measures found in the '{self._report_name}' report.")
         return df
 
     def get_theme(self, theme_type: str = "baseTheme") -> dict:
