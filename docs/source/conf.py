@@ -11,9 +11,9 @@ sys.path.insert(0, os.path.abspath('../../src/'))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'semantic-link-labs'
-copyright = '2024, Microsoft and community'
+copyright = '2026, Microsoft and community'
 author = 'Microsoft and community'
-release = '0.13.1'
+release = '0.13.2'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

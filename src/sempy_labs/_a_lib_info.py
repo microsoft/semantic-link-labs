@@ -4,7 +4,7 @@ import zipfile
 from pathlib import Path
 
 lib_name = "semanticlinklabs"
-lib_version = "0.13.1"
+lib_version = "0.13.2"
 
 NUGET_BASE_URL = "https://www.nuget.org/api/v2/package"
 current_dir = Path(__file__).parent
