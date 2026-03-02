@@ -381,7 +381,6 @@ def _base_add_to_group(
         object = [object]
 
     group_id = resolve_group_id(group)
-    url = f"groups/{group_id}/{object_type}/$ref"
 
     for m in object:
         if _is_valid_uuid(m):
@@ -397,17 +396,19 @@ def _base_add_to_group(
 
     # Must submit one request for each owner. Members can be sent in a single request.
     if object_type == "members":
+        url = f"groups/{group_id}"
         payload = {"members@odata.bind": object_list}
 
         _base_api(
             request=url,
             client="graph",
             payload=payload,
-            method="post",
+            method="patch",
             status_codes=204,
         )
 
     else:
+        url = f"groups/{group_id}/{object_type}/$ref"
         for o in object_list:
             payload = {"odata.id": o}
             _base_api(

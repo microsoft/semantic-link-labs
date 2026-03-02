@@ -1,12 +1,26 @@
-import requests
 import pandas as pd
-from sempy.fabric.exceptions import FabricHTTPException
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from typing import Optional
 from uuid import UUID
 from sempy_labs.kql_database._items import resolve_cluster_uri
-from sempy_labs._helper_functions import resolve_item_id
+from sempy_labs._helper_functions import (
+    resolve_item_id,
+    _base_api,
+)
+
+
+def _get_kusto_headers(cluster_uri: str) -> dict:
+
+    import notebookutils
+
+    token = notebookutils.credentials.getToken(cluster_uri)
+
+    return {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
 
 
 @log
@@ -38,8 +52,6 @@ def query_kusto(
         A pandas dataframe showing the result of the KQL query.
     """
 
-    import notebookutils
-
     language = language.lower()
     if language not in ["kql", "sql"]:
         raise ValueError(
@@ -47,13 +59,7 @@ def query_kusto(
         )
 
     cluster_uri = resolve_cluster_uri(kql_database=kql_database, workspace=workspace)
-    token = notebookutils.credentials.getToken(cluster_uri)
-
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-    }
+    headers = _get_kusto_headers(cluster_uri=cluster_uri)
 
     kql_database_id = resolve_item_id(
         item=kql_database, type="KQLDatabase", workspace=workspace
@@ -62,16 +68,14 @@ def query_kusto(
     if language == "sql":
         payload["properties"] = {"Options": {"query_language": "sql"}}
 
-    response = requests.post(
-        f"{cluster_uri}/v1/rest/query",
+    results = _base_api(
+        request=f"{cluster_uri}/v1/rest/query",
+        client="kusto",
+        method="post",
+        payload=payload,
         headers=headers,
-        json=payload,
-    )
+    ).json()
 
-    if response.status_code != 200:
-        raise FabricHTTPException(response)
-
-    results = response.json()
     columns_info = results["Tables"][0]["Columns"]
     rows = results["Tables"][0]["Rows"]
 

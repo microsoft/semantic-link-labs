@@ -99,6 +99,13 @@ class ReportWrapper:
         self._readonly = readonly
         self._show_diffs = show_diffs
 
+        # Check that the report is in the PBIR format.
+        response = _base_api(
+            request=f"/v1.0/myorg/groups/{self._workspace_id}/reports/{self._report_id}",
+            client="fabric_sp",
+        )
+        self.format = response.json().get("format")
+
         result = _base_api(
             request=f"/v1/workspaces/{self._workspace_id}/items/{self._report_id}/getDefinition",
             method="post",
@@ -111,10 +118,6 @@ class ReportWrapper:
 
         # Check that the report is in the PBIR format
         parts = result.get("definition", {}).get("parts", [])
-        if self._report_file_path not in [p.get("path") for p in parts]:
-            self.format = "PBIR-Legacy"
-        else:
-            self.format = "PBIR"
         self._report_definition = {"parts": []}
         for part in parts:
             path = part.get("path")
@@ -3008,6 +3011,51 @@ class ReportWrapper:
         file.get("visual").get("objects").get("general")[0].get("properties").get(
             "imageUrl"
         ).get("expr").get("ResourcePackageItem")["ItemName"] == image_name
+
+    def set_page_order(self, order: List[str]):
+        """
+        Set the page order of the report.
+
+        Parameters
+        ----------
+        order : typing.List[str]
+            A list of page names in the desired order. You may enter the page display names or page names as they appear in the report definition. All pages in the report must be included in the list, and there should be no duplicates.
+        """
+        self._ensure_pbir()
+
+        pages_file = self.get(file_path=self._pages_file_path)
+        page_name_to_id_map = {
+            p.get("payload", {}).get("displayName"): p.get("payload", {}).get("name")
+            for p in self.__all_pages()
+            if p.get("payload")
+            and "name" in p["payload"]
+            and "displayName" in p["payload"]
+        }
+
+        page_id_to_name_map = {v: k for k, v in page_name_to_id_map.items()}
+
+        new_page_order = []
+        for page_name in order:
+            if page_name in page_name_to_id_map:
+                new_page_order.append(page_name_to_id_map[page_name])
+            elif page_name in page_id_to_name_map:
+                new_page_order.append(page_name)
+            else:
+                raise ValueError(
+                    f"{icons.red_dot} Page '{page_name}' not found in the report."
+                )
+
+        if set(new_page_order) != set(pages_file.get("pageOrder", [])):
+            raise ValueError(
+                f"{icons.red_dot} The provided page order does not match the existing pages in the report."
+            )
+        if len(new_page_order) != len(set(new_page_order)):
+            raise ValueError(
+                f"{icons.red_dot} Duplicate page names found in the provided order."
+            )
+
+        pages_file["pageOrder"] = new_page_order
+        self.update(file_path=self._pages_file_path, payload=pages_file)
 
     def save_changes(self):
 

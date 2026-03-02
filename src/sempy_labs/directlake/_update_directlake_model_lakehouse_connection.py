@@ -1,65 +1,19 @@
-from ._generate_shared_expression import generate_shared_expression
-from .._helper_functions import (
+from sempy_labs.directlake._generate_shared_expression import generate_shared_expression
+from sempy_labs._helper_functions import (
     resolve_dataset_name_and_id,
     resolve_workspace_name_and_id,
     resolve_item_name_and_id,
     resolve_lakehouse_name_and_id,
 )
 from sempy._utils._log import log
-from ..tom import connect_semantic_model
-from typing import Optional, List
+from sempy_labs.tom import connect_semantic_model
+from typing import Optional, List, Literal
 import sempy_labs._icons as icons
 from uuid import UUID
-import re
-
-
-@log
-def _extract_expression_list(expression):
-    """
-    Finds the pattern for DL/SQL & DL/OL expressions in the semantic model.
-    """
-
-    pattern_sql = r'Sql\.Database\s*\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\)'
-    pattern_no_sql = (
-        r'AzureStorage\.DataLake\(".*?/([0-9a-fA-F\-]{36})/([0-9a-fA-F\-]{36})"'
-    )
-
-    match_sql = re.search(pattern_sql, expression)
-    match_no_sql = re.search(pattern_no_sql, expression)
-
-    result = []
-    if match_sql:
-        value_1, value_2 = match_sql.groups()
-        result = [value_1, value_2, True]
-    elif match_no_sql:
-        value_1, value_2 = match_no_sql.groups()
-        result = [value_1, value_2, False]
-
-    return result
-
-
-@log
-def _get_direct_lake_expressions(
-    dataset: str | UUID, workspace: Optional[str | UUID] = None
-) -> dict:
-    """
-    Extracts a dictionary of all Direct Lake expressions from a semantic model.
-    """
-
-    from sempy_labs.tom import connect_semantic_model
-
-    result = {}
-
-    with connect_semantic_model(dataset=dataset, workspace=workspace) as tom:
-        for e in tom.model.Expressions:
-            expr_name = e.Name
-            expr = e.Expression
-
-            list_values = _extract_expression_list(expr)
-            if list_values:
-                result[expr_name] = list_values
-
-    return result
+from sempy_labs.directlake._sources import (
+    _get_direct_lake_expressions,
+    _extract_expression_list,
+)
 
 
 @log
@@ -74,16 +28,16 @@ def update_direct_lake_model_lakehouse_connection(
 
     Parameters
     ----------
-    dataset : str | UUID
+    dataset : str | uuid.UUID
         Name or ID of the semantic model.
-    workspace : str | UUID, default=None
+    workspace : str | uuid. UUID, default=None
         The Fabric workspace name or ID in which the semantic model exists.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    lakehouse : str, default=None
+    lakehouse : str | uuid.UUID, default=None
         The Fabric lakehouse used by the Direct Lake semantic model.
         Defaults to None which resolves to the lakehouse attached to the notebook.
-    lakehouse_workspace : str | UUID, default=None
+    lakehouse_workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID used by the lakehouse.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
@@ -102,8 +56,8 @@ def update_direct_lake_model_lakehouse_connection(
 def update_direct_lake_model_connection(
     dataset: str | UUID,
     workspace: Optional[str | UUID] = None,
-    source: Optional[str] = None,
-    source_type: str = "Lakehouse",
+    source: Optional[str | UUID] = None,
+    source_type: Literal["Lakehouse", "Warehouse"] = "Lakehouse",
     source_workspace: Optional[str | UUID] = None,
     use_sql_endpoint: bool = True,
     tables: Optional[str | List[str]] = None,
@@ -119,10 +73,10 @@ def update_direct_lake_model_connection(
         The Fabric workspace name or ID in which the semantic model exists.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    source : str, default=None
+    source : str | uuid.UUID, default=None
         The name of the Fabric lakehouse/warehouse used by the Direct Lake semantic model.
         Defaults to None which resolves to the lakehouse attached to the notebook.
-    source_type : str, default="Lakehouse"
+    source_type : typing.Literal["Lakehouse", "Warehouse"], default="Lakehouse"
         The type of source for the Direct Lake semantic model. Valid options: "Lakehouse", "Warehouse".
     source_workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID used by the lakehouse/warehouse.

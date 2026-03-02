@@ -94,6 +94,10 @@ def list_eventhouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
         "Eventhouse Name": "string",
         "Eventhouse Id": "string",
         "Description": "string",
+        "Query Service URI": "string",
+        "Ingestion Service URI": "string",
+        "Database Item Ids": "list",
+        "Minimum Consumption Units": "float",
     }
     df = _create_dataframe(columns=columns)
 
@@ -108,11 +112,16 @@ def list_eventhouses(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
     rows = []
     for r in responses:
         for v in r.get("value", []):
+            p = v.get("properties", {})
             rows.append(
                 {
                     "Eventhouse Name": v.get("displayName"),
                     "Eventhouse Id": v.get("id"),
                     "Description": v.get("description"),
+                    "Query Service URI": p.get("queryServiceUri"),
+                    "Ingestion Service URI": p.get("ingestionServiceUri"),
+                    "Database Item Ids": p.get("databasesItemIds"),
+                    "Minimum Consumption Units": p.get("minimumConsumptionUnits"),
                 }
             )
 

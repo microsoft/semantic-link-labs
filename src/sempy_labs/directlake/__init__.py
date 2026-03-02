@@ -6,7 +6,6 @@ from ._dl_helper import (
     generate_direct_lake_semantic_model,
     get_direct_lake_source,
 )
-from ._get_directlake_lakehouse import get_direct_lake_lakehouse
 from ._get_shared_expression import get_shared_expression
 from ._guardrails import (
     get_direct_lake_guardrails,
@@ -32,13 +31,13 @@ from ._warm_cache import (
     warm_direct_lake_cache_perspective,
 )
 from ._autosync import set_autosync
+from ._sources import get_direct_lake_sources
 
 __all__ = [
     "generate_shared_expression",
     "direct_lake_schema_compare",
     "direct_lake_schema_sync",
     "check_fallback_reason",
-    "get_direct_lake_lakehouse",
     "get_shared_expression",
     "get_direct_lake_guardrails",
     "get_sku_size",
@@ -54,4 +53,5 @@ __all__ = [
     "get_direct_lake_source",
     "update_direct_lake_model_connection",
     "set_autosync",
+    "get_direct_lake_sources",
 ]

@@ -4,6 +4,7 @@ from sempy_labs._helper_functions import (
     _xml_to_dict,
     _create_dataframe,
     _update_dataframe_datatypes,
+    _base_api,
 )
 from sempy._utils._log import log
 from uuid import UUID
@@ -23,35 +24,19 @@ def _request_blob_api(
     uses_pagination: bool = False,
 ):
 
-    import requests
-    import notebookutils
-    from sempy.fabric.exceptions import FabricHTTPException
-
     if isinstance(status_codes, int):
         status_codes = [status_codes]
 
-    token = notebookutils.credentials.getToken("storage")
-
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/xml",
-        "x-ms-version": "2025-05-05",
-    }
-
-    base_url = "https://onelake.blob.fabric.microsoft.com/"
-    full_url = f"{base_url}{request}"
     results = []
+    full_url = request
 
     while True:
-        response = requests.request(
-            method.upper(),
-            full_url,
-            headers=headers,
-            data=payload if method.lower() != "get" else None,
+        response = _base_api(
+            request=full_url,
+            client="blob",
+            method=method.upper(),
+            payload=payload,
         )
-
-        if response.status_code not in status_codes:
-            raise FabricHTTPException(response)
 
         if not uses_pagination:
             return response
@@ -66,7 +51,7 @@ def _request_blob_api(
 
         # Append the marker to the original request (assuming query string format)
         delimiter = "&" if "?" in request else "?"
-        full_url = f"{base_url}{request}{delimiter}marker={next_marker}"
+        full_url = f"{request}{delimiter}marker={next_marker}"
 
     return results
 

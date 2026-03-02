@@ -117,6 +117,7 @@ def list_tables(
     }
     df = _create_dataframe(columns=columns)
 
+    prefix = "onelake.dfs.fabric.microsoft.com/"
     rows = []
     if schema_enabled:
         schemas = list_schemas(lakehouse=lakehouse, workspace=workspace)
@@ -135,7 +136,17 @@ def list_tables(
             # Loop through tables
             for t in response.json().get("tables", []):
                 location = t.get("storage_location", {})
-                location = f'abfss://{location.split(".microsoft.com/")[1]}'
+                # Strip protocol + host
+                path = location.replace(f"https://{prefix}", "")
+
+                # Split components
+                w_id, lh_id, *rest = path.split("/")
+                rest = [p for p in rest]
+
+                # Rebuild pattern
+                rebuilt_location = (
+                    f"abfss://{w_id}" f"@{prefix}" f"{lh_id}/" + "/".join(rest)
+                )
                 rows.append(
                     {
                         "Workspace Name": workspace_name,
@@ -144,7 +155,7 @@ def list_tables(
                         "Schema Name": schema_name,
                         "Format": t.get("data_source_format", {}).lower(),
                         "Type": "Managed",
-                        "Location": location,
+                        "Location": rebuilt_location,
                     }
                 )
     else:

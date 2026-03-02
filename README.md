@@ -1,7 +1,7 @@
 # Semantic Link Labs
 
 [![PyPI version](https://badge.fury.io/py/semantic-link-labs.svg)](https://badge.fury.io/py/semantic-link-labs)
-[![Read The Docs](https://readthedocs.org/projects/semantic-link-labs/badge/?version=0.12.10&style=flat)](https://readthedocs.org/projects/semantic-link-labs/)
+[![Read The Docs](https://readthedocs.org/projects/semantic-link-labs/badge/?version=0.13.2&style=flat)](https://readthedocs.org/projects/semantic-link-labs/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Downloads](https://static.pepy.tech/badge/semantic-link-labs)](https://pepy.tech/project/semantic-link-labs)
 
@@ -71,7 +71,7 @@ Check out the video below for an introduction to Semantic Link, Semantic Link La
     * [Analyze delta tables for Direct Lake semantic models using Delta Analyzer](https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Delta%20Analyzer.ipynb)
     * [Recover a soft-deleted lakehouse table/file/folder](https://github.com/microsoft/semantic-link-labs/wiki/Code-Examples#recover-a-lakehouse-object)
 * Notebooks
-    * [Import a notebook from the web](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.import_notebook_from_web)    
+    * [Import a notebook from the web](https://semantic-link-labs.readthedocs.io/en/stable/sempy_labs.html#sempy_labs.import_notebook_from_web)
 * APIs
     * Wrapper functions for [Power BI](https://learn.microsoft.com/rest/api/power-bi/), [Fabric](https://learn.microsoft.com/rest/api/fabric/articles/using-fabric-apis), [Azure](https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities?view=rest-microsoftfabric-2023-11-01), and [Microsoft Graph](https://learn.microsoft.com/graph/api/overview?view=graph-rest-1.0) APIs
 * Service Principal Authentication
@@ -79,7 +79,7 @@ Check out the video below for an introduction to Semantic Link, Semantic Link La
 
 ## Helper Notebooks
 
-Check out the [helper notebooks](https://github.com/microsoft/semantic-link-labs/tree/main/notebooks) for getting started! 
+Check out the [helper notebooks](https://github.com/microsoft/semantic-link-labs/tree/main/notebooks) for getting started!
 Run the code below to load all the helper notebooks to the workspace of your choice at once.
 ```python
 import sempy_labs as labs
@@ -131,6 +131,9 @@ An even better way to ensure the semantic-link-labs library is available in your
 2. Select your newly created environment within the 'Environment' drop down in the navigation bar at the top of the notebook
 
 ## Version History
+* [0.13.2](https://github.com/microsoft/semantic-link-labs/releases/tag/0.13.2) (February 27, 2026)
+* [0.13.1](https://github.com/microsoft/semantic-link-labs/releases/tag/0.13.1) (February 12, 2026)
+* [0.13.0](https://github.com/microsoft/semantic-link-labs/releases/tag/0.13.0) (February 10, 2026)
 * [0.12.10](https://github.com/microsoft/semantic-link-labs/releases/tag/0.12.10) (January 22, 2026)
 * [0.12.9](https://github.com/microsoft/semantic-link-labs/releases/tag/0.12.9) (January 5, 2026)
 * [0.12.8](https://github.com/microsoft/semantic-link-labs/releases/tag/0.12.8) (December 15, 2025)
@@ -324,8 +327,8 @@ python -m black src
 
 ## Trademarks
 
-This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft 
-trademarks or logos is subject to and must follow 
+This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft
+trademarks or logos is subject to and must follow
 [Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general).
 Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
 Any use of third-party trademarks or logos are subject to those third-party's policies.

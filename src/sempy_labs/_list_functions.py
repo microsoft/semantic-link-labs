@@ -487,8 +487,6 @@ def list_annotations(
 def list_columns(
     dataset: str | UUID,
     workspace: Optional[str | UUID] = None,
-    lakehouse: Optional[str] = None,
-    lakehouse_workspace: Optional[str] = None,
 ) -> pd.DataFrame:
     """
     Shows a semantic model's columns and their properties.
@@ -501,28 +499,20 @@ def list_columns(
         The Fabric workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    lakehouse : str, default=None
-        The Fabric lakehouse (for Direct Lake semantic models).
-        Defaults to None which resolves to the lakehouse attached to the notebook.
-    lakehouse_workspace : str, default=None
-        The Fabric workspace used by the lakehouse.
-        Defaults to None which resolves to the workspace of the attached lakehouse
-        or if no lakehouse attached, resolves to the workspace of the notebook.
 
     Returns
     -------
     pandas.DataFrame
         A pandas dataframe showing the semantic model's columns and their properties.
     """
-    from sempy_labs.directlake._get_directlake_lakehouse import (
-        get_direct_lake_lakehouse,
+    from sempy_labs.directlake._sources import (
+        get_direct_lake_sources,
     )
 
     workspace_id = resolve_workspace_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
     fabric.refresh_tom_cache(workspace=workspace)
-
     dfP = fabric.list_partitions(dataset=dataset_id, workspace=workspace_id)
 
     isDirectLake = any(r["Mode"] == "DirectLake" for i, r in dfP.iterrows())
@@ -532,12 +522,10 @@ def list_columns(
     if isDirectLake:
         dfC["Column Cardinality"] = None
         sql_statements = []
-        (lakeID, lakeName) = get_direct_lake_lakehouse(
-            dataset=dataset_id,
-            workspace=workspace_id,
-            lakehouse=lakehouse,
-            lakehouse_workspace=lakehouse_workspace,
-        )
+        sources = get_direct_lake_sources(dataset=dataset, workspace=workspace)[0]
+        # lake_id = sources.get("itemId")
+        lake_name = sources.get("itemName")
+        # lake_workspace_id = sources.get("workspaceId")
 
         for table_name in dfC["Table Name"].unique():
             print(f"Gathering stats for table: '{table_name}'...")
@@ -564,7 +552,7 @@ def list_columns(
                 query = f"{query}COUNT(DISTINCT({scName})) AS {scName}, "
 
             query = query[:-2]
-            query = f"{query} FROM {lakehouse}.{lakeTName}"
+            query = f"{query} FROM {lake_name}.{lakeTName}"
             sql_statements.append((table_name, query))
 
         for o in sql_statements:

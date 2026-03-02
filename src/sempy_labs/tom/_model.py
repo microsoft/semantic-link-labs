@@ -7,6 +7,7 @@ import json
 from datetime import datetime
 from decimal import Decimal
 from sempy_labs._helper_functions import (
+    _base_api,
     format_dax_object_name,
     generate_guid,
     _make_list_unique,
@@ -16,8 +17,7 @@ from sempy_labs._helper_functions import (
     resolve_item_id,
     resolve_lakehouse_id,
     _validate_weight,
-    _get_url_prefix,
-    get_pbi_token_headers,
+    _create_dataframe,
 )
 from sempy_labs._list_functions import list_relationships
 from sempy_labs._refresh_semantic_model import refresh_semantic_model
@@ -30,8 +30,6 @@ import ast
 from uuid import UUID
 import sempy_labs._authentication as auth
 from sempy_labs.lakehouse._lakehouse import lakehouse_attached
-import requests
-from sempy.fabric.exceptions import FabricHTTPException
 
 
 if TYPE_CHECKING:
@@ -806,9 +804,18 @@ class TOMWrapper:
         bim = TOM.JsonScripter.ScriptCreateOrReplace(self.model.Database)
         fabric.execute_tmsl(script=bim, workspace=self._workspace_id)
 
+    def delete_user_defined_function(self, name: str):
+
+        try:
+            object = self.model.Functions[name]
+            object.Parent.Functions.Remove(object.Name)
+        except Exception:
+            pass
+        #    print(f"{icons.info} The user-defined function '{name}' does not exist within the semantic model.")
+
     def set_user_defined_function(self, name: str, expression: str):
         """
-        Sets the definition of a `user-defined <https://learn.microsoft.com/en-us/dax/best-practices/dax-user-defined-functions#using-model-explorer>_` function within the semantic model. This function requires that the compatibility level is at least 1702.
+        Sets the definition of a `user-defined <https://learn.microsoft.com/en-us/dax/best-practices/dax-user-defined-functions#using-model-explorer>`_ function within the semantic model. This function requires that the compatibility level is at least 1702.
 
         Parameters
         ----------
@@ -821,7 +828,9 @@ class TOMWrapper:
 
         if self._compat_level < 1702:
             raise ValueError(
-                f"{icons.warning} User-defined functions require a compatibility level of at least 1702. The current compatibility level is {self._compat_level}. Use the 'tom.set_compatibility_level' function to change the compatibility level."
+                f"{icons.warning} User-defined functions require a compatibility level of at least 1702. The current compatibility level is {self._compat_level}. Use the 'tom.set_compatibility_level' function to change the compatibility level. See the example below:\n"
+                f"with connect_semantic_model(dataset='{self._dataset_name}', workspace='{self._workspace_name}', readonly=False):"
+                f"    tom.set_compatibility_level(compatibility_level=1702)"
             )
 
         existing = [f.Name for f in self.model.Functions]
@@ -2972,7 +2981,11 @@ class TOMWrapper:
         self.model.Tables.Add(t)
 
     def add_field_parameter(
-        self, table_name: str, objects: List[str], object_names: List[str] = None
+        self,
+        table_name: str,
+        objects: List[str],
+        object_names: List[str] = None,
+        hierarchy_names: List[str] = None,
     ):
         """
         Adds a `field parameter <https://learn.microsoft.com/power-bi/create-reports/power-bi-field-parameters>`_ to the semantic model.
@@ -2981,13 +2994,18 @@ class TOMWrapper:
         ----------
         table_name : str
             Name of the table.
-        objects : List[str]
+        objects : typing.List[str]
             The columns/measures to be included in the field parameter.
             Columns must be specified as such : 'Table Name'[Column Name].
             Measures may be formatted as '[Measure Name]' or 'Measure Name'.
-        object_names : List[str], default=None
+        object_names : typing.List[str], default=None
             The corresponding visible name for the measures/columns in the objects list.
             Defaults to None which shows the measure/column name.
+        hierarchy_names : typing.List[str], default=None
+            The corresponding hierarchy name for the measures/columns in the objects list if they are to be added to a hierarchy.
+             Defaults to None which adds all fields to the same level (i.e. no hierarchy).
+
+            For details see `here <https://www.youtube.com/watch?v=5G_xSJy5muo>`_.
         """
 
         import Microsoft.AnalysisServices.Tabular as TOM
@@ -3007,39 +3025,87 @@ class TOMWrapper:
                 f"{icons.red_dot} If the 'object_names' parameter is specified, it must correspond exactly to the 'objects' parameter."
             )
 
-        expr = ""
-        i = 0
-        for obj in objects:
-            index = objects.index(obj)
-            success = False
-            for m in self.all_measures():
-                obj_name = m.Name
-                if obj == f"[{obj_name}]" or obj == obj_name:
-                    if object_names is not None:
-                        obj_name = object_names[index]
-                    expr = f'{expr}\n\t("{obj_name}", NAMEOF([{m.Name}]), {str(i)}),'
-                    success = True
-            for c in self.all_columns():
-                obj_name = c.Name
-                fullObjName = format_dax_object_name(c.Parent.Name, c.Name)
-                if obj == fullObjName or obj == c.Parent.Name + "[" + c.Name + "]":
-                    if object_names is not None:
-                        obj_name = object_names[index]
-                    expr = f'{expr}\n\t("{obj_name}", NAMEOF({fullObjName}), {str(i)}),'
-                    success = True
-            if not success:
+        if hierarchy_names is not None and len(objects) != len(hierarchy_names):
+            raise ValueError(
+                f"{icons.red_dot} If the 'hierarchy_names' parameter is specified, it must correspond exactly to the 'objects' parameter."
+            )
+
+        # Measures lookup
+        measure_lookup = {}
+        for m in self.all_measures():
+            measure_lookup[m.Name] = m
+            measure_lookup[f"[{m.Name}]"] = m
+
+        # Columns lookup
+        column_lookup = {}
+        for c in self.all_columns():
+            key1 = f"{c.Parent.Name}[{c.Name}]"
+            key2 = format_dax_object_name(c.Parent.Name, c.Name)
+            column_lookup[key1] = c
+            column_lookup[key2] = c
+
+        def resolve_object(o):
+            """
+            Resolves an object string to a Measure or Column.
+            Returns a dict or None.
+            """
+            if o in measure_lookup:
+                m = measure_lookup[o]
+                return {"type": "Measure", "name": m.Name, "table": m.Parent.Name}
+
+            if o in column_lookup:
+                c = column_lookup[o]
+                return {
+                    "type": "Column",
+                    "name": c.Name,
+                    "table": c.Parent.Name,
+                    "full_name": format_dax_object_name(c.Parent.Name, c.Name),
+                }
+
+            return None
+
+        rows = []
+
+        for index, o in enumerate(objects):
+            resolved = resolve_object(o)
+
+            if not resolved:
                 raise ValueError(
-                    f"{icons.red_dot} The '{obj}' object was not found in the '{self._dataset_name}' semantic model."
+                    f"{icons.red_dot} The '{o} object does not exist in the semantic model."
                 )
+
+            obj_type = resolved["type"]
+            name = resolved["name"]
+
+            display_name = (
+                object_names[index] if index < len(object_names or []) else None
+            )
+            h_name = (
+                hierarchy_names[index] if index < len(hierarchy_names or []) else None
+            )
+
+            obj_name = display_name or name
+
+            if obj_type == "Measure":
+                expr = f'("{obj_name}", NAMEOF([{name}]), {index}'
             else:
-                i += 1
+                full_object_name = resolved["full_name"]
+                expr = f'("{obj_name}", NAMEOF({full_object_name}), {index}'
 
-        expr = "{" + expr.rstrip(",") + "\n}"
+            if h_name:
+                expr += f', "{h_name}"'
 
-        self.add_calculated_table(name=table_name, expression=expr)
+            expr += ")"
 
-        col2 = table_name + " Fields"
-        col3 = table_name + " Order"
+            rows.append(f"\t{expr}")
+
+        calc_table_expr = "{\n" + ",\n".join(rows) + "\n}"
+
+        # Build calc table and columns
+        self.add_calculated_table(name=table_name, expression=calc_table_expr)
+
+        col2 = f"{table_name} Fields"
+        col3 = f"{table_name} Order"
 
         self.add_calculated_table_column(
             table_name=table_name,
@@ -3062,6 +3128,14 @@ class TOMWrapper:
             data_type="Int64",
             hidden=True,
         )
+        if hierarchy_names:
+            self.add_calculated_table_column(
+                table_name=table_name,
+                column_name="Grouping",
+                source_column="[Value4]",
+                data_type="String",
+                hidden=False,
+            )
 
         self.set_extended_property(
             object=self.model.Tables[table_name].Columns[col2],
@@ -4487,6 +4561,8 @@ class TOMWrapper:
             Defaults to None which keeps the existing setting.
         """
 
+        import Microsoft.AnalysisServices.Tabular as TOM
+
         obj = self.model.Tables[table_name].CalculationGroup.CalculationItems[
             calculation_item_name
         ]
@@ -4684,20 +4760,25 @@ class TOMWrapper:
 
         icons.sll_tags.append("GenerateMeasureDescriptions")
 
-        prefix = _get_url_prefix()
-        headers = get_pbi_token_headers()
+        columns = {
+            "Table Name": "string",
+            "Measure Name": "string",
+            "Expression": "string",
+            "Description": "string",
+        }
 
-        df = pd.DataFrame(
-            columns=["Table Name", "Measure Name", "Expression", "Description"]
-        )
-        data = []
+        df = _create_dataframe(columns=columns)
 
+        rows = []
+        measures = []
         # import concurrent.futures
         if measure_name is None:
-            measure_name = [m.Name for m in self.all_measures()]
+            measures = [m.Name for m in self.all_measures()]
 
         if isinstance(measure_name, str):
-            measure_name = [measure_name]
+            measures = [measure_name]
+        elif isinstance(measure_name, list):
+            measures = measure_name
 
         payload = {
             "scenarioDefinition": {
@@ -4709,12 +4790,13 @@ class TOMWrapper:
             "artifactInfo": {"artifactType": "SemanticModel"},
         }
 
-        for m in measure_name:
-            (table_name, expr) = next(
-                (ms.Parent.Name, ms.Expression)
-                for ms in self.all_measures()
-                if ms.Name == m
-            )
+        measure_mapping = {}
+        for m in self.all_measures():
+            measure_mapping[m.Name] = (m.Parent.Name, m.Expression)
+
+        for m in measures:
+            (table_name, expr) = measure_mapping.get(m, (None, None))
+
             payload["scenarioDefinition"]["generateModelItemDescriptions"][
                 "modelItems"
             ].append(
@@ -4726,24 +4808,19 @@ class TOMWrapper:
                 }
             )
 
-            response = requests.post(
-                f"{prefix}/explore/v202304/nl2nl/completions",
-                headers=headers,
-                json=payload,
+            response = _base_api(
+                request="explore/v202304/nl2nl/completions",
+                client="internal",
+                method="post",
+                payload=payload,
             )
-            if response.status_code != 200:
-                raise FabricHTTPException(response)
 
             for item in response.json().get("modelItems", []):
                 ms_name = item["urn"]
                 if ms_name.startswith("urn: "):
                     ms_name = ms_name[5:]
                 desc = item.get("description")
-                (table_name, expr) = next(
-                    (m.Parent.Name, m.Expression)
-                    for m in self.all_measures()
-                    if m.Name == ms_name
-                )
+                (table_name, expr) = measure_mapping.get(ms_name, (None, None))
                 self.model.Tables[table_name].Measures[ms_name].Description = desc
 
                 # Collect new descriptions in a dataframe
@@ -4754,21 +4831,26 @@ class TOMWrapper:
                     "Description": desc,
                 }
 
-                data.append(new_data)
+                rows.append(new_data)
 
-        if data:
-            df = pd.concat([df, pd.DataFrame(data)], ignore_index=True)
+        if rows:
+            df = pd.DataFrame(rows, columns=list(columns.keys()))
 
         return df
 
-    def set_value_filter_behavior(self, value_filter_behavior: str = "Automatic"):
+    def set_value_filter_behavior(
+        self,
+        value_filter_behavior: Literal[
+            "Automatic", "Independent", "Coalesced"
+        ] = "Automatic",
+    ):
         """
         Sets the `Value Filter Behavior <https://learn.microsoft.com/power-bi/transform-model/value-filter-behavior>`_ property for the semantic model.
 
         Parameters
         ----------
-        value_filter_behavior : str , default="Automatic"
-            Determines value filter behavior for SummarizeColumns. Valid options: 'Automatic', 'Independent', 'Coalesced'.
+        value_filter_behavior : typing.Literal["Automatic", "Independent", "Coalesced"] , default="Automatic"
+            Determines value filter behavior for SummarizeColumns.
         """
 
         import Microsoft.AnalysisServices.Tabular as TOM
