@@ -5481,82 +5481,92 @@ class TOMWrapper:
         # TODO: 'in' vs 'has' in relationships
         # TODO: 'SemanticSlots' in relationships
 
-        c = self.model.Cultures[culture]
-        if c.LinguisticMetadata is not None:
-            lm = json.loads(c.LinguisticMetadata.Content)
+        if not any(c for c in self.model.Cultures if c.Name == culture):
+            raise ValueError(
+                f"{icons.red_dot} The '{culture}' culture does not exist within the semantic model. Add a new culture using the add_translation function."
+            )
 
-            def add_entity(entity, conecptual_entity, conceptual_property):
-                lm["Entities"][entity] = {
-                    "Definition": {
-                        "Binding": {
-                            "ConceptualEntity": conecptual_entity,
-                            "ConceptualProperty": conceptual_property,
-                        }
-                    },
+        c = self.model.Cultures[culture]
+
+        # Add linguistic metadata if it does not exist for the culture
+        if c.LinguisticMetadata is None:
+            lm = TOM.LinguisticMetadata()
+            lm.ContentType = TOM.ContentType.Json
+            lm.Content = f'{{"Version": "1.0.0", "Language": "{culture}"}}'
+            c.LinguisticMetadata = lm
+
+        lm = json.loads(c.LinguisticMetadata.Content)
+
+        def add_entity(entity, conecptual_entity, conceptual_property):
+            lm["Entities"][entity] = {
+                "Definition": {
+                    "Binding": {
+                        "ConceptualEntity": conecptual_entity,
+                        "ConceptualProperty": conceptual_property,
+                    }
+                },
+                "State": "Generated",
+                "Terms": [],
+            }
+
+        def add_relationship(rel_key, table_name, t_name, o_name):
+            lm["Relationships"][rel_key] = {
+                "Binding": {"ConceptualEntity": table_name},
+                "State": "Generated",
+                "Roles": {
+                    t_name: {"Target": {"Entity": t_name}},
+                    f"{t_name}.{o_name}": {"Target": {"Entity": f"{t_name}.{o_name}"}},
+                },
+                "Phrasings": [
+                    {
+                        "Attribute": {
+                            "Subject": {"Role": t_name},
+                            "Object": {"Role": f"{t_name}.{o_name}"},
+                        },
+                        "State": "Generated",
+                        "Weight": 0.99,
+                        "ID": f"{t_name}_have_{o_name}",
+                    }
+                ],
+            }
+
+        if "Entities" not in lm:
+            lm["Entities"] = {}
+            for t in self.model.Tables:
+                t_lower = t.Name.lower()
+                lm["Entities"][t_lower] = {
+                    "Definition": {"Binding": {"ConceptualEntity": t.Name}},
                     "State": "Generated",
                     "Terms": [],
                 }
+                for c in t.Columns:
+                    if c.Type != TOM.ColumnType.RowNumber:
+                        c_lower = f"{t_lower}.{c.Name.lower()}"
+                        add_entity(c_lower, t.Name, c.Name)
+                for m in t.Measures:
+                    m_lower = f"{t_lower}.{m.Name.lower()}"
+                    add_entity(m_lower, t.Name, m.Name)
+                for h in t.Hierarchies:
+                    h_lower = f"{t_lower}.{h.Name.lower()}"
+                    add_entity(h_lower, t.Name, h.Name)
+        # if "Relationships" not in lm:
+        #    lm["Relationships"] = {}
+        #    for c in self.all_columns():
+        #        table_name = c.Parent.Name
+        #        t_name = table_name.lower()
+        #        object_name = c.Name
+        #        o_name = object_name.lower()
+        #        rel_key = f"{t_name}_has_{o_name}"
+        #        add_relationship(rel_key, table_name, t_name, o_name)
+        #    for m in self.all_measures():
+        #        table_name = c.Parent.Name
+        #        t_name = table_name.lower()
+        #        object_name = m.Name
+        #        o_name = object_name.lower()
+        #        rel_key = f"{t_name}_has_{o_name}"
+        #        add_relationship(rel_key, table_name, t_name, o_name)
 
-            def add_relationship(rel_key, table_name, t_name, o_name):
-                lm["Relationships"][rel_key] = {
-                    "Binding": {"ConceptualEntity": table_name},
-                    "State": "Generated",
-                    "Roles": {
-                        t_name: {"Target": {"Entity": t_name}},
-                        f"{t_name}.{o_name}": {
-                            "Target": {"Entity": f"{t_name}.{o_name}"}
-                        },
-                    },
-                    "Phrasings": [
-                        {
-                            "Attribute": {
-                                "Subject": {"Role": t_name},
-                                "Object": {"Role": f"{t_name}.{o_name}"},
-                            },
-                            "State": "Generated",
-                            "Weight": 0.99,
-                            "ID": f"{t_name}_have_{o_name}",
-                        }
-                    ],
-                }
-
-            if "Entities" not in lm:
-                lm["Entities"] = {}
-                for t in self.model.Tables:
-                    t_lower = t.Name.lower()
-                    lm["Entities"][t_lower] = {
-                        "Definition": {"Binding": {"ConceptualEntity": t.Name}},
-                        "State": "Generated",
-                        "Terms": [],
-                    }
-                    for c in t.Columns:
-                        if c.Type != TOM.ColumnType.RowNumber:
-                            c_lower = f"{t_lower}.{c.Name.lower()}"
-                            add_entity(c_lower, t.Name, c.Name)
-                    for m in t.Measures:
-                        m_lower = f"{t_lower}.{m.Name.lower()}"
-                        add_entity(m_lower, t.Name, m.Name)
-                    for h in t.Hierarchies:
-                        h_lower = f"{t_lower}.{h.Name.lower()}"
-                        add_entity(h_lower, t.Name, h.Name)
-            # if "Relationships" not in lm:
-            #    lm["Relationships"] = {}
-            #    for c in self.all_columns():
-            #        table_name = c.Parent.Name
-            #        t_name = table_name.lower()
-            #        object_name = c.Name
-            #        o_name = object_name.lower()
-            #        rel_key = f"{t_name}_has_{o_name}"
-            #        add_relationship(rel_key, table_name, t_name, o_name)
-            #    for m in self.all_measures():
-            #        table_name = c.Parent.Name
-            #        t_name = table_name.lower()
-            #        object_name = m.Name
-            #        o_name = object_name.lower()
-            #        rel_key = f"{t_name}_has_{o_name}"
-            #        add_relationship(rel_key, table_name, t_name, o_name)
-
-            self.model.Cultures[culture].LinguisticMetadata.Content = json.dumps(lm)
+        self.model.Cultures[culture].LinguisticMetadata.Content = json.dumps(lm)
 
     @staticmethod
     def _get_synonym_info(
@@ -5713,14 +5723,23 @@ class TOMWrapper:
             self.model.Cultures[culture].LinguisticMetadata.Content = json.dumps(
                 lm, indent=4
             )
-            if object_type == TOM.ObjectType.Table:
-                print(
-                    f"{icons.green_dot} The '{synonym_name}' synonym was set for the '{object.Name}' table."
-                )
-            else:
-                print(
-                    f"{icons.green_dot} The '{synonym_name}' synonym was set for the '{object.Parent.Name}'[{object.Name}] column."
-                )
+            if not self._readonly:
+                if object_type == TOM.ObjectType.Table:
+                    print(
+                        f"{icons.green_dot} The '{synonym_name}' synonym was set for the '{object.Name}' table."
+                    )
+                elif object_type == TOM.ObjectType.Column:
+                    print(
+                        f"{icons.green_dot} The '{synonym_name}' synonym was set for the '{object.Parent.Name}'[{object.Name}] column."
+                    )
+                elif object_type == TOM.ObjectType.Measure:
+                    print(
+                        f"{icons.green_dot} The '{synonym_name}' synonym was set for the '{object.Name}' measure."
+                    )
+                elif object_type == TOM.ObjectType.Hierarchy:
+                    print(
+                        f"{icons.green_dot} The '{synonym_name}' synonym was set for the '{object.Parent.Name}'[{object.Name}] hierarchy."
+                    )
 
     def delete_synonym(
         self,
