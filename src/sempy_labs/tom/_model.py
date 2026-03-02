@@ -5476,7 +5476,6 @@ class TOMWrapper:
 
         import Microsoft.AnalysisServices.Tabular as TOM
 
-        # TODO: if LinguisticMetadata is None
         # TODO: check if lower() is good enough
         # TODO: 'in' vs 'has' in relationships
         # TODO: 'SemanticSlots' in relationships
@@ -5566,7 +5565,7 @@ class TOMWrapper:
         #        rel_key = f"{t_name}_has_{o_name}"
         #        add_relationship(rel_key, table_name, t_name, o_name)
 
-        self.model.Cultures[culture].LinguisticMetadata.Content = json.dumps(lm)
+            self.model.Cultures[culture].LinguisticMetadata.Content = json.dumps(lm)
 
     @staticmethod
     def _get_synonym_info(
