@@ -76,7 +76,7 @@ def create_mirrored_azure_databricks_catalog(
     if storage_connection_id:
         payload["creationPayload"]["storageConnectionId"] = str(storage_connection_id)
 
-    response = _base_api(
+    result = _base_api(
         request=f"/v1/workspaces/{workspace_id}/mirroredAzureDatabricksCatalogs",
         method="post",
         payload=payload,
@@ -87,7 +87,7 @@ def create_mirrored_azure_databricks_catalog(
     print(
         f"{icons.green_dot} The '{name}' mirrored Azure Databricks Catalog has been succesfully created within the '{workspace_name}' workspace."
     )
-    return response.json().get("id")
+    return result.get("id")
 
 
 @log
