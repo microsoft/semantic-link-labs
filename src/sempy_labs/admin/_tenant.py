@@ -91,6 +91,7 @@ def list_capacity_tenant_settings_overrides(
         "Setting Enabled": "bool",
         "Can Specify Security Groups": "bool",
         "Enabled Security Groups": "list",
+        "Excluded Security Groups": "list",
         "Tenant Setting Group": "string",
         "Tenant Setting Properties": "list",
         "Delegate to Workspace": "bool",
@@ -116,6 +117,7 @@ def list_capacity_tenant_settings_overrides(
             "Setting Enabled": setting.get("enabled"),
             "Can Specify Security Groups": setting.get("canSpecifySecurityGroups"),
             "Enabled Security Groups": setting.get("enabledSecurityGroups", []),
+            "Excluded Security Groups": setting.get("excludedSecurityGroups", []),
             "Tenant Setting Group": setting.get("tenantSettingGroup"),
             "Tenant Setting Properties": setting.get("properties", []),
             "Delegate to Workspace": setting.get("delegateToWorkspace"),
@@ -227,6 +229,71 @@ def delete_capacity_tenant_setting_override(capacity: str | UUID, tenant_setting
     print(
         f"{icons.green_dot} The '{tenant_setting}' tenant setting has been removed from the '{capacity_name}' capacity."
     )
+
+
+@log
+def delete_all_capacity_tenant_setting_override(
+    capacity: Optional[str | UUID] = None,
+    tenant_setting: Optional[str] = None,
+    dry_run: bool = True
+) -> pd.DataFrame:
+    """
+    Deletes and returns list of tenant setting overrides that override at the capacities after applying the tenant_setting filter.
+
+    This is a wrapper function for the following APIs: `Tenants - List Capacities Tenant Settings Overrides <https://learn.microsoft.com/rest/api/fabric/admin/tenants/list-capacities-tenant-settings-overrides>`_
+    and `Tenants - Delete Capacity Tenant Setting Override <https://learn.microsoft.com/rest/api/fabric/admin/tenants/delete-capacity-tenant-setting-override>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
+    Parameters
+    ----------
+    capacity : str | uuid.UUID, default = None
+        The capacity name or ID.
+        Defaults to None which resolves to showing/deleting all capacities.
+    tenant_setting : str, default = None
+        The tenant setting name. Example: "TenantSettingForCapacityDelegatedSwitch"
+        Defaults to None which resolves to showing/deleting all tenant settings.
+    dry_run : bool, default = True
+        Show or delete the tenant settings override at the capacities
+        Defaults to True which resolves to showing the tenant settings override at the capacities.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A pandas dataframe showing a list of tenant setting overrides that override at the capacities after applying the tenant_setting filter.
+    """
+
+    df = (
+        list_capacity_tenant_settings_overrides(
+            capacity = capacity,
+            return_dataframe = True
+        )
+    )
+
+    # Filter tenant_setting
+    if tenant_setting is None:
+        df_filt = df
+    else:
+        df_filt = df[
+            df["Setting Name"] == tenant_setting
+        ]
+
+    if df_filt.empty:
+        print(f"{icons.yellow_dot} No rows found for the selected parameters: '{tenant_setting}' tenant setting in '{capacity}' capacity.")
+    else:
+        for _, row in df_filt.iterrows():
+            capacity = row["Capacity Id"]
+            tenant_setting = row["Setting Name"]
+
+            if dry_run:
+                print(f"{icons.yellow_dot} The '{tenant_setting}' tenant setting will be removed from the '{capacity}' capacity.")
+            else:
+                try:
+                    delete_capacity_tenant_setting_override(capacity, tenant_setting)
+                except Exception as e:
+                    print(f"{icons.red_dot} Error deleting override (Capacity={capacity}, Setting={tenant_setting}): {e}")
+
+    return df_filt
 
 
 @log
