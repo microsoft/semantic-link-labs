@@ -4,12 +4,12 @@ import json
 from sempy.fabric.exceptions import FabricHTTPException
 from sempy._utils._log import log
 from sempy_labs.tom import connect_semantic_model
-
+from typing import List
 
 @log
 def list_databricks_metric_views(
     databricks_workspace: str, unity_catalog: str, schema: str, databricks_token: str
-):
+) -> List[dict]:
     """
     Lists all metric views in a specified Unity Catalog and schema within an Azure Databricks workspace.
 
@@ -23,6 +23,11 @@ def list_databricks_metric_views(
         The name of the schema within the Unity Catalog.
     databricks_token : str
         The personal access token for authenticating with the Azure Databricks REST API.
+
+    Returns
+    -------
+    List[dict]
+        A list of dictionaries, each containing details about a metric view, including its name, view definition, and columns.
     """
 
     headers = {

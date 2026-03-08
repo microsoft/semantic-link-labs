@@ -17,6 +17,31 @@ def create_databricks_connection(
     ] = None,
     connection_encryption: Optional[Literal["Encrypted", "NotEncrypted", "Any"]] = None,
 ) -> UUID:
+    """
+    Create a connection to an Azure Databricks workspace in Microsoft Fabric.
+
+    Parameters
+    ----------
+    name : str
+        The display name of the connection.
+    server_hostname : str
+        The server hostname of the Azure Databricks workspace. Example: "dbc-12345x67-8xx9.cloud.databricks.com"
+    http_path : str
+        The HTTP path for the Azure Databricks workspace. Example: "/sql/1.0/endpoints/12345678-90ab-cdef-1234-567890abcdef"
+    databricks_token : str
+        The personal access token for authenticating with the Azure Databricks REST API.
+    catalog : str, default=None
+        The default catalog to use for the connection. This is optional and can be set to None.
+    privacy_level : typing.Literal["None", "Public", "Organizational", "Private"], default=None
+        The privacy level for the connection. Allowed values are "None", "Public", "Organizational", "Private". This is optional and can be set to None.
+    connection_encryption : typing.Literal["Encrypted", "NotEncrypted", "Any"], default=None
+        The connection encryption setting for the connection. Allowed values are "Encrypted", "NotEncrypted", "Any". This is optional and can be set to None.
+
+    Returns
+    -------
+    uuid.UUID
+        The unique identifier of the created connection.
+    """
 
     if privacy_level not in ["None", "Public", "Organizational", "Private", None]:
         raise ValueError(
@@ -80,14 +105,34 @@ def create_databricks_connection(
 @log
 def create_azure_databricks_workspace_connection(
     name: str,
-    #server_hostname: str,
-    http_path: str,
+    url: str,
     databricks_token: str,
     privacy_level: Optional[
         Literal["None", "Public", "Organizational", "Private"]
     ] = None,
     connection_encryption: Optional[Literal["Encrypted", "NotEncrypted", "Any"]] = None,
 ) -> UUID:
+    """
+    Create a connection to an Azure Databricks workspace in Microsoft Fabric.
+
+    Parameters
+    ----------
+    name : str
+        The display name of the connection.
+    url : str
+        The URL of the Azure Databricks workspace. Example: "https://dbc-12345x67-8xx9.cloud.databricks.com"
+    databricks_token : str
+        The personal access token for authenticating with the Azure Databricks REST API.
+    privacy_level : typing.Literal["None", "Public", "Organizational", "Private"], default=None
+        The privacy level for the connection. Allowed values are "None", "Public", "Organizational", "Private". This is optional and can be set to None.
+    connection_encryption : typing.Literal["Encrypted", "NotEncrypted", "Any"], default=None
+        The connection encryption setting for the connection. Allowed values are "Encrypted", "NotEncrypted", "Any". This is optional and can be set to None.
+
+    Returns
+    -------
+    uuid.UUID
+        The unique identifier of the created connection.
+    """
 
     if privacy_level not in ["None", "Public", "Organizational", "Private", None]:
         raise ValueError(
@@ -108,7 +153,7 @@ def create_azure_databricks_workspace_connection(
                     "name": "url",
                     "dataType": "Text",
                     "required": True,
-                    "value": http_path,
+                    "value": url,
                 },
             ],
         },
