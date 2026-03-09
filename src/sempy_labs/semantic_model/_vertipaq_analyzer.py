@@ -96,69 +96,69 @@ def vertipaq_analyzer(
 
     vertipaq_map = {
         "Model": {
-            "Dataset Name": [icons.data_type_string, icons.no_format],
-            "Total Size": [icons.data_type_long, icons.int_format],
-            "Table Count": [icons.data_type_long, icons.int_format],
-            "Column Count": [icons.data_type_long, icons.int_format],
-            "Compatibility Level": [icons.data_type_long, icons.no_format],
-            "Default Mode": [icons.data_type_string, icons.no_format],
+            "Dataset Name": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The name of the semantic model"},
+            "Total Size": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The size of the model (in bytes)"},
+            "Table Count": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The number of tables in the semantic model"},
+            "Column Count": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The number of columns in the semantic model"},
+            "Compatibility Level": {"data_type": icons.data_type_long, "format": icons.no_format, "tooltip": "The compatibility level of the semantic model"},
+            "Default Mode": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The default query mode of the semantic model"},
         },
         "Tables": {
-            "Table Name": [icons.data_type_string, icons.no_format],
-            "Type": [icons.data_type_string, icons.no_format],
-            "Row Count": [icons.data_type_long, icons.int_format],
-            "Total Size": [icons.data_type_long, icons.int_format],
-            "Data Size": [icons.data_type_long, icons.int_format],
-            "Dictionary Size": [icons.data_type_long, icons.int_format],
-            "Hierarchy Size": [icons.data_type_long, icons.int_format],
-            "Relationship Size": [icons.data_type_long, icons.int_format],
-            "User Hierarchy Size": [icons.data_type_long, icons.int_format],
-            "Partitions": [icons.data_type_long, icons.int_format],
-            "Columns": [icons.data_type_long, icons.int_format],
-            "% DB": [icons.data_type_double, icons.pct_format],
+            "Table Name": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The name of the table"},
+            "Type": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The type of table"},
+            "Row Count": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The number of rows in the table"},
+            "Total Size": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "Data Size + Dictionary Size + Hierarchy Size (in bytes)"},
+            "Data Size": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The size of the data for all the columns in this table (in bytes)"},
+            "Dictionary Size": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The size of the column's dictionary for all columns in this table (in bytes)"},
+            "Hierarchy Size": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The size of hierarchy structures for all columns in this table (in bytes)"},
+            "Relationship Size": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The size of relationship structures for this table (in bytes)"},
+            "User Hierarchy Size": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The size of user hierarchy structures for this table (in bytes)"},
+            "Partitions": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The number of partitions in the table"},
+            "Columns": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The number of columns in the table"},
+            "% DB": {"data_type": icons.data_type_double, "format": icons.pct_format, "tooltip": "The size of the table relative to the size of the semantic model"},
         },
         "Partitions": {
-            "Table Name": [icons.data_type_string, icons.no_format],
-            "Partition Name": [icons.data_type_string, icons.no_format],
-            "Mode": [icons.data_type_string, icons.no_format],            
-            "Record Count": [icons.data_type_long, icons.int_format],
-            "Segment Count": [icons.data_type_long, icons.int_format],
-            "Records per Segment": [icons.data_type_double, icons.int_format],
-            "Direct Lake Type": [icons.data_type_string, icons.no_format],
-            "Source Name": [icons.data_type_string, icons.no_format],
-            "Source Type": [icons.data_type_string, icons.no_format],
-            "Source Workspace": [icons.data_type_string, icons.no_format],
+            "Table Name": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The name of the table"},
+            "Partition Name": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The name of the partition within the table"},
+            "Mode": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The query mode of the partition"},
+            "Record Count": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The number of rows in the partition"},
+            "Segment Count": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The number of segments within the partition"},
+            "Records per Segment": {"data_type": icons.data_type_double, "format": icons.int_format, "tooltip": "The number of rows per segment"},
+            "Direct Lake Type": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The type of Direct Lake connection (SQL or OneLake)"},
+            "Source Name": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The name of the data source for the partition"},
+            "Source Type": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The type of data source for the partition"},
+            "Source Workspace": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The workspace of the data source for the partition"},
         },
         "Columns": {
-            "Table Name": [icons.data_type_string, icons.no_format],
-            "Column Name": [icons.data_type_string, icons.no_format],
-            "Type": [icons.data_type_string, icons.no_format],
-            "Cardinality": [icons.data_type_long, icons.int_format],
-            "Total Size": [icons.data_type_long, icons.int_format],
-            "Data Size": [icons.data_type_long, icons.int_format],
-            "Dictionary Size": [icons.data_type_long, icons.int_format],
-            "Hierarchy Size": [icons.data_type_long, icons.int_format],
-            "% Table": [icons.data_type_double, icons.pct_format],
-            "% DB": [icons.data_type_double, icons.pct_format],
-            "Data Type": [icons.data_type_string, icons.no_format],
-            "Encoding": [icons.data_type_string, icons.no_format],
-            "Is Resident": [icons.data_type_bool, icons.no_format],
-            "Temperature": [icons.data_type_double, icons.int_format],
-            "Last Accessed": [icons.data_type_timestamp, icons.no_format],
+            "Table Name": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The name of the table"},
+            "Column Name": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The name of the column"},
+            "Type": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The type of column"},
+            "Cardinality": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The number of unique rows in the column"},
+            "Total Size": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "Data Size + Dictionary Size + Hierarchy Size (in bytes)"},
+            "Data Size": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The size of the data for the column (in bytes)"},
+            "Dictionary Size": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The size of the column's dictionary (in bytes)"},
+            "Hierarchy Size": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The size of hierarchy structures (in bytes)"},
+            "% Table": {"data_type": icons.data_type_double, "format": icons.pct_format, "tooltip": "The size of the column relative to the size of the table"},
+            "% DB": {"data_type": icons.data_type_double, "format": icons.pct_format, "tooltip": "The size of the column relative to the size of the semantic model"},
+            "Data Type": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The data type of the column"},
+            "Encoding": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The encoding type for the column"},
+            "Is Resident": {"data_type": icons.data_type_bool, "format": icons.no_format, "tooltip": "Indicates whether the column is in memory or not"},
+            "Temperature": {"data_type": icons.data_type_double, "format": icons.int_format, "tooltip": "A decimal indicating the frequency and recency of queries against the column"},
+            "Last Accessed": {"data_type": icons.data_type_timestamp, "format": icons.no_format, "tooltip": "The time the column was last queried"},
         },
         "Hierarchies": {
-            "Table Name": [icons.data_type_string, icons.no_format],
-            "Hierarchy Name": [icons.data_type_string, icons.no_format],
-            "Used Size": [icons.data_type_long, icons.int_format],
+            "Table Name": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The name of the table"},
+            "Hierarchy Name": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The name of the hierarchy"},
+            "Used Size": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The size of user hierarchy structures (in bytes)"},
         },
         "Relationships": {
-            "From Object": [icons.data_type_string, icons.no_format],
-            "To Object": [icons.data_type_string, icons.no_format],
-            "Multiplicity": [icons.data_type_string, icons.no_format],
-            "Used Size": [icons.data_type_long, icons.int_format],
-            "Max From Cardinality": [icons.data_type_long, icons.int_format],
-            "Max To Cardinality": [icons.data_type_long, icons.int_format],
-            "Missing Rows": [icons.data_type_long, icons.int_format],
+            "From Object": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The from table/column in the relationship"},
+            "To Object": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The to table/column in the relationship"},
+            "Multiplicity": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The cardinality on each side of the relationship"},
+            "Used Size": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The size of the relationship (in bytes)"},
+            "Max From Cardinality": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The number of unique values in the column used in the from side of the relationship"},
+            "Max To Cardinality": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The number of unique values in the column used in the to side of the relationship"},
+            "Missing Rows": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The number of rows in the 'from' table which do not map to the key column in the 'to' table"},
         },
     }
 
@@ -494,7 +494,7 @@ def vertipaq_analyzer(
             if not is_direct_lake:
                 df.drop(columns=["Direct Lake Type", "Source Name", "Source Type", "Source Workspace"], inplace=True)
 
-        column_type_mapping = {k: v[1] for k, v in vertipaq_map[name].items()}
+        column_type_mapping = {k: v["format"] for k, v in vertipaq_map[name].items()}
         dataframe = _style_columns_based_on_types(df, column_type_mapping)
         dfs[name] = {
             "data": dataframe,
@@ -503,7 +503,7 @@ def vertipaq_analyzer(
         }
 
     if export is None:
-        visualize_vertipaq(dfs, dataset_name)
+        visualize_vertipaq(dfs, dataset_name, vertipaq_map)
         return {
             "Model Summary": dfs["Model"]['data'],
             "Tables": dfs["Tables"]['data'],
@@ -514,275 +514,25 @@ def vertipaq_analyzer(
         }
 
 
-def visualize_vertipaq(dataframes, dataset_name):
+def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None):
 
-    # Tooltips for columns within the visual
-    tooltips = [
-        {
-            "ViewName": "Model",
-            "ColumnName": "Dataset Name",
-            "Tooltip": "The name of the semantic model",
-        },
-        {
-            "ViewName": "Model",
-            "ColumnName": "Total Size",
-            "Tooltip": "The size of the model (in bytes)",
-        },
-        {
-            "ViewName": "Model",
-            "ColumnName": "Table Count",
-            "Tooltip": "The number of tables in the semantic model",
-        },
-        {
-            "ViewName": "Model",
-            "ColumnName": "Column Count",
-            "Tooltip": "The number of columns in the semantic model",
-        },
-        {
-            "ViewName": "Model",
-            "ColumnName": "Compatibility Level",
-            "Tooltip": "The compatibility level of the semantic model",
-        },
-        {
-            "ViewName": "Model",
-            "ColumnName": "Default Mode",
-            "Tooltip": "The default query mode of the semantic model",
-        },
-        {
-            "ViewName": "Table",
-            "ColumnName": "Table Name",
-            "Tooltip": "The name of the table",
-        },
-        {"ViewName": "Table", "ColumnName": "Type", "Tooltip": "The type of table"},
-        {
-            "ViewName": "Table",
-            "ColumnName": "Row Count",
-            "Tooltip": "The number of rows in the table",
-        },
-        {
-            "ViewName": "Table",
-            "ColumnName": "Total Size",
-            "Tooltip": "Data Size + Dictionary Size + Hierarchy Size (in bytes)",
-        },
-        {
-            "ViewName": "Table",
-            "ColumnName": "Data Size",
-            "Tooltip": "The size of the data for all the columns in this table (in bytes)",
-        },
-        {
-            "ViewName": "Table",
-            "ColumnName": "Dictionary Size",
-            "Tooltip": "The size of the column's dictionary for all columns in this table (in bytes)",
-        },
-        {
-            "ViewName": "Table",
-            "ColumnName": "Hierarchy Size",
-            "Tooltip": "The size of hierarchy structures for all columns in this table (in bytes)",
-        },
-        {
-            "ViewName": "Table",
-            "ColumnName": "Relationship Size",
-            "Tooltip": "The size of relationship structures for this table (in bytes)",
-        },
-        {
-            "ViewName": "Table",
-            "ColumnName": "User Hierarchy Size",
-            "Tooltip": "The size of user hierarchy structures for this table (in bytes)",
-        },
-        {
-            "ViewName": "Table",
-            "ColumnName": "% DB",
-            "Tooltip": "The size of the table relative to the size of the semantic model",
-        },
-        {
-            "ViewName": "Table",
-            "ColumnName": "Partitions",
-            "Tooltip": "The number of partitions in the table",
-        },
-        {
-            "ViewName": "Table",
-            "ColumnName": "Columns",
-            "Tooltip": "The number of columns in the table",
-        },
-        {
-            "ViewName": "Partition",
-            "ColumnName": "Table Name",
-            "Tooltip": "The name of the table",
-        },
-        {
-            "ViewName": "Partition",
-            "ColumnName": "Partition Name",
-            "Tooltip": "The name of the partition within the table",
-        },
-        {
-            "ViewName": "Partition",
-            "ColumnName": "Mode",
-            "Tooltip": "The query mode of the partition",
-        },
-        {
-            "ViewName": "Partition",
-            "ColumnName": "Record Count",
-            "Tooltip": "The number of rows in the partition",
-        },
-        {
-            "ViewName": "Partition",
-            "ColumnName": "Segment Count",
-            "Tooltip": "The number of segments within the partition",
-        },
-        {
-            "ViewName": "Partition",
-            "ColumnName": "Records per Segment",
-            "Tooltip": "The number of rows per segment",
-        },
-        {
-            "ViewName": "Partition",
-            "ColumnName": "Direct Lake Type",
-            "Tooltip": "The type of Direct Lake connection (SQL or OneLake)",
-        },
-        {
-            "ViewName": "Partition",
-            "ColumnName": "Source Name",
-            "Tooltip": "The name of the data source for the partition",
-        },
-        {
-            "ViewName": "Partition",
-            "ColumnName": "Source Type",
-            "Tooltip": "The type of data source for the partition",
-        },
-        {
-            "ViewName": "Partition",
-            "ColumnName": "Source Workspace",
-            "Tooltip": "The workspace of the data source for the partition",
-        },
-        {
-            "ViewName": "Column",
-            "ColumnName": "Table Name",
-            "Tooltip": "The name of the table",
-        },
-        {
-            "ViewName": "Column",
-            "ColumnName": "Column Name",
-            "Tooltip": "The name of the column",
-        },
-        {
-            "ViewName": "Column",
-            "ColumnName": "Type",
-            "Tooltip": "The type of column",
-        },
-        {
-            "ViewName": "Column",
-            "ColumnName": "Cardinality",
-            "Tooltip": "The number of unique rows in the column",
-        },
-        {
-            "ViewName": "Column",
-            "ColumnName": "Total Size",
-            "Tooltip": "Data Size + Dictionary Size + Hierarchy Size (in bytes)",
-        },
-        {
-            "ViewName": "Column",
-            "ColumnName": "Data Size",
-            "Tooltip": "The size of the data for the column (in bytes)",
-        },
-        {
-            "ViewName": "Column",
-            "ColumnName": "Dictionary Size",
-            "Tooltip": "The size of the column's dictionary (in bytes)",
-        },
-        {
-            "ViewName": "Column",
-            "ColumnName": "Hierarchy Size",
-            "Tooltip": "The size of hierarchy structures (in bytes)",
-        },
-        {
-            "ViewName": "Column",
-            "ColumnName": "% Table",
-            "Tooltip": "The size of the column relative to the size of the table",
-        },
-        {
-            "ViewName": "Column",
-            "ColumnName": "% DB",
-            "Tooltip": "The size of the column relative to the size of the semantic model",
-        },
-        {
-            "ViewName": "Column",
-            "ColumnName": "Data Type",
-            "Tooltip": "The data type of the column",
-        },
-        {
-            "ViewName": "Column",
-            "ColumnName": "Encoding",
-            "Tooltip": "The encoding type for the column",
-        },
-        {
-            "ViewName": "Column",
-            "ColumnName": "Is Resident",
-            "Tooltip": "Indicates whether the column is in memory or not",
-        },
-        {
-            "ViewName": "Column",
-            "ColumnName": "Temperature",
-            "Tooltip": "A decimal indicating the frequency and recency of queries against the column",
-        },
-        {
-            "ViewName": "Column",
-            "ColumnName": "Last Accessed",
-            "Tooltip": "The time the column was last queried",
-        },
-        {
-            "ViewName": "Hierarchy",
-            "ColumnName": "Table Name",
-            "Tooltip": "The name of the table",
-        },
-        {
-            "ViewName": "Hierarchy",
-            "ColumnName": "Hierarchy Name",
-            "Tooltip": "The name of the hierarchy",
-        },
-        {
-            "ViewName": "Hierarchy",
-            "ColumnName": "Used Size",
-            "Tooltip": "The size of user hierarchy structures (in bytes)",
-        },
-        {
-            "ViewName": "Relationship",
-            "ColumnName": "From Object",
-            "Tooltip": "The from table/column in the relationship",
-        },
-        {
-            "ViewName": "Relationship",
-            "ColumnName": "To Object",
-            "Tooltip": "The to table/column in the relationship",
-        },
-        {
-            "ViewName": "Relationship",
-            "ColumnName": "Multiplicity",
-            "Tooltip": "The cardinality on each side of the relationship",
-        },
-        {
-            "ViewName": "Relationship",
-            "ColumnName": "Used Size",
-            "Tooltip": "The size of the relationship (in bytes)",
-        },
-        {
-            "ViewName": "Relationship",
-            "ColumnName": "Max From Cardinality",
-            "Tooltip": "The number of unique values in the column used in the from side of the relationship",
-        },
-        {
-            "ViewName": "Relationship",
-            "ColumnName": "Max To Cardinality",
-            "Tooltip": "The number of unique values in the column used in the to side of the relationship",
-        },
-        {
-            "ViewName": "Relationship",
-            "ColumnName": "Missing Rows",
-            "Tooltip": "The number of rows in the 'from' table which do not map to the key column in the 'to' table",
-        },
-    ]
-
-    # Build tooltip lookup for fast access
-    tooltip_lookup = {(v["ViewName"], v["ColumnName"]): v["Tooltip"] for v in tooltips}
+    # Build tooltip lookup from vertipaq_map
+    tooltip_lookup = {}
+    if vertipaq_map:
+        view_name_map = {
+            "Model": "Model",
+            "Tables": "Table",
+            "Partitions": "Partition",
+            "Columns": "Column",
+            "Hierarchies": "Hierarchy",
+            "Relationships": "Relationship",
+        }
+        for section, cols in vertipaq_map.items():
+            vw = view_name_map.get(section, section)
+            for col_name, col_info in cols.items():
+                tt = col_info.get("tooltip", "")
+                if tt:
+                    tooltip_lookup[(vw, col_name)] = tt
 
     # define the dictionary with {"Tab name":df}
     df_dict = {
