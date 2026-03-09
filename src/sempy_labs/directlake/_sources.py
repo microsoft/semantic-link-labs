@@ -122,6 +122,7 @@ def get_direct_lake_sources(
                 "workspaceId": item_workspace_id,
                 "workspaceName": resolve_workspace_name(item_workspace_id),
                 "usesSqlEndpoint": uses_sql_endpoint,
+                "ExpressionName": name,
             }
         )
 

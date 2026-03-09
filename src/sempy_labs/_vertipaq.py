@@ -1256,12 +1256,16 @@ def visualize_vertipaq(dataframes):
         except Exception:
             pass
 
-    header_title = f"Vertipaq Analyzer &mdash; {model_name}" if model_name else "Vertipaq Analyzer"
+    header_title = (
+        f"Vertipaq Analyzer &mdash; {model_name}" if model_name else "Vertipaq Analyzer"
+    )
 
     html_parts = []
     html_parts.append(f'<div class="vpx-{uid}">')
     html_parts.append('<div class="vpx-container">')
-    html_parts.append(f'<div class="vpx-header"><div class="vpx-title">{header_title}</div></div>')
+    html_parts.append(
+        f'<div class="vpx-header"><div class="vpx-title">{header_title}</div></div>'
+    )
 
     # Tab bar
     html_parts.append(f'<div class="vpx-tab-bar" id="vpx-tabbar-{uid}">')
@@ -1272,7 +1276,7 @@ def visualize_vertipaq(dataframes):
             f'data-vpx-target="vpx-{uid}-p{i}" '
             f'onclick="vpxSwitch_{uid}(this)">{title}</button>'
         )
-    html_parts.append('</div>')
+    html_parts.append("</div>")
 
     # Panels
     for i, (title, df) in enumerate(df_dict.items()):
@@ -1289,15 +1293,15 @@ def visualize_vertipaq(dataframes):
             f'<div class="vpx-search-wrap">{search_svg}'
             f'<input type="text" class="vpx-search" '
             f'placeholder="Filter {title.lower()}\u2026" '
-            f'oninput="vpxFilter_{uid}(this, \'{panel_id}\')" />'
-            f'</div>'
+            f"oninput=\"vpxFilter_{uid}(this, '{panel_id}')\" />"
+            f"</div>"
         )
         html_parts.append(
             f'<div class="vpx-row-count" id="{panel_id}-rc">'
             f'<span>{row_count:,}</span> row{"s" if row_count != 1 else ""}'
-            f'</div>'
+            f"</div>"
         )
-        html_parts.append('</div>')  # toolbar
+        html_parts.append("</div>")  # toolbar
 
         # Table
         html_parts.append('<div class="vpx-table-wrap">')
@@ -1305,20 +1309,20 @@ def visualize_vertipaq(dataframes):
         if df.empty:
             html_parts.append('<div class="vpx-empty">No data available</div>')
         else:
-            html_parts.append('<table>')
+            html_parts.append("<table>")
 
             # Determine numeric columns
             numeric_cols = set()
             for col in df.columns:
-                if df[col].dtype.kind in ('i', 'f', 'u'):
+                if df[col].dtype.kind in ("i", "f", "u"):
                     numeric_cols.add(col)
 
             # Header
-            html_parts.append('<thead><tr>')
+            html_parts.append("<thead><tr>")
             for col in df.columns:
                 tt = tooltip_lookup.get((vw, col), "")
-                num_cls = ' vpx-numeric' if col in numeric_cols else ''
-                tip_attr = f' data-vpx-tip="{tt}"' if tt else ''
+                num_cls = " vpx-numeric" if col in numeric_cols else ""
+                tip_attr = f' data-vpx-tip="{tt}"' if tt else ""
                 html_parts.append(
                     f'<th class="{num_cls.strip()}"{tip_attr} '
                     f'onclick="vpxSort_{uid}(this)">'
@@ -1326,28 +1330,30 @@ def visualize_vertipaq(dataframes):
                     f'<div class="vpx-resize-handle" '
                     f'onmousedown="vpxResizeStart_{uid}(event, this)"></div></th>'
                 )
-            html_parts.append('</tr></thead>')
+            html_parts.append("</tr></thead>")
 
             # Body
-            html_parts.append('<tbody>')
+            html_parts.append("<tbody>")
             for _, row_data in df.iterrows():
-                html_parts.append('<tr>')
+                html_parts.append("<tr>")
                 for col in df.columns:
                     val = row_data[col]
-                    num_cls = ' class="vpx-numeric"' if col in numeric_cols else ''
+                    num_cls = ' class="vpx-numeric"' if col in numeric_cols else ""
                     cell_val = "" if pd.isna(val) else str(val)
-                    html_parts.append(f'<td{num_cls}>{cell_val}</td>')
-                html_parts.append('</tr>')
-            html_parts.append('</tbody>')
+                    html_parts.append(f"<td{num_cls}>{cell_val}</td>")
+                html_parts.append("</tr>")
+            html_parts.append("</tbody>")
 
-            html_parts.append('</table>')
+            html_parts.append("</table>")
 
-        html_parts.append('</div>')  # table-wrap
-        html_parts.append('</div>')  # panel
+        html_parts.append("</div>")  # table-wrap
+        html_parts.append("</div>")  # panel
 
-    html_parts.append(f'<div class="vpx-footer">Powered by Semantic Link Labs &bull; Vertipaq Analyzer</div>')
-    html_parts.append('</div>')  # container
-    html_parts.append('</div>')  # root
+    html_parts.append(
+        f'<div class="vpx-footer">Powered by Semantic Link Labs &bull; Vertipaq Analyzer</div>'
+    )
+    html_parts.append("</div>")  # container
+    html_parts.append("</div>")  # root
 
     # ── JavaScript ────────────────────────────────────────────────────────
     script = f"""
