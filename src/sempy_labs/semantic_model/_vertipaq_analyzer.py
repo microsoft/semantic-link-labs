@@ -581,6 +581,16 @@ def visualize_vertipaq(dataframes, dataset_name):
         },
         {
             "ViewName": "Table",
+            "ColumnName": "Relationship Size",
+            "Tooltip": "The size of relationship structures for this table (in bytes)",
+        },
+        {
+            "ViewName": "Table",
+            "ColumnName": "User Hierarchy Size",
+            "Tooltip": "The size of user hierarchy structures for this table (in bytes)",
+        },
+        {
+            "ViewName": "Table",
             "ColumnName": "% DB",
             "Tooltip": "The size of the table relative to the size of the semantic model",
         },
@@ -623,6 +633,26 @@ def visualize_vertipaq(dataframes, dataset_name):
             "ViewName": "Partition",
             "ColumnName": "Records per Segment",
             "Tooltip": "The number of rows per segment",
+        },
+        {
+            "ViewName": "Partition",
+            "ColumnName": "Direct Lake Type",
+            "Tooltip": "The type of Direct Lake connection (SQL or OneLake)",
+        },
+        {
+            "ViewName": "Partition",
+            "ColumnName": "Source Name",
+            "Tooltip": "The name of the data source for the partition",
+        },
+        {
+            "ViewName": "Partition",
+            "ColumnName": "Source Type",
+            "Tooltip": "The type of data source for the partition",
+        },
+        {
+            "ViewName": "Partition",
+            "ColumnName": "Source Workspace",
+            "Tooltip": "The workspace of the data source for the partition",
         },
         {
             "ViewName": "Column",
@@ -1030,39 +1060,7 @@ def visualize_vertipaq(dataframes, dataset_name):
         background: var(--vpx-accent);
         opacity: 0.5;
     }}
-    /* ── Tooltip ── */
-    .vpx-{uid} thead th[data-vpx-tip]:hover::before {{
-        content: attr(data-vpx-tip);
-        position: absolute;
-        bottom: calc(100% + 6px);
-        left: 50%;
-        transform: translateX(-50%);
-        padding: 6px 12px;
-        font-size: 11px;
-        font-weight: 400;
-        text-transform: none;
-        letter-spacing: 0;
-        color: #fff;
-        background: rgba(29, 29, 31, 0.92);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        border-radius: 6px;
-        white-space: nowrap;
-        pointer-events: none;
-        z-index: 10;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }}
-    .vpx-{uid} thead th[data-vpx-tip]:hover::after {{
-        content: '';
-        position: absolute;
-        bottom: calc(100% + 2px);
-        left: 50%;
-        transform: translateX(-50%);
-        border: 4px solid transparent;
-        border-top-color: rgba(29, 29, 31, 0.92);
-        pointer-events: none;
-        z-index: 10;
-    }}
+
     /* ── Empty state ── */
     .vpx-{uid} .vpx-empty {{
         text-align: center;
@@ -1159,7 +1157,7 @@ def visualize_vertipaq(dataframes, dataset_name):
             for col in df.columns:
                 tt = tooltip_lookup.get((vw, col), "")
                 num_cls = " vpx-numeric" if col in numeric_cols else ""
-                tip_attr = f' data-vpx-tip="{tt}"' if tt else ""
+                tip_attr = f' title="{tt}"' if tt else ""
                 html_parts.append(
                     f'<th class="{num_cls.strip()}"{tip_attr} '
                     f'onclick="vpxSort_{uid}(this)">'
