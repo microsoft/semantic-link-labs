@@ -935,7 +935,7 @@ def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None):
         html_parts.append("</div>")  # panel
 
     html_parts.append(
-        f'<div class="vpx-footer">Powered by Semantic Link Labs &bull; Vertipaq Analyzer</div>'
+        f'<div class="vpx-footer">Powered by <a href="https://github.com/microsoft/semantic-link-labs" target="_blank" style="color:inherit;text-decoration:underline;">Semantic Link Labs</a> &bull; <a href="https://www.sqlbi.com/tools/vertipaq-analyzer/" target="_blank" style="color:inherit;text-decoration:underline;">Vertipaq Analyzer</a></div>'
     )
     html_parts.append("</div>")  # container
     html_parts.append("</div>")  # root
