@@ -2284,7 +2284,7 @@ def _base_api(
         token = notebookutils.credentials.getToken("storage")
         headers = {"Authorization": f"Bearer {token}"}
         url = f"https://onelake.table.fabric.microsoft.com/delta/{request}"
-    elif client in ["azure", "graph"]:
+    elif client in ["azure", "graph", "keyvault"]:
         headers = _get_headers(auth.token_provider.get(), audience=client)
         if client == "graph":
             url = f"https://graph.microsoft.com/v1.0/{request}"
@@ -2322,6 +2322,31 @@ def _base_api(
             headers=headers,
             json=payload,
         )
+    elif client == "keyvault":
+        token = notebookutils.credentials.getToken("keyvault")
+        headers = {"Authorization": f"Bearer {token}"}
+
+        api_suffix = "?api-version=2025-07-01"
+
+        if uses_pagination:
+            all_items = []
+            while request:
+                if not request.endswith(api_suffix):
+                    request += api_suffix
+                response = requests.request(
+                    method.upper(), request, headers=headers, json=payload
+                )
+                result = response.json()
+                items = result.get("value", [])
+                all_items.extend(items)
+                request = result.get("nextLink")  # Update to next page if it exists
+            return all_items
+        else:
+            return requests.request(
+                method.upper(), f"{request}{api_suffix}", headers=headers, json=payload
+            )
+    else:
+        raise NotImplementedError
 
     if lro_return_df:
         return lro(c, response, status_codes, job_scheduler=True)
