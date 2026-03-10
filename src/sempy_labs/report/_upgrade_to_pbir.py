@@ -12,6 +12,7 @@ from IPython.display import HTML, display
 import sempy_labs._icons as icons
 import time
 from sempy_labs.report._generate_embed_token import generate_embed_token
+from sempy._utils._log import log
 
 
 def embed_report_save_in_edit_mode(embed_url, access_token: str) -> pd.DataFrame:
@@ -59,6 +60,7 @@ def embed_report_save_in_edit_mode(embed_url, access_token: str) -> pd.DataFrame
     display(HTML(html))
 
 
+@log
 def upgrade_to_pbir(
     report: Optional[str | UUID | List[str | UUID]] = None,
     workspace: Optional[str | UUID | List[str | UUID]] = None,
