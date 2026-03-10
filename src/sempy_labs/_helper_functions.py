@@ -2249,10 +2249,6 @@ def _base_api(
     if isinstance(status_codes, int):
         status_codes = [status_codes]
 
-    if client in ["fabric", "fabric_sp"]:
-        token = auth.token_provider.get() or FabricDefaultCredential()
-        c = fabric.FabricRestClient(credential=token)
-
     if client not in [
         "fabric",
         "fabric_sp",
@@ -2262,12 +2258,15 @@ def _base_api(
         "internal",
         "kusto",
         "blob",
+        "keyvault",
     ]:
         raise NotImplementedError(
             f"{icons.red_dot} The '{client}' client is not supported."
         )
 
     if client in ["fabric", "fabric_sp"]:
+        token = auth.token_provider.get() or FabricDefaultCredential()
+        c = fabric.FabricRestClient(credential=token)
         if method == "get":
             response = c.get(request)
         elif method == "delete":
@@ -2284,16 +2283,19 @@ def _base_api(
         token = notebookutils.credentials.getToken("storage")
         headers = {"Authorization": f"Bearer {token}"}
         url = f"https://onelake.table.fabric.microsoft.com/delta/{request}"
-    elif client in ["azure", "graph", "keyvault"]:
+    elif client in ["azure", "graph"]:
         headers = _get_headers(auth.token_provider.get(), audience=client)
-        if client == "graph":
-            url = f"https://graph.microsoft.com/v1.0/{request}"
-        elif client == "azure":
-            url = request
-    elif client == "kusto":
-        url = request
-    elif client == "blob":
-        url = f"https://onelake.blob.fabric.microsoft.com/{request}"
+        url = (
+            f"https://graph.microsoft.com/v1.0/{request}"
+            if client == "graph"
+            else request
+        )
+    elif client in ["kusto", "blob", "keyvault"]:
+        url = (
+            f"https://onelake.blob.fabric.microsoft.com/{request}"
+            if client == "blob"
+            else request
+        )
     elif client == "internal":
         headers = get_pbi_token_headers()
         prefix = _get_url_prefix()
@@ -2315,17 +2317,11 @@ def _base_api(
             headers=headers,
             data=payload if method.lower() != "get" else None,
         )
-    elif client not in ["fabric", "fabric_sp"]:
-        response = requests.request(
-            method.upper(),
-            url,
-            headers=headers,
-            json=payload,
-        )
     elif client == "keyvault":
-        token = notebookutils.credentials.getToken("keyvault")
-        headers = {"Authorization": f"Bearer {token}"}
-
+        token = notebookutils.credentials.getToken(client)
+        headers = {
+            "Authorization": f"Bearer {token}",
+        }
         api_suffix = "?api-version=2025-07-01"
 
         if uses_pagination:
@@ -2345,8 +2341,13 @@ def _base_api(
             return requests.request(
                 method.upper(), f"{request}{api_suffix}", headers=headers, json=payload
             )
-    else:
-        raise NotImplementedError
+    elif client not in ["fabric", "fabric_sp"]:
+        response = requests.request(
+            method.upper(),
+            url,
+            headers=headers,
+            json=payload,
+        )
 
     if lro_return_df:
         return lro(c, response, status_codes, job_scheduler=True)
@@ -2360,7 +2361,7 @@ def _base_api(
         if uses_pagination:
             if client == "graph":
                 responses = graph_pagination(response, headers)
-            else:
+            elif client != "keyvault":
                 responses = pagination(c, response)
             return responses
         else:

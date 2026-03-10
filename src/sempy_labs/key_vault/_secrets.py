@@ -8,6 +8,18 @@ import sempy_labs._icons as icons
 from sempy._utils._log import log
 
 
+def resolve_secret_name(key_vault_uri: str, secret_id: str) -> (str, str):
+
+    if not key_vault_uri.endswith('/'):
+        key_vault_uri = f"{key_vault_uri}/"
+
+    secret_name = secret_id.split(f"{key_vault_uri}secrets/")[1]
+    if '/' in secret_name:
+        return (secret_name.split('/')[0], secret_name.split('/')[1])
+    else:
+        return (secret_name, None)
+
+
 @log
 def get_secret(key_vault_uri: str, secret: str) -> Any:
     """
@@ -85,6 +97,7 @@ def list_secrets(key_vault_uri: str) -> pd.DataFrame:
 
     columns = {
         "Secret Id": "str",
+        "Secret Name": "str",
         "Enabled": "bool",
         "Created Date": "datetime",
         "Updated Date": "datetime",
@@ -100,9 +113,12 @@ def list_secrets(key_vault_uri: str) -> pd.DataFrame:
 
     rows = []
     for r in responses:
+        secret_id = r.get('id')
+        secret_name = resolve_secret_name(key_vault_uri=key_vault_uri, secret_id=secret_id)[0]
         rows.append(
             {
-                "Secret Id": r.get("id"),
+                "Secret Id": secret_id,
+                "Secret Name": secret_name,
                 "Enabled": r.get("attributes", {}).get("enabled"),
                 "Created Date": r.get("attributes", {}).get("created"),
                 "Updated Date": r.get("attributes", {}).get("updated"),
@@ -142,6 +158,8 @@ def list_secret_versions(key_vault_uri: str, secret: str) -> pd.DataFrame:
 
     columns = {
         "Secret Id": "str",
+        "Secret Name": "str",
+        "Secret Version": "str",
         "Enabled": "bool",
         "Created Date": "datetime",
         "Updated Date": "datetime",
@@ -154,9 +172,13 @@ def list_secret_versions(key_vault_uri: str, secret: str) -> pd.DataFrame:
 
     rows = []
     for r in responses:
+        secret_id = r.get('id')
+        (secret_name, secret_version) = resolve_secret_name(key_vault_uri=key_vault_uri, secret_id=secret_id)
         rows.append(
             {
-                "Secret Id": r.get("id"),
+                "Secret Id": secret_id,
+                "Secret Name": secret_name,
+                "Secret Version": secret_version,
                 "Enabled": r.get("attributes", {}).get("enabled"),
                 "Created Date": r.get("attributes", {}).get("created"),
                 "Updated Date": r.get("attributes", {}).get("updated"),
@@ -195,6 +217,7 @@ def list_deleted_secrets(key_vault_uri: str) -> pd.DataFrame:
         "Scheduled Purge Date": "datetime",
         "Content Type": "str",
         "Secret Id": "str",
+        "Secret Name": "str",
         "Enabled": "bool",
         "Created Date": "datetime",
         "Updated Date": "datetime",
@@ -211,13 +234,16 @@ def list_deleted_secrets(key_vault_uri: str) -> pd.DataFrame:
 
     rows = []
     for r in responses:
+        secret_id = r.get('id')
+        secret_name = resolve_secret_name(key_vault_uri=key_vault_uri, secret_id=secret_id)
         rows.append(
             {
                 "Recovery Id": r.get("recoveryId"),
                 "Deleted Date": r.get("deletedDate"),
                 "Scheduled Purge Date": r.get("scheduledPurgeDate"),
                 "Content Type": r.get("contentType"),
-                "Secret Id": r.get("id"),
+                "Secret Id": secret_id,
+                "Secret Name": secret_name,
                 "Enabled": r.get("attributes", {}).get("enabled"),
                 "Created Date": r.get("attributes", {}).get("created"),
                 "Updated Date": r.get("attributes", {}).get("updated"),

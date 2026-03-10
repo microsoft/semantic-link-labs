@@ -235,7 +235,7 @@ def delete_capacity_tenant_setting_override(capacity: str | UUID, tenant_setting
 def delete_all_capacity_tenant_setting_overrides(
     capacity: Optional[str | UUID] = None,
     tenant_setting: Optional[str] = None,
-    dry_run: bool = True
+    dry_run: bool = True,
 ) -> pd.DataFrame:
     """
     Deletes and returns list of tenant setting overrides that override at the capacities after applying the tenant_setting filter.
@@ -263,35 +263,36 @@ def delete_all_capacity_tenant_setting_overrides(
         A pandas dataframe showing a list of tenant setting overrides that override at the capacities after applying the tenant_setting filter.
     """
 
-    df = (
-        list_capacity_tenant_settings_overrides(
-            capacity = capacity,
-            return_dataframe = True
-        )
+    df = list_capacity_tenant_settings_overrides(
+        capacity=capacity, return_dataframe=True
     )
 
     # Filter tenant_setting
     if tenant_setting is None:
         df_filt = df
     else:
-        df_filt = df[
-            df["Setting Name"] == tenant_setting
-        ]
+        df_filt = df[df["Setting Name"] == tenant_setting]
 
     if df_filt.empty:
-        print(f"{icons.yellow_dot} No rows found for the selected parameters: '{tenant_setting}' tenant setting in '{capacity}' capacity.")
+        print(
+            f"{icons.yellow_dot} No rows found for the selected parameters: '{tenant_setting}' tenant setting in '{capacity}' capacity."
+        )
     else:
         for _, row in df_filt.iterrows():
             capacity = row["Capacity Id"]
             tenant_setting = row["Setting Name"]
 
             if dry_run:
-                print(f"{icons.yellow_dot} The '{tenant_setting}' tenant setting will be removed from the '{capacity}' capacity.")
+                print(
+                    f"{icons.yellow_dot} The '{tenant_setting}' tenant setting will be removed from the '{capacity}' capacity."
+                )
             else:
                 try:
                     delete_capacity_tenant_setting_override(capacity, tenant_setting)
                 except Exception as e:
-                    print(f"{icons.red_dot} Error deleting override (Capacity={capacity}, Setting={tenant_setting}): {e}")
+                    print(
+                        f"{icons.red_dot} Error deleting override (Capacity={capacity}, Setting={tenant_setting}): {e}"
+                    )
 
     return df_filt
 
