@@ -28,6 +28,35 @@ from sempy_labs.directlake._sources import get_direct_lake_sources
 from decimal import Decimal
 
 
+# Calculate missing rows
+def calc_missing_rows_dax(
+    from_table: str,
+    from_column: str,
+    to_table: str,
+    to_column: str,
+    is_active: bool,
+    dataset_id,
+    workspace_id,
+):
+
+    from_object = format_dax_object_name(from_table, from_column)
+    to_object = format_dax_object_name(to_table, to_column)
+
+    query = f"evaluate\nsummarizecolumns(\n\"1\",calculate(countrows('{from_table}'),isblank({to_object}))\n)"
+
+    if not is_active:
+        query = f"evaluate\nsummarizecolumns(\n\"1\",calculate(countrows('{from_table}'),userelationship({from_object},{to_object}),isblank({to_object}))\n)"
+
+    missing_rows = 0
+    result = fabric.evaluate_dax(
+        dataset=dataset_id, dax_string=query, workspace=workspace_id
+    )
+    if not result.empty:
+        missing_rows = result.iloc[0, 0]
+
+    return missing_rows
+
+
 # Converting to KB/MB/GB necessitates division by 1024 * 1000.
 def convert_bytes(value):
     if value >= 1000000000:
@@ -58,7 +87,7 @@ def cast_to_type(value, type_):
 def vertipaq_analyzer(
     dataset: str | UUID,
     workspace: Optional[str | UUID] = None,
-    export: Optional[str] = None,
+    export: bool = False,
     read_stats_from_data: bool = False,
 ) -> dict[str, pd.DataFrame]:
     """
@@ -74,10 +103,8 @@ def vertipaq_analyzer(
         The Fabric workspace name or ID in which the semantic model exists.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    export : str, default=None
-        Specifying 'zip' will export the results to a zip file in your lakehouse (which can be imported using the import_vertipaq_analyzer function.
-        Specifying 'table' will export the results to delta tables (appended) in your lakehouse.
-        Default value: None.
+    export : bool, default=False
+        If set to true, exports the vertipaq analyzer statistics to delta tables in the lakehouse. The tables will be named VertipaqAnalyzer_Table, VertipaqAnalyzer_Column, VertipaqAnalyzer_Partition, VertipaqAnalyzer_Relationship, VertipaqAnalyzer_Hierarchy, and VertipaqAnalyzer_Model. If a table with the same name already exists, the new data will be appended to the existing table.
     read_stats_from_data : bool, default=False
         Setting this parameter to true has the function get Column Cardinality and Missing Rows using DAX (Direct Lake semantic models achieve this using a Spark query to the lakehouse).
 
@@ -92,73 +119,283 @@ def vertipaq_analyzer(
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
 
-    # fabric.refresh_tom_cache(workspace=workspace)
-
     vertipaq_map = {
         "Model": {
-            "Dataset Name": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The name of the semantic model"},
-            "Total Size": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The size of the model (in bytes)"},
-            "Table Count": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The number of tables in the semantic model"},
-            "Column Count": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The number of columns in the semantic model"},
-            "Compatibility Level": {"data_type": icons.data_type_long, "format": icons.no_format, "tooltip": "The compatibility level of the semantic model"},
-            "Default Mode": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The default query mode of the semantic model"},
+            "Dataset Name": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The name of the semantic model",
+            },
+            "Total Size": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The size of the model (in bytes)",
+            },
+            "Table Count": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The number of tables in the semantic model",
+            },
+            "Column Count": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The number of columns in the semantic model",
+            },
+            "Compatibility Level": {
+                "data_type": icons.data_type_long,
+                "format": icons.no_format,
+                "tooltip": "The compatibility level of the semantic model",
+            },
+            "Default Mode": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The default query mode of the semantic model",
+            },
         },
         "Tables": {
-            "Table Name": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The name of the table"},
-            "Type": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The type of table"},
-            "Row Count": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The number of rows in the table"},
-            "Total Size": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "Data Size + Dictionary Size + Hierarchy Size (in bytes)"},
-            "Data Size": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The size of the data for all the columns in this table (in bytes)"},
-            "Dictionary Size": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The size of the column's dictionary for all columns in this table (in bytes)"},
-            "Hierarchy Size": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The size of hierarchy structures for all columns in this table (in bytes)"},
-            "Relationship Size": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The size of relationship structures for this table (in bytes)"},
-            "User Hierarchy Size": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The size of user hierarchy structures for this table (in bytes)"},
-            "Partitions": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The number of partitions in the table"},
-            "Columns": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The number of columns in the table"},
-            "% DB": {"data_type": icons.data_type_double, "format": icons.pct_format, "tooltip": "The size of the table relative to the size of the semantic model"},
+            "Table Name": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The name of the table",
+            },
+            "Type": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The type of table",
+            },
+            "Row Count": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The number of rows in the table",
+            },
+            "Total Size": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "Data Size + Dictionary Size + Hierarchy Size (in bytes)",
+            },
+            "Data Size": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The size of the data for all the columns in this table (in bytes)",
+            },
+            "Dictionary Size": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The size of the column's dictionary for all columns in this table (in bytes)",
+            },
+            "Hierarchy Size": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The size of hierarchy structures for all columns in this table (in bytes)",
+            },
+            "Relationship Size": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The size of relationship structures for this table (in bytes)",
+            },
+            "User Hierarchy Size": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The size of user hierarchy structures for this table (in bytes)",
+            },
+            "Partitions": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The number of partitions in the table",
+            },
+            "Columns": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The number of columns in the table",
+            },
+            "% DB": {
+                "data_type": icons.data_type_double,
+                "format": icons.pct_format,
+                "tooltip": "The size of the table relative to the size of the semantic model",
+            },
         },
         "Partitions": {
-            "Table Name": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The name of the table"},
-            "Partition Name": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The name of the partition within the table"},
-            "Mode": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The query mode of the partition"},
-            "Record Count": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The number of rows in the partition"},
-            "Segment Count": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The number of segments within the partition"},
-            "Records per Segment": {"data_type": icons.data_type_double, "format": icons.int_format, "tooltip": "The number of rows per segment"},
-            "Direct Lake Type": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The type of Direct Lake connection (SQL or OneLake)"},
-            "Source Name": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The name of the data source for the partition"},
-            "Source Type": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The type of data source for the partition"},
-            "Source Workspace": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The workspace of the data source for the partition"},
+            "Table Name": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The name of the table",
+            },
+            "Partition Name": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The name of the partition within the table",
+            },
+            "Mode": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The query mode of the partition",
+            },
+            "Record Count": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The number of rows in the partition",
+            },
+            "Segment Count": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The number of segments within the partition",
+            },
+            "Records per Segment": {
+                "data_type": icons.data_type_double,
+                "format": icons.int_format,
+                "tooltip": "The number of rows per segment",
+            },
+            "Direct Lake Type": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The type of Direct Lake connection (SQL or OneLake)",
+            },
+            "Source Name": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The name of the data source for the partition",
+            },
+            "Source Type": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The type of data source for the partition",
+            },
+            "Source Workspace": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The workspace of the data source for the partition",
+            },
         },
         "Columns": {
-            "Table Name": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The name of the table"},
-            "Column Name": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The name of the column"},
-            "Type": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The type of column"},
-            "Cardinality": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The number of unique rows in the column"},
-            "Total Size": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "Data Size + Dictionary Size + Hierarchy Size (in bytes)"},
-            "Data Size": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The size of the data for the column (in bytes)"},
-            "Dictionary Size": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The size of the column's dictionary (in bytes)"},
-            "Hierarchy Size": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The size of hierarchy structures (in bytes)"},
-            "% Table": {"data_type": icons.data_type_double, "format": icons.pct_format, "tooltip": "The size of the column relative to the size of the table"},
-            "% DB": {"data_type": icons.data_type_double, "format": icons.pct_format, "tooltip": "The size of the column relative to the size of the semantic model"},
-            "Data Type": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The data type of the column"},
-            "Encoding": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The encoding type for the column"},
-            "Is Resident": {"data_type": icons.data_type_bool, "format": icons.no_format, "tooltip": "Indicates whether the column is in memory or not"},
-            "Temperature": {"data_type": icons.data_type_double, "format": icons.int_format, "tooltip": "A decimal indicating the frequency and recency of queries against the column"},
-            "Last Accessed": {"data_type": icons.data_type_timestamp, "format": icons.no_format, "tooltip": "The time the column was last queried"},
+            "Table Name": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The name of the table",
+            },
+            "Column Name": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The name of the column",
+            },
+            "Type": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The type of column",
+            },
+            "Cardinality": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The number of unique rows in the column",
+            },
+            "Total Size": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "Data Size + Dictionary Size + Hierarchy Size (in bytes)",
+            },
+            "Data Size": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The size of the data for the column (in bytes)",
+            },
+            "Dictionary Size": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The size of the column's dictionary (in bytes)",
+            },
+            "Hierarchy Size": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The size of hierarchy structures (in bytes)",
+            },
+            "% Table": {
+                "data_type": icons.data_type_double,
+                "format": icons.pct_format,
+                "tooltip": "The size of the column relative to the size of the table",
+            },
+            "% DB": {
+                "data_type": icons.data_type_double,
+                "format": icons.pct_format,
+                "tooltip": "The size of the column relative to the size of the semantic model",
+            },
+            "Data Type": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The data type of the column",
+            },
+            "Encoding": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The encoding type for the column",
+            },
+            "Is Resident": {
+                "data_type": icons.data_type_bool,
+                "format": icons.no_format,
+                "tooltip": "Indicates whether the column is in memory or not",
+            },
+            "Temperature": {
+                "data_type": icons.data_type_double,
+                "format": icons.int_format,
+                "tooltip": "A decimal indicating the frequency and recency of queries against the column",
+            },
+            "Last Accessed": {
+                "data_type": icons.data_type_timestamp,
+                "format": icons.no_format,
+                "tooltip": "The time the column was last queried",
+            },
         },
         "Hierarchies": {
-            "Table Name": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The name of the table"},
-            "Hierarchy Name": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The name of the hierarchy"},
-            "Used Size": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The size of user hierarchy structures (in bytes)"},
+            "Table Name": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The name of the table",
+            },
+            "Hierarchy Name": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The name of the hierarchy",
+            },
+            "Used Size": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The size of user hierarchy structures (in bytes)",
+            },
         },
         "Relationships": {
-            "From Object": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The from table/column in the relationship"},
-            "To Object": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The to table/column in the relationship"},
-            "Multiplicity": {"data_type": icons.data_type_string, "format": icons.no_format, "tooltip": "The cardinality on each side of the relationship"},
-            "Used Size": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The size of the relationship (in bytes)"},
-            "Max From Cardinality": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The number of unique values in the column used in the from side of the relationship"},
-            "Max To Cardinality": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The number of unique values in the column used in the to side of the relationship"},
-            "Missing Rows": {"data_type": icons.data_type_long, "format": icons.int_format, "tooltip": "The number of rows in the 'from' table which do not map to the key column in the 'to' table"},
+            "From Object": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The from table/column in the relationship",
+            },
+            "To Object": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The to table/column in the relationship",
+            },
+            "Multiplicity": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The cardinality on each side of the relationship",
+            },
+            "Used Size": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The size of the relationship (in bytes)",
+            },
+            "Max From Cardinality": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The number of unique values in the column used in the from side of the relationship",
+            },
+            "Max To Cardinality": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The number of unique values in the column used in the to side of the relationship",
+            },
+            "Missing Rows": {
+                "data_type": icons.data_type_long,
+                "format": icons.int_format,
+                "tooltip": "The number of rows in the 'from' table which do not map to the key column in the 'to' table",
+            },
         },
     }
 
@@ -205,19 +442,6 @@ def vertipaq_analyzer(
                 source_type = s.get("itemType")
                 source_workspace = s.get("workspaceName")
 
-                # partition_details.append(
-                #    {
-                #        "TableName": p.Parent.Name,
-                #        "PartitionName": p.Name,
-                #        "Mode": mode,
-                #        "Entity": p.Source.EntityName,
-                #        #"Expression": expr,
-                #        "ModeType": mode_type,
-                #        "Source": source,
-                #        "SourceType": source_type,
-                #        "SourceWorkspace": source_workspace,
-                #    }
-                # )
             partitions.append(
                 {
                     "Table Name": p.Parent.Name,
@@ -261,17 +485,34 @@ def vertipaq_analyzer(
         for r in tom.model.Relationships:
             from_object = f"'{r.FromTable.Name}'[{r.FromColumn.Name}]"
             to_object = f"'{r.ToTable.Name}'[{r.ToColumn.Name}]"
+            missing_rows = 0
+
+            # Use DAX to calculate missing rows for non-DL models; TODO: update this to include DL models
+            if read_stats_from_data and not is_direct_lake:
+                missing_rows = calc_missing_rows_dax(
+                    from_table=r.FromTable.Name,
+                    from_column=r.FromColumn.Name,
+                    to_table=r.ToTable.Name,
+                    to_column=r.ToColumn.Name,
+                    is_active=r.IsActive,
+                    dataset_id=dataset_id,
+                    workspace_id=workspace_id,
+                )
+
             relationships.append(
                 {
                     "From Object": from_object,
                     "To Object": to_object,
-                    "Multiplicity": tom.get_annotation_value(object=r, name="Vertipaq_Multiplicity"),
+                    "Multiplicity": tom.get_annotation_value(
+                        object=r, name="Vertipaq_Multiplicity"
+                    ),
                     "Used Size": cast_to_type(
                         tom.get_annotation_value(object=r, name="Vertipaq_UsedSize"),
                         "decimal",
                     ),
                     "Max From Cardinality": 0,  # Updated later
                     "Max To Cardinality": 0,  # Updated later
+                    "Missing Rows": cast_to_type(missing_rows, "int"),
                 }
             )
 
@@ -463,7 +704,6 @@ def vertipaq_analyzer(
         },
     }
 
-
     def _style_columns_based_on_types(df: pd.DataFrame, column_type_mapping):
         format_funcs = {
             "int": lambda x: f"{int(x):,}" if pd.notna(x) and x != "<NA>" else "",
@@ -477,41 +717,150 @@ def vertipaq_analyzer(
 
         return df
 
+    def create_dfs(column_formatting: str = "format"):
+        dfs = {}
+        for name, items in config.items():
+            data = items.get("data")
+            sort_col = items.get("sortby")
+            nm = items.get("name")
+            df = pd.DataFrame(data, columns=list(vertipaq_map[name].keys()))
 
-    dfs = {}
-    for name, items in config.items():
-        data = items.get('data')
-        sort_col = items.get('sortby')
-        nm = items.get('name')
-        df = pd.DataFrame(data, columns=list(vertipaq_map[name].keys()))
+            if sort_col and sort_col in df.columns:
+                df = df.sort_values(sort_col, ascending=False, ignore_index=True)
 
-        if sort_col and sort_col in df.columns:
-            df = df.sort_values(sort_col, ascending=False, ignore_index=True)
+            if name == "Columns":
+                df = df[df["Type"] != "RowNumber"]
+            if name == "Partitions":
+                if not is_direct_lake:
+                    df.drop(
+                        columns=[
+                            "Direct Lake Type",
+                            "Source Name",
+                            "Source Type",
+                            "Source Workspace",
+                        ],
+                        inplace=True,
+                    )
+            if name == "Relationships" and not read_stats_from_data:
+                df.drop(columns=["Missing Rows"], inplace=True)
 
-        if name == "Columns":
-            df = df[df["Type"] != "RowNumber"]
-        if name == "Partitions":
-            if not is_direct_lake:
-                df.drop(columns=["Direct Lake Type", "Source Name", "Source Type", "Source Workspace"], inplace=True)
+            column_type_mapping = {
+                k: v[column_formatting] for k, v in vertipaq_map[name].items()
+            }
+            dataframe = _style_columns_based_on_types(df, column_type_mapping)
+            dfs[name] = {
+                "data": dataframe,
+                "title": items.get("title"),
+                "name": nm,
+            }
+        return dfs
 
-        column_type_mapping = {k: v["format"] for k, v in vertipaq_map[name].items()}
-        dataframe = _style_columns_based_on_types(df, column_type_mapping)
-        dfs[name] = {
-            "data": dataframe,
-            "title": items.get("title"),
-            "name": nm,
-        }
-
-    if export is None:
+    if not export:
+        dfs = create_dfs(column_formatting="format")
         visualize_vertipaq(dfs, dataset_name, vertipaq_map)
         return {
-            "Model Summary": dfs["Model"]['data'],
-            "Tables": dfs["Tables"]['data'],
-            "Partitions": dfs["Partitions"]['data'],
-            "Columns": dfs["Columns"]['data'],
-            "Relationships": dfs["Relationships"]['data'],
-            "Hierarchies": dfs["Hierarchies"]['data'],
+            "Model Summary": dfs["Model"]["data"],
+            "Tables": dfs["Tables"]["data"],
+            "Partitions": dfs["Partitions"]["data"],
+            "Columns": dfs["Columns"]["data"],
+            "Relationships": dfs["Relationships"]["data"],
+            "Hierarchies": dfs["Hierarchies"]["data"],
         }
+
+    # Export vertipaq to delta tables in lakehouse
+    if export:
+        dfs = create_dfs(column_formatting="data_type")
+        save_table_name = "vertipaqanalyzer_model"
+
+        # Determine RunId
+        tables = get_lakehouse_tables()
+        run_id = (
+            1
+            if save_table_name not in tables["Table Name"].values
+            else _get_column_aggregate(table_name=save_table_name) + 1
+        )
+
+        print(
+            f"{icons.in_progress} Saving Vertipaq Analyzer to delta tables in the lakehouse...\n"
+        )
+
+        now = datetime.datetime.now()
+
+        # Dataset metadata
+        df_datasets = fabric.list_datasets(workspace=workspace_id, mode="rest")
+        configured_by = df_datasets.loc[
+            df_datasets["Dataset Id"] == dataset_id, "Configured By"
+        ].iloc[0]
+
+        capacity_id, capacity_name = resolve_workspace_capacity(workspace=workspace_id)
+
+        base_metadata = {
+            "Capacity Name": capacity_name,
+            "Capacity Id": capacity_id,
+            "Workspace Name": workspace_name,
+            "Workspace Id": workspace_id,
+            "Dataset Name": dataset_name,
+            "Dataset Id": dataset_id,
+            "Configured By": configured_by,
+            "RunId": run_id,
+            "Timestamp": now,
+        }
+
+        df_map = {
+            k: dfs[k]["data"]
+            for k in [
+                "Columns",
+                "Tables",
+                "Partitions",
+                "Relationships",
+                "Hierarchies",
+                "Model",
+            ]
+        }
+
+        ordered_prefix = [
+            "Capacity Name",
+            "Capacity Id",
+            "Workspace Name",
+            "Workspace Id",
+            "Dataset Name",
+            "Dataset Id",
+            "Configured By",
+        ]
+
+        for obj, df in df_map.items():
+
+            # Add metadata columns
+            df = df.assign(**base_metadata)
+
+            # Reorder columns
+            df = df[ordered_prefix + [c for c in df.columns if c not in ordered_prefix]]
+
+            # Normalize column names
+            df.columns = df.columns.str.replace(" ", "_")
+
+            # Build schema
+            schema = {
+                "Capacity_Name": icons.data_type_string,
+                "Capacity_Id": icons.data_type_string,
+                "Workspace_Name": icons.data_type_string,
+                "Workspace_Id": icons.data_type_string,
+                "Dataset_Name": icons.data_type_string,
+                "Dataset_Id": icons.data_type_string,
+                "Configured_By": icons.data_type_string,
+                **{k.replace(" ", "_"): v[0] for k, v in vertipaq_map[obj].items()},
+                "RunId": icons.data_type_long,
+                "Timestamp": icons.data_type_timestamp,
+            }
+
+            delta_table_name = f"vertipaqanalyzer_{obj}".lower()
+            save_as_delta_table(
+                dataframe=df,
+                delta_table_name=delta_table_name,
+                write_mode="append",
+                schema=schema,
+                merge_schema=True,
+            )
 
 
 def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None):
@@ -536,12 +885,12 @@ def visualize_vertipaq(dataframes, dataset_name, vertipaq_map=None):
 
     # define the dictionary with {"Tab name":df}
     df_dict = {
-        "Model Summary": (dataframes["Model"]['data'], "Model"),
-        "Tables": (dataframes["Tables"]['data'], "Table"),
-        "Partitions": (dataframes["Partitions"]['data'], "Partition"),
-        "Columns": (dataframes["Columns"]['data'], "Column"),
-        "Relationships": (dataframes["Relationships"]['data'], "Relationship"),
-        "Hierarchies": (dataframes["Hierarchies"]['data'], "Hierarchy"),
+        "Model Summary": (dataframes["Model"]["data"], "Model"),
+        "Tables": (dataframes["Tables"]["data"], "Table"),
+        "Partitions": (dataframes["Partitions"]["data"], "Partition"),
+        "Columns": (dataframes["Columns"]["data"], "Column"),
+        "Relationships": (dataframes["Relationships"]["data"], "Relationship"),
+        "Hierarchies": (dataframes["Hierarchies"]["data"], "Hierarchy"),
     }
 
     uid = uuid.uuid4().hex[:8]

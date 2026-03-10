@@ -3309,7 +3309,7 @@ class TOMWrapper:
             dfR_filt = dfR[dfR["Relationship Name"] == r.Name]
             if not dfR_filt.empty:
                 relSize = str(dfR_filt["Used Size"].iloc[0])
-                mult = str(dfR_filt['Multiplicity'].iloc[0])
+                mult = str(dfR_filt["Multiplicity"].iloc[0])
                 self.set_annotation(object=r, name="Vertipaq_UsedSize", value=relSize)
                 self.set_annotation(object=r, name="Vertipaq_Multiplicity", value=mult)
         try:
