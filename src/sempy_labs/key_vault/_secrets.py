@@ -9,7 +9,7 @@ from sempy._utils._log import log
 
 
 @log
-def get_secret(key_vault_uri: str, secret_name: str) -> Any:
+def get_secret(key_vault_uri: str, secret: str) -> Any:
     """
     Retrieves the latest version of a secret from the specified Azure Key Vault.
 
@@ -19,7 +19,7 @@ def get_secret(key_vault_uri: str, secret_name: str) -> Any:
     ----------
     key_vault_uri : str
         Azure Key Vault URI.
-    secret_name : str
+    secret : str
         Name of the secret in the Key Vault.
 
     Returns
@@ -29,7 +29,7 @@ def get_secret(key_vault_uri: str, secret_name: str) -> Any:
     """
 
     response = _base_api(
-        request=f"{key_vault_uri}/secrets/{secret_name}/versions", client="keyvault"
+        request=f"{key_vault_uri}/secrets/{secret}/versions", client="keyvault"
     )
     url = response.json().get("value")[-1].get("id")
     response = _base_api(request=f"{url}", client="keyvault")
@@ -37,7 +37,7 @@ def get_secret(key_vault_uri: str, secret_name: str) -> Any:
 
 
 @log
-def set_secret(key_vault_uri: str, secret_name: str, secret_value: Any):
+def set_secret(key_vault_uri: str, name: str, value: Any):
     """
     Sets a secret in the specified Azure Key Vault.
 
@@ -47,21 +47,21 @@ def set_secret(key_vault_uri: str, secret_name: str, secret_value: Any):
     ----------
     key_vault_uri : str
         Azure Key Vault URI.
-    secret_name : str
+    name : str
         Name of the secret to be set in the Key Vault.
-    secret_value : Any
+    value : Any
         Value of the secret to be set in the Key Vault.
     """
 
-    payload = {"value": secret_value}
+    payload = {"value": value}
     _base_api(
-        request=f"{key_vault_uri}/secrets/{secret_name}",
+        request=f"{key_vault_uri}/secrets/{name}",
         client="keyvault",
         method="put",
         payload=payload,
     )
     print(
-        f"{icons.green_dot} The '{secret_name}' secret has been successfully set within the '{key_vault_uri}' Key Vault."
+        f"{icons.green_dot} The '{name}' secret has been successfully set within the '{key_vault_uri}' Key Vault."
     )
 
 
@@ -121,7 +121,7 @@ def list_secrets(key_vault_uri: str) -> pd.DataFrame:
 
 
 @log
-def list_secret_versions(key_vault_uri: str, secret_name: str) -> pd.DataFrame:
+def list_secret_versions(key_vault_uri: str, secret: str) -> pd.DataFrame:
     """
     Lists all versions of a specific secret in the specified Azure Key Vault.
 
@@ -131,7 +131,7 @@ def list_secret_versions(key_vault_uri: str, secret_name: str) -> pd.DataFrame:
     ----------
     key_vault_uri : str
         Azure Key Vault URI.
-    secret_name : str
+    secret : str
         Name of the secret.
 
     Returns
@@ -149,7 +149,7 @@ def list_secret_versions(key_vault_uri: str, secret_name: str) -> pd.DataFrame:
 
     df = _create_dataframe(columns=columns)
 
-    url = f"{key_vault_uri}/secrets/{secret_name}/versions"
+    url = f"{key_vault_uri}/secrets/{secret}/versions"
     responses = _base_api(request=url, client="keyvault", uses_pagination=True)
 
     rows = []
@@ -238,7 +238,7 @@ def list_deleted_secrets(key_vault_uri: str) -> pd.DataFrame:
 
 
 @log
-def recover_deleted_secret(key_vault_uri: str, secret_name: str):
+def recover_deleted_secret(key_vault_uri: str, secret: str):
     """
     Recovers a deleted secret in the specified Azure Key Vault.
 
@@ -248,22 +248,22 @@ def recover_deleted_secret(key_vault_uri: str, secret_name: str):
     ----------
     key_vault_uri : str
         Azure Key Vault URI.
-    secret_name : str
+    secret : str
         Name of the deleted secret to be recovered in the Key Vault.
     """
 
     _base_api(
-        request=f"{key_vault_uri}/deletedsecrets/{secret_name}/recover",
+        request=f"{key_vault_uri}/deletedsecrets/{secret}/recover",
         client="keyvault",
         method="post",
     )
     print(
-        f"{icons.green_dot} The '{secret_name}' secret within the '{key_vault_uri}' Key Vault has been successfully recovered."
+        f"{icons.green_dot} The '{secret}' secret within the '{key_vault_uri}' Key Vault has been successfully recovered."
     )
 
 
 @log
-def purge_deleted_secret(key_vault_uri: str, secret_name: str):
+def purge_deleted_secret(key_vault_uri: str, secret: str):
     """
     Permanently deletes the specified secret.
     The purge deleted secret operation removes the secret permanently, without the possibility of recovery. This operation can only be enabled on a soft-delete enabled vault. This operation requires the secrets/purge permission.
@@ -274,23 +274,23 @@ def purge_deleted_secret(key_vault_uri: str, secret_name: str):
     ----------
     key_vault_uri : str
         Azure Key Vault URI.
-    secret_name : str
+    secret : str
         Name of the deleted secret to be recovered in the Key Vault.
     """
 
     _base_api(
-        request=f"{key_vault_uri}/deletedsecrets/{secret_name}",
+        request=f"{key_vault_uri}/deletedsecrets/{secret}",
         client="keyvault",
         method="delete",
         status_codes=204,
     )
     print(
-        f"{icons.green_dot} The '{secret_name}' secret within the '{key_vault_uri}' Key Vault has been successfully purged."
+        f"{icons.green_dot} The '{secret}' secret within the '{key_vault_uri}' Key Vault has been successfully purged."
     )
 
 
 @log
-def delete_secret(key_vault_uri: str, secret_name: str):
+def delete_secret(key_vault_uri: str, secret: str):
     """
     Deletes a secret in the specified Azure Key Vault.
 
@@ -300,22 +300,22 @@ def delete_secret(key_vault_uri: str, secret_name: str):
     ----------
     key_vault_uri : str
         Azure Key Vault URI.
-    secret_name : str
+    secret : str
         Name of the secret to be deleted in the Key Vault.
     """
 
     _base_api(
-        request=f"{key_vault_uri}/secrets/{secret_name}",
+        request=f"{key_vault_uri}/secrets/{secret}",
         client="keyvault",
         method="delete",
     )
     print(
-        f"{icons.green_dot} The '{secret_name}' secret has been successfully deleted within the '{key_vault_uri}' Key Vault."
+        f"{icons.green_dot} The '{secret}' secret has been successfully deleted within the '{key_vault_uri}' Key Vault."
     )
 
 
 @log
-def backup_secret(key_vault_uri: str, secret_name: str) -> bytes:
+def backup_secret(key_vault_uri: str, secret: str) -> bytes:
     """
     Backs up a secret from the specified Azure Key Vault.
 
@@ -325,7 +325,7 @@ def backup_secret(key_vault_uri: str, secret_name: str) -> bytes:
     ----------
     key_vault_uri : str
         Azure Key Vault URI.
-    secret_name : str
+    secret : str
         Name of the secret to be backed up in the Key Vault.
 
     Returns
@@ -335,7 +335,7 @@ def backup_secret(key_vault_uri: str, secret_name: str) -> bytes:
     """
 
     response = _base_api(
-        request=f"{key_vault_uri}/secrets/{secret_name}/backup", client="keyvault"
+        request=f"{key_vault_uri}/secrets/{secret}/backup", client="keyvault"
     )
     return response.json().get("value")
 
@@ -377,7 +377,7 @@ def restore_secret(key_vault_uri: str, backup_blob: bytes) -> dict:
 
 @log
 def update_secret(
-    key_vault_uri: str, secret_name: str, secret_version: str, enabled: bool = None
+    key_vault_uri: str, secret: str, version: str, enabled: bool = None
 ) -> dict:
     """
     Updates the attributes of a secret in the specified Azure Key Vault.
@@ -388,9 +388,9 @@ def update_secret(
     ----------
     key_vault_uri : str
         Azure Key Vault URI.
-    secret_name : str
+    secret : str
         Name of the secret to be updated in the Key Vault.
-    secret_version : str
+    version : str
         Version of the secret to be updated in the Key Vault.
     enabled : bool, optional
         Specifies whether the secret is enabled or disabled.
@@ -404,13 +404,13 @@ def update_secret(
     payload = {"attributes": {"enabled": enabled}}
 
     response = _base_api(
-        request=f"{key_vault_uri}/secrets/{secret_name}/{secret_version}",
+        request=f"{key_vault_uri}/secrets/{secret}/{version}",
         client="keyvault",
         method="patch",
         payload=payload,
     )
     print(
-        f"{icons.green_dot} The '{secret_name}' secret has been successfully updated within the '{key_vault_uri}' Key Vault."
+        f"{icons.green_dot} The '{secret}' secret has been successfully updated within the '{key_vault_uri}' Key Vault."
     )
 
     return response.json()

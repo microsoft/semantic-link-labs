@@ -232,7 +232,7 @@ def delete_capacity_tenant_setting_override(capacity: str | UUID, tenant_setting
 
 
 @log
-def delete_all_capacity_tenant_setting_override(
+def delete_all_capacity_tenant_setting_overrides(
     capacity: Optional[str | UUID] = None,
     tenant_setting: Optional[str] = None,
     dry_run: bool = True

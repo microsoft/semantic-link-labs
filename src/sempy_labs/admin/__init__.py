@@ -43,7 +43,7 @@ from ._capacities import (
 )
 from ._tenant import (
     list_tenant_settings,
-    delete_all_capacity_tenant_setting_override,
+    delete_all_capacity_tenant_setting_overrides,
     delete_capacity_tenant_setting_override,
     update_tenant_setting,
     update_capacity_tenant_setting_override,
@@ -143,7 +143,7 @@ __all__ = [
     "patch_capacity",
     "list_workspace_users",
     "list_widely_shared_artifacts",
-    "delete_all_capacity_tenant_setting_override",
+    "delete_all_capacity_tenant_setting_overrides",
     "delete_capacity_tenant_setting_override",
     "update_tenant_setting",
     "update_capacity_tenant_setting_override",
