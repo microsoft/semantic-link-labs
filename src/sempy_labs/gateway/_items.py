@@ -1,6 +1,6 @@
 from sempy._utils._log import log
 import pandas as pd
-from typing import Optional
+from typing import Optional, List
 from sempy_labs._helper_functions import (
     _is_valid_uuid,
     resolve_capacity_id,
@@ -475,7 +475,7 @@ def bind_semantic_model_to_gateway(
     dataset: str | UUID,
     gateway: str | UUID,
     workspace: Optional[str | UUID] = None,
-    data_source_object_ids: Optional[list[UUID]] = None,
+    data_source_object_ids: Optional[List[UUID]] = None,
 ):
     """
     Binds the specified dataset from the specified workspace to the specified gateway.
@@ -494,7 +494,7 @@ def bind_semantic_model_to_gateway(
         The workspace name or ID.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    data_source_object_ids : list[uuid.UUID], default=None
+    data_source_object_ids : typing.List[uuid.UUID], default=None
         A list of data source object IDs to bind to the gateway.
     """
 

@@ -60,7 +60,7 @@ def create_fabric_capacity(
         The name of the region in which the capacity will be created.
     sku : str
         The `sku size <https://azure.microsoft.com/pricing/details/microsoft-fabric/>`_ of the Fabric capacity.
-    admin_members : str | List[str]
+    admin_members : str | typing.List[str]
         The email address(es) of the admin(s) of the Fabric capacity.
     tags: dict, default=None
         Tag(s) to add to the capacity. Example: {'tagName': 'tagValue'}.
@@ -421,7 +421,7 @@ def update_fabric_capacity(
         The name of the Azure resource group.
     sku : str, default=None
          The `sku size <https://azure.microsoft.com/pricing/details/microsoft-fabric/>`_ of the Fabric capacity.
-    admin_members : str | List[str], default=None
+    admin_members : str | typing.List[str], default=None
         The email address(es) of the admin(s) of the Fabric capacity.
     tags : dict, default=None
         Tag(s) to add to the capacity. Example: {'tagName': 'tagValue'}.

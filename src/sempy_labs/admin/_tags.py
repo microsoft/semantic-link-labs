@@ -35,7 +35,7 @@ def create_tags(tags: str | List[str]):
 
     Parameters
     ----------
-    tags : str | List[str]
+    tags : str | typing.List[str]
         The name of the tag or tags to create.
     """
 

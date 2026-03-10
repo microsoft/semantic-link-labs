@@ -353,7 +353,7 @@ def assign_domain_workspaces_by_capacities(
     ----------
     domain : str | uuid.UUID
         The domain name or ID.
-    capacity_names : str | List[str]
+    capacity_names : str | typing.List[str]
         The capacity names.
     """
 
@@ -423,7 +423,7 @@ def assign_domain_workspaces(
     ----------
     domain : str | uuid.UUID
         The domain name or ID.
-    workspace : str | uuid.UUID | List[str | uuid.UUID]
+    workspace : str | uuid.UUID | typing.List[str | uuid.UUID]
         The Fabric workspace name or IDs.
     """
 
@@ -522,7 +522,7 @@ def unassign_domain_workspaces(
     ----------
     domain : str | uuid.UUID
         The domain name or ID.
-    workspace_names : str | List[str]
+    workspace_names : str | typing.List[str]
         The Fabric workspace(s).
     """
 

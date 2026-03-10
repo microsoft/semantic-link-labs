@@ -177,7 +177,7 @@ def set_audit_actions_and_group(
         The name or ID of the item (Warehouse or SQLEndpoint).
     type : typing.Literal['Warehouse', 'SQLEndpoint']
         The type of the item. Must be 'Warehouse' or 'SQLEndpoint'.
-    sql_audit_groups : List[str]
+    sql_audit_groups : typing.List[str]
         Set audit actions and groups request payload.
         Example:
         [

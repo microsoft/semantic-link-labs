@@ -66,12 +66,12 @@ def resolve_tags(tags: str | List[str]) -> List[str]:
 
     Parameters
     ----------
-    tags : str | List[str]
+    tags : str | typing.List[str]
         The tags to resolve.
 
     Returns
     -------
-    List[str]
+    typing.List[str]
         A list of resolved tags.
     """
 
@@ -117,7 +117,7 @@ def apply_tags(
         The name or ID of the item to apply tags to.
     type : str
         The type of the item to apply tags to. For example: "Lakehouse".
-    tags : str | uuid.UUID | List[str | uuid.UUID]
+    tags : str | uuid.UUID | typing.List[str | uuid.UUID]
         The name or ID of the tag(s) to apply to the item.
     workspace : str | uuid.UUID, default=None
         The workspace name or ID.

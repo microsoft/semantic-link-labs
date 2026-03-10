@@ -399,7 +399,7 @@ def create_item_schedule_daily(
         The end date and time of the schedule. Must be later than the start_date_time. Example: "2024-04-30T23:59:00".
     local_time_zone: str
         The `time zone <https://learn.microsoft.com/windows-hardware/manufacture/desktop/default-time-zones?view=windows-11>`_ of the schedule. Example: "Central Standard Time".
-    times : List[str]
+    times : typing.List[str]
         A list of time slots in hh:mm format, at most 100 elements are allowed. Example: ["00:00", "12:00"].
     job_type : str, default="DefaultJob"
         The job type.
@@ -472,9 +472,9 @@ def create_item_schedule_weekly(
         The end date and time of the schedule. Must be later than the start_date_time. Example: "2024-04-30T23:59:00".
     local_time_zone: str
         The `time zone <https://learn.microsoft.com/windows-hardware/manufacture/desktop/default-time-zones?view=windows-11>`_ of the schedule. Example: "Central Standard Time".
-    times : List[str]
+    times : typing.List[str]
         A list of time slots in hh:mm format, at most 100 elements are allowed. Example: ["00:00", "12:00"].
-    weekdays : List[str]
+    weekdays : typing.List[str]
         A list of weekdays. Example: ["Monday", "Tuesday"].
     job_type : str, default="DefaultJob"
         The job type.

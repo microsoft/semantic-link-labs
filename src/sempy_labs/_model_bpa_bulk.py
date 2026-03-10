@@ -43,10 +43,10 @@ def run_model_bpa_bulk(
     language : str, default=None
         The language (code) in which the rules will appear. For example, specifying 'it-IT' will show the Rule Name, Category and Description in Italian.
         Defaults to None which resolves to English.
-    workspace : str | uuid.UUID | List[str | uuid.UUID], default=None
+    workspace : str | uuid.UUID | typing.List[str | uuid.UUID], default=None
         The workspace or list of workspaces to scan. Supports both the workspace name and the workspace id.
         Defaults to None which scans all accessible workspaces.
-    skip_models : str | List[str], default=['ModelBPA', 'Fabric Capacity Metrics']
+    skip_models : str | typing.List[str], default=['ModelBPA', 'Fabric Capacity Metrics']
         The semantic models to always skip when running this analysis.
     skip_models_in_workspace : dict, default=None
         A dictionary showing specific semantic models within specific workspaces to skip. See the example below:

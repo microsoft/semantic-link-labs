@@ -158,7 +158,7 @@ def get_package_functions(
 
     Returns
     -------
-    List[Dict[str, str]]
+    typing.List[Dict[str, str]]
         A list of functions with 'name' and 'definition'.
     """
     tmdl, _ = get_daxlib_package_and_version(package_name=package_name, version=version)

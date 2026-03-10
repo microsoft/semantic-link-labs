@@ -195,7 +195,7 @@ def commit_to_git(
     ----------
     comment : str
         The Git commit comment.
-    item_ids : uuid.UUID | List[uuid.UUID], default=None
+    item_ids : uuid.UUID | typing.List[uuid.UUID], default=None
         A list of item Ids to commit to Git.
         Defaults to None which commits all items to Git.
     workspace : str | uuid.UUID, default=None

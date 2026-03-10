@@ -332,7 +332,7 @@ def score_ml_model_endpoint(
     ----------
     ml_model: str | uuid.UUID
         Name or ID of the ML model.
-    inputs: List[List[Any]]
+    inputs: typing.List[typing.List[Any]]
         Machine learning inputs to score in the form of Pandas dataset arrays that can include strings, numbers, integers and booleans.
     orientation: str, default='values'
         `Orientation <https://learn.microsoft.com/en-us/rest/api/fabric/mlmodel/endpoint/score-ml-model-endpoint?tabs=HTTP#orientation>`_ of the input data.

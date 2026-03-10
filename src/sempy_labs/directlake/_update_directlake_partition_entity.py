@@ -28,9 +28,9 @@ def update_direct_lake_partition_entity(
     ----------
     dataset : str | uuid.UUID
         Name or ID of the semantic model.
-    table_name : str, List[str]
+    table_name : str, typing.List[str]
         Name of the table(s) in the semantic model.
-    entity_name : str, List[str]
+    entity_name : str, typing.List[str]
         Name of the lakehouse table to be mapped to the semantic model table.
     schema : str, default=None
         The schema of the lakehouse table to be mapped to the semantic model table.
@@ -146,7 +146,7 @@ def add_table_to_direct_lake_semantic_model(
     ----------
     dataset : str | uuid.UUID
         Name or ID of the semantic model.
-    table_name : str, List[str]
+    table_name : str, typing.List[str]
         Name of the table in the semantic model.
     lakehouse_table_name : str
         The name of the Fabric lakehouse table.
@@ -156,7 +156,7 @@ def add_table_to_direct_lake_semantic_model(
         The name or ID of the Fabric workspace in which the semantic model resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    columns : List[str] | str, default=None
+    columns : typing.List[str] | str, default=None
         A list of column names to add to the table. If None, all columns from the
         lakehouse table will be added.
     """

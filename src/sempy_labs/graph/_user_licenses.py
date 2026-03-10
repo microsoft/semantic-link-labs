@@ -25,7 +25,7 @@ def add_user_license(
         The user ID or user principal name.
     sku_id : uuid.UUID
         The SKU ID of the license to assign.
-    disabled_plans : Optional[uuid.UUID | List[uuid.UUID]], default=None
+    disabled_plans : Optional[uuid.UUID | typing.List[uuid.UUID]], default=None
         A single service plan ID or a list of service plan IDs to disable within the assigned license.
     """
 

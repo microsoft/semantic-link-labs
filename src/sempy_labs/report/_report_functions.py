@@ -483,7 +483,7 @@ def translate_report_titles(
     ----------
     report : str
         Name of the Power BI report.
-    languages : str, List[str]
+    languages : str, typing.List[str]
         The language code(s) in which to translate the report titles.
     workspace : str | uuid.UUID, default=None
         The Fabric workspace name or ID.

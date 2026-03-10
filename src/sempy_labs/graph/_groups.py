@@ -526,9 +526,9 @@ def create_group(
         Whether the group is security-enabled.
     mail_nickname : str, default=None
         The mail alias for the group.
-    owners : str | uuid.UUID | List[str | uuid.UUID], default=None
+    owners : str | uuid.UUID | typing.List[str | uuid.UUID], default=None
         The owners of the group.
-    members : str | uuid.UUID | List[str | uuid.UUID], default=None
+    members : str | uuid.UUID | typing.List[str | uuid.UUID], default=None
         The members of the group.
     """
     from sempy_labs.graph._users import resolve_user_id

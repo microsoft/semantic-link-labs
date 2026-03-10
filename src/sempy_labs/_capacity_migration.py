@@ -65,7 +65,7 @@ def migrate_workspaces(
         Name of the source Fabric capacity.
     target_capacity : str
         Name of the target/destination Fabric capacity.
-    workspaces : str | List[str], default=None
+    workspaces : str | typing.List[str], default=None
         The name of the workspace(s) specified will be reassigned from the source capacity to the target capacity.
         Defaults to None which will reassign all workspaces in the source capacity to the target capacity.
     """

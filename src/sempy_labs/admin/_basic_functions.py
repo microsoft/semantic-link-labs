@@ -122,7 +122,7 @@ def list_workspaces(
 def assign_workspaces_to_capacity(
     source_capacity: Optional[str | UUID] = None,
     target_capacity: Optional[str | UUID] = None,
-    workspace: Optional[str | List[str] | UUID | List[UUID]] = None,
+    workspace: Optional[str | UUID] | List[str | UUID] = None,
 ):
     """
     Assigns a workspace to a capacity. This function is the admin version.
@@ -135,7 +135,7 @@ def assign_workspaces_to_capacity(
         The name of the source capacity. If the Workspace is not specified, this is parameter mandatory.
     target_capacity : str | uuid.UUID, default=None
         The name of the target capacity.
-    workspace : str | List[str] | uuid.UUID | List[uuid.UUID], default=None
+    workspace : str | uuid.UUID | typing.List[str | uuid.UUID], default=None
         The name or ID of the workspace(s).
         Defaults to None which resolves to migrating all workspaces within the source capacity to the target capacity.
     """

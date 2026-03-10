@@ -194,7 +194,7 @@ def optimize_lakehouse_tables(
 
     Parameters
     ----------
-    tables : str | List[str], default=None
+    tables : str | typing.List[str], default=None
         The table(s) to optimize. If the tables have a schema, use the 'schema.table' format.
         Defaults to None which resolves to optimizing all tables within the lakehouse.
     lakehouse : str | uuid.UUID, default=None
@@ -232,7 +232,7 @@ def vacuum_lakehouse_tables(
 
     Parameters
     ----------
-    tables : str | List[str], default=None
+    tables : str | typing.List[str], default=None
         The table(s) to vacuum. If the tables have a schema, use the 'schema.table' format.
         Defaults to None which resolves to vacuuming all tables in the lakehouse.
     lakehouse : str | uuid.UUID, default=None

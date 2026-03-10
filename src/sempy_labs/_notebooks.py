@@ -227,7 +227,7 @@ def search_notebooks(
     notebook : str | uuid.UUID, default=None
         The name or ID of a specific notebook to search within.
         Defaults to None which searches across all notebooks in the specified workspace(s).
-    workspace : str | uuid.UUID | list, default=None
+    workspace : str | uuid.UUID | typing.List[str | uuid.UUID], default=None
         The name or ID of the workspace or a list of workspaces to search within.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.

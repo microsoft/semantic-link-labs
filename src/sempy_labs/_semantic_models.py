@@ -171,11 +171,11 @@ def update_semantic_model_refresh_schedule(
     ----------
     dataset : str | uuid.UUID
         Name or ID of the semantic model.
-    days : str | list[str], default=None
+    days : str | typing.List[str], default=None
         The days of the week to refresh the dataset.
         Valid values are: "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday".
         Defaults to None which means the refresh schedule will not be updated.
-    times : str | list[str], default=None
+    times : str | typing.List[str], default=None
         The times of the day to refresh the dataset.
         Valid format is "HH:MM" (24-hour format).
         Defaults to None which means the refresh schedule will not be updated.

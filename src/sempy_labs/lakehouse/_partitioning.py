@@ -90,7 +90,7 @@ def list_partitioned_columns(
 
     Returns
     -------
-    List[str]
+    typing.List[str]
         The list of partitioned columns.
     """
 

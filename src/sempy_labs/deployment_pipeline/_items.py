@@ -513,7 +513,7 @@ def deploy_stage_content(
         The source deployment pipeline stage ID.
     target_stage_id : uuid.UUID
         The target deployment pipeline stage ID.
-    items : dict | List[dict], default=None
+    items : dict | typing.List[dict], default=None
         A list of items to deploy. Each item should be a dictionary with the following structure:
         {
             "sourceItemId": "1a201f2a-d1d8-45c0-8c61-1676338517de",

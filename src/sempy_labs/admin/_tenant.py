@@ -327,7 +327,7 @@ def update_tenant_setting(
         Indicates whether the tenant setting can be delegated to a domain admin. False - Domain admin cannot override the tenant setting. True - Domain admin can override the tenant setting.
     delegate_to_workspace : bool, default=None
         Indicates whether the tenant setting can be delegated to a workspace admin. False - Workspace admin cannot override the tenant setting. True - Workspace admin can override the tenant setting.
-    enabled_security_groups : List[dict], default=None
+    enabled_security_groups : typing.List[dict], default=None
         A list of enabled security groups. Example:
         [
             {
@@ -405,7 +405,7 @@ def update_capacity_tenant_setting_override(
         The status of the tenant setting. False - Disabled, True - Enabled.
     delegate_to_workspace : bool, default=None
         Indicates whether the tenant setting can be delegated to a workspace admin. False - Workspace admin cannot override the tenant setting. True - Workspace admin can override the tenant setting.
-    enabled_security_groups : List[dict], default=None
+    enabled_security_groups : typing.List[dict], default=None
         A list of enabled security groups. Example:
         [
             {
@@ -413,7 +413,7 @@ def update_capacity_tenant_setting_override(
             "name": "TestComputeCdsa"
             }
         ]
-    excluded_security_groups : List[dict], default=None
+    excluded_security_groups : typing.List[dict], default=None
         A list of excluded security groups. Example:
         [
             {

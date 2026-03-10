@@ -1,5 +1,6 @@
 from typing import Any
 import pandas as pd
+from typing import Tuple
 from sempy_labs._helper_functions import (
     _base_api,
     _create_dataframe,
@@ -8,14 +9,16 @@ import sempy_labs._icons as icons
 from sempy._utils._log import log
 
 
-def resolve_secret_name(key_vault_uri: str, secret_id: str) -> (str, str):
+def resolve_secret_name_and_version(
+    key_vault_uri: str, secret_id: str
+) -> Tuple[str, str]:
 
-    if not key_vault_uri.endswith('/'):
+    if not key_vault_uri.endswith("/"):
         key_vault_uri = f"{key_vault_uri}/"
 
     secret_name = secret_id.split(f"{key_vault_uri}secrets/")[1]
-    if '/' in secret_name:
-        return (secret_name.split('/')[0], secret_name.split('/')[1])
+    if "/" in secret_name:
+        return (secret_name.split("/")[0], secret_name.split("/")[1])
     else:
         return (secret_name, None)
 
@@ -113,8 +116,10 @@ def list_secrets(key_vault_uri: str) -> pd.DataFrame:
 
     rows = []
     for r in responses:
-        secret_id = r.get('id')
-        secret_name = resolve_secret_name(key_vault_uri=key_vault_uri, secret_id=secret_id)[0]
+        secret_id = r.get("id")
+        secret_name = resolve_secret_name_and_version(
+            key_vault_uri=key_vault_uri, secret_id=secret_id
+        )[0]
         rows.append(
             {
                 "Secret Id": secret_id,
@@ -172,8 +177,10 @@ def list_secret_versions(key_vault_uri: str, secret: str) -> pd.DataFrame:
 
     rows = []
     for r in responses:
-        secret_id = r.get('id')
-        (secret_name, secret_version) = resolve_secret_name(key_vault_uri=key_vault_uri, secret_id=secret_id)
+        secret_id = r.get("id")
+        (secret_name, secret_version) = resolve_secret_name_and_version(
+            key_vault_uri=key_vault_uri, secret_id=secret_id
+        )
         rows.append(
             {
                 "Secret Id": secret_id,
@@ -234,8 +241,10 @@ def list_deleted_secrets(key_vault_uri: str) -> pd.DataFrame:
 
     rows = []
     for r in responses:
-        secret_id = r.get('id')
-        secret_name = resolve_secret_name(key_vault_uri=key_vault_uri, secret_id=secret_id)
+        secret_id = r.get("id")
+        secret_name = resolve_secret_name_and_version(
+            key_vault_uri=key_vault_uri, secret_id=secret_id
+        )[0]
         rows.append(
             {
                 "Recovery Id": r.get("recoveryId"),

@@ -98,7 +98,7 @@ def get_dax_query_dependencies(
     ----------
     dataset : str | uuid.UUID
         Name or ID of the semantic model.
-    dax_string : str | List[str]
+    dax_string : str | typing.List[str]
         The DAX query or list of DAX queries.
     put_in_memory : bool, default=False
         If True, ensures that the dependent columns are put into memory in order to give realistic Vertipaq stats (i.e. Total Size etc.).

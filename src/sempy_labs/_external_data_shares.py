@@ -26,7 +26,7 @@ def create_external_data_share(
         The item name.
     item_type : str
         The `item type <https://learn.microsoft.com/rest/api/fabric/core/items/list-items?tabs=HTTP#itemtype>`_.
-    paths : str | List[str]
+    paths : str | typing.List[str]
         The path or list of paths that are to be externally shared. Currently, only a single path is supported.
     recipient : str
         The email address of the recipient.

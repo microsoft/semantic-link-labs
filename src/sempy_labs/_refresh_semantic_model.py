@@ -38,9 +38,9 @@ def refresh_semantic_model(
     ----------
     dataset : str | uuid.UUID
         Name or ID of the semantic model.
-    tables : str, List[str], default=None
+    tables : str, typing.List[str], default=None
         A string or a list of tables to refresh.
-    partitions: str, List[str], default=None
+    partitions: str, typing.List[str], default=None
         A string or a list of partitions to refresh. Partitions must be formatted as such: 'Table Name'[Partition Name].
     refresh_type : str, default="full"
         The type of processing to perform. Types align with the TMSL refresh command types: full, clearValues, calculate, dataOnly, automatic, and defragment. The add type isn't supported. Defaults to "full".

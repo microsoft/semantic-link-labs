@@ -28,7 +28,7 @@ def report_rebind(
 
     Parameters
     ----------
-    report : str | uuid.UUID | List[str | uuid.UUID]
+    report : str | uuid.UUID | typing.List[str | uuid.UUID]
         Name(s) or ID(s) of the Power BI report(s).
     dataset : str | uuid.UUID
         Name or ID of the semantic model.
@@ -104,7 +104,7 @@ def report_rebind_all(
         The name of the Fabric workspace in which the new semantic model resides.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    report_workspace : str | uuid.UUID | List[str | uuid.UUID], default=None
+    report_workspace : str | uuid.UUID | typing.List[str | uuid.UUID], default=None
         The name(s) or IDs of the Fabric workspace(s) in which the report(s) reside(s).
         Defaults to None which finds all reports in all workspaces which use the semantic model and rebinds them to
         the new semantic model.

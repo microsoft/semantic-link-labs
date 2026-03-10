@@ -190,7 +190,7 @@ class ReportWrapper:
 
         Returns
         -------
-        dict | List[Tuple[str, dict]]
+        dict | typing.List[typing.Tuple[str, dict]]
             The json content of the specified report definition file.
         """
 

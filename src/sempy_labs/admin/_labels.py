@@ -130,7 +130,7 @@ def bulk_remove_labels(
 
     Parameters
     ----------
-    items : List[dict]
+    items : typing.List[dict]
         A list of dictionaries containing the item details.
 
         Example 1:

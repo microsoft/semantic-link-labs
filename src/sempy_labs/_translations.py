@@ -19,7 +19,7 @@ def translate_semantic_model(
     ----------
     dataset : str | uuid.UUID
         Name or ID of the semantic model.
-    languages : str, List[str]
+    languages : str, typing.List[str]
         The language code(s) in which to translate the semantic model.
     exclude_characters : str
         A string specifying characters which will be replaced by a space in the translation text when sent to the translation service.

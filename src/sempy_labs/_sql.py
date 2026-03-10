@@ -103,12 +103,12 @@ class ConnectBase:
 
         Parameters
         ----------
-        sql : str or List[str]
+        sql : str or typing.List[str]
             A single SQL or T-SQL query, or a list of queries to be executed.
 
         Returns
         -------
-        Union[List[pandas.DataFrame], pandas.DataFrame, None]
+        typing.Union[typing.List[pandas.DataFrame], pandas.DataFrame, None]
             A list of pandas DataFrames if multiple SQL queries return results,
             a single DataFrame if one query is executed and returns results, or None.
         """
