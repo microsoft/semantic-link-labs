@@ -267,6 +267,16 @@ def vertipaq_analyzer(
                 "format": icons.no_format,
                 "tooltip": "The workspace of the data source for the partition",
             },
+            "Source Schema Name": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The schema name in the source for the partition",
+            },
+            "Source Table Name": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The name of the table in the source for the partition",
+            },
         },
         "Columns": {
             "Table Name": {
@@ -278,6 +288,11 @@ def vertipaq_analyzer(
                 "data_type": icons.data_type_string,
                 "format": icons.no_format,
                 "tooltip": "The name of the column",
+            },
+            "Source Column": {
+                "data_type": icons.data_type_string,
+                "format": icons.no_format,
+                "tooltip": "The name of the source column",
             },
             "Type": {
                 "data_type": icons.data_type_string,
@@ -429,7 +444,7 @@ def vertipaq_analyzer(
         for p in tom.all_partitions():
             mode = str(p.Mode)
             direct_lake_type = None
-            source, source_type, source_workspace = None, None, None
+            source, source_type, source_workspace, source_table_name = None, None, None, None
             if mode == "DirectLake":
                 expr = p.Source.ExpressionSource.Expression
                 expression_name = p.Source.ExpressionSource.Name
@@ -443,6 +458,8 @@ def vertipaq_analyzer(
                 source = s.get("itemName")
                 source_type = s.get("itemType")
                 source_workspace = s.get("workspaceName")
+                source_table_name = p.Source.EntityName
+                source_schema_name = p.Source.SchemaName
 
             partitions.append(
                 {
@@ -469,6 +486,8 @@ def vertipaq_analyzer(
                     "Source Name": source,
                     "Source Type": source_type,
                     "Source Workspace": source_workspace,
+                    "Source Schema Name": source_schema_name,
+                    "Source Table Name": source_table_name,
                 }
             )
 
@@ -531,6 +550,7 @@ def vertipaq_analyzer(
                     else "Table"
                 )
             )
+            table_direct_lake = True if next(str(p.Mode) for p in t.Partitions) == "DirectLake" else False
             tables.append(
                 {
                     "Table Name": t.Name,
@@ -644,6 +664,53 @@ def vertipaq_analyzer(
             c["% DB"] = (
                 round(c["Total Size"] / total_db * 100, 2) if total_db > 0 else 0.0
             )
+
+        # Capture cardinality for Direct Lake
+        if read_stats_from_data and is_direct_lake:
+            partitions_by_table = {p["Table Name"]: p for p in partitions}
+
+            for t in tom.model.Tables:
+
+                p = next(iter(t.Partitions), None)
+                if not p or str(p.Mode) != "DirectLake":
+                    continue
+
+                par = partitions_by_table.get(t.Name)
+                if not par:
+                    continue
+
+                entity_name = par.get("Source Table Name")
+                schema_name = par.get("Source Schema Name")
+                source_name = par.get("Source Name")
+                source_type = par.get("Source Type")
+                # Only valid for lakehouse sources
+                if source_type != 'Lakehouse':
+                    continue
+                source_workspace = par.get("Source Workspace")
+
+                column_list = [
+                    {
+                        "ColumnName": c.Name,
+                        "SourceColumn": c.SourceColumn,
+                        "Cardinality": 0,  # Updated later
+                    }
+                    for c in t.Columns
+                    if str(c.Type) != "RowNumber"
+                ]
+
+                aggs = _get_column_aggregate(
+                    table_name=entity_name,
+                    column_name=[c["SourceColumn"] for c in column_list],
+                    lakehouse=source_name,
+                    workspace=source_workspace,
+                    function="distinct",
+                    schema_name=schema_name,
+                )
+
+                for col in columns:
+                    if col["Table Name"] == t.Name and col["Source Table Name"] == entity_name:
+                        col["Cardinality"] = aggs.get(col["Source Column"], col["Cardinality"])
+
         for r in relationships:
             r["Max From Cardinality"] = next(
                 (
@@ -739,12 +806,15 @@ def vertipaq_analyzer(
 
             if name == "Columns":
                 df = df[df["Type"] != "RowNumber"]
+                df.drop(columns=['Source Column'], inplace=True)
             if name == "Partitions":
                 keys_to_remove = [
                     "Direct Lake Type",
                     "Source Name",
                     "Source Type",
                     "Source Workspace",
+                    "Source Schema Name",
+                    "Source Table Name",
                 ]
                 if not is_direct_lake:
                     df.drop(
@@ -875,7 +945,7 @@ def vertipaq_analyzer(
             # Convert timestamp columns from strings to datetime
             for col_name, col_type in schema.items():
                 if col_type == icons.data_type_timestamp and col_name in df.columns:
-                    df[col_name] = pd.to_datetime(df[col_name], errors="coerce")
+                    df[col_name] = pd.to_datetime(df[col_name], errors="coerce", utc=True)
 
             delta_table_name = f"vertipaqanalyzer_{obj}".lower()
             save_as_delta_table(
