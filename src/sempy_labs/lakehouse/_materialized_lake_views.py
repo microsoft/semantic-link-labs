@@ -50,7 +50,7 @@ def refresh_materialized_lake_views(
         request=f"/v1/workspaces/{workspace_id}/lakehouses/{lakehouse_id}/jobs/instances?jobType=RefreshMaterializedLakeViews",
         lro_return_df=True,
         method="post",
-        status_codes=[200, 202]
+        status_codes=[200, 202],
     )
 
     status = df["Status"].iloc[0]
