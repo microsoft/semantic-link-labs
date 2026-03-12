@@ -19,7 +19,7 @@ from sempy_labs._helper_functions import (
 )
 from sempy_labs._list_functions import list_relationships, list_tables
 from sempy_labs.lakehouse import lakehouse_attached, get_lakehouse_tables
-from typing import Optional
+from typing import Optional, Literal
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from pathlib import Path
@@ -35,8 +35,8 @@ def calc_missing_rows_dax(
     to_table: str,
     to_column: str,
     is_active: bool,
-    dataset_id,
-    workspace_id,
+    dataset_id: UUID,
+    workspace_id: UUID,
 ):
 
     from_object = format_dax_object_name(from_table, from_column)
@@ -87,7 +87,7 @@ def cast_to_type(value, type_):
 def vertipaq_analyzer(
     dataset: str | UUID,
     workspace: Optional[str | UUID] = None,
-    export: bool = False,
+    export: Optional[Literal['table']] = None,
     read_stats_from_data: bool = False,
 ) -> dict[str, pd.DataFrame]:
     """
@@ -103,8 +103,8 @@ def vertipaq_analyzer(
         The Fabric workspace name or ID in which the semantic model exists.
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
-    export : bool, default=False
-        If set to true, exports the vertipaq analyzer statistics to delta tables in the lakehouse. The tables will be named VertipaqAnalyzer_Table, VertipaqAnalyzer_Column, VertipaqAnalyzer_Partition, VertipaqAnalyzer_Relationship, VertipaqAnalyzer_Hierarchy, and VertipaqAnalyzer_Model. If a table with the same name already exists, the new data will be appended to the existing table.
+    export : typing.Literal['table'], default=None
+        If set to 'table', the vertipaq analyzer statistics will be exported as delta tables to the lakehouse. The tables will be named vertipaqanalyzer_model, vertipaqanalyzer_table, vertipaqanalyzer_partition, vertipaqanalyzer_column, vertipaqanalyzer_relationship, and vertipaqanalyzer_hierarchy. If None, the statistics will just be displayed in the notebook.
     read_stats_from_data : bool, default=False
         Setting this parameter to true has the function get Column Cardinality and Missing Rows using DAX (Direct Lake semantic models achieve this using a Spark query to the lakehouse).
 
@@ -334,7 +334,7 @@ def vertipaq_analyzer(
             },
             "Temperature": {
                 "data_type": icons.data_type_double,
-                "format": icons.int_format,
+                "format": icons.data_type_double,
                 "tooltip": "A decimal indicating the frequency and recency of queries against the column",
             },
             "Last Accessed": {
@@ -768,7 +768,7 @@ def vertipaq_analyzer(
         }
 
     # Export vertipaq to delta tables in lakehouse
-    if export:
+    if export == 'table':
         dfs = create_dfs(column_formatting="data_type")
         save_table_name = "vertipaqanalyzer_model"
 
