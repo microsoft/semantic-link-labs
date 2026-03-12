@@ -5544,22 +5544,22 @@ class TOMWrapper:
                 for h in t.Hierarchies:
                     h_lower = f"{t_lower}.{h.Name.lower()}"
                     add_entity(h_lower, t.Name, h.Name)
-        # if "Relationships" not in lm:
-        #    lm["Relationships"] = {}
-        #    for c in self.all_columns():
-        #        table_name = c.Parent.Name
-        #        t_name = table_name.lower()
-        #        object_name = c.Name
-        #        o_name = object_name.lower()
-        #        rel_key = f"{t_name}_has_{o_name}"
-        #        add_relationship(rel_key, table_name, t_name, o_name)
-        #    for m in self.all_measures():
-        #        table_name = c.Parent.Name
-        #        t_name = table_name.lower()
-        #        object_name = m.Name
-        #        o_name = object_name.lower()
-        #        rel_key = f"{t_name}_has_{o_name}"
-        #        add_relationship(rel_key, table_name, t_name, o_name)
+            # if "Relationships" not in lm:
+            #    lm["Relationships"] = {}
+            #    for c in self.all_columns():
+            #        table_name = c.Parent.Name
+            #        t_name = table_name.lower()
+            #        object_name = c.Name
+            #        o_name = object_name.lower()
+            #        rel_key = f"{t_name}_has_{o_name}"
+            #        add_relationship(rel_key, table_name, t_name, o_name)
+            #    for m in self.all_measures():
+            #        table_name = c.Parent.Name
+            #        t_name = table_name.lower()
+            #        object_name = m.Name
+            #        o_name = object_name.lower()
+            #        rel_key = f"{t_name}_has_{o_name}"
+            #        add_relationship(rel_key, table_name, t_name, o_name)
 
             self.model.Cultures[culture].LinguisticMetadata.Content = json.dumps(lm)
 
