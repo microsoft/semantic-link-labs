@@ -13,19 +13,14 @@ from sempy_labs._helper_functions import (
     _get_column_aggregate,
     resolve_workspace_name_and_id,
     resolve_dataset_name_and_id,
-    _create_spark_session,
-    resolve_workspace_id,
-    resolve_workspace_name,
 )
-from sempy_labs._list_functions import list_relationships, list_tables
-from sempy_labs.lakehouse import lakehouse_attached, get_lakehouse_tables
+from sempy_labs.lakehouse._get_lakehouse_tables import get_lakehouse_tables
 from typing import Optional, Literal
 from sempy._utils._log import log
 import sempy_labs._icons as icons
 from pathlib import Path
 from uuid import UUID
 from sempy_labs.directlake._sources import get_direct_lake_sources
-from decimal import Decimal
 
 
 # Calculate missing rows
@@ -71,14 +66,21 @@ def convert_bytes(value):
 
 
 def cast_to_type(value, type_):
-
     type_mapping = {
         "int": int,
-        "decimal": Decimal,
+        "decimal": float,
+        "bool": lambda v: str(v).strip().lower()
+        == "true",  # convert "True"/"False" strings
     }
 
+    # Handle null / empty values
     if pd.isna(value) or value in ("nan", "<NA>", None, ""):
-        value = 0
+        if type_ == "bool":
+            return False  # default for bool
+        elif type_ == "decimal":
+            return 0.0
+        else:
+            return 0
 
     return type_mapping[type_](value)
 
@@ -87,7 +89,7 @@ def cast_to_type(value, type_):
 def vertipaq_analyzer(
     dataset: str | UUID,
     workspace: Optional[str | UUID] = None,
-    export: Optional[Literal['table']] = None,
+    export: Optional[Literal["table"]] = None,
     read_stats_from_data: bool = False,
 ) -> dict[str, pd.DataFrame]:
     """
@@ -406,7 +408,7 @@ def vertipaq_analyzer(
     ) as tom:
         compat_level = tom.model.Model.Database.CompatibilityLevel
         is_direct_lake = tom.is_direct_lake()
-        def_mode = tom.model.DefaultMode
+        def_mode = str(tom.model.DefaultMode)
         table_count = tom.model.Tables.Count
         column_count = len(list(tom.all_columns()))
         if table_count == 0:
@@ -567,7 +569,8 @@ def vertipaq_analyzer(
                         "decimal",
                     ),
                     "Partitions": t.Partitions.Count,
-                    "Columns": t.Columns.Count,
+                    "Columns": t.Columns.Count
+                    - 1,  # Subtracting 1 to exclude the RowNumber column
                     "% DB": cast_to_type(
                         tom.get_annotation_value(object=t, name="Vertipaq_%DB"),
                         "decimal",
@@ -617,11 +620,17 @@ def vertipaq_analyzer(
                         "% DB": 0.0,  # Updated later
                         "Data Type": str(c.DataType),
                         "Encoding": str(c.EncodingHint),
-                        "Is Resident": tom.get_annotation_value(
-                            object=c, name="Vertipaq_IsResident"
+                        "Is Resident": cast_to_type(
+                            tom.get_annotation_value(
+                                object=c, name="Vertipaq_IsResident"
+                            ),
+                            "bool",
                         ),
-                        "Temperature": tom.get_annotation_value(
-                            object=c, name="Vertipaq_Temperature"
+                        "Temperature": cast_to_type(
+                            tom.get_annotation_value(
+                                object=c, name="Vertipaq_Temperature"
+                            ),
+                            "decimal",
                         ),
                         "Last Accessed": tom.get_annotation_value(
                             object=c, name="Vertipaq_LastAccessed"
@@ -731,18 +740,25 @@ def vertipaq_analyzer(
             if name == "Columns":
                 df = df[df["Type"] != "RowNumber"]
             if name == "Partitions":
+                keys_to_remove = [
+                    "Direct Lake Type",
+                    "Source Name",
+                    "Source Type",
+                    "Source Workspace",
+                ]
                 if not is_direct_lake:
                     df.drop(
-                        columns=[
-                            "Direct Lake Type",
-                            "Source Name",
-                            "Source Type",
-                            "Source Workspace",
-                        ],
+                        columns=keys_to_remove,
                         inplace=True,
                     )
+
+                    for k in keys_to_remove:
+                        vertipaq_map[name].pop(k, None)
             if name == "Relationships" and not read_stats_from_data:
-                df.drop(columns=["Missing Rows"], inplace=True)
+                keys_to_remove = ["Missing Rows"]
+                df.drop(columns=keys_to_remove, inplace=True)
+                for k in keys_to_remove:
+                    vertipaq_map[name].pop(k, None)
 
             column_type_mapping = {
                 k: v[column_formatting] for k, v in vertipaq_map[name].items()
@@ -755,7 +771,7 @@ def vertipaq_analyzer(
             }
         return dfs
 
-    if not export:
+    if export is None:
         dfs = create_dfs(column_formatting="format")
         visualize_vertipaq(dfs, dataset_name, vertipaq_map)
         return {
@@ -768,7 +784,7 @@ def vertipaq_analyzer(
         }
 
     # Export vertipaq to delta tables in lakehouse
-    if export == 'table':
+    if export == "table":
         dfs = create_dfs(column_formatting="data_type")
         save_table_name = "vertipaqanalyzer_model"
 
@@ -848,10 +864,18 @@ def vertipaq_analyzer(
                 "Dataset_Name": icons.data_type_string,
                 "Dataset_Id": icons.data_type_string,
                 "Configured_By": icons.data_type_string,
-                **{k.replace(" ", "_"): v[0] for k, v in vertipaq_map[obj].items()},
+                **{
+                    k.replace(" ", "_"): v["data_type"]
+                    for k, v in vertipaq_map[obj].items()
+                },
                 "RunId": icons.data_type_long,
                 "Timestamp": icons.data_type_timestamp,
             }
+
+            # Convert timestamp columns from strings to datetime
+            for col_name, col_type in schema.items():
+                if col_type == icons.data_type_timestamp and col_name in df.columns:
+                    df[col_name] = pd.to_datetime(df[col_name], errors="coerce")
 
             delta_table_name = f"vertipaqanalyzer_{obj}".lower()
             save_as_delta_table(
