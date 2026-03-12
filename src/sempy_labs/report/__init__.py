@@ -34,6 +34,13 @@ from ._export_report import (
 from ._endorsement import (
     set_endorsement,
 )
+from ._upgrade_to_pbir import (
+    upgrade_to_pbir,
+)
+from ._items import (
+    list_reports,
+    get_report,
+)
 
 __all__ = [
     "create_report_from_reportjson",
@@ -56,4 +63,7 @@ __all__ = [
     "save_report_as_pbip",
     "connect_report",
     "set_endorsement",
+    "upgrade_to_pbir",
+    "list_reports",
+    "get_report",
 ]
