@@ -11,7 +11,9 @@ from sempy._utils._log import log
 
 
 @log
-def list_reports_base(report: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None) -> pd.DataFrame:
+def list_reports_base(
+    report: Optional[str | UUID] = None, workspace: Optional[str | UUID] = None
+) -> pd.DataFrame:
 
     columns = {
         "Report Name": "string",
@@ -60,7 +62,11 @@ def list_reports_base(report: Optional[str | UUID] = None, workspace: Optional[s
         for item in items
     ]
 
-    df = pd.DataFrame(rows, columns=columns.keys()) if rows else _create_dataframe(columns=columns)
+    df = (
+        pd.DataFrame(rows, columns=columns.keys())
+        if rows
+        else _create_dataframe(columns=columns)
+    )
 
     return df
 
@@ -89,8 +95,11 @@ def list_reports(workspace: Optional[str | UUID] = None) -> pd.DataFrame:
 
     return list_reports_base(workspace=workspace)
 
+
 @log
-def get_report(report: str | UUID, workspace: Optional[str | UUID] = None) -> pd.DataFrame:
+def get_report(
+    report: str | UUID, workspace: Optional[str | UUID] = None
+) -> pd.DataFrame:
     """
     Returns the properties of a specific report from the specified workspace.
 
@@ -114,4 +123,3 @@ def get_report(report: str | UUID, workspace: Optional[str | UUID] = None) -> pd
     """
 
     return list_reports_base(report=report, workspace=workspace)
-
