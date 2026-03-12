@@ -79,4 +79,5 @@ items = {
     "Ontology": "ontologies",
     "Lakehouse": "lakehouses",
     "EventSchemaSet": "EventSchemaSets",
+    "DataAgent": "DataAgents",
 }

@@ -4816,17 +4816,13 @@ class TOMWrapper:
             )
 
             for item in response.json().get("modelItems", []):
-                ms_name = item["urn"]
-                if ms_name.startswith("urn: "):
-                    ms_name = ms_name[5:]
                 desc = item.get("description")
-                (table_name, expr) = measure_mapping.get(ms_name, (None, None))
-                self.model.Tables[table_name].Measures[ms_name].Description = desc
+                self.model.Tables[table_name].Measures[m].Description = desc
 
                 # Collect new descriptions in a dataframe
                 new_data = {
                     "Table Name": table_name,
-                    "Measure Name": ms_name,
+                    "Measure Name": m,
                     "Expression": expr,
                     "Description": desc,
                 }
