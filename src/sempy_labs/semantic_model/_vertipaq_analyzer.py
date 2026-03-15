@@ -23,6 +23,21 @@ from uuid import UUID
 from sempy_labs.directlake._sources import get_direct_lake_sources
 
 
+def create_sql_query(columns, schema_name, table_name):
+
+    distinct_counts = ", ".join(
+        [
+            f"COUNT(DISTINCT {col}) AS {col}"
+            for col in columns
+        ]
+    )
+
+    return f"""
+    SELECT {distinct_counts}
+    FROM {schema_name}.{table_name}
+    """
+
+
 # Calculate missing rows
 def calc_missing_rows_dax(
     from_table: str,
@@ -717,23 +732,11 @@ def vertipaq_analyzer(
                         schema_name=schema_name,
                     )
                 elif source_type == "Warehouse":
-                    from sempy_labs._sql import ConnectWarehouse
+                    from sempy_labs._sql import ConnectBase
 
-                    distinct_counts = ", ".join(
-                        [
-                            f"COUNT(DISTINCT {col}) AS {col}"
-                            for col in source_column_list
-                        ]
-                    )
+                    query = create_sql_query(columns=source_column_list, schema_name=schema_name, table_name=entity_name)
 
-                    query = f"""
-                    SELECT {distinct_counts}
-                    FROM {schema_name}.{entity_name}
-                    """
-
-                    with ConnectWarehouse(
-                        warehouse=source_name, workspace=source_workspace
-                    ) as sql:
+                    with ConnectBase(item=source_name,type=source_type, workspace=source_workspace) as sql:
                         df = sql.query(query)
 
                     aggs = df.iloc[0].to_dict()
