@@ -131,7 +131,7 @@ def vertipaq_analyzer(
             "Total Size": {
                 "data_type": icons.data_type_long,
                 "format": icons.int_format,
-                "tooltip": "The size of the model (in bytes)",
+                "tooltip": "The size of the semantic model (in bytes)",
             },
             "Table Count": {
                 "data_type": icons.data_type_long,
@@ -615,7 +615,9 @@ def vertipaq_analyzer(
                     {
                         "Table Name": c.Parent.Name,
                         "Column Name": c.Name,
-                        "Source Column": c.SourceColumn if str(c.Type) == 'Data' else None,
+                        "Source Column": (
+                            c.SourceColumn if str(c.Type) == "Data" else None
+                        ),
                         "Type": str(c.Type),
                         "Cardinality": cast_to_type(
                             tom.get_annotation_value(
@@ -693,11 +695,7 @@ def vertipaq_analyzer(
                 schema_name = par.get("Source Schema Name")
                 source_name = par.get("Source Name")
                 source_type = par.get("Source Type")
-                # Only valid for lakehouse sources
-                if source_type != "Lakehouse":
-                    continue
                 source_workspace = par.get("Source Workspace")
-
                 column_list = [
                     {
                         "ColumnName": c.Name,
@@ -707,15 +705,40 @@ def vertipaq_analyzer(
                     for c in t.Columns
                     if str(c.Type) != "RowNumber"
                 ]
+                source_column_list = [c["SourceColumn"] for c in column_list]
+                # Only valid for lakehouse sources
+                if source_type == "Lakehouse":
+                    aggs = _get_column_aggregate(
+                        table_name=entity_name,
+                        column_name=source_column_list,
+                        lakehouse=source_name,
+                        workspace=source_workspace,
+                        function="distinct",
+                        schema_name=schema_name,
+                    )
+                elif source_type == "Warehouse":
+                    from sempy_labs._sql import ConnectWarehouse
 
-                aggs = _get_column_aggregate(
-                    table_name=entity_name,
-                    column_name=[c["SourceColumn"] for c in column_list],
-                    lakehouse=source_name,
-                    workspace=source_workspace,
-                    function="distinct",
-                    schema_name=schema_name,
-                )
+                    distinct_counts = ", ".join(
+                        [
+                            f"COUNT(DISTINCT {col}) AS {col}"
+                            for col in source_column_list
+                        ]
+                    )
+
+                    query = f"""
+                    SELECT {distinct_counts}
+                    FROM {schema_name}.{entity_name}
+                    """
+
+                    with ConnectWarehouse(
+                        warehouse=source_name, workspace=source_workspace
+                    ) as sql:
+                        df = sql.query(query)
+
+                    aggs = df.iloc[0].to_dict()
+                else:
+                    continue
 
                 for col in columns:
                     if col["Table Name"] == t.Name:
