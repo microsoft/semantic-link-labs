@@ -355,7 +355,7 @@ def vertipaq_analyzer(
                 "tooltip": "A decimal indicating the frequency and recency of queries against the column",
             },
             "Last Accessed": {
-                "data_type": icons.data_type_timestamp,
+                "data_type": icons.no_format,  # icons.data_type_timestamp,
                 "format": icons.no_format,
                 "tooltip": "The time the column was last queried",
             },
@@ -444,7 +444,12 @@ def vertipaq_analyzer(
         for p in tom.all_partitions():
             mode = str(p.Mode)
             direct_lake_type = None
-            source, source_type, source_workspace, source_table_name = None, None, None, None
+            source, source_type, source_workspace, source_table_name = (
+                None,
+                None,
+                None,
+                None,
+            )
             if mode == "DirectLake":
                 expr = p.Source.ExpressionSource.Expression
                 expression_name = p.Source.ExpressionSource.Name
@@ -550,7 +555,11 @@ def vertipaq_analyzer(
                     else "Table"
                 )
             )
-            table_direct_lake = True if next(str(p.Mode) for p in t.Partitions) == "DirectLake" else False
+            table_direct_lake = (
+                True
+                if next(str(p.Mode) for p in t.Partitions) == "DirectLake"
+                else False
+            )
             tables.append(
                 {
                     "Table Name": t.Name,
@@ -606,6 +615,7 @@ def vertipaq_analyzer(
                     {
                         "Table Name": c.Parent.Name,
                         "Column Name": c.Name,
+                        "Source Column": c.SourceColumn if str(c.Type) == 'Data' else None,
                         "Type": str(c.Type),
                         "Cardinality": cast_to_type(
                             tom.get_annotation_value(
@@ -666,7 +676,7 @@ def vertipaq_analyzer(
             )
 
         # Capture cardinality for Direct Lake
-        if read_stats_from_data and is_direct_lake:
+        if read_stats_from_data and table_direct_lake:
             partitions_by_table = {p["Table Name"]: p for p in partitions}
 
             for t in tom.model.Tables:
@@ -684,7 +694,7 @@ def vertipaq_analyzer(
                 source_name = par.get("Source Name")
                 source_type = par.get("Source Type")
                 # Only valid for lakehouse sources
-                if source_type != 'Lakehouse':
+                if source_type != "Lakehouse":
                     continue
                 source_workspace = par.get("Source Workspace")
 
@@ -708,8 +718,10 @@ def vertipaq_analyzer(
                 )
 
                 for col in columns:
-                    if col["Table Name"] == t.Name and col["Source Table Name"] == entity_name:
-                        col["Cardinality"] = aggs.get(col["Source Column"], col["Cardinality"])
+                    if col["Table Name"] == t.Name:
+                        col["Cardinality"] = aggs.get(
+                            col["Source Column"], col["Cardinality"]
+                        )
 
         for r in relationships:
             r["Max From Cardinality"] = next(
@@ -806,7 +818,7 @@ def vertipaq_analyzer(
 
             if name == "Columns":
                 df = df[df["Type"] != "RowNumber"]
-                df.drop(columns=['Source Column'], inplace=True)
+                df.drop(columns=["Source Column"], inplace=True)
             if name == "Partitions":
                 keys_to_remove = [
                     "Direct Lake Type",
@@ -942,10 +954,15 @@ def vertipaq_analyzer(
                 "Timestamp": icons.data_type_timestamp,
             }
 
+            min_ts = pd.Timestamp("1677-09-21", tz="UTC")
+            max_ts = pd.Timestamp("2262-04-11", tz="UTC")
+
             # Convert timestamp columns from strings to datetime
-            for col_name, col_type in schema.items():
-                if col_type == icons.data_type_timestamp and col_name in df.columns:
-                    df[col_name] = pd.to_datetime(df[col_name], errors="coerce", utc=True)
+            # for col_name, col_type in schema.items():
+            #    if col_type == icons.data_type_timestamp and col_name in df.columns:
+
+            #        ts = pd.to_datetime(df[col_name], errors="coerce", utc=True)
+            #        df[col_name] = ts.where(ts.between(min_ts, max_ts))
 
             delta_table_name = f"vertipaqanalyzer_{obj}".lower()
             save_as_delta_table(
