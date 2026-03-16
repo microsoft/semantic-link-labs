@@ -28,6 +28,8 @@ def add_user_to_workspace(
 
     This is a wrapper function for the following API: `Admin - Groups AddUserAsAdmin <https://learn.microsoft.com/rest/api/power-bi/admin/groups-add-user-as-admin>`_.
 
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
+
     Parameters
     ----------
     user : str | uuid.UUID
@@ -85,6 +87,8 @@ def delete_user_from_workspace(
     Removes user permissions from the specified workspace.
 
     This is a wrapper function for the following API: `Admin - Groups DeleteUserAsAdmin <https://learn.microsoft.com/rest/api/power-bi/admin/groups-delete-user-as-admin>`_.
+
+    Service Principal Authentication is supported (see `here <https://github.com/microsoft/semantic-link-labs/blob/main/notebooks/Service%20Principal.ipynb>`_ for examples).
 
     Parameters
     ----------
