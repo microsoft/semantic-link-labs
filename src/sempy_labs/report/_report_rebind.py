@@ -129,7 +129,7 @@ def report_rebind_all(
     for w in report_workspace:
         dfR = fabric.list_reports(workspace=w)
         dfR_filt = dfR[
-            (dfR["Dataset ID"] == dataset_id)
+            (dfR["Dataset Id"] == dataset_id)
             & (dfR["Dataset Workspace Id"] == dataset_workspace_id)
         ]
         if dfR_filt.empty:
