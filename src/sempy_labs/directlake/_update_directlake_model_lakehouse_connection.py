@@ -149,6 +149,12 @@ def update_direct_lake_model_connection(
             expr = expressions[0]
             tom.model.Expressions[expr].Expression = shared_expression
 
+            # Fix for converting to DL on SQL. Without this fix, the measures and relationships will disappear from the model.
+            if use_sql_endpoint:
+                expr_name = 'DatabaseQuery'
+                tom.model.Expressions[expr].Name = expr_name
+                tom.set_annotation(object=tom.model, name='PBI_QueryOrder', value=expr_name)
+
             print(
                 f"{icons.green_dot} The expression in the '{dataset_name}' semantic model within the '{workspace_name}' workspace has been updated to point to the '{source}' {source_type.lower()} in the '{source_workspace}' workspace."
             )
