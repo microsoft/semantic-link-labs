@@ -22,8 +22,6 @@ from jsonpath_ng.jsonpath import Fields, Index
 from sempy._utils._log import log
 from os import PathLike
 import sempy_labs._utils as utils
-import polars as pl
-from polars.datatypes import Datetime, Decimal
 
 
 def _build_url(url: str, params: dict) -> str:
@@ -899,6 +897,20 @@ def save_as_delta_table(
         Defaults to None which resolves to the workspace of the attached lakehouse
         or if no lakehouse attached, resolves to the workspace of the notebook.
     """
+    from sempy_labs.lakehouse._schemas import is_schema_enabled
+    import pyarrow as pa
+    from pyspark.sql.types import (
+        StringType,
+        IntegerType,
+        FloatType,
+        DateType,
+        StructType,
+        StructField,
+        BooleanType,
+        LongType,
+        DoubleType,
+        TimestampType,
+    )
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (lakehouse_name, lakehouse_id) = resolve_lakehouse_name_and_id(
@@ -918,20 +930,6 @@ def save_as_delta_table(
             f"{icons.red_dot} Invalid 'delta_table_name'. Delta tables in the lakehouse cannot have spaces in their names."
         )
 
-    import pyarrow as pa
-    from pyspark.sql.types import (
-        StringType,
-        IntegerType,
-        FloatType,
-        DateType,
-        StructType,
-        StructField,
-        BooleanType,
-        LongType,
-        DoubleType,
-        TimestampType,
-    )
-
     def get_type_mapping(pure_python):
         common_mapping = {
             "string": ("pa", pa.string(), StringType()),
@@ -950,10 +948,17 @@ def save_as_delta_table(
 
     def build_schema(schema_dict, type_mapping, use_arrow=True):
         if use_arrow:
-            fields = [
-                pa.field(name, type_mapping.get(dtype.lower()))
-                for name, dtype in schema_dict.items()
-            ]
+            fields = []
+            for name, dtype in schema_dict.items():
+                if dtype is None:
+                    raise ValueError(f"dtype is None for column: {name}")
+
+                arrow_type = type_mapping.get(dtype.lower())
+
+                if arrow_type is None:
+                    raise ValueError(f"No mapping for dtype '{dtype}' (column: {name})")
+
+                fields.append(pa.field(name, arrow_type))
             return pa.schema(fields)
         else:
             return StructType(
@@ -985,6 +990,10 @@ def save_as_delta_table(
             new_name = col_name.replace(" ", "_")
             dataframe = dataframe.withColumnRenamed(col_name, new_name)
         spark_df = dataframe
+
+    has_schema = is_schema_enabled(lakehouse=lakehouse_id, workspace=workspace_id)
+    if has_schema and "/" not in delta_table_name:
+        delta_table_name = f"dbo/{delta_table_name}"
 
     file_path = create_abfss_path(
         lakehouse_id=lakehouse_id,
@@ -1901,6 +1910,9 @@ def _get_column_aggregate(
     default_value: int = 0,
     schema_name: Optional[str] = None,
 ) -> int | Dict[str, int]:
+
+    import polars as pl
+    from polars.datatypes import Datetime, Decimal
 
     workspace_id = resolve_workspace_id(workspace)
     lakehouse_id = resolve_lakehouse_id(lakehouse, workspace_id)

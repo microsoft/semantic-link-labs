@@ -21,16 +21,44 @@ import sempy_labs._icons as icons
 from pathlib import Path
 from uuid import UUID
 from sempy_labs.directlake._sources import get_direct_lake_sources
+from sempy_labs.lakehouse._schemas import is_schema_enabled
+
+
+def get_run_id(lakehouse, schema, workspace, save_table_name):
+    has_schema = is_schema_enabled(lakehouse=lakehouse, workspace=workspace)
+    tables = get_lakehouse_tables(lakehouse=lakehouse, workspace=workspace)
+    if schema and not has_schema:
+        raise ValueError(
+            f"{icons.red_dot} A schema (export_schema) was provided but the lakehouse does not have schemas enabled."
+        )
+    if not schema and not has_schema:
+        tables = tables[(tables["Table Name"] == save_table_name)]
+    elif schema and has_schema:
+        tables = tables[
+            (tables["Schema Name"] == schema)
+            & (tables["Table Name"] == save_table_name)
+        ]
+    else:
+        tables = tables[
+            (tables["Schema Name"] == "dbo") & (tables["Table Name"] == save_table_name)
+        ]
+
+    if tables.empty:
+        run_id = 1
+    else:
+        run_id = _get_column_aggregate(
+            table_name=save_table_name,
+            lakehouse=lakehouse,
+            workspace=workspace,
+            schema_name=schema,
+        )
+
+    return run_id
 
 
 def create_sql_query(columns, schema_name, table_name):
 
-    distinct_counts = ", ".join(
-        [
-            f"COUNT(DISTINCT {col}) AS {col}"
-            for col in columns
-        ]
-    )
+    distinct_counts = ", ".join([f"COUNT(DISTINCT {col}) AS {col}" for col in columns])
 
     return f"""
     SELECT {distinct_counts}
@@ -106,6 +134,9 @@ def vertipaq_analyzer(
     workspace: Optional[str | UUID] = None,
     export: Optional[Literal["table"]] = None,
     read_stats_from_data: bool = False,
+    export_lakehouse: Optional[str | UUID] = None,
+    export_workspace: Optional[str | UUID] = None,
+    export_schema: Optional[str] = None,
 ) -> dict[str, pd.DataFrame]:
     """
     Displays an HTML visualization of the `Vertipaq Analyzer <https://www.sqlbi.com/tools/vertipaq-analyzer/>`_ statistics from a semantic model.
@@ -124,6 +155,15 @@ def vertipaq_analyzer(
         If set to 'table', the vertipaq analyzer statistics will be exported as delta tables to the lakehouse. The tables will be named vertipaqanalyzer_model, vertipaqanalyzer_table, vertipaqanalyzer_partition, vertipaqanalyzer_column, vertipaqanalyzer_relationship, and vertipaqanalyzer_hierarchy. If None, the statistics will just be displayed in the notebook.
     read_stats_from_data : bool, default=False
         Setting this parameter to true has the function get Column Cardinality and Missing Rows using DAX (Direct Lake semantic models achieve this using a Spark query to the lakehouse).
+    export_lakehouse : str | uuid.UUID, default=None
+        The Fabric lakehouse name or ID to which the vertipaq analyzer statistics tables will be exported if export is set to 'table'.
+        Defaults to None which resolves to the lakehouse attached to the notebook.
+    export_workspace : str | uuid.UUID, default=None
+        The Fabric workspace name or ID used by the lakehouse to which the vertipaq analyzer statistics tables will be exported if export is set to 'table'.
+        Defaults to None which resolves to the workspace of the attached lakehouse
+        or if no lakehouse attached, resolves to the workspace of the notebook.
+    export_schema : str, default=None
+        The schema to which the vertipaq analyzer statistics tables will be exported if export is set to 'table' and the lakehouse has schemas enabled. If the lakehouse does not have schemas enabled, this parameter will be ignored.
 
     Returns
     -------
@@ -135,6 +175,16 @@ def vertipaq_analyzer(
 
     (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
     (dataset_name, dataset_id) = resolve_dataset_name_and_id(dataset, workspace_id)
+    save_prefix = "vertipaqanalyzer_"
+    save_table_name = f"{save_prefix}model"
+
+    if export == "table":
+        run_id = get_run_id(
+            lakehouse=export_lakehouse,
+            schema=export_schema,
+            workspace=export_workspace,
+            save_table_name=save_table_name,
+        )
 
     vertipaq_map = {
         "Model": {
@@ -370,7 +420,7 @@ def vertipaq_analyzer(
                 "tooltip": "A decimal indicating the frequency and recency of queries against the column",
             },
             "Last Accessed": {
-                "data_type": icons.no_format,  # icons.data_type_timestamp,
+                "data_type": icons.data_type_timestamp,  # icons.data_type_timestamp,
                 "format": icons.no_format,
                 "tooltip": "The time the column was last queried",
             },
@@ -459,7 +509,14 @@ def vertipaq_analyzer(
         for p in tom.all_partitions():
             mode = str(p.Mode)
             direct_lake_type = None
-            source, source_type, source_workspace, source_table_name = (
+            (
+                source,
+                source_type,
+                source_workspace,
+                source_table_name,
+                source_schema_name,
+            ) = (
+                None,
                 None,
                 None,
                 None,
@@ -626,6 +683,9 @@ def vertipaq_analyzer(
                     tom.get_annotation_value(object=c, name="Vertipaq_TotalSize"),
                     "decimal",
                 )
+                last_accessed = tom.get_annotation_value(
+                    object=c, name="Vertipaq_LastAccessed"
+                )
                 columns.append(
                     {
                         "Table Name": c.Parent.Name,
@@ -679,9 +739,7 @@ def vertipaq_analyzer(
                             ),
                             "decimal",
                         ),
-                        "Last Accessed": tom.get_annotation_value(
-                            object=c, name="Vertipaq_LastAccessed"
-                        ),
+                        "Last Accessed": last_accessed,
                     }
                 )
 
@@ -734,9 +792,15 @@ def vertipaq_analyzer(
                 elif source_type == "Warehouse":
                     from sempy_labs._sql import ConnectBase
 
-                    query = create_sql_query(columns=source_column_list, schema_name=schema_name, table_name=entity_name)
+                    query = create_sql_query(
+                        columns=source_column_list,
+                        schema_name=schema_name,
+                        table_name=entity_name,
+                    )
 
-                    with ConnectBase(item=source_name,type=source_type, workspace=source_workspace) as sql:
+                    with ConnectBase(
+                        item=source_name, type=source_type, workspace=source_workspace
+                    ) as sql:
                         df = sql.query(query)
 
                     aggs = df.iloc[0].to_dict()
@@ -844,7 +908,10 @@ def vertipaq_analyzer(
 
             if name == "Columns":
                 df = df[df["Type"] != "RowNumber"]
-                df.drop(columns=["Source Column"], inplace=True)
+                keys_to_remove = ["Source Column"]
+                df.drop(columns=keys_to_remove, inplace=True)
+                for k in keys_to_remove:
+                    vertipaq_map[name].pop(k, None)
             if name == "Partitions":
                 keys_to_remove = [
                     "Direct Lake Type",
@@ -894,15 +961,6 @@ def vertipaq_analyzer(
     # Export vertipaq to delta tables in lakehouse
     if export == "table":
         dfs = create_dfs(column_formatting="data_type")
-        save_table_name = "vertipaqanalyzer_model"
-
-        # Determine RunId
-        tables = get_lakehouse_tables()
-        run_id = (
-            1
-            if save_table_name not in tables["Table Name"].values
-            else _get_column_aggregate(table_name=save_table_name) + 1
-        )
 
         print(
             f"{icons.in_progress} Saving Vertipaq Analyzer to delta tables in the lakehouse...\n"
@@ -916,7 +974,9 @@ def vertipaq_analyzer(
             df_datasets["Dataset Id"] == dataset_id, "Configured By"
         ].iloc[0]
 
-        capacity_id, capacity_name = resolve_workspace_capacity(workspace=workspace_id)
+        (capacity_id, capacity_name) = resolve_workspace_capacity(
+            workspace=workspace_id
+        )
 
         base_metadata = {
             "Capacity Name": capacity_name,
@@ -980,23 +1040,28 @@ def vertipaq_analyzer(
                 "Timestamp": icons.data_type_timestamp,
             }
 
-            min_ts = pd.Timestamp("1677-09-21", tz="UTC")
-            max_ts = pd.Timestamp("2262-04-11", tz="UTC")
+            delta_table_suffix = f"{save_prefix}{obj}".lower()
+            if export_schema:
+                delta_table_name = f"{export_schema}/{delta_table_suffix}"
+            else:
+                delta_table_name = delta_table_suffix
 
-            # Convert timestamp columns from strings to datetime
-            # for col_name, col_type in schema.items():
-            #    if col_type == icons.data_type_timestamp and col_name in df.columns:
-
-            #        ts = pd.to_datetime(df[col_name], errors="coerce", utc=True)
-            #        df[col_name] = ts.where(ts.between(min_ts, max_ts))
-
-            delta_table_name = f"vertipaqanalyzer_{obj}".lower()
+            # Needed to convert from string back to datetime (since the annotation is stored as a string)
+            if obj == "Columns":
+                df["Last_Accessed"] = pd.to_datetime(
+                    df["Last_Accessed"],
+                    format="%Y-%m-%d %H:%M:%S",
+                    errors="coerce",
+                    utc=True,
+                )
             save_as_delta_table(
                 dataframe=df,
                 delta_table_name=delta_table_name,
                 write_mode="append",
                 schema=schema,
                 merge_schema=True,
+                lakehouse=export_lakehouse,
+                workspace=export_workspace,
             )
 
 

@@ -6,7 +6,7 @@ from itertools import chain, repeat
 from sempy_labs._helper_functions import (
     resolve_lakehouse_name_and_id,
     resolve_item_name_and_id,
-    resolve_workspace_name_and_id,
+    resolve_workspace_id,
     _base_api,
 )
 from uuid import UUID
@@ -38,12 +38,11 @@ class ConnectBase:
         type: Optional[str] = "Warehouse",
         workspace: Optional[Union[str, UUID]] = None,
         timeout: Optional[int] = None,
-        #endpoint_type: str = "warehouse",
     ):
         from sempy.fabric._credentials import get_access_token
         import pyodbc
 
-        (workspace_name, workspace_id) = resolve_workspace_name_and_id(workspace)
+        workspace_id = resolve_workspace_id(workspace)
 
         # Resolve the appropriate ID and name (warehouse or lakehouse)
         if type == "SQLDatabase":
@@ -109,7 +108,7 @@ class ConnectBase:
 
         Returns
         -------
-        Union[List[pandas.DataFrame], pandas.DataFrame, None]
+        typing.Union[typing.List[pandas.DataFrame], pandas.DataFrame, None]
             A list of pandas DataFrames if multiple SQL queries return results,
             a single DataFrame if one query is executed and returns results, or None.
         """
@@ -177,9 +176,9 @@ class ConnectWarehouse(ConnectBase):
         """
         super().__init__(
             item=warehouse,
+            type="Warehouse",
             workspace=workspace,
             timeout=timeout,
-            endpoint_type="Warehouse",
         )
 
 
@@ -207,9 +206,9 @@ class ConnectLakehouse(ConnectBase):
         """
         super().__init__(
             item=lakehouse,
+            type="Lakehouse",
             workspace=workspace,
             timeout=timeout,
-            endpoint_type="Lakehouse",
         )
 
 
@@ -236,7 +235,7 @@ class ConnectSQLDatabase(ConnectBase):
         """
         super().__init__(
             item=sql_database,
+            type="SQLDatabase",
             workspace=workspace,
             timeout=timeout,
-            endpoint_type="SQLDatabase",
         )
